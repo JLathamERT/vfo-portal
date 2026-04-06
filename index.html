@@ -252,60 +252,60 @@
           <select class="specialist-select" id="memberSelect"><option value="">-- Choose a member --</option></select>
         </div>
         <div id="memberContent" style="display:none;">
-          <div class="settings-section">
-            <div class="settings-title">Website Plugin</div>
-            <div class="setting-row">
-              <div><div class="setting-label">Enable Website Plugin</div><div class="setting-desc">Allow this member to customize their showroom widget</div></div>
-              <label class="toggle"><input type="checkbox" id="mWebsiteEnabled"><span class="toggle-slider"></span></label>
-            </div>
+          <div class="setting-row" style="padding:14px 20px;background:rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.1);border-radius:12px;margin-bottom:20px;" id="websiteEnabledRow">
+            <div><div class="setting-label">Enable Website Plugin</div><div class="setting-desc">Allow this member to customize their showroom widget</div></div>
+            <label class="toggle"><input type="checkbox" id="mWebsiteEnabled"><span class="toggle-slider"></span></label>
           </div>
-          <div id="websitePluginContent">
-            <div class="sub-tabs" id="memberSubTabs"><button class="sub-tab active" data-subpanel="specialistsSubPanel">Specialists</button><button class="sub-tab" data-subpanel="appearanceSubPanel">Appearance</button><button class="sub-tab" data-subpanel="pluginSubPanel">Settings</button></div>
-            <div class="sub-panel active" id="specialistsSubPanel">
-              <div class="stats"><div><div class="stat-num" id="mEnabledCount">0</div><div class="stat-label">ENABLED</div></div><div><div class="stat-num" id="mTotalCount">0</div><div class="stat-label">TOTAL</div></div></div>
-              <div class="search-wrap"><span class="search-icon">&#x2315;</span><input type="text" class="search-input" id="mSearchInput" placeholder="Search specialists..."></div>
-              <div style="display:flex;gap:8px;margin-bottom:16px;"><button class="mode-btn" id="mEnableAll">Enable All</button><button class="mode-btn" id="mDisableAll">Disable All</button></div>
-              <div class="specialist-list" id="mSpecialistList"></div>
-            </div>
-            <div class="sub-panel" id="appearanceSubPanel">
-              <div class="settings-section">
-                <div class="settings-title">Colors</div>
-                <div class="setting-row"><div><div class="setting-label">Background Color</div><div class="setting-desc">Page background</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mBgColor"><input type="text" class="color-hex" id="mBgHex"></div></div>
-                <div class="setting-row"><div><div class="setting-label">Heading Text Color</div><div class="setting-desc">Title, subtitle, search, filters, group headings</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mTextColor"><input type="text" class="color-hex" id="mTextHex"></div></div>
-                <div class="setting-row"><div><div class="setting-label">Card Background</div><div class="setting-desc">Card and modal background</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mAccentColor"><input type="text" class="color-hex" id="mAccentHex"></div></div>
-                <div class="setting-row"><div><div class="setting-label">Card Text Color</div><div class="setting-desc">Names and bios on cards and modal</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mCardTextColor"><input type="text" class="color-hex" id="mCardTextHex"></div></div>
-                <div class="setting-row"><div><div class="setting-label">Accent Color</div><div class="setting-desc">Active buttons, tags, hover effects, underlines</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mPrimaryColor"><input type="text" class="color-hex" id="mPrimaryHex"></div></div>
-                <div class="color-preview"><div class="preview-label">PREVIEW</div><div class="preview-card" id="mPreviewCard"><div class="preview-name" id="mPreviewName">Bill L.</div><div class="preview-tag" id="mPreviewTag">Tax Planning</div></div></div>
+          <div class="sub-tabs" id="memberFeatureTabs"><button class="sub-tab active" data-subpanel="websitePluginPanel">Website Plugin</button></div>
+          <div class="sub-panel active" id="websitePluginPanel">
+            <div id="websitePluginContent">
+              <div class="sub-tabs" id="memberSubTabs"><button class="sub-tab active" data-subpanel="specialistsSubPanel">Specialists</button><button class="sub-tab" data-subpanel="appearanceSubPanel">Appearance</button><button class="sub-tab" data-subpanel="pluginSubPanel">Settings</button></div>
+              <div class="sub-panel active" id="specialistsSubPanel">
+                <div class="stats"><div><div class="stat-num" id="mEnabledCount">0</div><div class="stat-label">ENABLED</div></div><div><div class="stat-num" id="mTotalCount">0</div><div class="stat-label">TOTAL</div></div></div>
+                <div class="search-wrap"><span class="search-icon">&#x2315;</span><input type="text" class="search-input" id="mSearchInput" placeholder="Search specialists..."></div>
+                <div style="display:flex;gap:8px;margin-bottom:16px;"><button class="mode-btn" id="mEnableAll">Enable All</button><button class="mode-btn" id="mDisableAll">Disable All</button></div>
+                <div class="specialist-list" id="mSpecialistList"></div>
               </div>
-              <div class="settings-section">
-                <div class="settings-title">Font</div>
-                <div style="display:flex;flex-wrap:wrap;gap:8px;" id="mFontPresets"></div>
-                <div style="position:relative;margin-top:12px;"><input type="text" class="search-input" id="mFontSearch" placeholder="Search Google Fonts..." style="padding-left:16px;"><div id="mFontResults" style="position:absolute;top:100%;left:0;right:0;max-height:200px;overflow-y:auto;background:#162d4a;border:1px solid rgba(255,255,255,0.2);border-radius:8px;display:none;z-index:10;"></div></div>
-                <div id="mFontPreview" style="margin-top:12px;padding:16px;background:rgba(0,0,0,0.12);border-radius:8px;border:1px solid rgba(255,255,255,0.1);text-align:center;"><span style="font-size:20px;color:#ffffff;">The quick brown fox jumps over the lazy dog</span></div>
+              <div class="sub-panel" id="appearanceSubPanel">
+                <div class="settings-section">
+                  <div class="settings-title">Colors</div>
+                  <div class="setting-row"><div><div class="setting-label">Background Color</div><div class="setting-desc">Page background</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mBgColor"><input type="text" class="color-hex" id="mBgHex"></div></div>
+                  <div class="setting-row"><div><div class="setting-label">Heading Text Color</div><div class="setting-desc">Title, subtitle, search, filters, group headings</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mTextColor"><input type="text" class="color-hex" id="mTextHex"></div></div>
+                  <div class="setting-row"><div><div class="setting-label">Card Background</div><div class="setting-desc">Card and modal background</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mAccentColor"><input type="text" class="color-hex" id="mAccentHex"></div></div>
+                  <div class="setting-row"><div><div class="setting-label">Card Text Color</div><div class="setting-desc">Names and bios on cards and modal</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mCardTextColor"><input type="text" class="color-hex" id="mCardTextHex"></div></div>
+                  <div class="setting-row"><div><div class="setting-label">Accent Color</div><div class="setting-desc">Active buttons, tags, hover effects, underlines</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mPrimaryColor"><input type="text" class="color-hex" id="mPrimaryHex"></div></div>
+                  <div class="color-preview"><div class="preview-label">PREVIEW</div><div class="preview-card" id="mPreviewCard"><div class="preview-name" id="mPreviewName">Bill L.</div><div class="preview-tag" id="mPreviewTag">Tax Planning</div></div></div>
+                </div>
+                <div class="settings-section">
+                  <div class="settings-title">Font</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px;" id="mFontPresets"></div>
+                  <div style="position:relative;margin-top:12px;"><input type="text" class="search-input" id="mFontSearch" placeholder="Search Google Fonts..." style="padding-left:16px;"><div id="mFontResults" style="position:absolute;top:100%;left:0;right:0;max-height:200px;overflow-y:auto;background:#162d4a;border:1px solid rgba(255,255,255,0.2);border-radius:8px;display:none;z-index:10;"></div></div>
+                  <div id="mFontPreview" style="margin-top:12px;padding:16px;background:rgba(0,0,0,0.12);border-radius:8px;border:1px solid rgba(255,255,255,0.1);text-align:center;"><span style="font-size:20px;color:#ffffff;">The quick brown fox jumps over the lazy dog</span></div>
+                </div>
+                <div class="settings-section">
+                  <div class="settings-title">Display Options</div>
+                  <div class="setting-row"><div><div class="setting-label">Last Name Initial Only</div><div class="setting-desc">Show "Bill L." instead of "Bill Lloyd"</div></div><label class="toggle"><input type="checkbox" id="mLastInitial"><span class="toggle-slider"></span></label></div>
+                  <div class="setting-row"><div><div class="setting-label">Show Specialist Count</div><div class="setting-desc">Display "60 SPECIALISTS" text</div></div><label class="toggle"><input type="checkbox" id="mShowCount" checked><span class="toggle-slider"></span></label></div>
+                  <div class="setting-row"><div><div class="setting-label">Show Search Bar</div><div class="setting-desc">Display the search specialists input</div></div><label class="toggle"><input type="checkbox" id="mShowSearch" checked><span class="toggle-slider"></span></label></div>
+                  <div class="setting-row"><div><div class="setting-label">Display Mode</div><div class="setting-desc">How specialists are organized</div></div><div class="mode-selector"><button class="mode-btn active" data-mode="filter" id="mModeFilter">Filter Buttons</button><button class="mode-btn" data-mode="grouped" id="mModeGrouped">Grouped</button></div></div>
+                </div>
               </div>
-              <div class="settings-section">
-                <div class="settings-title">Display Options</div>
-                <div class="setting-row"><div><div class="setting-label">Last Name Initial Only</div><div class="setting-desc">Show "Bill L." instead of "Bill Lloyd"</div></div><label class="toggle"><input type="checkbox" id="mLastInitial"><span class="toggle-slider"></span></label></div>
-                <div class="setting-row"><div><div class="setting-label">Show Specialist Count</div><div class="setting-desc">Display "60 SPECIALISTS" text</div></div><label class="toggle"><input type="checkbox" id="mShowCount" checked><span class="toggle-slider"></span></label></div>
-                <div class="setting-row"><div><div class="setting-label">Show Search Bar</div><div class="setting-desc">Display the search specialists input</div></div><label class="toggle"><input type="checkbox" id="mShowSearch" checked><span class="toggle-slider"></span></label></div>
-                <div class="setting-row"><div><div class="setting-label">Display Mode</div><div class="setting-desc">How specialists are organized</div></div><div class="mode-selector"><button class="mode-btn active" data-mode="filter" id="mModeFilter">Filter Buttons</button><button class="mode-btn" data-mode="grouped" id="mModeGrouped">Grouped</button></div></div>
+              <div class="sub-panel" id="pluginSubPanel">
+                <div class="settings-section">
+                  <div class="settings-title">Embed Code</div>
+                  <p style="color:#5a8ab5;font-size:14px;margin-bottom:16px;">Copy this code and paste it into an HTML widget on the member's website.</p>
+                  <pre id="pluginEmbedCode" style="background:rgba(0,0,0,0.3);padding:16px;border-radius:8px;color:#a0b0c4;font-size:13px;overflow-x:auto;white-space:pre-wrap;font-family:monospace;margin:0 0 12px;"></pre>
+                  <button class="mode-btn" id="copyPluginBtn" style="color:#27ae60;border-color:rgba(39,174,96,0.3);font-size:13px;">Copy Code</button>
+                </div>
               </div>
-            </div>
-            <div class="sub-panel" id="pluginSubPanel">
-              <div class="settings-section">
-                <div class="settings-title">Embed Code</div>
-                <p style="color:#5a8ab5;font-size:14px;margin-bottom:16px;">Copy this code and paste it into an HTML widget on the member's website.</p>
-                <pre id="pluginEmbedCode" style="background:rgba(0,0,0,0.3);padding:16px;border-radius:8px;color:#a0b0c4;font-size:13px;overflow-x:auto;white-space:pre-wrap;font-family:monospace;margin:0 0 12px;"></pre>
-                <button class="mode-btn" id="copyPluginBtn" style="color:#27ae60;border-color:rgba(39,174,96,0.3);font-size:13px;">Copy Code</button>
-              </div>
-              <div class="settings-section" style="border-color:rgba(231,76,60,0.15);">
-                <div class="settings-title" style="color:#e74c3c;">Danger Zone</div>
-                <p style="color:#5a8ab5;font-size:14px;margin-bottom:16px;">Permanently delete this member and all their settings. This cannot be undone.</p>
-                <button class="btn-danger" id="deleteMemberBtn">Delete Member</button>
-                <div class="status-msg" id="deleteMemberStatus"></div>
-              </div>
-            </div>
-          </div><!-- end websitePluginContent -->
+            </div><!-- end websitePluginContent -->
+          </div><!-- end websitePluginPanel -->
+          <div class="settings-section" style="border-color:rgba(231,76,60,0.15);" id="dangerZoneSection">
+            <div class="settings-title" style="color:#e74c3c;">Danger Zone</div>
+            <p style="color:#5a8ab5;font-size:14px;margin-bottom:16px;">Permanently delete this member and all their settings. This cannot be undone.</p>
+            <button class="btn-danger" id="deleteMemberBtn">Delete Member</button>
+            <div class="status-msg" id="deleteMemberStatus"></div>
+          </div>
           <div class="save-bar"><p class="unsaved-indicator" id="mUnsavedMsg">You have unsaved changes</p><button class="btn-primary" id="mSaveBtn">Save Member Changes</button></div>
           <div class="status-msg" id="manageStatus"></div>
         </div><!-- end memberContent -->
@@ -469,10 +469,12 @@
         sel.value = currentUserMemberNumber;
         sel.dispatchEvent(new Event("change"));
         sel.parentElement.style.display = "none";
-        // Hide website plugin toggle and delete button for members
-        document.getElementById("mWebsiteEnabled").closest(".settings-section").style.display = "none";
-        document.getElementById("deleteMemberBtn").style.display = "none";
-        // Show website sub-tabs
+        // Hide admin-only elements for members
+        document.getElementById("websiteEnabledRow").style.display = "none";
+        document.getElementById("memberFeatureTabs").style.display = "none";
+        document.getElementById("dangerZoneSection").style.display = "none";
+        // Show website plugin content directly (skip feature tab layer)
+        document.getElementById("websitePluginPanel").style.display = "block";
         document.getElementById("memberSubTabs").style.display = "flex";
         activateSubTab("specialistsSubPanel");
         return;
@@ -588,7 +590,22 @@
       });
     })();
 
-    // 3) Website plugin: Specialists / Appearance / Settings
+    // 3) Member feature tabs: Website Plugin (and future tabs)
+    (function(){
+      var container = document.getElementById("memberFeatureTabs");
+      var tabs = container.querySelectorAll(".sub-tab");
+      var panels = [document.getElementById("websitePluginPanel")];
+      tabs.forEach(function(tab){
+        tab.addEventListener("click", function(){
+          tabs.forEach(function(t){ t.classList.remove("active"); });
+          panels.forEach(function(p){ p.classList.remove("active"); });
+          tab.classList.add("active");
+          document.getElementById(tab.getAttribute("data-subpanel")).classList.add("active");
+        });
+      });
+    })();
+
+    // 4) Website plugin: Specialists / Appearance / Settings
     (function(){
       var container = document.getElementById("memberSubTabs");
       var tabs = container.querySelectorAll(".sub-tab");
@@ -853,13 +870,13 @@
       document.getElementById("memberContent").style.display="block";
       document.getElementById("mWebsiteEnabled").checked = memberSettings.website_enabled;
       renderMemberSpecialists(); initMemberAppearance();
-      // Hide member sub-tabs and delete for member role (they use main tabs)
+      // Hide admin-only elements for member role
       if(currentRole === "member"){
         document.getElementById("memberSubTabs").style.display="none";
-        document.getElementById("deleteMemberBtn").style.display="none";
+        document.getElementById("dangerZoneSection").style.display="none";
       } else {
         document.getElementById("memberSubTabs").style.display="flex";
-        document.getElementById("deleteMemberBtn").style.display="";
+        document.getElementById("dangerZoneSection").style.display="";
       }
       // Populate embed code
       var embed='<div id="vfo-showroom"></div>\n<script src="https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/vfo-widget/vfo-widget.js?v=23" data-vfo-key="'+currentMember.manage_key+'"><\/script>';
