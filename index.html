@@ -516,21 +516,59 @@
       document.getElementById("emailInput").value="";
       document.getElementById("passcodeInput").value="";
       document.getElementById("gateError").style.display="none";
+      // Reset all inline display overrides
+      document.getElementById("memberNotEnabled").style.display="none";
+      document.getElementById("specialistsPanel").style.display="";
+      document.getElementById("membersPanel").style.display="";
+      document.getElementById("editMemberSubPanel").style.display="";
+      document.getElementById("addMemberSubPanel").style.display="";
+      document.querySelector("#membersPanel > .sub-tabs").style.display="";
+      document.getElementById("websiteEnabledRow").style.display="";
+      document.getElementById("memberFeatureTabs").style.display="";
+      document.getElementById("dangerZoneSection").style.display="";
+      document.getElementById("memberSubTabs").style.display="";
+      document.getElementById("memberContent").style.display="none";
+      document.getElementById("memberSelect").value="";
+      if(document.getElementById("memberSelect").parentElement) document.getElementById("memberSelect").parentElement.style.display="";
+      currentMember = null;
     }
     document.getElementById("signOutBtn").addEventListener("click", signOut);
     document.getElementById("welcomeSignOut").addEventListener("click", signOut);
     document.getElementById("appTitle").addEventListener("click", goHome);
 
     // ─── TABS ──────────────────────────────────────────────
+    function resetMemberEditingState(){
+      document.getElementById("memberContent").style.display = "none";
+      document.getElementById("memberSelect").value = "";
+      currentMember = null;
+      // Reset all inline display overrides from member role path
+      document.getElementById("editMemberSubPanel").style.display = "";
+      document.getElementById("addMemberSubPanel").style.display = "";
+      document.querySelector("#membersPanel > .sub-tabs").style.display = "";
+      document.getElementById("websiteEnabledRow").style.display = "";
+      document.getElementById("memberFeatureTabs").style.display = "";
+      document.getElementById("dangerZoneSection").style.display = "";
+      document.getElementById("memberSubTabs").style.display = "";
+      // Remove active from all nested member sub-panels and tabs
+      document.getElementById("websitePluginPanel").classList.remove("active");
+      document.getElementById("memberFeatureTabs").querySelector(".sub-tab").classList.remove("active");
+      ["specialistsSubPanel","appearanceSubPanel","pluginSubPanel"].forEach(function(id){
+        document.getElementById(id).classList.remove("active");
+      });
+      document.getElementById("memberSubTabs").querySelectorAll(".sub-tab").forEach(function(t){ t.classList.remove("active"); });
+    }
+
     document.querySelectorAll("#adminTabs .main-tab").forEach(function(tab){
       tab.addEventListener("click", function(){
         document.querySelectorAll("#adminTabs .main-tab").forEach(function(t){ t.classList.remove("active"); });
         document.querySelectorAll(".tab-panel").forEach(function(p){ p.classList.remove("active"); });
         tab.classList.add("active");
+        // Always reset member editing state
+        resetMemberEditingState();
         var panel = document.getElementById(tab.getAttribute("data-panel"));
         if(panel){
           panel.classList.add("active");
-          // Activate the first direct sub-tab within this panel (not nested ones)
+          // Activate the first direct sub-tab within this panel
           var directSubTabs = panel.querySelector(":scope > .sub-tabs");
           if(directSubTabs){
             var tabs = directSubTabs.querySelectorAll(".sub-tab");
@@ -546,18 +584,6 @@
               if(firstPanel) firstPanel.classList.add("active");
             }
           }
-        }
-        // When leaving Members tab, fully reset member editing state
-        if(tab.getAttribute("data-panel") !== "membersPanel"){
-          document.getElementById("memberContent").style.display = "none";
-          document.getElementById("memberSelect").value = "";
-          currentMember = null;
-          document.getElementById("websitePluginPanel").classList.remove("active");
-          document.getElementById("memberFeatureTabs").querySelector(".sub-tab").classList.remove("active");
-          ["specialistsSubPanel","appearanceSubPanel","pluginSubPanel"].forEach(function(id){
-            document.getElementById(id).classList.remove("active");
-          });
-          document.getElementById("memberSubTabs").querySelectorAll(".sub-tab").forEach(function(t){ t.classList.remove("active"); });
         }
       });
     });
