@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The VFO Portal</title>
+  <link rel="icon" href="https://yt3.googleusercontent.com/ytc/AIdro_n97ca7emLIuU5FJqACNZ65pElKhWZkhC3px2ceBsVbHR4=s160-c-k-c0x00ffffff-no-rj" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; background: #1e3a5f; font-family: 'DM Sans', sans-serif; color: #ffffff; }
+    .gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; background: #162d4a; }
+    .gate h1 { font-family: 'Playfair Display', serif; font-size: 32px; color: #ffffff; margin-bottom: 8px; }
+    .gate-input { padding: 14px 24px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.12); color: #ffffff; font-size: 16px; font-family: 'DM Sans', sans-serif; width: 300px; text-align: center; outline: none; }
+    .gate-input::placeholder { color: #8bacc8; }
+    .gate-input:focus { border-color: #5b9fe6; }
+    .gate-input.email-input { letter-spacing: 0; font-size: 15px; }
+    .gate-input.passcode-input { letter-spacing: 0; }
+    .gate-btn { padding: 12px 40px; border-radius: 10px; border: none; background: #ffffff; color: #3b8beb; font-size: 15px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; margin-top: 8px; }
+    .gate-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+    .gate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .gate-error { color: #ffb3b3; font-size: 14px; display: none; }
+    .app { display: none; max-width: 900px; margin: 0 auto; padding: 48px 32px 120px; }
+    .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+    .app-header h1 { font-family: 'Playfair Display', serif; font-size: 28px; color: #ffffff; }
+    .app-header-right { display: flex; align-items: center; gap: 16px; }
+    .admin-name { color: #8bacc8; font-size: 13px; }
+    .sign-out-btn { padding: 8px 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.25); background: transparent; color: #b0cce5; font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .sign-out-btn:hover { border-color: #ff6b6b; color: #ff6b6b; }
+    .main-tabs { display: flex; gap: 4px; margin-bottom: 36px; background: rgba(0,0,0,0.15); border-radius: 12px; padding: 4px; }
+    .main-tab { flex: 1; padding: 12px 8px; text-align: center; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; color: #8bacc8; transition: all 0.25s; font-family: 'DM Sans', sans-serif; border: none; background: none; }
+    .main-tab:hover { color: #ffffff; }
+    .main-tab.active { background: rgba(255,255,255,0.18); color: #ffffff; font-weight: 600; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .field { margin-bottom: 28px; }
+    .field label, .field-label { display: block; font-size: 12px; color: #8bacc8; margin-bottom: 8px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+    .text-input, .text-area { width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #ffffff; font-size: 15px; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s; }
+    .text-input:focus, .text-area:focus { border-color: #5b9fe6; }
+    .text-area { min-height: 140px; resize: vertical; line-height: 1.6; }
+    .text-input::placeholder, .text-area::placeholder { color: #5a8ab5; }
+    .edit-selector { margin-bottom: 32px; }
+    .specialist-select { width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #ffffff; font-size: 15px; font-family: 'DM Sans', sans-serif; outline: none; }
+    .specialist-select:focus { border-color: #5b9fe6; }
+    .specialist-select option { background: #162d4a; color: #ffffff; }
+    .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; }
+    .checkbox-item { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: transparent; cursor: pointer; transition: all 0.2s; user-select: none; }
+    .checkbox-item:hover { border-color: #ffffff; }
+    .checkbox-item.checked { border-color: #ffffff; background: rgba(255,255,255,0.15); }
+    .checkbox-item input[type="checkbox"] { display: none; }
+    .check-box { width: 20px; height: 20px; border-radius: 5px; border: 2px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+    .checkbox-item.checked .check-box { border-color: #ffffff; background: #ffffff; }
+    .check-mark { display: none; color: #3b8beb; font-size: 14px; font-weight: 700; }
+    .checkbox-item.checked .check-mark { display: block; }
+    .ciq-select-row { display: flex; gap: 10px; margin-bottom: 12px; }
+    .ciq-dropdown { flex: 1; padding: 12px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #ffffff; font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none; }
+    .ciq-dropdown option { background: #162d4a; color: #ffffff; }
+    .ciq-add-btn { padding: 12px 24px; border-radius: 10px; border: 1px solid #ffffff; background: rgba(255,255,255,0.1); color: #ffffff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; white-space: nowrap; }
+    .ciq-add-btn:hover { background: rgba(255,255,255,0.2); }
+    .ciq-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ciq-tag { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 8px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); font-size: 13px; color: #ffffff; }
+    .ciq-tag-remove { cursor: pointer; font-size: 16px; color: #ffffff; opacity: 0.6; transition: opacity 0.2s; line-height: 1; }
+    .ciq-tag-remove:hover { opacity: 1; }
+    .upload-area { display: flex; align-items: center; gap: 24px; }
+    .upload-preview { width: 100px; height: 100px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .upload-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .upload-placeholder { color: #8bacc8; font-size: 32px; }
+    .upload-btn { padding: 10px 24px; border-radius: 10px; border: 1px solid #ffffff; background: rgba(255,255,255,0.1); color: #ffffff; font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .upload-btn:hover { background: rgba(255,255,255,0.2); }
+    .upload-info { font-size: 11px; color: #5a8ab5; margin-top: 8px; }
+    .upload-filename { font-size: 13px; color: #b0cce5; margin-top: 6px; }
+    input[type="file"] { display: none; }
+    .quill-wrapper { border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+    .quill-wrapper .ql-toolbar { background: rgba(255,255,255,0.08); border: none; border-bottom: 1px solid rgba(255,255,255,0.12); }
+    .quill-wrapper .ql-container { background: rgba(255,255,255,0.05); border: none; min-height: 200px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #ffffff; }
+    .quill-wrapper .ql-editor { min-height: 200px; line-height: 1.7; }
+    .quill-wrapper .ql-editor.ql-blank::before { color: #5a8ab5; font-style: normal; }
+    .quill-wrapper .ql-stroke { stroke: #b0cce5; }
+    .quill-wrapper .ql-fill { fill: #b0cce5; }
+    .quill-wrapper .ql-picker-label { color: #b0cce5; }
+    .quill-wrapper .ql-picker-options { background: #162d4a; border-color: rgba(255,255,255,0.2); }
+    .btn-primary { padding: 14px 40px; border-radius: 12px; border: none; background: #ffffff; color: #3b8beb; font-size: 16px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.25s; letter-spacing: 0.5px; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary { padding: 14px 32px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.25); background: transparent; color: #b0cce5; font-size: 15px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .btn-secondary:hover { border-color: #ffffff; color: #ffffff; }
+    .btn-danger { padding: 14px 32px; border-radius: 12px; border: 1px solid #ff6b6b; background: rgba(231,76,60,0.1); color: #ff6b6b; font-size: 15px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; margin-left: auto; }
+    .btn-danger:hover { background: rgba(231,76,60,0.2); }
+    .submit-row { display: flex; gap: 12px; margin-top: 40px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.1); }
+    .status-msg { padding: 14px 20px; border-radius: 10px; font-size: 14px; margin-top: 20px; display: none; }
+    .status-msg.success { display: block; background: rgba(39,174,96,0.15); border: 1px solid rgba(39,174,96,0.4); color: #5dca7a; }
+    .status-msg.error { display: block; background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.4); color: #ff6b6b; }
+    .settings-section { background: rgba(0,0,0,0.12); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 28px; margin-bottom: 20px; }
+    .settings-title { color: #ffffff; font-size: 16px; font-weight: 600; margin-bottom: 20px; font-family: 'Playfair Display', serif; }
+    .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-label { color: #ffffff; font-size: 14px; }
+    .setting-desc { color: #5a8ab5; font-size: 11px; margin-top: 2px; }
+    .color-picker-wrap { display: flex; align-items: center; gap: 10px; }
+    .color-picker { width: 40px; height: 40px; border-radius: 10px; border: 3px solid #ffffff; cursor: pointer; padding: 0; background: none; }
+    .color-picker::-webkit-color-swatch-wrapper { padding: 0; }
+    .color-picker::-webkit-color-swatch { border: none; border-radius: 7px; }
+    .color-hex { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 10px; color: #b0cce5; font-size: 12px; font-family: monospace; width: 80px; text-align: center; }
+    .toggle { position: relative; width: 48px; height: 26px; flex-shrink: 0; cursor: pointer; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.15); border-radius: 26px; transition: all 0.3s; }
+    .toggle-slider::before { content: ""; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: #5a8ab5; border-radius: 50%; transition: all 0.3s; }
+    .toggle input:checked + .toggle-slider { background: rgba(255,255,255,0.35); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(22px); background: #ffffff; }
+    .mode-selector { display: flex; gap: 8px; }
+    .mode-btn { padding: 8px 18px; border-radius: 8px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: #8bacc8; transition: all 0.2s; }
+    .mode-btn.active { border-color: #ffffff; background: rgba(255,255,255,0.15); color: #ffffff; }
+    .color-preview { margin-top: 20px; padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
+    .preview-label { font-size: 11px; letter-spacing: 2px; color: #5a8ab5; margin-bottom: 12px; text-transform: uppercase; }
+    .preview-card { display: inline-block; padding: 20px 32px; border-radius: 12px; text-align: center; }
+    .preview-name { font-size: 16px; font-weight: 600; font-family: 'Playfair Display', serif; }
+    .preview-tag { font-size: 12px; margin-top: 4px; }
+    .stats { display: flex; justify-content: center; gap: 32px; margin-bottom: 24px; padding: 16px; background: rgba(0,0,0,0.12); border-radius: 12px; }
+    .stat-num { color: #ffffff; font-size: 24px; font-weight: 700; text-align: center; }
+    .stat-label { color: #5a8ab5; font-size: 11px; letter-spacing: 1px; margin-top: 4px; text-align: center; }
+    .specialist-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 32px; }
+    .specialist-row { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; transition: all 0.25s; cursor: pointer; }
+    .specialist-row:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+    .specialist-row.excluded { opacity: 0.4; }
+    .specialist-avatar { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08); }
+    .specialist-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 16px; font-weight: 700; font-family: 'Playfair Display', serif; }
+    .specialist-info { flex: 1; min-width: 0; }
+    .specialist-name { color: #ffffff; font-size: 15px; font-weight: 600; }
+    .specialist-tagline { color: #8bacc8; font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .specialist-cats { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+    .cat-tag { padding: 2px 8px; border-radius: 4px; font-size: 10px; background: rgba(255,255,255,0.12); color: #b0cce5; border: 1px solid rgba(255,255,255,0.18); }
+    .enabled-badge { padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .enabled-badge.on { background: rgba(39,174,96,0.2); color: #5dca7a; border: 1px solid rgba(39,174,96,0.4); }
+    .enabled-badge.off { background: rgba(231,76,60,0.2); color: #ff6b6b; border: 1px solid rgba(231,76,60,0.4); }
+    .sub-tabs { display: flex; gap: 4px; margin-bottom: 24px; background: rgba(0,0,0,0.15); border-radius: 10px; padding: 3px; }
+    .sub-tab { flex: 1; padding: 10px; text-align: center; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; color: #8bacc8; transition: all 0.25s; border: none; background: none; font-family: 'DM Sans', sans-serif; }
+    .sub-tab.active { background: rgba(255,255,255,0.18); color: #ffffff; font-weight: 600; }
+    .sub-panel { display: none; }
+    .sub-panel.active { display: block; }
+    .search-wrap { position: relative; margin-bottom: 16px; }
+    .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #5a8ab5; font-size: 14px; pointer-events: none; }
+    .search-input { width: 100%; padding: 10px 16px 10px 40px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #ffffff; font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none; }
+    .search-input:focus { border-color: #5b9fe6; }
+    .search-input::placeholder { color: #5a8ab5; }
+    .save-bar { position: sticky; bottom: 0; padding: 20px; text-align: center; background: linear-gradient(to top, #1e3a5f 60%, transparent); }
+    .unsaved-indicator { color: #ffb347; font-size: 13px; margin-bottom: 8px; display: none; }
+    .unsaved-indicator.visible { display: block; }
+    .role-picker { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; background: #162d4a; }
+    .role-picker h1 { font-family: 'Playfair Display', serif; font-size: 32px; color: #ffffff; margin-bottom: 0; }
+    .role-subtitle { font-size: 13px; color: #8bacc8; margin-bottom: 32px; }
+    .role-buttons { display: flex; gap: 12px; }
+    .role-btn { padding: 12px 36px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #ffffff; font-size: 15px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .role-btn:hover { background: rgba(255,255,255,0.12); border-color: #5b9fe6; }
+    .welcome { display: none; max-width: 900px; margin: 0 auto; padding: 48px 32px; }
+    .welcome-center { text-align: center; padding: 40px 0; }
+    .welcome-label { font-size: 13px; color: #8bacc8; margin-bottom: 6px; }
+    .welcome-name { font-family: 'Playfair Display', serif; font-size: 28px; color: #ffffff; margin-bottom: 36px; }
+    .welcome-cards { display: flex; gap: 12px; justify-content: center; max-width: 550px; margin: 0 auto; }
+    .welcome-card { flex: 1; padding: 24px 16px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s; text-align: center; }
+    .welcome-card:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+    .welcome-card-title { font-size: 14px; font-weight: 500; color: #ffffff; margin-bottom: 4px; }
+    .welcome-card-desc { font-size: 11px; color: #5a8ab5; }
+    @media (max-width: 640px) { .main-tab { font-size: 12px; padding: 10px 4px; } .app { padding: 24px 16px 120px; } .welcome-cards { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div class="role-picker" id="rolePicker">
+    <h1>The VFO Portal</h1>
+    <p class="role-subtitle">Select your portal</p>
+    <div class="role-buttons">
+      <button class="role-btn" id="roleAdmin">Admin</button>
+      <button class="role-btn" id="roleMember">Member</button>
+    </div>
+  </div>
+  <div class="gate" id="gate" style="display:none;">
+    <h1>The VFO Portal</h1>
+    <p id="gateSubtitle" style="color:#8bacc8;font-size:14px;margin-bottom:8px;">Admin login</p>
+    <input type="email" class="gate-input email-input" id="emailInput" placeholder="Email address">
+    <input type="password" class="gate-input passcode-input" id="passcodeInput" placeholder="Passcode" maxlength="20">
+    <button class="gate-btn" id="loginBtn">Sign In</button>
+    <p class="gate-error" id="gateError">Invalid credentials</p>
+    <button style="margin-top:12px;background:none;border:none;color:#5a8ab5;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;" id="backToRoles">Back</button>
+  </div>
+  <div class="welcome" id="welcome">
+    <div class="app-header">
+      <h1>The VFO Portal</h1>
+      <div class="app-header-right">
+        <span class="admin-name" id="welcomeName"></span>
+        <button class="sign-out-btn" id="welcomeSignOut">Sign Out</button>
+      </div>
+    </div>
+    <div class="main-tabs" id="welcomeTabs"></div>
+    <div style="text-align:center;padding:40px 0 0;">
+      <p class="welcome-label">Welcome back</p>
+      <p class="welcome-name" id="welcomeDisplayName"></p>
+    </div>
+  </div>
+  <div class="app" id="app">
+    <div class="app-header">
+      <h1 style="cursor:pointer;" id="appTitle">The VFO Portal</h1>
+      <div class="app-header-right">
+        <span class="admin-name" id="adminName"></span>
+        <button class="sign-out-btn" id="signOutBtn">Sign Out</button>
+      </div>
+    </div>
+    <div id="adminTabs" class="main-tabs">
+      <button class="main-tab active" data-panel="specialistsPanel">Specialists</button>
+      <button class="main-tab" data-panel="membersPanel">Members</button>
+    </div>
+    <div id="memberTabs" class="main-tabs" style="display:none;">
+      <button class="main-tab active" data-panel="mSpecialistsTab">Specialists</button>
+      <button class="main-tab" data-panel="mAppearanceTab">Appearance</button>
+      <button class="main-tab" data-panel="mSettingsTab">Settings</button>
+    </div>
+    <div id="memberNotEnabled" style="display:none;text-align:center;padding:60px 20px;">
+      <p style="font-family:'Playfair Display',serif;font-size:22px;color:#ffffff;margin-bottom:12px;">Website plugin not enabled</p>
+      <p style="font-size:14px;color:#8bacc8;">Contact your administrator to enable website customization for your account.</p>
+    </div>
+
+    <!-- ADMIN: Specialists Panel -->
+    <div class="tab-panel active" id="specialistsPanel">
+      <div class="sub-tabs"><button class="sub-tab active" data-subpanel="addSubPanel">Add Specialist</button><button class="sub-tab" data-subpanel="editSubPanel">Edit Specialist</button></div>
+      <div class="sub-panel active" id="addSubPanel">
+        <div id="addForm"></div>
+        <div class="submit-row"><button class="btn-primary" id="addSubmitBtn">Add Specialist</button><button class="btn-secondary" id="addClearBtn">Clear Form</button></div>
+        <div class="status-msg" id="addStatus"></div>
+      </div>
+      <div class="sub-panel" id="editSubPanel">
+        <div class="edit-selector"><label class="field-label">Select Specialist</label><select class="specialist-select" id="editSelect"><option value="">-- Choose a specialist --</option></select></div>
+        <div id="editForm" style="display:none;"></div>
+        <div class="submit-row" id="editButtons" style="display:none;"><button class="btn-primary" id="editSubmitBtn">Save Changes</button><button class="btn-secondary" id="editCancelBtn">Cancel</button><button class="btn-danger" id="editDeleteBtn">Delete</button></div>
+        <div class="status-msg" id="editStatus"></div>
+      </div>
+    </div>
+
+    <!-- ADMIN: Members Panel -->
+    <div class="tab-panel" id="membersPanel">
+      <div class="sub-tabs"><button class="sub-tab active" data-subpanel="addMemberSubPanel">Add Member</button><button class="sub-tab" data-subpanel="editMemberSubPanel">Edit Member</button></div>
+      <div class="sub-panel active" id="addMemberSubPanel">
+        <div style="margin-bottom:24px;padding:24px;background:rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.1);border-radius:12px;">
+          <div style="display:flex;gap:12px;margin-bottom:16px;">
+            <div style="flex:1;"><label class="field-label">Member Name *</label><input type="text" class="text-input" id="newMemberName" placeholder="e.g. John Smith"></div>
+            <div style="flex:1;"><label class="field-label">Member Number *</label><input type="text" class="text-input" id="newMemberNumber" placeholder="e.g. MEM001"></div>
+          </div>
+          <div style="display:flex;gap:12px;"><button class="btn-primary" id="saveMemberBtn" style="padding:10px 28px;font-size:14px;">Create Member</button></div>
+          <div class="status-msg" id="addMemberStatus"></div>
+        </div>
+      </div>
+      <div class="sub-panel" id="editMemberSubPanel">
+        <div style="margin-bottom:24px;">
+          <label class="field-label">Select Member</label>
+          <select class="specialist-select" id="memberSelect"><option value="">-- Choose a member --</option></select>
+        </div>
+        <div id="memberContent" style="display:none;">
+          <div class="settings-section">
+            <div class="settings-title">Website Plugin</div>
+            <div class="setting-row">
+              <div><div class="setting-label">Enable Website Plugin</div><div class="setting-desc">Allow this member to customize their showroom widget</div></div>
+              <label class="toggle"><input type="checkbox" id="mWebsiteEnabled"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+          <div id="websitePluginContent">
+            <div class="sub-tabs" id="memberSubTabs"><button class="sub-tab active" data-subpanel="specialistsSubPanel">Specialists</button><button class="sub-tab" data-subpanel="appearanceSubPanel">Appearance</button><button class="sub-tab" data-subpanel="pluginSubPanel">Settings</button></div>
+            <div class="sub-panel active" id="specialistsSubPanel">
+              <div class="stats"><div><div class="stat-num" id="mEnabledCount">0</div><div class="stat-label">ENABLED</div></div><div><div class="stat-num" id="mTotalCount">0</div><div class="stat-label">TOTAL</div></div></div>
+              <div class="search-wrap"><span class="search-icon">&#x2315;</span><input type="text" class="search-input" id="mSearchInput" placeholder="Search specialists..."></div>
+              <div style="display:flex;gap:8px;margin-bottom:16px;"><button class="mode-btn" id="mEnableAll">Enable All</button><button class="mode-btn" id="mDisableAll">Disable All</button></div>
+              <div class="specialist-list" id="mSpecialistList"></div>
+            </div>
+            <div class="sub-panel" id="appearanceSubPanel">
+          <div class="settings-section">
+            <div class="settings-title">Colors</div>
+            <div class="setting-row"><div><div class="setting-label">Background Color</div><div class="setting-desc">Page background</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mBgColor"><input type="text" class="color-hex" id="mBgHex"></div></div>
+            <div class="setting-row"><div><div class="setting-label">Heading Text Color</div><div class="setting-desc">Title, subtitle, search, filters, group headings</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mTextColor"><input type="text" class="color-hex" id="mTextHex"></div></div>
+            <div class="setting-row"><div><div class="setting-label">Card Background</div><div class="setting-desc">Card and modal background</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mAccentColor"><input type="text" class="color-hex" id="mAccentHex"></div></div>
+            <div class="setting-row"><div><div class="setting-label">Card Text Color</div><div class="setting-desc">Names and bios on cards and modal</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mCardTextColor"><input type="text" class="color-hex" id="mCardTextHex"></div></div>
+            <div class="setting-row"><div><div class="setting-label">Accent Color</div><div class="setting-desc">Active buttons, tags, hover effects, underlines</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mPrimaryColor"><input type="text" class="color-hex" id="mPrimaryHex"></div></div>
+            <div class="color-preview"><div class="preview-label">PREVIEW</div><div class="preview-card" id="mPreviewCard"><div class="preview-name" id="mPreviewName">Bill L.</div><div class="preview-tag" id="mPreviewTag">Tax Planning</div></div></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-title">Font</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;" id="mFontPresets"></div>
+            <div style="position:relative;margin-top:12px;"><input type="text" class="search-input" id="mFontSearch" placeholder="Search Google Fonts..." style="padding-left:16px;"><div id="mFontResults" style="position:absolute;top:100%;left:0;right:0;max-height:200px;overflow-y:auto;background:#162d4a;border:1px solid rgba(255,255,255,0.2);border-radius:8px;display:none;z-index:10;"></div></div>
+            <div id="mFontPreview" style="margin-top:12px;padding:16px;background:rgba(0,0,0,0.12);border-radius:8px;border:1px solid rgba(255,255,255,0.1);text-align:center;"><span style="font-size:20px;color:#ffffff;">The quick brown fox jumps over the lazy dog</span></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-title">Display Options</div>
+            <div class="setting-row"><div><div class="setting-label">Last Name Initial Only</div><div class="setting-desc">Show "Bill L." instead of "Bill Lloyd"</div></div><label class="toggle"><input type="checkbox" id="mLastInitial"><span class="toggle-slider"></span></label></div>
+            <div class="setting-row"><div><div class="setting-label">Show Specialist Count</div><div class="setting-desc">Display "60 SPECIALISTS" text</div></div><label class="toggle"><input type="checkbox" id="mShowCount" checked><span class="toggle-slider"></span></label></div>
+            <div class="setting-row"><div><div class="setting-label">Show Search Bar</div><div class="setting-desc">Display the search specialists input</div></div><label class="toggle"><input type="checkbox" id="mShowSearch" checked><span class="toggle-slider"></span></label></div>
+            <div class="setting-row"><div><div class="setting-label">Display Mode</div><div class="setting-desc">How specialists are organized</div></div><div class="mode-selector"><button class="mode-btn active" data-mode="filter" id="mModeFilter">Filter Buttons</button><button class="mode-btn" data-mode="grouped" id="mModeGrouped">Grouped</button></div></div>
+          </div>
+        </div>
+        <div class="sub-panel" id="pluginSubPanel">
+          <div class="settings-section">
+            <div class="settings-title">Embed Code</div>
+            <p style="color:#5a8ab5;font-size:14px;margin-bottom:16px;">Copy this code and paste it into an HTML widget on the member's website.</p>
+            <pre id="pluginEmbedCode" style="background:rgba(0,0,0,0.3);padding:16px;border-radius:8px;color:#a0b0c4;font-size:13px;overflow-x:auto;white-space:pre-wrap;font-family:monospace;margin:0 0 12px;"></pre>
+            <button class="mode-btn" id="copyPluginBtn" style="color:#27ae60;border-color:rgba(39,174,96,0.3);font-size:13px;">Copy Code</button>
+          </div>
+          <div class="settings-section" style="border-color:rgba(231,76,60,0.15);">
+            <div class="settings-title" style="color:#e74c3c;">Danger Zone</div>
+            <p style="color:#5a8ab5;font-size:14px;margin-bottom:16px;">Permanently delete this member and all their settings. This cannot be undone.</p>
+            <button class="btn-danger" id="deleteMemberBtn">Delete Member</button>
+            <div class="status-msg" id="deleteMemberStatus"></div>
+          </div>
+        </div>
+          </div><!-- end websitePluginContent -->
+          <div class="save-bar"><p class="unsaved-indicator" id="mUnsavedMsg">You have unsaved changes</p><button class="btn-primary" id="mSaveBtn">Save Member Changes</button></div>
+          <div class="status-msg" id="manageStatus"></div>
+        </div><!-- end memberContent -->
+      </div><!-- end editMemberSubPanel -->
+    </div><!-- end membersPanel -->
+  </div>
+  <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+  <script>
+    var API_URL = "https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api";
+    var SUPABASE_URL = "https://ejpsprsmhpufwogbmxjv.supabase.co";
+    var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqcHNwcnNtaHB1ZndvZ2JteGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwNDcwNjksImV4cCI6MjA4NzYyMzA2OX0.sdMVsnXePSH8zgstt82O1dhpMxYZq5QivyIrCHMbECU";
+    var HEADSHOT_BASE = "https://biz-diagnostic.com/img/expert/";
+    var HEADSHOT_SUPABASE = "https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/";
+    var ECOSYSTEMS = ["Tax Planning", "Business Advisory", "Legal", "Insurance", "Wealth Management"];
+    var CIQ_TOPICS = ["1031 Exchange Review","179D Commercial Building Tax Deduction Review","401(k) Review","Advanced Business Tax Strategies Review","Advanced Personal Tax Strategies Review","Asset Protection Review","Business Continuation Planning Review","Business Entity Structure Review","Business Exit Planning Review","Business Finance & Costs - Banking Review","Business Finance & Costs - Merchant Processing (Credit Card Fees) Review","Business Growth - Revenue Generation Review","Business Planning Review","Business Valuation Review","Buy-Sell Agreement Review","Captive Insurance Review","Cash Balance Plan Review","Charitable Planning Review","Compensation & Benefits Review","Cost Recovery Review (Cost Segregation)","Cyber Insurance Review","Deferred Compensation Plan Review","Disability Income Protection Review","Employment Practices Liability Insurance (EPLI) Review","Estate Planning Review","Executive Benefits Review","Group Health Insurance Review","Guaranteed Asset Protection Gap Insurance Review","International Tax Strategies Review","Key Person Insurance Review","Leadership / Culture Review","Life Insurance Review","Life Settlements Review","Long-term Care Review","Merchant Processing (credit cards) Review","Opportunity Zones Review","Outsourced Bookkeeping, CFO and Tax Professionals Review","Outsourced CEO Review","Premium Finance Review","Property & Casualty Insurance Review","Qualified Plans Review","R&D Tax Credit Review","Real Estate Review","Risk Mitigation & Insurance Review","Sales Tax Exemption Review","SDIRA / Alternative Investments Review","Section 125 / Health Insurance Review","Solar Investment Review","Student Loan Repayment / Tuition Reimbursement Review","Surety Bonds Review","Tax Planning Review","Tax Resolution Review","Trust Review","Workers Compensation Review"];
+    var PRESET_FONTS = ["Playfair Display","Lora","Merriweather","Raleway","Montserrat","Open Sans","Poppins","Cormorant Garamond","Libre Baskerville","Source Serif Pro"];
+    var authToken = null;
+    var currentRole = null;
+    var currentUserMemberNumber = null;
+    var allExperts=[], ecoMap={}, ciqMap={}, allMembers=[];
+    var addCIQ=[], addFile=null, addQuill=null;
+    var editCIQ=[], editFile=null, editQuill=null, editingId=null;
+    var currentMember=null, memberSettings={}, originalSettings={}, memberExclusions=new Set(), originalExclusions=new Set();
+    var selectedLoginRole = null;
+
+    // ─── API HELPER ────────────────────────────────────────
+    async function apiCall(body){
+      body.token = authToken;
+      var res;
+      try{
+        res = await fetch(API_URL, {
+          method: "POST",
+          headers: {"Content-Type": "application/json", "Authorization": "Bearer " + SUPABASE_KEY},
+          body: JSON.stringify(body)
+        });
+      }catch(err){
+        throw new Error("Network error — could not reach server.");
+      }
+      var data = await res.json();
+      if(!res.ok){
+        if(res.status === 401){ signOut(); throw new Error("Session expired — please log in again."); }
+        throw new Error(data.error || "Request failed");
+      }
+      return data;
+    }
+
+    // ─── ROLE PICKER ────────────────────────────────────────
+    document.getElementById("roleAdmin").addEventListener("click",function(){
+      selectedLoginRole = "admin";
+      document.getElementById("gateSubtitle").textContent = "Admin login";
+      document.getElementById("rolePicker").style.display="none";
+      document.getElementById("gate").style.display="flex";
+      document.getElementById("emailInput").focus();
+    });
+    document.getElementById("roleMember").addEventListener("click",function(){
+      selectedLoginRole = "member";
+      document.getElementById("gateSubtitle").textContent = "Member login";
+      document.getElementById("rolePicker").style.display="none";
+      document.getElementById("gate").style.display="flex";
+      document.getElementById("emailInput").focus();
+    });
+    document.getElementById("backToRoles").addEventListener("click",function(){
+      document.getElementById("gate").style.display="none";
+      document.getElementById("rolePicker").style.display="flex";
+      document.getElementById("gateError").style.display="none";
+      document.getElementById("emailInput").value="";
+      document.getElementById("passcodeInput").value="";
+    });
+
+    // ─── LOGIN ─────────────────────────────────────────────
+    document.getElementById("loginBtn").addEventListener("click", doLogin);
+    document.getElementById("passcodeInput").addEventListener("keydown", function(e){ if(e.key==="Enter") doLogin(); });
+    document.getElementById("emailInput").addEventListener("keydown", function(e){ if(e.key==="Enter") document.getElementById("passcodeInput").focus(); });
+
+    async function doLogin(){
+      var email = document.getElementById("emailInput").value.trim();
+      var passcode = document.getElementById("passcodeInput").value;
+      if(!email || !passcode){ document.getElementById("gateError").style.display="block"; return; }
+      var btn = document.getElementById("loginBtn"); btn.disabled=true; btn.textContent="Signing in...";
+      try{
+        var res = await fetch(API_URL, {
+          method: "POST",
+          headers: {"Content-Type": "application/json", "Authorization": "Bearer " + SUPABASE_KEY},
+          body: JSON.stringify({action:"login", email:email, passcode:passcode})
+        });
+        var data = await res.json();
+        if(!res.ok) throw new Error(data.error || "Login failed");
+        // Verify role matches selection
+        var userRole = data.role || "admin";
+        if(selectedLoginRole === "member" && userRole !== "member"){
+          throw new Error("This account is not a member account.");
+        }
+        if(selectedLoginRole === "admin" && userRole !== "admin"){
+          throw new Error("This account is not an admin account.");
+        }
+        authToken = data.token;
+        currentRole = userRole;
+        currentUserMemberNumber = data.member_number || null;
+        document.getElementById("gate").style.display="none";
+        document.getElementById("gateError").style.display="none";
+        // Show welcome screen
+        showWelcome(data.name || data.email);
+      }catch(err){
+        document.getElementById("gateError").textContent = err.message;
+        document.getElementById("gateError").style.display="block";
+      }finally{
+        btn.disabled=false; btn.textContent="Sign In";
+      }
+    }
+
+    function showWelcome(name){
+      document.getElementById("welcome").style.display="block";
+      document.getElementById("welcomeName").textContent = name;
+      document.getElementById("welcomeDisplayName").textContent = name;
+      var tabs = document.getElementById("welcomeTabs");
+      tabs.innerHTML = "";
+      var items = currentRole === "admin"
+        ? [{label:"Specialists",goto:"specialistsPanel"},{label:"Members",goto:"membersPanel"}]
+        : [{label:"Specialists",goto:"mSpecialistsTab"},{label:"Appearance",goto:"mAppearanceTab"},{label:"Settings",goto:"mSettingsTab"}];
+      items.forEach(function(item){
+        var btn = document.createElement("button");
+        btn.className = "main-tab";
+        btn.textContent = item.label;
+        btn.addEventListener("click",function(){
+          document.getElementById("welcome").style.display="none";
+          enterApp(item.goto);
+        });
+        tabs.appendChild(btn);
+      });
+    }
+
+    async function enterApp(initialPanel){
+      document.getElementById("app").style.display="block";
+      document.getElementById("adminName").textContent = document.getElementById("welcomeName").textContent;
+      document.getElementById("memberNotEnabled").style.display="none";
+      if(currentRole === "admin"){
+        document.getElementById("adminTabs").style.display="flex";
+        document.getElementById("memberTabs").style.display="none";
+      } else {
+        document.getElementById("adminTabs").style.display="none";
+        // Check if website is enabled for this member
+        await initApp();
+        var memberData = allMembers.find(function(m){ return m.member_number === currentUserMemberNumber; });
+        if(!memberData || !memberData.website_enabled){
+          document.getElementById("memberTabs").style.display="none";
+          document.getElementById("memberNotEnabled").style.display="block";
+          return;
+        }
+        document.getElementById("memberTabs").style.display="flex";
+        // Auto-select their member
+        var sel = document.getElementById("memberSelect");
+        sel.value = currentUserMemberNumber;
+        sel.dispatchEvent(new Event("change"));
+        // Activate the right sub-tab based on which tab they clicked
+        if(initialPanel === "mSpecialistsTab") activateSubTab("specialistsSubPanel");
+        else if(initialPanel === "mAppearanceTab") activateSubTab("appearanceSubPanel");
+        else if(initialPanel === "mSettingsTab") activateSubTab("pluginSubPanel");
+        // Set active main tab
+        document.getElementById("memberTabs").querySelectorAll(".main-tab").forEach(function(t){ t.classList.remove("active"); });
+        var targetTab = document.getElementById("memberTabs").querySelector('[data-panel="'+initialPanel+'"]');
+        if(targetTab) targetTab.classList.add("active");
+        return;
+      }
+      await initApp();
+      if(initialPanel){
+        document.getElementById("adminTabs").querySelectorAll(".main-tab").forEach(function(t){ t.classList.remove("active"); });
+        document.querySelectorAll(".tab-panel").forEach(function(p){ p.classList.remove("active"); });
+        var targetTab = document.getElementById("adminTabs").querySelector('[data-panel="'+initialPanel+'"]');
+        if(targetTab) targetTab.classList.add("active");
+        var targetPanel = document.getElementById(initialPanel);
+        if(targetPanel) targetPanel.classList.add("active");
+      }
+    }
+
+    function goHome(){
+      document.getElementById("app").style.display="none";
+      showWelcome(document.getElementById("adminName").textContent);
+      document.getElementById("welcome").style.display="block";
+    }
+
+    function activateSubTab(subPanelId){
+      var wpc = document.getElementById("websitePluginContent");
+      wpc.querySelectorAll(".sub-tab").forEach(function(t){t.classList.remove("active");});
+      wpc.querySelectorAll(".sub-panel").forEach(function(p){p.classList.remove("active");});
+      var tab = wpc.querySelector('[data-subpanel="'+subPanelId+'"]');
+      if(tab) tab.classList.add("active");
+      var panel = document.getElementById(subPanelId);
+      if(panel) panel.classList.add("active");
+    }
+
+    function signOut(){
+      authToken = null; currentRole = null; currentUserMemberNumber = null; selectedLoginRole = null;
+      document.getElementById("app").style.display="none";
+      document.getElementById("welcome").style.display="none";
+      document.getElementById("gate").style.display="none";
+      document.getElementById("rolePicker").style.display="flex";
+      document.getElementById("emailInput").value="";
+      document.getElementById("passcodeInput").value="";
+      document.getElementById("gateError").style.display="none";
+    }
+    document.getElementById("signOutBtn").addEventListener("click", signOut);
+    document.getElementById("welcomeSignOut").addEventListener("click", signOut);
+    document.getElementById("appTitle").addEventListener("click", goHome);
+
+    // ─── TABS ──────────────────────────────────────────────
+    document.querySelectorAll("#adminTabs .main-tab").forEach(function(tab){
+      tab.addEventListener("click", function(){
+        document.querySelectorAll("#adminTabs .main-tab").forEach(function(t){ t.classList.remove("active"); });
+        document.querySelectorAll(".tab-panel").forEach(function(p){ p.classList.remove("active"); });
+        tab.classList.add("active");
+        var panel = document.getElementById(tab.getAttribute("data-panel"));
+        if(panel){
+          panel.classList.add("active");
+          // Activate the first sub-tab within this panel
+          var firstSubTab = panel.querySelector(".sub-tab");
+          if(firstSubTab){
+            panel.querySelectorAll(".sub-tab").forEach(function(t){ t.classList.remove("active"); });
+            panel.querySelectorAll(".sub-panel").forEach(function(p){ p.classList.remove("active"); });
+            firstSubTab.classList.add("active");
+            var firstSubPanel = document.getElementById(firstSubTab.getAttribute("data-subpanel"));
+            if(firstSubPanel) firstSubPanel.classList.add("active");
+          }
+        }
+      });
+    });
+    document.querySelectorAll("#memberTabs .main-tab").forEach(function(tab){
+      tab.addEventListener("click", function(){
+        document.querySelectorAll("#memberTabs .main-tab").forEach(function(t){ t.classList.remove("active"); });
+        tab.classList.add("active");
+        var panelId = tab.getAttribute("data-panel");
+        if(panelId === "mSpecialistsTab") activateSubTab("specialistsSubPanel");
+        else if(panelId === "mAppearanceTab") activateSubTab("appearanceSubPanel");
+        else if(panelId === "mSettingsTab") activateSubTab("pluginSubPanel");
+      });
+    });
+    document.querySelectorAll(".sub-tab").forEach(function(tab){
+      tab.addEventListener("click", function(){
+        var container = tab.closest(".sub-tabs");
+        var parentPanel = container.parentElement;
+        container.querySelectorAll(".sub-tab").forEach(function(t){ t.classList.remove("active"); });
+        parentPanel.querySelectorAll(".sub-panel").forEach(function(p){ p.classList.remove("active"); });
+        tab.classList.add("active");
+        document.getElementById(tab.getAttribute("data-subpanel")).classList.add("active");
+      });
+    });
+
+    // ─── INIT & LOAD DATA ──────────────────────────────────
+    var appInitialized = false;
+    async function initApp(){
+      if(appInitialized) return;
+      try{
+        await loadAllData();
+        buildSpecialistForm("addForm","add"); buildSpecialistForm("editForm","edit"); populateEditDropdown(); populateMemberDropdown();
+        document.getElementById("addSubmitBtn").addEventListener("click",function(){submitSpecialist("add");});
+        document.getElementById("addClearBtn").addEventListener("click",function(){clearForm("add");});
+        // Website enabled toggle
+        document.getElementById("mWebsiteEnabled").addEventListener("change",function(){
+          memberSettings.website_enabled = this.checked;
+          checkMemberChanges();
+        });
+        appInitialized = true;
+      }catch(err){
+        console.error("Init error:", err);
+        alert("Error loading data: " + err.message);
+      }
+    }
+
+    var allExclusionMap = {};
+
+    async function loadAllData(){
+      var maxRetries = 3;
+      for(var attempt = 1; attempt <= maxRetries; attempt++){
+        try{
+          var data = await apiCall({action:"load_data"});
+          if(data.experts && data.experts.length > 0){
+            allExperts = data.experts; allMembers = data.members;
+            ecoMap={}; ciqMap={}; allExclusionMap={};
+            data.ecosystems.forEach(function(e){ if(!ecoMap[e.expert_id]) ecoMap[e.expert_id]=[]; ecoMap[e.expert_id].push(e.name); });
+            data.ciq.forEach(function(c){ if(!ciqMap[c.expert_id]) ciqMap[c.expert_id]=[]; ciqMap[c.expert_id].push(c.name); });
+            (data.exclusions||[]).forEach(function(ex){ if(!allExclusionMap[ex.member_number]) allExclusionMap[ex.member_number]=[]; allExclusionMap[ex.member_number].push(ex.expert_id); });
+            return;
+          }
+          if(attempt < maxRetries) await new Promise(function(r){ setTimeout(r, 2000); });
+        }catch(err){
+          if(attempt === maxRetries) throw err;
+          await new Promise(function(r){ setTimeout(r, 2000); });
+        }
+      }
+      throw new Error("Could not load data after " + maxRetries + " attempts");
+    }
+
+    // ─── SPECIALIST FORM BUILDER ───────────────────────────
+    function buildSpecialistForm(containerId, prefix){
+      var c=document.getElementById(containerId);
+      c.innerHTML=
+        '<div class="field"><label>Name *</label><input type="text" class="text-input" id="'+prefix+'Name" placeholder="Full name"></div>'+
+        '<div class="field"><label>Short Bio</label><input type="text" class="text-input" id="'+prefix+'ShortBio" placeholder="One-line specialty description"></div>'+
+        '<div class="field"><label>Long Bio</label><textarea class="text-area" id="'+prefix+'LongBio" placeholder="Detailed biography..."></textarea></div>'+
+        '<div class="field"><label>Details and Benefits</label><div class="quill-wrapper"><div id="'+prefix+'Quill"></div></div></div>'+
+        '<div class="field"><label>Headshot</label><div class="upload-area"><div class="upload-preview" id="'+prefix+'Preview"><span class="upload-placeholder">?</span></div><div><button class="upload-btn" id="'+prefix+'UploadBtn">Choose Image</button><input type="file" id="'+prefix+'FileInput" accept="image/*"><p class="upload-info">JPG or PNG, recommended 400x400px</p><p class="upload-filename" id="'+prefix+'Filename"></p></div></div></div>'+
+        '<div class="field"><label>VFO Ecosystem</label><div class="checkbox-group" id="'+prefix+'Ecos"></div></div>'+
+        '<div class="field"><label>CIQ Topics</label><div class="ciq-select-row"><select class="ciq-dropdown" id="'+prefix+'CiqDrop"><option value="">-- Select a topic --</option></select><button class="ciq-add-btn" id="'+prefix+'CiqAdd">+ Add</button></div><div class="ciq-tags" id="'+prefix+'CiqTags"></div></div>';
+      var q=new Quill("#"+prefix+"Quill",{theme:"snow",placeholder:"Strategy details, client requirements, benefits...",modules:{toolbar:[["bold","italic","underline"],[{"list":"ordered"},{"list":"bullet"}],["link"],["clean"]]}});
+      if(prefix==="add") addQuill=q; else editQuill=q;
+      var ecoContainer=document.getElementById(prefix+"Ecos");
+      ECOSYSTEMS.forEach(function(eco){
+        var item=document.createElement("div"); item.className="checkbox-item"; item.setAttribute("data-eco",eco);
+        item.innerHTML='<input type="checkbox" value="'+eco+'"><div class="check-box"><span class="check-mark">&#10003;</span></div><span style="font-size:14px;color:#c0ccda;">'+eco+'</span>';
+        item.addEventListener("click",function(){ var cb=item.querySelector("input"); cb.checked=!cb.checked; item.classList.toggle("checked",cb.checked); });
+        ecoContainer.appendChild(item);
+      });
+      var drop=document.getElementById(prefix+"CiqDrop");
+      CIQ_TOPICS.forEach(function(t){ var o=document.createElement("option"); o.value=t; o.textContent=t; drop.appendChild(o); });
+      document.getElementById(prefix+"CiqAdd").addEventListener("click",function(){
+        var val=drop.value; var arr=prefix==="add"?addCIQ:editCIQ;
+        if(!val||arr.indexOf(val)!==-1) return; arr.push(val); renderCIQTags(prefix); drop.value="";
+      });
+      document.getElementById(prefix+"UploadBtn").addEventListener("click",function(){ document.getElementById(prefix+"FileInput").click(); });
+      document.getElementById(prefix+"FileInput").addEventListener("change",function(e){
+        var file=e.target.files[0]; if(!file) return;
+        if(prefix==="add") addFile=file; else editFile=file;
+        document.getElementById(prefix+"Filename").textContent=file.name;
+        var reader=new FileReader();
+        reader.onload=function(ev){ document.getElementById(prefix+"Preview").innerHTML='<img src="'+ev.target.result+'">'; };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderCIQTags(prefix){
+      var arr=prefix==="add"?addCIQ:editCIQ;
+      var container=document.getElementById(prefix+"CiqTags"); container.innerHTML="";
+      arr.forEach(function(topic,i){
+        var tag=document.createElement("div"); tag.className="ciq-tag";
+        tag.innerHTML='<span>'+topic+'</span><span class="ciq-tag-remove">&times;</span>';
+        tag.querySelector(".ciq-tag-remove").addEventListener("click",function(){ arr.splice(i,1); renderCIQTags(prefix); });
+        container.appendChild(tag);
+      });
+    }
+
+    function getFormData(prefix){
+      var quill=prefix==="add"?addQuill:editQuill;
+      var ecos=[]; document.querySelectorAll("#"+prefix+"Ecos .checkbox-item input:checked").forEach(function(cb){ ecos.push(cb.value); });
+      return {name:document.getElementById(prefix+"Name").value.trim(),short_bio:document.getElementById(prefix+"ShortBio").value.trim(),long_bio:document.getElementById(prefix+"LongBio").value.trim(),details_and_benefits:quill?quill.root.innerHTML:"",ecosystems:ecos,ciq:prefix==="add"?addCIQ.slice():editCIQ.slice(),file:prefix==="add"?addFile:editFile};
+    }
+
+    function clearForm(prefix){
+      document.getElementById(prefix+"Name").value=""; document.getElementById(prefix+"ShortBio").value=""; document.getElementById(prefix+"LongBio").value="";
+      var quill=prefix==="add"?addQuill:editQuill; if(quill) quill.root.innerHTML="";
+      document.getElementById(prefix+"Preview").innerHTML='<span class="upload-placeholder">?</span>';
+      document.getElementById(prefix+"Filename").textContent="";
+      if(prefix==="add"){addFile=null;addCIQ=[];}else{editFile=null;editCIQ=[];}
+      renderCIQTags(prefix);
+      document.querySelectorAll("#"+prefix+"Ecos .checkbox-item").forEach(function(item){ item.querySelector("input").checked=false; item.classList.remove("checked"); });
+    }
+
+    function populateForm(prefix,expert){
+      document.getElementById(prefix+"Name").value=expert.name||"";
+      document.getElementById(prefix+"ShortBio").value=expert.short_bio||"";
+      document.getElementById(prefix+"LongBio").value=expert.long_bio||"";
+      var quill=prefix==="add"?addQuill:editQuill; if(quill) quill.root.innerHTML=expert.details_and_benefits||"";
+      if(expert.headshot_image){
+        var url=HEADSHOT_SUPABASE+encodeURIComponent(expert.headshot_image);
+        document.getElementById(prefix+"Preview").innerHTML='<img src="'+url+'" onerror="this.src=\''+HEADSHOT_BASE+expert.headshot_image+'\'">';
+        document.getElementById(prefix+"Filename").textContent=expert.headshot_image;
+      }
+      var ecos=ecoMap[expert.id]||[];
+      document.querySelectorAll("#"+prefix+"Ecos .checkbox-item").forEach(function(item){
+        var isChecked=ecos.indexOf(item.getAttribute("data-eco"))!==-1;
+        item.querySelector("input").checked=isChecked; item.classList.toggle("checked",isChecked);
+      });
+      if(prefix==="edit"){editCIQ=(ciqMap[expert.id]||[]).slice();}else{addCIQ=(ciqMap[expert.id]||[]).slice();}
+      renderCIQTags(prefix);
+    }
+
+    function populateEditDropdown(){
+      var sel=document.getElementById("editSelect");
+      sel.innerHTML='<option value="">-- Choose a specialist --</option>';
+      allExperts.forEach(function(ex){ var o=document.createElement("option"); o.value=ex.id; o.textContent=ex.name+" -- "+(ex.short_bio||""); sel.appendChild(o); });
+    }
+
+    document.getElementById("editSelect").addEventListener("change",function(){
+      var id=parseInt(this.value);
+      if(!id){document.getElementById("editForm").style.display="none";document.getElementById("editButtons").style.display="none";return;}
+      var expert=allExperts.find(function(e){return e.id===id;});
+      if(!expert) return; editingId=id; clearForm("edit"); populateForm("edit",expert);
+      document.getElementById("editForm").style.display="block"; document.getElementById("editButtons").style.display="flex";
+    });
+
+    // ─── SUBMIT SPECIALIST (via Edge Function) ─────────────
+    async function submitSpecialist(prefix){
+      var data=getFormData(prefix);
+      if(!data.name){showStatus(prefix+"Status","error","Name is required.");return;}
+      var btn=document.getElementById(prefix+"SubmitBtn"); btn.disabled=true; var origText=btn.textContent; btn.textContent="Saving...";
+      try{
+        var headshotFilename="";
+        if(data.file){
+          var ts=new Date().toISOString().replace(/[-:T]/g,"").slice(0,14);
+          headshotFilename=ts+"_"+data.name.replace(/[^a-zA-Z0-9 ]/g,"").trim()+".png";
+          // Convert file to base64 for Edge Function upload
+          var base64 = await new Promise(function(resolve,reject){
+            var reader=new FileReader();
+            reader.onload=function(){ resolve(reader.result.split(",")[1]); };
+            reader.onerror=reject;
+            reader.readAsDataURL(data.file);
+          });
+          await apiCall({action:"upload_headshot", filename:headshotFilename, file_base64:base64, content_type:data.file.type});
+        }
+        var expertData={name:data.name,short_bio:data.short_bio,long_bio:data.long_bio,details_and_benefits:data.details_and_benefits};
+        if(headshotFilename) expertData.headshot_image=headshotFilename;
+        if(prefix==="add"){
+          var maxId=allExperts.reduce(function(m,e){return e.id>m?e.id:m;},0);
+          expertData.id=maxId+1;
+        }
+        await apiCall({action:"save_specialist", expert:expertData, ecosystems:data.ecosystems, ciq:data.ciq, editing_id:prefix==="edit"?editingId:null});
+        await loadAllData(); populateEditDropdown();
+        showStatus(prefix+"Status","success",prefix==="add"?"Specialist added!":"Changes saved!");
+        if(prefix==="add") clearForm("add");
+      }catch(err){console.error(err);showStatus(prefix+"Status","error",err.message);}
+      finally{btn.disabled=false;btn.textContent=origText;}
+    }
+
+    document.getElementById("editSubmitBtn").addEventListener("click",function(){submitSpecialist("edit");});
+    document.getElementById("editCancelBtn").addEventListener("click",function(){
+      clearForm("edit");document.getElementById("editSelect").value="";
+      document.getElementById("editForm").style.display="none";document.getElementById("editButtons").style.display="none";
+    });
+
+    // ─── DELETE SPECIALIST (via Edge Function) ─────────────
+    document.getElementById("editDeleteBtn").addEventListener("click",async function(){
+      if(!editingId||!confirm("Delete this specialist? This cannot be undone.")) return;
+      try{
+        await apiCall({action:"delete_specialist", expert_id:editingId});
+        await loadAllData(); populateEditDropdown();
+        clearForm("edit");document.getElementById("editSelect").value="";
+        document.getElementById("editForm").style.display="none";document.getElementById("editButtons").style.display="none";
+        showStatus("editStatus","success","Specialist deleted.");
+      }catch(err){showStatus("editStatus","error",err.message);}
+    });
+
+    // ─── MEMBER MANAGEMENT ─────────────────────────────────
+    function populateMemberDropdown(){
+      var sel=document.getElementById("memberSelect");
+      sel.innerHTML='<option value="">-- Choose a member --</option>';
+      allMembers.forEach(function(m){ var o=document.createElement("option"); o.value=m.member_number; o.textContent=m.name+" ("+m.member_number+")"; sel.appendChild(o); });
+    }
+
+    // ─── ADD MEMBER ────────────────────────────────────────
+    document.getElementById("saveMemberBtn").addEventListener("click",async function(){
+      var name=document.getElementById("newMemberName").value.trim();
+      var num=document.getElementById("newMemberNumber").value.trim();
+      if(!name||!num){showStatus("addMemberStatus","error","Both fields are required.");return;}
+      var btn=this;btn.disabled=true;btn.textContent="Creating...";
+      try{
+        await apiCall({action:"add_member",name:name,member_number:num});
+        await loadAllData();populateMemberDropdown();
+        document.getElementById("newMemberName").value="";
+        document.getElementById("newMemberNumber").value="";
+        showStatus("addMemberStatus","success","Member created! Switch to Edit Member to configure.");
+      }catch(err){showStatus("addMemberStatus","error",err.message);}
+      finally{btn.disabled=false;btn.textContent="Create Member";}
+    });
+    document.getElementById("copyPluginBtn").addEventListener("click",function(){
+      var code=document.getElementById("pluginEmbedCode").textContent;
+      navigator.clipboard.writeText(code).then(function(){
+        var btn=document.getElementById("copyPluginBtn");
+        btn.textContent="Copied!";setTimeout(function(){btn.textContent="Copy Code";},2000);
+      });
+    });
+    document.getElementById("deleteMemberBtn").addEventListener("click",async function(){
+      if(!currentMember) return;
+      if(!confirm("Delete member \""+currentMember.name+" ("+currentMember.member_number+")\"?\n\nThis will remove all their settings and exclusions. This cannot be undone.")) return;
+      var btn=this;btn.disabled=true;btn.textContent="Deleting...";
+      try{
+        await apiCall({action:"delete_member",member_number:currentMember.member_number});
+        delete allExclusionMap[currentMember.member_number];
+        allMembers=allMembers.filter(function(m){return m.member_number!==currentMember.member_number;});
+        currentMember=null;
+        populateMemberDropdown();
+        document.getElementById("memberSelect").value="";
+        document.getElementById("memberContent").style.display="none";
+        showStatus("manageStatus","success","Member deleted.");
+      }catch(err){showStatus("deleteMemberStatus","error",err.message);}
+      finally{btn.disabled=false;btn.textContent="Delete Member";}
+    });
+
+    document.getElementById("memberSelect").addEventListener("change",function(){
+      var mn=this.value; if(!mn){document.getElementById("memberContent").style.display="none";return;}
+      currentMember=allMembers.find(function(m){return m.member_number===mn;});
+      if(!currentMember) return;
+      memberSettings={primary_color:currentMember.primary_color||"#d4af37",bg_color:currentMember.bg_color||"#0a1628",text_color:currentMember.text_color||"#ffffff",card_text_color:currentMember.card_text_color||"#ffffff",accent_color:currentMember.accent_color||"#1a2744",last_initial_only:currentMember.last_initial_only||false,show_count:currentMember.show_count!==false,show_search:currentMember.show_search!==false,display_mode:currentMember.display_mode||"filter",font:currentMember.font||"Playfair Display",website_enabled:currentMember.website_enabled||false};
+      originalSettings=JSON.parse(JSON.stringify(memberSettings));
+      memberExclusions=new Set(allExclusionMap[mn]||[]);
+      originalExclusions=new Set(memberExclusions);
+      document.getElementById("memberContent").style.display="block";
+      document.getElementById("mWebsiteEnabled").checked = memberSettings.website_enabled;
+      renderMemberSpecialists(); initMemberAppearance();
+      // Hide member sub-tabs and delete for member role (they use main tabs)
+      if(currentRole === "member"){
+        document.getElementById("memberSubTabs").style.display="none";
+        document.getElementById("deleteMemberBtn").style.display="none";
+      } else {
+        document.getElementById("memberSubTabs").style.display="flex";
+        document.getElementById("deleteMemberBtn").style.display="";
+      }
+      // Populate embed code
+      var embed='<div id="vfo-showroom"></div>\n<script src="https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/vfo-widget/vfo-widget.js?v=23" data-vfo-key="'+currentMember.manage_key+'"><\/script>';
+      document.getElementById("pluginEmbedCode").textContent=embed;
+      // Reset sub-tabs to Specialists
+      document.getElementById("memberSubTabs").querySelectorAll(".sub-tab").forEach(function(t){t.classList.remove("active");});
+      document.querySelectorAll("#websitePluginContent .sub-panel").forEach(function(p){p.classList.remove("active");});
+      document.querySelector('#memberSubTabs [data-subpanel="specialistsSubPanel"]').classList.add("active");
+      document.getElementById("specialistsSubPanel").classList.add("active");
+      // Reset save button
+      var btn=document.getElementById("mSaveBtn");btn.textContent="Save Member Changes";btn.style.opacity="1";
+      document.getElementById("mUnsavedMsg").classList.remove("visible");
+    });
+
+    function renderMemberSpecialists(filter){
+      var list=document.getElementById("mSpecialistList"); list.innerHTML="";
+      var q=(filter||"").toLowerCase();
+      var filtered=allExperts.filter(function(ex){return !q||ex.name.toLowerCase().indexOf(q)!==-1||(ex.short_bio||"").toLowerCase().indexOf(q)!==-1;});
+      filtered.forEach(function(ex){
+        var excluded=memberExclusions.has(ex.id);
+        var cats=(ecoMap[ex.id]||[]).map(function(c){return'<span class="cat-tag">'+c+'</span>';}).join("");
+        var imgSrc=ex.headshot_image?HEADSHOT_SUPABASE+encodeURIComponent(ex.headshot_image):"";
+        var fallback=ex.headshot_image?HEADSHOT_BASE+ex.headshot_image:"";
+        var avatarHTML=imgSrc?'<img src="'+imgSrc+'" onerror="this.onerror=null;this.src=\''+fallback+'\'">':'<div class="avatar-placeholder">'+ex.name.charAt(0)+'</div>';
+        var row=document.createElement("div"); row.className="specialist-row"+(excluded?" excluded":"");
+        row.innerHTML='<div class="specialist-avatar">'+avatarHTML+'</div><div class="specialist-info"><div class="specialist-name">'+ex.name+'</div><div class="specialist-tagline">'+(ex.short_bio||"")+'</div><div class="specialist-cats">'+cats+'</div></div><span class="enabled-badge '+(excluded?"off":"on")+'">'+(excluded?"Disabled":"Enabled")+'</span>';
+        row.addEventListener("click",function(){
+          if(memberExclusions.has(ex.id)) memberExclusions.delete(ex.id); else memberExclusions.add(ex.id);
+          checkMemberChanges(); renderMemberSpecialists(document.getElementById("mSearchInput").value);
+        });
+        list.appendChild(row);
+      });
+      document.getElementById("mEnabledCount").textContent=allExperts.length-memberExclusions.size;
+      document.getElementById("mTotalCount").textContent=allExperts.length;
+    }
+    document.getElementById("mSearchInput").addEventListener("input",function(){renderMemberSpecialists(this.value);});
+    document.getElementById("mEnableAll").addEventListener("click",function(){memberExclusions.clear();checkMemberChanges();renderMemberSpecialists(document.getElementById("mSearchInput").value);});
+    document.getElementById("mDisableAll").addEventListener("click",function(){allExperts.forEach(function(ex){memberExclusions.add(ex.id);});checkMemberChanges();renderMemberSpecialists(document.getElementById("mSearchInput").value);});
+
+    function initMemberAppearance(){
+      [{pick:"mPrimaryColor",hex:"mPrimaryHex",key:"primary_color"},{pick:"mBgColor",hex:"mBgHex",key:"bg_color"},{pick:"mTextColor",hex:"mTextHex",key:"text_color"},{pick:"mCardTextColor",hex:"mCardTextHex",key:"card_text_color"},{pick:"mAccentColor",hex:"mAccentHex",key:"accent_color"}].forEach(function(c){
+        var picker=document.getElementById(c.pick),hex=document.getElementById(c.hex);
+        picker.value=memberSettings[c.key]; hex.value=memberSettings[c.key];
+        picker.onchange=function(){hex.value=picker.value;memberSettings[c.key]=picker.value;updateMemberPreview();checkMemberChanges();};
+        hex.onchange=function(){picker.value=hex.value;memberSettings[c.key]=hex.value;updateMemberPreview();checkMemberChanges();};
+      });
+      var li=document.getElementById("mLastInitial"); li.checked=memberSettings.last_initial_only;
+      li.onchange=function(){memberSettings.last_initial_only=li.checked;updateMemberPreview();checkMemberChanges();};
+      var sc=document.getElementById("mShowCount"); sc.checked=memberSettings.show_count;
+      sc.onchange=function(){memberSettings.show_count=sc.checked;checkMemberChanges();};
+      var ss=document.getElementById("mShowSearch"); ss.checked=memberSettings.show_search;
+      ss.onchange=function(){memberSettings.show_search=ss.checked;checkMemberChanges();};
+      document.getElementById("mModeFilter").className="mode-btn"+(memberSettings.display_mode==="filter"?" active":"");
+      document.getElementById("mModeGrouped").className="mode-btn"+(memberSettings.display_mode==="grouped"?" active":"");
+      document.getElementById("mModeFilter").onclick=function(){memberSettings.display_mode="filter";this.classList.add("active");document.getElementById("mModeGrouped").classList.remove("active");checkMemberChanges();};
+      document.getElementById("mModeGrouped").onclick=function(){memberSettings.display_mode="grouped";this.classList.add("active");document.getElementById("mModeFilter").classList.remove("active");checkMemberChanges();};
+      var fp=document.getElementById("mFontPresets"); fp.innerHTML="";
+      PRESET_FONTS.forEach(function(font){
+        var btn=document.createElement("button"); btn.className="mode-btn"+(memberSettings.font===font?" active":"");
+        btn.textContent=font; btn.style.fontSize="12px";
+        btn.addEventListener("click",function(){memberSettings.font=font;fp.querySelectorAll(".mode-btn").forEach(function(b){b.classList.toggle("active",b.textContent===font);});loadMemberFontPreview(font);checkMemberChanges();});
+        fp.appendChild(btn);
+      });
+      loadMemberFontPreview(memberSettings.font);
+      var fsi=document.getElementById("mFontSearch"),fsr=document.getElementById("mFontResults"),fst=null;
+      fsi.oninput=function(){
+        var q=fsi.value.trim(); if(q.length<2){fsr.style.display="none";return;}
+        clearTimeout(fst); fst=setTimeout(function(){
+          fetch("https://fonts.google.com/metadata/fonts").then(function(r){return r.text();}).then(function(text){
+            var clean=text.replace(/^\)\]\}'?\n?/,""); var data=JSON.parse(clean);
+            var matches=data.familyMetadataList.filter(function(f){return f.family.toLowerCase().indexOf(q.toLowerCase())!==-1;}).slice(0,8);
+            fsr.innerHTML=""; if(!matches.length){fsr.style.display="none";return;}
+            matches.forEach(function(f){
+              var item=document.createElement("div");
+              item.style.cssText="padding:10px 14px;cursor:pointer;color:#b0cce5;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.1);";
+              item.textContent=f.family;
+              item.onmouseenter=function(){item.style.background="rgba(255,255,255,0.1)";};
+              item.onmouseleave=function(){item.style.background="none";};
+              item.onclick=function(){memberSettings.font=f.family;fsi.value="";fsr.style.display="none";loadMemberFontPreview(f.family);fp.querySelectorAll(".mode-btn").forEach(function(b){b.classList.toggle("active",b.textContent===f.family);});checkMemberChanges();};
+              fsr.appendChild(item);
+            });
+            fsr.style.display="block";
+          }).catch(function(){fsr.style.display="none";});
+        },300);
+      };
+      updateMemberPreview();
+    }
+
+    function loadMemberFontPreview(font){
+      var link=document.getElementById("m-font-link");
+      if(!link){link=document.createElement("link");link.id="m-font-link";link.rel="stylesheet";document.head.appendChild(link);}
+      link.href="https://fonts.googleapis.com/css2?family="+encodeURIComponent(font)+":wght@400;600;700&display=swap";
+      var fp=document.getElementById("mFontPreview"); if(fp) fp.querySelector("span").style.fontFamily="'"+font+"', serif";
+    }
+
+    function updateMemberPreview(){
+      var s=memberSettings,card=document.getElementById("mPreviewCard");
+      card.style.background=s.accent_color; card.style.border="1px solid "+s.primary_color+"4d";
+      document.getElementById("mPreviewName").style.color=s.card_text_color;
+      document.getElementById("mPreviewName").style.fontFamily="'"+s.font+"', serif";
+      document.getElementById("mPreviewName").textContent=s.last_initial_only?"Bill L.":"Bill Lloyd";
+      document.getElementById("mPreviewTag").style.color=s.primary_color;
+      card.parentElement.style.background=s.bg_color;
+    }
+
+    function checkMemberChanges(){
+      var changed=JSON.stringify(memberSettings)!==JSON.stringify(originalSettings);
+      if(!changed){var a=Array.from(memberExclusions).sort(),b=Array.from(originalExclusions).sort();changed=JSON.stringify(a)!==JSON.stringify(b);}
+      document.getElementById("mUnsavedMsg").classList.toggle("visible",changed);
+      var btn=document.getElementById("mSaveBtn");
+      if(changed){btn.textContent="Save Member Changes";btn.style.opacity="1";}
+    }
+
+    // ─── SAVE MEMBER (via Edge Function) ───────────────────
+    document.getElementById("mSaveBtn").addEventListener("click",async function(){
+      if(!currentMember) return; var btn=this; btn.disabled=true; btn.textContent="Saving...";
+      try{
+        await apiCall({
+          action:"save_member",
+          member_number:currentMember.member_number,
+          settings:{primary_color:memberSettings.primary_color,bg_color:memberSettings.bg_color,text_color:memberSettings.text_color,card_text_color:memberSettings.card_text_color,accent_color:memberSettings.accent_color,last_initial_only:memberSettings.last_initial_only,show_count:memberSettings.show_count,show_search:memberSettings.show_search,display_mode:memberSettings.display_mode,font:memberSettings.font,website_enabled:memberSettings.website_enabled},
+          exclusions:Array.from(memberExclusions)
+        });
+        originalSettings=JSON.parse(JSON.stringify(memberSettings)); originalExclusions=new Set(memberExclusions);
+        // Update local caches
+        allExclusionMap[currentMember.member_number]=Array.from(memberExclusions);
+        Object.assign(currentMember,memberSettings);
+        document.getElementById("mUnsavedMsg").classList.remove("visible");
+        showStatus("manageStatus","success","Member settings saved!");
+      }catch(err){showStatus("manageStatus","error",err.message);}
+      finally{btn.disabled=false;btn.textContent="Saved ✓";btn.style.opacity="0.6";}
+    });
+
+    function showStatus(id,type,msg){
+      var el=document.getElementById(id); el.className="status-msg "+type; el.textContent=msg; el.style.display="block";
+      setTimeout(function(){el.style.display="none";},5000);
+    }
+
+    document.querySelectorAll('select').forEach(function(sel){
+      sel.addEventListener('mousedown',function(e){ e.stopPropagation(); });
+    });
+
+    function signOutReset(){
+      appInitialized = false;
+      signOut();
+    }
+    document.getElementById("signOutBtn").removeEventListener("click", signOut);
+    document.getElementById("signOutBtn").addEventListener("click", signOutReset);
+    document.getElementById("welcomeSignOut").removeEventListener("click", signOut);
+    document.getElementById("welcomeSignOut").addEventListener("click", signOutReset);
+  </script>
+</body>
+</html>
