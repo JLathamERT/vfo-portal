@@ -256,11 +256,11 @@
             <div><div class="setting-label">Enable Website Plugin</div><div class="setting-desc">Allow this member to customize their showroom widget</div></div>
             <label class="toggle"><input type="checkbox" id="mWebsiteEnabled"><span class="toggle-slider"></span></label>
           </div>
-          <div class="sub-tabs" id="memberFeatureTabs"><button class="sub-tab active" data-subpanel="websitePluginPanel">Website Plugin</button></div>
-          <div class="sub-panel active" id="websitePluginPanel">
+          <div class="sub-tabs" id="memberFeatureTabs"><button class="sub-tab" data-subpanel="websitePluginPanel">Website Plugin</button></div>
+          <div class="sub-panel" id="websitePluginPanel">
             <div id="websitePluginContent">
-              <div class="sub-tabs" id="memberSubTabs"><button class="sub-tab active" data-subpanel="specialistsSubPanel">Specialists</button><button class="sub-tab" data-subpanel="appearanceSubPanel">Appearance</button><button class="sub-tab" data-subpanel="pluginSubPanel">Settings</button></div>
-              <div class="sub-panel active" id="specialistsSubPanel">
+              <div class="sub-tabs" id="memberSubTabs"><button class="sub-tab" data-subpanel="specialistsSubPanel">Specialists</button><button class="sub-tab" data-subpanel="appearanceSubPanel">Appearance</button><button class="sub-tab" data-subpanel="pluginSubPanel">Settings</button></div>
+              <div class="sub-panel" id="specialistsSubPanel">
                 <div class="stats"><div><div class="stat-num" id="mEnabledCount">0</div><div class="stat-label">ENABLED</div></div><div><div class="stat-num" id="mTotalCount">0</div><div class="stat-label">TOTAL</div></div></div>
                 <div class="search-wrap"><span class="search-icon">&#x2315;</span><input type="text" class="search-input" id="mSearchInput" placeholder="Search specialists..."></div>
                 <div style="display:flex;gap:8px;margin-bottom:16px;"><button class="mode-btn" id="mEnableAll">Enable All</button><button class="mode-btn" id="mDisableAll">Disable All</button></div>
@@ -547,10 +547,17 @@
             }
           }
         }
-        // When switching away from Members, reset member editing state
+        // When leaving Members tab, fully reset member editing state
         if(tab.getAttribute("data-panel") !== "membersPanel"){
           document.getElementById("memberContent").style.display = "none";
           document.getElementById("memberSelect").value = "";
+          currentMember = null;
+          document.getElementById("websitePluginPanel").classList.remove("active");
+          document.getElementById("memberFeatureTabs").querySelector(".sub-tab").classList.remove("active");
+          ["specialistsSubPanel","appearanceSubPanel","pluginSubPanel"].forEach(function(id){
+            document.getElementById(id).classList.remove("active");
+          });
+          document.getElementById("memberSubTabs").querySelectorAll(".sub-tab").forEach(function(t){ t.classList.remove("active"); });
         }
       });
     });
@@ -886,6 +893,9 @@
       var embed='<div id="vfo-showroom"></div>\n<script src="https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/vfo-widget/vfo-widget.js?v=23" data-vfo-key="'+currentMember.manage_key+'"><\/script>';
       document.getElementById("pluginEmbedCode").textContent=embed;
       // Reset sub-tabs to Specialists
+      // Activate feature tab
+      document.getElementById("memberFeatureTabs").querySelector(".sub-tab").classList.add("active");
+      document.getElementById("websitePluginPanel").classList.add("active");
       activateSubTab("specialistsSubPanel");
       // Reset save button
       var btn=document.getElementById("mSaveBtn");btn.textContent="Save Member Changes";btn.style.opacity="1";
