@@ -211,15 +211,19 @@
     <div class="tab-panel" id="adminSelfSettingsPanel">
       <div class="settings-section">
         <div class="settings-title">Account Settings</div>
-        <div style="display:flex;gap:12px;margin-bottom:12px;">
-          <div style="flex:1;"><label class="field-label">New Passcode</label><input type="text" class="text-input" id="adminNewPasscode" placeholder="Enter new passcode"></div>
+        <div style="margin-bottom:12px;">
+          <label class="field-label">Email</label><input type="text" class="text-input" id="adminEmail" readonly style="opacity:0.6;cursor:not-allowed;">
+        </div>
+        <div style="display:flex;gap:12px;margin-bottom:16px;">
+          <div style="flex:1;"><label class="field-label">New Passcode</label><input type="text" class="text-input" id="adminNewPasscode" placeholder="Leave blank to keep current"></div>
           <div style="flex:1;"><label class="field-label">Confirm Passcode</label><input type="text" class="text-input" id="adminConfirmPasscode" placeholder="Confirm new passcode"></div>
         </div>
-        <button class="btn-primary" id="adminUpdatePasscodeBtn" style="padding:10px 28px;font-size:14px;">Update Passcode</button>
+        <button class="btn-primary" id="adminUpdatePasscodeBtn" style="padding:10px 28px;font-size:14px;">Update</button>
         <div class="status-msg" id="adminPasscodeStatus"></div>
       </div>
     </div>
   </div>
+  <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
   <script src="shared.js"></script>
   <script>
     var addCIQ = [], addFile = null, addQuill = null;
@@ -443,19 +447,10 @@
           row.className = "specialist-row";
           row.style.cursor = "default";
           var isSelf = admin.email === SUPERADMIN;
-          var buttonsHTML = '<div style="display:flex;gap:8px;align-items:center;margin-left:auto;">';
-          buttonsHTML += '<button class="mode-btn change-pass-btn" style="padding:6px 14px;font-size:12px;">Change Passcode</button>';
-          if (!isSelf) buttonsHTML += '<button class="btn-danger remove-btn" style="padding:6px 16px;font-size:12px;">Remove</button>';
-          buttonsHTML += '</div>';
-          row.innerHTML = '<div class="specialist-info"><div class="specialist-name">' + admin.name + '</div><div class="specialist-tagline">' + admin.email + (isSelf ? ' &middot; Superadmin' : '') + '</div></div>' + buttonsHTML;
-          // Change passcode
-          row.querySelector(".change-pass-btn").addEventListener("click", function(e) {
-            e.stopPropagation();
-            var newPass = prompt("New passcode for " + admin.name + ":");
-            if (!newPass || !newPass.trim()) return;
-            updateAdminPasscode(admin.id, newPass.trim());
-          });
-          // Remove
+          var buttonsHTML = '';
+          if (!isSelf) buttonsHTML = '<button class="btn-danger remove-btn" style="padding:6px 16px;font-size:12px;margin-left:auto;">Remove</button>';
+          else buttonsHTML = '<span style="color:#5a8ab5;font-size:12px;margin-left:auto;">Superadmin</span>';
+          row.innerHTML = '<div class="specialist-info"><div class="specialist-name">' + admin.name + '</div><div class="specialist-tagline">' + admin.email + '</div></div>' + buttonsHTML;
           if (!isSelf) {
             row.querySelector(".remove-btn").addEventListener("click", function(e) {
               e.stopPropagation();
@@ -511,6 +506,7 @@
       currentMember = null;
       document.getElementById("adminNewPasscode").value = "";
       document.getElementById("adminConfirmPasscode").value = "";
+      document.getElementById("adminEmail").value = loggedInEmail || "";
     });
 
     // Also restore tabs from settings when clicking title

@@ -125,9 +125,12 @@
     <div class="tab-panel" id="memberSettingsPanel">
       <div class="settings-section">
         <div class="settings-title">Account Settings</div>
-        <div style="display:flex;gap:12px;margin-bottom:12px;">
-          <div style="flex:1;"><label class="field-label">Email</label><input type="text" class="text-input" id="acctEmail" placeholder="your@email.com"></div>
+        <div style="margin-bottom:12px;">
+          <label class="field-label">Email</label><input type="text" class="text-input" id="acctEmail" placeholder="your@email.com">
+        </div>
+        <div style="display:flex;gap:12px;margin-bottom:16px;">
           <div style="flex:1;"><label class="field-label">New Passcode</label><input type="text" class="text-input" id="acctPasscode" placeholder="Leave blank to keep current"></div>
+          <div style="flex:1;"><label class="field-label">Confirm Passcode</label><input type="text" class="text-input" id="acctConfirmPasscode" placeholder="Confirm new passcode"></div>
         </div>
         <button class="btn-primary" id="acctUpdateBtn" style="padding:10px 28px;font-size:14px;">Update</button>
         <div class="status-msg" id="acctStatus"></div>
@@ -237,11 +240,14 @@
       if (!myLoginId) return;
       var email = document.getElementById("acctEmail").value.trim();
       var passcode = document.getElementById("acctPasscode").value.trim();
+      var confirmPasscode = document.getElementById("acctConfirmPasscode").value.trim();
       if (!email) { showStatus("acctStatus", "error", "Email is required."); return; }
+      if (passcode && passcode !== confirmPasscode) { showStatus("acctStatus", "error", "Passcodes do not match."); return; }
       var btn = this; btn.disabled = true; btn.textContent = "Updating...";
       try {
         await apiCall({ action: "update_member_login", login_id: myLoginId, email: email, passcode: passcode || null });
         document.getElementById("acctPasscode").value = "";
+        document.getElementById("acctConfirmPasscode").value = "";
         showStatus("acctStatus", "success", "Account updated!");
       } catch (err) { showStatus("acctStatus", "error", err.message); }
       finally { btn.disabled = false; btn.textContent = "Update"; }
