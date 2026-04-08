@@ -68,6 +68,7 @@ function setupLogin(expectedRole) {
   var loginBtn = document.getElementById("loginBtn");
   var emailInput = document.getElementById("emailInput");
   var passcodeInput = document.getElementById("passcodeInput");
+  var loginAction = expectedRole === "member" ? "member_login" : "admin_login";
 
   async function doLogin() {
     var email = emailInput.value.trim();
@@ -78,13 +79,10 @@ function setupLogin(expectedRole) {
       var res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + SUPABASE_KEY },
-        body: JSON.stringify({ action: "login", email: email, passcode: passcode })
+        body: JSON.stringify({ action: loginAction, email: email, passcode: passcode })
       });
       var data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
-      var userRole = data.role || "admin";
-      if (expectedRole === "member" && userRole !== "member") throw new Error("This account is not a member account.");
-      if (expectedRole === "admin" && userRole !== "admin") throw new Error("This account is not an admin account.");
       authToken = data.token;
       document.getElementById("gate").style.display = "none";
       document.getElementById("gateError").style.display = "none";
