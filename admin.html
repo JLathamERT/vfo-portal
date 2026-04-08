@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="shared.css">
 </head>
 <body>
-  <!-- LOGIN GATE -->
   <div class="gate" id="gate">
     <h1>The VFO Portal</h1>
     <p style="color:#8bacc8;font-size:14px;margin-bottom:8px;">Admin login</p>
@@ -20,8 +19,6 @@
     <p class="gate-error" id="gateError">Invalid credentials</p>
     <button style="margin-top:12px;background:none;border:none;color:#5a8ab5;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;" onclick="window.location.href='index.html'">Back</button>
   </div>
-
-  <!-- MAIN APP -->
   <div class="app" id="app">
     <div class="app-header">
       <h1 style="cursor:pointer;" id="appTitle">The VFO Portal</h1>
@@ -34,13 +31,10 @@
       <button class="main-tab" data-panel="specialistsPanel">Specialists</button>
       <button class="main-tab" data-panel="membersPanel">Members</button>
     </div>
-
-    <!-- Welcome (default, no tab selected) -->
     <div id="welcomeContent" style="text-align:center;padding:60px 0 0;">
       <p style="font-size:14px;color:#8bacc8;margin-bottom:8px;">Welcome back</p>
       <p id="welcomeDisplayName" style="font-family:'Playfair Display',serif;font-size:36px;color:#ffffff;"></p>
     </div>
-
     <!-- Specialists Panel -->
     <div class="tab-panel" id="specialistsPanel">
       <div class="sub-tabs"><button class="sub-tab active" data-subpanel="addSubPanel">Add Specialist</button><button class="sub-tab" data-subpanel="editSubPanel">Edit Specialist</button></div>
@@ -56,7 +50,6 @@
         <div class="status-msg" id="editStatus"></div>
       </div>
     </div>
-
     <!-- Members Panel -->
     <div class="tab-panel" id="membersPanel">
       <div class="sub-tabs"><button class="sub-tab active" data-subpanel="addMemberSubPanel">Add Member</button><button class="sub-tab" data-subpanel="editMemberSubPanel">Edit Member</button></div>
@@ -77,21 +70,27 @@
         </div>
         <div id="memberContent" style="display:none;">
           <div class="sub-tabs" id="memberFeatureTabs">
-            <button class="sub-tab active" data-subpanel="websitePluginPanel">Website Plugin</button>
+            <button class="sub-tab active" data-subpanel="adminSpecialistsPanel">Specialists</button>
+            <button class="sub-tab" data-subpanel="websitePluginPanel">Website Plugin</button>
             <button class="sub-tab" data-subpanel="adminCiqPanel">CIQ</button>
             <button class="sub-tab" data-subpanel="adminGrowthPlanPanel">Growth Plan</button>
             <button class="sub-tab" data-subpanel="adminGrowthCreditsPanel">Growth Credit Marketplace</button>
             <button class="sub-tab" data-subpanel="adminSettingsPanel">Settings</button>
           </div>
-          <div class="sub-panel active" id="websitePluginPanel">
-            <div class="sub-tabs" id="memberSubTabs"><button class="sub-tab active" data-subpanel="specialistsSubPanel">Specialists</button><button class="sub-tab" data-subpanel="appearanceSubPanel">Appearance</button><button class="sub-tab" data-subpanel="pluginSubPanel">Plugin Settings</button></div>
-            <div class="sub-panel active" id="specialistsSubPanel">
-              <div class="stats"><div><div class="stat-num" id="mEnabledCount">0</div><div class="stat-label">ENABLED</div></div><div><div class="stat-num" id="mTotalCount">0</div><div class="stat-label">TOTAL</div></div></div>
-              <div class="search-wrap"><span class="search-icon">&#x2315;</span><input type="text" class="search-input" id="mSearchInput" placeholder="Search specialists..."></div>
-              <div style="display:flex;gap:8px;margin-bottom:16px;"><button class="mode-btn" id="mEnableAll">Enable All</button><button class="mode-btn" id="mDisableAll">Disable All</button></div>
-              <div class="specialist-list" id="mSpecialistList"></div>
-            </div>
-            <div class="sub-panel" id="appearanceSubPanel">
+          <!-- Specialists feature tab -->
+          <div class="sub-panel active" id="adminSpecialistsPanel">
+            <p style="color:#8bacc8;font-size:13px;margin-bottom:20px;font-style:italic;">Changes here affect which specialists appear in your VFO Showroom and, if enabled, your Website Plugin.</p>
+            <div class="stats"><div><div class="stat-num" id="mEnabledCount">0</div><div class="stat-label">ENABLED</div></div><div><div class="stat-num" id="mTotalCount">0</div><div class="stat-label">TOTAL</div></div></div>
+            <div class="search-wrap"><span class="search-icon">&#x2315;</span><input type="text" class="search-input" id="mSearchInput" placeholder="Search specialists..."></div>
+            <div style="display:flex;gap:8px;margin-bottom:16px;"><button class="mode-btn" id="mEnableAll">Enable All</button><button class="mode-btn" id="mDisableAll">Disable All</button></div>
+            <div class="specialist-list" id="mSpecialistList"></div>
+            <div class="save-bar"><p class="unsaved-indicator" id="mUnsavedMsg">You have unsaved changes</p><button class="btn-primary" id="mSaveBtn">Save Changes</button></div>
+            <div class="status-msg" id="manageStatus"></div>
+          </div>
+          <!-- Website Plugin feature tab -->
+          <div class="sub-panel" id="websitePluginPanel">
+            <div class="sub-tabs" id="memberSubTabs"><button class="sub-tab active" data-subpanel="appearanceSubPanel">Appearance</button><button class="sub-tab" data-subpanel="pluginSubPanel">Plugin Settings</button></div>
+            <div class="sub-panel active" id="appearanceSubPanel">
               <div class="settings-section">
                 <div class="settings-title">Colors</div>
                 <div class="setting-row"><div><div class="setting-label">Background Color</div><div class="setting-desc">Page background</div></div><div class="color-picker-wrap"><input type="color" class="color-picker" id="mBgColor"><input type="text" class="color-hex" id="mBgHex"></div></div>
@@ -130,27 +129,22 @@
                 <button class="mode-btn" id="copyPluginBtn" style="color:#27ae60;border-color:rgba(39,174,96,0.3);font-size:13px;">Copy Code</button>
               </div>
             </div>
-            <div class="save-bar"><p class="unsaved-indicator" id="mUnsavedMsg">You have unsaved changes</p><button class="btn-primary" id="mSaveBtn">Save Changes</button></div>
-            <div class="status-msg" id="manageStatus"></div>
-          </div><!-- end websitePluginPanel -->
+            <div class="save-bar"><p class="unsaved-indicator" id="mUnsavedMsg2">You have unsaved changes</p><button class="btn-primary" id="mSaveBtn2">Save Changes</button></div>
+            <div class="status-msg" id="manageStatus2"></div>
+          </div>
+          <!-- CIQ feature tab -->
           <div class="sub-panel" id="adminCiqPanel">
-            <div style="text-align:center;padding:60px 20px;">
-              <p style="font-family:'Playfair Display',serif;font-size:22px;color:#ffffff;margin-bottom:12px;">CIQ</p>
-              <p style="font-size:14px;color:#8bacc8;">Coming soon.</p>
-            </div>
+            <div style="text-align:center;padding:60px 20px;"><p style="font-family:'Playfair Display',serif;font-size:22px;color:#ffffff;margin-bottom:12px;">CIQ</p><p style="font-size:14px;color:#8bacc8;">Coming soon.</p></div>
           </div>
+          <!-- Growth Plan feature tab -->
           <div class="sub-panel" id="adminGrowthPlanPanel">
-            <div style="text-align:center;padding:60px 20px;">
-              <p style="font-family:'Playfair Display',serif;font-size:22px;color:#ffffff;margin-bottom:12px;">Growth Plan</p>
-              <p style="font-size:14px;color:#8bacc8;">Coming soon.</p>
-            </div>
+            <div style="text-align:center;padding:60px 20px;"><p style="font-family:'Playfair Display',serif;font-size:22px;color:#ffffff;margin-bottom:12px;">Growth Plan</p><p style="font-size:14px;color:#8bacc8;">Coming soon.</p></div>
           </div>
+          <!-- Growth Credit Marketplace feature tab -->
           <div class="sub-panel" id="adminGrowthCreditsPanel">
-            <div style="text-align:center;padding:60px 20px;">
-              <p style="font-family:'Playfair Display',serif;font-size:22px;color:#ffffff;margin-bottom:12px;">Growth Credit Marketplace</p>
-              <p style="font-size:14px;color:#8bacc8;">Coming soon.</p>
-            </div>
+            <div style="text-align:center;padding:60px 20px;"><p style="font-family:'Playfair Display',serif;font-size:22px;color:#ffffff;margin-bottom:12px;">Growth Credit Marketplace</p><p style="font-size:14px;color:#8bacc8;">Coming soon.</p></div>
           </div>
+          <!-- Settings feature tab -->
           <div class="sub-panel" id="adminSettingsPanel">
             <div class="settings-section" style="border-color:rgba(231,76,60,0.15);">
               <div class="settings-title" style="color:#e74c3c;">Danger Zone</div>
@@ -159,42 +153,31 @@
               <div class="status-msg" id="deleteMemberStatus"></div>
             </div>
           </div>
-          <div class="status-msg" id="manageStatus"></div>
-        </div><!-- end memberContent -->
-      </div><!-- end editMemberSubPanel -->
-    </div><!-- end membersPanel -->
+        </div>
+      </div>
+    </div>
   </div>
-
   <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
   <script src="shared.js"></script>
   <script>
     var addCIQ = [], addFile = null, addQuill = null;
     var editCIQ = [], editFile = null, editQuill = null, editingId = null;
-
-    // ─── LOGIN ──────────────────────────────────────────
     setupLogin("admin");
-
     function onLoginSuccess(data) {
       document.getElementById("adminName").textContent = data.name || data.email;
       document.getElementById("welcomeDisplayName").textContent = data.name || data.email;
       document.getElementById("app").style.display = "block";
       initAdmin();
     }
-
     document.getElementById("signOutBtn").addEventListener("click", signOut);
-
-    // App title deselects all tabs, shows welcome
     document.getElementById("appTitle").addEventListener("click", function() {
       document.querySelectorAll("#adminTabs .main-tab").forEach(function(t) { t.classList.remove("active"); });
       document.querySelectorAll(".tab-panel").forEach(function(p) { p.classList.remove("active"); });
       document.getElementById("welcomeContent").style.display = "block";
-      // Reset member editing
       document.getElementById("memberContent").style.display = "none";
       document.getElementById("memberSelect").value = "";
       currentMember = null;
     });
-
-    // ─── MAIN TABS ──────────────────────────────────────
     document.querySelectorAll("#adminTabs .main-tab").forEach(function(tab) {
       tab.addEventListener("click", function() {
         document.getElementById("welcomeContent").style.display = "none";
@@ -208,286 +191,78 @@
           if (directSubTabs) {
             var tabs = directSubTabs.querySelectorAll(".sub-tab");
             tabs.forEach(function(t) { t.classList.remove("active"); });
-            tabs.forEach(function(t) {
-              var sp = document.getElementById(t.getAttribute("data-subpanel"));
-              if (sp) sp.classList.remove("active");
-            });
+            tabs.forEach(function(t) { var sp = document.getElementById(t.getAttribute("data-subpanel")); if (sp) sp.classList.remove("active"); });
             var first = tabs[0];
-            if (first) {
-              first.classList.add("active");
-              var firstPanel = document.getElementById(first.getAttribute("data-subpanel"));
-              if (firstPanel) firstPanel.classList.add("active");
-            }
+            if (first) { first.classList.add("active"); var fp = document.getElementById(first.getAttribute("data-subpanel")); if (fp) fp.classList.add("active"); }
           }
         }
-        // Reset member editing when switching tabs
         document.getElementById("memberContent").style.display = "none";
         document.getElementById("memberSelect").value = "";
         currentMember = null;
       });
     });
-
-    // ─── SUB-TAB HANDLERS ───────────────────────────────
+    // Sub-tab handlers
     (function() {
       var panel = document.getElementById("specialistsPanel");
       var tabs = panel.querySelectorAll(":scope > .sub-tabs .sub-tab");
       var panels = [document.getElementById("addSubPanel"), document.getElementById("editSubPanel")];
-      tabs.forEach(function(tab) {
-        tab.addEventListener("click", function() {
-          tabs.forEach(function(t) { t.classList.remove("active"); });
-          panels.forEach(function(p) { p.classList.remove("active"); });
-          tab.classList.add("active");
-          document.getElementById(tab.getAttribute("data-subpanel")).classList.add("active");
-        });
-      });
+      tabs.forEach(function(tab) { tab.addEventListener("click", function() { tabs.forEach(function(t) { t.classList.remove("active"); }); panels.forEach(function(p) { p.classList.remove("active"); }); tab.classList.add("active"); document.getElementById(tab.getAttribute("data-subpanel")).classList.add("active"); }); });
     })();
-
     (function() {
       var panel = document.getElementById("membersPanel");
       var tabs = panel.querySelectorAll(":scope > .sub-tabs .sub-tab");
       var panels = [document.getElementById("addMemberSubPanel"), document.getElementById("editMemberSubPanel")];
-      tabs.forEach(function(tab) {
-        tab.addEventListener("click", function() {
-          tabs.forEach(function(t) { t.classList.remove("active"); });
-          panels.forEach(function(p) { p.classList.remove("active"); });
-          tab.classList.add("active");
-          document.getElementById(tab.getAttribute("data-subpanel")).classList.add("active");
-        });
-      });
+      tabs.forEach(function(tab) { tab.addEventListener("click", function() { tabs.forEach(function(t) { t.classList.remove("active"); }); panels.forEach(function(p) { p.classList.remove("active"); }); tab.classList.add("active"); document.getElementById(tab.getAttribute("data-subpanel")).classList.add("active"); }); });
     })();
-
     (function() {
       var container = document.getElementById("memberFeatureTabs");
       var tabs = container.querySelectorAll(".sub-tab");
-      var panels = [document.getElementById("websitePluginPanel"), document.getElementById("adminCiqPanel"), document.getElementById("adminGrowthPlanPanel"), document.getElementById("adminGrowthCreditsPanel"), document.getElementById("adminSettingsPanel")];
-      tabs.forEach(function(tab) {
-        tab.addEventListener("click", function() {
-          tabs.forEach(function(t) { t.classList.remove("active"); });
-          panels.forEach(function(p) { p.classList.remove("active"); });
-          tab.classList.add("active");
-          document.getElementById(tab.getAttribute("data-subpanel")).classList.add("active");
-        });
-      });
+      var panels = [document.getElementById("adminSpecialistsPanel"), document.getElementById("websitePluginPanel"), document.getElementById("adminCiqPanel"), document.getElementById("adminGrowthPlanPanel"), document.getElementById("adminGrowthCreditsPanel"), document.getElementById("adminSettingsPanel")];
+      tabs.forEach(function(tab) { tab.addEventListener("click", function() { tabs.forEach(function(t) { t.classList.remove("active"); }); panels.forEach(function(p) { p.classList.remove("active"); }); tab.classList.add("active"); document.getElementById(tab.getAttribute("data-subpanel")).classList.add("active"); }); });
     })();
-
     setupWebsitePluginSubTabs();
-
-    // ─── INIT ───────────────────────────────────────────
+    // Init
     var adminInitialized = false;
     async function initAdmin() {
       if (adminInitialized) return;
       try {
         await loadAllData();
-        buildSpecialistForm("addForm", "add");
-        buildSpecialistForm("editForm", "edit");
-        populateEditDropdown();
-        populateMemberDropdown();
+        buildSpecialistForm("addForm", "add"); buildSpecialistForm("editForm", "edit");
+        populateEditDropdown(); populateMemberDropdown();
         document.getElementById("addSubmitBtn").addEventListener("click", function() { submitSpecialist("add"); });
         document.getElementById("addClearBtn").addEventListener("click", function() { clearForm("add"); });
-        document.getElementById("mWebsiteEnabled").addEventListener("change", function() {
-          memberSettings.website_enabled = this.checked;
-          checkMemberChanges();
-        });
+        document.getElementById("mWebsiteEnabled").addEventListener("change", function() { memberSettings.website_enabled = this.checked; checkMemberChanges(); });
         setupMemberSearchAndBulk();
         adminInitialized = true;
-      } catch (err) {
-        console.error("Init error:", err);
-        alert("Error loading data: " + err.message);
-      }
+      } catch (err) { console.error("Init error:", err); alert("Error loading data: " + err.message); }
     }
-
-    // ─── SPECIALIST FORM BUILDER ────────────────────────
     function buildSpecialistForm(containerId, prefix) {
       var c = document.getElementById(containerId);
-      c.innerHTML =
-        '<div class="field"><label>Name *</label><input type="text" class="text-input" id="' + prefix + 'Name" placeholder="Full name"></div>' +
-        '<div class="field"><label>Short Bio</label><input type="text" class="text-input" id="' + prefix + 'ShortBio" placeholder="One-line specialty description"></div>' +
-        '<div class="field"><label>Long Bio</label><textarea class="text-area" id="' + prefix + 'LongBio" placeholder="Detailed biography..."></textarea></div>' +
-        '<div class="field"><label>Details and Benefits</label><div class="quill-wrapper"><div id="' + prefix + 'Quill"></div></div></div>' +
-        '<div class="field"><label>Headshot</label><div class="upload-area"><div class="upload-preview" id="' + prefix + 'Preview"><span class="upload-placeholder">?</span></div><div><button class="upload-btn" id="' + prefix + 'UploadBtn">Choose Image</button><input type="file" id="' + prefix + 'FileInput" accept="image/*"><p class="upload-info">JPG or PNG, recommended 400x400px</p><p class="upload-filename" id="' + prefix + 'Filename"></p></div></div></div>' +
-        '<div class="field"><label>VFO Ecosystem</label><div class="checkbox-group" id="' + prefix + 'Ecos"></div></div>' +
-        '<div class="field"><label>CIQ Topics</label><div class="ciq-select-row"><select class="ciq-dropdown" id="' + prefix + 'CiqDrop"><option value="">-- Select a topic --</option></select><button class="ciq-add-btn" id="' + prefix + 'CiqAdd">+ Add</button></div><div class="ciq-tags" id="' + prefix + 'CiqTags"></div></div>';
+      c.innerHTML = '<div class="field"><label>Name *</label><input type="text" class="text-input" id="' + prefix + 'Name" placeholder="Full name"></div><div class="field"><label>Short Bio</label><input type="text" class="text-input" id="' + prefix + 'ShortBio" placeholder="One-line specialty description"></div><div class="field"><label>Long Bio</label><textarea class="text-area" id="' + prefix + 'LongBio" placeholder="Detailed biography..."></textarea></div><div class="field"><label>Details and Benefits</label><div class="quill-wrapper"><div id="' + prefix + 'Quill"></div></div></div><div class="field"><label>Headshot</label><div class="upload-area"><div class="upload-preview" id="' + prefix + 'Preview"><span class="upload-placeholder">?</span></div><div><button class="upload-btn" id="' + prefix + 'UploadBtn">Choose Image</button><input type="file" id="' + prefix + 'FileInput" accept="image/*"><p class="upload-info">JPG or PNG, recommended 400x400px</p><p class="upload-filename" id="' + prefix + 'Filename"></p></div></div></div><div class="field"><label>VFO Ecosystem</label><div class="checkbox-group" id="' + prefix + 'Ecos"></div></div><div class="field"><label>CIQ Topics</label><div class="ciq-select-row"><select class="ciq-dropdown" id="' + prefix + 'CiqDrop"><option value="">-- Select a topic --</option></select><button class="ciq-add-btn" id="' + prefix + 'CiqAdd">+ Add</button></div><div class="ciq-tags" id="' + prefix + 'CiqTags"></div></div>';
       var q = new Quill("#" + prefix + "Quill", { theme: "snow", placeholder: "Strategy details, client requirements, benefits...", modules: { toolbar: [["bold", "italic", "underline"], [{ "list": "ordered" }, { "list": "bullet" }], ["link"], ["clean"]] } });
       if (prefix === "add") addQuill = q; else editQuill = q;
       var ecoContainer = document.getElementById(prefix + "Ecos");
-      ECOSYSTEMS.forEach(function(eco) {
-        var item = document.createElement("div"); item.className = "checkbox-item"; item.setAttribute("data-eco", eco);
-        item.innerHTML = '<input type="checkbox" value="' + eco + '"><div class="check-box"><span class="check-mark">&#10003;</span></div><span style="font-size:14px;color:#c0ccda;">' + eco + '</span>';
-        item.addEventListener("click", function() { var cb = item.querySelector("input"); cb.checked = !cb.checked; item.classList.toggle("checked", cb.checked); });
-        ecoContainer.appendChild(item);
-      });
+      ECOSYSTEMS.forEach(function(eco) { var item = document.createElement("div"); item.className = "checkbox-item"; item.setAttribute("data-eco", eco); item.innerHTML = '<input type="checkbox" value="' + eco + '"><div class="check-box"><span class="check-mark">&#10003;</span></div><span style="font-size:14px;color:#c0ccda;">' + eco + '</span>'; item.addEventListener("click", function() { var cb = item.querySelector("input"); cb.checked = !cb.checked; item.classList.toggle("checked", cb.checked); }); ecoContainer.appendChild(item); });
       var drop = document.getElementById(prefix + "CiqDrop");
       CIQ_TOPICS.forEach(function(t) { var o = document.createElement("option"); o.value = t; o.textContent = t; drop.appendChild(o); });
-      document.getElementById(prefix + "CiqAdd").addEventListener("click", function() {
-        var val = drop.value; var arr = prefix === "add" ? addCIQ : editCIQ;
-        if (!val || arr.indexOf(val) !== -1) return; arr.push(val); renderCIQTags(prefix); drop.value = "";
-      });
+      document.getElementById(prefix + "CiqAdd").addEventListener("click", function() { var val = drop.value; var arr = prefix === "add" ? addCIQ : editCIQ; if (!val || arr.indexOf(val) !== -1) return; arr.push(val); renderCIQTags(prefix); drop.value = ""; });
       document.getElementById(prefix + "UploadBtn").addEventListener("click", function() { document.getElementById(prefix + "FileInput").click(); });
-      document.getElementById(prefix + "FileInput").addEventListener("change", function(e) {
-        var file = e.target.files[0]; if (!file) return;
-        if (prefix === "add") addFile = file; else editFile = file;
-        document.getElementById(prefix + "Filename").textContent = file.name;
-        var reader = new FileReader();
-        reader.onload = function(ev) { document.getElementById(prefix + "Preview").innerHTML = '<img src="' + ev.target.result + '">'; };
-        reader.readAsDataURL(file);
-      });
+      document.getElementById(prefix + "FileInput").addEventListener("change", function(e) { var file = e.target.files[0]; if (!file) return; if (prefix === "add") addFile = file; else editFile = file; document.getElementById(prefix + "Filename").textContent = file.name; var reader = new FileReader(); reader.onload = function(ev) { document.getElementById(prefix + "Preview").innerHTML = '<img src="' + ev.target.result + '">'; }; reader.readAsDataURL(file); });
     }
-
-    function renderCIQTags(prefix) {
-      var arr = prefix === "add" ? addCIQ : editCIQ;
-      var container = document.getElementById(prefix + "CiqTags"); container.innerHTML = "";
-      arr.forEach(function(topic, i) {
-        var tag = document.createElement("div"); tag.className = "ciq-tag";
-        tag.innerHTML = '<span>' + topic + '</span><span class="ciq-tag-remove">&times;</span>';
-        tag.querySelector(".ciq-tag-remove").addEventListener("click", function() { arr.splice(i, 1); renderCIQTags(prefix); });
-        container.appendChild(tag);
-      });
-    }
-
-    function getFormData(prefix) {
-      var quill = prefix === "add" ? addQuill : editQuill;
-      var ecos = []; document.querySelectorAll("#" + prefix + "Ecos .checkbox-item input:checked").forEach(function(cb) { ecos.push(cb.value); });
-      return { name: document.getElementById(prefix + "Name").value.trim(), short_bio: document.getElementById(prefix + "ShortBio").value.trim(), long_bio: document.getElementById(prefix + "LongBio").value.trim(), details_and_benefits: quill ? quill.root.innerHTML : "", ecosystems: ecos, ciq: prefix === "add" ? addCIQ.slice() : editCIQ.slice(), file: prefix === "add" ? addFile : editFile };
-    }
-
-    function clearForm(prefix) {
-      document.getElementById(prefix + "Name").value = ""; document.getElementById(prefix + "ShortBio").value = ""; document.getElementById(prefix + "LongBio").value = "";
-      var quill = prefix === "add" ? addQuill : editQuill; if (quill) quill.root.innerHTML = "";
-      document.getElementById(prefix + "Preview").innerHTML = '<span class="upload-placeholder">?</span>';
-      document.getElementById(prefix + "Filename").textContent = "";
-      if (prefix === "add") { addFile = null; addCIQ = []; } else { editFile = null; editCIQ = []; }
-      renderCIQTags(prefix);
-      document.querySelectorAll("#" + prefix + "Ecos .checkbox-item").forEach(function(item) { item.querySelector("input").checked = false; item.classList.remove("checked"); });
-    }
-
-    function populateForm(prefix, expert) {
-      document.getElementById(prefix + "Name").value = expert.name || "";
-      document.getElementById(prefix + "ShortBio").value = expert.short_bio || "";
-      document.getElementById(prefix + "LongBio").value = expert.long_bio || "";
-      var quill = prefix === "add" ? addQuill : editQuill; if (quill) quill.root.innerHTML = expert.details_and_benefits || "";
-      if (expert.headshot_image) {
-        var url = HEADSHOT_SUPABASE + encodeURIComponent(expert.headshot_image);
-        document.getElementById(prefix + "Preview").innerHTML = '<img src="' + url + '" onerror="this.src=\'' + HEADSHOT_BASE + expert.headshot_image + '\'">';
-        document.getElementById(prefix + "Filename").textContent = expert.headshot_image;
-      }
-      var ecos = ecoMap[expert.id] || [];
-      document.querySelectorAll("#" + prefix + "Ecos .checkbox-item").forEach(function(item) {
-        var isChecked = ecos.indexOf(item.getAttribute("data-eco")) !== -1;
-        item.querySelector("input").checked = isChecked; item.classList.toggle("checked", isChecked);
-      });
-      if (prefix === "edit") { editCIQ = (ciqMap[expert.id] || []).slice(); } else { addCIQ = (ciqMap[expert.id] || []).slice(); }
-      renderCIQTags(prefix);
-    }
-
-    function populateEditDropdown() {
-      var sel = document.getElementById("editSelect");
-      sel.innerHTML = '<option value="">-- Choose a specialist --</option>';
-      allExperts.forEach(function(ex) { var o = document.createElement("option"); o.value = ex.id; o.textContent = ex.name + " -- " + (ex.short_bio || ""); sel.appendChild(o); });
-    }
-
-    document.getElementById("editSelect").addEventListener("change", function() {
-      var id = parseInt(this.value);
-      if (!id) { document.getElementById("editForm").style.display = "none"; document.getElementById("editButtons").style.display = "none"; return; }
-      var expert = allExperts.find(function(e) { return e.id === id; });
-      if (!expert) return; editingId = id; clearForm("edit"); populateForm("edit", expert);
-      document.getElementById("editForm").style.display = "block"; document.getElementById("editButtons").style.display = "flex";
-    });
-
-    async function submitSpecialist(prefix) {
-      var data = getFormData(prefix);
-      if (!data.name) { showStatus(prefix + "Status", "error", "Name is required."); return; }
-      var btn = document.getElementById(prefix + "SubmitBtn"); btn.disabled = true; var origText = btn.textContent; btn.textContent = "Saving...";
-      try {
-        var headshotFilename = "";
-        if (data.file) {
-          var ts = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
-          headshotFilename = ts + "_" + data.name.replace(/[^a-zA-Z0-9 ]/g, "").trim() + ".png";
-          var base64 = await new Promise(function(resolve, reject) {
-            var reader = new FileReader();
-            reader.onload = function() { resolve(reader.result.split(",")[1]); };
-            reader.onerror = reject;
-            reader.readAsDataURL(data.file);
-          });
-          await apiCall({ action: "upload_headshot", filename: headshotFilename, file_base64: base64, content_type: data.file.type });
-        }
-        var expertData = { name: data.name, short_bio: data.short_bio, long_bio: data.long_bio, details_and_benefits: data.details_and_benefits };
-        if (headshotFilename) expertData.headshot_image = headshotFilename;
-        if (prefix === "add") {
-          var maxId = allExperts.reduce(function(m, e) { return e.id > m ? e.id : m; }, 0);
-          expertData.id = maxId + 1;
-        }
-        await apiCall({ action: "save_specialist", expert: expertData, ecosystems: data.ecosystems, ciq: data.ciq, editing_id: prefix === "edit" ? editingId : null });
-        await loadAllData(); populateEditDropdown();
-        showStatus(prefix + "Status", "success", prefix === "add" ? "Specialist added!" : "Changes saved!");
-        if (prefix === "add") clearForm("add");
-      } catch (err) { console.error(err); showStatus(prefix + "Status", "error", err.message); }
-      finally { btn.disabled = false; btn.textContent = origText; }
-    }
-
+    function renderCIQTags(prefix) { var arr = prefix === "add" ? addCIQ : editCIQ; var container = document.getElementById(prefix + "CiqTags"); container.innerHTML = ""; arr.forEach(function(topic, i) { var tag = document.createElement("div"); tag.className = "ciq-tag"; tag.innerHTML = '<span>' + topic + '</span><span class="ciq-tag-remove">&times;</span>'; tag.querySelector(".ciq-tag-remove").addEventListener("click", function() { arr.splice(i, 1); renderCIQTags(prefix); }); container.appendChild(tag); }); }
+    function getFormData(prefix) { var quill = prefix === "add" ? addQuill : editQuill; var ecos = []; document.querySelectorAll("#" + prefix + "Ecos .checkbox-item input:checked").forEach(function(cb) { ecos.push(cb.value); }); return { name: document.getElementById(prefix + "Name").value.trim(), short_bio: document.getElementById(prefix + "ShortBio").value.trim(), long_bio: document.getElementById(prefix + "LongBio").value.trim(), details_and_benefits: quill ? quill.root.innerHTML : "", ecosystems: ecos, ciq: prefix === "add" ? addCIQ.slice() : editCIQ.slice(), file: prefix === "add" ? addFile : editFile }; }
+    function clearForm(prefix) { document.getElementById(prefix + "Name").value = ""; document.getElementById(prefix + "ShortBio").value = ""; document.getElementById(prefix + "LongBio").value = ""; var quill = prefix === "add" ? addQuill : editQuill; if (quill) quill.root.innerHTML = ""; document.getElementById(prefix + "Preview").innerHTML = '<span class="upload-placeholder">?</span>'; document.getElementById(prefix + "Filename").textContent = ""; if (prefix === "add") { addFile = null; addCIQ = []; } else { editFile = null; editCIQ = []; } renderCIQTags(prefix); document.querySelectorAll("#" + prefix + "Ecos .checkbox-item").forEach(function(item) { item.querySelector("input").checked = false; item.classList.remove("checked"); }); }
+    function populateForm(prefix, expert) { document.getElementById(prefix + "Name").value = expert.name || ""; document.getElementById(prefix + "ShortBio").value = expert.short_bio || ""; document.getElementById(prefix + "LongBio").value = expert.long_bio || ""; var quill = prefix === "add" ? addQuill : editQuill; if (quill) quill.root.innerHTML = expert.details_and_benefits || ""; if (expert.headshot_image) { var url = HEADSHOT_SUPABASE + encodeURIComponent(expert.headshot_image); document.getElementById(prefix + "Preview").innerHTML = '<img src="' + url + '" onerror="this.src=\'' + HEADSHOT_BASE + expert.headshot_image + '\'">'; document.getElementById(prefix + "Filename").textContent = expert.headshot_image; } var ecos = ecoMap[expert.id] || []; document.querySelectorAll("#" + prefix + "Ecos .checkbox-item").forEach(function(item) { var isChecked = ecos.indexOf(item.getAttribute("data-eco")) !== -1; item.querySelector("input").checked = isChecked; item.classList.toggle("checked", isChecked); }); if (prefix === "edit") { editCIQ = (ciqMap[expert.id] || []).slice(); } else { addCIQ = (ciqMap[expert.id] || []).slice(); } renderCIQTags(prefix); }
+    function populateEditDropdown() { var sel = document.getElementById("editSelect"); sel.innerHTML = '<option value="">-- Choose a specialist --</option>'; allExperts.forEach(function(ex) { var o = document.createElement("option"); o.value = ex.id; o.textContent = ex.name + " -- " + (ex.short_bio || ""); sel.appendChild(o); }); }
+    document.getElementById("editSelect").addEventListener("change", function() { var id = parseInt(this.value); if (!id) { document.getElementById("editForm").style.display = "none"; document.getElementById("editButtons").style.display = "none"; return; } var expert = allExperts.find(function(e) { return e.id === id; }); if (!expert) return; editingId = id; clearForm("edit"); populateForm("edit", expert); document.getElementById("editForm").style.display = "block"; document.getElementById("editButtons").style.display = "flex"; });
+    async function submitSpecialist(prefix) { var data = getFormData(prefix); if (!data.name) { showStatus(prefix + "Status", "error", "Name is required."); return; } var btn = document.getElementById(prefix + "SubmitBtn"); btn.disabled = true; var origText = btn.textContent; btn.textContent = "Saving..."; try { var headshotFilename = ""; if (data.file) { var ts = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14); headshotFilename = ts + "_" + data.name.replace(/[^a-zA-Z0-9 ]/g, "").trim() + ".png"; var base64 = await new Promise(function(resolve, reject) { var reader = new FileReader(); reader.onload = function() { resolve(reader.result.split(",")[1]); }; reader.onerror = reject; reader.readAsDataURL(data.file); }); await apiCall({ action: "upload_headshot", filename: headshotFilename, file_base64: base64, content_type: data.file.type }); } var expertData = { name: data.name, short_bio: data.short_bio, long_bio: data.long_bio, details_and_benefits: data.details_and_benefits }; if (headshotFilename) expertData.headshot_image = headshotFilename; if (prefix === "add") { var maxId = allExperts.reduce(function(m, e) { return e.id > m ? e.id : m; }, 0); expertData.id = maxId + 1; } await apiCall({ action: "save_specialist", expert: expertData, ecosystems: data.ecosystems, ciq: data.ciq, editing_id: prefix === "edit" ? editingId : null }); await loadAllData(); populateEditDropdown(); showStatus(prefix + "Status", "success", prefix === "add" ? "Specialist added!" : "Changes saved!"); if (prefix === "add") clearForm("add"); } catch (err) { console.error(err); showStatus(prefix + "Status", "error", err.message); } finally { btn.disabled = false; btn.textContent = origText; } }
     document.getElementById("editSubmitBtn").addEventListener("click", function() { submitSpecialist("edit"); });
-    document.getElementById("editCancelBtn").addEventListener("click", function() {
-      clearForm("edit"); document.getElementById("editSelect").value = "";
-      document.getElementById("editForm").style.display = "none"; document.getElementById("editButtons").style.display = "none";
-    });
-
-    document.getElementById("editDeleteBtn").addEventListener("click", async function() {
-      if (!editingId || !confirm("Delete this specialist? This cannot be undone.")) return;
-      try {
-        await apiCall({ action: "delete_specialist", expert_id: editingId });
-        await loadAllData(); populateEditDropdown();
-        clearForm("edit"); document.getElementById("editSelect").value = "";
-        document.getElementById("editForm").style.display = "none"; document.getElementById("editButtons").style.display = "none";
-        showStatus("editStatus", "success", "Specialist deleted.");
-      } catch (err) { showStatus("editStatus", "error", err.message); }
-    });
-
-    // ─── MEMBER MANAGEMENT ──────────────────────────────
-    function populateMemberDropdown() {
-      var sel = document.getElementById("memberSelect");
-      sel.innerHTML = '<option value="">-- Choose a member --</option>';
-      allMembers.forEach(function(m) { var o = document.createElement("option"); o.value = m.member_number; o.textContent = m.name + " (" + m.member_number + ")"; sel.appendChild(o); });
-    }
-
-    document.getElementById("saveMemberBtn").addEventListener("click", async function() {
-      var name = document.getElementById("newMemberName").value.trim();
-      var num = document.getElementById("newMemberNumber").value.trim();
-      if (!name || !num) { showStatus("addMemberStatus", "error", "Both fields are required."); return; }
-      var btn = this; btn.disabled = true; btn.textContent = "Creating...";
-      try {
-        await apiCall({ action: "add_member", name: name, member_number: num });
-        await loadAllData(); populateMemberDropdown();
-        document.getElementById("newMemberName").value = "";
-        document.getElementById("newMemberNumber").value = "";
-        showStatus("addMemberStatus", "success", "Member created! Switch to Edit Member to configure.");
-      } catch (err) { showStatus("addMemberStatus", "error", err.message); }
-      finally { btn.disabled = false; btn.textContent = "Create Member"; }
-    });
-
-    document.getElementById("copyPluginBtn").addEventListener("click", function() {
-      var code = document.getElementById("pluginEmbedCode").textContent;
-      navigator.clipboard.writeText(code).then(function() {
-        var btn = document.getElementById("copyPluginBtn");
-        btn.textContent = "Copied!"; setTimeout(function() { btn.textContent = "Copy Code"; }, 2000);
-      });
-    });
-
-    document.getElementById("deleteMemberBtn").addEventListener("click", async function() {
-      if (!currentMember) return;
-      if (!confirm("Delete member \"" + currentMember.name + " (" + currentMember.member_number + ")\"?\n\nThis will remove all their settings and exclusions. This cannot be undone.")) return;
-      var btn = this; btn.disabled = true; btn.textContent = "Deleting...";
-      try {
-        await apiCall({ action: "delete_member", member_number: currentMember.member_number });
-        delete allExclusionMap[currentMember.member_number];
-        allMembers = allMembers.filter(function(m) { return m.member_number !== currentMember.member_number; });
-        currentMember = null;
-        populateMemberDropdown();
-        document.getElementById("memberSelect").value = "";
-        document.getElementById("memberContent").style.display = "none";
-        showStatus("manageStatus", "success", "Member deleted.");
-      } catch (err) { showStatus("deleteMemberStatus", "error", err.message); }
-      finally { btn.disabled = false; btn.textContent = "Delete Member"; }
-    });
-
+    document.getElementById("editCancelBtn").addEventListener("click", function() { clearForm("edit"); document.getElementById("editSelect").value = ""; document.getElementById("editForm").style.display = "none"; document.getElementById("editButtons").style.display = "none"; });
+    document.getElementById("editDeleteBtn").addEventListener("click", async function() { if (!editingId || !confirm("Delete this specialist? This cannot be undone.")) return; try { await apiCall({ action: "delete_specialist", expert_id: editingId }); await loadAllData(); populateEditDropdown(); clearForm("edit"); document.getElementById("editSelect").value = ""; document.getElementById("editForm").style.display = "none"; document.getElementById("editButtons").style.display = "none"; showStatus("editStatus", "success", "Specialist deleted."); } catch (err) { showStatus("editStatus", "error", err.message); } });
+    function populateMemberDropdown() { var sel = document.getElementById("memberSelect"); sel.innerHTML = '<option value="">-- Choose a member --</option>'; allMembers.forEach(function(m) { var o = document.createElement("option"); o.value = m.member_number; o.textContent = m.name + " (" + m.member_number + ")"; sel.appendChild(o); }); }
+    document.getElementById("saveMemberBtn").addEventListener("click", async function() { var name = document.getElementById("newMemberName").value.trim(); var num = document.getElementById("newMemberNumber").value.trim(); if (!name || !num) { showStatus("addMemberStatus", "error", "Both fields are required."); return; } var btn = this; btn.disabled = true; btn.textContent = "Creating..."; try { await apiCall({ action: "add_member", name: name, member_number: num }); await loadAllData(); populateMemberDropdown(); document.getElementById("newMemberName").value = ""; document.getElementById("newMemberNumber").value = ""; showStatus("addMemberStatus", "success", "Member created! Switch to Edit Member to configure."); } catch (err) { showStatus("addMemberStatus", "error", err.message); } finally { btn.disabled = false; btn.textContent = "Create Member"; } });
+    document.getElementById("copyPluginBtn").addEventListener("click", function() { var code = document.getElementById("pluginEmbedCode").textContent; navigator.clipboard.writeText(code).then(function() { var btn = document.getElementById("copyPluginBtn"); btn.textContent = "Copied!"; setTimeout(function() { btn.textContent = "Copy Code"; }, 2000); }); });
+    document.getElementById("deleteMemberBtn").addEventListener("click", async function() { if (!currentMember) return; if (!confirm("Delete member \"" + currentMember.name + " (" + currentMember.member_number + ")\"?\n\nThis will remove all their settings and exclusions. This cannot be undone.")) return; var btn = this; btn.disabled = true; btn.textContent = "Deleting..."; try { await apiCall({ action: "delete_member", member_number: currentMember.member_number }); delete allExclusionMap[currentMember.member_number]; allMembers = allMembers.filter(function(m) { return m.member_number !== currentMember.member_number; }); currentMember = null; populateMemberDropdown(); document.getElementById("memberSelect").value = ""; document.getElementById("memberContent").style.display = "none"; showStatus("manageStatus", "success", "Member deleted."); } catch (err) { showStatus("deleteMemberStatus", "error", err.message); } finally { btn.disabled = false; btn.textContent = "Delete Member"; } });
     document.getElementById("memberSelect").addEventListener("change", function() {
       var mn = this.value; if (!mn) { document.getElementById("memberContent").style.display = "none"; return; }
       var member = allMembers.find(function(m) { return m.member_number === mn; });
@@ -497,21 +272,17 @@
       document.getElementById("mWebsiteEnabled").checked = memberSettings.website_enabled;
       var embed = '<div id="vfo-showroom"></div>\n<script src="https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/vfo-widget/vfo-widget.js?v=23" data-vfo-key="' + member.manage_key + '"><\/script>';
       document.getElementById("pluginEmbedCode").textContent = embed;
-      // Reset feature tabs to Website Plugin
+      // Reset feature tabs to Specialists
       document.getElementById("memberFeatureTabs").querySelectorAll(".sub-tab").forEach(function(t) { t.classList.remove("active"); });
-      [document.getElementById("websitePluginPanel"), document.getElementById("adminCiqPanel"), document.getElementById("adminGrowthPlanPanel"), document.getElementById("adminGrowthCreditsPanel"), document.getElementById("adminSettingsPanel")].forEach(function(p) { p.classList.remove("active"); });
-      document.querySelector('#memberFeatureTabs [data-subpanel="websitePluginPanel"]').classList.add("active");
-      document.getElementById("websitePluginPanel").classList.add("active");
-      activateSubTab("specialistsSubPanel");
+      [document.getElementById("adminSpecialistsPanel"), document.getElementById("websitePluginPanel"), document.getElementById("adminCiqPanel"), document.getElementById("adminGrowthPlanPanel"), document.getElementById("adminGrowthCreditsPanel"), document.getElementById("adminSettingsPanel")].forEach(function(p) { p.classList.remove("active"); });
+      document.querySelector('#memberFeatureTabs [data-subpanel="adminSpecialistsPanel"]').classList.add("active");
+      document.getElementById("adminSpecialistsPanel").classList.add("active");
       var btn = document.getElementById("mSaveBtn"); btn.textContent = "Save Changes"; btn.style.opacity = "1";
       document.getElementById("mUnsavedMsg").classList.remove("visible");
     });
-
     document.getElementById("mSaveBtn").addEventListener("click", function() { saveMemberSettings("manageStatus"); });
-
-    document.querySelectorAll('select').forEach(function(sel) {
-      sel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
-    });
+    document.getElementById("mSaveBtn2").addEventListener("click", function() { saveMemberSettings("manageStatus2"); });
+    document.querySelectorAll('select').forEach(function(sel) { sel.addEventListener('mousedown', function(e) { e.stopPropagation(); }); });
   </script>
 </body>
 </html>

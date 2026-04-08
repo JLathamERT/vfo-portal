@@ -210,6 +210,11 @@ function checkMemberChanges() {
   document.getElementById("mUnsavedMsg").classList.toggle("visible", changed);
   var btn = document.getElementById("mSaveBtn");
   if (changed) { btn.textContent = "Save Changes"; btn.style.opacity = "1"; }
+  // Update second save bar if it exists (admin side)
+  var msg2 = document.getElementById("mUnsavedMsg2");
+  if (msg2) msg2.classList.toggle("visible", changed);
+  var btn2 = document.getElementById("mSaveBtn2");
+  if (btn2 && changed) { btn2.textContent = "Save Changes"; btn2.style.opacity = "1"; }
 }
 
 function loadMemberData(member) {
@@ -226,6 +231,7 @@ function loadMemberData(member) {
 async function saveMemberSettings(statusId) {
   if (!currentMember) return;
   var btn = document.getElementById("mSaveBtn"); btn.disabled = true; btn.textContent = "Saving...";
+  var btn2 = document.getElementById("mSaveBtn2"); if (btn2) { btn2.disabled = true; btn2.textContent = "Saving..."; }
   try {
     await apiCall({
       action: "save_member",
@@ -237,9 +243,13 @@ async function saveMemberSettings(statusId) {
     allExclusionMap[currentMember.member_number] = Array.from(memberExclusions);
     Object.assign(currentMember, memberSettings);
     document.getElementById("mUnsavedMsg").classList.remove("visible");
+    var msg2 = document.getElementById("mUnsavedMsg2"); if (msg2) msg2.classList.remove("visible");
     showStatus(statusId, "success", "Settings saved!");
   } catch (err) { showStatus(statusId, "error", err.message); }
-  finally { btn.disabled = false; btn.textContent = "Saved ✓"; btn.style.opacity = "0.6"; }
+  finally {
+    btn.disabled = false; btn.textContent = "Saved ✓"; btn.style.opacity = "0.6";
+    if (btn2) { btn2.disabled = false; btn2.textContent = "Saved ✓"; btn2.style.opacity = "0.6"; }
+  }
 }
 
 function setupMemberSearchAndBulk() {
@@ -251,7 +261,7 @@ function setupMemberSearchAndBulk() {
 function setupWebsitePluginSubTabs() {
   var container = document.getElementById("memberSubTabs");
   var tabs = container.querySelectorAll(".sub-tab");
-  var panels = [document.getElementById("specialistsSubPanel"), document.getElementById("appearanceSubPanel"), document.getElementById("pluginSubPanel")];
+  var panels = [document.getElementById("appearanceSubPanel"), document.getElementById("pluginSubPanel")];
   tabs.forEach(function(tab) {
     tab.addEventListener("click", function() {
       tabs.forEach(function(t) { t.classList.remove("active"); });
@@ -264,7 +274,7 @@ function setupWebsitePluginSubTabs() {
 
 function activateSubTab(subPanelId) {
   var tabs = document.getElementById("memberSubTabs").querySelectorAll(".sub-tab");
-  var panels = [document.getElementById("specialistsSubPanel"), document.getElementById("appearanceSubPanel"), document.getElementById("pluginSubPanel")];
+  var panels = [document.getElementById("appearanceSubPanel"), document.getElementById("pluginSubPanel")];
   tabs.forEach(function(t) { t.classList.remove("active"); });
   panels.forEach(function(p) { p.classList.remove("active"); });
   var tab = document.getElementById("memberSubTabs").querySelector('[data-subpanel="' + subPanelId + '"]');
