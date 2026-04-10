@@ -484,25 +484,41 @@
         var services = data.services || [];
         if (services.length === 0) { list.innerHTML = '<p style="color:#5a8ab5;font-size:14px;">No services available.</p>'; return; }
         list.innerHTML = "";
+        // Group by category
+        var categories = [];
+        var catMap = {};
         services.forEach(function(svc) {
-          var card = document.createElement("div");
-          card.className = "settings-section";
-          card.style.marginBottom = "12px";
-          card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="color:#ffffff;font-size:15px;font-weight:600;">' + svc.name + '</div>' + (svc.description ? '<div style="color:#8bacc8;font-size:13px;margin-top:4px;">' + svc.description + '</div>' : '') + '</div><div style="display:flex;align-items:center;gap:12px;"><span style="color:#ffffff;font-weight:700;font-size:16px;">' + svc.credit_cost + '</span><span style="color:#5a8ab5;font-size:12px;">credits</span><button class="btn-primary gc-redeem-btn" style="padding:8px 20px;font-size:13px;" data-id="' + svc.id + '" data-name="' + svc.name + '" data-cost="' + svc.credit_cost + '">Redeem</button></div></div><div class="gc-confirm-row" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);display:none;"><span style="color:#ffb347;font-size:13px;">Redeem ' + svc.name + ' for ' + svc.credit_cost + ' credits?</span><div style="display:inline-flex;gap:8px;margin-left:12px;"><button class="btn-primary gc-confirm-yes" style="padding:6px 16px;font-size:12px;">Yes</button><button class="btn-secondary gc-confirm-no" style="padding:6px 16px;font-size:12px;">Cancel</button></div></div>';
-          var redeemBtn = card.querySelector(".gc-redeem-btn");
-          var confirmRow = card.querySelector(".gc-confirm-row");
-          redeemBtn.addEventListener("click", function() {
-            // Hide any other open confirms
-            document.querySelectorAll(".gc-confirm-row").forEach(function(r) { r.style.display = "none"; });
-            confirmRow.style.display = "flex";
-            confirmRow.style.alignItems = "center";
+          var cat = svc.category || "Other";
+          if (!catMap[cat]) { catMap[cat] = []; categories.push(cat); }
+          catMap[cat].push(svc);
+        });
+        categories.forEach(function(cat) {
+          var section = document.createElement("div");
+          section.className = "settings-section";
+          section.style.marginBottom = "20px";
+          var heading = document.createElement("div");
+          heading.className = "settings-title";
+          heading.textContent = cat;
+          section.appendChild(heading);
+          catMap[cat].forEach(function(svc) {
+            var row = document.createElement("div");
+            row.style.cssText = "padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.06);";
+            row.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;"><div style="flex:1;"><span style="color:#ffffff;font-size:14px;">' + svc.name + '</span></div><div style="display:flex;align-items:center;gap:12px;"><span style="color:#ffffff;font-weight:700;">' + svc.credit_cost + '</span><span style="color:#5a8ab5;font-size:11px;">credits</span><button class="btn-primary gc-redeem-btn" style="padding:6px 18px;font-size:12px;" data-id="' + svc.id + '" data-name="' + svc.name + '" data-cost="' + svc.credit_cost + '">Redeem</button></div></div><div class="gc-confirm-row" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);"><span style="color:#ffb347;font-size:13px;">Redeem ' + svc.name + ' for ' + svc.credit_cost + ' credits?</span><div style="display:inline-flex;gap:8px;margin-left:12px;"><button class="btn-primary gc-confirm-yes" style="padding:5px 14px;font-size:12px;">Yes</button><button class="btn-secondary gc-confirm-no" style="padding:5px 14px;font-size:12px;">Cancel</button></div></div>';
+            var redeemBtn = row.querySelector(".gc-redeem-btn");
+            var confirmRow = row.querySelector(".gc-confirm-row");
+            redeemBtn.addEventListener("click", function() {
+              document.querySelectorAll(".gc-confirm-row").forEach(function(r) { r.style.display = "none"; });
+              confirmRow.style.display = "flex";
+              confirmRow.style.alignItems = "center";
+            });
+            confirmRow.querySelector(".gc-confirm-no").addEventListener("click", function() { confirmRow.style.display = "none"; });
+            confirmRow.querySelector(".gc-confirm-yes").addEventListener("click", function() {
+              confirmRow.style.display = "none";
+              redeemService(svc.id, svc.name, svc.credit_cost);
+            });
+            section.appendChild(row);
           });
-          confirmRow.querySelector(".gc-confirm-no").addEventListener("click", function() { confirmRow.style.display = "none"; });
-          confirmRow.querySelector(".gc-confirm-yes").addEventListener("click", function() {
-            confirmRow.style.display = "none";
-            redeemService(svc.id, svc.name, svc.credit_cost);
-          });
-          list.appendChild(card);
+          list.appendChild(section);
         });
       } catch (err) { list.innerHTML = '<p style="color:#ff6b6b;font-size:14px;">Error loading services.</p>'; }
     }
