@@ -20,7 +20,7 @@ body { min-height: 100vh; background: #073991; font-family: 'DM Sans', sans-seri
 .sign-out-btn { padding: 8px 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.25); background: transparent; color: #b0cce5; font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
 .sign-out-btn:hover { border-color: #ff6b6b; color: #ff6b6b; }
 .main-tabs { display: flex; gap: 4px; margin-bottom: 36px; background: rgba(0,0,0,0.15); border-radius: 12px; padding: 4px; }
-.main-tab { flex: 1; padding: 12px 8px; text-align: center; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; color: #8bacc8; transition: all 0.25s; font-family: 'DM Sans', sans-serif; border: none; background: none; }
+.main-tab { flex: 1; padding: 12px 8px; text-align: center; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; color: #8bacc8; transition: all 0.25s; font-family: 'DM Sans', sans-serif; border: none; background: none; white-space: nowrap; }
 .main-tab:hover { color: #ffffff; }
 .main-tab.active { background: rgba(255,255,255,0.18); color: #ffffff; font-weight: 600; }
 .tab-panel { display: none; }
