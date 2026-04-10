@@ -1,4 +1,5 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { overflow-y: scroll; }
 body { min-height: 100vh; background: #073991; font-family: 'DM Sans', sans-serif; color: #ffffff; }
 .gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; background: #073991; }
 .gate h1 { font-family: 'Playfair Display', serif; font-size: 32px; color: #ffffff; margin-bottom: 8px; }
