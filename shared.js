@@ -25,7 +25,7 @@ async function apiCall(body) {
   }
   var data = await res.json();
   if (!res.ok) {
-    if (res.status === 401) { signOut(); throw new Error("Session expired — please log in again."); }
+    if (res.status === 401) { sessionStorage.removeItem("vfo_session"); signOut(); throw new Error("Session expired — please log in again."); }
     throw new Error(data.error || "Request failed");
   }
   return data;
@@ -59,7 +59,7 @@ async function loadAllData() {
 // ─── SIGN OUT ──────────────────────────────────────────
 function signOut() {
   authToken = null;
-  // Redirect to index (role picker)
+  sessionStorage.removeItem("vfo_session");
   window.location.href = "index.html";
 }
 
@@ -69,6 +69,20 @@ function setupLogin(expectedRole) {
   var emailInput = document.getElementById("emailInput");
   var passcodeInput = document.getElementById("passcodeInput");
   var loginAction = expectedRole === "member" ? "member_login" : "admin_login";
+
+  // Try restoring session from sessionStorage
+  try {
+    var saved = sessionStorage.getItem("vfo_session");
+    if (saved) {
+      var session = JSON.parse(saved);
+      if (session.token && session.role === expectedRole) {
+        authToken = session.token;
+        document.getElementById("gate").style.display = "none";
+        if (typeof onLoginSuccess === "function") onLoginSuccess(session);
+        return;
+      }
+    }
+  } catch (e) {}
 
   async function doLogin() {
     var email = emailInput.value.trim();
@@ -84,9 +98,9 @@ function setupLogin(expectedRole) {
       var data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
       authToken = data.token;
+      sessionStorage.setItem("vfo_session", JSON.stringify(data));
       document.getElementById("gate").style.display = "none";
       document.getElementById("gateError").style.display = "none";
-      // Call the page-specific init
       if (typeof onLoginSuccess === "function") onLoginSuccess(data);
     } catch (err) {
       document.getElementById("gateError").textContent = err.message;
