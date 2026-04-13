@@ -39,7 +39,7 @@
     </div>
     <!-- Specialists Panel -->
     <div class="tab-panel" id="specialistsPanel">
-      <div class="sub-tabs"><button class="sub-tab active" data-subpanel="addSubPanel">Add Specialist</button><button class="sub-tab" data-subpanel="editSubPanel">Edit Specialist</button></div>
+      <div class="sub-tabs"><button class="sub-tab active" data-subpanel="addSubPanel">Add Specialist</button><button class="sub-tab" data-subpanel="editSubPanel">Edit Specialist</button><button class="sub-tab" data-subpanel="reorderSubPanel">Reorder</button></div>
       <div class="sub-panel active" id="addSubPanel">
         <div id="addForm"></div>
         <div class="submit-row"><button class="btn-primary" id="addSubmitBtn">Add Specialist</button><button class="btn-secondary" id="addClearBtn">Clear Form</button></div>
@@ -50,6 +50,13 @@
         <div id="editForm" style="display:none;"></div>
         <div class="submit-row" id="editButtons" style="display:none;"><button class="btn-primary" id="editSubmitBtn">Save Changes</button><button class="btn-secondary" id="editCancelBtn">Cancel</button><button class="btn-danger" id="editDeleteBtn">Delete</button></div>
         <div class="status-msg" id="editStatus"></div>
+      </div>
+      <div class="sub-panel" id="reorderSubPanel">
+        <p style="color:#8bacc8;font-size:13px;margin-bottom:16px;font-style:italic;">Drag and drop to reorder specialists. This order applies to the widget and showroom for all members.</p>
+        <div class="search-wrap"><span class="search-icon">&#x2315;</span><input type="text" class="search-input" id="reorderSearch" placeholder="Search to find a specialist..."></div>
+        <div id="reorderList" style="margin-bottom:20px;"></div>
+        <div class="save-bar"><p class="unsaved-indicator" id="reorderUnsavedMsg">You have unsaved changes</p><button class="btn-primary" id="reorderSaveBtn">Save Order</button></div>
+        <div class="status-msg" id="reorderStatus"></div>
       </div>
     </div>
     <!-- Members Panel -->
@@ -750,6 +757,87 @@
       } catch (err) { showStatus("adminPasscodeStatus", "error", err.message); }
       finally { btn.disabled = false; btn.textContent = "Update Passcode"; }
     });
+
+    // ─── REORDER SPECIALISTS ────────────────────────────
+    var reorderDirty = false;
+    var reorderExperts = [];
+
+    function renderReorderList(filter) {
+      var list = document.getElementById("reorderList");
+      list.innerHTML = "";
+      var filtered = filter ? reorderExperts.filter(function(e) { return e.name.toLowerCase().indexOf(filter.toLowerCase()) > -1; }) : reorderExperts;
+      filtered.forEach(function(expert, idx) {
+        var item = document.createElement("div");
+        item.className = "reorder-item";
+        item.setAttribute("data-id", expert.id);
+        item.setAttribute("draggable", "true");
+        var globalIdx = reorderExperts.indexOf(expert);
+        item.innerHTML = '<span class="reorder-grip">&#x2630;</span><span class="reorder-num">' + (globalIdx + 1) + '</span><span class="reorder-name">' + expert.name + '</span>';
+
+        item.addEventListener("dragstart", function(e) {
+          e.dataTransfer.setData("text/plain", String(expert.id));
+          item.classList.add("dragging");
+        });
+        item.addEventListener("dragend", function() { item.classList.remove("dragging"); });
+        item.addEventListener("dragover", function(e) { e.preventDefault(); item.classList.add("drag-over"); });
+        item.addEventListener("dragleave", function() { item.classList.remove("drag-over"); });
+        item.addEventListener("drop", function(e) {
+          e.preventDefault();
+          item.classList.remove("drag-over");
+          var draggedId = parseInt(e.dataTransfer.getData("text/plain"));
+          var targetId = expert.id;
+          if (draggedId === targetId) return;
+          var fromIdx = reorderExperts.findIndex(function(x) { return x.id === draggedId; });
+          var toIdx = reorderExperts.findIndex(function(x) { return x.id === targetId; });
+          var moved = reorderExperts.splice(fromIdx, 1)[0];
+          reorderExperts.splice(toIdx, 0, moved);
+          reorderDirty = true;
+          document.getElementById("reorderUnsavedMsg").classList.add("visible");
+          renderReorderList(document.getElementById("reorderSearch").value.trim());
+        });
+
+        list.appendChild(item);
+      });
+    }
+
+    function loadReorderList() {
+      reorderExperts = allExperts.slice().sort(function(a, b) { return (a.sort_order || 0) - (b.sort_order || 0); });
+      reorderDirty = false;
+      document.getElementById("reorderUnsavedMsg").classList.remove("visible");
+      renderReorderList("");
+    }
+
+    document.getElementById("reorderSearch").addEventListener("input", function() {
+      renderReorderList(this.value.trim());
+    });
+
+    document.getElementById("reorderSaveBtn").addEventListener("click", async function() {
+      var btn = this; btn.disabled = true; btn.textContent = "Saving...";
+      try {
+        var order = reorderExperts.map(function(e, i) { return { id: e.id, sort_order: i + 1 }; });
+        await apiCall({ action: "save_specialist_order", order: order });
+        // Update allExperts with new sort_order
+        order.forEach(function(o) {
+          var ex = allExperts.find(function(e) { return e.id === o.id; });
+          if (ex) ex.sort_order = o.sort_order;
+        });
+        reorderDirty = false;
+        document.getElementById("reorderUnsavedMsg").classList.remove("visible");
+        showStatus("reorderStatus", "success", "Order saved!");
+      } catch (err) { showStatus("reorderStatus", "error", err.message); }
+      finally { btn.disabled = false; btn.textContent = "Save Order"; }
+    });
+
+    // Load reorder list when clicking the Reorder tab
+    (function() {
+      var specialistsPanel = document.getElementById("specialistsPanel");
+      var tabs = specialistsPanel.querySelector(".sub-tabs").querySelectorAll(".sub-tab");
+      tabs.forEach(function(tab) {
+        if (tab.getAttribute("data-subpanel") === "reorderSubPanel") {
+          tab.addEventListener("click", function() { loadReorderList(); });
+        }
+      });
+    })();
   </script>
 </body>
 </html>
