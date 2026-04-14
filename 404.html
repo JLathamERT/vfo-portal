@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      var path = window.location.pathname;
+      var base = '/vfo-portal/';
+      if (path.startsWith(base)) {
+        var rest = path.slice(base.length);
+        sessionStorage.setItem('vfo_redirect', rest);
+      }
+      window.location.replace(base);
+    </script>
+  </head>
+  <body></body>
+</html>
