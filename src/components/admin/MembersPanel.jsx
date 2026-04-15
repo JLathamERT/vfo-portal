@@ -64,6 +64,7 @@ function FeatureTabDropdown({ label, isActive, options, onSelect }) {
 
 function AdvisorsPanel({ allMembers, allExperts, allExclusionMap, onDataChange, initialTab }) {
   const [activeTab, setActiveTab] = useState(initialTab || 'search')
+  useEffect(() => { setActiveTab(initialTab || 'search') }, [initialTab])
   const [selectedMember, setSelectedMember] = useState(null)
   const [memberFeatureTab, setMemberFeatureTab] = useState('profile')
   const [memberSearch, setMemberSearch] = useState('')
@@ -116,14 +117,14 @@ function AdvisorsPanel({ allMembers, allExperts, allExclusionMap, onDataChange, 
             <div style={{ fontSize: '13px', color: '#8bacc8', marginTop: '4px' }}>{selectedMember.plugin_member_number}</div>
           </div>
           <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '24px', flexWrap: 'wrap' }}>
+          <FeatureTabDropdown label="Profile" isActive={['profile_details','profile_edit','profile_history'].includes(memberFeatureTab)} options={[{key:'profile_details',label:'Details'},{key:'profile_edit',label:'Edit Advisor'},{key:'profile_history',label:'Type History'}]} onSelect={setMemberFeatureTab} />
+          <FeatureTabDropdown label="MSM Tracking" isActive={['msm_meetings','msm_program_holistic','msm_program_partnership','msm_program_tax','msm_program_coaching'].includes(memberFeatureTab)} options={[{key:'msm_meetings',label:'MSM Home'},{key:'msm_program_holistic',label:'Programs · VFO Holistic Planning'},{key:'msm_program_partnership',label:'Programs · Partnership Fast Track'},{key:'msm_program_tax',label:'Programs · VFO Tax Planning'},{key:'msm_program_coaching',label:'Programs · Advanced Coaching'}]} onSelect={setMemberFeatureTab} />
             {[['specialists','Specialists'],['showroom','Showroom'],['website','Website Plugin'],['ciq','CIQ'],['growthplan','Growth Plan'],['gc','GC Marketplace'],['vault','The Vault'],['settings','Settings']].map(([key, label]) => (
             <button key={key} style={{ padding: '10px 16px', background: 'transparent', border: 'none', borderBottom: memberFeatureTab === key ? '2px solid #5b9fe6' : '2px solid transparent', color: memberFeatureTab === key ? '#fff' : '#8bacc8', fontSize: '13px', fontWeight: memberFeatureTab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }} onClick={() => setMemberFeatureTab(key)}>{label}</button>
           ))}
-          <FeatureTabDropdown label="Profile" isActive={['profile_details','profile_edit','profile_history'].includes(memberFeatureTab)} options={[{key:'profile_details',label:'Details'},{key:'profile_edit',label:'Edit Advisor'},{key:'profile_history',label:'Type History'}]} onSelect={setMemberFeatureTab} />
-          <FeatureTabDropdown label="MSM Tracking" isActive={['msm_programs','msm_meetings'].includes(memberFeatureTab)} options={[{key:'msm_programs',label:'Programs'},{key:'msm_meetings',label:'Meetings'}]} onSelect={setMemberFeatureTab} />
           </div>
           {['profile_details','profile_edit','profile_history'].includes(memberFeatureTab) && <MemberProfile member={selectedMember} allMembers={allMembers} onDataChange={onDataChange} activeSection={memberFeatureTab} />}
-          {['msm_programs','msm_meetings'].includes(memberFeatureTab) && <MSMTracking member={selectedMember} activeSection={memberFeatureTab} />}          {memberFeatureTab === 'specialists' && <MemberSpecialists member={selectedMember} allExperts={allExperts} allExclusionMap={allExclusionMap} onDataChange={onDataChange} />}
+          {['msm_meetings','msm_program_holistic','msm_program_partnership','msm_program_tax','msm_program_coaching'].includes(memberFeatureTab) && <MSMTracking member={selectedMember} activeSection={memberFeatureTab} onDataChange={onDataChange} />}          {memberFeatureTab === 'specialists' && <MemberSpecialists member={selectedMember} allExperts={allExperts} allExclusionMap={allExclusionMap} onDataChange={onDataChange} />}
           {memberFeatureTab === 'showroom' && <ComingSoon title="Showroom" />}
           {memberFeatureTab === 'website' && <MemberWebsitePlugin member={selectedMember} onDataChange={onDataChange} readOnly={false} />}
           {memberFeatureTab === 'ciq' && <ComingSoon title="CIQ" />}

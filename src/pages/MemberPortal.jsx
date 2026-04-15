@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getSession, clearSession, callApi } from '../lib/api'
 import MemberWebsitePlugin from '../components/shared/MemberWebsitePlugin'
 import MemberVault from '../components/shared/MemberVault'
 import MemberGCMarketplace from '../components/member/MemberGCMarketplace'
+import MemberMSMTracking from '../components/member/MemberMSMTracking'
 
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
 
@@ -16,6 +17,8 @@ export default function MemberPortal() {
   const [allExperts, setAllExperts] = useState([])
   const [exclusions, setExclusions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [enabledPrograms, setEnabledPrograms] = useState([])
+  const [allPrograms, setAllPrograms] = useState([])
 
   useEffect(() => {
     if (!session || session.role !== 'member') { navigate('/member/login'); return }
@@ -24,7 +27,11 @@ export default function MemberPortal() {
 
   async function loadData() {
     try {
-      const data = await callApi('load_data')
+      const [data, progData, enabledData] = await Promise.all([
+        callApi('load_data'),
+        callApi('msm_load_programs'),
+        callApi('msm_load_enabled_programs', { member_number: session.member_number }),
+      ])
       const me = (data.members || []).find(m => m.member_number === session.member_number)
       setMemberData(me || null)
       setAllExperts(data.experts || [])
@@ -32,6 +39,8 @@ export default function MemberPortal() {
         .filter(e => e.member_number === session.member_number)
         .map(e => e.expert_id)
       setExclusions(myExclusions)
+      setAllPrograms(progData.programs || [])
+      setEnabledPrograms(enabledData.enabled || [])
     } catch (err) {
       console.error('Load error:', err)
     } finally {
@@ -44,8 +53,18 @@ export default function MemberPortal() {
 
   if (!session) return null
 
-  const tabs = ['specialists','showroom','website','ciq','growthplan','gc','vault']
+  const PROGRAM_KEYS = { 'VFO Holistic Planning': 'msm_holistic', 'Partnership Fast Track': 'msm_partnership', 'VFO Tax Planning': 'msm_tax', 'Advanced Coaching': 'msm_coaching' }
+
+  const enabledProgramTabs = allPrograms
+    .filter(p => enabledPrograms.some(e => e.program_id === p.id))
+    .map(p => PROGRAM_KEYS[p.name])
+    .filter(Boolean)
+
+  const tabs = ['profile', 'msm_home', ...enabledProgramTabs, 'specialists', 'showroom', 'website', 'ciq', 'growthplan', 'gc', 'vault']
   const tabLabels = {
+    profile: 'Profile', msm_home: 'MSM Home',
+    msm_holistic: 'Holistic Planning', msm_partnership: 'Partnership Fast Track',
+    msm_tax: 'Tax Planning', msm_coaching: 'Advanced Coaching',
     specialists: 'Specialists', showroom: 'Showroom', website: 'Website Plugin',
     ciq: 'CIQ', growthplan: 'Growth Plan', gc: 'GC Marketplace', vault: 'The Vault'
   }
@@ -65,8 +84,22 @@ export default function MemberPortal() {
 
       {!showSettings && (
         <>
-          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '0 24px', background: '#0a2260', overflowX: 'auto' }}>
-            {tabs.map(tab => (
+          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '0 24px', background: '#0a2260', position: 'relative', zIndex: 100 }}>
+            <button onClick={() => setActiveTab('profile')} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === 'profile' ? '2px solid #5b9fe6' : '2px solid transparent', color: activeTab === 'profile' ? '#fff' : '#8bacc8', fontSize: '14px', fontWeight: activeTab === 'profile' ? '600' : '400', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}>Profile</button>
+            <NavDropdown
+              label="MSM Tracking"
+              isActive={activeTab === 'msm_home' || activeTab?.startsWith('msm_')}
+              activeTab={activeTab}
+              options={[
+                { key: 'msm_home', label: 'MSM Home' },
+                ...allPrograms
+                  .filter(p => enabledPrograms.some(e => e.program_id === p.id))
+                  .map(p => ({ key: { 'VFO Holistic Planning': 'msm_holistic', 'Partnership Fast Track': 'msm_partnership', 'VFO Tax Planning': 'msm_tax', 'Advanced Coaching': 'msm_coaching' }[p.name], label: p.name }))
+                  .filter(o => o.key)
+              ]}
+              onSelect={setActiveTab}
+            />
+            {['specialists','showroom','website','ciq','growthplan','gc','vault'].map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === tab ? '2px solid #5b9fe6' : '2px solid transparent', color: activeTab === tab ? '#fff' : '#8bacc8', fontSize: '14px', fontWeight: activeTab === tab ? '600' : '400', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}>
                 {tabLabels[tab]}
               </button>
@@ -82,6 +115,12 @@ export default function MemberPortal() {
 
           {loading && activeTab && <div style={{ textAlign: 'center', padding: '60px', color: '#8bacc8' }}>Loading...</div>}
 
+          {!loading && activeTab === 'profile' && memberData && (
+            <MemberProfile member={memberData} />
+          )}
+          {!loading && (activeTab === 'msm_home' || activeTab?.startsWith('msm_')) && memberData && (
+            <MemberMSMTracking member={memberData} activeTab={activeTab} onNavigate={setActiveTab} />
+          )}
           {!loading && activeTab === 'specialists' && memberData && (
             <MemberSpecialists member={memberData} allExperts={allExperts} exclusions={exclusions} onDataChange={loadData} />
           )}
@@ -104,6 +143,34 @@ export default function MemberPortal() {
             </div>
           )}
         </>
+      )}
+    </div>
+  )
+}
+
+function NavDropdown({ label, isActive, options, activeTab, onSelect }) {
+  const [open, setOpen] = useState(false)
+  const closeTimer = useRef(null)
+
+  function handleMouseEnter() { clearTimeout(closeTimer.current); setOpen(true) }
+  function handleMouseLeave() { closeTimer.current = setTimeout(() => setOpen(false), 200) }
+
+  return (
+    <div style={{ position: 'relative' }} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+      <button style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: isActive ? '2px solid #5b9fe6' : '2px solid transparent', color: isActive ? '#fff' : '#8bacc8', fontSize: '14px', fontWeight: isActive ? '600' : '400', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {label}<span style={{ fontSize: '9px', opacity: 0.6 }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, background: '#0d2a6e', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', minWidth: '200px', zIndex: 200, padding: '4px 0', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+          {options.map(opt => (
+            <button key={opt.key} onClick={() => { onSelect(opt.key); setOpen(false) }}
+              style={{ display: 'block', width: '100%', padding: '8px 16px', background: activeTab === opt.key ? 'rgba(91,159,230,0.15)' : 'transparent', border: 'none', color: activeTab === opt.key ? '#5b9fe6' : '#fff', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans, sans-serif' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+              onMouseLeave={e => e.currentTarget.style.background = activeTab === opt.key ? 'rgba(91,159,230,0.15)' : 'transparent'}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -184,6 +251,31 @@ function MemberSpecialists({ member, allExperts, exclusions, onDataChange }) {
         {dirty && <span style={{ fontSize: '13px', color: '#d4af37' }}>You have unsaved changes</span>}
         <button onClick={save} style={{ padding: '10px 28px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Save Changes</button>
         {status && <span style={{ color: statusType === 'success' ? '#27ae60' : '#ff6b6b', fontSize: '13px' }}>{status}</span>}
+      </div>
+    </div>
+  )
+}
+
+function MemberProfile({ member }) {
+  const sectionStyle = { background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }
+  const labelStyle = { fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }
+  const statusColors = { Active: '#27ae60', Lost: '#e74c3c', Removed: '#8bacc8' }
+
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
+      <div style={sectionStyle}>
+        <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+          <div><div style={labelStyle}>Member Type</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{member.member_type || '—'}</div></div>
+          <div><div style={labelStyle}>Status</div><div style={{ fontSize: '15px', color: statusColors[member.elite_status] || '#fff', marginTop: '4px', fontWeight: '600' }}>{member.elite_status || '—'}</div></div>
+          <div><div style={labelStyle}>Member Number</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px', fontFamily: 'monospace' }}>{member.member_number}</div></div>
+        </div>
+      </div>
+      <div style={sectionStyle}>
+        <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+          <div><div style={labelStyle}>Join Date</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{member.join_date ? member.join_date.split('T')[0] : '—'}</div></div>
+          <div><div style={labelStyle}>Email</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{member.email || '—'}</div></div>
+          <div><div style={labelStyle}>Revenue Decision</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{member.revenue_decision || '—'}</div></div>
+        </div>
       </div>
     </div>
   )

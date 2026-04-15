@@ -10,12 +10,18 @@ const PROGRAMS = [
 
 const TEAM_MEMBERS = ['Sarah Freitas', 'Rachael', 'Bridger Silvester', 'Tracy Miller', 'Evan Anderson']
 
-export default function MSMTracking({ member, activeSection }) {
-  const activeTab = activeSection === 'msm_meetings' ? 'meetings' : 'programs'
+export default function MSMTracking({ member, activeSection, onDataChange }) {
+  const activeTab = activeSection === 'msm_meetings' ? 'home' : 'programs'
+  const activeProgramKey = activeSection === 'msm_program_holistic' ? 'holistic'
+    : activeSection === 'msm_program_partnership' ? 'partnership'
+    : activeSection === 'msm_program_tax' ? 'tax'
+    : activeSection === 'msm_program_coaching' ? 'coaching'
+    : null
   const [programs, setPrograms] = useState([])
   const [enrollments, setEnrollments] = useState([])
   const [meetings, setMeetings] = useState([])
-  const [activeProgram, setActiveProgram] = useState('holistic')
+  const [enabledPrograms, setEnabledPrograms] = useState([])
+  const [activeProgram, setActiveProgram] = useState(activeProgramKey || 'holistic')
   const [loading, setLoading] = useState(true)
 
   // Meeting log state
@@ -30,14 +36,16 @@ export default function MSMTracking({ member, activeSection }) {
   async function loadData() {
     setLoading(true)
     try {
-      const [progData, enrollData, meetData] = await Promise.all([
+      const [progData, enrollData, meetData, enabledData] = await Promise.all([
         callApi('msm_load_programs'),
         callApi('msm_load_enrollments', { member_number: member.plugin_member_number }),
         callApi('msm_load_meetings', { member_number: member.plugin_member_number }),
+        callApi('msm_load_enabled_programs', { member_number: member.plugin_member_number }),
       ])
       setPrograms(progData.programs || [])
       setEnrollments(enrollData.enrollments || [])
       setMeetings(meetData.meetings || [])
+      setEnabledPrograms(enabledData.enabled || [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -90,37 +98,43 @@ export default function MSMTracking({ member, activeSection }) {
       {/* PROGRAMS TAB */}
       {activeTab === 'programs' && (
         <div>
-          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '24px', flexWrap: 'wrap' }}>
-            {PROGRAMS.map(p => (
-              <button key={p.key} style={tabStyle(activeProgram === p.key)} onClick={() => setActiveProgram(p.key)}>{p.name}</button>
-            ))}
-          </div>
-
           {PROGRAMS.map(p => {
-            if (activeProgram !== p.key) return null
+            if (activeProgramKey !== p.key) return null
             const dbProgram = programs.find(prog => prog.name === p.name)
-            const enrollment = dbProgram ? getEnrollment(p.name) : null
-
             if (!dbProgram) {
               return (
                 <div key={p.key} style={{ textAlign: 'center', padding: '40px', color: '#8bacc8' }}>
-                  Program "{p.name}" not found in database. Add it to the programs table first.
+                  Program "{p.name}" not found in database.
                 </div>
               )
             }
-
+            const isEnabled = enabledPrograms.some(e => e.program_id === dbProgram.id)
+            if (!isEnabled) {
+              return (
+                <div key={p.key} style={{ textAlign: 'center', padding: '60px 20px', color: '#8bacc8' }}>
+                  <div style={{ fontSize: '18px', color: '#fff', marginBottom: '8px', fontFamily: 'Playfair Display, serif' }}>{p.name}</div>
+                  <div style={{ fontSize: '14px', color: '#8bacc8' }}>This program is not enabled for this member. Enable it from MSM Home.</div>
+                </div>
+              )
+            }
+            const enrollment = getEnrollment(p.name)
             if (!enrollment) {
               return <EnrollPanel key={p.key} member={member} program={dbProgram} onEnrolled={loadData} />
             }
-
             return <EnrolledPanel key={p.key} member={member} enrollment={enrollment} program={dbProgram} onDataChange={loadData} />
           })}
         </div>
       )}
 
-      {/* MEETINGS TAB */}
-      {activeTab === 'meetings' && (
+      {/* MSM HOME TAB */}
+      {activeTab === 'home' && (
         <div>
+          {/* MSM Assignment */}
+          <MsmAssignment member={member} onSaved={onDataChange} />
+
+          {/* Program Toggles */}
+          <ProgramToggles member={member} programs={programs} enabledPrograms={enabledPrograms} onToggle={loadData} />
+
           {/* Meeting counts */}
           <div style={sectionStyle}>
             <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Meeting Summary</div>
@@ -201,11 +215,8 @@ export default function MSMTracking({ member, activeSection }) {
 
 function EnrollPanel({ member, program, onEnrolled }) {
   const [dateEnrolled, setDateEnrolled] = useState('')
-  const [assignedMsm, setAssignedMsm] = useState('')
-  const [targetClients, setTargetClients] = useState('')
   const [status, setStatus] = useState('')
 
-  const TEAM_MEMBERS = ['Sarah Freitas', 'Rachael', 'Bridger Silvester', 'Tracy Miller', 'Evan Anderson']
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'DM Sans, sans-serif' }
   const sectionStyle = { background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }
 
@@ -215,8 +226,6 @@ function EnrollPanel({ member, program, onEnrolled }) {
         member_number: member.plugin_member_number,
         program_id: program.id,
         date_enrolled: dateEnrolled || new Date().toISOString().split('T')[0],
-        assigned_msm: assignedMsm,
-        target_clients: parseInt(targetClients) || 0,
       })
       onEnrolled()
     } catch (err) { setStatus(err.message) }
@@ -227,22 +236,9 @@ function EnrollPanel({ member, program, onEnrolled }) {
       <p style={{ color: '#8bacc8', fontSize: '14px', marginBottom: '20px' }}>
         {member.name} is not enrolled in {program.name}. Enroll them to start tracking progress.
       </p>
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '160px' }}>
-          <label style={{ fontSize: '12px', color: '#8bacc8', display: 'block', marginBottom: '6px' }}>Date Joined</label>
-          <input type="date" value={dateEnrolled} onChange={e => setDateEnrolled(e.target.value)} style={inputStyle} />
-        </div>
-        <div style={{ flex: 1, minWidth: '160px' }}>
-          <label style={{ fontSize: '12px', color: '#8bacc8', display: 'block', marginBottom: '6px' }}>Assigned MSM</label>
-          <select value={assignedMsm} onChange={e => setAssignedMsm(e.target.value)} style={{ ...inputStyle, background: '#0d2a6e' }}>
-            <option value="">-- Select --</option>
-            {TEAM_MEMBERS.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-        <div style={{ flex: 1, minWidth: '120px' }}>
-          <label style={{ fontSize: '12px', color: '#8bacc8', display: 'block', marginBottom: '6px' }}>Target Clients</label>
-          <input type="number" value={targetClients} onChange={e => setTargetClients(e.target.value)} placeholder="0" style={inputStyle} />
-        </div>
+      <div style={{ marginBottom: '12px', maxWidth: '200px' }}>
+        <label style={{ fontSize: '12px', color: '#8bacc8', display: 'block', marginBottom: '6px' }}>Date Joined</label>
+        <input type="date" value={dateEnrolled} onChange={e => setDateEnrolled(e.target.value)} style={inputStyle} />
       </div>
       <button onClick={enroll} style={{ padding: '10px 28px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
         Enroll in {program.name}
@@ -256,8 +252,6 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
   const [activeTab, setActiveTab] = useState('training')
   const [editingEnrollment, setEditingEnrollment] = useState(false)
   const [programStatus, setProgramStatus] = useState(enrollment.program_status || 'active')
-  const [assignedMsm, setAssignedMsm] = useState(enrollment.assigned_msm || '')
-  const [targetClients, setTargetClients] = useState(enrollment.target_clients || 0)
   const [saveStatus, setSaveStatus] = useState('')
 
   const TEAM_MEMBERS = ['Sarah Freitas', 'Rachael', 'Bridger Silvester', 'Tracy Miller', 'Evan Anderson']
@@ -267,24 +261,23 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
 
   async function saveEnrollment() {
     try {
-      await callApi('msm_update_enrollment', { enrollment_id: enrollment.id, program_status: programStatus, assigned_msm: assignedMsm, target_clients: parseInt(targetClients) || 0 })
+      await callApi('msm_update_enrollment', { enrollment_id: enrollment.id, program_status: programStatus })
       setSaveStatus('Saved!'); setTimeout(() => setSaveStatus(''), 3000)
       onDataChange()
     } catch (err) { setSaveStatus(err.message) }
   }
 
-  const statusColors = { active: '#27ae60', paused: '#f39c12', 'lost/removed': '#e74c3c', 'on ft': '#5b9fe6', 'pre 90 day plan': '#8bacc8' }
+  const statusColors = { 'On Fast Track': '#27ae60', 'Paused Fast Track': '#f39c12', 'Lost/Removed': '#e74c3c', 'Revert to Legacy': '#8bacc8' }
 
   return (
     <div>
+      <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '22px', color: '#fff', marginBottom: '20px' }}>{program.name}</div>
       <div style={sectionStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: editingEnrollment ? '16px' : '0' }}>
           <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
             <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date Joined</div><div style={{ fontSize: '14px', color: '#fff', marginTop: '4px' }}>{enrollment.date_enrolled ? enrollment.date_enrolled.split('T')[0] : '—'}</div></div>
-            <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</div><div style={{ fontSize: '14px', color: statusColors[enrollment.program_status?.toLowerCase()] || '#fff', marginTop: '4px', fontWeight: '600' }}>{enrollment.program_status}</div></div>
-            <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned MSM</div><div style={{ fontSize: '14px', color: '#fff', marginTop: '4px' }}>{enrollment.assigned_msm || '—'}</div></div>
-            <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Target Clients</div><div style={{ fontSize: '14px', color: '#fff', marginTop: '4px' }}>{enrollment.target_clients || 0}</div></div>
-            <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Training</div><div style={{ fontSize: '14px', color: '#fff', marginTop: '4px' }}>{enrollment.training_status}</div></div>
+            <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Program Status</div><div style={{ fontSize: '14px', color: statusColors[enrollment.program_status?.toLowerCase()] || '#fff', marginTop: '4px', fontWeight: '600' }}>{enrollment.program_status}</div></div>
+            <PlanStatusBadge enrollmentId={enrollment.id} programId={program.id} />
           </div>
           <button onClick={() => setEditingEnrollment(!editingEnrollment)} style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#8bacc8', fontSize: '12px', cursor: 'pointer' }}>
             {editingEnrollment ? 'Cancel' : 'Edit'}
@@ -297,19 +290,8 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
               <div style={{ flex: 1, minWidth: '160px' }}>
                 <label style={{ fontSize: '12px', color: '#8bacc8', display: 'block', marginBottom: '6px' }}>Program Status</label>
                 <select value={programStatus} onChange={e => setProgramStatus(e.target.value)} style={{ ...inputStyle, background: '#0d2a6e' }}>
-                  {['active', 'on ft', 'pre 90 day plan', 'paused', 'lost/removed'].map(s => <option key={s} value={s}>{s}</option>)}
+                  {['On Fast Track', 'Paused Fast Track', 'Revert to Legacy', 'Lost/Removed'].map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
-              </div>
-              <div style={{ flex: 1, minWidth: '160px' }}>
-                <label style={{ fontSize: '12px', color: '#8bacc8', display: 'block', marginBottom: '6px' }}>Assigned MSM</label>
-                <select value={assignedMsm} onChange={e => setAssignedMsm(e.target.value)} style={{ ...inputStyle, background: '#0d2a6e' }}>
-                  <option value="">-- Select --</option>
-                  {TEAM_MEMBERS.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div style={{ flex: 1, minWidth: '120px' }}>
-                <label style={{ fontSize: '12px', color: '#8bacc8', display: 'block', marginBottom: '6px' }}>Target Clients</label>
-                <input type="number" value={targetClients} onChange={e => setTargetClients(e.target.value)} style={inputStyle} />
               </div>
             </div>
             <button onClick={saveEnrollment} style={{ padding: '8px 20px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Save</button>
@@ -334,6 +316,7 @@ function TrainingTrack({ enrollment, program }) {
   const [progress, setProgress] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState({})
+  const [phaseCompletedBy, setPhaseCompletedBy] = useState({})
 
   useEffect(() => { loadTrack() }, [enrollment.id])
 
@@ -346,19 +329,58 @@ function TrainingTrack({ enrollment, program }) {
       ])
       setPhases(trackData.phases || [])
       const prog = {}
-      ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
+      const byPhase = {}
+      ;(progressData.progress || []).forEach(p => {
+        prog[p.task_id] = p
+      })
+      // Init phase completed_by from first task that has one
+      ;(trackData.phases || []).forEach(phase => {
+        const firstWithBy = (phase.program_training_tasks || []).find(t => prog[t.id]?.completed_by)
+        if (firstWithBy) byPhase[phase.id] = prog[firstWithBy.id].completed_by
+      })
       setProgress(prog)
+      setPhaseCompletedBy(byPhase)
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
 
-  async function saveTask(taskId, status, completedDate, completedBy, notes) {
+  async function saveTask(taskId, status, completedDate, phaseId) {
+    const completedBy = phaseCompletedBy[phaseId] || null
+    const today = new Date().toISOString().split('T')[0]
+    const date = completedDate || (status ? today : null)
     setSaving(p => ({ ...p, [taskId]: true }))
     try {
-      await callApi('msm_save_training_task', { enrollment_id: enrollment.id, task_id: taskId, status, completed_date: completedDate || null, completed_by: completedBy || null, notes: notes || null })
-      setProgress(p => ({ ...p, [taskId]: { ...p[taskId], task_id: taskId, status, completed_date: completedDate, completed_by: completedBy, notes } }))
+      await callApi('msm_save_training_task', { enrollment_id: enrollment.id, task_id: taskId, status, completed_date: date || null, completed_by: completedBy, notes: null })
+      setProgress(p => ({ ...p, [taskId]: { ...p[taskId], task_id: taskId, status, completed_date: date, completed_by: completedBy } }))
     } catch (err) { console.error(err) }
     finally { setSaving(p => ({ ...p, [taskId]: false })) }
+  }
+
+  async function saveDateChange(taskId, completedDate, phaseId) {
+    const p = progress[taskId] || {}
+    const completedBy = phaseCompletedBy[phaseId] || null
+    setSaving(prev => ({ ...prev, [taskId]: true }))
+    try {
+      await callApi('msm_save_training_task', { enrollment_id: enrollment.id, task_id: taskId, status: p.status, completed_date: completedDate || null, completed_by: completedBy, notes: null })
+      setProgress(prev => ({ ...prev, [taskId]: { ...prev[taskId], completed_date: completedDate } }))
+    } catch (err) { console.error(err) }
+    finally { setSaving(prev => ({ ...prev, [taskId]: false })) }
+  }
+
+  // Derive 90 day plan status
+  function getPlanStatus() {
+    if (!phases.length) return 'Not Started'
+    const allTasks = phases.flatMap(p => p.program_training_tasks || [])
+    if (!allTasks.length) return 'Not Started'
+    const allComplete = allTasks.every(t => progress[t.id]?.status === 'Completed')
+    if (allComplete) return 'Completed'
+    // Find current phase — last phase with any progress
+    for (let i = phases.length - 1; i >= 0; i--) {
+      const tasks = phases[i].program_training_tasks || []
+      const hasProgress = tasks.some(t => progress[t.id]?.status)
+      if (hasProgress) return phases[i].name
+    }
+    return 'Not Started'
   }
 
   const sectionStyle = { background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '24px', marginBottom: '16px' }
@@ -367,22 +389,31 @@ function TrainingTrack({ enrollment, program }) {
   const statusColors = { Completed: '#27ae60', 'Have Watched': '#5b9fe6', 'In Progress': '#f39c12', 'N/A': '#8bacc8', Pending: '#e74c3c' }
 
   if (loading) return <div style={{ padding: '40px', color: '#8bacc8', textAlign: 'center' }}>Loading training track...</div>
-
   if (phases.length === 0) return <div style={{ textAlign: 'center', padding: '40px', color: '#8bacc8' }}>No training track defined for this program yet.</div>
 
   const totalTasks = phases.reduce((s, p) => s + (p.program_training_tasks?.length || 0), 0)
   const completedTasks = Object.values(progress).filter(p => p.status === 'Completed').length
+  const planStatus = getPlanStatus()
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
-        <div><div style={{ fontSize: '28px', fontWeight: '700', color: '#fff' }}>{completedTasks}</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>COMPLETED</div></div>
-        <div><div style={{ fontSize: '28px', fontWeight: '700', color: '#fff' }}>{totalTasks}</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>TOTAL</div></div>
-        <div><div style={{ fontSize: '28px', fontWeight: '700', color: '#27ae60' }}>{totalTasks > 0 ? Math.round(completedTasks / totalTasks * 100) : 0}%</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>PROGRESS</div></div>
+      <div style={{ display: 'flex', gap: '24px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: '700', color: '#fff' }}>{completedTasks}</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>COMPLETED</div></div>
+        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: '700', color: '#fff' }}>{totalTasks}</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>TOTAL</div></div>
+        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: '700', color: '#27ae60' }}>{totalTasks > 0 ? Math.round(completedTasks / totalTasks * 100) : 0}%</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>PROGRESS</div></div>
       </div>
       {phases.map(phase => (
         <div key={phase.id} style={sectionStyle}>
-          <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '16px', fontFamily: 'Playfair Display, serif' }}>{phase.name}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff', fontFamily: 'Playfair Display, serif' }}>{phase.name}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '12px', color: '#8bacc8' }}>Completed By</span>
+              <select value={phaseCompletedBy[phase.id] || ''} onChange={e => setPhaseCompletedBy(p => ({ ...p, [phase.id]: e.target.value }))} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '160px' }}>
+                <option value="">-- Select --</option>
+                {TEAM_MEMBERS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+          </div>
           {(phase.program_training_tasks || []).map(task => {
             const p = progress[task.id] || {}
             return (
@@ -392,11 +423,10 @@ function TrainingTrack({ enrollment, program }) {
                   <span style={{ fontSize: '13px', color: '#8bacc8', marginRight: '8px' }}>{task.task_code}</span>
                   <span style={{ fontSize: '14px', color: '#fff' }}>{task.name}</span>
                 </div>
-                <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, p.completed_by, p.notes)} disabled={saving[task.id]} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '130px' }}>
+                <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, phase.id)} disabled={saving[task.id]} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '130px' }}>
                   {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s || '-- Status --'}</option>)}
                 </select>
-                <input type="date" value={p.completed_date || ''} onChange={e => saveTask(task.id, p.status, e.target.value, p.completed_by, p.notes)} style={{ ...inputStyle, width: '140px' }} />
-                <input value={p.completed_by || ''} onChange={e => saveTask(task.id, p.status, p.completed_date, e.target.value, p.notes)} placeholder="By" style={{ ...inputStyle, width: '120px' }} onBlur={e => saveTask(task.id, p.status, p.completed_date, e.target.value, p.notes)} />
+                <input type="date" value={p.completed_date || ''} onChange={e => saveDateChange(task.id, e.target.value, phase.id)} style={{ ...inputStyle, width: '140px' }} />
               </div>
             )
           })}
@@ -560,6 +590,113 @@ function ClientTrack({ client, program }) {
           })}
         </div>
       ))}
+    </div>
+  )
+}
+
+function MsmAssignment({ member, onSaved }) {
+  const [assignedMsm, setAssignedMsm] = useState(member.assigned_msm || '')
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState('')
+
+  const TEAM_MEMBERS = ['Sarah Freitas', 'Rachael', 'Bridger Silvester', 'Tracy Miller', 'Evan Anderson']
+  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '14px', boxSizing: 'border-box', fontFamily: 'DM Sans, sans-serif' }
+  const sectionStyle = { background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }
+
+  async function save() {
+    setSaving(true)
+    try {
+      await callApi('msm_update_assigned_msm', { member_number: member.plugin_member_number, assigned_msm: assignedMsm })
+      setStatus('Saved!')
+      setTimeout(() => setStatus(''), 3000)
+      onSaved()
+    } catch (err) { setStatus(err.message) }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div style={sectionStyle}>
+      <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Assigned MSM</div>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <select value={assignedMsm} onChange={e => setAssignedMsm(e.target.value)} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '220px' }}>
+          <option value="">-- Select MSM --</option>
+          {TEAM_MEMBERS.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <button onClick={save} disabled={saving} style={{ padding: '10px 20px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>
+          {saving ? 'Saving...' : 'Save'}
+        </button>
+        {status && <span style={{ color: '#27ae60', fontSize: '13px' }}>{status}</span>}
+      </div>
+    </div>
+  )
+}
+
+function PlanStatusBadge({ enrollmentId, programId }) {
+  const [planStatus, setPlanStatus] = useState('...')
+
+  useEffect(() => { loadStatus() }, [enrollmentId])
+
+  async function loadStatus() {
+    try {
+      const [trackData, progressData] = await Promise.all([
+        callApi('msm_load_training_track', { program_id: programId }),
+        callApi('msm_load_training_progress', { enrollment_id: enrollmentId }),
+      ])
+      const phases = trackData.phases || []
+      const prog = {}
+      ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
+      const allTasks = phases.flatMap(p => p.program_training_tasks || [])
+      if (!allTasks.length) { setPlanStatus('Not Started'); return }
+      if (allTasks.every(t => prog[t.id]?.status === 'Completed')) { setPlanStatus('Completed'); return }
+      for (let i = phases.length - 1; i >= 0; i--) {
+        const tasks = phases[i].program_training_tasks || []
+        if (tasks.some(t => prog[t.id]?.status)) { setPlanStatus(phases[i].name); return }
+      }
+      setPlanStatus('Not Started')
+    } catch (err) { setPlanStatus('—') }
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>90 Day Plan</div>
+      <div style={{ fontSize: '14px', color: planStatus === 'Completed' ? '#27ae60' : planStatus === 'Not Started' ? '#8bacc8' : '#5b9fe6', marginTop: '4px', fontWeight: '600' }}>{planStatus}</div>
+    </div>
+  )
+}
+
+function ProgramToggles({ member, programs, enabledPrograms, onToggle }) {
+  const [toggling, setToggling] = useState({})
+  const sectionStyle = { background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }
+
+  async function toggle(programId, currentlyEnabled) {
+    setToggling(t => ({ ...t, [programId]: true }))
+    try {
+      await callApi('msm_toggle_program', { member_number: member.plugin_member_number, program_id: programId, enabled: !currentlyEnabled })
+      onToggle()
+    } catch (err) { console.error(err) }
+    finally { setToggling(t => ({ ...t, [programId]: false })) }
+  }
+
+  return (
+    <div style={sectionStyle}>
+      <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Programs</div>
+      {PROGRAMS.map(p => {
+        const dbProgram = programs.find(prog => prog.name === p.name)
+        if (!dbProgram) return null
+        const isEnabled = enabledPrograms.some(e => e.program_id === dbProgram.id)
+        return (
+          <div key={p.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <span style={{ fontSize: '14px', color: isEnabled ? '#fff' : '#8bacc8' }}>{p.name}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '12px', color: isEnabled ? '#27ae60' : '#8bacc8' }}>{isEnabled ? 'Enabled' : 'Disabled'}</span>
+              <div onClick={() => !toggling[dbProgram.id] && toggle(dbProgram.id, isEnabled)}
+                style={{ width: '44px', height: '24px', borderRadius: '12px', background: isEnabled ? '#27ae60' : 'rgba(255,255,255,0.15)', cursor: 'pointer', position: 'relative', opacity: toggling[dbProgram.id] ? 0.5 : 1 }}>
+                <div style={{ position: 'absolute', top: '2px', left: isEnabled ? '22px' : '2px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+              </div>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
