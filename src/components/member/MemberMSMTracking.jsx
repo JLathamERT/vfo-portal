@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { callApi } from '../../lib/api'
 
 const PROGRAMS = [
@@ -311,6 +312,7 @@ function MemberTrainingView({ enrollment, program }) {
 }
 
 function MemberClientsView({ enrollment, member, program }) {
+  const navigate = useNavigate()
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
@@ -377,8 +379,11 @@ function MemberClientsView({ enrollment, member, program }) {
       {clients.length === 0
         ? <div style={{ textAlign: 'center', padding: '40px', color: '#8bacc8' }}>No clients added yet.</div>
         : clients.map(client => (
-          <div key={client.id} style={sectionStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setExpandedClient(expandedClient === client.id ? null : client.id)}>
+          <div key={client.id} style={{ ...sectionStyle, cursor: 'pointer' }}
+            onClick={() => navigate(`/member/client/${client.id}`)}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.12)'}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontSize: '15px', fontWeight: '600', color: '#fff' }}>{client.first_name} {client.last_name}</span>
@@ -387,13 +392,8 @@ function MemberClientsView({ enrollment, member, program }) {
                 </div>
                 {(client.email || client.phone) && <div style={{ fontSize: '12px', color: '#8bacc8', marginTop: '4px' }}>{client.email}{client.email && client.phone ? ' · ' : ''}{client.phone}</div>}
               </div>
-              <span style={{ color: '#8bacc8', fontSize: '18px' }}>{expandedClient === client.id ? '▲' : '▼'}</span>
+              <span style={{ color: '#5b9fe6', fontSize: '13px' }}>View →</span>
             </div>
-            {expandedClient === client.id && (
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                <MemberClientTrackView client={client} program={program} />
-              </div>
-            )}
           </div>
         ))
       }
@@ -423,13 +423,10 @@ function MemberClientTrackView({ client, program }) {
       setProgress(prog)
 
       const expandState = {}
-      let foundActive = false
       loadedPhases.forEach(phase => {
-        if (phase.name === 'MAP 1 - Setup') { expandState[phase.id] = false; return }
         const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
         const allDone = tasks.length > 0 && tasks.every(t => prog[t.id]?.status)
-        if (!allDone && !foundActive) { expandState[phase.id] = true; foundActive = true }
-        else { expandState[phase.id] = false }
+        expandState[phase.id] = !allDone
       })
       setExpanded(expandState)
     } catch (err) { console.error(err) }

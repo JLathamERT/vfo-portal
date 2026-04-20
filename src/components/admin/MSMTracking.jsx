@@ -343,12 +343,10 @@ function TrainingTrack({ enrollment, program }) {
       setPhaseCompletedBy(byPhase)
 
       const expandState = {}
-      let foundActive = false
       loadedPhases.forEach(phase => {
         const tasks = phase.program_training_tasks || []
         const allDone = tasks.length > 0 && tasks.every(t => prog[t.id]?.status)
-        if (!allDone && !foundActive) { expandState[phase.id] = true; foundActive = true }
-        else { expandState[phase.id] = false }
+        expandState[phase.id] = !allDone
       })
       setExpanded(expandState)
     } catch (err) { console.error(err) }
@@ -430,7 +428,7 @@ function TrainingTrack({ enrollment, program }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {state === 'done' && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(39,174,96,0.15)', color: '#27ae60', border: '1px solid rgba(39,174,96,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(91,159,230,0.15)', color: '#5b9fe6', border: '1px solid rgba(91,159,230,0.3)' }}>In progress · {doneTasks}/{tasks.length}</span>}
-                {state === 'pending' && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: '#8bacc8' }}>Not started</span>}
+                {state === 'pending' && !isReview && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: '#8bacc8' }}>Not started</span>}
                 <span onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} style={{ color: '#8bacc8', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s', cursor: 'pointer' }}>▼</span>
               </div>
             </div>

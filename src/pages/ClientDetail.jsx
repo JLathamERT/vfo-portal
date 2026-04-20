@@ -19,7 +19,8 @@ export default function ClientDetail() {
   const [loading, setLoading] = useState(true)
 
   // Back URL — prefer state passed via navigate, fallback to admin
-  const backUrl = location.state?.from || '/admin'
+  const isMember = location.pathname.startsWith('/member')
+  const backUrl = location.state?.from || (isMember ? '/member' : '/admin')
 
   useEffect(() => {
     if (!session) { navigate('/admin/login'); return }
@@ -81,23 +82,23 @@ export default function ClientDetail() {
         {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '24px' }}>
           <button style={tabStyle(activeTab === 'home')} onClick={() => setActiveTab('home')}>Home</button>
-          <button style={tabStyle(activeTab === 'details')} onClick={() => setActiveTab('details')}>Details</button>
+          {!isMember && <button style={tabStyle(activeTab === 'details')} onClick={() => setActiveTab('details')}>Details</button>}
           <button style={tabStyle(activeTab === 'map1')} onClick={() => setActiveTab('map1')}>MAP 1</button>
           <button style={tabStyle(activeTab === 'regular')} onClick={() => setActiveTab('regular')}>Regular Priorities</button>
           <button style={tabStyle(activeTab === 'tax')} onClick={() => setActiveTab('tax')}>Tax Priorities</button>
         </div>
 
-        {activeTab === 'home' && <ClientHome client={client} onUpdate={loadData} sectionStyle={sectionStyle} />}
-        {activeTab === 'details' && <ClientDetails client={client} contacts={contacts} onUpdate={loadData} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} />}
-        {activeTab === 'map1' && program && <ClientTrackViewV2 clientId={parseInt(clientId)} programId={program.id} />}
-        {activeTab === 'regular' && program && <RegularPrioritiesTab clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} />}
+        {activeTab === 'home' && <ClientHome client={client} onUpdate={loadData} sectionStyle={sectionStyle} readOnly={isMember} />}
+        {!isMember && activeTab === 'details' && <ClientDetails client={client} contacts={contacts} onUpdate={loadData} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} />}
+        {activeTab === 'map1' && program && <ClientTrackViewV2 clientId={parseInt(clientId)} programId={program.id} readOnly={isMember} />}
+        {activeTab === 'regular' && program && <RegularPrioritiesTab clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} readOnly={isMember} />}
         {activeTab === 'tax' && <div style={{ textAlign: 'center', padding: '60px', color: '#8bacc8' }}>Tax Priorities — coming soon.</div>}
       </div>
     </div>
   )
 }
 
-function ClientHome({ client, onUpdate, sectionStyle }) {
+function ClientHome({ client, onUpdate, sectionStyle, readOnly = false }) {
   const [status, setStatus] = useState(client?.status || 'pending')
   const [saving, setSaving] = useState(false)
   const statusColors = { active: '#27ae60', pending: '#f39c12', lost: '#e74c3c' }
@@ -116,14 +117,17 @@ function ClientHome({ client, onUpdate, sectionStyle }) {
     <div>
       <div style={sectionStyle}>
         <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Client Status</div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {[['active','Active'], ['pending','Pending'], ['lost','Lost']].map(([val, label]) => (
-            <button key={val} onClick={() => updateStatus(val)} disabled={saving}
-              style={{ padding: '8px 20px', borderRadius: '6px', border: `1px solid ${status === val ? statusColors[val] : 'rgba(255,255,255,0.2)'}`, background: status === val ? `${statusColors[val]}22` : 'transparent', color: status === val ? statusColors[val] : '#8bacc8', fontSize: '13px', cursor: 'pointer', fontWeight: status === val ? '600' : '400' }}>
-              {label}
-            </button>
-          ))}
-        </div>
+        {readOnly
+          ? <span style={{ padding: '4px 14px', borderRadius: '6px', fontSize: '14px', fontWeight: '600', background: `${statusColors[status]}22`, color: statusColors[status], border: `1px solid ${statusColors[status]}44` }}>{status.charAt(0).toUpperCase() + status.slice(1)}</span>
+          : <div style={{ display: 'flex', gap: '8px' }}>
+              {[['active','Active'], ['pending','Pending'], ['lost','Lost']].map(([val, label]) => (
+                <button key={val} onClick={() => updateStatus(val)} disabled={saving}
+                  style={{ padding: '8px 20px', borderRadius: '6px', border: `1px solid ${status === val ? statusColors[val] : 'rgba(255,255,255,0.2)'}`, background: status === val ? `${statusColors[val]}22` : 'transparent', color: status === val ? statusColors[val] : '#8bacc8', fontSize: '13px', cursor: 'pointer', fontWeight: status === val ? '600' : '400' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+        }
       </div>
       <div style={sectionStyle}>
         <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Contact Info</div>
@@ -384,7 +388,7 @@ function MeetingCompleteButton({ phase, progress, onComplete, completedPhases })
   )
 }
 
-function ClientTrackViewV2({ clientId, programId }) {
+function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
   const [phases, setPhases] = useState([])
   const [progress, setProgress] = useState({})
   const [loading, setLoading] = useState(true)
@@ -409,13 +413,10 @@ function ClientTrackViewV2({ clientId, programId }) {
 
       // Auto-expand: first incomplete phase, collapse completed ones
       const expandState = {}
-      let foundActive = false
       loadedPhases.forEach(phase => {
-        if (phase.name === 'MAP 1 - Setup') { expandState[phase.id] = false; return }
         const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
         const allDone = tasks.length > 0 && tasks.every(t => prog[t.id]?.status)
-        if (!allDone && !foundActive) { expandState[phase.id] = true; foundActive = true }
-        else { expandState[phase.id] = false }
+        expandState[phase.id] = !allDone
       })
       setExpanded(expandState)
     } catch (err) { console.error(err) }
@@ -471,7 +472,7 @@ function ClientTrackViewV2({ clientId, programId }) {
     } catch (err) { console.error(err); setCompletedPhases(p => ({ ...p, [phase.id]: null })) }
   }
 
-  const statusColors = { Completed: '#27ae60', Confirmed: '#27ae60', Yes: '#27ae60', 'Call arranged': '#27ae60', 'PIP 1 scheduled': '#27ae60', 'Follow-up scheduled': '#27ae60', 'PIP Follow-up confirmed': '#27ae60', 'Send confirmation email': '#27ae60', 'Regular priorities tab enabled': '#27ae60', 'Tax priorities tab enabled': '#27ae60', 'Completed + N/A': '#27ae60', 'Completed + Risk 1': '#27ae60', 'Completed + Risk 2': '#27ae60', 'Completed + Risk 3': '#27ae60', 'Completed + Risk 4': '#27ae60', 'Completed + Risk 5': '#27ae60', 'Lite': '#27ae60', 'Core': '#27ae60', 'Max': '#27ae60', 'In Progress': '#f39c12', Undecided: '#f39c12', 'No response': '#e74c3c', No: '#e74c3c', 'PIP Follow-up declined': '#e74c3c', 'Send declined email': '#e74c3c', 'Meeting declined': '#e74c3c' }
+  const statusColors = { Completed: '#27ae60', Confirmed: '#27ae60', Yes: '#27ae60', 'Call arranged': '#27ae60', 'PIP 1 scheduled': '#27ae60', 'Follow-up scheduled': '#27ae60', 'PIP Follow-up confirmed': '#27ae60', 'Send confirmation email': '#27ae60', 'Sent confirmation email': '#27ae60', 'Regular priorities tab enabled': '#27ae60', 'Tax priorities tab enabled': '#27ae60', 'Completed + N/A': '#27ae60', 'Completed + Risk 1': '#27ae60', 'Completed + Risk 2': '#27ae60', 'Completed + Risk 3': '#27ae60', 'Completed + Risk 4': '#27ae60', 'Completed + Risk 5': '#27ae60', 'Lite': '#27ae60', 'Core': '#27ae60', 'Max': '#27ae60', 'In Progress': '#f39c12', Undecided: '#f39c12', 'No response': '#e74c3c', No: '#e74c3c', 'PIP Follow-up declined': '#e74c3c', 'Send declined email': '#e74c3c', 'Meeting declined': '#e74c3c' }
 
   function getPhaseState(phase) {
     const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
@@ -535,7 +536,7 @@ function ClientTrackViewV2({ clientId, programId }) {
                 <span style={{ fontSize: '13px', fontWeight: '600', color: titleColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{phase.name}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {hasCompleteButton && (
+                {hasCompleteButton && !readOnly && (
                   <button onClick={e => { e.stopPropagation(); completePhase(phase) }} disabled={phaseCompleteState === 'saving'}
                     style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', background: phaseCompleteState === 'done' ? 'rgba(39,174,96,0.15)' : 'rgba(91,159,230,0.15)', border: `1px solid ${phaseCompleteState === 'done' ? 'rgba(39,174,96,0.4)' : 'rgba(91,159,230,0.4)'}`, color: phaseCompleteState === 'done' ? '#27ae60' : '#5b9fe6', whiteSpace: 'nowrap' }}>
                     {phaseCompleteState === 'saving' ? 'Saving...' : phaseCompleteState === 'done' ? '✓ Auto completed' : '✓ Auto complete — all completed and confirmed'}
@@ -567,6 +568,26 @@ function ClientTrackViewV2({ clientId, programId }) {
                     </div>
                   )
 
+                  // READ-ONLY MODE (member side)
+                  if (readOnly) {
+                    const isPCAdmin = phase.name === 'MAP 1 - PC Admin'
+                    const c10Status2 = progress[phases.find(ph => ph.name === 'MAP 1 - PIP Follow Up')?.program_client_tasks?.find(t => t.task_code === 'C10')?.id]?.status || ''
+                    const c14c15Active2 = c10Status2 === 'No' || c10Status2 === 'Undecided'
+                    const isGreyedOut2 = isPCAdmin && (task.task_code === 'C14' || task.task_code === 'C15') && !c14c15Active2
+                    return (
+                      <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', opacity: isGreyedOut2 ? 0.3 : 1 }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
+                        <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                        <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
+                        {isDone
+                          ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
+                          : <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: '#8bacc8' }}>Not started</span>
+                        }
+                        {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#5a8ab5' }}>{formatDate(p.completed_date)}</span>}
+                      </div>
+                    )
+                  }
+
                   if (task.task_code === 'C8') return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
@@ -575,7 +596,7 @@ function ClientTrackViewV2({ clientId, programId }) {
                       {isDone
                         ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
                         : <div style={{ display: 'flex', gap: '6px' }}>
-                            <button onClick={() => saveTask(task.id, 'Send confirmation email', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(39,174,96,0.4)', background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>Re-confirm meeting</button>
+                            <button onClick={() => saveTask(task.id, 'Sent confirmation email', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(39,174,96,0.4)', background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>Re-confirm meeting</button>
                             <button onClick={() => saveTask(task.id, 'Send declined email', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: '#8bacc8' }}>Meeting declined</button>
                           </div>
                       }
@@ -676,7 +697,7 @@ const REGULAR_PRIORITIES = [
   "Intellectual Property", "Legal Focus"
 ]
 
-function RegularPrioritiesTab({ clientId, programId, client, specialists }) {
+function RegularPrioritiesTab({ clientId, programId, client, specialists, readOnly = false }) {
   const [priorityTracks, setPriorityTracks] = useState([])
   const [phases, setPhases] = useState([])
   const [allProgress, setAllProgress] = useState({})
@@ -684,6 +705,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists }) {
   const [selectedTrack, setSelectedTrack] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
   const [newPriority, setNewPriority] = useState('')
+  const [newSpecialist, setNewSpecialist] = useState('')
   const [addStatus, setAddStatus] = useState('')
   const [regularEnabled, setRegularEnabled] = useState(false)
 
@@ -718,9 +740,10 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists }) {
 
   async function addPriority() {
     if (!newPriority) { setAddStatus('Select a priority.'); return }
+    if (!newSpecialist) { setAddStatus('Select a specialist.'); return }
     try {
-      await callApi('msm_add_priority_track', { client_id: clientId, priority_name: newPriority, track_type: 'regular' })
-      setNewPriority(''); setShowAdd(false); setAddStatus('')
+      await callApi('msm_add_priority_track', { client_id: clientId, priority_name: newPriority, track_type: 'regular', specialist_name: newSpecialist })
+      setNewPriority(''); setNewSpecialist(''); setShowAdd(false); setAddStatus('')
       loadData()
     } catch (err) { setAddStatus(err.message) }
   }
@@ -749,6 +772,8 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists }) {
         specialists={specialists}
         onBack={() => { setSelectedTrack(null); loadData() }}
         onProgressChange={(taskId, p) => setAllProgress(prev => ({ ...prev, [selectedTrack.id]: { ...prev[selectedTrack.id], [taskId]: p } }))}
+        readOnly={readOnly}
+        onTrackUpdate={loadData}
       />
     )
   }
@@ -766,7 +791,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists }) {
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px' }}>{priorityTracks.length} {priorityTracks.length === 1 ? 'Priority' : 'Priorities'}</div>
-            <button onClick={() => setShowAdd(!showAdd)} style={{ padding: '8px 20px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>+ Add Priority</button>
+            {!readOnly && <button onClick={() => setShowAdd(!showAdd)} style={{ padding: '8px 20px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>+ Add Priority</button>}
           </div>
 
           {showAdd && (
@@ -775,6 +800,10 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists }) {
               <select value={newPriority} onChange={e => setNewPriority(e.target.value)} style={{ ...inputStyle, background: '#0d2a6e', marginBottom: '12px' }}>
                 <option value="">-- Select Priority --</option>
                 {REGULAR_PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <select value={newSpecialist} onChange={e => setNewSpecialist(e.target.value)} style={{ ...inputStyle, background: '#0d2a6e', marginBottom: '12px' }}>
+                <option value="">-- Select Specialist --</option>
+                {specialists.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
               </select>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={addPriority} style={{ padding: '8px 20px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Add</button>
@@ -797,7 +826,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists }) {
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.12)'}>
                 <div>
-                  <div style={{ fontSize: '15px', fontWeight: '600', color: '#fff', marginBottom: '4px' }}>{track.priority_name}</div>
+                  <div style={{ fontSize: '15px', fontWeight: '600', color: '#fff', marginBottom: '4px' }}>{track.priority_name}{track.specialist_name ? ` (${track.specialist_name})` : ''}</div>
                   <div style={{ fontSize: '12px', color: '#8bacc8' }}>{new Date(track.created_at).toLocaleDateString()}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -813,20 +842,40 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists }) {
   )
 }
 
-function PriorityTrackView({ track, phases, progress, specialists, onBack, onProgressChange }) {
-  const [localProgress, setLocalProgress] = useState(progress)
+function PriorityTrackView({ track, phases, progress, specialists, onBack, onProgressChange, readOnly = false, onTrackUpdate }) {
+  const [localProgress, setLocalProgress] = useState(() => {
+    // Auto-fill C25.1 with track's specialist if not already set
+    if (track.specialist_name) {
+      const c251Task = phases.flatMap(p => p.program_client_tasks || []).find(t => t.task_code === 'C25.1')
+      if (c251Task && !progress[c251Task.id]?.status) {
+        return { ...progress, [c251Task.id]: { ...progress[c251Task.id], task_id: c251Task.id, status: track.specialist_name } }
+      }
+    }
+    return progress
+  })
   const [saving, setSaving] = useState({})
   const [expanded, setExpanded] = useState({})
   const [completedPhases, setCompletedPhases] = useState({})
+  const [trackStatus, setTrackStatus] = useState(track.status || 'live')
+  const [togglingStatus, setTogglingStatus] = useState(false)
+
+  async function toggleTrackStatus() {
+    const newStatus = trackStatus === 'live' ? 'stopped' : 'live'
+    setTogglingStatus(true)
+    try {
+      await callApi('msm_update_priority_status', { priority_track_id: track.id, status: newStatus })
+      setTrackStatus(newStatus)
+      if (onTrackUpdate) onTrackUpdate()
+    } catch (err) { console.error(err) }
+    finally { setTogglingStatus(false) }
+  }
 
   useEffect(() => {
     const expandState = {}
-    let foundActive = false
     phases.forEach(phase => {
       const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
       const allDone = tasks.length > 0 && tasks.every(t => localProgress[t.id]?.status)
-      if (!allDone && !foundActive) { expandState[phase.id] = true; foundActive = true }
-      else { expandState[phase.id] = false }
+      expandState[phase.id] = !allDone
     })
     setExpanded(expandState)
   }, [])
@@ -897,7 +946,20 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
   return (
     <div>
       <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#5b9fe6', fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Priorities</button>
-      <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '22px', color: '#fff', marginBottom: '20px' }}>{track.priority_name}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '22px', color: '#fff' }}>{track.priority_name}{track.specialist_name ? ` (${track.specialist_name})` : ''}</div>
+        </div>
+        {!readOnly && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '13px', color: trackStatus === 'live' ? '#27ae60' : '#e74c3c', fontWeight: '600' }}>{trackStatus === 'live' ? 'Live' : 'Stopped'}</span>
+            <div onClick={() => !togglingStatus && toggleTrackStatus()}
+              style={{ width: '44px', height: '24px', borderRadius: '12px', background: trackStatus === 'live' ? '#27ae60' : '#e74c3c', cursor: 'pointer', position: 'relative', opacity: togglingStatus ? 0.5 : 1 }}>
+              <div style={{ position: 'absolute', top: '2px', left: trackStatus === 'live' ? '22px' : '2px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+            </div>
+          </div>
+        )}
+      </div>
 
       <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
         <div style={{ textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: '700', color: '#fff' }}>{completedTasks}</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>COMPLETED</div></div>
@@ -951,6 +1013,19 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                       <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '40px' }}>{task.task_code}</span>
                       <span style={{ fontSize: '13px', color: '#8bacc8', flex: 1 }}>{task.name}</span>
                       <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: isDone ? 'rgba(39,174,96,0.15)' : 'rgba(255,255,255,0.06)', color: isDone ? '#27ae60' : '#8bacc8', border: `1px solid ${isDone ? 'rgba(39,174,96,0.3)' : 'rgba(255,255,255,0.1)'}` }}>{isDone ? 'Completed' : 'Not completed'}</span>
+                      {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#5a8ab5' }}>{formatDate(p.completed_date)}</span>}
+                    </div>
+                  )
+
+                  if (readOnly) return (
+                    <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
+                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '40px' }}>{task.task_code}</span>
+                      <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
+                      {isDone
+                        ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
+                        : <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: '#8bacc8' }}>Not started</span>
+                      }
                       {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#5a8ab5' }}>{formatDate(p.completed_date)}</span>}
                     </div>
                   )
