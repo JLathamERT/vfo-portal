@@ -263,18 +263,21 @@ function MemberProfile({ member }) {
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
-      <div style={sectionStyle}>
-        <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
-          <div><div style={labelStyle}>Member Type</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{member.member_type || '—'}</div></div>
-          <div><div style={labelStyle}>Status</div><div style={{ fontSize: '15px', color: statusColors[member.elite_status] || '#fff', marginTop: '4px', fontWeight: '600' }}>{member.elite_status || '—'}</div></div>
-          <div><div style={labelStyle}>Member Number</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px', fontFamily: 'monospace' }}>{member.member_number}</div></div>
-        </div>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+        {member.member_type && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: '#8bacc8', border: '1px solid rgba(255,255,255,0.1)' }}>{member.member_type}</span>}
+        {member.elite_status && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColors[member.elite_status] ? statusColors[member.elite_status] + '22' : 'rgba(255,255,255,0.06)'}`, color: statusColors[member.elite_status] || '#8bacc8', border: `1px solid ${statusColors[member.elite_status] ? statusColors[member.elite_status] + '44' : 'rgba(255,255,255,0.1)'}` }}>{member.elite_status}</span>}
+        {member.paused && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(243,156,18,0.15)', color: '#f39c12', border: '1px solid rgba(243,156,18,0.3)' }}>Paused</span>}
+        {member.suspended && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(231,76,60,0.15)', color: '#e74c3c', border: '1px solid rgba(231,76,60,0.3)' }}>Suspended</span>}
+        {member.vfo_certified_date && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(39,174,96,0.1)', color: '#27ae60', border: '1px solid rgba(39,174,96,0.2)' }}>✓ Certified · {member.vfo_certified_date.split('T')[0]}</span>}
+        {member.vfo_accredited_date && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(91,159,230,0.1)', color: '#5b9fe6', border: '1px solid rgba(91,159,230,0.2)' }}>✓ Accredited · {member.vfo_accredited_date.split('T')[0]}</span>}
       </div>
       <div style={sectionStyle}>
         <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+          <div><div style={labelStyle}>Member Number</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px', fontFamily: 'monospace' }}>{member.member_number}</div></div>
           <div><div style={labelStyle}>Join Date</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{member.join_date ? member.join_date.split('T')[0] : '—'}</div></div>
           <div><div style={labelStyle}>Email</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{member.email || '—'}</div></div>
           <div><div style={labelStyle}>Revenue Decision</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{member.revenue_decision || '—'}</div></div>
+          {member.assigned_msm && <div><div style={labelStyle}>Assigned MSM</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{member.assigned_msm}</div></div>}
         </div>
       </div>
     </div>

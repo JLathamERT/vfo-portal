@@ -119,10 +119,17 @@ function AdvisorsPanel({ allMembers, allExperts, allExclusionMap, onDataChange, 
           <div style={{ marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: '#fff' }}>{selectedMember.name}</div>
             <div style={{ fontSize: '13px', color: '#8bacc8', marginTop: '4px' }}>{selectedMember.plugin_member_number}</div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {selectedMember.member_type && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: '#8bacc8', border: '1px solid rgba(255,255,255,0.1)' }}>{selectedMember.member_type}</span>}
+              {selectedMember.elite_status && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${selectedMember.elite_status === 'Active' ? 'rgba(39,174,96,0.15)' : selectedMember.elite_status === 'Lost' ? 'rgba(231,76,60,0.15)' : 'rgba(255,255,255,0.06)'}`, color: selectedMember.elite_status === 'Active' ? '#27ae60' : selectedMember.elite_status === 'Lost' ? '#e74c3c' : '#8bacc8', border: `1px solid ${selectedMember.elite_status === 'Active' ? 'rgba(39,174,96,0.3)' : selectedMember.elite_status === 'Lost' ? 'rgba(231,76,60,0.3)' : 'rgba(255,255,255,0.1)'}` }}>{selectedMember.elite_status}</span>}
+              {selectedMember.paused && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(243,156,18,0.15)', color: '#f39c12', border: '1px solid rgba(243,156,18,0.3)' }}>Paused</span>}
+              {selectedMember.suspended && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(231,76,60,0.15)', color: '#e74c3c', border: '1px solid rgba(231,76,60,0.3)' }}>Suspended</span>}
+              
+            </div>
           </div>
           <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '24px', flexWrap: 'wrap' }}>
-          <FeatureTabDropdown label="Profile" isActive={['profile_details','profile_edit','profile_history'].includes(memberFeatureTab)} options={[{key:'profile_details',label:'Details'},{key:'profile_edit',label:'Edit Advisor'},{key:'profile_history',label:'Type History'}]} onSelect={setMemberFeatureTab} />
-          <FeatureTabDropdown label="MSM Tracking" isActive={['msm_meetings','msm_program_holistic','msm_program_partnership','msm_program_tax','msm_program_coaching'].includes(memberFeatureTab)} options={[{key:'msm_meetings',label:'MSM Home'},{key:'msm_program_holistic',label:'Programs · VFO Holistic Planning'},{key:'msm_program_partnership',label:'Programs · Partnership Fast Track'},{key:'msm_program_tax',label:'Programs · VFO Tax Planning'},{key:'msm_program_coaching',label:'Programs · Advanced Coaching'}]} onSelect={k => { setMemberFeatureTab(k); sessionStorage.setItem('adminMemberFeatureTab', k) }} />
+          <FeatureTabDropdown label="Profile" isActive={['profile_details','profile_edit','profile_history'].includes(memberFeatureTab)} options={[{key:'profile_details',label:'Profile'},{key:'profile_edit',label:'Edit Profile'},{key:'profile_history',label:'Type History'}]} onSelect={setMemberFeatureTab} />
+          <FeatureTabDropdown label="MSM" isActive={['msm_meetings','msm_program_holistic','msm_program_partnership','msm_program_tax','msm_program_coaching'].includes(memberFeatureTab)} options={[{key:'msm_meetings',label:'MSM'},{key:'msm_program_holistic',label:'VFO Holistic Planning'},{key:'msm_program_partnership',label:'Partnership Fast Track'},{key:'msm_program_tax',label:'VFO Tax Planning'},{key:'msm_program_coaching',label:'Advanced Coaching'}]} onSelect={k => { setMemberFeatureTab(k); sessionStorage.setItem('adminMemberFeatureTab', k) }} />
             {[['specialists','Specialists'],['showroom','Showroom'],['website','Website Plugin'],['ciq','CIQ'],['growthplan','Growth Plan'],['gc','GC Marketplace'],['vault','The Vault'],['settings','Settings']].map(([key, label]) => (
             <button key={key} style={{ padding: '10px 16px', background: 'transparent', border: 'none', borderBottom: memberFeatureTab === key ? '2px solid #5b9fe6' : '2px solid transparent', color: memberFeatureTab === key ? '#fff' : '#8bacc8', fontSize: '13px', fontWeight: memberFeatureTab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }} onClick={() => { setMemberFeatureTab(key); sessionStorage.setItem('adminMemberFeatureTab', key) }}>{label}</button>
           ))}
@@ -297,16 +304,11 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection }) {
 
       {activeTab === 'details' && (
         <div>
-          <div style={sectionStyle}>
-            <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap', marginBottom: profile.stripe_account_id ? '16px' : '0' }}>
-              <div style={{ flex: 1, minWidth: '140px' }}><div style={labelStyle}>Member Type</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{profile.member_type || '—'}</div></div>
-              <div style={{ flex: 1, minWidth: '120px' }}><div style={labelStyle}>Status</div><div style={{ fontSize: '15px', color: statusColors[profile.elite_status] || '#fff', marginTop: '4px', fontWeight: '600' }}>{profile.elite_status || '—'}</div></div>
-              {(profile.paused || profile.suspended) && (
-                <div style={{ flex: 1, minWidth: '120px' }}><div style={labelStyle}>Flags</div><div style={{ marginTop: '4px', display: 'flex', gap: '8px' }}>{profile.paused && <span style={{ color: '#f39c12' }}>Paused</span>}{profile.suspended && <span style={{ color: '#e74c3c' }}>Suspended</span>}</div></div>
-              )}
+          {profile.stripe_account_id && (
+            <div style={sectionStyle}>
+              <div style={labelStyle}>Stripe Account</div><div style={{ fontSize: '14px', color: '#8bacc8', fontFamily: 'monospace', marginTop: '4px' }}>{profile.stripe_account_id}</div>
             </div>
-            {profile.stripe_account_id && <div style={{ paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}><div style={labelStyle}>Stripe Account</div><div style={{ fontSize: '14px', color: '#8bacc8', fontFamily: 'monospace', marginTop: '4px' }}>{profile.stripe_account_id}</div></div>}
-          </div>
+          )}
           <div style={sectionStyle}>
             <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '140px' }}><div style={labelStyle}>Join Date</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{profile.join_date ? profile.join_date.split('T')[0] : '—'}</div></div>
@@ -314,7 +316,14 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection }) {
               <div style={{ flex: 2, minWidth: '200px' }}><div style={labelStyle}>Email</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{profile.email || '—'}</div></div>
               <div style={{ flex: 1, minWidth: '160px' }}><div style={labelStyle}>Revenue Decision</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{profile.revenue_decision || '—'}</div></div>
             </div>
+            {(profile.vfo_certified_date || profile.vfo_accredited_date) && (
+              <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.07)', marginTop: '16px' }}>
+                {profile.vfo_certified_date && <div><div style={{ fontSize: '15px', color: '#27ae60', fontWeight: '600' }}>✓ VFO Certified</div><div style={{ fontSize: '11px', color: '#8bacc8', marginTop: '2px' }}>{profile.vfo_certified_date.split('T')[0]}</div></div>}
+                {profile.vfo_accredited_date && <div><div style={{ fontSize: '15px', color: '#5b9fe6', fontWeight: '600' }}>✓ VFO Accredited</div><div style={{ fontSize: '11px', color: '#8bacc8', marginTop: '2px' }}>{profile.vfo_accredited_date.split('T')[0]}</div></div>}
+              </div>
+            )}
           </div>
+          
           {corporateMembers.length > 0 && (
             <div style={sectionStyle}>
               <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Corporate Members</div>
@@ -424,6 +433,13 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection }) {
                 <option value="">-- Select --</option>
                 {CONNECTION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
+            </div>
+          </div>
+          <div style={sectionStyle}>
+            <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>VFO Certification</div>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '200px' }}><label style={labelStyle}>VFO Certified Date</label><input type="date" value={profile.vfo_certified_date || ''} onChange={e => update('vfo_certified_date', e.target.value || null)} style={inputStyle} /></div>
+              <div style={{ flex: 1, minWidth: '200px' }}><label style={labelStyle}>VFO Accredited Date</label><input type="date" value={profile.vfo_accredited_date || ''} onChange={e => update('vfo_accredited_date', e.target.value || null)} style={inputStyle} /></div>
             </div>
           </div>
           <div style={sectionStyle}>

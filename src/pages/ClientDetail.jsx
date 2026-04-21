@@ -1,9 +1,35 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { getSession, callApi } from '../lib/api'
 
 const TEAM_MEMBERS = ['Sarah Freitas', 'Rachael', 'Bridger Silvester', 'Tracy Miller', 'Evan Anderson']
 const statusColors = { Completed: '#27ae60', Confirmed: '#27ae60', Yes: '#27ae60', 'In Progress': '#f39c12', Scheduled: '#5b9fe6', No: '#e74c3c', 'N/A': '#8bacc8', Pending: '#f39c12' }
+
+function ClientTabDropdown({ label, isActive, options, onSelect }) {
+  const [open, setOpen] = useState(false)
+  const closeTimer = useRef(null)
+  function handleMouseEnter() { clearTimeout(closeTimer.current); setOpen(true) }
+  function handleMouseLeave() { closeTimer.current = setTimeout(() => setOpen(false), 200) }
+  return (
+    <div style={{ position: 'relative' }} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+      <button style={{ padding: '10px 18px', background: 'transparent', border: 'none', borderBottom: isActive ? '2px solid #5b9fe6' : '2px solid transparent', color: isActive ? '#fff' : '#8bacc8', fontSize: '13px', fontWeight: isActive ? '600' : '400', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {label}<span style={{ fontSize: '9px', opacity: 0.6 }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, background: '#0d2a6e', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', minWidth: '160px', zIndex: 200, padding: '4px 0', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+          {options.map(opt => (
+            <button key={opt.key} onClick={() => { onSelect(opt.key); setOpen(false) }}
+              style={{ display: 'block', width: '100%', padding: '8px 16px', background: 'transparent', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans, sans-serif' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function ClientDetail() {
   const { clientId } = useParams()
@@ -81,16 +107,25 @@ export default function ClientDetail() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '24px' }}>
-          <button style={tabStyle(activeTab === 'home')} onClick={() => setActiveTab('home')}>Home</button>
-          {!isMember && <button style={tabStyle(activeTab === 'details')} onClick={() => setActiveTab('details')}>Details</button>}
-          <button style={tabStyle(activeTab === 'map1')} onClick={() => setActiveTab('map1')}>MAP 1</button>
-          <button style={tabStyle(activeTab === 'regular')} onClick={() => setActiveTab('regular')}>Regular Priorities</button>
-          <button style={tabStyle(activeTab === 'tax')} onClick={() => setActiveTab('tax')}>Tax Priorities</button>
+          {isMember
+            ? <button style={tabStyle(activeTab === 'home')} onClick={() => setActiveTab('home')}>Profile</button>
+            : <ClientTabDropdown label="Profile" isActive={activeTab === 'home' || activeTab === 'details'} options={[{key:'home',label:'Profile'},{key:'details',label:'Edit Profile'}]} onSelect={setActiveTab} />
+          }
+          {program?.name === 'Partnership Fast Track' ? (
+            <button style={tabStyle(activeTab === 'pft')} onClick={() => setActiveTab('pft')}>PFT Engagement Process</button>
+          ) : (
+            <>
+              <button style={tabStyle(activeTab === 'map1')} onClick={() => setActiveTab('map1')}>MAP 1</button>
+              <button style={tabStyle(activeTab === 'regular')} onClick={() => setActiveTab('regular')}>Regular Priorities</button>
+              <button style={tabStyle(activeTab === 'tax')} onClick={() => setActiveTab('tax')}>Tax Priorities</button>
+            </>
+          )}
         </div>
 
         {activeTab === 'home' && <ClientHome client={client} onUpdate={loadData} sectionStyle={sectionStyle} readOnly={isMember} />}
-        {!isMember && activeTab === 'details' && <ClientDetails client={client} contacts={contacts} onUpdate={loadData} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} />}
+        {activeTab === 'details' && !isMember && <ClientDetails client={client} contacts={contacts} onUpdate={loadData} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} />}
         {activeTab === 'map1' && program && <ClientTrackViewV2 clientId={parseInt(clientId)} programId={program.id} readOnly={isMember} />}
+        {activeTab === 'pft' && program && <PFTEngagementTrack clientId={parseInt(clientId)} programId={program.id} readOnly={isMember} />}
         {activeTab === 'regular' && program && <RegularPrioritiesTab clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} readOnly={isMember} />}
         {activeTab === 'tax' && <div style={{ textAlign: 'center', padding: '60px', color: '#8bacc8' }}>Tax Priorities — coming soon.</div>}
       </div>
@@ -312,11 +347,7 @@ function ClientTrackView({ clientId, programId, sectionStyle }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
-        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: '700', color: '#fff' }}>{completedTasks}</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>COMPLETED</div></div>
-        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: '700', color: '#fff' }}>{totalTasks}</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>TOTAL</div></div>
-        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: '700', color: '#27ae60' }}>{totalTasks > 0 ? Math.round(completedTasks / totalTasks * 100) : 0}%</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>PROGRESS</div></div>
-      </div>
+      
 
       {phases.map(phase => (
         <div key={phase.id} style={sectionStyle}>
@@ -415,7 +446,7 @@ function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
       const expandState = {}
       loadedPhases.forEach(phase => {
         const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
-        const allDone = tasks.length > 0 && tasks.every(t => prog[t.id]?.status)
+        const allDone = tasks.length === 0 || tasks.every(t => prog[t.id]?.status)
         expandState[phase.id] = !allDone
       })
       setExpanded(expandState)
@@ -476,7 +507,7 @@ function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
 
   function getPhaseState(phase) {
     const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
-    if (tasks.length === 0) return 'pending'
+    if (tasks.length === 0) return 'done'
     if (tasks.every(t => progress[t.id]?.status)) return 'done'
     if (tasks.some(t => progress[t.id]?.status)) return 'active'
     return 'pending'
@@ -830,7 +861,8 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
                   <div style={{ fontSize: '12px', color: '#8bacc8' }}>{new Date(track.created_at).toLocaleDateString()}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: `${stateColor}22`, color: stateColor, border: `1px solid ${stateColor}44`, textTransform: 'capitalize' }}>{state}</span>
+                  <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: track.status === 'stopped' ? 'rgba(231,76,60,0.15)' : 'rgba(39,174,96,0.15)', color: track.status === 'stopped' ? '#e74c3c' : '#27ae60', border: `1px solid ${track.status === 'stopped' ? 'rgba(231,76,60,0.3)' : 'rgba(39,174,96,0.3)'}` }}>{track.status === 'stopped' ? 'Stopped' : 'Live'}</span>
+                  {track.status !== 'stopped' && <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: `${stateColor}22`, color: stateColor, border: `1px solid ${stateColor}44`, textTransform: 'capitalize' }}>{state}</span>}
                   <span style={{ color: '#5b9fe6', fontSize: '13px' }}>View →</span>
                 </div>
               </div>
@@ -865,7 +897,6 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
     try {
       await callApi('msm_update_priority_status', { priority_track_id: track.id, status: newStatus })
       setTrackStatus(newStatus)
-      if (onTrackUpdate) onTrackUpdate()
     } catch (err) { console.error(err) }
     finally { setTogglingStatus(false) }
   }
@@ -924,7 +955,11 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
 
   function getPhaseState(phase) {
     const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
-    if (tasks.length === 0) return 'pending'
+    if (tasks.length === 0) {
+      const autoTasks = phase.program_client_tasks || []
+      const allAutoDone = autoTasks.length > 0 && autoTasks.every(t => localProgress[t.id]?.status)
+      return allAutoDone ? 'done' : 'pending'
+    }
     if (tasks.every(t => localProgress[t.id]?.status)) return 'done'
     if (tasks.some(t => localProgress[t.id]?.status)) return 'active'
     return 'pending'
@@ -961,11 +996,6 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
-        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: '700', color: '#fff' }}>{completedTasks}</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>COMPLETED</div></div>
-        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: '700', color: '#fff' }}>{totalTasks}</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>TOTAL</div></div>
-        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: '700', color: '#27ae60' }}>{totalTasks > 0 ? Math.round(completedTasks / totalTasks * 100) : 0}%</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>PROGRESS</div></div>
-      </div>
 
       {phases.map(phase => {
         const state = getPhaseState(phase)
@@ -1061,6 +1091,203 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap', opacity: isGreyedOut ? 0.3 : 1, pointerEvents: isGreyedOut ? 'none' : 'auto' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
                       <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '40px' }}>{task.task_code}</span>
+                      <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
+                      <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'rgba(255,255,255,0.15)', color: isDone ? statusColor : '#fff' }}>
+                        <option value="">-- Select --</option>
+                        {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <input type="date" value={p.completed_date || ''} onChange={e => saveDate(task.id, e.target.value)} style={{ ...inputStyle, width: '130px' }} />
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function PFTEngagementTrack({ clientId, programId, readOnly = false }) {
+  const [phases, setPhases] = useState([])
+  const [progress, setProgress] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState({})
+  const [expanded, setExpanded] = useState({})
+
+  useEffect(() => { loadTrack() }, [clientId])
+
+  async function loadTrack() {
+    setLoading(true)
+    try {
+      const [trackData, progressData] = await Promise.all([
+        callApi('msm_load_client_track', { program_id: programId, track_type: 'partnership_fast_track' }),
+        callApi('msm_load_client_progress', { client_id: clientId }),
+      ])
+      const loadedPhases = trackData.phases || []
+      setPhases(loadedPhases)
+      const prog = {}
+      ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
+      setProgress(prog)
+
+      const expandState = {}
+      loadedPhases.forEach(phase => {
+        const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !t.status_options?.startsWith('auto_') && t.task_code !== 'A1')
+        const allDone = tasks.length === 0 || tasks.every(t => prog[t.id]?.status)
+        expandState[phase.id] = !allDone
+      })
+      setExpanded(expandState)
+    } catch (err) { console.error(err) }
+    finally { setLoading(false) }
+  }
+
+  async function saveTask(taskId, status, existingDate) {
+    const today = new Date().toISOString().split('T')[0]
+    const date = existingDate || (status ? today : null)
+    setSaving(p => ({ ...p, [taskId]: true }))
+    try {
+      await callApi('msm_save_client_task', { client_id: clientId, task_id: taskId, status, completed_date: date || null, completed_by: null, notes: null })
+      setProgress(p => ({ ...p, [taskId]: { ...p[taskId], task_id: taskId, status, completed_date: date } }))
+    } catch (err) { console.error(err) }
+    finally { setSaving(p => ({ ...p, [taskId]: false })) }
+  }
+
+  async function saveDate(taskId, date) {
+    const p = progress[taskId] || {}
+    setSaving(prev => ({ ...prev, [taskId]: true }))
+    try {
+      await callApi('msm_save_client_task', { client_id: clientId, task_id: taskId, status: p.status, completed_date: date || null, completed_by: null, notes: null })
+      setProgress(prev => ({ ...prev, [taskId]: { ...prev[taskId], completed_date: date } }))
+    } catch (err) { console.error(err) }
+    finally { setSaving(prev => ({ ...prev, [taskId]: false })) }
+  }
+
+  function getA11Status() {
+    const allTasks = phases.flatMap(p => p.program_client_tasks || [])
+    const a8 = allTasks.find(t => t.task_code === 'A8')
+    const a9 = allTasks.find(t => t.task_code === 'A9')
+    const a10 = allTasks.find(t => t.task_code === 'A10')
+    if (!a8 || !a9 || !a10) return null
+    const v8 = progress[a8.id]?.status
+    const v9 = progress[a9.id]?.status
+    const v10 = progress[a10.id]?.status
+    if (!v8 || !v9 || !v10) return null
+    if (v10 === 'No') return 'No'
+    if ([v8, v9, v10].filter(v => v === 'Yes').length >= 2) return 'Yes'
+    return 'No'
+  }
+
+  function getPhaseState(phase) {
+    const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !t.status_options?.startsWith('auto_') && t.task_code !== 'A1')
+    if (tasks.length === 0) return 'done'
+    if (tasks.every(t => progress[t.id]?.status)) return 'done'
+    if (tasks.some(t => progress[t.id]?.status)) return 'active'
+    return 'pending'
+  }
+
+  function formatDate(d) {
+    if (!d) return ''
+    const parts = d.split('-')
+    return `${parts[1]}/${parts[2]}`
+  }
+
+  const pftStatusColors = { Complete: '#27ae60', 'Complete - Yes': '#27ae60', 'Complete - No': '#e74c3c', Yes: '#27ae60', No: '#e74c3c', Undecided: '#f39c12', New: '#5b9fe6', 'Re-Set': '#f39c12', 'VFO FT': '#27ae60', 'VFO Associate': '#5b9fe6', Stopped: '#e74c3c' }
+  const inputStyle = { padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '12px', fontFamily: 'DM Sans, sans-serif' }
+
+  if (loading) return <div style={{ padding: '40px', color: '#8bacc8', textAlign: 'center' }}>Loading...</div>
+
+  const a23Task = phases.flatMap(p => p.program_client_tasks || []).find(t => t.task_code === 'A23')
+  const a23Status = a23Task ? progress[a23Task.id]?.status : null
+
+  return (
+    <div>
+      {phases.map(phase => {
+        // Phase 6 visibility based on A23
+        const isAssociatePhase = phase.name.includes('VFO-Associate')
+        const isFTPhase = phase.name.includes('VFO-FT Accountant')
+        const phaseGreyedOut = (isAssociatePhase && a23Status && a23Status !== 'VFO Associate') || (isFTPhase && a23Status && a23Status !== 'VFO FT')
+
+        const state = getPhaseState(phase)
+        const isExpanded = expanded[phase.id]
+        const tasks = phase.program_client_tasks || []
+        const nonAutoTasks = tasks.filter(t => t.status_options !== 'auto' && !t.status_options?.startsWith('auto_'))
+        const doneTasks = nonAutoTasks.filter(t => progress[t.id]?.status).length
+        const borderColor = state === 'done' ? 'rgba(39,174,96,0.3)' : state === 'active' ? 'rgba(91,159,230,0.4)' : 'rgba(255,255,255,0.1)'
+        const dotColor = state === 'done' ? '#27ae60' : state === 'active' ? '#5b9fe6' : 'transparent'
+        const titleColor = state === 'active' ? '#5b9fe6' : '#fff'
+
+        return (
+          <div key={phase.id} style={{ background: 'rgba(0,0,0,0.12)', border: `1px solid ${borderColor}`, borderRadius: '12px', marginBottom: '10px', overflow: 'hidden', opacity: phaseGreyedOut ? 0.3 : 1, pointerEvents: phaseGreyedOut ? 'none' : 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px' }}>
+              <div onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flex: 1 }}>
+                <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: dotColor, border: `1.5px solid ${state === 'pending' ? 'rgba(255,255,255,0.2)' : dotColor}`, flexShrink: 0 }} />
+                <span style={{ fontSize: '13px', fontWeight: '600', color: titleColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{phase.name}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {state === 'done' && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(39,174,96,0.15)', color: '#27ae60', border: '1px solid rgba(39,174,96,0.3)' }}>Done</span>}
+                {state === 'active' && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(91,159,230,0.15)', color: '#5b9fe6', border: '1px solid rgba(91,159,230,0.3)' }}>In progress · {doneTasks}/{nonAutoTasks.length}</span>}
+                {state === 'pending' && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: '#8bacc8' }}>Not started</span>}
+                <span onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} style={{ color: '#8bacc8', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s', cursor: 'pointer' }}>▼</span>
+              </div>
+            </div>
+
+            {isExpanded && (
+              <div style={{ borderTop: `1px solid ${borderColor}`, padding: '12px 18px' }}>
+                {tasks.map(task => {
+                  const p = progress[task.id] || {}
+                  const isDone = !!p.status
+                  const statusColor = pftStatusColors[p.status] || '#8bacc8'
+
+                  // A11 auto-calculated
+                  if (task.status_options === 'auto_pft_a11') {
+                    const a11Val = getA11Status()
+                    const a11Color = a11Val === 'Yes' ? '#27ae60' : a11Val === 'No' ? '#e74c3c' : '#8bacc8'
+                    return (
+                      <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: a11Val ? a11Color : 'transparent', flexShrink: 0, border: `1.5px solid ${a11Val ? a11Color : 'rgba(255,255,255,0.2)'}` }} />
+                        <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                        <span style={{ fontSize: '13px', color: '#fff', flex: 1 }}>{task.name}</span>
+                        <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '6px', background: `${a11Color}22`, color: a11Color, border: `1px solid ${a11Color}44`, fontWeight: '600' }}>{a11Val || 'Pending'}</span>
+                      </div>
+                    )
+                  }
+
+                  // A1 auto-complete
+                  if (task.task_code === 'A1') {
+                    return (
+                      <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#27ae60', flexShrink: 0 }} />
+                        <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                        <span style={{ fontSize: '13px', color: '#8bacc8', flex: 1 }}>{task.name}</span>
+                        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(39,174,96,0.15)', color: '#27ae60', border: '1px solid rgba(39,174,96,0.3)' }}>Done</span>
+                      </div>
+                    )
+                  }
+
+                  // Read-only mode
+                  if (readOnly) {
+                    return (
+                      <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
+                        <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                        <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
+                        {isDone
+                          ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
+                          : <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: '#8bacc8' }}>Not started</span>
+                        }
+                        {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#5a8ab5' }}>{formatDate(p.completed_date)}</span>}
+                      </div>
+                    )
+                  }
+
+                  
+
+                  // Normal editable task
+                  return (
+                    <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
+                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
                       <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
                       <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'rgba(255,255,255,0.15)', color: isDone ? statusColor : '#fff' }}>
                         <option value="">-- Select --</option>

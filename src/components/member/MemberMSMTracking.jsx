@@ -15,6 +15,8 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
   const [enabledPrograms, setEnabledPrograms] = useState([])
   const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
+  const [vfo90Count, setVfo90Count] = useState(0)
+  
 
   useEffect(() => { loadData() }, [member.member_number])
 
@@ -31,6 +33,25 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
       setEnrollments(enrollData.enrollments || [])
       setEnabledPrograms(enabledData.enabled || [])
       setMeetings(meetData.meetings || [])
+
+      // Calculate VFO 90 Day Plan count from completed phases
+      const holisticProg = (progData.programs || []).find(p => p.name === 'VFO Holistic Planning')
+      const holisticEnroll = (enrollData.enrollments || []).find(e => e.programs?.name === 'VFO Holistic Planning')
+      if (holisticProg && holisticEnroll) {
+        const [trackData, progressData] = await Promise.all([
+          callApi('msm_load_training_track', { program_id: holisticProg.id }),
+          callApi('msm_load_training_progress', { enrollment_id: holisticEnroll.id }),
+        ])
+        const phases = trackData.phases || []
+        const prog = {}
+        ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
+        const completedPhases = phases.filter(phase => {
+          if (phase.name.includes('Review')) return false
+          const tasks = phase.program_training_tasks || []
+          return tasks.length > 0 && tasks.every(t => prog[t.id]?.status)
+        }).length
+        setVfo90Count(completedPhases)
+      }
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -43,7 +64,6 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 
   const msmCount = meetings.filter(m => m.meeting_type === 'MSM Meeting').length
   const advancedCount = meetings.filter(m => m.meeting_type === 'Advanced Meeting').length
-  const vfo90Count = meetings.filter(m => m.meeting_type === 'VFO 90 Day Plan Meeting').length
   const pft90Count = meetings.filter(m => m.meeting_type === 'PFT 90 Day Plan Meeting').length
 
   if (loading) return <div style={{ padding: '40px', color: '#8bacc8', textAlign: 'center' }}>Loading...</div>
@@ -144,25 +164,37 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 }
 
 function MemberEnrolledView({ enrollment, program, member }) {
-  const [activeTab, setActiveTab] = useState('training')
+  const isCoaching = program.name === 'Advanced Coaching'
+  const [activeTab, setActiveTab] = useState(isCoaching ? 'meetings' : 'training')
   const tabStyle = (active) => ({ padding: '10px 18px', background: 'transparent', border: 'none', borderBottom: active ? '2px solid #5b9fe6' : '2px solid transparent', color: active ? '#fff' : '#8bacc8', fontSize: '13px', fontWeight: active ? '600' : '400', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' })
   const sectionStyle = { background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }
-  const statusColors = { 'On Fast Track': '#27ae60', 'Paused Fast Track': '#f39c12', 'Lost/Removed': '#e74c3c', 'Revert to Legacy': '#8bacc8' }
+  const statusColors = { 'On Fast Track': '#27ae60', 'Paused Fast Track': '#f39c12', 'Lost/Removed': '#e74c3c', 'Revert to Legacy': '#8bacc8', 'Active': '#27ae60' }
 
   return (
     <div>
       <div style={sectionStyle}>
         <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
           <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date Joined</div><div style={{ fontSize: '14px', color: '#fff', marginTop: '4px' }}>{enrollment.date_enrolled ? enrollment.date_enrolled.split('T')[0] : '—'}</div></div>
-          <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Program Status</div><div style={{ fontSize: '14px', color: statusColors[enrollment.program_status] || '#fff', marginTop: '4px', fontWeight: '600' }}>{enrollment.program_status || '—'}</div></div>
+          {!isCoaching && <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Program Status</div><div style={{ fontSize: '14px', color: statusColors[enrollment.program_status] || '#fff', marginTop: '4px', fontWeight: '600' }}>{enrollment.program_status || '—'}</div></div>}
         </div>
       </div>
       <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '24px' }}>
-        <button style={tabStyle(activeTab === 'training')} onClick={() => setActiveTab('training')}>90 Day Plan</button>
-        <button style={tabStyle(activeTab === 'clients')} onClick={() => setActiveTab('clients')}>Clients</button>
+        {isCoaching ? (
+          <>
+            <button style={tabStyle(activeTab === 'meetings')} onClick={() => setActiveTab('meetings')}>Meetings</button>
+            <button style={tabStyle(activeTab === 'renewal')} onClick={() => setActiveTab('renewal')}>Renewal</button>
+          </>
+        ) : (
+          <>
+            <button style={tabStyle(activeTab === 'training')} onClick={() => setActiveTab('training')}>90 Day Plan</button>
+            <button style={tabStyle(activeTab === 'clients')} onClick={() => setActiveTab('clients')}>Clients</button>
+          </>
+        )}
       </div>
       {activeTab === 'training' && <MemberTrainingView enrollment={enrollment} program={program} />}
       {activeTab === 'clients' && <MemberClientsView enrollment={enrollment} member={member} program={program} />}
+      {activeTab === 'meetings' && <MemberCoachingMeetings enrollment={enrollment} />}
+      {activeTab === 'renewal' && <MemberCoachingRenewal enrollment={enrollment} />}
     </div>
   )
 }
@@ -581,6 +613,154 @@ function VideoTask({ task, progress, enrollmentId, onComplete }) {
           <div id={containerId} />
         </div>
       )}
+    </div>
+  )
+}
+
+function MemberCoachingMeetings({ enrollment }) {
+  const [meetings, setMeetings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [expandedMeeting, setExpandedMeeting] = useState(null)
+
+  const sectionStyle = { background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }
+
+  useEffect(() => { loadMeetings() }, [enrollment.id])
+
+  async function loadMeetings() {
+    setLoading(true)
+    try {
+      const data = await callApi('coaching_load_meetings', { enrollment_id: enrollment.id })
+      setMeetings(data.meetings || [])
+    } catch (err) { console.error(err) }
+    finally { setLoading(false) }
+  }
+
+  const completedMeetings = meetings.filter(m => m.status === 'completed').sort((a, b) => a.meeting_date.localeCompare(b.meeting_date))
+  const scheduledMeetings = meetings.filter(m => m.status === 'scheduled').sort((a, b) => a.meeting_date.localeCompare(b.meeting_date))
+  const nextScheduled = scheduledMeetings[0]
+
+  if (loading) return <div style={{ padding: '40px', color: '#8bacc8', textAlign: 'center' }}>Loading...</div>
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '32px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: '700', color: '#fff' }}>{completedMeetings.length}</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>COMPLETED</div></div>
+        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: '700', color: '#5b9fe6' }}>{scheduledMeetings.length}</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>SCHEDULED</div></div>
+        {nextScheduled && (
+          <div style={{ textAlign: 'center' }}><div style={{ fontSize: '16px', fontWeight: '600', color: '#5b9fe6' }}>{nextScheduled.meeting_date.split('T')[0]}</div><div style={{ fontSize: '11px', color: '#8bacc8' }}>NEXT MEETING</div></div>
+        )}
+      </div>
+
+      {scheduledMeetings.length > 0 && (
+        <div style={sectionStyle}>
+          <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Upcoming</div>
+          {scheduledMeetings.map(m => (
+            <div key={m.id} style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '14px', color: '#fff' }}>{m.meeting_date.split('T')[0]}</span>
+              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(91,159,230,0.15)', color: '#5b9fe6', border: '1px solid rgba(91,159,230,0.3)' }}>Scheduled</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={sectionStyle}>
+        <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Meeting History</div>
+        {completedMeetings.length === 0
+          ? <p style={{ color: '#5a8ab5', fontSize: '14px' }}>No meetings completed yet.</p>
+          : completedMeetings.map(m => (
+            <div key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <div onClick={() => setExpandedMeeting(expandedMeeting === m.id ? null : m.id)}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', cursor: m.notes ? 'pointer' : 'default' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '14px', color: '#fff' }}>{m.meeting_date.split('T')[0]}</span>
+                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(39,174,96,0.15)', color: '#27ae60', border: '1px solid rgba(39,174,96,0.3)' }}>Completed</span>
+                </div>
+                {m.notes && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#5a8ab5' }}>has notes</span>
+                    <span style={{ color: '#8bacc8', fontSize: '10px', transform: expandedMeeting === m.id ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
+                  </div>
+                )}
+              </div>
+              {expandedMeeting === m.id && m.notes && (
+                <div style={{ padding: '0 0 12px 0' }}>
+                  <p style={{ fontSize: '13px', color: '#8bacc8', lineHeight: '1.5', margin: 0 }}>{m.notes}</p>
+                </div>
+              )}
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  )
+}
+
+function MemberCoachingRenewal({ enrollment }) {
+  const [renewals, setRenewals] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const sectionStyle = { background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }
+
+  useEffect(() => { loadRenewals() }, [enrollment.id])
+
+  async function loadRenewals() {
+    setLoading(true)
+    try {
+      const data = await callApi('coaching_load_renewals', { enrollment_id: enrollment.id })
+      setRenewals(data.renewals || [])
+    } catch (err) { console.error(err) }
+    finally { setLoading(false) }
+  }
+
+  const latestRenewal = renewals.length > 0 ? renewals[0] : null
+  const nextDate = latestRenewal?.next_renewal_date
+  const joinDate = enrollment.date_enrolled?.split('T')[0]
+  const currentPeriod = latestRenewal?.period_label || 'Year 1'
+  const currentStatus = latestRenewal?.action === 'cancelled' ? 'Cancelled' : 'Active'
+  const statusColor = currentStatus === 'Active' ? '#27ae60' : '#e74c3c'
+
+  let daysUntilRenewal = null
+  let renewalUrgency = '#27ae60'
+  if (nextDate) {
+    const diff = Math.ceil((new Date(nextDate) - new Date()) / (1000 * 60 * 60 * 24))
+    daysUntilRenewal = diff
+    if (diff < 0) renewalUrgency = '#e74c3c'
+    else if (diff <= 30) renewalUrgency = '#e74c3c'
+    else if (diff <= 60) renewalUrgency = '#f39c12'
+  }
+
+  const actionColors = { renewed: '#27ae60', cancelled: '#e74c3c' }
+
+  if (loading) return <div style={{ padding: '40px', color: '#8bacc8', textAlign: 'center' }}>Loading...</div>
+
+  return (
+    <div>
+      <div style={sectionStyle}>
+        <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+          <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Join Date</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{joinDate || '—'}</div></div>
+          <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</div><div style={{ fontSize: '15px', color: statusColor, marginTop: '4px', fontWeight: '600' }}>{currentStatus}</div></div>
+          <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Period</div><div style={{ fontSize: '15px', color: '#fff', marginTop: '4px' }}>{currentPeriod}</div></div>
+          {nextDate && <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Period Ends</div><div style={{ fontSize: '15px', color: renewalUrgency, marginTop: '4px', fontWeight: '600' }}>{nextDate.split('T')[0]}</div></div>}
+          {daysUntilRenewal !== null && <div><div style={{ fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{daysUntilRenewal < 0 ? 'Overdue' : 'Days Remaining'}</div><div style={{ fontSize: '15px', color: renewalUrgency, marginTop: '4px', fontWeight: '600' }}>{daysUntilRenewal < 0 ? `${Math.abs(daysUntilRenewal)} days` : `${daysUntilRenewal} days`}</div></div>}
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Renewal History</div>
+        {renewals.length === 0
+          ? <p style={{ color: '#5a8ab5', fontSize: '14px' }}>No renewals recorded yet.</p>
+          : renewals.map(r => (
+            <div key={r.id} style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${actionColors[r.action] || '#8bacc8'}22`, color: actionColors[r.action] || '#8bacc8', border: `1px solid ${actionColors[r.action] || '#8bacc8'}44`, textTransform: 'capitalize' }}>{r.action}</span>
+                <span style={{ fontSize: '14px', color: '#fff' }}>{r.action_date?.split('T')[0]}</span>
+                {r.period_label && <span style={{ fontSize: '12px', color: '#5b9fe6' }}>{r.period_label}</span>}
+              </div>
+              {r.notes && <div style={{ fontSize: '12px', color: '#5a8ab5', marginTop: '4px' }}>{r.notes}</div>}
+            </div>
+          ))
+        }
+      </div>
     </div>
   )
 }
