@@ -87,8 +87,12 @@ export default function ClientDetail() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#073991', color: '#fff', fontFamily: 'DM Sans, sans-serif' }}>
-      <div style={{ background: '#0a2260', borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '0 24px', display: 'flex', alignItems: 'center', height: '56px', position: 'sticky', top: 0, zIndex: 100 }}>
-        <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px' }}>VFO Portal</span>
+      <div style={{ background: '#0a2260', borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '56px', position: 'sticky', top: 0, zIndex: 100 }}>
+        <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '20px', cursor: 'pointer' }} onClick={() => navigate(isMember ? '/member' : '/admin')}>VFO Portal</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={{ color: '#5b9fe6', fontSize: '14px' }}>{session?.name || ''}</span>
+          <button onClick={() => { sessionStorage.clear(); navigate(isMember ? '/member/login' : '/admin/login') }} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#8bacc8', fontSize: '13px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Sign Out</button>
+        </div>
       </div>
 
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
@@ -136,6 +140,19 @@ export default function ClientDetail() {
 function ClientHome({ client, onUpdate, sectionStyle, readOnly = false }) {
   const [status, setStatus] = useState(client?.status || 'pending')
   const [saving, setSaving] = useState(false)
+  const [assignedPf, setAssignedPf] = useState(client?.assigned_pf || '')
+  const [savingPf, setSavingPf] = useState(false)
+  const [pfSaved, setPfSaved] = useState(false)
+
+  async function savePf() {
+    setSavingPf(true)
+    try {
+      await callApi('msm_update_client', { client_id: client.id, status: client.status, first_name: client.first_name, last_name: client.last_name, email: client.email, phone: client.phone, assigned_pf: assignedPf })
+      setPfSaved(true)
+      setTimeout(() => setPfSaved(false), 3000)
+    } catch (err) { console.error(err) }
+    finally { setSavingPf(false) }
+  }
   const statusColors = { active: '#27ae60', pending: '#f39c12', lost: '#e74c3c' }
 
   async function updateStatus(newStatus) {
@@ -161,6 +178,21 @@ function ClientHome({ client, onUpdate, sectionStyle, readOnly = false }) {
                   {label}
                 </button>
               ))}
+            </div>
+        }
+      </div>
+      <div style={sectionStyle}>
+        <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Assigned PF</div>
+        {readOnly
+          ? <div style={{ fontSize: '14px', color: '#fff' }}>{client?.assigned_pf || '—'}</div>
+          : <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <select value={assignedPf} onChange={e => setAssignedPf(e.target.value)} style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: '#0d2a6e', color: '#fff', fontSize: '14px', fontFamily: 'DM Sans, sans-serif', minWidth: '200px' }}>
+                <option value="">-- Select --</option>
+                <option value="Evan Anderson">Evan Anderson</option>
+                <option value="Bridger Silvester">Bridger Silvester</option>
+              </select>
+              <button onClick={savePf} disabled={savingPf} style={{ padding: '8px 20px', borderRadius: '8px', background: savingPf ? '#1a4a9e' : '#2563eb', border: 'none', color: '#fff', fontSize: '14px', cursor: savingPf ? 'not-allowed' : 'pointer' }}>{savingPf ? 'Saving...' : 'Save'}</button>
+              {pfSaved && <span style={{ color: '#27ae60', fontSize: '14px', fontWeight: '600' }}>✓ Saved!</span>}
             </div>
         }
       </div>
@@ -363,12 +395,12 @@ function ClientTrackView({ clientId, programId, sectionStyle }) {
               <div key={task.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: statusColors[p.status] || 'transparent', flexShrink: 0, border: '1px solid rgba(255,255,255,0.2)' }} />
                 <div style={{ flex: 1, minWidth: '150px' }}>
-                  <span style={{ fontSize: '13px', color: '#8bacc8', marginRight: '8px' }}>{task.task_code}</span>
+                  
                   <span style={{ fontSize: '14px', color: '#fff' }}>{task.name}</span>
                 </div>
                 {task.status_options === 'auto'
                   ? <span style={{ fontSize: '12px', color: '#27ae60', padding: '4px 10px', borderRadius: '4px', background: 'rgba(39,174,96,0.15)', border: '1px solid rgba(39,174,96,0.3)' }}>Auto-completed</span>
-                  : task.task_code === 'C8'
+                  : task.name === 'PIP Follow-up meeting re-confirmation/declined email'
                   ? <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <button onClick={() => saveTask(task.id, 'Send confirmation email', p.completed_date, phase.id)}
                         style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', background: p.status === 'Send confirmation email' ? 'rgba(39,174,96,0.15)' : 'rgba(91,159,230,0.15)', border: `1px solid ${p.status === 'Send confirmation email' ? 'rgba(39,174,96,0.4)' : 'rgba(91,159,230,0.4)'}`, color: p.status === 'Send confirmation email' ? '#27ae60' : '#5b9fe6' }}>
@@ -416,6 +448,347 @@ function MeetingCompleteButton({ phase, progress, onComplete, completedPhases })
       }}>
       {state === 'saving' ? 'Saving...' : state === 'done' ? '✓ Meeting Completed' : '✓ Meeting Completed'}
     </button>
+  )
+}
+
+const PIP_PRIORITIES = [
+  { group: '— Business Advisory —', items: ['Business Growth', 'Business Exit', 'Business Advisory'] },
+  { group: '— Tax —', items: ['Tax Planning (Income Tax Focus)', 'Tax Planning (Capital Gain Tax Focus)', 'Tax Planning (Retirement/Estate Tax Focus)', 'Tax Planning (Charitable/Gift Tax Focus)', 'Tax Planning (Business Tax Focus)', 'Tax Planning'] },
+  { group: '— Risk Mitigation —', items: ['Long Term Sickness Concern', 'Living too Long Concern', 'Death Impacting Dependents Concern', 'Asset Protection (Personally Sued)', 'Loss of Key Person', 'Asset Protection (Business Sued)', 'Technology Advancements', 'Risk Mitigation'] },
+  { group: '— Wealth Planning —', items: ['Wealth Planning (Short Term)', 'Wealth Planning (Long Term)', 'Wealth Planning (Short/Long Term)', 'Wealth Planning (Grow Wealth)', 'Wealth Planning (Retain Wealth)', 'Wealth Planning (Grow/Retain Wealth)', 'Wealth Planning (Young Kids Focus)', 'Wealth Planning (College Planning Focus)', 'Wealth Planning (Retirement Planning Focus)', 'Wealth Planning (Legacy Planning Focus)', 'Wealth Planning (Alternative Investments Focus)', 'Wealth Planning'] },
+  { group: '— Legal —', items: ['Family Law', 'Trusts and Wills (Estate Planning)', 'Contract / Corporate Law', 'Structuring Entities', 'Buy / Sell Agreements', 'Joint Venture Agreements', 'Intellectual Property', 'Legal Focus'] },
+]
+ 
+function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted }) {
+  const existing = existingData || {}
+  const isViewMode = !!existingData
+ 
+  const [decision, setDecision] = useState(existing.decision || '')
+  const [currentPriorities, setCurrentPriorities] = useState(existing.currentPriorities || [])
+  const [currentPriorityInput, setCurrentPriorityInput] = useState('')
+  const [parkedPriorities, setParkedPriorities] = useState(existing.parkedPriorities || [])
+  const [parkedPriorityInput, setParkedPriorityInput] = useState('')
+  const [clientService, setClientService] = useState(existing.clientService || '')
+  const [grossServiceValue, setGrossServiceValue] = useState(existing.grossServiceValue || '')
+  const [memberContribution, setMemberContribution] = useState(existing.memberContribution || '')
+  const netInvoiceValue = ((parseFloat(grossServiceValue) || 0) - (parseFloat(memberContribution) || 0)).toFixed(2)
+  const [memberShare, setMemberShare] = useState(existing.memberShare || '')
+  const [vfosShare, setVfosShare] = useState(existing.vfosShare || '')
+  const [paymentPlan, setPaymentPlan] = useState(existing.paymentPlan || '')
+  const [undecidedReasons, setUndecidedReasons] = useState(existing.undecidedReasons || [])
+  const [liteCost, setLiteCost] = useState(existing.liteCost || '')
+  const [coreCost, setCoreCost] = useState(existing.coreCost || '')
+  const [maxCost, setMaxCost] = useState(existing.maxCost || '')
+  const [maxNA, setMaxNA] = useState(existing.maxNA || false)
+  const [ccRecipients, setCcRecipients] = useState(existing.ccRecipients || [])
+  const [ccInput, setCcInput] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+ 
+  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'DM Sans, sans-serif' }
+  const labelStyle = { fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }
+  const sectionStyle = { background: 'rgba(0,0,0,0.15)', borderRadius: '8px', padding: '16px', marginBottom: '12px', border: '1px solid rgba(255,255,255,0.06)' }
+  const readOnlyInput = { ...inputStyle, opacity: 0.6, pointerEvents: 'none' }
+ 
+  function addCc() {
+    if (ccInput && ccInput.includes('@')) { setCcRecipients([...ccRecipients, ccInput]); setCcInput('') }
+  }
+  function removeCc(i) { if (!isViewMode) setCcRecipients(ccRecipients.filter((_, idx) => idx !== i)) }
+  function addCurrentPriority() {
+    if (currentPriorityInput && !currentPriorities.includes(currentPriorityInput)) { setCurrentPriorities([...currentPriorities, currentPriorityInput]); setCurrentPriorityInput('') }
+  }
+  function addParkedPriority() {
+    if (parkedPriorityInput && !parkedPriorities.includes(parkedPriorityInput)) { setParkedPriorities([...parkedPriorities, parkedPriorityInput]); setParkedPriorityInput('') }
+  }
+  function toggleUndecidedReason(reason) {
+    if (isViewMode) return
+    setUndecidedReasons(prev => prev.includes(reason) ? prev.filter(r => r !== reason) : [...prev, reason])
+  }
+ 
+  const [submitError, setSubmitError] = useState('')
+
+  async function handleSubmit() {
+    if (!decision) return
+    if (decision === 'Yes') {
+      if (currentPriorities.length === 0) { setSubmitError('Please add at least one current priority'); return }
+      if (!clientService) { setSubmitError('Please select a client service'); return }
+      if (!grossServiceValue) { setSubmitError('Please enter gross service value'); return }
+      if (!paymentPlan) { setSubmitError('Please select a payment plan'); return }
+      const splitTotal = (parseFloat(memberShare) || 0) + (parseFloat(vfosShare) || 0)
+      const netVal = parseFloat(netInvoiceValue) || 0
+      if (Math.abs(splitTotal - netVal) > 0.01) {
+        setSubmitError(`Revenue split ($${splitTotal.toFixed(2)}) must equal Net Invoice Value ($${netVal.toFixed(2)})`)
+        return
+      }
+    }
+    if (decision === 'Undecided') {
+      if (undecidedReasons.length === 0) { setSubmitError('Please select at least one reason for being undecided'); return }
+      if (currentPriorities.length === 0) { setSubmitError('Please add at least one current priority'); return }
+      if (!liteCost) { setSubmitError('Please enter Lite cost'); return }
+      if (!coreCost) { setSubmitError('Please enter Core cost'); return }
+      if (!maxNA && !maxCost) { setSubmitError('Please enter Max cost or check N/A'); return }
+    }
+    setSubmitError('')
+    setSubmitting(true)
+    const formData = { decision, ccRecipients }
+    if (decision === 'Yes') {
+      formData.currentPriorities = currentPriorities
+      formData.parkedPriorities = parkedPriorities
+      formData.clientService = clientService
+      formData.grossServiceValue = grossServiceValue
+      formData.memberContribution = memberContribution
+      formData.netInvoiceValue = netInvoiceValue.toString()
+      formData.memberShare = memberShare
+      formData.vfosShare = vfosShare
+      formData.paymentPlan = paymentPlan
+    } else if (decision === 'Undecided') {
+      formData.undecidedReasons = undecidedReasons
+      formData.currentPriorities = currentPriorities
+      formData.parkedPriorities = parkedPriorities
+      formData.liteCost = liteCost
+      formData.coreCost = coreCost
+      formData.maxCost = maxCost
+      formData.maxNA = maxNA
+    }
+    try {
+      await callApi('msm_save_client_task', { client_id: clientId, task_id: task.id, status: `Completed - ${decision}`, completed_date: new Date().toISOString().split('T')[0], completed_by: null, notes: JSON.stringify(formData) })
+      if (onSubmitted) onSubmitted(`Completed - ${decision}`, formData)
+    } catch (err) { console.error(err) }
+    finally { setSubmitting(false) }
+  }
+ 
+  const priorityDropdown = (value, onChange) => (
+    <select value={value} onChange={onChange} style={{ ...inputStyle, background: '#0d2a6e', flex: 1 }}>
+      <option value="">-- Select Priority --</option>
+      {PIP_PRIORITIES.map(g => (
+        <optgroup key={g.group} label={g.group}>
+          {g.items.map(item => <option key={item} value={item}>{item}</option>)}
+        </optgroup>
+      ))}
+    </select>
+  )
+ 
+  const tagList = (items, onRemove) => items.map((item, i) => (
+    <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '4px', background: 'rgba(91,159,230,0.15)', color: '#5b9fe6', fontSize: '12px', marginRight: '6px', marginBottom: '4px' }}>
+      {item}
+      {!isViewMode && <span onClick={() => onRemove(i)} style={{ cursor: 'pointer', color: '#e74c3c', fontSize: '14px' }}>×</span>}
+    </div>
+  ))
+ 
+  return (
+    <div style={{ marginLeft: '18px', padding: '16px', background: 'rgba(0,0,0,0.15)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', marginTop: '4px', marginBottom: '8px' }}>
+      <div style={{ marginBottom: '16px' }}>
+        <label style={labelStyle}>Client decision</label>
+        {isViewMode
+          ? <div style={{ ...inputStyle, opacity: 0.6 }}>{decision}</div>
+          : <select value={decision} onChange={e => setDecision(e.target.value)} style={{ ...inputStyle, background: '#0d2a6e' }}>
+              <option value="">-- Select --</option>
+              <option value="Yes">Yes</option>
+              <option value="Undecided">Undecided</option>
+              <option value="No">No</option>
+            </select>
+        }
+      </div>
+ 
+      {/* === YES FIELDS === */}
+      {decision === 'Yes' && (
+        <>
+          <div style={{ marginBottom: '12px' }}>
+            <label style={labelStyle}>Current priorities</label>
+            {!isViewMode && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                {priorityDropdown(currentPriorityInput, e => setCurrentPriorityInput(e.target.value))}
+                <button onClick={addCurrentPriority} style={{ padding: '8px 16px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add</button>
+              </div>
+            )}
+            {currentPriorities.length === 0 && isViewMode && <div style={{ fontSize: '13px', color: '#5a8ab5' }}>None</div>}
+            <div>{tagList(currentPriorities, i => setCurrentPriorities(currentPriorities.filter((_, idx) => idx !== i)))}</div>
+          </div>
+ 
+          <div style={{ marginBottom: '12px' }}>
+            <label style={labelStyle}>Parked priorities</label>
+            {!isViewMode && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                {priorityDropdown(parkedPriorityInput, e => setParkedPriorityInput(e.target.value))}
+                <button onClick={addParkedPriority} style={{ padding: '8px 16px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add</button>
+              </div>
+            )}
+            {parkedPriorities.length === 0 && isViewMode && <div style={{ fontSize: '13px', color: '#5a8ab5' }}>None</div>}
+            <div>{tagList(parkedPriorities, i => setParkedPriorities(parkedPriorities.filter((_, idx) => idx !== i)))}</div>
+          </div>
+ 
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Client service</label>
+            {isViewMode
+              ? <div style={readOnlyInput}>{clientService || '—'}</div>
+              : <select value={clientService} onChange={e => setClientService(e.target.value)} style={{ ...inputStyle, background: '#0d2a6e' }}>
+                  <option value="">-- Select --</option>
+                  <option value="Lite">Lite</option>
+                  <option value="Core">Core</option>
+                  <option value="Max">Max</option>
+                </select>
+            }
+          </div>
+ 
+          <div style={sectionStyle}>
+            <div style={{ fontSize: '12px', color: '#5b9fe6', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Pricing</div>
+            <div style={{ marginBottom: '10px' }}>
+              <label style={labelStyle}>Gross service value</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                <input value={grossServiceValue} onChange={e => setGrossServiceValue(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode} />
+              </div>
+            </div>
+            <div style={{ marginBottom: '10px' }}>
+              <label style={labelStyle}>Member contribution <span style={{ textTransform: 'none', opacity: 0.6 }}>(if applicable)</span></label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                <input value={memberContribution} onChange={e => setMemberContribution(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode} />
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Net invoice value</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                <input value={isViewMode ? (existing.netInvoiceValue || '0.00') : netInvoiceValue} readOnly style={{ ...readOnlyInput, paddingLeft: '28px', background: 'rgba(39,174,96,0.08)', borderColor: 'rgba(39,174,96,0.2)' }} />
+              </div>
+            </div>
+          </div>
+ 
+          <div style={sectionStyle}>
+            <div style={{ fontSize: '12px', color: '#5b9fe6', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Revenue split</div>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '120px' }}>
+                <label style={labelStyle}>Member share</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                  <input value={memberShare} onChange={e => setMemberShare(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode} />
+                </div>
+              </div>
+              <div style={{ flex: 1, minWidth: '120px' }}>
+                <label style={labelStyle}>VFOS share</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                  <input value={vfosShare} onChange={e => setVfosShare(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode} />
+                </div>
+              </div>
+            </div>
+          </div>
+ 
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Payment plan</label>
+            {isViewMode
+              ? <div style={readOnlyInput}>{paymentPlan || '—'}</div>
+              : <select value={paymentPlan} onChange={e => setPaymentPlan(e.target.value)} style={{ ...inputStyle, background: '#0d2a6e' }}>
+                  <option value="">-- Select --</option>
+                  <option value="Quarterly">Quarterly</option>
+                  <option value="1 Time Payment">1 Time Payment</option>
+                </select>
+            }
+          </div>
+        </>
+      )}
+ 
+      {/* === UNDECIDED FIELDS === */}
+      {decision === 'Undecided' && (
+        <>
+          <div style={{ marginBottom: '12px' }}>
+            <label style={labelStyle}>Reason for being undecided</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {['Undecided whether to continue the process / unsure if would benefit from the service', 'Undecided on which service level to choose'].map(reason => (
+                <label key={reason} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: isViewMode ? 'default' : 'pointer', fontSize: '13px', color: '#fff' }}>
+                  <input type="checkbox" checked={undecidedReasons.includes(reason)} onChange={() => toggleUndecidedReason(reason)} disabled={isViewMode} style={{ marginTop: '3px', accentColor: '#5b9fe6' }} />
+                  {reason}
+                </label>
+              ))}
+            </div>
+          </div>
+ 
+          <div style={{ marginBottom: '12px' }}>
+            <label style={labelStyle}>Current priorities</label>
+            {!isViewMode && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                {priorityDropdown(currentPriorityInput, e => setCurrentPriorityInput(e.target.value))}
+                <button onClick={addCurrentPriority} style={{ padding: '8px 16px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add</button>
+              </div>
+            )}
+            {currentPriorities.length === 0 && isViewMode && <div style={{ fontSize: '13px', color: '#5a8ab5' }}>None</div>}
+            <div>{tagList(currentPriorities, i => setCurrentPriorities(currentPriorities.filter((_, idx) => idx !== i)))}</div>
+          </div>
+ 
+          <div style={{ marginBottom: '12px' }}>
+            <label style={labelStyle}>Parked priorities</label>
+            {!isViewMode && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                {priorityDropdown(parkedPriorityInput, e => setParkedPriorityInput(e.target.value))}
+                <button onClick={addParkedPriority} style={{ padding: '8px 16px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add</button>
+              </div>
+            )}
+            {parkedPriorities.length === 0 && isViewMode && <div style={{ fontSize: '13px', color: '#5a8ab5' }}>None</div>}
+            <div>{tagList(parkedPriorities, i => setParkedPriorities(parkedPriorities.filter((_, idx) => idx !== i)))}</div>
+          </div>
+ 
+          <div style={sectionStyle}>
+            <div style={{ fontSize: '12px', color: '#5b9fe6', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Membership options outlined</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '13px', color: '#27ae60', fontWeight: '600', width: '40px' }}>Lite</span>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                <input value={liteCost} onChange={e => setLiteCost(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '13px', color: '#5b9fe6', fontWeight: '600', width: '40px' }}>Core</span>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                <input value={coreCost} onChange={e => setCoreCost(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '13px', color: '#f39c12', fontWeight: '600', width: '40px' }}>Max</span>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                <input value={maxNA ? '' : maxCost} onChange={e => setMaxCost(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px', opacity: maxNA ? 0.3 : 1 }} readOnly={isViewMode || maxNA} />
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#8bacc8', cursor: isViewMode ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>
+                <input type="checkbox" checked={maxNA} onChange={e => { if (!isViewMode) setMaxNA(e.target.checked) }} disabled={isViewMode} style={{ accentColor: '#5b9fe6' }} />
+                N/A
+              </label>
+            </div>
+          </div>
+        </>
+      )}
+ 
+      {/* === SHARED FIELDS (all decisions) === */}
+      {decision && (
+        <>
+          <div style={{ marginBottom: '12px' }}>
+            <label style={labelStyle}>Additional CC recipients <span style={{ textTransform: 'none', opacity: 0.6 }}>(optional — these email addresses will be CC'd on all client emails)</span></label>
+            {!isViewMode && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                <input value={ccInput} onChange={e => setCcInput(e.target.value)} placeholder="Enter email address" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCc())} style={{ ...inputStyle, flex: 1 }} />
+                <button onClick={addCc} style={{ padding: '8px 16px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add</button>
+              </div>
+            )}
+            {ccRecipients.length === 0 && isViewMode && <div style={{ fontSize: '13px', color: '#5a8ab5' }}>None</div>}
+            {ccRecipients.map((email, i) => (
+              <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', borderRadius: '4px', background: 'rgba(91,159,230,0.15)', color: '#5b9fe6', fontSize: '12px', marginRight: '6px', marginBottom: '4px' }}>
+                {email}
+                {!isViewMode && <span onClick={() => removeCc(i)} style={{ cursor: 'pointer', color: '#e74c3c', fontSize: '14px' }}>×</span>}
+              </div>
+            ))}
+          </div>
+ 
+          {!isViewMode && (
+            <>
+              {submitError && <div style={{ color: '#e74c3c', fontSize: '13px', marginBottom: '8px' }}>{submitError}</div>}
+              <button onClick={handleSubmit} disabled={submitting} style={{ width: '100%', padding: '12px', borderRadius: '8px', background: submitting ? '#1a4a9e' : '#2563eb', border: 'none', color: '#fff', fontSize: '15px', fontWeight: '600', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                {submitting ? 'Submitting...' : 'Submit Outcome'}
+              </button>
+            </>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 
@@ -478,12 +851,12 @@ function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
   async function completePhase(phase) {
     const today = new Date().toISOString().split('T')[0]
     const autoCompleteCodes = {
-          'MAP 1 - Initial Contact': ['C3', 'C4.1', 'C4.2'],
-          'MAP 1 - PIP 1': ['C5', 'C6', 'C7'],
-          'MAP 1 - PIP Follow Up': ['C9', 'C10'],
+          'MAP 1 - Initial Contact': ['Call outcome', 'PIP 1 scheduled', 'PIP Follow-Up scheduled'],
+          'MAP 1 - PIP 1': ['PIP Initial presentation', 'CIQ complete', 'Prioritization complete'],
+          'MAP 1 - PIP Follow Up': ['PIP Follow up presentation', 'Client PIP decision'],
         }
     const allowedCodes = autoCompleteCodes[phase.name] || []
-    const tasks = (phase.program_client_tasks || []).filter(t => t.status_options && t.status_options !== 'auto' && allowedCodes.includes(t.task_code))
+    const tasks = (phase.program_client_tasks || []).filter(t => t.status_options && t.status_options !== 'auto' && allowedCodes.includes(t.name))
     setCompletedPhases(p => ({ ...p, [phase.id]: 'saving' }))
     try {
       await Promise.all(tasks.map(task => {
@@ -503,7 +876,7 @@ function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
     } catch (err) { console.error(err); setCompletedPhases(p => ({ ...p, [phase.id]: null })) }
   }
 
-  const statusColors = { Completed: '#27ae60', Confirmed: '#27ae60', Yes: '#27ae60', 'Call arranged': '#27ae60', 'PIP 1 scheduled': '#27ae60', 'Follow-up scheduled': '#27ae60', 'PIP Follow-up confirmed': '#27ae60', 'Send confirmation email': '#27ae60', 'Sent confirmation email': '#27ae60', 'Regular priorities tab enabled': '#27ae60', 'Tax priorities tab enabled': '#27ae60', 'Completed + N/A': '#27ae60', 'Completed + Risk 1': '#27ae60', 'Completed + Risk 2': '#27ae60', 'Completed + Risk 3': '#27ae60', 'Completed + Risk 4': '#27ae60', 'Completed + Risk 5': '#27ae60', 'Lite': '#27ae60', 'Core': '#27ae60', 'Max': '#27ae60', 'In Progress': '#f39c12', Undecided: '#f39c12', 'No response': '#e74c3c', No: '#e74c3c', 'PIP Follow-up declined': '#e74c3c', 'Send declined email': '#e74c3c', 'Meeting declined': '#e74c3c' }
+  const statusColors = { Completed: '#27ae60', Confirmed: '#27ae60', Yes: '#27ae60', 'Call arranged': '#27ae60', 'PIP 1 scheduled': '#27ae60', 'Follow-up scheduled': '#27ae60', 'PIP Follow-up confirmed': '#27ae60', 'Send confirmation email': '#27ae60', 'Sent confirmation email': '#27ae60', 'Regular priorities tab enabled': '#27ae60', 'Tax priorities tab enabled': '#27ae60', 'Completed + N/A': '#27ae60', 'Completed + Risk 1': '#27ae60', 'Completed + Risk 2': '#27ae60', 'Completed + Risk 3': '#27ae60', 'Completed + Risk 4': '#27ae60', 'Completed + Risk 5': '#27ae60', 'Lite': '#27ae60', 'Core': '#27ae60', 'Max': '#27ae60', 'In Progress': '#f39c12', Undecided: '#f39c12', 'No response': '#e74c3c', No: '#e74c3c', 'PIP Follow-up declined': '#e74c3c', 'Send declined email': '#e74c3c', 'Meeting declined': '#e74c3c', 'Completed - Yes': '#27ae60', 'Completed - No': '#e74c3c', 'Completed - Undecided': '#f39c12' }
 
   function getPhaseState(phase) {
     const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
@@ -547,12 +920,12 @@ function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
         const dotColor = state === 'done' ? '#27ae60' : state === 'active' ? '#5b9fe6' : 'transparent'
         const titleColor = state === 'active' ? '#5b9fe6' : '#fff'
         const autoCompletableCodesForCheck = {
-          'MAP 1 - PIP 1': ['C5', 'C6', 'C7'],
-          'MAP 1 - PIP Follow Up': ['C9', 'C10'],
+          'MAP 1 - PIP 1': ['PIP Initial presentation', 'CIQ complete', 'Prioritization complete'],
+          'MAP 1 - PIP Follow Up': ['PIP Follow up presentation', 'Client PIP decision'],
         }
         const autoCodesForPhase = autoCompletableCodesForCheck[phase.name] || []
         const autoTasksAllDone = autoCodesForPhase.length > 0 && (phase.program_client_tasks || [])
-          .filter(t => autoCodesForPhase.includes(t.task_code))
+          .filter(t => autoCodesForPhase.includes(t.name))
           .every(t => progress[t.id]?.status && progress[t.id].status !== '')
         const hasCompleteButton = ['MAP 1 - PIP 1', 'MAP 1 - PIP Follow Up'].includes(phase.name) && !autoTasksAllDone
         const hasInlineCompleteButton = phase.name === 'MAP 1 - Initial Contact' && state !== 'done'
@@ -567,12 +940,7 @@ function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
                 <span style={{ fontSize: '13px', fontWeight: '600', color: titleColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{phase.name}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {hasCompleteButton && !readOnly && (
-                  <button onClick={e => { e.stopPropagation(); completePhase(phase) }} disabled={phaseCompleteState === 'saving'}
-                    style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', background: phaseCompleteState === 'done' ? 'rgba(39,174,96,0.15)' : 'rgba(91,159,230,0.15)', border: `1px solid ${phaseCompleteState === 'done' ? 'rgba(39,174,96,0.4)' : 'rgba(91,159,230,0.4)'}`, color: phaseCompleteState === 'done' ? '#27ae60' : '#5b9fe6', whiteSpace: 'nowrap' }}>
-                    {phaseCompleteState === 'saving' ? 'Saving...' : phaseCompleteState === 'done' ? '✓ Auto completed' : '✓ Auto complete — all completed and confirmed'}
-                  </button>
-                )}
+                
                 {state === 'done' && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(39,174,96,0.15)', color: '#27ae60', border: '1px solid rgba(39,174,96,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(91,159,230,0.15)', color: '#5b9fe6', border: '1px solid rgba(91,159,230,0.3)' }}>In progress · {doneTasks}/{nonAutoTasks.length}</span>}
                 {state === 'pending' && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: '#8bacc8' }}>Not started</span>}
@@ -584,8 +952,77 @@ function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
             {isExpanded && (
               <div style={{ borderTop: `1px solid ${borderColor}`, padding: '12px 18px' }}>
                 
+{phase.name === 'MAP 1 - PC Admin' && (() => {
+                  const pipDecisionTask = phases.find(ph => ph.name === 'MAP 1 - PIP Follow Up')?.program_client_tasks?.find(t => t.name === 'PIP Follow Up decision')
+                  const pipStatus = pipDecisionTask ? (progress[pipDecisionTask.id]?.status || '') : ''
+                  const pipDecision = pipStatus.replace('Completed - ', '')
 
-                {tasks.map(task => {
+                  if (!pipStatus || !pipStatus.startsWith('Completed')) return (
+                    <div style={{ padding: '12px', color: '#8bacc8', fontSize: '13px' }}>Waiting for PIP Follow Up decision</div>
+                  )
+
+                  const decisionColor = pipDecision === 'Yes' ? '#27ae60' : pipDecision === 'No' ? '#e74c3c' : '#f39c12'
+                  const decisionLabel = pipDecision === 'Yes' ? 'Yes — proceeding' : pipDecision === 'No' ? 'No — declined' : 'Undecided — awaiting client'
+
+                  const autoStep = (label) => (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1px solid rgba(255,255,255,0.2)' }} />
+                      <span style={{ fontSize: '12px', color: '#8bacc8' }}>{label}</span>
+                      <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', color: '#8bacc8', marginLeft: 'auto' }}>Not completed</span>
+                    </div>
+                  )
+
+                  const yesSteps = [
+                    'Engagement letter created',
+                    'Engagement letter signed by client',
+                    'Engagement letter signed by VFO Services',
+                    'Take the payment due (and send confirmation email)',
+                    'Create invoice (once money settled)',
+                    'Email to client (invoice + next steps/priorities)',
+                    'Revenue shares paid',
+                    'Email member to confirm revenue share details',
+                    'Email VFO-L & PPT',
+                  ]
+
+                  return (
+                    <div style={{ padding: '8px 14px', background: 'rgba(0,0,0,0.15)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                        <span style={{ fontSize: '12px', color: '#8bacc8' }}>Decision:</span>
+                        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${decisionColor}22`, color: decisionColor, border: `1px solid ${decisionColor}44` }}>{decisionLabel}</span>
+                      </div>
+
+                      {pipDecision === 'No' && autoStep('Decline email sent to client')}
+
+                      {pipDecision === 'Yes' && yesSteps.map((s, i) => <div key={i}>{autoStep(s)}</div>)}
+
+                      {pipDecision === 'Undecided' && (
+                        <>
+                          {autoStep('Decision email sent')}
+                          {autoStep('Client response received')}
+                          <div style={{ marginLeft: '14px', borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '12px', marginTop: '4px', marginBottom: '4px' }}>
+                            <div style={{ fontSize: '11px', color: '#5a8ab5', marginBottom: '6px' }}>If Yes:</div>
+                            {yesSteps.map((s, i) => <div key={`y${i}`}>{autoStep(s)}</div>)}
+                            <div style={{ fontSize: '11px', color: '#5a8ab5', marginBottom: '6px', marginTop: '10px' }}>If No:</div>
+                            {autoStep('Decline email sent to client')}
+                            <div style={{ fontSize: '11px', color: '#5a8ab5', marginBottom: '6px', marginTop: '10px' }}>If extra meeting:</div>
+                            {autoStep('Extra meeting held')}
+                            {autoStep('PF submits outcome')}
+                            <div style={{ marginLeft: '14px', borderLeft: '1px solid rgba(255,255,255,0.06)', paddingLeft: '12px', marginTop: '4px', marginBottom: '4px' }}>
+                              <div style={{ fontSize: '11px', color: '#5a8ab5', marginBottom: '6px' }}>If Yes:</div>
+                              {autoStep('PF completed pricing')}
+                              {yesSteps.map((s, i) => <div key={`ey${i}`}>{autoStep(s)}</div>)}
+                              <div style={{ fontSize: '11px', color: '#5a8ab5', marginBottom: '6px', marginTop: '10px' }}>If No:</div>
+                              {autoStep('Decline email sent to client')}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {phase.name !== 'MAP 1 - PC Admin' &&
+                tasks.map(task => {
                   const p = progress[task.id] || {}
                   const isDone = !!p.status
                   const statusColor = statusColors[p.status] || '#8bacc8'
@@ -593,7 +1030,7 @@ function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
                   if (task.status_options === 'auto') return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#27ae60', flexShrink: 0 }} />
-                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                      
                       <span style={{ fontSize: '13px', color: '#8bacc8', flex: 1 }}>{task.name}</span>
                       <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(39,174,96,0.15)', color: '#27ae60', border: '1px solid rgba(39,174,96,0.3)' }}>Done</span>
                     </div>
@@ -602,13 +1039,13 @@ function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
                   // READ-ONLY MODE (member side)
                   if (readOnly) {
                     const isPCAdmin = phase.name === 'MAP 1 - PC Admin'
-                    const c10Status2 = progress[phases.find(ph => ph.name === 'MAP 1 - PIP Follow Up')?.program_client_tasks?.find(t => t.task_code === 'C10')?.id]?.status || ''
+                    const c10Status2 = progress[phases.find(ph => ph.name === 'MAP 1 - PIP Follow Up')?.program_client_tasks?.find(t => t.name === 'Client PIP decision')?.id]?.status || ''
                     const c14c15Active2 = c10Status2 === 'No' || c10Status2 === 'Undecided'
-                    const isGreyedOut2 = isPCAdmin && (task.task_code === 'C14' || task.task_code === 'C15') && !c14c15Active2
+                    const isGreyedOut2 = isPCAdmin && (task.name === 'Email to Client if "Undecided" or "No" in C12' || task.name === 'Final client decision (if previously "Undecided" or "No")') && !c14c15Active2
                     return (
                       <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', opacity: isGreyedOut2 ? 0.3 : 1 }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
-                        <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                        
                         <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
                         {isDone
                           ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
@@ -619,27 +1056,27 @@ function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
                     )
                   }
 
-                  if (task.task_code === 'C8') return (
+                  if (task.name === 'PIP Follow-up meeting re-confirmation/declined email') return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
-                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                      
                       <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
                       {isDone
                         ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
                         : <div style={{ display: 'flex', gap: '6px' }}>
-                            <button onClick={() => saveTask(task.id, 'Sent confirmation email', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(39,174,96,0.4)', background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>Re-confirm meeting</button>
-                            <button onClick={() => saveTask(task.id, 'Send declined email', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: '#8bacc8' }}>Meeting declined</button>
+                            <button onClick={() => saveTask(task.id, 'Sent confirmation email', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(39,174,96,0.4)', background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>Send re-confirmation email to client</button>
+                            <button onClick={() => saveTask(task.id, 'Send declined email', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c' }}>Meeting declined - Email client</button>
                           </div>
                       }
                       {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#8bacc8' }}>{formatDate(p.completed_date)}</span>}
                     </div>
                   )
 
-                  if (task.task_code === 'C2') return (
+                  if (task.name === 'Call arranged with client') return (
                     <div key={task.id}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
-                        <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                        
                         <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
                         <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'rgba(255,255,255,0.15)', color: isDone ? statusColor : '#fff' }}>
                           <option value="">-- Select --</option>
@@ -647,26 +1084,19 @@ function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
                         </select>
                         <input type="date" value={p.completed_date || ''} onChange={e => saveDate(task.id, e.target.value)} style={{ ...inputStyle, width: '130px' }} />
                       </div>
-                      {hasInlineCompleteButton && isExpanded && (
-                        <div style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'flex-end' }}>
-                          <button onClick={() => completePhase(phase)} disabled={completedPhases[phase.id] === 'saving'}
-                            style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', background: completedPhases[phase.id] === 'done' ? 'rgba(39,174,96,0.15)' : 'rgba(91,159,230,0.15)', border: `1px solid ${completedPhases[phase.id] === 'done' ? 'rgba(39,174,96,0.4)' : 'rgba(91,159,230,0.4)'}`, color: completedPhases[phase.id] === 'done' ? '#27ae60' : '#5b9fe6', whiteSpace: 'nowrap' }}>
-                            {completedPhases[phase.id] === 'saving' ? 'Saving...' : completedPhases[phase.id] === 'done' ? '✓ Auto completed' : '✓ Auto complete — all completed and confirmed'}
-                          </button>
-                        </div>
-                      )}
+                      
                     </div>
                   )
 
                   const isPCAdmin = phase.name === 'MAP 1 - PC Admin'
-                  const c10Status = progress[phases.find(ph => ph.name === 'MAP 1 - PIP Follow Up')?.program_client_tasks?.find(t => t.task_code === 'C10')?.id]?.status || ''
+                  const c10Status = progress[phases.find(ph => ph.name === 'MAP 1 - PIP Follow Up')?.program_client_tasks?.find(t => t.name === 'Client PIP decision')?.id]?.status || ''
                   const c14c15Active = c10Status === 'No' || c10Status === 'Undecided'
-                  const isGreyedOut = isPCAdmin && (task.task_code === 'C14' || task.task_code === 'C15') && !c14c15Active
+                  const isGreyedOut = isPCAdmin && (task.name === 'Email to Client if "Undecided" or "No" in C12' || task.name === 'Final client decision (if previously "Undecided" or "No")') && !c14c15Active
 
                   if (isPCAdmin) return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', opacity: isGreyedOut ? 0.3 : 1 }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#27ae60' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#27ae60' : 'rgba(255,255,255,0.2)'}` }} />
-                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                      
                       <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
                       <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: isDone ? 'rgba(39,174,96,0.15)' : 'rgba(255,255,255,0.06)', color: isDone ? '#27ae60' : '#8bacc8', border: `1px solid ${isDone ? 'rgba(39,174,96,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
                         {isDone ? 'Completed' : 'Not completed'}
@@ -675,26 +1105,63 @@ function ClientTrackViewV2({ clientId, programId, readOnly = false }) {
                     </div>
                   )
 
-                  if (task.task_code === 'C13') return (
-                    <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
-                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
-                      <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
-                      {isDone
-                        ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
-                        : <button onClick={() => saveTask(task.id, 'Completed', p.completed_date)}
-                            style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '1px solid rgba(91,159,230,0.4)', background: 'rgba(91,159,230,0.15)', color: '#5b9fe6' }}>
-                            Enter details
-                          </button>
-                      }
-                      <input type="date" value={p.completed_date || ''} onChange={e => saveDate(task.id, e.target.value)} style={{ ...inputStyle, width: '130px' }} />
-                    </div>
-                  )
+                  if (task.name === 'PIP Follow Up decision' && task.status_options === 'enter_details') {
+                    if (readOnly && isDone) {
+                      const dl = p.status.replace('Completed - ', '')
+                      const dc = dl === 'Yes' ? '#27ae60' : dl === 'No' ? '#e74c3c' : '#f39c12'
+                      return (
+                        <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: dc, flexShrink: 0 }} />
+                          <span style={{ fontSize: '13px', color: '#8bacc8', flex: 1 }}>{task.name}</span>
+                          <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${dc}22`, color: dc, border: `1px solid ${dc}44` }}>{dl}</span>
+                          {p.completed_date && <span style={{ fontSize: '11px', color: '#5a8ab5' }}>{formatDate(p.completed_date)}</span>}
+                        </div>
+                      )
+                    }
+                    if (readOnly && !isDone) {
+                      return (
+                        <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid rgba(255,255,255,0.2)' }} />
+                          <span style={{ fontSize: '13px', color: '#fff', flex: 1 }}>{task.name}</span>
+                          <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: '#8bacc8' }}>Not started</span>
+                        </div>
+                      )
+                    }
+                    const dl = isDone ? p.status.replace('Completed - ', '') : ''
+                    const dc = dl === 'Yes' ? '#27ae60' : dl === 'No' ? '#e74c3c' : dl === 'Undecided' ? '#f39c12' : '#8bacc8'
+                    let formData = null
+                    if (isDone) { try { formData = JSON.parse(p.notes || '{}') } catch(e) { formData = {} } }
+                    const formExpandKey = `pipform_${task.id}`
+                    const isFormShown = isDone ? expanded[formExpandKey] : true
+                    return (
+                      <div key={task.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '7px 0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: isDone ? 'pointer' : 'default' }} onClick={() => isDone && setExpanded(prev => ({ ...prev, [formExpandKey]: !prev[formExpandKey] }))}>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? dc : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? dc : 'rgba(255,255,255,0.2)'}` }} />
+                          <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1, fontWeight: '600' }}>{task.name}</span>
+                          {isDone && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${dc}22`, color: dc, border: `1px solid ${dc}44` }}>{dl}</span>}
+                          {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#5a8ab5' }}>{formatDate(p.completed_date)}</span>}
+                          {isDone && <span style={{ color: '#8bacc8', fontSize: '10px', transform: isFormShown ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
+                        </div>
+                        {isFormShown && (
+                          <PIPDecisionForm
+                            task={task}
+                            clientId={clientId}
+                            saveTask={saveTask}
+                            existingData={formData}
+                            onSubmitted={(status, data) => {
+                              setProgress(prev => ({ ...prev, [task.id]: { ...prev[task.id], task_id: task.id, status, completed_date: new Date().toISOString().split('T')[0], notes: JSON.stringify(data) } }))
+                            }}
+                          />
+                        )}
+                      </div>
+                    )
+                  }
+                    
 
                   return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
-                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                      
                       <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
                       <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'rgba(255,255,255,0.15)', color: isDone ? statusColor : '#fff' }}>
                         <option value="">-- Select --</option>
@@ -878,7 +1345,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
   const [localProgress, setLocalProgress] = useState(() => {
     // Auto-fill C25.1 with track's specialist if not already set
     if (track.specialist_name) {
-      const c251Task = phases.flatMap(p => p.program_client_tasks || []).find(t => t.task_code === 'C25.1')
+      const c251Task = phases.flatMap(p => p.program_client_tasks || []).find(t => t.name === 'Allocate to VFO Specialist')
       if (c251Task && !progress[c251Task.id]?.status) {
         return { ...progress, [c251Task.id]: { ...progress[c251Task.id], task_id: c251Task.id, status: track.specialist_name } }
       }
@@ -936,9 +1403,9 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
 
   async function completePhase(phase) {
     const today = new Date().toISOString().split('T')[0]
-    const autoCompleteCodes = { 'MAP 4 - PF': ['C25.9'] }
+    const autoCompleteCodes = { 'MAP 4 - Educate': ['MAP 4 meeting'] }
     const allowedCodes = autoCompleteCodes[phase.name] || []
-    const tasks = (phase.program_client_tasks || []).filter(t => allowedCodes.includes(t.task_code))
+    const tasks = (phase.program_client_tasks || []).filter(t => allowedCodes.includes(t.name))
     setCompletedPhases(p => ({ ...p, [phase.id]: 'saving' }))
     try {
       await Promise.all(tasks.map(task => callApi('msm_save_priority_task', { priority_track_id: track.id, task_id: task.id, status: task.status_options.split('|')[0], completed_date: today })))
@@ -950,7 +1417,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
     } catch (err) { console.error(err); setCompletedPhases(p => ({ ...p, [phase.id]: null })) }
   }
 
-  const statusColors = { Completed: '#27ae60', Yes: '#27ae60', 'No additional info required': '#27ae60', 'MAP 4 scheduled': '#27ae60', 'MAP 4 Scheduled': '#27ae60', No: '#e74c3c', 'Additional info required': '#f39c12' }
+  const statusColors = { Completed: '#27ae60', Yes: '#27ae60', 'No additional info required': '#27ae60', 'MAP 4 scheduled': '#27ae60', 'MAP 4 Scheduled': '#27ae60', No: '#e74c3c', 'Additional info required': '#27ae60' }
   const inputStyle = { padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '13px', fontFamily: 'DM Sans, sans-serif' }
 
   function getPhaseState(phase) {
@@ -965,7 +1432,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
     return 'pending'
   }
 
-  const c253TaskId = phases.flatMap(p => p.program_client_tasks || []).find(t => t.task_code === 'C25.3')?.id
+  const c253TaskId = phases.flatMap(p => p.program_client_tasks || []).find(t => t.name === 'Additional information required')?.id
   const c253Status = localProgress[c253TaskId]?.status || ''
   const additionalInfoRequired = c253Status === 'Additional info required'
 
@@ -1040,7 +1507,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                   if (task.status_options === 'auto') return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#27ae60' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#27ae60' : 'rgba(255,255,255,0.2)'}` }} />
-                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '40px' }}>{task.task_code}</span>
+                      
                       <span style={{ fontSize: '13px', color: '#8bacc8', flex: 1 }}>{task.name}</span>
                       <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: isDone ? 'rgba(39,174,96,0.15)' : 'rgba(255,255,255,0.06)', color: isDone ? '#27ae60' : '#8bacc8', border: `1px solid ${isDone ? 'rgba(39,174,96,0.3)' : 'rgba(255,255,255,0.1)'}` }}>{isDone ? 'Completed' : 'Not completed'}</span>
                       {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#5a8ab5' }}>{formatDate(p.completed_date)}</span>}
@@ -1050,7 +1517,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                   if (readOnly) return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
-                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '40px' }}>{task.task_code}</span>
+                      
                       <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
                       {isDone
                         ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
@@ -1063,7 +1530,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                   if (task.status_options === 'specialist_select') return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#27ae60' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#27ae60' : 'rgba(255,255,255,0.2)'}` }} />
-                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '40px' }}>{task.task_code}</span>
+                      
                       <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
                       <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '200px', color: isDone ? '#27ae60' : '#fff', borderColor: isDone ? 'rgba(39,174,96,0.4)' : 'rgba(255,255,255,0.15)' }}>
                         <option value="">-- Select Specialist --</option>
@@ -1076,7 +1543,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                   if (task.status_options === 'enter_details') return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#27ae60' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#27ae60' : 'rgba(255,255,255,0.2)'}` }} />
-                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '40px' }}>{task.task_code}</span>
+                      
                       <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
                       {isDone
                         ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(39,174,96,0.15)', color: '#27ae60', border: '1px solid rgba(39,174,96,0.3)' }}>Completed</span>
@@ -1086,11 +1553,53 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                     </div>
                   )
 
-                  const isGreyedOut = ['C25.4', 'C25.5', 'C25.6'].includes(task.task_code) && !additionalInfoRequired
+                  // Skip tasks rendered as children inside Additional info handler
+                  if (['Email to obtain information required sent', 'Information received', 'Information passed to VFO-L'].includes(task.name)) return null
+
+                  // Additional information required — render with indented children
+                  if (task.name === 'Additional information required') {
+                    const childTaskNames = ['Email to obtain information required sent', 'Information received', 'Information passed to VFO-L']
+                    const allPhaseTasks = phases.flatMap(p => p.program_client_tasks || [])
+                    const childTasks = allPhaseTasks.filter(t => childTaskNames.includes(t.name))
+                    const greyed = !additionalInfoRequired
+                    return (
+                      <div key={task.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
+                          <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
+                          <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'rgba(255,255,255,0.15)', color: isDone ? statusColor : '#fff' }}>
+                            <option value="">-- Select --</option>
+                            {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                          <input type="date" value={p.completed_date || ''} onChange={e => saveDate(task.id, e.target.value)} style={{ ...inputStyle, width: '130px' }} />
+                        </div>
+                        <div style={{ marginLeft: '18px', borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '12px', paddingBottom: '4px', opacity: greyed ? 0.3 : 1, pointerEvents: greyed ? 'none' : 'auto' }}>
+                          {childTasks.map(ct => {
+                            const cp = localProgress[ct.id] || {}
+                            const cDone = !!cp.status
+                            const cColor = statusColors[cp.status] || '#8bacc8'
+                            return (
+                              <div key={ct.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', flexWrap: 'wrap' }}>
+                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: cDone ? cColor : 'transparent', flexShrink: 0, border: `1px solid ${cDone ? cColor : 'rgba(255,255,255,0.2)'}` }} />
+                                <span style={{ fontSize: '12px', color: cDone ? '#8bacc8' : '#fff', flex: 1 }}>{ct.name}</span>
+                                <select value={cp.status || ''} onChange={e => saveTask(ct.id, e.target.value, cp.completed_date)} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '120px', fontSize: '11px', borderColor: cDone ? `${cColor}66` : 'rgba(255,255,255,0.15)', color: cDone ? cColor : '#fff' }}>
+                                  <option value="">-- Select --</option>
+                                  {(ct.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <input type="date" value={cp.completed_date || ''} onChange={e => saveDate(ct.id, e.target.value)} style={{ ...inputStyle, width: '120px', fontSize: '11px' }} />
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  const isGreyedOut = false
                   return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap', opacity: isGreyedOut ? 0.3 : 1, pointerEvents: isGreyedOut ? 'none' : 'auto' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
-                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '40px' }}>{task.task_code}</span>
+                      
                       <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
                       <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'rgba(255,255,255,0.15)', color: isDone ? statusColor : '#fff' }}>
                         <option value="">-- Select --</option>
@@ -1133,7 +1642,7 @@ function PFTEngagementTrack({ clientId, programId, readOnly = false }) {
 
       const expandState = {}
       loadedPhases.forEach(phase => {
-        const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !t.status_options?.startsWith('auto_') && t.task_code !== 'A1')
+        const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !t.status_options?.startsWith('auto_') && t.name !== 'Set Up accountant on tracker')
         const allDone = tasks.length === 0 || tasks.every(t => prog[t.id]?.status)
         expandState[phase.id] = !allDone
       })
@@ -1165,9 +1674,9 @@ function PFTEngagementTrack({ clientId, programId, readOnly = false }) {
 
   function getA11Status() {
     const allTasks = phases.flatMap(p => p.program_client_tasks || [])
-    const a8 = allTasks.find(t => t.task_code === 'A8')
-    const a9 = allTasks.find(t => t.task_code === 'A9')
-    const a10 = allTasks.find(t => t.task_code === 'A10')
+    const a8 = allTasks.find(t => t.name === 'Right clients?')
+    const a9 = allTasks.find(t => t.name === 'Right client relationships?')
+    const a10 = allTasks.find(t => t.name === 'Right attitude (to change)?')
     if (!a8 || !a9 || !a10) return null
     const v8 = progress[a8.id]?.status
     const v9 = progress[a9.id]?.status
@@ -1179,7 +1688,7 @@ function PFTEngagementTrack({ clientId, programId, readOnly = false }) {
   }
 
   function getPhaseState(phase) {
-    const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !t.status_options?.startsWith('auto_') && t.task_code !== 'A1')
+    const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !t.status_options?.startsWith('auto_') && t.name !== 'Set Up accountant on tracker')
     if (tasks.length === 0) return 'done'
     if (tasks.every(t => progress[t.id]?.status)) return 'done'
     if (tasks.some(t => progress[t.id]?.status)) return 'active'
@@ -1197,7 +1706,7 @@ function PFTEngagementTrack({ clientId, programId, readOnly = false }) {
 
   if (loading) return <div style={{ padding: '40px', color: '#8bacc8', textAlign: 'center' }}>Loading...</div>
 
-  const a23Task = phases.flatMap(p => p.program_client_tasks || []).find(t => t.task_code === 'A23')
+  const a23Task = phases.flatMap(p => p.program_client_tasks || []).find(t => t.name === 'Accountant decision')
   const a23Status = a23Task ? progress[a23Task.id]?.status : null
 
   return (
@@ -1246,7 +1755,7 @@ function PFTEngagementTrack({ clientId, programId, readOnly = false }) {
                     return (
                       <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: a11Val ? a11Color : 'transparent', flexShrink: 0, border: `1.5px solid ${a11Val ? a11Color : 'rgba(255,255,255,0.2)'}` }} />
-                        <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                        
                         <span style={{ fontSize: '13px', color: '#fff', flex: 1 }}>{task.name}</span>
                         <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '6px', background: `${a11Color}22`, color: a11Color, border: `1px solid ${a11Color}44`, fontWeight: '600' }}>{a11Val || 'Pending'}</span>
                       </div>
@@ -1254,11 +1763,11 @@ function PFTEngagementTrack({ clientId, programId, readOnly = false }) {
                   }
 
                   // A1 auto-complete
-                  if (task.task_code === 'A1') {
+                  if (task.name === 'Set Up accountant on tracker') {
                     return (
                       <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#27ae60', flexShrink: 0 }} />
-                        <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                        
                         <span style={{ fontSize: '13px', color: '#8bacc8', flex: 1 }}>{task.name}</span>
                         <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(39,174,96,0.15)', color: '#27ae60', border: '1px solid rgba(39,174,96,0.3)' }}>Done</span>
                       </div>
@@ -1270,7 +1779,7 @@ function PFTEngagementTrack({ clientId, programId, readOnly = false }) {
                     return (
                       <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
-                        <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                        
                         <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
                         {isDone
                           ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
@@ -1287,7 +1796,7 @@ function PFTEngagementTrack({ clientId, programId, readOnly = false }) {
                   return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
-                      <span style={{ fontSize: '12px', color: '#8bacc8', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
+                      
                       <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
                       <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'rgba(255,255,255,0.15)', color: isDone ? statusColor : '#fff' }}>
                         <option value="">-- Select --</option>
@@ -1356,7 +1865,7 @@ function TaxPrioritiesTab({ clientId, programId, specialists, readOnly = false }
  
   function getPlanState(plan) {
     const prog = allProgress[plan.id] || {}
-    const allTasks = phases.filter(p => p.name !== 'Tax 5a - Specialist Allocation' && p.name !== 'Tax 5b - Post-Specialist').flatMap(p => p.program_client_tasks || []).filter(t => t.status_options !== 'auto')
+    const allTasks = phases.filter(p => p.name !== 'Tax 5 - Education & DD (Specialist Allocation)' && p.name !== 'Tax 5 - Education & DD (Post Allocation)').flatMap(p => p.program_client_tasks || []).filter(t => t.status_options !== 'auto')
     if (allTasks.length === 0) return 'not started'
     if (allTasks.every(t => prog[t.id]?.status)) return 'completed'
     if (allTasks.some(t => prog[t.id]?.status)) return 'in progress'
@@ -1426,6 +1935,273 @@ function TaxPrioritiesTab({ clientId, programId, specialists, readOnly = false }
     </div>
   )
 }
+
+function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, onSubmitted }) {
+  const existing = existingData || {}
+  const isViewMode = !!existingData
+  
+  const [decision, setDecision] = useState(existing.decision || '')
+  const [taxRiskMindset, setTaxRiskMindset] = useState(existing.taxRiskMindset || '')
+  const [retainerPayment, setRetainerPayment] = useState(existing.retainerPayment || '')
+  const [implementationFee, setImplementationFee] = useState(existing.implementationFee || '')
+  const [splitType, setSplitType] = useState(existing.splitType || '')
+  const [memberShare, setMemberShare] = useState(existing.memberShare || '')
+  const [vfosShare, setVfosShare] = useState(existing.vfosShare || '')
+  const [potentialTaxSavings, setPotentialTaxSavings] = useState(existing.potentialTaxSavings || '')
+  const [initialRetainer, setInitialRetainer] = useState(existing.initialRetainer || '')
+  const [ccRecipients, setCcRecipients] = useState(existing.ccRecipients || [])
+  const [ccInput, setCcInput] = useState('')
+  const [presentationLink, setPresentationLink] = useState(existing.presentationLink || '')
+  const [meetingNotes, setMeetingNotes] = useState(existing.meetingNotes || '')
+  const [submitting, setSubmitting] = useState(false)
+ 
+  const totalFee = (parseFloat(retainerPayment) || 0) + (parseFloat(implementationFee) || 0)
+ 
+  // Auto-calc split when splitType changes
+  useEffect(() => {
+    if (isViewMode) return
+    if (splitType === '1/3 Member, 2/3 VFOS') {
+      const ms = (totalFee / 3).toFixed(2)
+      const vs = (totalFee - parseFloat(ms)).toFixed(2)
+      setMemberShare(ms)
+      setVfosShare(vs)
+    } else if (splitType === '50/50') {
+      const half = (totalFee / 2).toFixed(2)
+      setMemberShare(half)
+      setVfosShare(half)
+    }
+  }, [splitType, totalFee])
+ 
+  // For custom split, balance the other field
+  function handleMemberShareChange(val) {
+    setMemberShare(val)
+    if (splitType === 'Custom') {
+      const remaining = (totalFee - (parseFloat(val) || 0)).toFixed(2)
+      setVfosShare(remaining >= 0 ? remaining : '0.00')
+    }
+  }
+  function handleVfosShareChange(val) {
+    setVfosShare(val)
+    if (splitType === 'Custom') {
+      const remaining = (totalFee - (parseFloat(val) || 0)).toFixed(2)
+      setMemberShare(remaining >= 0 ? remaining : '0.00')
+    }
+  }
+ 
+  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'DM Sans, sans-serif' }
+  const labelStyle = { fontSize: '11px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }
+  const sectionStyle = { background: 'rgba(0,0,0,0.15)', borderRadius: '8px', padding: '16px', marginBottom: '12px', border: '1px solid rgba(255,255,255,0.06)' }
+  const readOnlyInput = { ...inputStyle, opacity: 0.6, pointerEvents: 'none' }
+ 
+  function addCc() {
+    if (ccInput && ccInput.includes('@')) {
+      setCcRecipients([...ccRecipients, ccInput])
+      setCcInput('')
+    }
+  }
+ 
+  function removeCc(i) {
+    if (isViewMode) return
+    setCcRecipients(ccRecipients.filter((_, idx) => idx !== i))
+  }
+ 
+  async function handleSubmit() {
+    if (!decision) return
+    setSubmitting(true)
+    const formData = { decision, presentationLink, meetingNotes, ccRecipients }
+    if (decision === 'Yes') {
+      formData.taxRiskMindset = taxRiskMindset
+      formData.retainerPayment = retainerPayment
+      formData.implementationFee = implementationFee
+      formData.totalFee = totalFee.toFixed(2)
+      formData.splitType = splitType
+      formData.memberShare = memberShare
+      formData.vfosShare = vfosShare
+    } else if (decision === 'Undecided') {
+      formData.potentialTaxSavings = potentialTaxSavings
+      formData.initialRetainer = initialRetainer
+    }
+    try {
+      await callApi('tax_save_task', {
+        tax_plan_id: plan.id,
+        task_id: task.id,
+        status: `Completed - ${decision}`,
+        completed_date: new Date().toISOString().split('T')[0],
+        notes: JSON.stringify(formData),
+        tax_specialist_id: taxSpecialistId || null
+      })
+      if (onSubmitted) onSubmitted(`Completed - ${decision}`, formData)
+    } catch (err) { console.error(err) }
+    finally { setSubmitting(false) }
+  }
+ 
+  const riskOptions = [
+    'Yes – Risk 1 – Very Conservative Mindset',
+    'Yes – Risk 2 - Moderately Conservative Mindset',
+    'Yes – Risk 3 – Average Risk Mindset',
+    'Yes – Risk 4 – Moderately Aggressive Mindset',
+    'Yes – Risk 5 – Very Aggressive Mindset',
+  ]
+ 
+  const splitOptions = ['1/3 Member, 2/3 VFOS', '50/50', 'Custom']
+  const isCustomSplit = splitType === 'Custom'
+  const isPresetSplit = splitType && !isCustomSplit
+ 
+  return (
+    <div style={{ marginLeft: '18px', padding: '16px', background: 'rgba(0,0,0,0.15)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', marginTop: '4px', marginBottom: '8px' }}>
+      {/* Decision dropdown */}
+      <div style={{ marginBottom: '16px' }}>
+        <label style={labelStyle}>Client decision</label>
+        {isViewMode
+          ? <div style={{ ...inputStyle, opacity: 0.6 }}>{decision}</div>
+          : <select value={decision} onChange={e => setDecision(e.target.value)} style={{ ...inputStyle, background: '#0d2a6e' }}>
+              <option value="">-- Select --</option>
+              <option value="Yes">Yes</option>
+              <option value="Undecided">Undecided</option>
+              <option value="No">No</option>
+            </select>
+        }
+      </div>
+ 
+      {/* === YES FIELDS === */}
+      {decision === 'Yes' && (
+        <>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Tax risk mindset</label>
+            {isViewMode
+              ? <div style={readOnlyInput}>{taxRiskMindset || '—'}</div>
+              : <select value={taxRiskMindset} onChange={e => setTaxRiskMindset(e.target.value)} style={{ ...inputStyle, background: '#0d2a6e' }}>
+                  <option value="">-- Select --</option>
+                  {riskOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+            }
+          </div>
+ 
+          <div style={sectionStyle}>
+            <div style={{ fontSize: '12px', color: '#5b9fe6', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Fee details</div>
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '120px' }}>
+                <label style={labelStyle}>Retainer payment</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                  <input value={retainerPayment} onChange={e => setRetainerPayment(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode} />
+                </div>
+              </div>
+              <div style={{ flex: 1, minWidth: '120px' }}>
+                <label style={labelStyle}>Implementation fee</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                  <input value={implementationFee} onChange={e => setImplementationFee(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode} />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Total fee</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                <input value={isViewMode ? (existing.totalFee || '0.00') : totalFee.toFixed(2)} readOnly style={{ ...readOnlyInput, paddingLeft: '28px', background: 'rgba(39,174,96,0.08)', borderColor: 'rgba(39,174,96,0.2)' }} />
+              </div>
+            </div>
+          </div>
+ 
+          <div style={sectionStyle}>
+            <div style={{ fontSize: '12px', color: '#5b9fe6', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Revenue split</div>
+            <div style={{ marginBottom: '10px' }}>
+              <label style={labelStyle}>Split type</label>
+              {isViewMode
+                ? <div style={readOnlyInput}>{splitType || '—'}</div>
+                : <select value={splitType} onChange={e => setSplitType(e.target.value)} style={{ ...inputStyle, background: '#0d2a6e' }}>
+                    <option value="">-- Select --</option>
+                    {splitOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+              }
+            </div>
+            {splitType && (
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '120px' }}>
+                  <label style={labelStyle}>Member share</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                    <input value={memberShare} onChange={e => handleMemberShareChange(e.target.value)} placeholder="0.00" readOnly={isViewMode || isPresetSplit} style={{ ...(isViewMode || isPresetSplit ? readOnlyInput : inputStyle), paddingLeft: '28px' }} />
+                  </div>
+                </div>
+                <div style={{ flex: 1, minWidth: '120px' }}>
+                  <label style={labelStyle}>VFOS share</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                    <input value={vfosShare} onChange={e => handleVfosShareChange(e.target.value)} placeholder="0.00" readOnly={isViewMode || isPresetSplit} style={{ ...(isViewMode || isPresetSplit ? readOnlyInput : inputStyle), paddingLeft: '28px' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+ 
+      {/* === UNDECIDED FIELDS === */}
+      {decision === 'Undecided' && (
+        <div style={sectionStyle}>
+          <div style={{ fontSize: '12px', color: '#5b9fe6', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Meeting figures</div>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: '120px' }}>
+              <label style={labelStyle}>Potential tax savings</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                <input value={potentialTaxSavings} onChange={e => setPotentialTaxSavings(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode} />
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: '120px' }}>
+              <label style={labelStyle}>Initial retainer</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8bacc8', fontSize: '14px' }}>$</span>
+                <input value={initialRetainer} onChange={e => setInitialRetainer(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+ 
+      {/* === SHARED FIELDS (all decisions) === */}
+      {decision && (
+        <>
+          <div style={{ marginBottom: '12px' }}>
+            <label style={labelStyle}>Additional CC recipients <span style={{ textTransform: 'none', opacity: 0.6 }}>(optional)</span></label>
+            {!isViewMode && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                <input value={ccInput} onChange={e => setCcInput(e.target.value)} placeholder="email@example.com" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCc())} style={{ ...inputStyle, flex: 1 }} />
+                <button onClick={addCc} style={{ padding: '8px 16px', borderRadius: '8px', background: '#2563eb', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add</button>
+              </div>
+            )}
+            {ccRecipients.length === 0 && isViewMode && <div style={{ fontSize: '13px', color: '#5a8ab5' }}>None</div>}
+            {ccRecipients.map((email, i) => (
+              <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', borderRadius: '4px', background: 'rgba(91,159,230,0.15)', color: '#5b9fe6', fontSize: '12px', marginRight: '6px', marginBottom: '4px' }}>
+                {email}
+                {!isViewMode && <span onClick={() => removeCc(i)} style={{ cursor: 'pointer', color: '#e74c3c', fontSize: '14px' }}>x</span>}
+              </div>
+            ))}
+          </div>
+ 
+          <div style={{ marginBottom: '12px' }}>
+            <label style={labelStyle}>Presentation link</label>
+            <input value={presentationLink} onChange={e => setPresentationLink(e.target.value)} placeholder="Paste Google Drive link to presentation..." style={isViewMode ? readOnlyInput : inputStyle} readOnly={isViewMode} />
+            {!isViewMode && <div style={{ fontSize: '11px', color: '#5a8ab5', marginTop: '4px' }}>Export your presentation slides as a PDF, upload to Google Drive, then set sharing to "Anyone with the link can view" and paste the link here</div>}
+          </div>
+ 
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Meeting notes</label>
+            <textarea value={meetingNotes} onChange={e => setMeetingNotes(e.target.value)} placeholder="Enter any additional notes from the meeting..." rows={4} style={isViewMode ? { ...readOnlyInput, resize: 'none' } : { ...inputStyle, resize: 'vertical' }} readOnly={isViewMode} />
+          </div>
+ 
+          {!isViewMode && (
+            <button onClick={handleSubmit} disabled={submitting} style={{ width: '100%', padding: '12px', borderRadius: '8px', background: submitting ? '#1a4a9e' : '#2563eb', border: 'none', color: '#fff', fontSize: '15px', fontWeight: '600', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+              {submitting ? 'Submitting...' : 'Submit Outcome'}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
  
 function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists, onBack, readOnly = false }) {
   const [localProgress, setLocalProgress] = useState(initialProgress)
@@ -1440,7 +2216,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   useEffect(() => {
     const expandState = {}
     phases.forEach(phase => {
-      if (phase.name === 'Tax 5a - Specialist Allocation' || phase.name === 'Tax 5b - Post-Specialist') return
+      if (phase.name === 'Tax 5 - Education & DD (Specialist Allocation)' || phase.name === 'Tax 5 - Education & DD (Post Allocation)') return
       const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
       const allDone = tasks.length > 0 && tasks.every(t => localProgress[t.id]?.status)
       expandState[phase.id] = !allDone
@@ -1509,14 +2285,15 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     'Introductions Completed': '#27ae60', 'Combo Tax Plan': '#27ae60', 'ROI Plan': '#27ae60',
     'Continue Process': '#27ae60', 'Move to Implementation': '#27ae60', 'Refund Completed': '#27ae60',
     'Schedule Tax 3': '#27ae60', 'Paid': '#27ae60',
-    'Yes, arrange Tax 3 meeting': '#27ae60', 'No, email client': '#27ae60',
+    'Yes - Confirmation email to client': '#27ae60', 'No - Declined email to client': '#e74c3c',
     'Tim Gacsy': '#27ae60', 'Steven Cox': '#27ae60',
     'Yes – Risk 1 – Very Conservative Mindset': '#27ae60', 'Yes – Risk 2 - Moderately Conservative Mindset': '#27ae60',
     'Yes – Risk 3 – Average Risk Mindset': '#27ae60', 'Yes – Risk 4 – Moderately Aggressive Mindset': '#27ae60',
     'Yes – Risk 5 – Very Aggressive Mindset': '#27ae60',
     No: '#e74c3c', 'Stop Process': '#e74c3c', 'Stopped': '#e74c3c',
-    'Additional info required': '#f39c12', Undecided: '#f39c12',
-    'Continue DD': '#5b9fe6', 'N/A': '#8bacc8',
+    'Additional info required': '#27ae60', Undecided: '#f39c12',
+    'Continue DD': '#27ae60', 'Continue - Revenue Share': '#27ae60', 'Stop - Refund': '#e74c3c', 'N/A': '#8bacc8',
+    'Proceed with Implementation': '#27ae60', 'Not Implementing': '#e74c3c',
     'Pending Completion': '#f39c12',
   }
     
@@ -1530,7 +2307,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   function getPhaseState(phase) {
     let tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
     // Exclude greyed conditional tasks from count
-    if (phase.name === 'Tax 1 - VFO-L' && !additionalInfoRequired) {
+    if (phase.name === 'Tax 1 - Diagnostic' && !additionalInfoRequired) {
       tasks = tasks.filter(t => !['Email to obtain information required sent', 'Information received', 'Information passed to VFO-L'].includes(t.name))
     }
     if (tasks.length === 0) {
@@ -1564,7 +2341,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
  
   // Tax 5a: Check if any specialist has C26.19 (Confirm ready for implementation) done
   const confirmReadyTask = allTasks.find(t => t.name === 'Confirm ready for implementation')
-  const updatePcTask = allTasks.find(t => t.name === 'Implementing with this Specialist' && phases.find(p => p.name === 'Tax 5a - Specialist Allocation')?.program_client_tasks?.some(pt => pt.id === t.id))
+  const updatePcTask = allTasks.find(t => t.name === 'Implementing?' && phases.find(p => p.name === 'Tax 5 - Education & DD (Specialist Allocation)')?.program_client_tasks?.some(pt => pt.id === t.id))
   const anySpecialistUpdateDone = updatePcTask && taxSpecialists.some(spec => {
     const key = `${updatePcTask.id}_${spec.id}`
     return localProgress[key]?.status
@@ -1589,13 +2366,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   const inputStyle = { padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '12px', fontFamily: 'DM Sans, sans-serif' }
  
   // Get Tax 5a phase
-  const tax5aPhase = phases.find(p => p.name === 'Tax 5a - Specialist Allocation')
-  const tax5bPhase = phases.find(p => p.name === 'Tax 5b - Post-Specialist')
+  const tax5aPhase = phases.find(p => p.name === 'Tax 5 - Education & DD (Specialist Allocation)')
+  const tax5bPhase = phases.find(p => p.name === 'Tax 5 - Education & DD (Post Allocation)')
   const tax5aTasks = tax5aPhase?.program_client_tasks || []
  
   // Filter out 5a and 5b from normal phase rendering
-  const phasesBeforeSpec = phases.filter(p => ['Tax 1 - VFO-L', 'Tax 2 - Advanced Tax Planner & PC', 'Tax 3 - Tax 3 Presenter & PC', 'Tax 4 - Advanced Tax Planner & PC'].includes(p.name))
-  const phasesAfterSpec = phases.filter(p => p.name === 'Tax 6 - Advanced Tax Planner & PC')
+  const phasesBeforeSpec = phases.filter(p => ['Tax 1 - Diagnostic', 'Tax 2 - Deeper Dive', 'Tax 3 - ROI Meeting', 'Tax 4 - Tax Plan Review'].includes(p.name))
+  const phasesAfterSpec = phases.filter(p => p.name === 'Tax 6 - Implementation')
  
   function renderTask(task, phase, taxSpecialistId = null) {
     const key = taxSpecialistId ? `${task.id}_${taxSpecialistId}` : task.id
@@ -1604,44 +2381,70 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     const statusColor = statusColors[p.status] || '#8bacc8'
  
     
-    // Enter Details — Tax 3 version with decision capture
-    if (task.name === 'Enter Details' && task.status_options === 'enter_details') {
-      const enterPhase = phases.find(p => p.name === 'Tax 3 - Tax 3 Presenter & PC')
+    // Client tax planning decision — inline form with conditional fields
+    if (task.name === 'Client tax planning decision' && task.status_options === 'enter_details') {
+      const enterPhase = phases.find(p => p.name === 'Tax 3 - ROI Meeting')
       const isInTax3 = enterPhase?.program_client_tasks?.some(pt => pt.id === task.id)
       
-      if (isInTax3 && !isDone && !readOnly) {
-        return (
-          <div key={key} style={{ padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+      if (isInTax3) {
+        if (readOnly && isDone) {
+          const decisionLabel = p.status.replace('Completed - ', '')
+          const decisionColor = decisionLabel === 'Yes' ? '#27ae60' : decisionLabel === 'No' ? '#e74c3c' : '#f39c12'
+          return (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: decisionColor, flexShrink: 0 }} />
+              <span style={{ fontSize: '13px', color: '#8bacc8', flex: 1 }}>{task.name}</span>
+              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${decisionColor}22`, color: decisionColor, border: `1px solid ${decisionColor}44` }}>{decisionLabel}</span>
+              {p.completed_date && <span style={{ fontSize: '11px', color: '#5a8ab5' }}>{formatDate(p.completed_date)}</span>}
+            </div>
+          )
+        }
+        if (readOnly && !isDone) {
+          return (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid rgba(255,255,255,0.2)' }} />
               <span style={{ fontSize: '13px', color: '#fff', flex: 1 }}>{task.name}</span>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button onClick={() => saveTask(task.id, 'Completed - Yes', null, taxSpecialistId)} style={{ padding: '5px 12px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(39,174,96,0.4)', background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>Yes</button>
-                <button onClick={() => saveTask(task.id, 'Completed - Undecided', null, taxSpecialistId)} style={{ padding: '5px 12px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(243,156,18,0.4)', background: 'rgba(243,156,18,0.12)', color: '#f39c12' }}>Undecided</button>
-                <button onClick={() => saveTask(task.id, 'Completed - No', null, taxSpecialistId)} style={{ padding: '5px 12px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c' }}>No</button>
-              </div>
+              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: '#8bacc8' }}>Not started</span>
             </div>
-          </div>
-        )
-      }
-      
-      if (isInTax3 && isDone) {
-        const decisionLabel = p.status.replace('Completed - ', '')
-        const decisionColor = decisionLabel === 'Yes' ? '#27ae60' : decisionLabel === 'No' ? '#e74c3c' : '#f39c12'
+          )
+        }
+        const decisionLabel = isDone ? p.status.replace('Completed - ', '') : ''
+        const decisionColor = decisionLabel === 'Yes' ? '#27ae60' : decisionLabel === 'No' ? '#e74c3c' : decisionLabel === 'Undecided' ? '#f39c12' : '#8bacc8'
+        let formData = null
+        if (isDone) { try { formData = JSON.parse(p.notes || '{}') } catch(e) { formData = {} } }
+        
+        const formExpandKey = `taxform_${task.id}`
+        const isFormShown = isDone ? expanded[formExpandKey] : true
+        
         return (
-          <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: decisionColor, flexShrink: 0 }} />
-            <span style={{ fontSize: '13px', color: '#8bacc8', flex: 1 }}>{task.name}</span>
-            <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${decisionColor}22`, color: decisionColor, border: `1px solid ${decisionColor}44` }}>{decisionLabel}</span>
-            {p.completed_date && <span style={{ fontSize: '11px', color: '#5a8ab5' }}>{formatDate(p.completed_date)}</span>}
+          <div key={key} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '7px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: isDone ? 'pointer' : 'default' }} onClick={() => isDone && setExpanded(prev => ({ ...prev, [formExpandKey]: !prev[formExpandKey] }))}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? decisionColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? decisionColor : 'rgba(255,255,255,0.2)'}` }} />
+              <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1, fontWeight: '600' }}>{task.name}</span>
+              {isDone && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${decisionColor}22`, color: decisionColor, border: `1px solid ${decisionColor}44` }}>{decisionLabel}</span>}
+              {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#5a8ab5' }}>{formatDate(p.completed_date)}</span>}
+              {isDone && <span style={{ color: '#8bacc8', fontSize: '10px', transform: isFormShown ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
+            </div>
+            {isFormShown && (
+              <TaxDecisionForm
+                task={task}
+                plan={plan}
+                saveTask={saveTask}
+                taxSpecialistId={taxSpecialistId}
+                existingData={formData}
+                onSubmitted={(status, data) => {
+                  setLocalProgress(prev => ({ ...prev, [key]: { ...prev[key], task_id: task.id, status, completed_date: new Date().toISOString().split('T')[0], notes: JSON.stringify(data) } }))
+                }}
+              />
+            )}
           </div>
         )
       }
     }
- 
+
     // AI PC Admin — conditional branching, all auto badges, no interactive buttons
     if (task.name === 'AI PC Admin') {
-      const enterDetailsTask = allTasks.find(t => t.name === 'Enter Details')
+      const enterDetailsTask = allTasks.find(t => t.name === 'Client tax planning decision')
       const enterDetailsStatus = enterDetailsTask ? (localProgress[enterDetailsTask.id]?.status || '') : ''
       
       if (!enterDetailsStatus || !enterDetailsStatus.startsWith('Completed')) return (
@@ -1703,7 +2506,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                   {autoStep('Extra meeting held', false)}
                   {autoStep('PF submits outcome', false)}
                   <div style={{ marginLeft: '14px', borderLeft: '1px solid rgba(255,255,255,0.06)', paddingLeft: '12px', marginTop: '4px', marginBottom: '4px' }}>
-                    <div style={{ fontSize: '11px', color: '#5a8ab5', marginBottom: '6px' }}>If Yes with pricing:</div>
+                    <div style={{ fontSize: '11px', color: '#5a8ab5', marginBottom: '6px' }}>If Yes:</div>
                     {autoStep('PF completed pricing', false)}
                     {yesSteps.map((s, i) => <div key={`ey${i}`}>{autoStep(s, false)}</div>)}
                     <div style={{ fontSize: '11px', color: '#5a8ab5', marginBottom: '6px', marginTop: '10px' }}>If No:</div>
@@ -1851,6 +2654,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       )
     }
 
+    // Skip tasks rendered as children inside other handlers
+    if (task.name === 'Refund initial 50%' || task.name === 'Revenue share for initial 50%') return null
+    if (['Email to obtain information required sent', 'Information received', 'Information passed to VFO-L'].includes(task.name)) return null
+
     // Auto badge
     if (task.status_options === 'auto') return (
       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
@@ -1874,6 +2681,28 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#5a8ab5' }}>{formatDate(p.completed_date)}</span>}
       </div>
     )
+
+    // Implementing? — 3 buttons with auto-stamped date, not editable
+    if (task.name === 'Implementing?') {
+      const implColor = p.status === 'Proceed with Implementation' ? '#27ae60' : p.status === 'Not Implementing' ? '#e74c3c' : p.status === 'Undecided' ? '#f39c12' : '#8bacc8'
+      return (
+        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? implColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? implColor : 'rgba(255,255,255,0.2)'}` }} />
+          <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
+          {isDone
+            ? <>
+                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${implColor}22`, color: implColor, border: `1px solid ${implColor}44` }}>{p.status}</span>
+                {p.completed_date && <span style={{ fontSize: '11px', color: '#5a8ab5' }}>{formatDate(p.completed_date)}</span>}
+              </>
+            : <div style={{ display: 'flex', gap: '6px' }}>
+                <button onClick={() => saveTask(task.id, 'Proceed with Implementation', null, taxSpecialistId)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(39,174,96,0.4)', background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>Proceed with Implementation</button>
+                <button onClick={() => saveTask(task.id, 'Not Implementing', null, taxSpecialistId)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c' }}>Not Implementing</button>
+                <button onClick={() => saveTask(task.id, 'Undecided', null, taxSpecialistId)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(243,156,18,0.4)', background: 'rgba(243,156,18,0.12)', color: '#f39c12' }}>Undecided</button>
+              </div>
+          }
+        </div>
+      )
+    }
  
     // Enter details button
     if (task.status_options === 'enter_details') return (
@@ -1896,8 +2725,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         {isDone
           ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
           : <div style={{ display: 'flex', gap: '6px' }}>
-              <button onClick={() => saveTask(task.id, 'Yes, arrange Tax 3 meeting', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(39,174,96,0.4)', background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>Yes, arrange Tax 3 meeting</button>
-              <button onClick={() => saveTask(task.id, 'No, email client', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: '#8bacc8' }}>No, email client</button>
+              <button onClick={() => saveTask(task.id, 'Yes - Confirmation email to client', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(39,174,96,0.4)', background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>Yes - Confirmation email to client</button>
+              <button onClick={() => saveTask(task.id, 'No - Declined email to client', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c' }}>No - Declined email to client</button>
             </div>
         }
         {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#8bacc8' }}>{formatDate(p.completed_date)}</span>}
@@ -1905,20 +2734,42 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     )
  
     // Two-button: Continue / Stop
-    if (task.status_options === 'tax_continue_stop') return (
-      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
-        <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
-        {isDone
-          ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
-          : <div style={{ display: 'flex', gap: '6px' }}>
-              <button onClick={() => saveTask(task.id, 'Continue Process', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(39,174,96,0.4)', background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>Continue</button>
-              <button onClick={() => saveTask(task.id, 'Stop Process', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c' }}>Stop</button>
+    if (task.status_options === 'tax_continue_stop') {
+      const refundTask = allTasks.find(t => t.name === 'Refund initial 50%')
+      const revShareTask = allTasks.find(t => t.name === 'Revenue share for initial 50%')
+      const refundDone = refundTask ? !!localProgress[refundTask.id]?.status : false
+      const revShareDone = revShareTask ? !!localProgress[revShareTask.id]?.status : false
+      const refundGreyed = decision1Status !== 'Stop - Refund'
+      const revShareGreyed = decision1Status !== 'Continue - Revenue Share'
+      return (
+        <div key={key} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
+            <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
+            {isDone
+              ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
+              : <div style={{ display: 'flex', gap: '6px' }}>
+                  <button onClick={() => saveTask(task.id, 'Continue - Revenue Share', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(39,174,96,0.4)', background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>Continue - Revenue Share</button>
+                  <button onClick={() => saveTask(task.id, 'Stop - Refund', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c' }}>Stop - Refund</button>
+                </div>
+            }
+            {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#8bacc8' }}>{formatDate(p.completed_date)}</span>}
+          </div>
+          <div style={{ marginLeft: '18px', borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '12px', paddingBottom: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', opacity: refundGreyed ? 0.15 : 1 }}>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: refundDone ? '#27ae60' : 'transparent', flexShrink: 0, border: `1px solid ${refundDone ? '#27ae60' : 'rgba(255,255,255,0.2)'}` }} />
+              <span style={{ fontSize: '12px', color: '#8bacc8', flex: 1 }}>Refund initial 50%</span>
+              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '3px', background: refundDone ? 'rgba(39,174,96,0.15)' : 'rgba(255,255,255,0.06)', color: refundDone ? '#27ae60' : '#8bacc8' }}>{refundDone ? 'Completed' : 'Not completed'}</span>
             </div>
-        }
-        {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#8bacc8' }}>{formatDate(p.completed_date)}</span>}
-      </div>
-    )
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', opacity: revShareGreyed ? 0.15 : 1 }}>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: revShareDone ? '#27ae60' : 'transparent', flexShrink: 0, border: `1px solid ${revShareDone ? '#27ae60' : 'rgba(255,255,255,0.2)'}` }} />
+              <span style={{ fontSize: '12px', color: '#8bacc8', flex: 1 }}>Revenue share for initial 50%</span>
+              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '3px', background: revShareDone ? 'rgba(39,174,96,0.15)' : 'rgba(255,255,255,0.06)', color: revShareDone ? '#27ae60' : '#8bacc8' }}>{revShareDone ? 'Completed' : 'Not completed'}</span>
+            </div>
+          </div>
+        </div>
+      )
+    }
  
     // Two-button: DD / Implementation
     if (task.status_options === 'tax_dd_implementation') return (
@@ -1928,32 +2779,70 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         {isDone
           ? <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
           : <div style={{ display: 'flex', gap: '6px' }}>
-              <button onClick={() => saveTask(task.id, 'Continue DD', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(91,159,230,0.4)', background: 'rgba(91,159,230,0.12)', color: '#5b9fe6' }}>Continue DD</button>
+              <button onClick={() => saveTask(task.id, 'Continue DD', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(39,174,96,0.4)', background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>Continue DD</button>
               <button onClick={() => saveTask(task.id, 'Move to Implementation', p.completed_date)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(39,174,96,0.4)', background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>Move to Implementation</button>
             </div>
         }
         {isDone && p.completed_date && <span style={{ fontSize: '11px', color: '#8bacc8' }}>{formatDate(p.completed_date)}</span>}
       </div>
     )
- 
+
+    
+
     // Specialist select (for Tax 5a)
     if (task.status_options === 'specialist_select') return null // handled in specialist section
  
     // Greyed conditional tasks
     // Tax 1: tasks after "Additional information required"
-    const isAdditionalInfoTask = ['Email to obtain information required sent', 'Information received', 'Information passed to VFO-L'].includes(task.name)
-    // Tax 4: Refund greyed unless Stop, Rev share greyed unless Continue
-    const isRefundTask = task.name === 'Refund initial 50%'
-    const isRevShareTask = task.name === 'Revenue share for initial 50%'
+    
+    
+
+    // Tax 1: Additional information required — render with indented children
+    if (task.name === 'Additional information required') {
+      const childTaskNames = ['Email to obtain information required sent', 'Information received', 'Information passed to VFO-L']
+      const childTasks = allTasks.filter(t => childTaskNames.includes(t.name))
+      const greyed = !additionalInfoRequired
+      return (
+        <div key={key} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'rgba(255,255,255,0.2)'}` }} />
+            <span style={{ fontSize: '13px', color: isDone ? '#8bacc8' : '#fff', flex: 1 }}>{task.name}</span>
+            <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key]} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'rgba(255,255,255,0.15)', color: isDone ? statusColor : '#fff' }}>
+              <option value="">-- Select --</option>
+              {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <input type="date" value={p.completed_date || ''} onChange={e => saveDate(task.id, e.target.value, taxSpecialistId)} style={{ ...inputStyle, width: '130px' }} />
+          </div>
+          <div style={{ marginLeft: '18px', borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '12px', paddingBottom: '4px', opacity: greyed ? 0.3 : 1, pointerEvents: greyed ? 'none' : 'auto' }}>
+            {childTasks.map(ct => {
+              const ck = taxSpecialistId ? `${ct.id}_${taxSpecialistId}` : ct.id
+              const cp = localProgress[ck] || {}
+              const cDone = !!cp.status
+              const cColor = statusColors[cp.status] || '#8bacc8'
+              return (
+                <div key={ck} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', flexWrap: 'wrap' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: cDone ? cColor : 'transparent', flexShrink: 0, border: `1px solid ${cDone ? cColor : 'rgba(255,255,255,0.2)'}` }} />
+                  <span style={{ fontSize: '12px', color: cDone ? '#8bacc8' : '#fff', flex: 1 }}>{ct.name}</span>
+                  <select value={cp.status || ''} onChange={e => saveTask(ct.id, e.target.value, cp.completed_date, taxSpecialistId)} style={{ ...inputStyle, background: '#0d2a6e', minWidth: '120px', fontSize: '11px', borderColor: cDone ? `${cColor}66` : 'rgba(255,255,255,0.15)', color: cDone ? cColor : '#fff' }}>
+                    <option value="">-- Select --</option>
+                    {(ct.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <input type="date" value={cp.completed_date || ''} onChange={e => saveDate(ct.id, e.target.value, taxSpecialistId)} style={{ ...inputStyle, width: '120px', fontSize: '11px' }} />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )
+    }
     // Tax 5a per-specialist: greyed if Move to Implementation
     const isSpecIntroTask = task.name === 'VFO specialist introductions / discussions'
     const isConfirmReadyImplTask = task.name === 'Confirm ready for implementation'
  
     let isGreyedOut = false
     let greyNote = ''
-    if (isAdditionalInfoTask && !additionalInfoRequired) isGreyedOut = true
-    if (isRefundTask && decision1Status !== 'Stop Process') isGreyedOut = true
-    if (isRevShareTask && decision1Status !== 'Continue Process') isGreyedOut = true
+    
+    
     if ((isSpecIntroTask || isConfirmReadyImplTask) && decision2Status === 'Move to Implementation') {
       isGreyedOut = true
       greyNote = 'Moved to implementation'
@@ -1986,7 +2875,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         const isExpanded = expanded[phase.id]
         const tasks = phase.program_client_tasks || []
         let nonAutoTasks = tasks.filter(t => t.status_options !== 'auto')
-        if (phase.name === 'Tax 1 - VFO-L' && !additionalInfoRequired) {
+        if (phase.name === 'Tax 1 - Diagnostic' && !additionalInfoRequired) {
           nonAutoTasks = nonAutoTasks.filter(t => !['Email to obtain information required sent', 'Information received', 'Information passed to VFO-L'].includes(t.name))
         }
         const doneTasks = nonAutoTasks.filter(t => localProgress[t.id]?.status).length
@@ -2025,7 +2914,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#5b9fe6', border: '1.5px solid #5b9fe6', flexShrink: 0 }} />
-              <span style={{ fontSize: '13px', fontWeight: '600', color: '#5b9fe6', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tax 5a - Specialist Allocation</span>
+              <span style={{ fontSize: '13px', fontWeight: '600', color: '#5b9fe6', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tax 5 - Education & DD (Specialist Allocation)</span>
             </div>
             {!readOnly && (
               <button onClick={() => setShowAddSpec(!showAddSpec)} style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', background: '#2563eb', border: 'none', color: '#fff' }}>+ Add Specialist</button>
@@ -2054,7 +2943,12 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
               const allocateTask = tax5aTasks.find(t => t.status_options === 'specialist_select')
               const specTasks = tax5aTasks.filter(t => t.status_options !== 'specialist_select')
               const specExpKey = `spec_${spec.id}`
-              const isSpecExpanded = expanded[specExpKey] !== false
+              const specTasks2 = tax5aTasks.filter(t => t.status_options !== 'specialist_select')
+              const allSpecDone = specTasks2.every(t => {
+                const sk = `${t.id}_${spec.id}`
+                return localProgress[sk]?.status
+              })
+              const isSpecExpanded = expanded[specExpKey] !== undefined ? expanded[specExpKey] : !allSpecDone
  
               return (
                 <div key={spec.id} style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', marginBottom: '8px', overflow: 'hidden' }}>
@@ -2089,7 +2983,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         <div style={{ background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', marginBottom: '10px', overflow: 'hidden', opacity: anySpecialistUpdateDone ? 1 : 0.3, pointerEvents: anySpecialistUpdateDone ? 'auto' : 'none' }}>
           <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: 'transparent', border: '1.5px solid rgba(255,255,255,0.2)', flexShrink: 0 }} />
-            <span style={{ fontSize: '13px', fontWeight: '600', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tax 5b - Post-Specialist</span>
+            <span style={{ fontSize: '13px', fontWeight: '600', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tax 5 - Education & DD (Post Allocation)</span>
             {!anySpecialistUpdateDone && <span style={{ fontSize: '11px', color: '#f39c12' }}>(Unlocks when Update PC re outcome is completed for any specialist)</span>}
           </div>
           {anySpecialistUpdateDone && (
@@ -2133,4 +3027,5 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       })}
     </div>
   )
+
 }

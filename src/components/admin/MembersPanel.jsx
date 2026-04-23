@@ -290,7 +290,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection }) {
   const sectionStyle = { background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }
   const rowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.07)' }
   const subTabStyle = (active) => ({ padding: '10px 18px', background: 'transparent', border: 'none', borderBottom: active ? '2px solid #5b9fe6' : '2px solid transparent', color: active ? '#fff' : '#8bacc8', fontSize: '13px', fontWeight: active ? '600' : '400', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' })
-  const CONNECTION_TYPES = ['No Connection', '5% - Regular Advisor', '10% - Accredited Introducer', '10% - Accredited Mentor', '20% - Accredited Introducer + Mentor']
+  const CONNECTION_TYPES = ['5% - Regular Advisor', '10% - Accredited Introducer', '10% - Accredited Mentor', '20% - Accredited Introducer + Mentor']
   const statusColors = { Active: '#27ae60', Lost: '#e74c3c', Removed: '#8bacc8' }
 
   if (loading) return <div style={{ padding: '40px', color: '#8bacc8', textAlign: 'center' }}>Loading profile...</div>
@@ -434,6 +434,9 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection }) {
                 {CONNECTION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+            {profile.connected_member_number && (
+              <button onClick={() => { update('connected_member_number', null); update('connection_type', ''); setConnectedSearch('') }} style={{ marginTop: '12px', padding: '8px 16px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontSize: '12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Remove Connection</button>
+            )}
           </div>
           <div style={sectionStyle}>
             <div style={{ fontSize: '13px', color: '#8bacc8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>VFO Certification</div>
