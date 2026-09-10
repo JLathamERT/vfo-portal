@@ -8,6 +8,47 @@
 
 ---
 
+## 2026-09-10 (2nd) — SpecRev cancel resolved by PaymentIntent id (production incident: Deborah Snyder request 32)
+
+**BACKEND ONLY — `vfo-admin-api` **`v824` — deployed 2026-09-10, edge PR #227 (`95b07bc` on main), tag `backend-good-2026-09-10-v824`, smoke 5/5 vs `v824` (Jake)** — branch `fix/specrev-cancel-pi-match`, ONE hunk in `supabase/functions/vfo-admin-api/router/webhooks.ts`.** No migration, no DDL, no template, no cron; `boldsign-webhook` untouched; `deno check` **0**; action count **494** (unchanged — nothing was added to the catalog).
+
+### What broke
+
+SpecRev one-time request **32**, Deborah Snyder, **$4,180** ACH, customer `cus_VAyNQOJh0paZ4r`. The `/specialist-revenue-pay` link is durable, and **every click mints a fresh Checkout Session — Stripe creates a PaymentIntent per session at OPEN, not at submit**. She opened it **twice** on 2026-09-03 (sessions created **15:18:56Z** and **15:23:55Z**) and entered her bank **manually on the second page**: `checkout.session.completed` at **15:25:34Z**, PI `requires_action`, row booked **`awaiting_verification`** against **`pi_3UBcUgRwdhysCa6F0jx9801S`**, verify-bank email drafted — the #370 path behaving correctly.
+
+On **2026-09-04 at 15:18:57Z** the FIRST page expired unpaid and Stripe canceled **its** PaymentIntent with `cancellation_reason: 'automatic'`. `markSpecialistRevenueFailed` resolved the request **by `stripe_customer_id` alone** — it had no idea which PaymentIntent the row was booked against — and wrote **`payment_status='failed'` + `SPECREV_payment_failed_bell`** (notifications **1825/1826**) while her real payment was alive in micro-deposit verification.
+
+The row's own state machine then made it permanent. She verified the micro-deposits on **2026-09-09** (Stripe: *"Payment pending"*, expected success **2026-09-15**), but `payment_intent.processing` requires `awaiting_verification` and `payment_intent.succeeded` accepts only `processing` / `awaiting_verification` (**#371**) — a `failed` row is invisible to both. On 09-15 the **$4,180 would have settled with no `received`, no invoice/receipt and no payout to the 14 members on the line**, with Accounting still showing *"Payment failed"*. Jake confirmed the shape in the Stripe dashboard: **two PaymentIntents on one customer, one pending, one canceled.**
+
+**Same class as gotcha #482** (Pat Hurst, TAX, one day earlier) — a canceled PI from an abandoned page treated as a failure of a different payment. The difference is what makes it a second gotcha: **there the row had never been booked; here it WAS booked, just against another PaymentIntent**, so #482's `=== 'processing'` booking gate would not have caught it. **Pre-existing since 2026-08-11 (v72x, the terminal-failure branches #370 introduced)** — not introduced by the 2026-09-08/09 branches.
+
+### The fix
+
+`markSpecialistRevenueFailed(supabase, customerId, eventLabel, detail, piId)` takes a **5th argument**, adds `stripe_payment_intent_id` to its select, and gains **two early returns** after the existing `received`/`failed` skip:
+
+- `payment_status === 'requested'` → *"never submitted — abandoned page, ignored"* (`checkout.session.expired` already bells that case);
+- `srReq.stripe_payment_intent_id && piId && srReq.stripe_payment_intent_id !== piId` → *"not this request's PaymentIntent — ignored"*.
+
+The id test is skipped when **either** side is NULL, so a row booked before the column was populated behaves exactly as before rather than ignoring every event. The three callers pass **`pi.id`** (`payment_intent.canceled`, `payment_intent.payment_failed`) and **`session.payment_intent`** (`checkout.session.async_payment_failed`). Everything else in the helper — the update, the bell, the logging — is unchanged.
+
+### The repair — DONE 2026-09-10 (approved by Jake)
+
+```sql
+update specialist_revenue_requests
+   set payment_status = 'processing'
+ where id = 32
+   and payment_status = 'failed'
+   and stripe_payment_intent_id = 'pi_3UBcUgRwdhysCa6F0jx9801S';
+```
+
+**`processing`, not `awaiting_verification`** — Stripe already moved the PI to pending on 09-09, which is the `payment_intent.processing` event the `failed` row swallowed, so `processing` is where the state machine would be standing had the row never been lied to. On **2026-09-15** `payment_intent.succeeded` then flips it to `received` and chains invoice/receipt + payout as normal; **that `received` and that payout are the only proof the repair worked**. All three `WHERE` predicates are deliberate — a money-row repair must be a no-op if the row moved between the read and the write.
+
+### Audit + what is still open
+
+Every column the rule needs already exists for **TAX** (`retainer_payment_intent_id`, `final_retainer_payment_intent_id`, `implementation_payment_intent_id`, `deposit_payment_intent_id`) and **SpecRev** (`stripe_payment_intent_id`). **MAP 1 payment 1 stores no PaymentIntent id at all**, so #482's `=== 'processing'` booking gate is its only defence and cannot catch this shape; minting a `pay1_payment_intent_id` is the only thing that would close it. Gotcha **#484**; cross-refs **#482**, **#370**, **#371**, **#327**. **OWED: the repair SQL is unapproved, `v824` is undeployed, and both new early returns are CODE-ONLY.**
+
+---
+
 ## 2026-09-10 — html2pdf retry helper (production incident: Ryan Yeaton 59334 membership receipt 403)
 
 **BACKEND ONLY — `vfo-admin-api` **`v823`** — deployed 2026-09-10, edge PR #226 (`ea6a814` on main), tag `backend-good-2026-09-10-v823`, **smoke 5/5 vs `v823`** (Jake). One new file, seventeen edited; no frontend change of any kind, so no `npm run build`, no `npm run deploy` and deliberately NO `live-N` tag.** Gates at ship: `deno check --no-lock` **0 errors**; **action count unmoved at 494** (6 + 488, the hub's anchored greps) — no action added, renamed or removed; **no migration, no DDL, no policy, no DB function, no `email_templates` row, no cron change**, so the **security advisor was NOT re-run** (the hub's rule, not an omission: this branch touches no table, no policy and no function); `boldsign-webhook` **untouched**; `router/dispatch.ts`, `middleware/*` and every HTTP chain call untouched. `git diff --stat`: **17 files changed, 62 insertions(+), 191 deletions(-)** plus the new `utils/html2pdf.ts`.
