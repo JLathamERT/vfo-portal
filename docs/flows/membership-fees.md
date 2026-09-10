@@ -315,6 +315,14 @@ all Draft, all **To** member / **Cc** `tvaldes@elitert.com` / **Bcc** `platham@e
   opener that earns an invoice. Idempotent on `docs_emailed_at`, so a redelivered Stripe event
   cannot double-send. Chained from three webhook points (card first payment, ACH settle,
   off-session pull); `membership_termination_fee` is deliberately excluded.
+- **PDF renders retry (2026-09-10, gotcha #483).** Both renders go through
+  `utils/html2pdf.ts renderHtmlToPdf` — **3 attempts, 1500 ms / 3000 ms with jitter**, because the
+  12:00Z sweep charges several plans in one second and html2pdf.app answers concurrent renders
+  with a **403**. A render that still fails after all three returns 500 **with the accounting
+  numbers already reserved and nothing stamped on the ledger row** — repair by writing the
+  reserved `invoice_number` / `receipt_number` onto the row FIRST (so the re-run reuses them
+  instead of minting `-0002`), leaving `docs_emailed_at` NULL, then re-firing the action through
+  jobid 16's own stored cron command; full recipe in **#483**.
 - Both PDFs are filed in the **`member-ert-docs` ERT vault** keyed by `member_number` — the
   admin-managed, member-read-only section, the same place signed agreements land. NOT Google
   Drive (unlike MAP 1). Paths recorded on the ledger row; a vault failure logs and never loses

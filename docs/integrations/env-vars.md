@@ -54,7 +54,7 @@ A single OAuth refresh token covers all three Google APIs.
 
 | Var | Required by | Notes |
 |---|---|---|
-| `HTML2PDF_API_KEY` | `automation_CONTRACT_invoicereceipt` (×2 — invoice and receipt PDFs), `automation_CONTRACT_sendagreement` | API key for `https://api.html2pdf.app/v1/generate`. Third-party HTML→PDF service. |
+| `HTML2PDF_API_KEY` | every invoice/receipt/agreement handler, **via the helper** | API key for `https://api.html2pdf.app/v1/generate`. Third-party HTML→PDF service. **Read in exactly ONE place: `vfo-admin-api/utils/html2pdf.ts` `renderHtmlToPdf(html, label, extra?)`** (2026-09-10) — no handler calls the endpoint directly any more, and the grep that proves it is `grep -rn "api.html2pdf.app" --include=*.ts .` returning only that file. **Retry policy: 3 attempts, 1500 ms then 3000 ms with ±20% jitter, on 403 / 429 / 5xx and thrown fetch errors; every failed attempt logs `html2pdf <label>: attempt N/3 FAILED — status S`; other 4xx (400/401/404/413) do not retry.** Returns `ArrayBuffer \| null`, so each caller keeps its own failure handling. The 403 is a **concurrency** refusal, not an auth one — gotcha **#483**. Handlers that also pre-check the var themselves (`"HTML2PDF_API_KEY not configured"`) kept that guard. |
 
 ## Frontend env vars
 
