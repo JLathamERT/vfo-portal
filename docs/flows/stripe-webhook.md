@@ -182,6 +182,10 @@ The rule keys deliberately reuse the synchronous sweep paths'. See [SESSION_REFE
 
 > **The incident it fixes.** Pat Hurst (client 123, tax plan 87, retainer $6,750, `fee_process_version 2026-08-25`) opened his `/tax-pay` link and chose ACH twice on 2026-09-08 without submitting; the three expiries on 2026-09-09 flipped `retainer_status` **NULL → `'failed'`** and belled `FAILURE_first_payment_declined` (notification **1898**, *"canceled (automatic)"*), which made `actions/tax/stripe-checkout.ts` read the link as *"Payment already completed"* and **killed his only way to pay**. One client estate-wide (census: one `retainer_status='failed'`, zero `pay1_status='failed'`); remediated by SQL at ~18:30Z the same day (`retainer_status` back to NULL, guarded on `retainer_payment_intent_id IS NULL`). The exposure ran exactly one day — before the 2026-09-08 widening this event was ignored for TAX / MAP 1 altogether.
 
+#### The SpecRev twin — the PI-id gate on `markSpecialistRevenueFailed` *(2026-09-10, `v824` — gotcha #484)*
+
+The three SpecRev terminal-failure branches resolve the request by `stripe_customer_id` alone, and one customer collects a PaymentIntent from **every** Checkout page the specialist ever opened, so `markSpecialistRevenueFailed` now also takes the event's PaymentIntent id (`pi.id`, or `session.payment_intent` on `async_payment_failed`) and **ignores the event when the row is still `requested` (nothing was ever submitted) or when the row's booked `stripe_payment_intent_id` is a different PI** — the gap that let Deborah Snyder's abandoned first page (request 32, $4,180) mark her live, verified second payment `failed` a day later.
+
 ---
 
 ## Branch D — `payment_intent.processing` *(MAP 1 / Tax, 2026-09-08, v816)*
