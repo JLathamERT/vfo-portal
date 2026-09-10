@@ -8,6 +8,41 @@
 
 ---
 
+## 2026-09-10 — html2pdf retry helper (production incident: Ryan Yeaton 59334 membership receipt 403)
+
+**BACKEND ONLY — `vfo-admin-api` **`v823`** — deployed 2026-09-10, edge PR #226 (`ea6a814` on main), tag `backend-good-2026-09-10-v823`, **smoke 5/5 vs `v823`** (Jake). One new file, seventeen edited; no frontend change of any kind, so no `npm run build`, no `npm run deploy` and deliberately NO `live-N` tag.** Gates at ship: `deno check --no-lock` **0 errors**; **action count unmoved at 494** (6 + 488, the hub's anchored greps) — no action added, renamed or removed; **no migration, no DDL, no policy, no DB function, no `email_templates` row, no cron change**, so the **security advisor was NOT re-run** (the hub's rule, not an omission: this branch touches no table, no policy and no function); `boldsign-webhook` **untouched**; `router/dispatch.ts`, `middleware/*` and every HTTP chain call untouched. `git diff --stat`: **17 files changed, 62 insertions(+), 191 deletions(-)** plus the new `utils/html2pdf.ts`.
+
+### What broke
+
+`membership-sweep-daily` (jobid 16, **12:00 UTC**) charged **four** members inside **one second** on 2026-09-10. Each successful charge chains `automation_MEMBERSHIP_invoicereceipt`, and that handler renders **two** PDFs through `https://api.html2pdf.app/v1/generate` — so the burst put **eight renders through the service in about four seconds**. One of them was refused: **`membership invoice/receipt: receipt PDF generation FAILED — status 403`** at **12:00:08.787Z**, on **Ryan Yeaton — member 59334, plan 61, `member_payment_schedule` row 381, $792, card**.
+
+**The key was valid.** The other three members' invoice *and* receipt renders succeeded on the same credential seconds either side, and 24 hours of logs contain **exactly one** PDF 403. This was a **rate/concurrency refusal returned as 403**, not an auth failure.
+
+**The damage is entirely about where in the handler it landed.** `actions/membership/invoice-receipt.ts` reserves its accounting numbers first, renders second, drafts third, files the vault PDFs fourth and stamps the ledger row last. `renderPdf` had **no retry**, so the 403 became a 500 from the render step — **after** `allocateDocNumber` had reserved **`INV-59334-0001` / `REC-59334-0001`** (`document_numbers` rows **496 / 497**) and **before** the Gmail draft, before the two vault PDFs, and before `invoice_number` / `receipt_number` / `docs_emailed_at` were written to row 381. The result: money taken, numbers spent, ledger row blank, no documents, no email — **and nothing that would ever retry it.** Stripe already had its 200 two chain hops upstream (#327's redelivery only fires when *we* time out, never on a prompt 500) and the sweep re-drafts nothing. **#282's reservation guard could not catch it either** — that guard fires when the reservation *fails*; here it succeeded and the render after it died.
+
+### Repair (done by hand, 2026-09-10)
+
+Two steps, in this order, because the order is the whole point:
+
+1. **The reserved numbers were written onto row 381 first**, `docs_emailed_at` left **NULL**. The handler reads `primary.invoice_number || null` / `primary.receipt_number || null` before allocating, so a row carrying the numbers makes a re-run **reuse** them — a blank row would have minted `-0002` and orphaned `-0001` permanently. `docs_emailed_at` had to stay unset because it is the handler's own "already sent" early return.
+2. **The action was re-fired through the cron job's own stored command** — a `DO $$` block that reads `command` from `cron.job` for **jobid 16**, `replace()`s the JSON body with this row's arguments and `EXECUTE`s the resulting `net.http_post`, so **the service-role key never left the database**. Same manoeuvre as the **2026-09-02** entry below (re-drafting deleted tax-revshare sweep emails by NULLing the once-only stamp and executing jobid 5's stored command).
+
+**Result at 14:40:53Z:** the Gmail draft and both vault PDFs landed, and the `-0001` numbers were kept.
+
+### The code change
+
+**New `supabase/functions/vfo-admin-api/utils/html2pdf.ts`** — `renderHtmlToPdf(html: string, label: string, extra?: Record<string, unknown>): Promise<ArrayBuffer | null>`. It POSTs `{ apiKey: Deno.env.get("HTML2PDF_API_KEY"), html, output: "pdf", ...extra }` and makes **3 attempts**, waiting **1500 ms then 3000 ms with ±20% jitter** — the jitter is load-bearing, because the failure mode is a *simultaneous* burst and un-jittered retries would re-collide. It retries **403 / 429 / 5xx** and thrown fetch errors, logs **every** failed attempt as `html2pdf <label>: attempt N/3 FAILED — status S`, and returns `null` after the last. **Other 4xx do not retry** (400 bad HTML, 401 bad key, 404, 413 too large — they answer identically every time).
+
+**All 20 direct call sites across 17 action files were migrated to it**, and the `ArrayBuffer | null` return contract was chosen precisely so that **each caller's existing failure handling is unchanged** — its log line, its `throw`, its `return json(..., 500)`, its bell. The sites: `accountant/invoice-receipt`, `accountant/send-agreement`, `advisor/invoice-receipt`, `advisor/send-agreement`, `agreements/pdf-draft`, `membership/invoice-receipt`, `msm/pip-invoice-receipt` (×2), `onboarding/agreement-send`, `onboarding/bg-receipt`, `onboarding/license-invoice-receipt`, `pipeline/contract-invoice-receipt` (×2), `pipeline/contract-send-agreement`, `specialist-revenue/invoice-receipt`, `tax/final-retainer-receipt`, `tax/implementation-receipt`, `tax/invoice-receipt` (×2), `tax/send-agreement`. **Five of them pass `{ format: "Letter", margin: 0 }` through `extra`** — the four agreement senders (`accountant`, `advisor`, `onboarding` specialist, `pipeline` MAP 1) plus `tax/send-agreement`; every other site was already the plain `output: "pdf"` body. The seven handlers that pre-check the var themselves (`"HTML2PDF_API_KEY not configured"`) **kept that guard** — the helper reads the env itself, but removing a caller's own 500 would have been a behaviour change. `utils/html-templates.ts` and `utils/membership-html-templates.ts` matched the URL grep only in **comments** and needed no change.
+
+**Post-migration proof:** `grep -rn "api.html2pdf.app" --include=*.ts .` returns `utils/html2pdf.ts` and the two comment lines only — no handler names the endpoint any more.
+
+### What is NOT proven
+
+**The retry arm has never fired in production.** No live 403 has been retried; the helper's retry path is **code-only** until the next sweep burst collides. Gotcha **#483** carries the incident, the repair recipe and the rule.
+
+---
+
 ## 2026-09-09 (3rd branch) — Looking at a payment page is not failing to make one: the `canceled` widening gets a booking gate (hotfix)
 
 **BACKEND ONLY — `vfo-admin-api` **`v822`**, a one-predicate hotfix to `router/webhooks.ts`. No frontend change of any kind, so no `npm run build`, no `npm run deploy` and deliberately NO `live-N` tag.** One file, one hunk. **Action count unmoved at 494** — no action added, renamed or removed. `deno check` **0**; **smoke 5/5 vs `v822`** (Jake). Route pages unmoved at **34**; crons unmoved at **17**; `send_mode=true` unmoved at **31**; `boldsign-webhook` untouched at **`v40`**. **No migration, no DDL, no policy, no DB function, no `email_templates` row, no cron change — so the security advisor was NOT re-run, which is the hub's rule and not an omission: this branch touches no table, no policy and no function.** Gates: `deno check` **0 errors** / action count **493** / **smoke to be recorded against `v822`**.
