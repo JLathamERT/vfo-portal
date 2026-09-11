@@ -22,6 +22,74 @@
 > Sandbox: `pipeline_sandbox_config` row `MEMBER_MEMBERSHIP`
 > (badge on both panels — **SANDBOX as of 2026-07-13**). Gotchas #215–#217.
 
+---
+
+## Which Stripe account a plan bills on *(2026-09-11, v829)*
+
+Membership fees are one of the three money flows now billed on the **ERT** Stripe account (Elite Resource Team LLC); the other two are Growth Credit purchases and advisor/accountant onboarding. Full rules: [../integrations/stripe.md](../integrations/stripe.md#two-stripe-accounts-2026-09-11). Two of them apply here, and they answer different questions.
+
+**CONFIG MINTS.** `pipeline_sandbox_config` row **`MEMBER_MEMBERSHIP`** gained **`stripe_account`** (`'vfos'` default, `CHECK IN ('vfos','ert')`). It decides which account a **NEW** Stripe customer is minted on — nothing else. It is flipped **by SQL, never from the UI**; `SandboxModeToggle.jsx` shows a read-only `Stripe: VFO Services` / `Stripe: ERT` pill beside the LIVE/SANDBOX button.
+
+> **LIVE ON ERT since 2026-09-11 ~16:10Z.** The row was flipped by SQL to **`stripe_account='ert'` with `sandbox_mode=false`**, so every NEW membership customer mints on ERT. The flip itself moved nothing already minted — that is what splitting the two rules buys — and the existing plans were then moved separately, later the same day: **`membership_stripe_remap` HAS BEEN RUN, 37 of 37 plans moved, 0 left on `vfos`** (below). **Membership fees now bill entirely on ERT.** The first ORGANIC ERT sweep pull is **Charles West 59046, `$1,500`, due 2026-09-12 at 12:00Z**, then Timothy Feitosa 58156 (`$1,042`) and Jeffery Hill 59123 (`$667`) on 2026-09-15.
+
+**THE PLAN'S STAMP GOVERNS.** `member_payment_plans.stripe_account` is nullable; **NULL = legacy = `vfos`**. Every later Stripe call for that plan resolves its key as `getStripeKeyFor(normalizeStripeAccount(plan.stripe_account), !!plan.sandbox)` — **the plan's own `sandbox` flag for the mode, the plan's own stamp for the account, never the config for either.**
+
+| Handler | Account source |
+|---|---|
+| `membership_send_setup_link` (`send-setup-link.ts`) | **The only handler that reads the config** — and only when it actually mints a customer: `reusableCustomerId ? normalizeStripeAccount(plan.stripe_account) : cfg.stripeAccount`. **`stripe_account` is written ONLY on the minting pass** (`if (mintedCustomer) planUpdate.stripe_account = stripeAccount`). A `setup_pending` plan re-minted after a mode flip therefore also follows the config, and picks up its stamp in the same write. |
+| `membership_setup_checkout` (`setup-checkout.ts`) | `plan.stripe_account` |
+| `automation_MEMBERSHIP_sweep` (`sweep.ts`) | `plan.stripe_account`, per plan inside the charge loop |
+| `membership_terminate` (`terminate.ts`) | `plan.stripe_account` |
+| `membership_stripe_remap` (`stripe-remap.ts`) | **ERT only** — it exists to move a plan there |
+
+**No charge path ever re-stamps a plan.** A Stripe customer id is valid on exactly one account, so re-stamping would strand it. The one writer permitted to is the remap below.
+
+On the webhook side the three membership guards (setup, ACH settle, late failure) now trip on **account as well as mode** — see [stripe-webhook.md](stripe-webhook.md).
+
+---
+
+## `membership_stripe_remap` — moving existing plans to ERT *(2026-09-11, v829; customer-only rows v830)* — **RUN, 37/37 MOVED**
+
+**Decision (Jake, 2026-09-11): existing membership plans move by copy + remap, not by attrition.**
+
+> **DONE 2026-09-11.** Stripe copied **37 customers** (within the hour), and one Apply moved **all 37 plans**: **13 `moved` pm→pm** onto ERT `pm_1UEY…` ids and **24 `moved` as `customer-only: copied`**. DB after: every plan holding a Stripe customer reads `stripe_account='ert'`, **0 on `vfos`**; the 13 active plans carry ERT payment-method ids; the 24 `setup_pending` plans are unchanged but for the stamp. The payment-method ids in Stripe's file matched the DB **13/13** before Apply, and the **mint** arm never fired — the copy carried all 24 customers across.
+
+**What Stripe does first.** Stripe's self-serve **"Copy PAN data across Stripe accounts"** migration copies a customer and its saved payment methods from VFO Services to ERT. It **PRESERVES the customer id** (old == new) and **MINTS NEW payment-method ids**, then delivers a mapping CSV to the recipient Dashboard's **Documents** area. **What it actually delivers has SIX columns, not the four this action parses:**
+
+```
+customer_id_old,v2_account_id_old,source_id_old,customer_id_new,v2_account_id_new,source_id_new
+```
+
+**Drop the two `v2_account_id_*` columns** to get the shape the panel requires (`customer_id_old,source_id_old,customer_id_new,source_id_new`). A customer with **no saved payment method** comes back with **blank source columns** — already the customer-only row shape below — so **one converted file covers both row shapes at once**, which is how all 37 went in a single Apply.
+
+It copies **cards and US ACH** but **no charges, subscriptions or invoices**. **No member contact is required** — nobody re-enters a card. Two operator facts that cost time (gotcha **#486**): the sender-side **"Copy to account"** control is hidden from an Administrator and needs the **Data Migration Specialist** role; and the *Upload file* option wants a **HEADER-LESS single column of customer ids**, rejecting a header row as "Customer not found". The recipient must answer **"Do you have ACH mandates for these customers?"** — Jake answered **Yes**, an explicitly accepted risk on the one active ACH plan whose mandate was collected under VFO Services' name.
+
+**The Dry run can outlive the browser's patience.** 37 rows × 2-3 Stripe probes exceeded `api.js`'s **20 s** timeout on the first attempt (the 60 s tier is reserved for `automation_*` writes, and this action is not one — #319/#487); the server finished regardless, the second Dry run returned `37 would_move`, and Apply returned `37 moved`. Because `api.js` does not retry writes and every outcome is idempotent (`already_ert`, plus the guarded `where`), a timeout here is a re-click, not a double-apply — gotcha **#487**. **Read the DB, not the browser, after a timeout.**
+
+So the only things a plan has to learn are its **new `default_payment_method_id`** and the fact that it now bills on ERT. That is exactly what this action writes, and nothing else.
+
+**Action.** `membership_stripe_remap` — **AUTH**, in **`SUPERADMIN_ONLY_ACTIONS`**, and in **NO `TAB_ACTIONS` list at all** (per **#338**: the accounting grant is the whole boundary for that tab, so nothing superadmin-only may live there). Action count **494 → 495**. File `actions/membership/stripe-remap.ts`.
+
+**Body:** `{ mappings: [{ customer_id_old, source_id_old, customer_id_new, source_id_new }], dry_run }`. **Max 200 mappings per call** (`MAX_MAPPINGS`); a bigger CSV is split by the caller.
+
+**Per row, in order.** A list select (not `maybeSingle`) on `stripe_customer_id`, because two plans can legitimately share one Stripe customer (a renewed member re-planned) and `maybeSingle` would error the whole row instead of moving both. Then, per plan:
+
+1. **Already on ERT** → `already_ert`. Not an error — the whole CSV can safely be re-submitted after a partial run.
+2. **`plan.default_payment_method_id !== source_id_old`** → `pm_mismatch`. The CSV row describes some other saved method on that customer; moving the plan onto it would silently change what gets billed.
+3. **Probe ERT before writing anything.** `GET /v1/payment_methods/<source_id_new>` on the ERT key for the plan's mode → `ert_pm_not_found` on a non-ok or a throw. Then **the copied method must hang off the SAME customer** (`pm.customer === plan.stripe_customer_id`) → `ert_pm_wrong_customer` otherwise: a method that landed on a different ERT customer would charge the wrong person. Then `GET /v1/customers/<customer_id_new>` → `ert_customer_not_found`. *A plan stamped `ert` whose method does not exist there is a plan whose next sweep pull silently declines — which is why every probe happens before any write.*
+4. **`dry_run`** → `would_move` (every check and every Stripe probe ran; nothing was written).
+5. **Write.** Sets the ERT customer's `invoice_settings[default_payment_method]` first — **cosmetic, logged, never fatal**, since every portal charge passes `payment_method` explicitly. Then a **guarded** update whose `WHERE` still requires `stripe_account is null or = 'vfos'`, setting `stripe_account='ert'`, `default_payment_method_id=source_id_new`, `updated_at`. An empty result means something moved the plan between the read and the write → `race_lost`, nothing changed.
+
+**Refused up front:** a blank `customer_id_old` or `source_id_new` → `error`; **`customer_id_old !== customer_id_new`** → `customer_id_changed`, because Stripe preserves the id and a file that says otherwise is not the shape this action relies on.
+
+**Outcomes (12):** `moved` · `would_move` · `already_ert` · `no_plan` · `not_pending` · `customer_id_changed` · `pm_mismatch` · `ert_pm_not_found` · `ert_pm_wrong_customer` · `ert_customer_not_found` · `race_lost` · `error`. Rows are independent — one bad mapping is reported and skipped, never aborting the rest. Every row logs one line; the call logs a `DONE dry_run=… mappings=… rows=… moved=… would_move=… skipped=…` summary and returns `{ success, dry_run, summary, results }`.
+
+**NEVER touched:** `stripe_customer_id` (preserved by Stripe, so rewriting it could only corrupt it — one exception below), `sandbox`, `payment_method_type`, `acct_last4`, `setup_token`, and **every `member_payment_schedule` row**. **No email, no bell, no charge.**
+
+**Customer-only rows (second row shape, same action, commit `ca02a21`).** A mapping row whose `source_id_old` AND `source_id_new` are both blank (`cus_x,,cus_x,`) moves a **`setup_pending`** plan — a member who was emailed a `/membership-pay` link and has not used it — with **no re-send**: the plan has nothing saved and nothing booked, so it only has to end up stamped `'ert'` with a customer the existing link can pay against (`setup-checkout.ts` keys the account off the row stamp). The action refuses it as **`not_pending`** when the plan is not `setup_pending` or already has a `default_payment_method_id` (those belong in the normal row shape). It probes `GET /v1/customers/{id}` on ERT: **200 and not `deleted`** means Stripe's copy carried the customer over and that same id is kept; **404** means it was not copied, so a fresh ERT customer is minted exactly as `send-setup-link.ts` does (email from `members`, `name`, `metadata[member_number|plan_id|pipeline]`) and **that is the one case where `stripe_customer_id` is rewritten** — safe because nothing references the old one. Any other HTTP status refuses (`ert_customer_not_found`) rather than risk a duplicate customer on a Stripe blip. `dry_run` resolves the member email first (a missing email surfaces in the rehearsal, not the real run) and reports `would_move` with `customer-only: copied` / `would mint`; the real run reports `moved` with `customer-only: copied` / `minted cus_…`. Census at build time: **13 `active` plans with a saved method (Stripe's CSV) + 24 `setup_pending` plans (customer-only rows, all 24 members have an email)** — **and that is exactly what the real run moved: 13 + 24 = 37, every one of the 24 reported `customer-only: copied`, so the mint arm is still unexercised.** The 24 already-sent `/membership-pay` links keep working untouched: `setup_token` is not in the update, and `setup-checkout.ts` picks its account from the row stamp.
+
+**Frontend.** A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the bottom of `MembershipFeesPanel.jsx` (`StripeRemapSection`). It is gated on **`getSession()?.is_superadmin`** and deliberately **NOT** on the `isSuperadmin` prop — at that mount the prop is `canSeeTab('accounting')` (#338), which would hand the tool to every accounting-tab admin. Paste the CSV; `parseRemapCsv` requires the **exact** four-column header and a matching field count on every line, naming the offending line number otherwise. **Dry run is required before Apply, on the exact same text:** `canApply = dryOkFor === text`, and any keystroke clears `dryOkFor`, so Apply can never run against text the server has not previewed. A dry run only unlocks Apply when `would_move > 0`, and a completed Apply clears the unlock so the next one needs a fresh dry run. Rows are sent in **batches of 200** and the merged summary + per-row outcome table is rendered with a colour-coded pill.
+
 ## Business rules (user-confirmed)
 
 - **Terms**: annual membership value + optional FIRST-YEAR credit note; paid monthly or annually.

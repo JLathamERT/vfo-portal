@@ -179,7 +179,7 @@ Resolves the document through a 5-table cascade: MAP 1 → tax → advisor → a
 
 `utils/notify-jake-failure.ts` routes every money-movement failure to Jake's bell **in addition** to existing Tracy/admin/PF alerts. Covered: `checkout.session.async_payment_failed`, `payment_intent.payment_failed` (incl. LATE-ACH bounces of off-session MAP 1 installments and Tax implementation charges, each guarded on `'processing'` — **#229**), **`payment_intent.canceled`** (SpecRev since 2026-08-11; **MAP 1 + Tax since 2026-09-08**, running the same block as `payment_failed` — micro-deposit expiry emits `canceled`, not `payment_failed`, **#475**), `customer.subscription.updated`/`deleted`, `charge.dispute.created`/`closed`, `charge.refunded` + refund events, `transfer.reversed`, and `payment_intent.partially_funded` (bank-transfer SpecRev; received-so-far derived from `amount_remaining` because a `customer_balance` PI reports `amount_received=0` until fully funded — **#184**).
 
-**Alert policy:** action-required + auto-clear for rev-share / licence / disputes; dismissible FYI for the rest (**#122**). Every one of these only fires if the Stripe endpoint **subscribes to the event** in both modes.
+**Alert policy:** action-required + auto-clear for rev-share / licence / disputes; dismissible FYI for the rest (**#122**). Every one of these only fires if the Stripe endpoint **subscribes to the event** — and since **2026-09-11 (v829) that means on all FOUR endpoints (two accounts × two modes):** VFO Services live/sandbox and ERT live/sandbox, all delivering to the same function URL. The verifier holds four signing secrets (`STRIPE_WEBHOOK_SECRET`, `STRIPE_WEBHOOK_SECRET_SANDBOX`, `ERT_STRIPE_WEBHOOK_SECRET`, `ERT_STRIPE_WEBHOOK_SECRET_SANDBOX`), tries each, and **records which one matched** — that match is the only evidence of which Stripe account the event came from (**#485**). Branches for primary-only pipelines are gated behind `fromPrimary`; the advisor/accountant lookups filter on the row's `stripe_account` stamp. The **ERT endpoints subscribe to 14 events** — see [../flows/stripe-webhook.md](../flows/stripe-webhook.md).
 
 ### `checkout.session.expired` — abandonment
 
@@ -306,6 +306,6 @@ Check payments (`_paidbycheck` → `_checkcleared`, MAP 1 P1–P4 and tax retain
 3. Set `metadata.pipeline` **and** `metadata.payment_kind` on anything you create in Stripe (**#13**).
 4. Decide the purchase-email gate's **placement** deliberately — call site vs inside the handler (**#287**).
 5. If a `tax_planner` can reach the entry point, allowlist **and** guard the entire chain closure (**#257**).
-6. Subscribe any new Stripe event on the endpoint **in both modes**, or the handler is dead code.
+6. Subscribe any new Stripe event **on all four endpoints (two accounts × two modes)** — VFO Services live/sandbox and ERT live/sandbox — or the handler is dead code for whichever endpoint missed it (2026-09-11, **#485**).
 7. Pick the ladder's time unit explicitly — business days by default (**#396**).
 8. Run the 5-pipeline smoke gate after deploy; it proves wiring only, never chain semantics.

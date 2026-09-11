@@ -2,6 +2,10 @@
 
 What happens when Stripe tells the system that a payment occurred. The Stripe webhook handles **two unrelated flows** at the same endpoint, disambiguated by Checkout Session metadata: MAP1 service payments and GC credit purchases.
 
+> **2026-09-11 (v829) — the handler now serves TWO Stripe accounts.** `vfos` = **VFO Services** (the original and still the default) and `ert` = **ERT** (Elite Resource Team LLC). Read **Step 0** and **Step 0b** below before touching any branch: the account an event arrived on is established once, by which signing secret matched, and every lookup below either filters on it or is made inert by `fromPrimary`. The two rules the whole design rests on are in [../integrations/stripe.md](../integrations/stripe.md#two-stripe-accounts-2026-09-11); the trap is gotcha **#485**.
+>
+> **The ERT endpoints are subscribed to 14 events:** `checkout.session.completed` / `.async_payment_succeeded` / `.async_payment_failed` / `.expired`, `payment_intent.succeeded` / `.processing` / `.payment_failed` / `.canceled`, `charge.dispute.created` / `.closed`, `charge.refunded`, `charge.refund.updated`, `refund.updated`, `refund.failed`. Nothing beyond that list can reach the handler from ERT — which is correct, because every other event type belongs to a primary-only pipeline.
+
 ## Trigger
 
 Stripe POSTs an event to the admin-api endpoint with the `stripe-signature` HTTP header set:
@@ -13,20 +17,53 @@ Headers:
 Body: <raw event JSON>
 ```
 
-The Stripe webhook URL is configured **outside this codebase** in the Stripe Dashboard.
+The Stripe webhook URL is configured **outside this codebase** in the Stripe Dashboard. **Since 2026-09-11 there are FOUR endpoints pointing at that one URL** — VFO Services live, VFO Services sandbox, ERT live, ERT sandbox — each subscribed to its own event list. A new event must be subscribed **on all four** or the handler is dead code for whichever endpoint missed it.
 
 ## Handler dispatch ([admin-api:222-441](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts))
 
 Triggered by presence of the `stripe-signature` header. Always returns before reaching the action dispatcher.
 
-### Step 0 — Signature verification ([lines 226-262](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts))
+### Step 0 — Signature verification (`router/webhooks.ts::maybeHandleStripeWebhook`)
 
-1. Reads BOTH `STRIPE_WEBHOOK_SECRET` and `STRIPE_WEBHOOK_SECRET_SANDBOX` env vars. At least one must be set (returns 500 otherwise).
+**REWRITTEN 2026-09-11 (v829) — the verifier now tries FOUR secrets and RECORDS which one matched.**
+
+1. Builds a candidate list from all four `(account, mode)` signing secrets — `STRIPE_WEBHOOK_SECRET`, `STRIPE_WEBHOOK_SECRET_SANDBOX`, `ERT_STRIPE_WEBHOOK_SECRET`, `ERT_STRIPE_WEBHOOK_SECRET_SANDBOX` — resolved by name through `stripeWebhookSecretEnvName(account, isSandbox)`. **Unset secrets are skipped;** zero candidates returns 500 (`"Webhook not configured"`).
 2. Parses the `stripe-signature` header into `t` (timestamp) and `v1` (signature) parts.
 3. Rejects if timestamp is older than **5 minutes** (replay guard).
-4. Computes HMAC-SHA256 over `<timestamp>.<rawBody>` against EACH configured secret. Whichever matches wins — so a single endpoint can receive both live and sandbox webhooks.
-5. Returns 401 if neither secret produces a matching signature.
+4. Computes HMAC-SHA256 over `<timestamp>.<rawBody>` against EACH candidate and **stops at the first match, keeping the candidate** in `matched`. **Stripe issues a separate signing secret per account per mode, so a webhook is signed by exactly one of the four — and WHICH one matched is the only evidence of which Stripe account the event came from** (gotcha **#485**). Four endpoints (VFO Services live/sandbox + ERT live/sandbox) therefore share one function URL.
+5. Returns 401 if no candidate produces a matching signature.
 6. Parses raw body as JSON. Returns 400 on parse failure.
+
+### Step 0b — Account routing
+
+Past the 401, three values are derived once and read by every branch below:
+
+| Value | Meaning |
+|---|---|
+| `stripeAccount: StripeAccount` | `normalizeStripeAccount(matched?.account)` — `'vfos'` or `'ert'`. Kept total (no assertion) and resolves to the primary account either way. |
+| `matchedSandbox: boolean` | The MODE of the secret that matched. |
+| `fromPrimary: boolean` | `stripeAccount === STRIPE_ACCOUNT_PRIMARY`. |
+
+Two observability writes, neither of which changes behaviour:
+
+- **Every event logs its account:** `console.log("Stripe webhook event:", event?.type, "account:", stripeAccount)`.
+- **Livemode disagreement is warned, not blocked.** If `event.livemode === matchedSandbox`, the event's own livemode contradicts the mode of the secret that signed it — which means a secret is filed under the wrong env-var NAME. `console.warn` with the event id, type and account. **Log only.**
+
+**`fromPrimary` gates every primary-only branch.** Tax, MAP 1, PIP, SpecRev (one-time and recurring), the specialist background check and the $99 licence, every `invoice.*` and `customer.subscription.*` branch, and `transfer.reversed` — all of their customer-keyed lookups are wrapped in `fromPrimary &&`, so for an ERT event they **do not run at all** rather than scanning tables the event cannot belong to.
+
+**The three pipelines that run on BOTH accounts filter by the stamp instead.** Advisor and accountant customer lookups — on `checkout.session.completed`, `payment_intent.succeeded` and inside `handleOnboardingDepositFailure` — pass the event's account through **`utils/stripe-account-filter.ts withStripeAccount(query, account)`**, applied to the PostgREST builder **before** `.maybeSingle()`. `'ert'` becomes `.eq("stripe_account", "ert")`; `'vfos'` becomes `.or("stripe_account.is.null,stripe_account.eq.vfos")` — **NULL is legacy and reads as primary, which is why `vfos` needs the two-value OR rather than a plain `.eq()`.**
+
+**`utils/resolve-stripe-failure.ts resolveStripeFirstPaymentFailure` gained a 4th `account` parameter**, defaulted to `STRIPE_ACCOUNT_PRIMARY` so any unconverted caller is byte-equivalent. Inside it: `TAX`, `PIP`, the specialist branches **and the MAP 1 default** all `return null` for a non-primary account; the two onboarding branches apply the same `withStripeAccount` filter. The same file is shared with `router/webhooks.ts` so the two cannot drift.
+
+**The MAP 1 `pipeRow` / `m1Row` lookups are deliberately UNTOUCHED** (standing rule) and rely on Stripe id uniqueness across accounts.
+
+**Membership guards now trip on ACCOUNT as well as MODE.** Three blocks — setup (`checkout.session.completed`), ACH settle (`async_payment_succeeded` / `_failed`) and the late failure (`payment_intent.payment_failed`) — previously skipped only on `event.livemode === !!plan.sandbox`; each now also skips when `normalizeStripeAccount(plan.stripe_account) !== stripeAccount`. **Bell titles are unchanged; the bell MESSAGE names both accounts** (`stripeAccountLabel`), e.g. *"…arrived with livemode=X on the ERT Stripe account, but plan N is stamped sandbox=Y on VFO Services. Processing was SKIPPED."* The late-failure guard still flips the ledger row by PaymentIntent id and skips only the suspend/bell/email side effects.
+
+**The GC insert stamps the account.** `fulfillGrowthCredits` writes `stripe_account: stripeAccount` on the `gc_transactions` row, so a later reader knows which Stripe dashboard holds the purchase. *(The GC branch's pre-existing lack of a livemode guard is unchanged — flagged, not fixed.)*
+
+**Dispute and refund bell TITLES carry the account in brackets** — `[VFO Services]` / `[ERT]` — on `charge.dispute.created`, `charge.dispute.closed`, `charge.refunded` and the refund-failed bell. These four are the branches that serve **both** accounts without a row lookup at all, so the title is the only place the account can appear. **`charge.refunded` is PROVEN on ERT (2026-09-11):** refunding advisor onboarding 31's $550 deposit produced the bell *"Refund issued — $566.74 (charge ch_…) [ERT]"* — which is simultaneously the first proof that the ERT endpoint delivers `charge.refunded` at all, and the first proof that the `[account]` tag renders. The dispute branches and `refund.failed` remain unexercised on ERT.
+
+**The four onboarding PaymentIntent expansions key off the ROW stamp, not the config** — `getStripeKeyFor(normalizeStripeAccount(row.stripe_account), !!sandboxCfg?.sandbox_mode)` — because the config only decides where NEW customers are minted and this customer already exists. Each now also **logs a non-ok fetch** (`"… payment_intent fetch FAILED (method/last4 left unknown) — onboarding <id> account <label> status <n>"`); the "unknown method" fallback is deliberate but used to happen in total silence.
 
 ### Step 1 — Dispatch by event type
 

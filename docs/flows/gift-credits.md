@@ -4,6 +4,24 @@ A points-economy where members buy "Growth Credits" via Stripe and redeem them a
 
 Since 2026-08-27 a service can also bill on a **repeating cadence** (`gc_services.billing_interval`). The first charge of a recurring service is the ordinary redemption below, unchanged in every respect; what is added is a `gc_subscriptions` row and a nightly sweep that charges it again — see **Flow E**.
 
+---
+
+## Which Stripe account a purchase lands on *(2026-09-11, v829)*
+
+Growth Credit purchases are one of the three money flows now billed on the **ERT** Stripe account (Elite Resource Team LLC). Full rules: [../integrations/stripe.md](../integrations/stripe.md#two-stripe-accounts-2026-09-11).
+
+**CONFIG MINTS.** `pipeline_sandbox_config` row **`GROWTH_CREDITS`** gained **`stripe_account`** (`'vfos'` default, `CHECK IN ('vfos','ert')`). `gc_create_checkout` reads both axes from that one row — `const { isSandbox, stripeAccount } = await loadSandboxConfig(supabase, "GROWTH_CREDITS")` — and mints the Checkout Session with `getStripeKeyFor(stripeAccount, isSandbox)`. It is flipped **by SQL, never from the UI**.
+
+> **LIVE ON ERT since 2026-09-11 ~16:10Z.** The `GROWTH_CREDITS` row was flipped by SQL to **`stripe_account='ert'` with `sandbox_mode=false`**, so **every new credit purchase mints on ERT**. Nothing needed migrating: a GC purchase is a one-shot session with no saved customer, so there is no equivalent of the membership remap and none is needed. Historic rows keep their `'vfos'` stamp purely as a record of which dashboard holds them.
+
+**THE ROW STAMP GOVERNS.** `gc_transactions.stripe_account` is nullable; **NULL = legacy = `vfos`**. `fulfillGrowthCredits()` in `router/webhooks.ts` writes `stripe_account: stripeAccount` on the `purchased` row — **the account taken from whichever signing secret verified the session's webhook**, not from the config — so a later reader knows which Stripe dashboard holds the purchase. The stamp is **never re-written**.
+
+A GC purchase is a **one-shot Checkout Session**: there is no saved customer and nothing to charge again, so the stamp is a record, not a routing key. **An admin comp (`gc_add_credits`) takes no money and leaves both `stripe_session_id` and `stripe_account` NULL** — which is consistent with the `#466` discriminator rule (`stripe_session_id` present = a real sale).
+
+> **Pre-existing gap, flagged not fixed:** the GC webhook branch has **no `event.livemode`-vs-row guard** of the kind the membership and SpecRev branches carry. That was true before this change and is unchanged by it.
+
+**VERIFIED LIVE 2026-09-11** (sandbox ON + `stripe_account='ert'` for a short window, then reverted): a **1-credit purchase on Test Member 59524** minted on ERT, `gc_transactions` **86** stamped `ert`, **$103.30**, balance **950 → 951**.
+
 ## Trigger
 
 Member opens [MemberPortal](src/pages/MemberPortal.jsx) → GC Marketplace tab → mounts [MemberGCMarketplace.jsx](src/components/member/MemberGCMarketplace.jsx).
@@ -50,7 +68,7 @@ Returns the Checkout URL. Frontend redirects via `window.location.href`.
 
 > **`<base>` is the REQUEST's Origin when allowlisted.** The handler reads the `Origin` header and uses it when it appears in `ALLOWED_ORIGINS` (`constants/allowed-origins.ts`), else falls back to `https://vfoportal.com` — so local dev returns to localhost rather than production.
 
-> **GC purchases DO have a sandbox path.** The Stripe key comes from `getStripeKey(isSandbox)`, with `isSandbox` loaded from the **`GROWTH_CREDITS`** row of `pipeline_sandbox_config`. (An older note here claimed `STRIPE_SECRET_KEY` unconditionally with no sandbox path; that is no longer true. The `integrations/stripe/client.ts` comment saying the same is likewise stale.)
+> **GC purchases DO have a sandbox path — and, since 2026-09-11, an account path too.** The Stripe key comes from **`getStripeKeyFor(stripeAccount, isSandbox)`**, with **both** `isSandbox` and `stripeAccount` loaded from the **`GROWTH_CREDITS`** row of `pipeline_sandbox_config` via `loadSandboxConfig`. (An older note here claimed `STRIPE_SECRET_KEY` unconditionally with no sandbox path; that is no longer true.)
 
 ### Step 2 — Client pays on Stripe-hosted page
 

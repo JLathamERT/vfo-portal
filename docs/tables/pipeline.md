@@ -159,6 +159,20 @@ The two tables are clones of one another. This section documents only the **35 c
 record). Derive the full list rather than trusting any count here (#402):
 `select column_name, data_type from information_schema.columns where table_name='advisor_onboarding' order by ordinal_position;`
 
+**`stripe_account` (1, each table)** *(2026-09-11, migration `20260911120000_second_stripe_account.sql`)* — additive nullable `text`, named CHECK
+`<table>_stripe_account_check IN ('vfos','ert')`. **Which Stripe account this onboarding's customer and session were minted
+on. NULL = legacy = `'vfos'` (VFO Services).** Paired with the pipeline's `sandbox_mode` it selects the secret key for **every**
+later Stripe call on the row — `getStripeKeyFor(normalizeStripeAccount(ob.stripe_account), isSandbox)` in `stripe-checkout.ts`,
+`charge-balance.ts` and `deposit-refund.ts`, and in the webhook's four PaymentIntent expansions. **`pipeline_sandbox_config.stripe_account`
+decides only where a NEW customer is MINTED; this column governs everything afterwards**, because a Stripe customer id is valid on
+exactly one account. **Written on the minting pass only:** `deposit-email.ts` and `stripe-customer.ts` reuse the existing stamp when
+`stripe_customer_id` is already set and otherwise take the config, stamping in the same write. **NEVER re-stamped** — neither onboarding
+table has a remap action (membership is the only family that does). **These two pipelines are the only ones that genuinely run on BOTH
+accounts**, so the webhook cannot identify their rows by Stripe customer id alone: every advisor/accountant lookup passes the event's
+account through `withStripeAccount(query, account)`, where `'vfos'` expands to `stripe_account.is.null,stripe_account.eq.vfos`.
+**Backfill: `'vfos'` onto every row with a non-NULL `stripe_customer_id` — 2 advisors, 3 accountants.** Gotcha **#485**; flow:
+[../flows/advisor-accountant-onboarding.md](../flows/advisor-accountant-onboarding.md).
+
 **Preliminary-meeting reminder (12).** `meeting_date` (date) / `meeting_time` (text) / `meeting_timezone`
 (text) — what the admin typed; `meeting_at` (timestamptz) — that wall clock resolved to an instant;
 `meeting_reminder_due_at` (timestamptz) — **the same wall clock one BUSINESS day earlier**
@@ -204,7 +218,7 @@ three meeting-reminder tiers and the deposit stall ladder.
 
 ## `pipeline_sandbox_config`
 
-Per-pipeline sandbox/live toggle. Read at the top of every automation handler to decide whether to use `STRIPE_SECRET_KEY` vs `STRIPE_SECRET_KEY_SANDBOX` and `BOLDSIGN_API_KEY` vs `BOLDSIGN_API_KEY_SANDBOX`.
+Per-pipeline sandbox/live toggle. Read at the top of every automation handler to decide whether to use `STRIPE_SECRET_KEY` vs `STRIPE_SECRET_KEY_SANDBOX` and `BOLDSIGN_API_KEY` vs `BOLDSIGN_API_KEY_SANDBOX`. **Since 2026-09-11 it also names the Stripe ACCOUNT — see `stripe_account` below.**
 
 | Column | Type | Notes |
 |---|---|---|
@@ -214,7 +228,10 @@ Per-pipeline sandbox/live toggle. Read at the top of every automation handler to
 | `sandbox_email` | text | Email override — when set, automation emails go here instead of the real client. |
 | `stripe_test_mode` | boolean | default `true` |
 | `boldsign_test_mode` | boolean | default `true` |
+| `stripe_account` | text | **NEW 2026-09-11** (`20260911120000_second_stripe_account.sql`). **NOT NULL, default `'vfos'`**, named CHECK `pipeline_sandbox_config_stripe_account_check IN ('vfos','ert')` — the only one of the five new columns that is `not null`, because a config row must always answer the question. **CONFIG MINTS: it decides which Stripe account a NEW customer or checkout session for that pipeline is created on, and NOTHING else.** Existing rows keep their own `stripe_account` stamp (on `member_payment_plans` / `advisor_onboarding` / `accountant_onboarding` / `gc_transactions`) and never move. Moving a pipeline to ERT is therefore **one row edit** that affects nothing already minted. Surfaced to handlers as `SandboxConfig.stripeAccount` (already normalized) by `integrations/sandbox-config.ts`. **Flipped by SQL, deliberately NOT by the UI** — `SandboxModeToggle.jsx` renders a read-only `Stripe: VFO Services` / `Stripe: ERT` pill, **evidence-gated on `sandboxConfig.stripe_account !== undefined`** so a loader that did not ship the column prints nothing rather than a confident wrong answer. `specialist_revenue_load` uses an explicit column list and so shows **no pill** — accepted. **Posture as of 2026-09-11 ~16:10Z — the column is now SPLIT 4/4: `MEMBER_MEMBERSHIP`, `GROWTH_CREDITS`, `ADVISOR_ONBOARDING` and `ACCOUNTANT_ONBOARDING` are `'ert'`; `MAP 1`, `TAX`, `PARTNERSHIP_FAST_TRACK` and `SPECIALIST_ONBOARDING` are `'vfos'`. All eight are `sandbox_mode=false`.** Remember what the flip did and did not do: **every NEW customer on those four pipelines mints on ERT, and every EXISTING row keeps its own stamp.** Existing rows are moved only by a supervised re-stamp, and that has happened for exactly one family: **`membership_stripe_remap` ran 2026-09-11 and moved all 37 `member_payment_plans` rows to `'ert'`**. The advisor / accountant / GC rows carrying a `'vfos'` stamp are still on VFO Services and have no remap action. Gotcha **#485**. |
 | `created_at` | timestamptz | default `now()` |
+
+`integrations/sandbox-config.ts` `SandboxConfig` also gained an **`error`** field (2026-09-11): the PostgREST error from the config read, NULL on success **and** on a simply-missing row (which is not an error). Every pre-existing caller ignores it; callers that used to inline the read and 500 on `cfgErr` check it, **so a transient DB failure can never be read as "sandbox is off" and mint a LIVE customer.**
 
 **Touched by:** read by every `automation_*` handler. Frontend reads/writes via `automation_load_pipelines` payload.
 

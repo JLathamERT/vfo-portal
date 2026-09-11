@@ -2,7 +2,7 @@
 
 Complete list of secrets and config-vars referenced by the edge functions, with which actions/integrations consume each. No `.env` files are committed; production values live in Supabase function secrets, local-dev values live in the gitignored `vfo-edge-functions/supabase/.env.local` (a populated copy of `.env.local.template`).
 
-> **Integration helpers** (Phase 3 scaffolding) — `getStripeKey(isSandbox)` in `vfo-admin-api/integrations/stripe/client.ts`, `getBoldSignKey(isSandbox)` in `vfo-admin-api/integrations/boldsign/client.ts`, `getGoogleAccessToken()` in `vfo-admin-api/integrations/google/oauth.ts`, `loadSandboxConfig(supabase, pipelineName)` in `vfo-admin-api/integrations/sandbox-config.ts`. Phase 4 handlers were extracted byte-equivalently — most still call `Deno.env.get(...)` and `fetch(...)` directly; only `gc_create_checkout` adopted the Stripe helper. Adopting the rest is optional polish, not a refactor requirement.
+> **Integration helpers** (Phase 3 scaffolding) — `getStripeKey(isSandbox)` **and, since 2026-09-11, `getStripeKeyFor(account, isSandbox)`** in `vfo-admin-api/integrations/stripe/client.ts` (`getStripeKey` is now a thin wrapper that always resolves the PRIMARY `vfos` account, so unconverted callers are byte-equivalent), `getBoldSignKey(isSandbox)` in `vfo-admin-api/integrations/boldsign/client.ts`, `getGoogleAccessToken()` in `vfo-admin-api/integrations/google/oauth.ts`, `loadSandboxConfig(supabase, pipelineName)` in `vfo-admin-api/integrations/sandbox-config.ts`. Phase 4 handlers were extracted byte-equivalently — most still call `Deno.env.get(...)` and `fetch(...)` directly; only `gc_create_checkout` adopted the Stripe helper. Adopting the rest is optional polish, not a refactor requirement.
 
 > **`verify_jwt` setting** — both functions have `verify_jwt = false` in `vfo-edge-functions/supabase/config.toml` AND in the live registry (matched). Public-token endpoints (`/decide`, `/pay`) require this so Kong gateway doesn't 401 their headerless requests. Application-level auth still happens via `middleware/auth.ts::authenticate()`. The config setting matches reality, so plain `supabase functions deploy` Just Works (no `--no-verify-jwt` needed).
 
@@ -21,14 +21,26 @@ Confirmed via `Deno.env.get(...)` audit of `vfo-admin-api/index.ts` and `boldsig
 
 | Var | Required by | Notes |
 |---|---|---|
-| `STRIPE_SECRET_KEY` | `automation_CONTRACT_stripecustomer`, `automation_CONTRACT_stripecheckout`, `automation_CONTRACT_revshare`, Stripe webhook handler, `gc_create_checkout` | Live mode |
-| `STRIPE_SECRET_KEY_SANDBOX` | same as above except `gc_create_checkout` | Test-mode key. Selected when `pipeline_sandbox_config.sandbox_mode=true` for `MAP 1`. |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signature verification (`router/webhooks.ts::maybeHandleStripeWebhook`) — live secret | Stripe issues separate signing secrets per mode. The handler tries this first when verifying. |
-| `STRIPE_WEBHOOK_SECRET_SANDBOX` | Same handler — sandbox/test-mode secret | Handler also tries this; either secret can validate an incoming webhook so live and sandbox Stripe accounts can deliver to the same function URL. |
+**EIGHT vars since 2026-09-11 (`vfo-admin-api` v829) — two Stripe accounts × two modes × (secret key + webhook signing secret).** `vfos` = **VFO Services** (the original, still the default for everything); `ert` = **ERT** (Elite Resource Team LLC), which carries member membership fees, Growth Credit purchases and advisor/accountant onboarding money. Full rules: [stripe.md](stripe.md#two-stripe-accounts-2026-09-11).
+
+| Var | Account | Required by | Notes |
+|---|---|---|---|
+| `STRIPE_SECRET_KEY` | `vfos` | `automation_CONTRACT_stripecustomer`, `automation_CONTRACT_stripecheckout`, `automation_CONTRACT_revshare`, Stripe webhook handler, and **44 other files** across the primary-only pipelines (Tax, MAP 1, PIP, SpecRev, specialist, migration / Payment Continuation, `/update-card`) | Live mode |
+| `STRIPE_SECRET_KEY_SANDBOX` | `vfos` | same | Test-mode key. Selected when the pipeline's `pipeline_sandbox_config.sandbox_mode=true`, or when the plan/onboarding row's own `sandbox` flag is set. |
+| `STRIPE_WEBHOOK_SECRET` | `vfos` | Stripe webhook signature verification (`router/webhooks.ts::maybeHandleStripeWebhook`) — live secret | One of **four** candidates the verifier HMACs against. **Which one matched is recorded** — it is the only evidence of which Stripe account the event came from (gotcha **#485**). |
+| `STRIPE_WEBHOOK_SECRET_SANDBOX` | `vfos` | same handler — sandbox secret | same |
+| **`ERT_STRIPE_SECRET_KEY`** | `ert` | `membership_*` (`send-setup-link`, `setup-checkout`, `sweep`, `terminate`, `stripe-remap`), `automation_ADVISOR_*` / `automation_ACCOUNTANT_*` Stripe handlers, `gc_create_checkout`, Stripe webhook handler | **NEW 2026-09-11.** Live ERT secret key. Resolved by name via `stripeKeyEnvName('ert', false)`. |
+| **`ERT_STRIPE_SECRET_KEY_SANDBOX`** | `ert` | same | **NEW 2026-09-11.** Test-mode ERT key. |
+| **`ERT_STRIPE_WEBHOOK_SECRET`** | `ert` | same verifier — live ERT secret | **NEW 2026-09-11.** Stripe issues a separate signing secret per account per mode, so a webhook is signed by exactly one of the four. |
+| **`ERT_STRIPE_WEBHOOK_SECRET_SANDBOX`** | `ert` | same verifier — sandbox ERT secret | **NEW 2026-09-11.** |
+
+At least one webhook secret must be set or the verifier returns 500; **unset secrets are simply skipped**, so a partially-configured environment still verifies whatever it holds keys for. Env-var NAMES are never spelled inline where two accounts are possible — `stripeKeyEnvName(account, isSandbox)` and `stripeWebhookSecretEnvName(account, isSandbox)` in `vfo-admin-api/constants/stripe-accounts.ts` return the name and the caller reads the value.
+
+> **Registry-version note (2026-09-11):** writing the four new secrets **bumped every edge function's registry version by 4 with no code change** — `vfo-admin-api` v824 → v828 and `boldsign-webhook` v40 → v44, both with an identical hash and timestamp — before the v829 deploy. A version jump with no deploy is what a secret write looks like; do not hunt for the phantom code change.
 
 > **Note:** `automation_CONTRACT_stripewebhook` was removed in Phase 6 mechanical (was doubly-dead code). It no longer reads any env vars.
 
-> **Note:** `gc_create_checkout` only reads `STRIPE_SECRET_KEY` — no sandbox path for GC purchases.
+> **CORRECTION (2026-09-11):** the note that used to sit here — *"`gc_create_checkout` only reads `STRIPE_SECRET_KEY` — no sandbox path for GC purchases"* — is **stale and wrong**. `actions/gc/create-checkout.ts` reads the **`GROWTH_CREDITS`** row via `loadSandboxConfig(supabase, "GROWTH_CREDITS")` and calls `getStripeKeyFor(stripeAccount, isSandbox)`, so it is **both** sandbox-aware and account-aware. Its matrix row below is corrected to match.
 
 ### BoldSign
 
@@ -99,7 +111,7 @@ Quick "what does this action need?" lookup:
 | Action / handler | Env vars required |
 |---|---|
 | `admin_login`, `member_login`, `login`, plus all CRUD reads | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
-| Stripe webhook handler (`router/webhooks.ts::maybeHandleStripeWebhook`) | `STRIPE_WEBHOOK_SECRET` and/or `STRIPE_WEBHOOK_SECRET_SANDBOX` (at least one must be set), `STRIPE_SECRET_KEY` (or sandbox), `SUPABASE_*` |
+| Stripe webhook handler (`router/webhooks.ts::maybeHandleStripeWebhook`) | Any of `STRIPE_WEBHOOK_SECRET`, `STRIPE_WEBHOOK_SECRET_SANDBOX`, `ERT_STRIPE_WEBHOOK_SECRET`, `ERT_STRIPE_WEBHOOK_SECRET_SANDBOX` (**at least one** must be set; unset ones are skipped), plus whichever secret key the matched account + the row's stamp resolve to — `STRIPE_SECRET_KEY` / `_SANDBOX` and/or `ERT_STRIPE_SECRET_KEY` / `_SANDBOX`, `SUPABASE_*` |
 | `automation_PCADMIN_finaldecision` (No path only) | `GMAIL_*`, `SUPABASE_*` |
 | `automation_PCADMIN_pricing`, `automation_PCADMIN_extrameeting` (Yes path) | `SUPABASE_*` (then chains) |
 | `automation_PCADMIN_extrameeting` (No path) | `GMAIL_*`, `SUPABASE_*` |
@@ -114,7 +126,11 @@ Quick "what does this action need?" lookup:
 | `automation_CONTRACT_confirmationemail` | `GMAIL_*`, `SUPABASE_*` |
 | `automation_CONTRACT_invoicereceipt` | `HTML2PDF_API_KEY`, `GOOGLE_DRIVE_FOLDER_ID`, `GMAIL_*`, `SUPABASE_*` |
 | `automation_CONTRACT_revshare` | `STRIPE_SECRET_KEY` (or sandbox), `GMAIL_*` (Sheets+Gmail), `SUPABASE_*` |
-| `gc_create_checkout` | `STRIPE_SECRET_KEY` (no sandbox), `SUPABASE_*` |
+| `gc_create_checkout` | **CORRECTED 2026-09-11:** `STRIPE_SECRET_KEY` / `STRIPE_SECRET_KEY_SANDBOX` **or** `ERT_STRIPE_SECRET_KEY` / `ERT_STRIPE_SECRET_KEY_SANDBOX`, `SUPABASE_*`. Both axes come from the **`GROWTH_CREDITS`** `pipeline_sandbox_config` row (`sandbox_mode` + `stripe_account`) via `loadSandboxConfig` → `getStripeKeyFor`. The earlier "no sandbox path" claim was stale. |
+| `membership_send_setup_link`, `membership_setup_checkout`, `automation_MEMBERSHIP_sweep`, `membership_terminate` | `STRIPE_SECRET_KEY` / `_SANDBOX` **or** `ERT_STRIPE_SECRET_KEY` / `_SANDBOX`, `GMAIL_*` (the two emailers), `SUPABASE_*`. **Account source differs by handler:** `send_setup_link` uses the **config** when it mints a customer and the **plan's stamp** when one already exists; the other three always use `member_payment_plans.stripe_account` (mode from `plan.sandbox`). |
+| `membership_stripe_remap` | **`ERT_STRIPE_SECRET_KEY` / `ERT_STRIPE_SECRET_KEY_SANDBOX` ONLY** (mode from `plan.sandbox`), `SUPABASE_*`. **No Gmail, no bell, no charge** — it probes ERT and rewrites two columns. A missing ERT key for the plan's mode is reported per row as `error`, never a 500. |
+| `automation_ADVISOR_depositemail` / `automation_ACCOUNTANT_depositemail`, `automation_<P>_stripecustomer` | `STRIPE_SECRET_KEY` / `_SANDBOX` **or** `ERT_*`, `GMAIL_*` (deposit-email only), `SUPABASE_*`. Both **reuse the row's stamp when `stripe_customer_id` exists, else the pipeline config**, and write the stamp on the minting pass. |
+| `automation_<P>_stripecheckout`, `automation_<P>_chargebalance`, `automation_<P>_depositrefund` | `STRIPE_SECRET_KEY` / `_SANDBOX` **or** `ERT_*`, `SUPABASE_*`. Always `advisor_onboarding` / `accountant_onboarding` `.stripe_account`; mode from the pipeline config. |
 | `boldsign-webhook` (standalone) | `SUPABASE_*` only — chains into admin-api which carries the rest |
 
 ## Cross-references

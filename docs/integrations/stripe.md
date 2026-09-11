@@ -1,5 +1,86 @@
 # Stripe integration
 
+## Two Stripe accounts (2026-09-11)
+
+Since **2026-09-11** (`feature/second-stripe-account`, `vfo-admin-api` **v829**) the portal bills on **TWO Stripe accounts**:
+
+| Key | Label (`stripeAccountLabel`) | Legal entity | Carries |
+|---|---|---|---|
+| `vfos` | **VFO Services** | VFO Services | The original account and still the **default for everything**. Tax, MAP 1, PIP, SpecRev, the specialist background check + the $99 licence subscription, **every Connect account / transfer / account_link**, the `/update-card` (`mode=setup`) flow, and the whole migration / Payment Continuation family. |
+| `ert` | **ERT** | Elite Resource Team LLC | Member membership fees, Growth Credit purchases, and advisor / accountant onboarding money (deposit, balance, paid-in-full, refund). **Live since 2026-09-11 ~16:10Z** — see "Go-live posture" below. |
+
+The vocabulary is one file: **`constants/stripe-accounts.ts`** — `type StripeAccount = "vfos" \| "ert"`, `STRIPE_ACCOUNT_PRIMARY` / `STRIPE_ACCOUNT_ERT`, `normalizeStripeAccount(v)` (only the exact string `"ert"` selects the second account; NULL / undefined / anything unrecognised falls back to the primary, and it never throws), `stripeKeyEnvName(account, isSandbox)`, `stripeWebhookSecretEnvName(account, isSandbox)`, and `stripeAccountLabel(account)`.
+
+### Rule 1 — CONFIG MINTS
+
+**`pipeline_sandbox_config.stripe_account`** (`'vfos'` default, `CHECK IN ('vfos','ert')`) decides which account a **NEW customer or checkout session for that pipeline is minted on**. It is the only place the choice is ever made, so moving a pipeline to ERT is one row edit and affects nothing that already exists. `integrations/sandbox-config.ts` surfaces it as `SandboxConfig.stripeAccount` (already normalized).
+
+**Go-live posture — the column is SPLIT 4/4 as of 2026-09-11 ~16:10Z:**
+
+| `stripe_account` | Pipelines |
+|---|---|
+| **`'ert'`** | `MEMBER_MEMBERSHIP`, `GROWTH_CREDITS`, `ADVISOR_ONBOARDING`, `ACCOUNTANT_ONBOARDING` |
+| **`'vfos'`** | `MAP 1`, `TAX`, `PARTNERSHIP_FAST_TRACK`, `SPECIALIST_ONBOARDING` |
+
+All eight rows are `sandbox_mode=false`. **Be precise about what the flip did: from that moment every NEW membership customer, GC checkout session and onboarding customer is minted on ERT — and every EXISTING row keeps its `'vfos'` stamp and keeps charging on VFO Services** until the copy + remap moves it. Four `UPDATE`s moved nothing that already existed, which is the entire payoff of keeping rule 1 and rule 2 apart.
+
+It is flipped **by SQL, deliberately not by the UI.** `SandboxModeToggle.jsx` renders a **read-only** `Stripe: VFO Services` / `Stripe: ERT` pill beside the LIVE/SANDBOX button, and it is **evidence-gated** — `hasAccount = sandboxConfig.stripe_account !== undefined`, so a loader that did not ship the column prints nothing rather than a confident "VFO Services" it has no evidence for. `specialist_revenue_load` (`actions/specialist-revenue/load.ts`) selects an **explicit column list** (`sandbox_mode, stripe_test_mode, boldsign_test_mode`) and therefore shows **no pill** — accepted, not a bug.
+
+### Rule 2 — THE ROW STAMP GOVERNS
+
+A nullable **`stripe_account`** column now sits on **`member_payment_plans`**, **`advisor_onboarding`**, **`accountant_onboarding`** and **`gc_transactions`** (each with the same `CHECK IN ('vfos','ert')`). **NULL = legacy = `vfos`.** Once a customer or session exists, its own row stamp governs **every later Stripe call for that row** — never the config:
+
+```
+getStripeKeyFor(normalizeStripeAccount(row.stripe_account), isSandbox)
+```
+
+A Stripe customer / payment-method / PaymentIntent id is valid on **exactly one account**, so **no charge path ever re-stamps a row.** The ONE writer that does is the superadmin action **`membership_stripe_remap`** (below).
+
+Migration **`20260911120000_second_stripe_account.sql`** adds the five columns (named CHECK constraints in separate `do $$` blocks, each guarded on `pg_constraint` so a re-run is safe) and backfills `'vfos'` onto **every row that already holds a Stripe object** — `stripe_customer_id is not null` for the three plan/onboarding tables, `stripe_session_id is not null` for `gc_transactions`. **37 plans, 2 advisors, 3 accountants, 4 GC purchases.** Rows with no Stripe object yet are left NULL so a later phase mints them on whichever account their pipeline config then points at.
+
+### Env vars — 8, not 4
+
+Four new secrets join the original four. **Both of an account's key + webhook-secret pair must name the same account in the same mode** — the #5 rule, now squared (see [env-vars.md](env-vars.md)).
+
+| Account | Mode | Secret key | Webhook signing secret |
+|---|---|---|---|
+| `vfos` | live | `STRIPE_SECRET_KEY` | `STRIPE_WEBHOOK_SECRET` |
+| `vfos` | sandbox | `STRIPE_SECRET_KEY_SANDBOX` | `STRIPE_WEBHOOK_SECRET_SANDBOX` |
+| `ert` | live | **`ERT_STRIPE_SECRET_KEY`** | **`ERT_STRIPE_WEBHOOK_SECRET`** |
+| `ert` | sandbox | **`ERT_STRIPE_SECRET_KEY_SANDBOX`** | **`ERT_STRIPE_WEBHOOK_SECRET_SANDBOX`** |
+
+`integrations/stripe/client.ts` gained **`getStripeKeyFor(account, isSandbox)`**; the pre-existing **`getStripeKey(isSandbox)` is now a thin wrapper that always resolves the PRIMARY account**, so every caller that has not been converted keeps its exact previous behaviour.
+
+> **Registry-version note.** Writing the four new secrets **bumped every edge function's registry version by 4 with no code change** (`vfo-admin-api` v824 → v828, `boldsign-webhook` v40 → v44, identical hash and timestamp) before the v829 deploy. A version jump with no deploy is what a secret write looks like.
+
+### The webhook verifier now RECORDS which secret matched
+
+Two **new ERT webhook endpoints** (live + sandbox) were added on the **same function URL**, so four endpoints now deliver there (two accounts × two modes). Each is subscribed to **14 events**: `checkout.session.completed` / `.async_payment_succeeded` / `.async_payment_failed` / `.expired`, `payment_intent.succeeded` / `.processing` / `.payment_failed` / `.canceled`, `charge.dispute.created` / `.closed`, `charge.refunded`, `charge.refund.updated`, `refund.updated`, `refund.failed`.
+
+`router/webhooks.ts maybeHandleStripeWebhook` builds a candidate list of **all four `(account, mode)` signing secrets** (unset ones are skipped; zero configured = 500), HMACs the payload against each, and **keeps the candidate that matched** — `stripeAccount` and `matchedSandbox`. That match is the **only** evidence of which Stripe account the event came from (gotcha **#485**). Detail: [../flows/stripe-webhook.md](../flows/stripe-webhook.md).
+
+### The remap — moving existing plans to ERT — **DONE 2026-09-11**
+
+**Decision (Jake, 2026-09-11): existing membership plans move via copy + remap, not attrition.** Stripe's self-serve **"Copy PAN data across Stripe accounts"** migration **preserves customer ids** (old == new) and **mints new payment-method ids**. It copies cards **and US ACH** (the recipient must acknowledge the ACH mandates) but **no charges, subscriptions or invoices**, and **no member contact is needed**. The action that applies its output is `membership_stripe_remap` — see [../flows/membership-fees.md](../flows/membership-fees.md).
+
+**It has been run. Result: 37 of 37 plans moved to ERT, 0 left on `vfos`** — 13 `active` plans re-pointed method-for-method onto ERT `pm_1UEY…` ids (the old payment-method ids matched the DB **13/13** before Apply) and 24 `setup_pending` plans moved as **customer-only** rows. Verified in the DB afterwards: every `member_payment_plans` row with a Stripe customer reads `stripe_account='ert'`, the 13 active ones carry ERT payment-method ids, and the 24 `setup_pending` ones are unchanged apart from the stamp.
+
+**Running it — the operational mechanics, none of which are in Stripe's documentation (gotcha #486).**
+
+1. **The sender-side control is role-gated.** "Copy customers" is the **"Copy to account"** icon on the **Customers** page (menu: *Copy all customers* / *Upload file* / *Status page*) and it is **hidden from an Administrator**. Jake had to grant himself the **Data Migration Specialist** role before the button appeared.
+2. **The upload file is a HEADER-LESS single column of customer ids.** A header row is validated as data and rejected per-row as **"Customer not found"** — a formatting problem reported as a data problem.
+3. **The recipient authorizes, and answers the ACH question.** ERT (`acct_1HRP3SA6agMWAt8d`) authorized on its own Customers page and answered **Yes** to *"Do you have ACH mandates for these customers?"*. **Decision (Jake): Yes, accepted risk** — exactly one active ACH plan was in the batch and its authorization was collected under **VFO Services'** name through Checkout; both companies are his. The copy of **37 customers** completed within the hour.
+4. **The mapping CSV has SIX columns, not four.** What Documents actually delivers is `customer_id_old,v2_account_id_old,source_id_old,customer_id_new,v2_account_id_new,source_id_new`; it was converted to the panel's required four-column shape by **dropping the two `v2_account_id_*` columns**. A customer with **no saved payment method** arrives as a row with **blank source columns**, which is byte-identical to the action's *customer-only* row shape — so **one converted file covered all 37 rows**.
+5. **The panel's Dry run can exceed the front end's timeout.** 37 rows × 2-3 Stripe probes blew through `api.js`'s **20 s** limit on the first attempt; the handler ran to completion anyway and the second Dry run returned **37 `would_move`**, then Apply returned **37 `moved`**. `api.js` does not retry writes and every outcome is idempotent, so neither the timeout nor a re-submission can double-apply (gotcha **#487**).
+
+**What the move did NOT change.** `setup_token` is untouched, so **every `/membership-pay` link already sent still works and now pays on ERT** — `setup-checkout.ts` reads the plan's row stamp. No schedule row, no `sandbox` flag, no `payment_method_type`, no email and no bell.
+
+### What is NOT converted
+
+**44 files** still read `STRIPE_SECRET_KEY` / `STRIPE_SECRET_KEY_SANDBOX` directly (down from 57). All of them belong to **primary-only pipelines** and were **deliberately not refactored** — converting a handler that can only ever run on `vfos` adds risk and buys nothing. The four converted directories are clean: `grep -rn "STRIPE_SECRET_KEY" actions/membership actions/advisor actions/accountant actions/gc` returns **nothing**.
+
+---
+
 Stripe handles **nine** distinct payment flows in this system:
 
 1. **MAP1 service payments** — recurring quarterly or one-time payment for the VFO membership engagement. Customers, Checkout Sessions, PaymentIntents, and Transfers (revenue share to advisors).
@@ -12,7 +93,7 @@ Stripe handles **nine** distinct payment flows in this system:
 8. **Specialist Onboarding monthly LICENSE** (2026-06-05) — the **first and only Stripe SUBSCRIPTION in the system** (`mode=subscription`). $99/mo recurring after the Stage-4 agreement is signed; card grossed-up / ACH flat; reuses the specialist's background-check Stripe customer. Stripe owns the recurring billing/dunning — **no custom sweep**. Routed by `metadata.payment_kind=license`. See [../flows/specialist-onboarding.md](../flows/specialist-onboarding.md).
 9. **Admin-initiated payment-method change** (2026-06-16, Phase D) — the **first `mode=setup` / SetupIntent flow in the system** (no longer the only one — see the membership save-only cases below). **No charge** — it saves a new reusable card/bank so the **next** off-session charge of an existing engagement (MAP 1 quarterly sweep / Tax implementation / Specialist license renewal) uses it. An admin (Jake-only) emails the payer a `/update-card?token=` link; the payer enters the new method on Stripe's hosted setup page; a `checkout.session.completed` + `mode=setup` webhook saves it as the customer/engagement default. Routed by `metadata.payment_kind=card_update` (+ `pipeline` + `row_id`). Because each engagement has its **own** Stripe customer, a change is **per-engagement**. See [../flows/payment-method-change.md](../flows/payment-method-change.md).
 
-All nine flows route through the same webhook endpoint (the `vfo-admin-api` function gated by `stripe-signature`). They are disambiguated by Checkout-Session metadata. The webhook verifies the signature against BOTH `STRIPE_WEBHOOK_SECRET` and `STRIPE_WEBHOOK_SECRET_SANDBOX` — whichever validates wins. **Events handled:** `checkout.session.completed` (now also handles **`mode=setup`** sessions — the Phase D card-update flow, 2026-06-16), `payment_intent.succeeded`, `payment_intent.payment_failed` (SPECIALIST bg → `bg_payment_status='failed'`), and — added 2026-06-05 for the license subscription — **`invoice.paid` / `invoice.payment_succeeded`** AND (2026-07-07, newer Stripe API versions) **`invoice_payment.paid`** (all three funnel through the shared `processSpecialistLicenseInvoicePaid()`; recurring billing + receipts; routed by `lic_stripe_customer_id`; the subscription ref is read from whichever location the event provides — `invoice.subscription`, `invoice.parent.subscription_details.subscription`, or the line-item `subscription_item_details.subscription` — falling back to the row's stored `lic_subscription_id` if the event provides none at all, so the handler is never gated on it, gotchas #76/#187) and **`invoice.payment_failed`** (dunning FYI to Tracy). For the CARD-payment case, the first invoice/receipt + Stage 4→5 advance ALSO fires inline from `checkout.session.completed` by expanding the subscription's `latest_invoice`, so it no longer depends on a separate invoice event arriving at all (gotcha #187). The per-invoice idempotency claim (`lic_last_invoice_id`) is written via a `SECURITY DEFINER` RPC (`claim_specialist_license_invoice` — atomic conditional UPDATE, committed to the repo as migration `20260708130000_claim_specialist_license_invoice_rpc.sql`, gotcha #196), not a plain table update — a PostgREST schema-cache anomaly was observed intermittently rejecting direct writes to that column (gotcha #188). Hardening (2026-07-08, v561): because the license reuses the background-check's Stripe customer, the processor now SKIPS an invoice whose event names a subscription that differs from the stored `lic_subscription_id` (a foreign-subscription invoice on the shared customer must never be claimed as a license payment); the event-omits-ref fallback is unchanged. ⚠️ The `invoice.*` events must be **enabled on the Stripe webhook endpoint** — done on **sandbox**; the **live** endpoint still needs them before any real specialist license payment (gotcha #75).
+All nine flows route through the same webhook **URL** (the `vfo-admin-api` function gated by `stripe-signature`) — **four Stripe endpoints deliver there as of 2026-09-11: VFO Services live/sandbox and ERT live/sandbox.** They are disambiguated by Checkout-Session metadata. The webhook verifies the signature against **all four** configured signing secrets and **records which one matched**, because that match is the only evidence of which Stripe account the event came from (see "Two Stripe accounts" above and gotcha **#485**). Of the nine flows, only **Advisor Onboarding**, **Accountant Onboarding** and **GC marketplace purchases** — plus member membership fees, which is not in this list — can arrive on ERT; every other flow is primary-only and its branches are made inert for a non-primary event by `fromPrimary`. **Events handled:** `checkout.session.completed` (now also handles **`mode=setup`** sessions — the Phase D card-update flow, 2026-06-16), `payment_intent.succeeded`, `payment_intent.payment_failed` (SPECIALIST bg → `bg_payment_status='failed'`), and — added 2026-06-05 for the license subscription — **`invoice.paid` / `invoice.payment_succeeded`** AND (2026-07-07, newer Stripe API versions) **`invoice_payment.paid`** (all three funnel through the shared `processSpecialistLicenseInvoicePaid()`; recurring billing + receipts; routed by `lic_stripe_customer_id`; the subscription ref is read from whichever location the event provides — `invoice.subscription`, `invoice.parent.subscription_details.subscription`, or the line-item `subscription_item_details.subscription` — falling back to the row's stored `lic_subscription_id` if the event provides none at all, so the handler is never gated on it, gotchas #76/#187) and **`invoice.payment_failed`** (dunning FYI to Tracy). For the CARD-payment case, the first invoice/receipt + Stage 4→5 advance ALSO fires inline from `checkout.session.completed` by expanding the subscription's `latest_invoice`, so it no longer depends on a separate invoice event arriving at all (gotcha #187). The per-invoice idempotency claim (`lic_last_invoice_id`) is written via a `SECURITY DEFINER` RPC (`claim_specialist_license_invoice` — atomic conditional UPDATE, committed to the repo as migration `20260708130000_claim_specialist_license_invoice_rpc.sql`, gotcha #196), not a plain table update — a PostgREST schema-cache anomaly was observed intermittently rejecting direct writes to that column (gotcha #188). Hardening (2026-07-08, v561): because the license reuses the background-check's Stripe customer, the processor now SKIPS an invoice whose event names a subscription that differs from the stored `lic_subscription_id` (a foreign-subscription invoice on the shared customer must never be claimed as a license payment); the event-omits-ref fallback is unchanged. ⚠️ The `invoice.*` events must be **enabled on the Stripe webhook endpoint** — done on **sandbox**; the **live** endpoint still needs them before any real specialist license payment (gotcha #75).
 
 ### Metadata convention
 
@@ -29,14 +110,22 @@ The webhook router uses these fields to pick the right DB table on `checkout.ses
 
 ## Env vars
 
-| Var | Purpose | Sandbox toggle |
-|---|---|---|
-| `STRIPE_SECRET_KEY` | Live secret key | — |
-| `STRIPE_SECRET_KEY_SANDBOX` | Test-mode secret key | Selected when `pipeline_sandbox_config.sandbox_mode=true` for "MAP 1" |
-| `STRIPE_WEBHOOK_SECRET` | HMAC secret for verifying **live** webhook signatures | Verification handler tries this first |
-| `STRIPE_WEBHOOK_SECRET_SANDBOX` | HMAC secret for verifying **test/sandbox** webhook signatures | Verification handler also tries this; either secret validates a webhook |
+**Eight since 2026-09-11** — two accounts × two modes × (secret key + webhook signing secret). The full matrix is in the "Two Stripe accounts" section at the top of this file; this table adds the per-var detail.
 
-Sandbox switching is per-pipeline and per-action: handlers read `pipeline_sandbox_config` (`pipeline='MAP 1'`) at the top of each call and pick the live/sandbox key accordingly. **Notable exception:** `gc_create_checkout` uses `STRIPE_SECRET_KEY` unconditionally ([vfo-admin-api/index.ts:2810](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)) — no sandbox path for GC purchases. **Second exception, and the one that matters more:** every **client-scoped** TAX / MAP 1 / PIP handler — and, since **v672** (2026-07-29), all five **migration / Payment Continuation** handlers under `actions/migration/` — must NOT read `pipeline_sandbox_config` directly at all. They resolve through `loadSandboxConfigForClient(sb, pipeline, clientId)`, which layers the per-case test-member override on top of the global row (see the "Per-case test-member sandbox override" section below, gotchas #251 + #302).
+| Var | Account | Purpose | Selected by |
+|---|---|---|---|
+| `STRIPE_SECRET_KEY` | `vfos` | Live secret key | `getStripeKeyFor('vfos', false)` / the legacy `getStripeKey(false)` |
+| `STRIPE_SECRET_KEY_SANDBOX` | `vfos` | Test-mode secret key | Selected when the pipeline's `pipeline_sandbox_config.sandbox_mode=true` (or a plan/onboarding row's own `sandbox` flag) |
+| `STRIPE_WEBHOOK_SECRET` | `vfos` | HMAC secret verifying **live** webhook signatures | One of four candidates the verifier tries; the one that matches names the account **and** the mode |
+| `STRIPE_WEBHOOK_SECRET_SANDBOX` | `vfos` | HMAC secret verifying **sandbox** webhook signatures | same |
+| **`ERT_STRIPE_SECRET_KEY`** | `ert` | Live secret key | `getStripeKeyFor('ert', false)` |
+| **`ERT_STRIPE_SECRET_KEY_SANDBOX`** | `ert` | Test-mode secret key | `getStripeKeyFor('ert', true)` |
+| **`ERT_STRIPE_WEBHOOK_SECRET`** | `ert` | HMAC secret verifying **live** ERT webhook signatures | same four-candidate verifier |
+| **`ERT_STRIPE_WEBHOOK_SECRET_SANDBOX`** | `ert` | HMAC secret verifying **sandbox** ERT webhook signatures | same |
+
+Nothing reads these names inline any more where two accounts are possible: **`stripeKeyEnvName(account, isSandbox)`** and **`stripeWebhookSecretEnvName(account, isSandbox)`** in `constants/stripe-accounts.ts` return the NAME, and the caller reads the value.
+
+Sandbox switching is per-pipeline and per-action: handlers read `pipeline_sandbox_config` at the top of each call and pick the live/sandbox key accordingly. **Correction (this doc used to say `gc_create_checkout` has no sandbox path — that is stale):** `actions/gc/create-checkout.ts` reads the **`GROWTH_CREDITS`** config row via `loadSandboxConfig` and calls `getStripeKeyFor(stripeAccount, isSandbox)`, so it is now both sandbox-aware **and** account-aware. **The exception that matters:** every **client-scoped** TAX / MAP 1 / PIP handler — and, since **v672** (2026-07-29), all five **migration / Payment Continuation** handlers under `actions/migration/` — must NOT read `pipeline_sandbox_config` directly at all. They resolve through `loadSandboxConfigForClient(sb, pipeline, clientId)`, which layers the per-case test-member override on top of the global row (see the "Per-case test-member sandbox override" section below, gotchas #251 + #302).
 
 ## API endpoints used
 
@@ -48,7 +137,7 @@ Sandbox switching is per-pipeline and per-action: handlers read `pipeline_sandbo
 | `GET /v1/payment_intents/{id}?expand[]=payment_method` | Read card last4 + payment method type after webhook | lines 317, 1190 (Stripe webhook handler + dead `_stripewebhook` action) |
 | `POST /v1/transfers` | Revenue share payout to member's connected account | line 1463 (`automation_CONTRACT_revshare`) |
 
-All requests use HTTP **Basic auth** with `Authorization: Basic <base64(STRIPE_KEY + ":")>` — no Stripe-Account or Stripe-Version header is set.
+All requests use HTTP **Basic auth** with `Authorization: Basic <base64(STRIPE_KEY + ":")>` — no Stripe-Account or Stripe-Version header is set. **That is still true with two accounts: the ACCOUNT IS THE KEY.** There is no `Stripe-Account` header anywhere; which account a call lands on is decided entirely by which secret key `getStripeKeyFor(account, isSandbox)` resolved. `stripeAuthHeader(secretKey)` in `integrations/stripe/client.ts` builds the header.
 
 ## Customer lifecycle
 

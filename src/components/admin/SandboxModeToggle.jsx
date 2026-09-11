@@ -21,6 +21,15 @@ export default function SandboxModeToggle({ pipeline, label, sandboxConfig, onCh
   const switchingTo = sandbox ? 'LIVE' : 'SANDBOX'
   const goingLive = switchingTo === 'LIVE'
 
+  // Which Stripe account NEW customers/sessions for this pipeline are minted on.
+  // Read-only on purpose: pipeline_sandbox_config.stripe_account is flipped by SQL,
+  // never from the UI. Rendered only when the loader actually shipped the column —
+  // a loader with an explicit column list (specialist_revenue_load) and the
+  // `{ sandbox_mode: false }` fallbacks a couple of panels use would otherwise
+  // print a confident "VFO Services" it has no evidence for.
+  const hasAccount = sandboxConfig.stripe_account !== undefined
+  const accountLabel = sandboxConfig.stripe_account === 'ert' ? 'ERT' : 'VFO Services'
+
   async function toggle() {
     const next = !sandbox
     setSaving(true)
@@ -55,6 +64,20 @@ export default function SandboxModeToggle({ pipeline, label, sandboxConfig, onCh
       >
         {palette.txt}
       </button>
+
+      {hasAccount && (
+        <span
+          title="Which Stripe account new customers for this pipeline are created on. Changed by SQL, not here."
+          style={{
+            padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '600',
+            background: 'var(--vfo-tint)', color: 'var(--vfo-muted)',
+            border: '1px solid var(--vfo-border-soft)', letterSpacing: '0.5px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Stripe: {accountLabel}
+        </span>
+      )}
 
       {showModal && (
         <div style={{
