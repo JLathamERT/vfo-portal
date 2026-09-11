@@ -6,10 +6,35 @@ Since **2026-09-11** (`feature/second-stripe-account`, `vfo-admin-api` **v829**)
 
 | Key | Label (`stripeAccountLabel`) | Legal entity | Carries |
 |---|---|---|---|
-| `vfos` | **VFO Services** | VFO Services | The original account and still the **default for everything**. Tax, MAP 1, PIP, SpecRev, the specialist background check + the $99 licence subscription, **every Connect account / transfer / account_link**, the `/update-card` (`mode=setup`) flow, and the whole migration / Payment Continuation family. |
+| `vfos` | **VFO Services** | VFO Services | The original account and still the **default for everything**. Tax, MAP 1, PIP, SpecRev, the specialist background check + the $99 licence subscription, **every Connect account / transfer / account_link** (ERT's own connected account included — see “ERT is ALSO a connected account” below), the `/update-card` (`mode=setup`) flow, and the whole migration / Payment Continuation family. |
 | `ert` | **ERT** | Elite Resource Team LLC | Member membership fees, Growth Credit purchases, and advisor / accountant onboarding money (deposit, balance, paid-in-full, refund). **Live since 2026-09-11 ~16:10Z** — see "Go-live posture" below. |
 
 The vocabulary is one file: **`constants/stripe-accounts.ts`** — `type StripeAccount = "vfos" \| "ert"`, `STRIPE_ACCOUNT_PRIMARY` / `STRIPE_ACCOUNT_ERT`, `normalizeStripeAccount(v)` (only the exact string `"ert"` selects the second account; NULL / undefined / anything unrecognised falls back to the primary, and it never throws), `stripeKeyEnvName(account, isSandbox)`, `stripeWebhookSecretEnvName(account, isSandbox)`, and `stripeAccountLabel(account)`.
+
+### ERT is ALSO a connected account — transfer destination only (2026-09-11)
+
+**Separately from the two BILLING accounts above**, ERT's existing Stripe account is *also* a **Standard connected account of the VFO Services platform**. This does **not** contradict the rule in the table that every Connect account / transfer / `account_link` lives on `vfos` — it is an instance of it. The platform is still VFO Services, the connected account is a connected account **of** VFO Services, and the transfer is still sent from the VFO Services balance. ERT is the **destination**, never the platform.
+
+It is a **destination only**. No customer, Checkout Session, invoice, subscription or webhook of ERT's *billing* account is involved, and the connection is unrelated to the `ERT_STRIPE_SECRET_KEY` family. Two different things share the letters "ERT":
+
+| | What it is | Where it lives | Secrets |
+|---|---|---|---|
+| **ERT the billing account** | A second account the portal charges customers on | Its own Stripe account, its own customers + webhooks | `ERT_STRIPE_SECRET_KEY[_SANDBOX]`, `ERT_STRIPE_WEBHOOK_SECRET[_SANDBOX]` |
+| **ERT the connected account** | A payout destination hanging off the VFO Services platform | A connected account **of VFO Services** | `ERT_CONNECT_ACCOUNT_ID[_SANDBOX]` — an `acct_…` **id**, never a key |
+
+**Today it has exactly one user: the SpecRev ERT share leg** (see "Stripe Connect & revenue share" below), which forwards ERT's slice of a specialist's payment out of the VFO Services balance.
+
+**The one-time OAuth setup (done by hand, 2026-09-11) — connecting an EXISTING account, not creating one.** This is the part that is easy to get wrong: there is no "create an account for ERT" step, and doing so would have made a second, empty account. The flow is an authorization handshake between two accounts that already exist:
+
+1. **VFO Services dashboard → Connect → enable OAuth**, with redirect URI `https://vfoportal.com/`.
+2. **ERT authorizes** at `connect.stripe.com/oauth/authorize` (`scope=read_write`, `client_id` = the VFO Services platform's Connect client id), signed in as ERT.
+3. The redirect returns a one-time `code`, **exchanged** at `connect.stripe.com/oauth/token` using a **temporary VFO Services secret key** — which was expired immediately afterwards.
+4. The response's **`stripe_user_id` is ERT's EXISTING account id**. That is the whole point: OAuth *links* the account that is already there.
+5. That id is stored as the secret **`ERT_CONNECT_ACCOUNT_ID`** (live). For sandbox, a **test connected account in the VFO Services sandbox stands in for ERT** and its id is stored as **`ERT_CONNECT_ACCOUNT_ID_SANDBOX`** — there is no sandbox copy of the real ERT account.
+
+Both names are resolved through **`ertConnectAccountEnvName(isSandbox)`** in `constants/stripe-accounts.ts`, never read inline, so mode selection cannot drift between the payout engine and the manual tool.
+
+> **Registry-version note.** Like the four billing secrets before them, writing these two secrets **bumped every edge function's registry version with no code change** — a version jump with an empty diff is expected after a secret write, not a sign of a stray deploy.
 
 ### Rule 1 — CONFIG MINTS
 
@@ -62,6 +87,8 @@ Two **new ERT webhook endpoints** (live + sandbox) were added on the **same func
 ### The remap — moving existing plans to ERT — **DONE 2026-09-11**
 
 **Decision (Jake, 2026-09-11): existing membership plans move via copy + remap, not attrition.** Stripe's self-serve **"Copy PAN data across Stripe accounts"** migration **preserves customer ids** (old == new) and **mints new payment-method ids**. It copies cards **and US ACH** (the recipient must acknowledge the ACH mandates) but **no charges, subscriptions or invoices**, and **no member contact is needed**. The action that applies its output is `membership_stripe_remap` — see [../flows/membership-fees.md](../flows/membership-fees.md).
+
+**UPDATE 2026-09-11 (later the same day): the frontend section is GONE.** The superadmin “Move plans to ERT Stripe” card was **deleted from `MembershipFeesPanel.jsx`** once the migration was complete. The backend action **`membership_stripe_remap` still exists and is still registered and gated**, but it now has **NO frontend caller at all** — it is reachable only by a direct API call. Kept rather than deleted because it is the only writer allowed to re-stamp `member_payment_plans.stripe_account`, and a future account move would need it again. (This also discharges the owed “four-column header copy fix” on that panel — the text it applied to no longer exists.)
 
 **It has been run. Result: 37 of 37 plans moved to ERT, 0 left on `vfos`** — 13 `active` plans re-pointed method-for-method onto ERT `pm_1UEY…` ids (the old payment-method ids matched the DB **13/13** before Apply) and 24 `setup_pending` plans moved as **customer-only** rows. Verified in the DB afterwards: every `member_payment_plans` row with a Stripe customer reads `stripe_account='ert'`, the 13 active ones carry ERT payment-method ids, and the 24 `setup_pending` ones are unchanged apart from the stamp.
 
@@ -122,6 +149,8 @@ The webhook router uses these fields to pick the right DB table on `checkout.ses
 | **`ERT_STRIPE_SECRET_KEY_SANDBOX`** | `ert` | Test-mode secret key | `getStripeKeyFor('ert', true)` |
 | **`ERT_STRIPE_WEBHOOK_SECRET`** | `ert` | HMAC secret verifying **live** ERT webhook signatures | same four-candidate verifier |
 | **`ERT_STRIPE_WEBHOOK_SECRET_SANDBOX`** | `ert` | HMAC secret verifying **sandbox** ERT webhook signatures | same |
+| **`ERT_CONNECT_ACCOUNT_ID`** | *(platform `vfos`)* | **NEW 2026-09-11.** ERT's **connected-account id** (`acct_…`) on the VFO Services platform — the `destination` of the SpecRev ERT-share transfer and of the manual catch-up transfer. **Not a key, and not an ERT-billing secret** | `ertConnectAccountEnvName(false)` |
+| **`ERT_CONNECT_ACCOUNT_ID_SANDBOX`** | *(platform `vfos`)* | **NEW 2026-09-11.** Same, for sandbox — a **test connected account in the VFO Services sandbox stands in for ERT** | `ertConnectAccountEnvName(true)` |
 
 Nothing reads these names inline any more where two accounts are possible: **`stripeKeyEnvName(account, isSandbox)`** and **`stripeWebhookSecretEnvName(account, isSandbox)`** in `constants/stripe-accounts.ts` return the NAME, and the caller reads the value.
 
@@ -136,6 +165,10 @@ Sandbox switching is per-pipeline and per-action: handlers read `pipeline_sandbo
 | `POST /v1/checkout/sessions` | GC purchase Checkout Session | line 2824 (`gc_create_checkout`) |
 | `GET /v1/payment_intents/{id}?expand[]=payment_method` | Read card last4 + payment method type after webhook | lines 317, 1190 (Stripe webhook handler + dead `_stripewebhook` action) |
 | `POST /v1/transfers` | Revenue share payout to member's connected account | line 1463 (`automation_CONTRACT_revshare`) |
+| `POST /v1/transfers` | **SpecRev ERT share** — forwards a line's `ert_share` from the VFO Services balance to ERT's connected account (2026-09-11) | `utils/specialist-revenue-payout.ts` (the ERT loop, after the member loop) |
+| `POST /v1/transfers` | **Manual ERT catch-up** — superadmin-only free-hand transfer for money collected before the ERT share existed (2026-09-11) | `actions/specialist-revenue/ert-transfer.ts` (`specialist_revenue_ert_transfer`) |
+| `GET /v1/accounts/{id}` | **Transfers-capability probe** before any Connect transfer — true only when `capabilities.transfers === 'active'`; never throws. Probed once per request on the ERT leg, and by the manual action | `utils/connect-payout-readiness.ts` `connectTransfersActive` (shared with `automation_CONTRACT_revshare` + `automation_TAX_revshare`) |
+| `POST /v1/charges/<destination_payment>` **with header `Stripe-Account: <ERT acct>`** | Copies an ERT transfer's description + metadata onto the payment Stripe created on **ERT's** side, which is otherwise bare (2026-09-11). Best-effort — never affects payout status | `utils/ert-destination-memo.ts` `stampErtDestinationPayment` |
 
 All requests use HTTP **Basic auth** with `Authorization: Basic <base64(STRIPE_KEY + ":")>` — no Stripe-Account or Stripe-Version header is set. **That is still true with two accounts: the ACCOUNT IS THE KEY.** There is no `Stripe-Account` header anywhere; which account a call lands on is decided entirely by which secret key `getStripeKeyFor(account, isSandbox)` resolved. `stripeAuthHeader(secretKey)` in `integrations/stripe/client.ts` builds the header.
 
@@ -407,6 +440,46 @@ The handler **only transfers** if:
 - `members.stripe_account_id` is set — **and a missing one is NOT "skipped silently" any more (2026-07-29, gotcha #303).** It writes the **non-terminal** `'Awaiting Connect Setup'` (`AWAITING_CONNECT`, `utils/member-share-held.ts`) and raises an action-required bell naming the held dollars, whose title is reconstructable so it self-clears when the share finally pays. The daily sweeps enumerate that value alongside `Pending` / `Failed`, and no `*_rev_completed_at` is stamped until a terminal outcome
 
 > **Proportional split (2026-07-21, gotcha #252):** a `share` value is ALWAYS a dollar amount of the TOTAL engagement; the portion transferred on any one installment is `portion = (share / totalGross) × paymentReceived`. The legacy ">100 → dollars else percent-of-payment" heuristic was removed from every leg (MAP1 member + strategic, tax member + strategic, tax planner) AND from the Payments-tab display math (`actions/payments/normalize.ts`) so the transfer and the displayed split always agree.
+
+### SpecRev ERT share — the platform forwards a sister company's slice (2026-09-11)
+
+Not every transfer goes to a *member*. A SpecRev recipient line can carry an `ert_share` instead of a `vfos_share` (never both — form, handler and DB CHECK all enforce it), and `utils/specialist-revenue-payout.ts` settles it with its **own** transfer, in a loop that runs after the member loop and is **independent of it**:
+
+```
+POST /v1/transfers
+amount: <round(ert_share * 100)>
+currency: usd
+destination: <ERT_CONNECT_ACCOUNT_ID[_SANDBOX]>        # ERT's connected account, NOT an ERT key
+description: "Specialist Revenue ERT Share - Specialist: <name> - For: <(member#) name>"
+metadata: pipeline=VFO_SPECIALIST_REVENUE, request_id, line_id, expert_id, member_number, transaction_details
+Idempotency-Key: specrev-ert-<requestId>-line<lineId>[-r<Date.parse(updated_at)> when the line is already `failed`]
+```
+
+Note the memo names **the member the share came from**, not ERT — the same recipient formatting as the member transfer, so the two legs of one line read as a matched pair on the dashboard.
+
+**Why the money is collected on VFO Services and forwarded.** A Connect transfer only flows **platform → its own connected account**. Every member Connect account belongs to the VFO Services platform, so charging the specialist on the ERT *billing* account would have stranded the member legs: ERT would hold the gross while VFO Services still had to pay the members out of its own balance. Collecting the whole gross on VFO Services (unchanged) and forwarding ERT's slice keeps both legs payable from the one balance that can pay them. **Deliberate, accepted consequence:** the specialist's invoice and receipt still say **VFO Services**, including for the portion that is ERT's.
+
+**Failure handling.** A Stripe failure — **or an unset `ERT_CONNECT_ACCOUNT_ID[_SANDBOX]`** — stamps the line `ert_payout_status='failed'` and raises the action-required bell `SPECREV_ert_transfer_failed`, one title per request; the nightly 11:00 sweep retries it, and the bell auto-clears on a clean run. The not-configured branch never throws, because the member legs of that request are already settled and must not be rolled back. There is **no email** on this leg at all. **A destination that cannot yet receive transfers is its own branch** with its own bell message (“ERT's connected account … cannot receive transfers yet (transfers capability not active)”), and it too is retried nightly.
+
+**Probe BEFORE the call — and why the key rotates (2026-09-11, gotcha #489).** Stripe caches the **first** response per `Idempotency-Key` for **24 hours, error bodies included**. A transfer attempted while the destination's `transfers` capability was still inactive therefore poisoned its own key: every retry replayed the identical refusal (observed live on request 37 line 86 — the retry came back with the same `request_log_url`). Two changes fix it. (1) **`connectTransfersActive(ertDestination, STRIPE_KEY)` is probed ONCE per request**, before the ERT loop — the same helper and the same discipline as the member leg. A not-active destination parks every ERT leg of that request `failed` with the bell and makes **no Stripe call at all**, so no key is ever consumed until the money can actually move. (2) **The key rotates once the line already carries a `failed` stamp**, gaining `-r<Date.parse(updated_at)>`. That is safe precisely because `failed` is only stamped **after Stripe returned an error body** — no transfer exists behind it, so a fresh key cannot double-pay. The genuinely dangerous case is the opposite one (a network drop *after* Stripe created the transfer), and it leaves the line `pending` with `updated_at` untouched, so that retry reuses the **original** key and gets the same transfer back. The member leg's key and probe are unchanged.
+
+**Stripe does NOT copy the memo to ERT's side — so the portal stamps it (2026-09-11).** A transfer's `description` and `metadata` live on the **platform's** transfer object; the `py_…` charge Stripe creates on the connected account is born bare. On ERT's own dashboard — the one Jake actually reads — the $4,119.77 catch-up showed Description **"-"** and **"No metadata"** (`py_1UEbptA6agMWAt8dMnI7a5IP`). So after every successful ERT transfer, engine and manual action alike, `utils/ert-destination-memo.ts` **`stampErtDestinationPayment`** POSTs `/v1/charges/<transfer.destination_payment>` with the header **`Stripe-Account: <ERT acct>`**, setting the same description and metadata. Acting as ERT is permitted because ERT granted `read_write` when it connected by OAuth. **Best-effort by contract:** the money has already moved by the time it runs, so a failure is cosmetic — it logs one line, returns `false`, and must never change a payout status, raise a bell or abort a run. Live-proven on the $978.68 catch-up (`tr_1UEc2xRwdhysCa6FgnfQHEQ4`).
+
+### Manual "Send funds to ERT" catch-up transfer (2026-09-11)
+
+`specialist_revenue_ert_transfer` (`actions/specialist-revenue/ert-transfer.ts`) is a **superadmin-only**, hand-typed transfer on the same rails, for money that landed on VFO Services **before** the ERT share column existed — gross amounts collected whole, with no line, no request and no `ert_payout_status` for the nightly engine to retry.
+
+```
+POST /v1/transfers
+amount: <round(amount * 100)>        # amount > 0 and <= 50000 (typo guard)
+currency: usd
+destination: <ERT_CONNECT_ACCOUNT_ID[_SANDBOX]>        # same secret as the automated leg
+description: "Manual transfer to ERT - <memo> - by <email>"
+metadata: pipeline=VFO_SPECIALIST_REVENUE, kind=manual_ert_catch_up, memo, created_by
+Idempotency-Key: specrev-ert-manual-<client_ref>
+```
+
+It is deliberately **DB-free** — no row, no email, no bell — so **Stripe's own transfer list is the ledger** for these corrections rather than a second, diverging record of money Stripe already tracks. Double-click safety without a DB comes from the idempotency key: the frontend mints one `client_ref` per form and re-mints it **only after a success**, so retries of one submission collapse onto a single transfer while a second deliberate send is genuinely a second transfer. Mode follows the shared `pipeline_sandbox_config` "MAP 1" toggle, and the destination comes from the same secret as the automated leg, so the tool can never send somewhere the engine would not. **It probes first too (2026-09-11):** `connectTransfersActive` runs before the transfer and a not-active destination returns **502** without calling Stripe — otherwise a refusal would burn that submission's `client_ref` for the rest of the day (gotcha #489). Its idempotency key is **not** rotated, and does not need to be: the operator gets a fresh `client_ref` on the next successful send, and the probe removes the refusal that would have poisoned the current one. **After a success it stamps the destination payment** via `stampErtDestinationPayment` and returns **`stamped: boolean`** to the operator alongside `transfer_id` — purely informational, since the money has already moved.
 
 ### Tax Planner Share → the GROUP account (2026-07-21)
 

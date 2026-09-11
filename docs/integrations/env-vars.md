@@ -21,7 +21,7 @@ Confirmed via `Deno.env.get(...)` audit of `vfo-admin-api/index.ts` and `boldsig
 
 | Var | Required by | Notes |
 |---|---|---|
-**EIGHT vars since 2026-09-11 (`vfo-admin-api` v829) — two Stripe accounts × two modes × (secret key + webhook signing secret).** `vfos` = **VFO Services** (the original, still the default for everything); `ert` = **ERT** (Elite Resource Team LLC), which carries member membership fees, Growth Credit purchases and advisor/accountant onboarding money. Full rules: [stripe.md](stripe.md#two-stripe-accounts-2026-09-11).
+**EIGHT vars since 2026-09-11 (`vfo-admin-api` v829) — two Stripe accounts × two modes × (secret key + webhook signing secret).** `vfos` = **VFO Services** (the original, still the default for everything); `ert` = **ERT** (Elite Resource Team LLC), which carries member membership fees, Growth Credit purchases and advisor/accountant onboarding money. Full rules: [stripe.md](stripe.md#two-stripe-accounts-2026-09-11). **TWO MORE were added later the same day (SpecRev ERT share leg): `ERT_CONNECT_ACCOUNT_ID` / `ERT_CONNECT_ACCOUNT_ID_SANDBOX`.** They sit **outside** the account × mode × (key + webhook secret) matrix above, because they are not credentials at all: each holds an `acct_…` **id** — ERT's **connected account on the VFO Services platform** — used only as a transfer `destination`. Do not confuse them with the `ERT_STRIPE_*` keys, which belong to ERT's separate *billing* account.
 
 | Var | Account | Required by | Notes |
 |---|---|---|---|
@@ -33,10 +33,12 @@ Confirmed via `Deno.env.get(...)` audit of `vfo-admin-api/index.ts` and `boldsig
 | **`ERT_STRIPE_SECRET_KEY_SANDBOX`** | `ert` | same | **NEW 2026-09-11.** Test-mode ERT key. |
 | **`ERT_STRIPE_WEBHOOK_SECRET`** | `ert` | same verifier — live ERT secret | **NEW 2026-09-11.** Stripe issues a separate signing secret per account per mode, so a webhook is signed by exactly one of the four. |
 | **`ERT_STRIPE_WEBHOOK_SECRET_SANDBOX`** | `ert` | same verifier — sandbox ERT secret | **NEW 2026-09-11.** |
+| **`ERT_CONNECT_ACCOUNT_ID`** | *(platform `vfos`)* | `utils/specialist-revenue-payout.ts` (the SpecRev ERT-share transfer loop), `specialist_revenue_ert_transfer` | **NEW 2026-09-11.** ERT's **connected-account id** (`acct_…`) on the VFO Services platform — the `destination` of both ERT transfers. **An id, not a key**, and nothing to do with the `ERT_STRIPE_*` billing secrets. Name resolved by `ertConnectAccountEnvName(false)` in `constants/stripe-accounts.ts`. **Unset is not fatal but is not silent either**: the leg is stamped `ert_payout_status='failed'` and raises the `SPECREV_ert_transfer_failed` bell, and the nightly sweep retries once the secret is set |
+| **`ERT_CONNECT_ACCOUNT_ID_SANDBOX`** | *(platform `vfos`)* | same | **NEW 2026-09-11.** Same, for sandbox — there is no sandbox copy of the real ERT account, so a **test connected account in the VFO Services sandbox stands in for ERT**. Resolved by `ertConnectAccountEnvName(true)` |
 
 At least one webhook secret must be set or the verifier returns 500; **unset secrets are simply skipped**, so a partially-configured environment still verifies whatever it holds keys for. Env-var NAMES are never spelled inline where two accounts are possible — `stripeKeyEnvName(account, isSandbox)` and `stripeWebhookSecretEnvName(account, isSandbox)` in `vfo-admin-api/constants/stripe-accounts.ts` return the name and the caller reads the value.
 
-> **Registry-version note (2026-09-11):** writing the four new secrets **bumped every edge function's registry version by 4 with no code change** — `vfo-admin-api` v824 → v828 and `boldsign-webhook` v40 → v44, both with an identical hash and timestamp — before the v829 deploy. A version jump with no deploy is what a secret write looks like; do not hunt for the phantom code change.
+> **Registry-version note (2026-09-11):** writing the four new secrets **bumped every edge function's registry version by 4 with no code change** — `vfo-admin-api` v824 → v828 and `boldsign-webhook` v40 → v44, both with an identical hash and timestamp — before the v829 deploy. A version jump with no deploy is what a secret write looks like; do not hunt for the phantom code change. **The same thing happened again** when `ERT_CONNECT_ACCOUNT_ID[_SANDBOX]` were written for the SpecRev ERT share leg — every function's version bumped again, still with no code change.
 
 > **Note:** `automation_CONTRACT_stripewebhook` was removed in Phase 6 mechanical (was doubly-dead code). It no longer reads any env vars.
 
@@ -131,6 +133,8 @@ Quick "what does this action need?" lookup:
 | `membership_stripe_remap` | **`ERT_STRIPE_SECRET_KEY` / `ERT_STRIPE_SECRET_KEY_SANDBOX` ONLY** (mode from `plan.sandbox`), `SUPABASE_*`. **No Gmail, no bell, no charge** — it probes ERT and rewrites two columns. A missing ERT key for the plan's mode is reported per row as `error`, never a 500. |
 | `automation_ADVISOR_depositemail` / `automation_ACCOUNTANT_depositemail`, `automation_<P>_stripecustomer` | `STRIPE_SECRET_KEY` / `_SANDBOX` **or** `ERT_*`, `GMAIL_*` (deposit-email only), `SUPABASE_*`. Both **reuse the row's stamp when `stripe_customer_id` exists, else the pipeline config**, and write the stamp on the minting pass. |
 | `automation_<P>_stripecheckout`, `automation_<P>_chargebalance`, `automation_<P>_depositrefund` | `STRIPE_SECRET_KEY` / `_SANDBOX` **or** `ERT_*`, `SUPABASE_*`. Always `advisor_onboarding` / `accountant_onboarding` `.stripe_account`; mode from the pipeline config. |
+| `specialist_revenue_payout`, `specialist_revenue_payout_sweep`, `specialist_revenue_retry_payout` (all run `utils/specialist-revenue-payout.ts`) | `STRIPE_SECRET_KEY` / `_SANDBOX` (**`vfos` only** — the specialist is charged and both legs are paid on the platform account), **`ERT_CONNECT_ACCOUNT_ID` / `_SANDBOX`** for the ERT leg's `destination`, `GMAIL_*` (member-leg emails only — the ERT leg sends none), `SUPABASE_*` |
+| `specialist_revenue_ert_transfer` | `STRIPE_SECRET_KEY` / `_SANDBOX` (**`vfos` only**), **`ERT_CONNECT_ACCOUNT_ID` / `_SANDBOX`**, `SUPABASE_*` (mode lookup only). **No Gmail, no Drive** — the handler is DB-free and sends nothing |
 | `boldsign-webhook` (standalone) | `SUPABASE_*` only — chains into admin-api which carries the rest |
 
 ## Cross-references
