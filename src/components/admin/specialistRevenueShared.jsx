@@ -70,6 +70,29 @@ export function memberShareNote(line, requestReceived) {
   return null
 }
 
+// The same note, one column left, for the ERT leg. ert_payout_status is its OWN column —
+// payout_status stays the member leg's — and a null on a line that carries ERT money means
+// the transfer has simply not been attempted yet, so it reads Pending like any other
+// unstarted leg. A line with no ERT money has no ERT leg and gets no note at all.
+//
+// Gated on the specialist's payment landing, exactly like memberShareNote: before the money
+// is in, NO leg has been attempted, so annotating one of them "Pending" would single out
+// ERT for a wait every column on the row is doing.
+export function ertShareNote(line, requestReceived) {
+  if (!requestReceived) return null
+  if (!(Number(line.ert_share) > 0)) return null
+  if (line.ert_payout_status === 'sent') return { text: 'Sent to ERT', color: '#1b9254' }
+  if (line.ert_payout_status === 'failed') return { text: 'Transfer failed', color: '#ef4444' }
+  return { text: 'Pending', color: PENDING_COLOR }
+}
+
+// Does this line still owe ERT money? Mirrors isHeldLine's job for the member leg: the
+// Automation tracker counts these into "Payouts pending" and keeps Retry lit for them.
+export function isErtLegOpen(line) {
+  return Number(line.ert_share) > 0
+    && (line.ert_payout_status == null || ['pending', 'failed'].includes(line.ert_payout_status))
+}
+
 export const shareNoteStyle = { display: 'block', fontSize: '9px', lineHeight: 1.2, fontWeight: 400 }
 
 export function isHeldLine(line) {
@@ -243,6 +266,7 @@ export function RequestRow({ request, actions, grid }) {
           <span style={{ textAlign: 'right', color: 'var(--vfo-muted)' }}>{lines.length}</span>
           <span style={{ textAlign: 'right', color: 'var(--vfo-muted)' }}>{request.total_deals || 0}</span>
           <span style={{ textAlign: 'right' }}>{money(request.total_member_share)}</span>
+          <span style={{ textAlign: 'right' }}>{money(request.total_ert_share)}</span>
           <span style={{ textAlign: 'right' }}>{money(request.total_vfos_share)}</span>
           <span style={{ textAlign: 'right', fontWeight: 700, color: 'var(--vfo-heading)' }}>{money(request.gross_amount)}</span>
           <span style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -269,6 +293,10 @@ export function RequestRow({ request, actions, grid }) {
             <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>member</div>
           </div>
           <div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{money(request.total_ert_share)}</div>
+            <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>ERT</div>
+          </div>
+          <div>
             <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{money(request.total_vfos_share)}</div>
             <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>VFOS</div>
           </div>
@@ -292,19 +320,25 @@ export function RequestRow({ request, actions, grid }) {
 // details and any caller-supplied actions. Shared by the card and table layouts above.
 function RequestDetail({ request, actions, received, heldMemberTotal }) {
   const lines = request.lines || []
+  const detailGrid = '1.4fr 110px 110px 110px 70px 1fr'
   return (
         <div style={{ background: 'var(--vfo-input)', borderTop: '1px solid var(--vfo-border-soft)', padding: '14px 18px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 120px 120px 70px 1fr', gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
-            <div>Recipient</div><div>VFOS $</div><div>Member $</div><div>Deals</div><div style={{ textAlign: 'right' }}>Status</div>
+          <div style={{ display: 'grid', gridTemplateColumns: detailGrid, gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
+            <div>Recipient</div><div>ERT $</div><div>VFOS $</div><div>Member $</div><div>Deals</div><div style={{ textAlign: 'right' }}>Status</div>
           </div>
           {lines.map(line => {
             const m = lineStatusMeta(line, received)
             const note = memberShareNote(line, received)
+            const ertNote = ertShareNote(line, received)
             return (
-              <div key={line.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 120px 120px 70px 1fr', gap: '10px', alignItems: 'center', padding: '9px 0', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
+              <div key={line.id} style={{ display: 'grid', gridTemplateColumns: detailGrid, gap: '10px', alignItems: 'center', padding: '9px 0', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
                 <div>
                   <div style={{ fontWeight: 600 }}>{line.recipient_name || '—'}</div>
                   <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{line.recipient_type === 'specialist' ? 'Specialist' : (line.member_number || 'Member')} · {line.revenue_decision || 'Revenue Share'}</div>
+                </div>
+                <div>
+                  <span style={{ opacity: ertNote && ertNote.color === PENDING_COLOR ? 0.55 : 1 }}>{money(line.ert_share)}</span>
+                  {ertNote && <span style={{ ...shareNoteStyle, color: ertNote.color }}>{ertNote.text}</span>}
                 </div>
                 <div>{money(line.vfos_share)}</div>
                 <div>
@@ -316,8 +350,9 @@ function RequestDetail({ request, actions, received, heldMemberTotal }) {
               </div>
             )
           })}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 120px 120px 70px 1fr', gap: '10px', alignItems: 'center', padding: '10px 0 2px', borderTop: '2px solid var(--vfo-border)', marginTop: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: detailGrid, gap: '10px', alignItems: 'center', padding: '10px 0 2px', borderTop: '2px solid var(--vfo-border)', marginTop: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
             <div>Totals</div>
+            <div>{money(request.total_ert_share)}</div>
             <div>{money(request.total_vfos_share)}</div>
             <div>
               {money(request.total_member_share)}
