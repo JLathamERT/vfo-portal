@@ -93,7 +93,7 @@ function PlanRow({ plan, onChanged }) {
     }
   }
 
-  const grid = '1.4fr 120px 120px 70px 1fr'
+  const grid = '1.4fr 110px 110px 110px 70px 1fr'
 
   return (
     <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', marginBottom: '10px', overflow: 'hidden', opacity: canceled ? 0.7 : 1 }}>
@@ -120,7 +120,7 @@ function PlanRow({ plan, onChanged }) {
       {open && (
         <div style={{ background: 'var(--vfo-input)', borderTop: '1px solid var(--vfo-border-soft)', padding: '14px 18px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
-            <div>Recipient</div><div>VFOS $</div><div>Member $</div><div>Deals</div><div>Transaction details</div>
+            <div>Recipient</div><div>ERT $</div><div>VFOS $</div><div>Member $</div><div>Deals</div><div>Transaction details</div>
           </div>
           {lines.map((line, i) => (
             <div key={line.id || i} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 0', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
@@ -128,6 +128,7 @@ function PlanRow({ plan, onChanged }) {
                 <div style={{ fontWeight: 600 }}>{line.recipient_name || '—'}</div>
                 <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{line.recipient_type === 'specialist' ? 'Specialist' : (line.member_number || 'Member')} · {line.revenue_decision || 'Revenue Share'}</div>
               </div>
+              <div>{money(line.ert_share)}</div>
               <div>{money(line.vfos_share)}</div>
               <div>{money(line.member_share)}</div>
               <div>{line.deals || 0}</div>
@@ -136,6 +137,7 @@ function PlanRow({ plan, onChanged }) {
           ))}
           <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '10px 0 2px', borderTop: '2px solid var(--vfo-border)', marginTop: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
             <div>Totals</div>
+            <div>{money(plan.total_ert_share)}</div>
             <div>{money(plan.total_vfos_share)}</div>
             <div>{money(plan.total_member_share)}</div>
             <div>{plan.total_deals || 0}</div>

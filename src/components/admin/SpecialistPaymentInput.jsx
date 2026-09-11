@@ -2,15 +2,20 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 
 // Accounting → VFO Specialist Payment Input.
-// Pick a specialist to charge, add recipient lines (recipient + VFOS share + member
-// share + deals), watch the live totals, then Send Payment Request (= total gross) to
-// the specialist. On payment the backend splits the member shares via Stripe Connect.
+// Pick a specialist to charge, add recipient lines (recipient + ERT share + VFOS share +
+// member share + deals), watch the live totals, then Send Payment Request (= total gross)
+// to the specialist. On payment the backend splits the member shares via Stripe Connect.
+// A line's house share goes to ERT or to VFOS, never to both.
 
 const NAVY = '#002973'
 const BLUE = '#125ecc'
 
 function money(n) {
   return `$${(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function amount(v) {
+  return parseFloat(String(v).replace(/[,$]/g, '')) || 0
 }
 
 function ordinal(n) {
@@ -151,27 +156,32 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
   }, [recipientOptions])
 
   function addLine() {
-    setLines(ls => [...ls, { id: lineSeq++, recipientKey: '', vfos_share: '', member_share: '', deals: '', transaction_details: '' }])
+    setLines(ls => [...ls, { id: lineSeq++, recipientKey: '', ert_share: '', vfos_share: '', member_share: '', deals: '', transaction_details: '' }])
   }
   function removeLine(id) { setLines(ls => ls.filter(l => l.id !== id)) }
   function updateLine(id, patch) { setLines(ls => ls.map(l => l.id === id ? { ...l, ...patch } : l)) }
 
   const totals = useMemo(() => {
-    let member = 0, vfos = 0, deals = 0
+    let member = 0, ert = 0, vfos = 0, deals = 0
     lines.forEach(l => {
-      member += parseFloat(String(l.member_share).replace(/[,$]/g, '')) || 0
-      vfos += parseFloat(String(l.vfos_share).replace(/[,$]/g, '')) || 0
+      member += amount(l.member_share)
+      ert += amount(l.ert_share)
+      vfos += amount(l.vfos_share)
       deals += parseInt(String(l.deals).replace(/[^0-9]/g, '')) || 0
     })
-    return { member, vfos, deals, gross: member + vfos }
+    return { member, ert, vfos, deals, gross: member + ert + vfos }
   }, [lines])
 
   const selectedExpert = expertKey ? specialistOptions.find(o => o.key === expertKey)?.expert : null
-  // Every line must have a recipient AND all three boxes filled before sending.
+  // Every line needs a recipient, a member share, deals, and exactly ONE of the two house
+  // shares. "One" is counted on the text, not the number, so the long-standing habit of
+  // typing a literal 0 in VFOS still completes a line; what is rejected is real money in
+  // both boxes at once.
   const lineComplete = (l) => !!l.recipientKey
-    && String(l.vfos_share).trim() !== ''
     && String(l.member_share).trim() !== ''
     && String(l.deals).trim() !== ''
+    && (String(l.ert_share).trim() !== '' || String(l.vfos_share).trim() !== '')
+    && !(amount(l.ert_share) > 0 && amount(l.vfos_share) > 0)
   const allLinesComplete = lines.length > 0 && lines.every(lineComplete)
   const canSend = !!selectedExpert && !!selectedExpert.email && allLinesComplete && totals.gross > 0 && !sending
 
@@ -185,7 +195,7 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
           recipient_type: r.recipient_type, member_number: r.member_number, expert_id: r.expert_id,
           recipient_name: r.recipient_name, recipient_email: r.recipient_email,
           revenue_decision: r.revenue_decision,
-          vfos_share: l.vfos_share, member_share: l.member_share, deals: l.deals,
+          ert_share: l.ert_share, vfos_share: l.vfos_share, member_share: l.member_share, deals: l.deals,
           transaction_details: l.transaction_details,
         }
       })
@@ -213,9 +223,10 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
   const wrap = { padding: '24px', maxWidth: '1100px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
   const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', padding: '22px', boxShadow: 'var(--vfo-shadow-card)', marginBottom: '20px' }
   const numInput = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none' }
-  const reqBorder = (v) => String(v).trim() === '' ? '1px solid #f3c0c0' : '1px solid var(--vfo-border-strong)'
+  const reqBorder = (filled) => filled ? '1px solid var(--vfo-border-strong)' : '1px solid #f3c0c0'
+  const offInput = { background: 'var(--vfo-tint)', color: 'var(--vfo-faint)', cursor: 'not-allowed' }
   const colLabel = { fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }
-  const grid = '1.3fr 130px 130px 70px 1fr 36px'
+  const grid = '1.3fr 115px 115px 115px 70px 1fr 36px'
 
   return (
     <div style={wrap}>
@@ -313,6 +324,7 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
       <div style={card}>
         <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '12px', alignItems: 'end', paddingBottom: '10px', borderBottom: '1px solid var(--vfo-tint)' }}>
           <div style={colLabel}>Member / Recipient</div>
+          <div style={colLabel}>ERT Share $</div>
           <div style={colLabel}>VFOS Share $</div>
           <div style={colLabel}>Member Share $</div>
           <div style={colLabel}>Deals</div>
@@ -326,15 +338,21 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
 
         {lines.map(l => {
           const r = l.recipientKey ? recipientByKey[l.recipientKey] : null
+          // The house share lands on ERT or on VFOS. A real amount in one locks the other
+          // box; a typed 0 locks nothing, so "0 in VFOS" still means "no house share here".
+          const ertLocked = amount(l.vfos_share) > 0
+          const vfosLocked = amount(l.ert_share) > 0
+          const houseFilled = String(l.ert_share).trim() !== '' || String(l.vfos_share).trim() !== ''
           return (
             <div key={l.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '12px', alignItems: 'start', padding: '14px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
               <div>
                 <SearchSelect options={recipientOptions} value={l.recipientKey} onChange={k => updateLine(l.id, { recipientKey: k })} placeholder="Select a member…" />
                 {r && <RevenueBadge decision={r.revenue_decision} />}
               </div>
-              <input style={{ ...numInput, border: reqBorder(l.vfos_share) }} inputMode="decimal" placeholder="0.00" value={l.vfos_share} onChange={e => updateLine(l.id, { vfos_share: e.target.value })} />
-              <input style={{ ...numInput, border: reqBorder(l.member_share) }} inputMode="decimal" placeholder="0.00" value={l.member_share} onChange={e => updateLine(l.id, { member_share: e.target.value })} />
-              <input style={{ ...numInput, border: reqBorder(l.deals) }} inputMode="numeric" placeholder="0" value={l.deals} onChange={e => updateLine(l.id, { deals: e.target.value })} />
+              <input style={{ ...numInput, border: reqBorder(houseFilled), ...(ertLocked ? offInput : null) }} disabled={ertLocked} inputMode="decimal" placeholder="0.00" value={l.ert_share} onChange={e => updateLine(l.id, { ert_share: e.target.value })} />
+              <input style={{ ...numInput, border: reqBorder(houseFilled), ...(vfosLocked ? offInput : null) }} disabled={vfosLocked} inputMode="decimal" placeholder="0.00" value={l.vfos_share} onChange={e => updateLine(l.id, { vfos_share: e.target.value })} />
+              <input style={{ ...numInput, border: reqBorder(String(l.member_share).trim() !== '') }} inputMode="decimal" placeholder="0.00" value={l.member_share} onChange={e => updateLine(l.id, { member_share: e.target.value })} />
+              <input style={{ ...numInput, border: reqBorder(String(l.deals).trim() !== '') }} inputMode="numeric" placeholder="0" value={l.deals} onChange={e => updateLine(l.id, { deals: e.target.value })} />
               <input style={numInput} placeholder="Optional" value={l.transaction_details} onChange={e => updateLine(l.id, { transaction_details: e.target.value })} />
               <button type="button" onClick={() => removeLine(l.id)} title="Remove"
                 style={{ width: '36px', height: '38px', borderRadius: '8px', border: '1px solid #f3d0d0', background: '#fff5f5', color: '#dc2626', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}>×</button>
@@ -346,6 +364,7 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
         {lines.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '12px', alignItems: 'center', padding: '14px 0 4px', borderTop: '2px solid var(--vfo-border-soft)', marginTop: '2px' }}>
             <div style={{ fontWeight: 700, color: 'var(--vfo-heading)', fontSize: '13px' }}>Totals</div>
+            <div style={{ fontWeight: 700, color: 'var(--vfo-ink)', fontSize: '13px' }}>{money(totals.ert)}</div>
             <div style={{ fontWeight: 700, color: 'var(--vfo-ink)', fontSize: '13px' }}>{money(totals.vfos)}</div>
             <div style={{ fontWeight: 700, color: 'var(--vfo-ink)', fontSize: '13px' }}>{money(totals.member)}</div>
             <div style={{ fontWeight: 700, color: 'var(--vfo-ink)', fontSize: '13px' }}>{totals.deals}</div>
@@ -372,7 +391,7 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
             {sending ? 'Sending…' : (paymentMethod === 'pending' ? `Record expected payment — ${money(totals.gross)}` : paymentMethod === 'recurring' ? `Send recurring payment link — ${money(totals.gross)}/mo` : `Send Payment Request — ${money(totals.gross)}`)}
           </button>
           {lines.length > 0 && !allLinesComplete && (
-            <div style={{ fontSize: '12px', color: '#b45309' }}>Fill in a recipient, VFOS $, Member $, and Deals for every line before sending.</div>
+            <div style={{ fontSize: '12px', color: '#b45309' }}>Fill in a recipient, an ERT $ or VFOS $ (not both), Member $, and Deals for every line before sending.</div>
           )}
         </div>
       </div>

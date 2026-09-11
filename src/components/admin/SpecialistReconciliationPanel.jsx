@@ -6,8 +6,12 @@ import { AccountingTableSkeleton } from '../shared/Skeleton'
 
 // Accounting > Specialists > VFO Specialist Member Reconciliation. Pick a year → every
 // member with their yearly totals from specialist revenue: member share (revenue share
-// payouts), VFOS share, money-mapping share. Accreditation rebate + credit note are
-// placeholders (not built yet → blank).
+// payouts), VFOS share, ERT share, money-mapping share. Accreditation rebate + credit note
+// are placeholders (not built yet → blank).
+//
+// ERT Income is a second house column, not a second reading of the same money: a line's
+// house share is booked to ERT or to VFOS, never to both. The accreditation credit-note
+// tiers below stay keyed to the VFOS share alone.
 //
 // A received request does not mean its member payouts went out — each line carries its
 // own payout_status, so the totals also track the portion still awaiting a transfer and
@@ -29,7 +33,7 @@ function memberName(m) {
   return m.name || `${m.first_name || ''} ${m.last_name || ''}`.trim() || '—'
 }
 
-// Annual accreditation credit note, based on the member's Elite VFO Income (VFOS share):
+// Annual accreditation credit note, based on the member's VFOS Income (VFOS share):
 // >$100k → $18,000; $75k–$100k → $9,000; >$50k & <$75k → $6,000; otherwise none.
 function creditNote(vfos) {
   const v = Number(vfos) || 0
@@ -95,7 +99,7 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
     for (const l of memberLines) {
       if (l.year !== year) continue
       const k = l.member_number
-      const t = map[k] || (map[k] = { member: 0, vfos: 0, mm: 0, memberPending: 0, mmPending: 0, memberHeldSus: 0, memberHeldPau: 0, mmHeldSus: 0, mmHeldPau: 0 })
+      const t = map[k] || (map[k] = { member: 0, vfos: 0, ert: 0, mm: 0, memberPending: 0, mmPending: 0, memberHeldSus: 0, memberHeldPau: 0, mmHeldSus: 0, mmHeldPau: 0 })
       const isMM = (l.revenue_decision || '') === 'Money Mapping'
       const ms = Number(l.member_share) || 0
       const pending = PENDING_PAYOUT.has(l.payout_status)
@@ -112,6 +116,7 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
         else if (pending) t.memberPending += ms
       }
       t.vfos += Number(l.vfos_share) || 0
+      t.ert += Number(l.ert_share) || 0
     }
     return map
   }, [memberLines, year])
@@ -123,7 +128,7 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
   // Only members with any $ this year (matches the Holistic reconciliation).
   const rows = useMemo(() => {
     return Object.entries(totalsByMember)
-      .filter(([, t]) => t.member || t.vfos || t.mm)
+      .filter(([, t]) => t.member || t.vfos || t.ert || t.mm)
       .map(([mn, t]) => {
         const m = memberByNo[mn]
         const eligible = m?.credit_note_eligible !== false
@@ -133,14 +138,14 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
   }, [totalsByMember, memberByNo])
 
   const tot = rows.reduce((s, r) => ({
-    member: s.member + r.t.member, vfos: s.vfos + r.t.vfos, mm: s.mm + r.t.mm, cn: s.cn + (r.cn || 0),
+    member: s.member + r.t.member, vfos: s.vfos + r.t.vfos, ert: s.ert + r.t.ert, mm: s.mm + r.t.mm, cn: s.cn + (r.cn || 0),
     memberPending: s.memberPending + r.t.memberPending, mmPending: s.mmPending + r.t.mmPending,
     memberHeld: s.memberHeld + r.t.memberHeldSus + r.t.memberHeldPau, mmHeld: s.mmHeld + r.t.mmHeldSus + r.t.mmHeldPau,
-  }), { member: 0, vfos: 0, mm: 0, cn: 0, memberPending: 0, mmPending: 0, memberHeld: 0, mmHeld: 0 })
+  }), { member: 0, vfos: 0, ert: 0, mm: 0, cn: 0, memberPending: 0, mmPending: 0, memberHeld: 0, mmHeld: 0 })
 
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
   const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
-  const grid = '90px 1.4fr 120px 120px 130px 130px 150px'
+  const grid = '86px 1.3fr 118px 118px 124px 124px 118px 140px'
   const muted = { color: 'var(--vfo-faint)' }
 
   return (
@@ -159,13 +164,13 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
         <button onClick={load} style={{ ...sel, color: '#125ecc', fontWeight: 600 }}>Refresh</button>
       </div>
 
-      {loading && <AccountingTableSkeleton cols={6} />}
+      {loading && <AccountingTableSkeleton cols={8} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && (
         <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
-            <span>Member #</span><span>Member Name</span><span style={{ textAlign: 'right' }}>Member Revenue Share</span><span style={{ textAlign: 'right' }}>Member Money Mapping</span><span style={{ textAlign: 'right' }}>Elite VFO Income</span><span style={{ textAlign: 'right' }}>Accred. Rebate</span><span style={{ textAlign: 'right' }}>Accred. Credit Note</span>
+            <span>Member #</span><span>Member Name</span><span style={{ textAlign: 'right' }}>Member Revenue Share</span><span style={{ textAlign: 'right' }}>Member Money Mapping</span><span style={{ textAlign: 'right' }}>VFOS Income</span><span style={{ textAlign: 'right' }}>ERT Income</span><span style={{ textAlign: 'right' }}>Accred. Rebate</span><span style={{ textAlign: 'right' }}>Accred. Credit Note</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '2px solid var(--vfo-border)', background: 'var(--vfo-input)', alignItems: 'center', fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)' }}>
             <span />
@@ -173,6 +178,7 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
             <span style={{ textAlign: 'right', ...(tot.member ? {} : muted) }}>{tot.member ? money(tot.member) : '—'}<PendingNote amount={tot.memberPending} money={money} /><HeldNote total={tot.memberHeld} money={money} /></span>
             <span style={{ textAlign: 'right', ...(tot.mm ? {} : muted) }}>{tot.mm ? money(tot.mm) : '—'}<PendingNote amount={tot.mmPending} money={money} /><HeldNote total={tot.mmHeld} money={money} /></span>
             <span style={{ textAlign: 'right' }}>{money(tot.vfos)}</span>
+            <span style={{ textAlign: 'right', ...(tot.ert ? {} : muted) }}>{tot.ert ? money(tot.ert) : '—'}</span>
             <span style={{ textAlign: 'right', ...muted }}>—</span>
             <span style={{ textAlign: 'right' }}>{tot.cn ? money(tot.cn) : '—'}</span>
           </div>
@@ -184,6 +190,7 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
                 <span style={{ textAlign: 'right', fontWeight: t.member ? 700 : 400, color: t.member ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.member ? money(t.member) : '—'}{t.member ? <><PendingNote amount={t.memberPending} money={money} /><HeldNote suspended={t.memberHeldSus} paused={t.memberHeldPau} money={money} /></> : null}</span>
                 <span style={{ textAlign: 'right', fontWeight: t.mm ? 700 : 400, color: t.mm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.mm ? money(t.mm) : '—'}{t.mm ? <><PendingNote amount={t.mmPending} money={money} /><HeldNote suspended={t.mmHeldSus} paused={t.mmHeldPau} money={money} /></> : null}</span>
                 <span style={{ textAlign: 'right', fontWeight: t.vfos ? 700 : 400, color: t.vfos ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{money(t.vfos)}</span>
+                <span style={{ textAlign: 'right', fontWeight: t.ert ? 700 : 400, color: t.ert ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.ert ? money(t.ert) : '—'}</span>
                 <span style={{ textAlign: 'right', ...muted }}>—</span>
                 <span style={{ textAlign: 'right', fontWeight: cn ? 700 : 400, color: cn ? '#7c3aed' : 'var(--vfo-faint)' }}>{cn ? money(cn) : '—'}</span>
               </div>
@@ -192,7 +199,7 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
           </div>
         </div>
       )}
-      <p style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', marginTop: '12px' }}>Credit note is based on the member's Elite VFO Income and their "Eligible for Credit Note" setting (&gt;$100k → $18,000; $75k–$100k → $9,000; &gt;$50k–&lt;$75k → $6,000). Accreditation rebate is not tracked yet — shown blank.</p>
+      <p style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', marginTop: '12px' }}>Credit note is based on the member's VFOS Income and their "Eligible for Credit Note" setting (&gt;$100k → $18,000; $75k–$100k → $9,000; &gt;$50k–&lt;$75k → $6,000); ERT Income is not counted towards it. Accreditation rebate is not tracked yet — shown blank.</p>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { callApi } from '../../lib/api'
 import SandboxModeToggle from './SandboxModeToggle'
-import { NAVY, BLUE, money, RequestRow, MarkReceivedButton } from './specialistRevenueShared'
+import { NAVY, BLUE, money, RequestRow, MarkReceivedButton, isErtLegOpen } from './specialistRevenueShared'
 import { TableSkeleton } from '../shared/Skeleton'
 
 // Automation → VFO Specialist Revenue. One row per specialist payment request, with
@@ -16,6 +16,13 @@ import { TableSkeleton } from '../shared/Skeleton'
 // by construction, so a $0 line closed as no_payout_due drops out of "Payouts pending"
 // and stops keeping the Retry button lit.
 const OPEN_PAYOUT = ['pending', 'awaiting_connect', 'failed', 'held_member_suspended', 'held_member_paused']
+
+// A line has two independent legs — the member's (payout_status) and ERT's
+// (ert_payout_status) — and either one still owing keeps the line open. It counts ONCE
+// either way: the stat is lines with work left, not transfers left.
+function isLineOpen(line) {
+  return OPEN_PAYOUT.includes(line.payout_status) || isErtLegOpen(line)
+}
 
 export default function SpecialistRevenueAutomationPanel() {
   const [requests, setRequests] = useState([])
@@ -46,7 +53,12 @@ export default function SpecialistRevenueAutomationPanel() {
     try {
       const res = await callApi('specialist_revenue_retry_payout', { request_id: requestId })
       if (res?.error) { setRetryMsg(res.error); return }
-      setRetryMsg(`Payout run — sent ${res.sent}, money mapping ${res.money_mapping}, awaiting Connect ${res.awaiting}, no payout due ${res.zero ?? 0}, failed ${res.failed}.`)
+      // The ERT tail is appended only when the backend reports on that leg, so a run that
+      // touched no ERT money reads exactly as it did before the column existed.
+      const ert = (res.ert_sent != null || res.ert_failed != null)
+        ? ` ERT — sent ${res.ert_sent ?? 0}, failed ${res.ert_failed ?? 0}.`
+        : ''
+      setRetryMsg(`Payout run — sent ${res.sent}, money mapping ${res.money_mapping}, awaiting Connect ${res.awaiting}, no payout due ${res.zero ?? 0}, failed ${res.failed}.${ert}`)
       await load()
     } catch (e) {
       setRetryMsg(e?.message || 'Retry failed')
@@ -61,7 +73,7 @@ export default function SpecialistRevenueAutomationPanel() {
     const awaiting = requests.filter(r => ['requested', 'processing', 'pending', 'awaiting_verification'].includes(r.payment_status)).length
     let pendingLines = 0
     requests.forEach(r => (r.lines || []).forEach(l => {
-      if (OPEN_PAYOUT.includes(l.payout_status) && r.payment_status === 'received') pendingLines++
+      if (isLineOpen(l) && r.payment_status === 'received') pendingLines++
     }))
     return { total, received, awaiting, pendingLines }
   }, [requests])
@@ -116,7 +128,7 @@ export default function SpecialistRevenueAutomationPanel() {
             return <MarkReceivedButton request={request} onDone={load} />
           }
           const received = request.payment_status === 'received'
-          const hasOpen = (request.lines || []).some(l => OPEN_PAYOUT.includes(l.payout_status))
+          const hasOpen = (request.lines || []).some(isLineOpen)
           return (
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <button disabled={!received || !hasOpen || retrying === request.id} onClick={() => retry(request.id)}
