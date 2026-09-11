@@ -12,6 +12,39 @@ that file too and is unchanged by this rework, except that a stopped row now als
 
 ---
 
+## Which Stripe account an onboarding bills on *(2026-09-11, v829)*
+
+Onboarding money — **deposit, balance, paid-in-full and refund** — is one of the three flows now billed on the **ERT** Stripe account (Elite Resource Team LLC); the other two are member membership fees and Growth Credit purchases. Full rules: [../integrations/stripe.md](../integrations/stripe.md#two-stripe-accounts-2026-09-11).
+
+**CONFIG MINTS.** The `ADVISOR_ONBOARDING` / `ACCOUNTANT_ONBOARDING` rows of `pipeline_sandbox_config` each gained **`stripe_account`** (`'vfos'` default, `CHECK IN ('vfos','ert')`). It decides which account a **NEW** Stripe customer is minted on, and is flipped **by SQL, never from the UI**. **Both rows are `'ert'` as of 2026-09-11 ~16:10Z.**
+
+**THE ROW STAMP GOVERNS.** `advisor_onboarding.stripe_account` / `accountant_onboarding.stripe_account` are nullable; **NULL = legacy = `vfos`**. Every later Stripe call for that row resolves its key as `getStripeKeyFor(normalizeStripeAccount(ob.stripe_account), isSandbox)` — the row's stamp for the account, the pipeline config for the mode.
+
+| Handler (`<p>` = `advisor` \| `accountant`) | Account source |
+|---|---|
+| `automation_<P>_depositemail` (`actions/<p>/deposit-email.ts`) | **Reuse-or-mint:** `ob.stripe_customer_id ? normalizeStripeAccount(ob.stripe_account) : cfgStripeAccount`. Writes the stamp **only when it mints** — `...(ob.stripe_customer_id ? {} : { stripe_account: stripeAccount })`. |
+| `automation_<P>_stripecustomer` (`stripe-customer.ts`) | Same reuse-or-mint rule; stamps `stripe_account` alongside `stripe_customer_id` in the same update. |
+| `automation_<P>_stripecheckout` (`stripe-checkout.ts`) | `ob.stripe_account` |
+| `automation_<P>_chargebalance` (`charge-balance.ts`) | `ob.stripe_account` |
+| `automation_<P>_depositrefund` (`deposit-refund.ts`) | `ob.stripe_account` |
+
+**No charge path ever re-stamps a row.** A Stripe customer id is valid on exactly one account, so re-stamping would strand it. Neither onboarding table has a remap action; membership is the only family that does.
+
+**The two pipelines are the only ones that genuinely run on BOTH accounts**, which is why the webhook cannot identify their rows by Stripe customer id alone. The advisor and accountant lookups on `checkout.session.completed` and `payment_intent.succeeded`, inside `handleOnboardingDepositFailure`, and in `resolveStripeFirstPaymentFailure` all pass the event's account through **`withStripeAccount(query, account)`** before `.maybeSingle()`. The four onboarding PaymentIntent expansions read the key from the **row stamp**, not the config, and now log a non-ok fetch. See [stripe-webhook.md](stripe-webhook.md).
+
+**Clone parity holds.** The account-selection lines in `charge-balance.ts`, `deposit-refund.ts`, `stripe-checkout.ts` and `stripe-customer.ts` are **byte-identical** between `actions/advisor/` and `actions/accountant/`; only `deposit-email.ts` differs, and only in line numbers. The accountant side is therefore **code-proven but not live-exercised** — see OWED below.
+
+**LIVE ON ERT since 2026-09-11 ~16:10Z.** Both `ADVISOR_ONBOARDING` and `ACCOUNTANT_ONBOARDING` config rows were flipped by SQL to **`stripe_account='ert'` with `sandbox_mode=false`**, so **every NEW onboarding customer is minted on ERT**. **Every EXISTING row keeps its `'vfos'` stamp and continues to charge on VFO Services** — there is no remap for these two tables, and none is needed: an onboarding's money is collected once and then done.
+
+**VERIFIED LIVE 2026-09-11 — advisor, two tests** (each run with sandbox ON + `stripe_account='ert'`).
+
+- **Onboarding 30, "Test ERT" — the deposit + balance legs.** The deposit email minted an ERT customer and stamped `ert`; the **$500** deposit paid → `succeeded`, fee **$15.24** read off the ERT PaymentIntent, confirmation drafted. BoldSign sandbox sign + countersign then drove `automation_ADVISOR_chargebalance`, which charged the **$1,500** remainder **off-session on ERT 3 seconds later** — fee **$45.11**, **INV-ADV30-0058** + **REC-ADV30-0084**, and the "ready to create" bell **1986**.
+- **Onboarding 31, "TEst Deposit" — the refund leg.** A **$550** deposit paid on ERT (`pi_3UEWxeA6agMWAt8d1Nf1xDGz`, fee **$16.74**), then the admin **Refund deposit** button refunded the full **$566.74** on ERT (`re_3UEWxeA6agMWAt8d1UQok7sC`) → `deposit_refund_status='succeeded'`, the row stopped, the refund email sent. The generic **`charge.refunded`** bell arrived titled **"Refund issued — $566.74 (charge ch_…) [ERT]"** — **the first proof that the ERT endpoint delivers `charge.refunded` and that the `[account]` tag renders.** That matters beyond this pipeline: the dispute/refund branches do **no row lookup at all**, so the bell title is the only place the account can appear, and until this run nothing had exercised it.
+
+**OWED on this pipeline:** the **accountant** clone on ERT — still **code-proven only** (the account-selection lines are byte-identical to advisor's in `charge-balance.ts`, `deposit-refund.ts`, `stripe-checkout.ts` and `stripe-customer.ts`; only `deposit-email.ts` differs, and only in line numbers). And **every failure / bounce / canceled / dispute branch on an ERT event** — `charge.refunded` is now the one that **is** proven.
+
+---
+
 ## Stage 1 — strictly sequential since 2026-09-04 (v811)
 
 Stage 1 renders as a tax-style locked cascade: each step is greyed with a lock icon and a hint until the step
