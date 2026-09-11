@@ -19,7 +19,7 @@ docs/
 ├── README.md                         (this file — start here)
 ├── SESSION_REFERENCE.md              (the LEAN live-state hub — read in FULL at session start)
 ├── CHANGELOG.md                      (archived session-by-session history — newest-first; read on demand)
-├── GOTCHAS.md                        (full numbered gotcha registry, #1 upward — read on demand; append-only, never renumbered, so the top number moves every session — #475 as of 2026-09-08)
+├── GOTCHAS.md                        (full numbered gotcha registry, #1 upward — read on demand; append-only, never renumbered, so the top number moves every session — #487 as of 2026-09-11)
 ├── NOTIFICATION_AUDIT.md             (every bell notification: who/type/timing, editable in Automation → Notification Editor; + gap analysis)
 ├── glossary.md                       (MAP1, PIP, PCADMIN, MSM, CIQ, etc.)
 ├── GROWTH_PLAN_HANDOFF.md            (Advisor Growth Plan — full feature build state; Phases 1–8 + custom priorities/sub-tasks)

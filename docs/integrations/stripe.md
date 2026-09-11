@@ -59,11 +59,21 @@ Two **new ERT webhook endpoints** (live + sandbox) were added on the **same func
 
 `router/webhooks.ts maybeHandleStripeWebhook` builds a candidate list of **all four `(account, mode)` signing secrets** (unset ones are skipped; zero configured = 500), HMACs the payload against each, and **keeps the candidate that matched** — `stripeAccount` and `matchedSandbox`. That match is the **only** evidence of which Stripe account the event came from (gotcha **#485**). Detail: [../flows/stripe-webhook.md](../flows/stripe-webhook.md).
 
-### The remap — moving existing plans to ERT
+### The remap — moving existing plans to ERT — **DONE 2026-09-11**
 
-Stripe's self-serve **"Copy PAN data across Stripe accounts"** migration **preserves customer ids** (old == new) and **mints new payment-method ids**, delivering a CSV with the header `customer_id_old,source_id_old,customer_id_new,source_id_new` to the recipient Dashboard's **Documents** area. It copies cards **and US ACH** (the recipient must acknowledge the ACH mandates) but **no charges, subscriptions or invoices**, and **no member contact is needed**.
+**Decision (Jake, 2026-09-11): existing membership plans move via copy + remap, not attrition.** Stripe's self-serve **"Copy PAN data across Stripe accounts"** migration **preserves customer ids** (old == new) and **mints new payment-method ids**. It copies cards **and US ACH** (the recipient must acknowledge the ACH mandates) but **no charges, subscriptions or invoices**, and **no member contact is needed**. The action that applies its output is `membership_stripe_remap` — see [../flows/membership-fees.md](../flows/membership-fees.md).
 
-**Decision (Jake, 2026-09-11): existing membership plans move via copy + remap, not attrition.** The action that applies that CSV is `membership_stripe_remap` — see [../flows/membership-fees.md](../flows/membership-fees.md).
+**It has been run. Result: 37 of 37 plans moved to ERT, 0 left on `vfos`** — 13 `active` plans re-pointed method-for-method onto ERT `pm_1UEY…` ids (the old payment-method ids matched the DB **13/13** before Apply) and 24 `setup_pending` plans moved as **customer-only** rows. Verified in the DB afterwards: every `member_payment_plans` row with a Stripe customer reads `stripe_account='ert'`, the 13 active ones carry ERT payment-method ids, and the 24 `setup_pending` ones are unchanged apart from the stamp.
+
+**Running it — the operational mechanics, none of which are in Stripe's documentation (gotcha #486).**
+
+1. **The sender-side control is role-gated.** "Copy customers" is the **"Copy to account"** icon on the **Customers** page (menu: *Copy all customers* / *Upload file* / *Status page*) and it is **hidden from an Administrator**. Jake had to grant himself the **Data Migration Specialist** role before the button appeared.
+2. **The upload file is a HEADER-LESS single column of customer ids.** A header row is validated as data and rejected per-row as **"Customer not found"** — a formatting problem reported as a data problem.
+3. **The recipient authorizes, and answers the ACH question.** ERT (`acct_1HRP3SA6agMWAt8d`) authorized on its own Customers page and answered **Yes** to *"Do you have ACH mandates for these customers?"*. **Decision (Jake): Yes, accepted risk** — exactly one active ACH plan was in the batch and its authorization was collected under **VFO Services'** name through Checkout; both companies are his. The copy of **37 customers** completed within the hour.
+4. **The mapping CSV has SIX columns, not four.** What Documents actually delivers is `customer_id_old,v2_account_id_old,source_id_old,customer_id_new,v2_account_id_new,source_id_new`; it was converted to the panel's required four-column shape by **dropping the two `v2_account_id_*` columns**. A customer with **no saved payment method** arrives as a row with **blank source columns**, which is byte-identical to the action's *customer-only* row shape — so **one converted file covered all 37 rows**.
+5. **The panel's Dry run can exceed the front end's timeout.** 37 rows × 2-3 Stripe probes blew through `api.js`'s **20 s** limit on the first attempt; the handler ran to completion anyway and the second Dry run returned **37 `would_move`**, then Apply returned **37 `moved`**. `api.js` does not retry writes and every outcome is idempotent, so neither the timeout nor a re-submission can double-apply (gotcha **#487**).
+
+**What the move did NOT change.** `setup_token` is untouched, so **every `/membership-pay` link already sent still works and now pays on ERT** — `setup-checkout.ts` reads the plan's row stamp. No schedule row, no `sandbox` flag, no `payment_method_type`, no email and no bell.
 
 ### What is NOT converted
 
