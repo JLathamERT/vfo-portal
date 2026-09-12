@@ -8,6 +8,78 @@
 
 ---
 
+## 2026-09-12 — Members run their own 90 Day Plan: a second, narrower training-status writer, three security ride-alongs, and member add-client moved to the CIQ tab (branch `claude/vfo-session-setup-d2d906`, action count 496 → 497)
+
+**Branch `claude/vfo-session-setup-d2d906` in both repos.** `vfo-admin-api` deployed as **v836**; `boldsign-webhook` untouched at **v46**. The frontend is **dev-server-verified only** — no `npm run deploy`, no `live-N` tag from this session.
+
+### What prompted it — an audit of what a member could actually do
+
+The member 90 Day Plan (`MemberMSMTracking.jsx`) was **read-only except the two tracker steps**. Everything else — every status on every step, video sub-steps included — could only be set by an MSM through the admin writer `msm_save_training_task`. The audit that opened the session found three things worth recording:
+
+- **Members had effectively never touched their own progress.** Only **13 of 1,143** `member_training_progress` rows across programs 1–2 carried a `completed_by` at all.
+- **`VideoTask`'s `onComplete` was dead wiring.** The component took `onComplete` and `enrollmentId` props and called neither; its "Have Watched" pill was derived from a status only an admin could set.
+- **`msm_save_training_task` has no `auth` parameter.** Its entire boundary is its membership of `ADMIN_ONLY_ACTIONS`. That is fine while it is admin-only, and it is exactly why it was left alone — see the decision below.
+
+### The shape of the fix — a second handler, not a widened gate (gotcha #490)
+
+The new action is **`training_member_save_task`** (`actions/msm/member-save-task.ts`), **AUTH**, in **`MEMBER_SCOPED_ACTIONS`**. Action count **496 → 497**. `msm_save_training_task` was **not touched** and stays `ADMIN_ONLY`.
+
+Widening the admin writer's gate would have handed members every power it carries at once: notes (admin-owned), `Stopped`, `N/A`, and writing **any** enrollment. Two handlers over one table was the cheaper correctness. The member handler's real gates are all **in-handler**, because `MEMBER_SCOPED_ACTIONS` rewrites only `body.member_number` and this handler keys on `enrollment_id` (gotcha #455):
+
+- `auth.callerRole !== "member"` → **403** ("Forbidden — members only"),
+- **`denyIfNotOwnEnrollment`** on the body `enrollment_id` → the IDOR guard (#142),
+- **400** on a `'section'` row, on a tracker step (`resolveTrackerConfig` — those are count-derived), and on a step whose phase belongs to a different `program_id` than the enrollment.
+
+**`Stopped` and `N/A` are refused TWICE — as an input value and as the existing value.** Both are MSM judgement calls (`Stopped` stops the whole plan per #233; `N/A` removes a step from the denominator). The handler strips them from the task's own `status_options` before validating the incoming status, **and separately** refuses any write when the row already reads either ("This step was set by your MSM and can't be changed here"). Only the first check is obvious; without the second, a member silently un-stops a plan an MSM deliberately stopped.
+
+**Write shape.** `status` + `completed_by` = the member's own name + `completed_date` = today, **and the date is written only when it is currently null** — a member's save never blanks or re-dates an admin-set completion. Clearing the status writes `""` / `null` / `null`.
+
+### `NOT_DONE_STATUSES` is now a cross-repo contract
+
+"Done" for a training step is a **denylist of exactly five values** — `Outstanding`, `Will Watch`, `Pending`, `In Progress`, `Stopped` — because positive values are open-ended per program ("Have Watched", "3 to Call", "Built - 45%"). The backend needed that set to decide when a phase is finished, so `actions/msm/tracker-config.ts` now **exports `NOT_DONE_STATUSES`** as a declared mirror of `src/components/shared/trainingStatus.js`. They must stay byte-identical; they were verified identical at wrap-up. `N/A` is deliberately **not** in the set — it is handled by exclusion from the denominator instead.
+
+### One FYI bell per completed PHASE, not per step
+
+New `notification_rules` row **`TRAINING_member_phase_completed`** (area *90 Day Plan*, sort **42**, `default_recipients ["ASSIGNED_MSM"]`, kind `bell`, `action_required` false, enabled), seeded by migration **`20260912120000_training_member_phase_completed_rule.sql`** — **applied live via `execute_sql`, a data insert only: no DDL, no new table, no policy, no DB function.** Committed per #196. Census **210 → 211**; area *90 Day Plan* **2 → 3**.
+
+It fires when a member's own save completes every **countable** step of a phase (sections excluded, `N/A` steps excluded), routed to the member's assigned MSM with `MSM_TEAM_EMAILS` as the call-site fallback when unassigned. It is **`dedupe: "unread"`** on purpose: the "is this phase done" test re-runs on every save, so a member who clears and re-sets a step, or edits a later step in an already-finished phase, re-satisfies the condition repeatedly — dedupe-unread collapses that into one unread bell per phase. The whole notify block is try/catch: a notify failure must never fail the status write (#176).
+
+### Three security ride-alongs, found while reading the surface
+
+1. **`msm_add_client` moved from `MEMBER_SCOPED_ACTIONS` to `ADMIN_ONLY_ACTIONS`** — it is no longer a member path (see below).
+2. **`msm_link_existing_client` ADDED to `ADMIN_ONLY_ACTIONS`.** It was in **no gate list at all** — deny-by-omission means UNGATED, not safe (#309/#455). A member could have linked **any** client to **any** enrollment with a crafted request. No member UI ever called it, so there is no evidence it was used, but the hole was real and open.
+3. **`actions/ciq/create.ts` gained `denyIfNotOwnClient`** on its body `client_id`. It ran the `ciq_enabled` start-gate and nothing else, so a member could open a CIQ **on another member's client** — and then read it legitimately, the CIQ being their own. The last body-trusting hole in the CIQ surface.
+
+### `nextClientRef` — one helper, and a real collision fixed
+
+New **`utils/client-ref.ts` `nextClientRef(supabase, member_number, isPFT)`** — highest existing suffix **+ 1**, lifted verbatim out of `msm/add-client.ts` (behaviour unchanged there). `ciq/add-client-and-create.ts` **switched from `count + 1` to it**: `clients.client_ref` is UNIQUE and a count-based ref re-collides with a surviving higher number the moment a non-last client is deleted (gotcha #139, which `msm_add_client` had already learned in 2026-06 and the CIQ path had not).
+
+### Frontend — `src/components/member/MemberMSMTracking.jsx` (the only `src/` file touched)
+
+Every non-tracker, non-section step — **video sub-steps included** — gets a status `<select>`, options = the task's own `status_options` minus `Stopped`/`N/A`, with a leading `-- Status --`. A row already at `Stopped` or `N/A` renders a **locked chip reading "Set by your MSM"** instead of a dropdown; the chip is cosmetic and the backend refusal is the guard. The hero gained a `90 Day Plan: <planStatusLabel>` meta line, **red when `isTrackStopped`** — the same helpers the admin header uses, so a member can finally see their plan is stopped. `statusColors`/`statusBg` gained Will Watch (orange), Outstanding (muted), Stopped (red) and a positive-fallback green via `isPositiveStatus`, so an open-ended positive value no longer renders colourless (#459's lesson). Saves are optimistic with a revert-and-show-the-backend-message on rejection. `trainingStatus.js` itself was **not** modified — every helper imported already existed.
+
+**`VideoTask` became presentational**: the dead `onComplete`/`enrollmentId` props and the dead `task_code` span are gone, and it now receives the caller's `statusNode`. The player and its empty `onStateChange` stub are **unchanged** — there is still **no playback tracking**, deliberately.
+
+### Decisions by Jake — record these before someone re-proposes them
+
+1. **Video skip-prevention and watch tracking: REJECTED.** Of the 29 training videos (13 Holistic / 16 PFT), **19 are Wistia, 10 are Loom, 0 are YouTube** — and Loom's embed exposes **no player API**, so progress simply cannot be read for a third of the library. *"All videos should be the same, if we can't track all we don't track any."* Do not re-propose unless the Loom videos are re-hosted.
+2. **Members set every non-tracker step themselves** — not a curated subset.
+3. **Member add-client is removed from the program tabs; the CIQ tab is the only member path**, gated by `members.ciq_enabled` (default false — **24 of 607** members had it on at the time). **Two consequences were named and accepted:** a CIQ-created client gets **no `client_enrollments` row** and therefore never appears on a program Clients tab until an admin links it; and there is now **no member path at all to create a Partnership Fast Track accountant** (the CIQ path always mints a non-PFT `<member>-NNN` ref). Neither is signposted in the UI.
+4. **The three security ride-alongs** ship with the feature rather than waiting for their own branch.
+5. **One FYI bell per completed phase, dedupe-unread** — not one per step.
+
+### Verification
+
+`deno check` **0**; action count **497** (6 + 491); `npm run build` **exit 0, 34 route pages**, bundle `index-B7xOSmqL.js`; **smoke gate 5/5 vs v836 (Jake)**; security advisor **GREEN at the exact baseline** (5 deny-all `rls_enabled_no_policy` INFO + the `pg_net` WARN) — a confirmation, not a check, this branch having no DDL.
+
+**Jake's 14-step click-through PASSED** on the dev server as Test Member 59524 (Holistic): set and clear a plain step, Outstanding, a counter step, a video step Will Watch → Have Watched, a tracker step still rendering its form, a whole phase → Done, an admin `Stopped` → locked chip + red hero, no add button on the Holistic / Partnership / Tax Clients tabs, CIQ new-client creation still working, and statuses surviving a hard reload.
+
+**The bell fired for real:** notification **2016** to `sfreitas@elitert.com` (Sarah Freitas, the assigned MSM) — *"Test Member completed MSM 6 Activity on their VFO Holistic Planning 90 Day Plan"* — with the correct deep link, then marked read.
+
+**Fixtures wiped by SQL afterwards:** Test Member 59524 enrollments 16 (Holistic) + 17 (PFT) — **14 `member_training_progress` rows** and **5 `training_tracker_entries`** deleted (the five tracker rows were left over from an earlier session's test).
+
+---
+
 ## 2026-09-11 — SpecRev gains an **ERT share** leg: a third money column, forwarded from the VFO Services balance to ERT's connected account (branch `claude/vfo-session-setup-68295f`, action count 495 → 496)
 
 **Branch `claude/vfo-session-setup-68295f` in both repos.** A VFO Specialist Revenue recipient line now carries **THREE** money columns instead of two: `member_share`, `vfos_share` and the new **`ert_share`**. `ert_share` and `vfos_share` are **mutually exclusive per line** — the house share is booked to **ERT** (Elite Resource Team, the sister company) *or* to VFOS, never both — enforced three deep: the form disables the other box, both handlers 400 with `Enter either an ERT share or a VFOS share on each line, not both.`, and a DB CHECK (`not (ert_share > 0 and vfos_share > 0)`). The gross charged to the specialist is `member + vfos + ert`.

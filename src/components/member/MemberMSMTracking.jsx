@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { callApi, loadCachedAction } from '../../lib/api'
 import { Skeleton, ClientsListSkeleton, TrainingTrackSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, MsmHomeSkeleton } from '../shared/Skeleton'
 import { TrackHero, PhaseBadge } from '../shared/TrackKit'
-import { countedTasks, countedDone, phaseState, isPositiveStatus } from '../shared/trainingStatus'
+import { countedTasks, countedDone, phaseState, isPositiveStatus, isTrackStopped, planStatusLabel, STATUS_STOPPED, STATUS_NOT_APPLICABLE } from '../shared/trainingStatus'
 import { isTrackerTask } from '../shared/trackerSteps'
 
 // Group a phase's tasks so each section header owns the contiguous sub-steps beneath it,
@@ -368,9 +368,34 @@ function MemberTrainingView({ enrollment, program }) {
   const [progress, setProgress] = useState({})
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState({})
+  const [saving, setSaving] = useState({})
+  const [errors, setErrors] = useState({})
 
-  function handleTaskComplete(taskId, status, date) {
-    setProgress(p => ({ ...p, [taskId]: { ...p[taskId], task_id: taskId, status, completed_date: date } }))
+  function handleTaskComplete(taskId, status, date, completedBy) {
+    setProgress(p => ({ ...p, [taskId]: { ...p[taskId], task_id: taskId, status, completed_date: date, completed_by: completedBy === undefined ? p[taskId]?.completed_by : completedBy } }))
+  }
+
+  // Member-set status for any non-tracker step. Optimistic, then reconciled with the
+  // server's own status / completed_date / completed_by; a rejection (tracker step,
+  // section row, or an admin 'Stopped'/'N/A' the member may not overwrite) reverts the
+  // row to exactly what it was and shows the backend's message inline.
+  async function saveStatus(taskId, status) {
+    const previous = progress[taskId]
+    setErrors(e => ({ ...e, [taskId]: '' }))
+    setSaving(s => ({ ...s, [taskId]: true }))
+    setProgress(p => ({ ...p, [taskId]: { ...p[taskId], task_id: taskId, status } }))
+    try {
+      const data = await callApi('training_member_save_task', { enrollment_id: enrollment.id, task_id: taskId, status })
+      handleTaskComplete(taskId, data.status ?? status, data.completed_date ?? null, data.completed_by ?? null)
+    } catch (err) {
+      setProgress(p => {
+        const next = { ...p }
+        if (previous) next[taskId] = previous
+        else delete next[taskId]
+        return next
+      })
+      setErrors(e => ({ ...e, [taskId]: err.message || 'Could not save that status.' }))
+    } finally { setSaving(s => ({ ...s, [taskId]: false })) }
   }
 
   useEffect(() => { loadTrack() }, [enrollment.id])
@@ -398,14 +423,27 @@ function MemberTrainingView({ enrollment, program }) {
   }
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
-  const statusColors = { Completed: '#1b9254', 'Have Watched': '#1b9254', 'In Progress': '#e06717', 'N/A': 'var(--vfo-muted)', Pending: '#e74c3c' }
-  const statusBg = { Completed: 'rgba(27,146,84,0.15)', 'Have Watched': 'rgba(27,146,84,0.15)', 'In Progress': 'rgba(251,137,90,0.15)', 'N/A': 'rgba(91,107,140,0.15)', Pending: 'rgba(231,76,60,0.15)' }
+  const statusColors = { Completed: '#1b9254', 'Have Watched': '#1b9254', 'In Progress': '#e06717', 'Will Watch': '#e06717', Outstanding: 'var(--vfo-muted)', 'N/A': 'var(--vfo-muted)', Pending: '#e74c3c', Stopped: '#e74c3c' }
+  const statusBg = { Completed: 'rgba(27,146,84,0.15)', 'Have Watched': 'rgba(27,146,84,0.15)', 'In Progress': 'rgba(251,137,90,0.15)', 'Will Watch': 'rgba(251,137,90,0.15)', Outstanding: 'rgba(91,107,140,0.15)', 'N/A': 'rgba(91,107,140,0.15)', Pending: 'rgba(231,76,60,0.15)', Stopped: 'rgba(231,76,60,0.15)' }
+  // Positive values are open-ended per program ("3 to Call", "Built - 45%", "Type 2 ...")
+  // so anything unmapped falls back to done-green / muted rather than rendering colourless.
+  const colorFor = (status) => statusColors[status] || (isPositiveStatus(status) ? '#1b9254' : 'var(--vfo-muted)')
+  const bgFor = (status) => statusBg[status] || (isPositiveStatus(status) ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)')
+  const borderFor = (status) => {
+    const c = colorFor(status)
+    return status && c.startsWith('#') ? `${c}66` : 'var(--vfo-border-strong)'
+  }
+  const memberOptions = (task) => (task.status_options || 'Completed|Outstanding|Stopped')
+    .split('|')
+    .filter(s => s && s !== STATUS_STOPPED && s !== STATUS_NOT_APPLICABLE)
 
   if (loading) return <TrainingTrackSkeleton />
   if (phases.length === 0) return <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No training track defined yet.</div>
 
   const totalTasks = phases.reduce((s, p) => s + countedTasks(p.program_training_tasks, progress).length, 0)
   const completedTasks = phases.reduce((s, p) => s + countedDone(p.program_training_tasks, progress), 0)
+  const planStopped = isTrackStopped(phases, progress)
+  const planStatus = planStatusLabel(phases, progress)
 
   return (
     <div>
@@ -413,6 +451,10 @@ function MemberTrainingView({ enrollment, program }) {
         accent={false}
         completed={completedTasks}
         total={totalTasks}
+        meta={<>
+          <span>90 Day Plan:</span>
+          <span style={{ fontWeight: 600, color: planStopped ? '#e74c3c' : 'var(--vfo-ink)' }}>{planStatus}</span>
+        </>}
         steps={phases.map(ph => ({ label: ph.name, state: phaseState(ph.program_training_tasks, progress) }))}
       />
       {phases.map(phase => {
@@ -431,20 +473,44 @@ function MemberTrainingView({ enrollment, program }) {
               if (trackerMeta) return (
                 <MemberTrackerTask key={task.id} task={task} meta={trackerMeta} enrollmentId={enrollment.id} progress={p} inGroup={inGroup} onStatusChange={handleTaskComplete} />
               )
+              // 'Stopped' / 'N/A' are admin-only escapes: the backend refuses a member write
+              // over them, so the row shows a locked chip instead of a select.
+              const locked = p.status === STATUS_STOPPED || p.status === STATUS_NOT_APPLICABLE
+              const isTouched = !!p.status
+              const statusNode = locked ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ padding: '3px 10px', borderRadius: '4px', fontSize: '12px', background: bgFor(p.status), color: colorFor(p.status) }}>{p.status}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Set by your MSM</span>
+                </span>
+              ) : (
+                <select
+                  value={p.status || ''}
+                  onChange={e => saveStatus(task.id, e.target.value)}
+                  disabled={!!saving[task.id]}
+                  style={{ padding: '5px 10px', borderRadius: '6px', border: `1px solid ${borderFor(p.status)}`, background: 'var(--vfo-input)', color: isTouched ? colorFor(p.status) : 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif', minWidth: '132px', cursor: saving[task.id] ? 'wait' : 'pointer', opacity: saving[task.id] ? 0.6 : 1 }}
+                >
+                  <option value="">-- Status --</option>
+                  {memberOptions(task).map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              )
+              const errorNode = errors[task.id]
+                ? <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '12px', marginTop: '4px', marginLeft: '22px' }}>{errors[task.id]}</div>
+                : null
               if (task.video_url) return (
                 <div key={task.id} style={{ marginBottom: '8px' }}>
-                  <VideoTask task={task} progress={p} enrollmentId={enrollment.id} onComplete={handleTaskComplete} />
+                  <VideoTask task={task} statusNode={statusNode} errorNode={errorNode} isTouched={isTouched} isPositive={isPositiveStatus(p.status)} statusColor={colorFor(p.status)} />
                 </div>
               )
               return (
-                <div key={task.id} style={{ padding: '10px 0', borderBottom: inGroup ? 'none' : '1px solid var(--vfo-tint)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: statusColors[p.status] || 'transparent', flexShrink: 0, border: '1px solid var(--vfo-border-mid)' }} />
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{task.name}</span>
+                <div key={task.id} style={{ padding: '10px 0', borderBottom: inGroup ? 'none' : '1px solid var(--vfo-tint)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: isTouched ? colorFor(p.status) : 'transparent', flexShrink: 0, border: '1px solid var(--vfo-border-mid)' }} />
+                    <div style={{ flex: 1, minWidth: '150px' }}>
+                      <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{task.name}</span>
+                    </div>
+                    {statusNode}
                   </div>
-                  {p.status && (
-                    <span style={{ padding: '3px 10px', borderRadius: '4px', fontSize: '12px', background: statusBg[p.status] || 'var(--vfo-tint)', color: statusColors[p.status] || 'var(--vfo-ink)' }}>{p.status}</span>
-                  )}
+                  {errorNode}
                 </div>
               )
             }
@@ -634,18 +700,7 @@ function MemberClientsView({ enrollment, member, program }) {
   const isPFT = program?.name === 'Partnership Fast Track'
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showAdd, setShowAdd] = useState(false)
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [addStatus, setAddStatus] = useState('')
   const [contactsMap, setContactsMap] = useState({})
-  const [expandedClient, setExpandedClient] = useState(null)
-  const [showAdditional, setShowAdditional] = useState(false)
-  const [addFirstName, setAddFirstName] = useState('')
-  const [addLastName, setAddLastName] = useState('')
-  const [addEmail, setAddEmail] = useState('')
 
   useEffect(() => { loadClients() }, [enrollment.id])
 
@@ -662,17 +717,6 @@ function MemberClientsView({ enrollment, member, program }) {
     finally { setLoading(false) }
   }
 
-  async function addClient() {
-    if (!firstName || !lastName || !email) { setAddStatus('First name, last name, and email are required.'); return }
-    try {
-      const additional_contact = showAdditional && addFirstName && addLastName ? { first_name: addFirstName, last_name: addLastName, email: addEmail } : undefined
-      await callApi('msm_add_client', { enrollment_id: enrollment.id, member_number: member.member_number, first_name: firstName, last_name: lastName, email, phone, additional_contact })
-      setFirstName(''); setLastName(''); setEmail(''); setPhone(''); setShowAdd(false); setAddStatus(''); setShowAdditional(false); setAddFirstName(''); setAddLastName(''); setAddEmail('')
-      loadClients()
-    } catch (err) { setAddStatus(err.message) }
-  }
-
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
   const statusColors = { pending: '#e06717', active: '#1b9254', declined: '#e74c3c' }
 
@@ -686,41 +730,7 @@ function MemberClientsView({ enrollment, member, program }) {
           <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>TOTAL</div></div>
           <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.filter(c => c.status === 'active').length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>ACTIVE</div></div>
         </div>
-        <button onClick={() => setShowAdd(!showAdd)} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>+ Add {isPFT ? 'Accountant' : 'Client'}</button>
       </div>
-
-      {showAdd && (
-        <div style={{ ...sectionStyle, marginBottom: '20px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Add New {isPFT ? 'Accountant' : 'Client'}</div>
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>First Name *</label><input value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} /></div>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Last Name *</label><input value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} /></div>
-            <div style={{ flex: 1, minWidth: '180px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Email *</label><input value={email} onChange={e => setEmail(e.target.value)} type="email" style={inputStyle} /></div>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Phone</label><input value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} /></div>
-          </div>
-          {!showAdditional && (
-            <button onClick={() => setShowAdditional(true)} style={{ padding: '8px 14px', borderRadius: '6px', border: '1px dashed rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.06)', color: '#0095ff', fontWeight: 600, fontSize: '12px', cursor: 'pointer', marginBottom: '12px', fontFamily: 'Inter, sans-serif' }}>+ Add additional contact (e.g. spouse)</button>
-          )}
-          {showAdditional && (
-            <div style={{ padding: '16px', background: 'rgba(0,149,255,0.06)', border: '1px solid rgba(0,149,255,0.2)', borderRadius: '8px', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <div style={{ fontSize: '12px', color: '#0095ff', fontWeight: 600, fontStyle: 'italic' }}>Additional contact (not the primary client)</div>
-                <button onClick={() => { setShowAdditional(false); setAddFirstName(''); setAddLastName(''); setAddEmail('') }} style={{ background: 'none', border: 'none', color: 'var(--vfo-muted)', fontSize: '11px', cursor: 'pointer' }}>Remove</button>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '120px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>First Name</label><input value={addFirstName} onChange={e => setAddFirstName(e.target.value)} style={inputStyle} /></div>
-                <div style={{ flex: 1, minWidth: '120px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Last Name</label><input value={addLastName} onChange={e => setAddLastName(e.target.value)} style={inputStyle} /></div>
-                <div style={{ flex: 1, minWidth: '160px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Email</label><input value={addEmail} onChange={e => setAddEmail(e.target.value)} type="email" style={inputStyle} /></div>
-              </div>
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={addClient} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Save</button>
-            <button onClick={() => setShowAdd(false)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
-          </div>
-          {addStatus && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '8px' }}>{addStatus}</p>}
-        </div>
-      )}
 
       {clients.length === 0
         ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No {isPFT ? 'accountants' : 'clients'} added yet.</div>
@@ -919,9 +929,10 @@ function MemberClientTrackView({ client, program }) {
   )
 }
 
-function VideoTask({ task, progress, enrollmentId, onComplete }) {
+// Video sub-step. There is deliberately NO playback tracking: the member declares
+// Have Watched / Will Watch on the caller-supplied status select (statusNode).
+function VideoTask({ task, statusNode, errorNode, isTouched, isPositive, statusColor }) {
   const [showVideo, setShowVideo] = useState(false)
-  const [completed, setCompleted] = useState(isPositiveStatus(progress?.status))
   const playerRef = useRef(null)
   const containerId = `yt-player-${task.id}`
 
@@ -929,7 +940,6 @@ function VideoTask({ task, progress, enrollmentId, onComplete }) {
   // Wistia and Loom are plain iframe embeds; anything else is treated as a YouTube watch URL.
   const isEmbed = url.includes('wistia') || url.includes('loom')
   const videoId = isEmbed ? null : url.match(/v=([^&]+)/)?.[1]
-  const statusColor = completed ? '#1b9254' : '#0095ff'
 
   useEffect(() => {
     if (!showVideo || isEmbed || !videoId) return
@@ -961,19 +971,19 @@ function VideoTask({ task, progress, enrollmentId, onComplete }) {
 
   return (
     <div style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: showVideo ? '12px' : '0' }}>
-        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: completed ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${completed ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-        <div style={{ flex: 1 }}>
-          <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginRight: '8px' }}>{task.task_code}</span>
-          <span style={{ fontSize: '14px', color: completed ? 'var(--vfo-muted)' : 'var(--vfo-ink)' }}>{task.name}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: showVideo ? '12px' : '0', flexWrap: 'wrap' }}>
+        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: isTouched ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isTouched ? statusColor : 'var(--vfo-border-mid)'}` }} />
+        <div style={{ flex: 1, minWidth: '150px' }}>
+          <span style={{ fontSize: '14px', color: isPositive ? 'var(--vfo-muted)' : 'var(--vfo-ink)' }}>{task.name}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button onClick={() => setShowVideo(!showVideo)} style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: `1px solid rgba(0,149,255,0.4)`, background: showVideo ? 'rgba(231,76,60,0.15)' : 'rgba(0,149,255,0.15)', color: showVideo ? '#e74c3c' : '#0095ff' }}>
             {showVideo ? 'Hide Video' : '▶ Watch Video'}
           </button>
-          {completed && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Have Watched</span>}
+          {statusNode}
         </div>
       </div>
+      {errorNode}
       {showVideo && (
         <div style={{ borderRadius: '8px', overflow: 'hidden', marginLeft: '22px' }}>
           {isEmbed ? (

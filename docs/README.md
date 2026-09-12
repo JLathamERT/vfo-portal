@@ -6,7 +6,7 @@ Read-only architecture map of the VFO portal system. Documents what exists in th
 
 ## What's in this system
 
-Two repos, one Supabase project, four external integrations, one static-hosted SPA — held together by a modular `vfo-admin-api` edge function (123-line orchestrator + ~508 handler files under `actions/`) dispatching **496 actions** (6 logins + 490 dispatched: 141 PUBLIC + 349 AUTH) *(v: 2026-09-11 — derive it, do not trust it: see the hub's DERIVE block)*. See [architecture/01-system-map.md](architecture/01-system-map.md) for the high-level picture.
+Two repos, one Supabase project, four external integrations, one static-hosted SPA — held together by a modular `vfo-admin-api` edge function (123-line orchestrator + ~509 handler files under `actions/`) dispatching **497 actions** (6 logins + 491 dispatched: 141 PUBLIC + 350 AUTH) *(v: 2026-09-12 — derive it, do not trust it: see the hub's DERIVE block)*. See [architecture/01-system-map.md](architecture/01-system-map.md) for the high-level picture.
 
 The central business flow is the **MAP1 contract-and-payment chain**: PIP1 reconfirmation → PF decision → PCADMIN pricing → BoldSign agreement → CEO countersign → Stripe payment → confirmation/invoice/receipt → revenue share. State lives in a single 143-column row of `pipeline_map1`, with each handler advancing specific columns. See [flows/contract-and-payment.md](flows/contract-and-payment.md) for the end-to-end trace.
 
@@ -134,7 +134,7 @@ These items are flagged across multiple docs and remain unresolved without exter
 This doc map can be audited against the source:
 
 - Every `file:line` citation should resolve to the claimed handler — try opening any link.
-- The action catalog count (**496** in [05-api-action-catalog.md](architecture/05-api-action-catalog.md), *v: 2026-09-11*) is the sum of the **6** logins in `index.ts` + the **490** dispatch entries (`(c) =>`) in `router/dispatch.ts`. **Derive it rather than trusting it** — the anchored greps live in the hub's DERIVE block (#402).
+- The action catalog count (**497** in [05-api-action-catalog.md](architecture/05-api-action-catalog.md), *v: 2026-09-12*) is the sum of the **6** logins in `index.ts` + the **491** dispatch entries (`(c) =>`) in `router/dispatch.ts`. **Derive it rather than trusting it** — the anchored greps live in the hub's DERIVE block (#402).
 - The table inventory in [tables/README.md](tables/README.md) is a grouped index, **not a count** — `SELECT count(*) FROM information_schema.tables WHERE table_schema='public'` returns **87** as of 2026-08-14, and several of those have no per-column doc (notably `advisor_onboarding` / `accountant_onboarding`). Always derive; a hard number on this page will be wrong within a week.
 - The 15-migration list in [integrations/supabase.md](integrations/supabase.md) is a **2026-05-05 snapshot and is long out of date** — `vfo-edge-functions/supabase/migrations/` now holds **114** git-tracked migration files (2026-08-14). Every migration applied live via MCP must also be committed there (#196).
 - Pick any flow doc and trace a "Trigger → Step-by-step → Tables touched → Chains" sequence; every code reference should resolve.
