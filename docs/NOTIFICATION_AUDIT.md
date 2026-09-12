@@ -45,14 +45,14 @@
 ## Every notification in the system
 
 > **⚠️ THE TABLES BELOW ARE A SNAPSHOT, NOT AN INVENTORY — the DB is the source of truth.**
-> They were written when there were 128 rules in 11 areas. As of **2026-09-08 there are 209 rules in
+> They were written when there were 128 rules in 11 areas. As of **2026-09-12 there are 211 rules in
 > 16 areas**, so roughly a third of the live rules are NOT listed here. Derive the current picture
 > instead of trusting a count on this page:
 > `select area, count(*) from notification_rules group by area order by area;`
 >
 > | Area | Live rules | Listed below |
 > |---|---|---|
-> | 90 Day Plan | 2 | ✗ no section |
+> | 90 Day Plan | **3** | ✗ no section |
 > | Accountant Onboarding | 19 | 18 |
 > | Advisor Onboarding | 19 | 18 |
 > | Growth Credits | 2 | ✗ no section |
@@ -67,7 +67,7 @@
 > | Tax | **40** | **24** |
 > | **Tax Planners** | **16** | ✗ no section — see [flows/tax-planning.md](flows/tax-planning.md#thirteen-planner-notification-bells-six-new-2026-07-22-a-seventh-2026-07-23-an-eighth-2026-07-23-evening-a-ninth-and-tenth-2026-08-10-an-eleventh-and-twelfth-2026-08-11-a-thirteenth-later-the-same-day) |
 > | Uploads | 5 | ✗ no section |
-> | VFO Specialist Revenue | **12** | **12 ✓** |
+> | VFO Specialist Revenue | **13** | **12** |
 >
 > Each section heading's own count is likewise the snapshot number, kept so the tables and the
 > counts stay self-consistent. **Do not add a new total here** — it will be wrong within a week.
@@ -76,11 +76,20 @@
 > above by the session that touched them: `Payment Failure Alerts` and `VFO Specialist Revenue` on
 > **2026-08-26**, and `MAP 1` + `Tax` on **2026-09-08** (each gained one rule —
 > `MAP1_ach_bank_verification_pending` / `TAX_ach_bank_verification_pending`, both written up below, so
-> the "listed" column moved with the live one). Every other row is still the 2026-08-17 snapshot and is
+> the "listed" column moved with the live one), then `90 Day Plan` and `VFO Specialist Revenue` on
+> **2026-09-12**. Every other row is still the 2026-08-17 snapshot and is
 > only getting staler. Re-derive the row you touch rather than regenerating the page. The one honest
-> mismatch left in the two re-derived areas: **Payment Failure Alerts lists 18 of its 19 live rules** —
+> mismatch left in the two 2026-08-26 areas: **Payment Failure Alerts lists 18 of its 19 live rules** —
 > `FAILURE_tax_planner_share` ("Tax planner revshare transfer failed (Jake)", action-required) has
 > never been written up here.
+>
+> **The two 2026-09-12 rows, neither with a section below:** `90 Day Plan` **2 → 3** — new
+> **`TRAINING_member_phase_completed`** (sort 42, `default_recipients ["ASSIGNED_MSM"]`, dismissible
+> FYI, `dedupe:"unread"`), raised by `training_member_save_task` when a member's own save completes
+> every countable step of one 90 Day Plan phase; the whole MSM team (`MSM_TEAM_EMAILS`) is the
+> call-site fallback when the member has no assigned MSM. And `VFO Specialist Revenue` **12 → 13** —
+> **`SPECREV_ert_transfer_failed`** (sort 31, action-required, to Jake), added 2026-09-11 with the ERT
+> share leg; it is the one row whose "listed" column slipped, so that area now lists 12 of 13.
 
 ### MAP 1 (15)
 

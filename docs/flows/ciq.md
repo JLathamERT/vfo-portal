@@ -14,40 +14,43 @@ Members can **always view** their CIQs. The `members.ciq_enabled` flag (admin-co
 
 **Triggered on:** mount of `MemberCIQ`.
 
-**Handlers:** [MemberCIQ.jsx:40](src/components/shared/MemberCIQ.jsx) calls `ciq_load_settings`. Then [MemberCIQ.jsx:64-65](src/components/shared/MemberCIQ.jsx) parallels `ciq_load_list` and `load_member_contacts`. [MemberCIQ.jsx:76](src/components/shared/MemberCIQ.jsx) loads `msm_load_member_clients` for the "add new client" workflow.
+**Handlers:** [MemberCIQ.jsx:42](src/components/shared/MemberCIQ.jsx) calls `ciq_load_settings`. Then [MemberCIQ.jsx:66-67](src/components/shared/MemberCIQ.jsx) parallels `ciq_load_list` and `load_member_contacts`. **`msm_load_member_clients` is NOT a mount load** — `loadExistingClients` is called lazily from `selectAddMode('existing')`, i.e. only once the user picks **"Existing Client"** in the add dialog.
 
 **What it does:**
-- `ciq_load_settings` ([admin-api:3760-3767](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)) — reads `members.ciq_enabled, ciq_vfos_managed`.
-- `ciq_load_list` ([admin-api:3582-3593](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)) — joins `client_ciqs` × `clients` for this member.
+- `ciq_load_settings` ([actions/ciq/load-settings.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/ciq/load-settings.ts)) — reads `members.ciq_enabled, ciq_vfos_managed`.
+- `ciq_load_list` ([actions/ciq/load-list.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/ciq/load-list.ts)) — joins `client_ciqs` × `clients` for this member.
 - `load_member_contacts` — gathers `clients` + `client_contacts` for the member's roster.
 
 ## Step 2 — Create a CIQ
 
 The member can either:
 
-- **Create against existing client** → `ciq_create({client_id, member_number})` ([MemberCIQ.jsx:90](src/components/shared/MemberCIQ.jsx) → [admin-api:3595-3606](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)). Inserts a new `client_ciqs` row with `status='draft'`.
-- **Add a new client + create CIQ at once** → `ciq_add_client_and_create({member_number, first_name, last_name, email, additional_contact})` ([MemberCIQ.jsx:101](src/components/shared/MemberCIQ.jsx) → [admin-api:3608-3639](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)). Inserts `clients`, optional `client_contacts`, and `client_ciqs` in sequence.
+- **Create against existing client** → `ciq_create({client_id, member_number})` ([MemberCIQ.jsx:104](src/components/shared/MemberCIQ.jsx) → [actions/ciq/create.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/ciq/create.ts)). Inserts a new `client_ciqs` row with `status='draft'`. Runs the start-gate **and** `denyIfNotOwnClient` on the body `client_id` (2026-09-12 — see *Admin vs member access*).
+- **Add a new client + create CIQ at once** → `ciq_add_client_and_create({member_number, first_name, last_name, email, additional_contact})` ([MemberCIQ.jsx:114](src/components/shared/MemberCIQ.jsx) → [actions/ciq/add-client-and-create.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/ciq/add-client-and-create.ts)). Inserts `clients`, optional `client_contacts`, and `client_ciqs` in sequence. Duplicate first+last name for the same member is a 400 ("Use Add Existing Client instead"), non-PFT clients only.
+  - **It writes NO `client_enrollments` row.** The client exists and owns a CIQ, but it is attached to no program enrollment — so it does **not** appear on any program Clients tab in the member portal or the admin MSM tab until an admin links it with `msm_link_existing_client`.
+  - `client_ref` is now minted by the shared **`utils/client-ref.ts` `nextClientRef`** (highest existing suffix **+ 1**, zero-padded to three) — the same helper `msm_add_client` uses, so the two paths can no longer disagree. `client_ref` is UNIQUE and a count-based ref collides with a surviving higher number as soon as a non-last client is deleted (gotcha #139).
+  - **As of 2026-09-12 this is the ONLY member path to create a client** — `msm_add_client` / `msm_link_existing_client` went ADMIN_ONLY and the member "+ Add Client" button was removed from the program Clients tabs. It always mints a non-PFT ref, so a member cannot create a **Partnership Fast Track** accountant at all. See [msm-tracking.md](msm-tracking.md#member-side-view).
 
 ## Step 3 — Open a CIQ for editing
 
 **Trigger:** member clicks a CIQ in the list.
 
-**Handlers:** [MemberCIQ.jsx:112-114](src/components/shared/MemberCIQ.jsx) parallels three reads:
-- `ciq_load({ciq_id})` ([admin-api:3641-3659](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)) — joins `client_ciqs`, `clients`, `ciq_answers` (the answer key/value pairs).
-- `ciq_load_priorities({ciq_id})` ([admin-api:3704-3713](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)) — reads `ciq_priorities`.
-- `ciq_load_priority_snapshots({ciq_id})` ([admin-api:3751-3758](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)) — reads `ciq_priority_snapshots`.
+**Handlers:** [MemberCIQ.jsx:126-128](src/components/shared/MemberCIQ.jsx) parallels three reads:
+- `ciq_load({ciq_id})` ([actions/ciq/load.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/ciq/load.ts)) — joins `client_ciqs`, `clients`, `ciq_answers` (the answer key/value pairs).
+- `ciq_load_priorities({ciq_id})` ([actions/ciq/load-priorities.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/ciq/load-priorities.ts)) — reads `ciq_priorities`.
+- `ciq_load_priority_snapshots({ciq_id})` ([actions/ciq/load-priority-snapshots.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/ciq/load-priority-snapshots.ts)) — reads `ciq_priority_snapshots`.
 
 ## Step 4 — Save answers (incremental)
 
-**Trigger:** member changes a form field in MemberCIQ. Auto-save fires on blur / debounced.
+**Trigger:** the member clicks **"Save Draft"** (`saveAnswers`). **There is NO auto-save** — no blur handler, no debounce, no interval; answers live in component state until a save button is pressed, so a closed tab loses them. The finalize path saves first, so the only unsaved-work window is abandoning the form mid-edit.
 
-**Handler:** `ciq_save({ciq_id, answers})` ([MemberCIQ.jsx:131, 144](src/components/shared/MemberCIQ.jsx) → [admin-api:3661-3673](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)). Upserts `ciq_answers` rows by `(ciq_id, question_key)`.
+**Handler:** `ciq_save({ciq_id, answers})` ([MemberCIQ.jsx:145, 158](src/components/shared/MemberCIQ.jsx) → [actions/ciq/save.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/ciq/save.ts)). Upserts `ciq_answers` rows by `(ciq_id, question_key)`.
 
 ## Step 5 — Mark CIQ complete
 
-**Trigger:** member clicks "Complete CIQ" after answering all questions.
+**Trigger:** member clicks the **"Finalize CIQ"** button, then confirms in the dialog with **"Finalize CIQ Diagnostic"**. (There is no button labelled "Complete CIQ".)
 
-**Handler:** `ciq_save` (final write of any pending answers) followed by `ciq_complete({ciq_id})` ([MemberCIQ.jsx:144-145](src/components/shared/MemberCIQ.jsx) → [admin-api:3675-3685](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)).
+**Handler:** `ciq_save` (final write of any pending answers) followed by `ciq_complete({ciq_id})` ([MemberCIQ.jsx:158-159](src/components/shared/MemberCIQ.jsx) → [actions/ciq/complete.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/ciq/complete.ts)).
 
 `ciq_complete` UPDATEs `client_ciqs.status='completed'`, `client_ciqs.completed_at=now()`. The status CHECK constraint is the only DB-level validation — `'completed'` is the only valid alternate value to `'draft'`.
 
@@ -75,27 +78,27 @@ Two admin-only surfaces now navigate straight to a client's questionnaire: the c
 
 `'ciq'` is a **navigation action, not a tab** — `ClientDetail.jsx`'s `handleTabSelect` intercepts it before `setActiveTab`, and `validTabsForProgram` was deliberately left untouched. `AdminPortal.jsx`'s `?member=` branch parks `ciqclient` in **sessionStorage `ciqInitialClientId`** (mirroring the existing `sub` → `msmInitialSubTab` handling), and `MemberCIQ.jsx`'s `loadCiqs` consumes it **once** — `isAdmin` only, `removeItem` even when nothing matches — then finds the newest CIQ with that `client_id` and **`await openCiq(match)`**. The `await` holds the loading skeleton; without it the CIQ *list* flashes on screen before the questionnaire opens.
 
-> **Note:** `ciq_complete` does NOT auto-generate `ciq_priorities` rows. Those are populated separately when the user enters the priorities phase (Step 6) — but the exact code that inserts them is inside the large `MemberCIQ.jsx` (file is 111KB). The `ciq_save_priorities` action upserts whatever the UI sends; the UI must build the list initially.
+> **Note:** `ciq_complete` does NOT auto-generate `ciq_priorities` rows. Those are populated separately when the user enters the priorities phase (Step 6) — but the exact code that inserts them is inside the large `MemberCIQ.jsx`. The `ciq_save_priorities` action upserts whatever the UI sends; the UI must build the list initially.
 
 ## Step 6 — Rank priorities
 
 **Trigger:** the priorities phase of the UI surfaces all CIQ-derived items as draggable / decision-tagged cards. Each item has a `decision` field constrained by DB CHECK to `'drop'`, `'park'`, or `'prioritize'`.
 
-**Handler:** `ciq_save_priorities({ciq_id, priorities})` ([MemberCIQ.jsx:425](src/components/shared/MemberCIQ.jsx) → [admin-api:3715-3727](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)). Upserts `ciq_priorities` rows.
+**Handler:** `ciq_save_priorities({ciq_id, priorities})` ([MemberCIQ.jsx:410](src/components/shared/MemberCIQ.jsx) → [actions/ciq/save-priorities.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/ciq/save-priorities.ts)). Upserts `ciq_priorities` rows.
 
 ## Step 7 — Save snapshot (immutable history)
 
 **Trigger:** every priority save also writes an immutable JSONB snapshot.
 
-**Handler:** `ciq_save_priority_snapshot({ciq_id, snapshot, saved_by})` ([MemberCIQ.jsx:427](src/components/shared/MemberCIQ.jsx) → [admin-api:3740-3749](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)). INSERTs into `ciq_priority_snapshots` (append-only — there is no update or delete handler).
+**Handler:** `ciq_save_priority_snapshot({ciq_id, snapshot, saved_by})` ([MemberCIQ.jsx:412](src/components/shared/MemberCIQ.jsx) → [actions/ciq/save-priority-snapshot.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/ciq/save-priority-snapshot.ts)). INSERTs into `ciq_priority_snapshots` (append-only — there is no update or delete handler).
 
-The snapshot list is reloaded after each save via `ciq_load_priority_snapshots` ([MemberCIQ.jsx:432](src/components/shared/MemberCIQ.jsx)).
+The snapshot list is reloaded after each save via `ciq_load_priority_snapshots` ([MemberCIQ.jsx:417](src/components/shared/MemberCIQ.jsx)).
 
 ## Step 8 — Mark priorities complete
 
-**Trigger:** member clicks "Complete Priorities".
+**Trigger:** member clicks **"Save & Continue to One Page Plan →"** ([MemberCIQ.jsx:484](src/components/shared/MemberCIQ.jsx)) — it saves the priorities, completes them, and switches the view to the One Page Plan. (There is no button labelled "Complete Priorities".)
 
-**Handler:** `ciq_complete_priorities({ciq_id})` ([admin-api:3729-3738](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)). UPDATEs `client_ciqs.priorities_completed_at=now()`. Note: this is a separate timestamp from `completed_at` — a CIQ can be marked "done" with answers but priorities still pending.
+**Handler:** `ciq_complete_priorities({ciq_id})` ([actions/ciq/complete-priorities.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/ciq/complete-priorities.ts)). UPDATEs `client_ciqs.priorities_completed_at=now()`. Note: this is a separate timestamp from `completed_at` — a CIQ can be marked "done" with answers but priorities still pending.
 
 ## Step 9 — Track progress on the One Page Plan ("Update Progress")
 
@@ -122,13 +125,14 @@ No snapshots are written for progress updates (snapshots stay tied to the Priori
 
 ## Admin vs member access
 
-The same `MemberCIQ.jsx` component is used by both. The `isAdmin` prop differentiates ([MemberPortal.jsx:132](src/pages/MemberPortal.jsx) passes `false`; admin-side mounts pass `true`). The actions are NOT in `ADMIN_ONLY_ACTIONS` and NOT in `MEMBER_SCOPED_ACTIONS` — they're freely callable by both roles. Authorization relies on:
-- The frontend filtering by `member_number` it already has.
-- Each action's `member_number` parameter being set correctly in the payload.
+The same `MemberCIQ.jsx` component is used by both. The `isAdmin` prop differentiates ([MemberPortal.jsx:180](src/pages/MemberPortal.jsx) passes `false`; admin-side mounts pass `true`). **Server-side, nothing about that prop is trusted — the gating is in two layers:**
 
-> **Caveat:** there is no server-side scoping that prevents a member from passing a `client_id` belonging to another member's client. The handler trusts the payload. Worth flagging — security relies on UI not exposing other clients.
+- **The four member-callable entry actions are `MEMBER_SCOPED`** (`constants/role-gates.ts`): `ciq_load_list`, `ciq_load_settings`, `ciq_create`, `ciq_add_client_and_create`. A member calling these has `body.member_number` **forcibly overwritten** with the caller's own session value before dispatch, so a member cannot read another member's CIQ list or create a CIQ under someone else's number.
+- **Every per-CIQ action is guarded by `denyIfNotOwnCiq`** (`actions/ciq/shared.ts`) as its first statement — `ciq_load`, `ciq_save`, `ciq_complete`, `ciq_load_priorities`, `ciq_save_priorities`, `ciq_complete_priorities`, `ciq_save_priority_snapshot`, `ciq_load_priority_snapshots`, `ciq_set_accountability`. It reads `client_ciqs.member_number` for the requested `ciq_id` and 403s a member caller unless it matches `auth.callerMemberNumber` (session-derived, never a body value). Admins are unrestricted; clients/specialists never reach these.
 
-> **Start-gate (2026-06-18):** `ciq_create` + `ciq_add_client_and_create` now receive `auth` and 403 a member caller when `members.ciq_enabled` is false (`actions/ciq/shared.ts`). Members can still view/continue existing CIQs; only *starting* new ones is gated. `ciq_set_accountability` (the "Update Progress" toggle) is callable by both roles, like the other CIQ writes.
+> **The last body-trusting hole is closed (2026-09-12).** `ciq_create` takes a `client_id` from the body, and until now nothing checked whose client it was — a member could mint a CIQ against another member's client (and then read it legitimately, since the CIQ would be their own). `ciq_create` now also runs **`denyIfNotOwnClient`** on that `client_id` after the start-gate. `ciq_add_client_and_create` never had the hole: it creates the client itself under the rewritten `member_number`. Code-only — never exercised with a forged id.
+
+> **Start-gate (2026-06-18):** `ciq_create` + `ciq_add_client_and_create` receive `auth` and 403 a member caller when `members.ciq_enabled` is false (`actions/ciq/shared.ts` `blockIfMemberCannotStart`). Members can still view/continue existing CIQs; only *starting* new ones is gated. `ciq_set_accountability` (the "Update Progress" toggle) is callable by both roles, like the other CIQ writes.
 
 ## Failure modes
 
@@ -139,5 +143,5 @@ The same `MemberCIQ.jsx` component is used by both. The `isAdmin` prop different
 ## Cross-references
 
 - CIQ tables: [../tables/ciq.md](../tables/ciq.md)
-- MemberCIQ component: [orchestration-files.md](../architecture/06-orchestration-files.md) (largest file in repo, 111KB)
+- MemberCIQ component: [orchestration-files.md](../architecture/06-orchestration-files.md) (largest file in the repo)
 - Action catalog: [../architecture/05-api-action-catalog.md](../architecture/05-api-action-catalog.md)
