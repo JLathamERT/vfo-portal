@@ -34,8 +34,8 @@ Run these instead of believing any version/tag/count written anywhere. Expected 
 # 2. Deploy tags — git is the source of truth, these lines are not (#222, #376).
 #    Re-stamp these THREE lines AFTER wrap-up Part 4D, not during Part 1: the
 #    version and tag do not exist yet when the hub is written (#408).
-cd C:\vfo-react;          git tag -l 'live-*'         --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-14 → live-192-lic-deferred-verify)
-cd C:\vfo-edge-functions; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-14 → backend-good-2026-09-14-v840)
+cd C:\vfo-react;          git tag -l 'live-*'         --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-14 → live-193-pft-cleanup-planner-member)
+cd C:\vfo-edge-functions; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-14 → backend-good-2026-09-14-v843)
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
 #    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-09-14 → 6 + 492 = 498; +1 `tax_planner_member_view`)
@@ -47,7 +47,7 @@ $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatc
 # 4. Type-check baseline — must be 0; --no-lock avoids the v5 deno.lock the bundler rejects (#112)
 & C:\Users\jakel_fjetgbx\.deno\bin\deno.exe check --no-lock supabase/functions/vfo-admin-api/index.ts
 
-# 5. Frontend build — expect exit 0. (v: 2026-09-14 → 34 route pages, bundle index-Cl50q4uv.js)
+# 5. Frontend build — expect exit 0. (v: 2026-09-14 → 34 route pages, bundle index-BQe7Denf.js)
 cd C:\vfo-react; npm run build
 
 # 6. Pipeline smoke gate — hand it to Jake in EXACTLY this form (literal <password>, never a token, never Read-Host)
