@@ -20,7 +20,8 @@ the "Partnership Fast Track" program (program_id=2) under a Testing/real member,
   (`confirm`|`another_meeting`), `ft_response_at`, `ft_reminder_sent_at`, `ft_pf_notified_at`,
   `accountant_onboarding_id`. **Undecided-decision columns** (2026-07-13): `decision_token`,
   `decision_email_sent_at`, `decision_task_id`, `decision_response` (`vfo_ft`|`vfo_associate`|`no`),
-  `decision_response_at`, `decision_reminder_sent_at`, `decision_pf_notified_at`.
+  `decision_response_at`, `decision_reminder_sent_at`, `decision_pf_notified_at`, and (2026-09-14) `decision_options`
+  (`ft_no` | `ft_associate_no` | NULL = legacy = all three) — WHICH paths the Undecided email offered.
 - **Emails**: `email_templates` pipeline `PARTNERSHIP_FAST_TRACK` (incl. `PFT_decision_undecided`; derive the set with
   `select id, template_name, to_list, cc_list from email_templates where pipeline='PARTNERSHIP_FAST_TRACK' order by id`
   — never trust a count written here, #402). **Sandbox**:
@@ -28,9 +29,9 @@ the "Partnership Fast Track" program (program_id=2) under a Testing/real member,
   all PFT emails are **Gmail drafts**. Flip to live before real accountants.
 
 ## Phases
-1. **Initial Contact** — **Who is completing the tracking for this accountant?** (`VFOS` / `Member`, first step) · Call arranged · Call outcome · **Meeting 1 confirmation email** (3-button). The tracking-owner step gates the other three: they render greyed + non-clickable until it is set, `VFOS` keeps them inert (phase = 1 step) and `Member` re-enables them (phase = 4 steps). Mirrored in the Client Overview engine (`overview-pft.ts`, `applicable:false`) — gotcha #218. _(The old **Preliminary Setup / Relationship type** phase was removed 2026-07-13.)_
+1. **Initial Contact** — **Who is completing the tracking for this accountant?** (`VFOS` / `Member`, first step) · Call arranged · Call outcome · **Meeting 1 confirmation email** (send-with-date + two declines). The tracking-owner step gates the other three: they render greyed + non-clickable until it is set, `VFOS` keeps them inert (phase = 1 step) and `Member` re-enables them (phase = 4 steps). Mirrored in the Client Overview engine (`overview-pft.ts`, `applicable:false`) — gotcha #218. _(The old **Preliminary Setup / Relationship type** phase was removed 2026-07-13.)_
 2. **Accountant Meeting 1** — Initial high level discussion · Right accountant? (3 Yes/No + auto conclusion) ·
-   **Meeting 2 confirmation email (+ discovery form)** (3-button).
+   **Meeting 2 confirmation email (+ discovery form)** (send-with-date + two declines).
 3. **Accountant Meeting 2** — presentation · **"Does the Accountant need a third meeting?"** (Yes/No gate,
    both green) · then EITHER **Meeting 3 confirmation email** (gate=Yes) OR **Accountant decision confirmation
    email** (gate=No). Nothing past the gate is interactive until it's answered.
@@ -77,16 +78,18 @@ One warm template `PFT_meeting_confirm` for all three, parameterised by `automat
   requires a typed `decline_reason` (injected as `[DECLINE_REASON]`), opens an inline reason+preview card cloned
   from the Tax 3 decline card; Meeting 1 uses `PFT_meeting1_member_declined` (button "Send Email - Member
   Declined", "chat with us…"), Meetings 2/3 use `PFT_meeting_ert_declined` (button "Send Email - ERT/VFOS
-  Declined", "meet with us…"). The buttons render in 3 rows (green confirm · red client/we-decline · Complete-NO-EMAIL);
-  the confirm buttons were renamed "Send Email - Date Confirmed / Date Not Confirmed". `[FORM_SECTION]` (discovery)
-  attaches only on confirm decisions.
+  Declined", "meet with us…"). **As of 2026-09-14 the step shows TWO rows: one green **"Send email (with date)"** (date required, matching the
+  Tax high-level meeting step) and the red client/we-decline pair.** *Send Email - Date Not Confirmed* (`confirm_no_date`) and
+  the Complete-NO-EMAIL row are hidden behind `SHOW_CONFIRM_NO_DATE` / `SHOW_NO_EMAIL_BACKFILL` (`false`) in
+  `PFTEngagementTrack.jsx` — code kept, backend unchanged, existing *Email sent - date not yet arranged* rows still
+  render. `[FORM_SECTION]` (discovery) attaches only on confirm decisions.
 - **RESCHEDULE (2026-08-16, v746) — and the `reschedule` body flag is load-bearing (#404).** A sent Meeting 1/2/3 step offers **Reschedule**, reopening the same form pre-filled (the slot is parsed back out of the status/notes text token by token, best-effort) and re-sending the SAME `PFT_meeting_confirm` template. Only the two **confirm** statuses can be rescheduled — a decline has no next meeting. The frontend passes **`reschedule: true`**, and `actions/pft/meeting-email.ts` uses it to **keep the same `discovery_token` while skipping the `discovery_email_sent_at` / `discovery_pf_notified_at` writes**. That matters because those two columns are the **discovery reminder ladder's clock** in `actions/pft/sweep.ts`: re-stamping them on a resend would restart the chase from zero for a form the client has had all along, silently. (A genuine first send, or a resend that mints a new token, still arms the ladder.)
 - **Automation & Config → Partnership Fast Track** (2026-07-20, gotcha #247): `PFTAutomationPanel` (loader
   `automation_load_pft_pipelines`) is the read-only pipeline view of every client with PFT email activity — meeting
   sends, discovery/decision/FT button-clicks, and the onboarding handoff — and holds the ONLY UI for the
   `PARTNERSHIP_FAST_TRACK` sandbox toggle. Its Meeting 1 card shows only when the Initial-Contact tracking-owner
   step = `Member`.
-- **Admin backfill — "Complete - NO EMAIL"** (2026-07-17, gotcha #243): a 4th solid-green button marks the
+- **Admin backfill — "Complete - NO EMAIL"** (2026-07-17, gotcha #243; **HIDDEN since 2026-09-14** — flag above): a solid-green button marks the
   meeting step complete (status `Complete`) via `msm_save_client_task` with NO email — for bringing
   old-system accountants up to date. Frontend-only; PFT-only (lives in `PFTEngagementTrack.jsx`'s `MeetingStep`).
 
@@ -102,9 +105,11 @@ One warm template `PFT_meeting_confirm` for all three, parameterised by `automat
 The tracker's **Accountant decision confirmation email** step shows four buttons: **Email confirming VFO FT**,
 **Email confirming VFO Associate**, **Undecided email**, **Email confirming No**. The first two + "No" call
 `automation_PFT_decisionemail` (`choice` = `vfo_ft` | `vfo_associate` | `no`); **Undecided email** calls
-`automation_PFT_undecided` (see next section — defers the choice to the client).
+`automation_PFT_undecided` (see next section — defers the choice to the client) **after an inline chooser (2026-09-14):
+*"Which options should the accountant see?"* → **VFO FT or No** (`options=ft_no`) / **VFO FT, VFO Associate or No**
+(`options=ft_associate_no`) / Cancel.**
 
-**Admin backfill — "Complete - NO EMAIL:"** (2026-07-17, gotcha #243): a second row (VFO FT / VFO Associate /
+**Admin backfill — "Complete - NO EMAIL:"** (2026-07-17, gotcha #243; **HIDDEN since 2026-09-14** behind `SHOW_NO_EMAIL_BACKFILL=false`): a second row (VFO FT / VFO Associate /
 No, solid-green) writes the REAL outcome status (`VFO FT confirmed` / `VFO Associate confirmed` / `No confirmed`)
 via `msm_save_client_task` so the matching Phase-6 track reveals, but sends NO email AND does **not** create the
 `accountant_onboarding` handoff record (that only happens in `automation_PFT_decisionemail` above) — so the AI
@@ -122,22 +127,28 @@ accountants without spamming them. Frontend-only; PFT-only (`PFTEngagementTrack.
   immediately creates the handoff (`selected_pft`, `accountant_type='VFO Associate'`), links it, stamps
   `ft_response_token` + `ft_email_sent_at`. The former immediate `PFT_associate_confirmed` bell is dropped —
   the confirm/another-meeting bell fires on the client's click instead (worded per `accountant_type`).
-- **no** — drafts `PFT_decision_no`; sets client `status='lost'`. **Ordering note (2026-08-03, gotcha #320):** `savePftProgress` now calls `activateClientIfPending` (which flips `pending`→`active`), but that call happens BEFORE this `'lost'` write returns — and because the auto-activate is conditional on `.eq("status","pending")`, the `'lost'` write lands last and correctly wins. A client declined here does NOT end up "active".
+- **no** — drafts `PFT_decision_no`; sets client `status='lost'`. (2026-09-14: the subject now substitutes `[FULL_NAME]` —
+  it previously rendered the literal token — and the body follows the house decline pattern.) **Ordering note (2026-08-03, gotcha #320):** `savePftProgress` now calls `activateClientIfPending` (which flips `pending`→`active`), but that call happens BEFORE this `'lost'` write returns — and because the auto-activate is conditional on `.eq("status","pending")`, the `'lost'` write lands last and correctly wins. A client declined here does NOT end up "active".
 
 ## Undecided decision — client self-selects (2026-07-13)
 Mirrors the MAP 1 `/decide` undecided flow. Admin clicks **Undecided email** →
-`automation_PFT_undecided` (AUTH): drafts `PFT_decision_undecided` to the **client** with three buttons
-(VFO FT / VFO Associate / No → `/pft-decide?token=<decision_token>&choice=vfo_ft|vfo_associate|no`), stamps
-`decision_token` + `decision_email_sent_at` + `decision_task_id`, and marks the step
+`automation_PFT_undecided` (AUTH, body `options` = `ft_no` | `ft_associate_no`, 400 otherwise — **2026-09-14**): drafts
+`PFT_decision_undecided` to the **client** with the chosen buttons (VFO FT / [VFO Associate] / No →
+`/pft-decide?token=<decision_token>&choice=vfo_ft|vfo_associate|no`) and the matching bullet list via the **`[OPTIONS]`**
+token (`undecidedOptionsHtml()` — the template no longer hardcodes the `<ul>`), stamps `decision_token` +
+`decision_email_sent_at` + `decision_task_id` + **`decision_options`**, and marks the step
 **"Undecided - awaiting client"** (an amber pending status that the tracker treats as "no final decision" so
 both Phase-6 sections stay visible-but-pending). Client clicks → `PftDecidePage.jsx` (`/pft-decide`), which
 **shows a confirmation card and records nothing until the client clicks it** (2026-07-27, gotcha #290 — note
 this page's param is `choice`, not `decision`; the confirm card renders `vfo_ft`/`vfo_associate` as
 "VFO Fast Track"/"VFO Associate") →
-`automation_PFT_undecided_response` (PUBLIC, idempotent on `decision_response`) records the choice then
+`automation_PFT_undecided_response` (PUBLIC, idempotent on `decision_response`) **refuses a `choice` the stored
+`decision_options` never offered** (400 *"That option was not offered on this decision link"* — the hidden button is
+not the guard; NULL reads as all three), records the choice, then
 **delegates in-process to `automation_PFT_decisionemail`** with that choice, so the exact same per-choice work
 runs (onboarding + confirmation email + progress + lost-on-no). Rolls `decision_response` back to null if the
-delegate fails so the link can be retried.
+delegate fails so the link can be retried. The sweep's 2-business-day re-send reads `decision_options` too
+(`sendUndecidedReminder` selects it — #448) so the reminder offers the same set. The AI PC Admin row names the variant.
 
 An **AI PC Admin** history block (rendered under the decision step, styled like the Tax 5 AI PC Admin cascade)
 derives the full timeline from `pft_engagement`: undecided email sent → client's path choice → onboarding
@@ -157,9 +168,14 @@ of 2026-07-13) the VFO Associate confirmation email; the notification wording is
 `accountant_onboarding.accountant_type`:
 - **confirm** → notify **PF only** (`notifyPf`; Rachael dropped 2026-07-14); auto-set the linked Accountant
   Onboarding **Preliminary Meeting = "Request no meeting"** (only if still null).
-- **another_meeting** → notify **PF only**.
-If unanswered: **2-business-day** reminder email to the accountant (`PFT_decision_vfo_ft_reminder`),
-**4-business-day** PF notice (both via the sweep — see Cron).
+- **another_meeting** → notify **PF only** (`PFT_ft_another_meeting`, FYI). **That is the whole effect** (audited
+  2026-09-14): the onboarding row already exists from the decision email and is untouched, its Preliminary Meeting is
+  NOT auto-set (only `confirm` writes *Request no meeting*), both FT ladders stop, and nothing chases the team afterwards —
+  flagged, not built.
+If unanswered: **2-business-day** reminder email to the accountant — `PFT_decision_vfo_ft_reminder` (106) for a VFO FT
+onboarding, **`PFT_decision_vfo_associate_reminder` (266, 2026-09-14)** when the linked `accountant_onboarding.accountant_type`
+is *VFO Associate* (falls back to 106 if 266 is missing/inactive) — then the **4-business-day** PF notice (both via the
+sweep — see Cron).
 
 ## Notifications (who gets what)
 PF routing via `actions/pft/_shared.ts` `PF_EMAILS` (Evan `eanderson@`, Bridger `bsilvester@`, Ian
@@ -213,7 +229,7 @@ Both tables gained `status` — `'active'` | `'stopped'`, **NOT NULL DEFAULT `'a
 - Stage-1 Preliminary Meeting gained the status **"Request no meeting"** (auto-set by FT confirm). **The STORED literal is unchanged by the 2026-09-04 vocabulary rework** — `actions/pft/ft-response.ts` writes exactly this string, so only the UI label moved, to *"Requested no meeting"*. The other three outcomes are now `Completed - Send Deposit` / `Completed - No Deposit` / `No Show`; legacy `Completed` rows read as *No Deposit* and were not backfilled. See [advisor-accountant-onboarding.md](advisor-accountant-onboarding.md).
 
 ## Backend files (`actions/pft/`)
-`_shared.ts` (PF_EMAILS/RACHAEL, notify helpers, `ftButtons` + `undecidedButtons`, template/sandbox/progress
+`_shared.ts` (PF_EMAILS, notify helpers, `ftButtons` + `undecidedButtons(base, options)` + `undecidedOptionsHtml` + `undecidedChoices`, template/sandbox/progress
 helpers), `meeting-email.ts`, `decision-email.ts`, `ft-response.ts`, `undecided-email.ts`,
 `undecided-response.ts`, `discovery.ts`, `sweep.ts`, `load-engagement.ts`.
 Dispatched: `automation_PFT_meetingemail`/`_decisionemail`/**`_undecided`** + `pft_load_engagement` (AUTH);

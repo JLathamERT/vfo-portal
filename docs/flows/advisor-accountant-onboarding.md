@@ -79,7 +79,10 @@ pre-existing rows that already carry an outcome are never forced back through a 
   backfill, so both values are live in the column.
 - `No Show` — auto-stops the onboarding (`status='stopped'`) and leaves the decision step locked.
 - `Request no meeting` — **the STORED value is unchanged on purpose**, because `actions/pft/ft-response.ts`
-  writes that exact literal on the PFT fast path; only the UI label changed, to *"Requested no meeting"*.
+  writes that exact literal on the PFT fast path; only the UI label changed, to *"Requested no meeting"*. **Since
+  2026-09-14 the ADVISOR select no longer offers it** (advisors never take the PFT path; `AdvisorOnboarding.jsx` shows
+  the option only if a legacy row already holds the value — none did). Accountant Onboarding still offers it, and
+  `actions/advisor/prelim-meeting.ts` still accepts the literal — a frontend-only removal.
 
 **Once a deposit link has gone out the outcome cannot be moved off `Completed - Send Deposit`** —
 `prelim-meeting.ts` 400s on `deposit_email_sent_at` being set. All Stage 1 completion dates are now fixed
