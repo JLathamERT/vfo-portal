@@ -35,6 +35,7 @@ import SpecialistLogin from './pages/SpecialistLogin'
 import SpecialistPortal from './pages/SpecialistPortal'
 import TaxPlannerLogin from './pages/TaxPlannerLogin'
 import TaxPlannerPortal from './pages/TaxPlannerPortal'
+import PlannerMemberView from './pages/PlannerMemberView'
 import SpecialistDdcHelpPage from './pages/SpecialistDdcHelpPage'
 import SpecialistRevShareFinalPage from './pages/SpecialistRevShareFinalPage'
 import Map4FormPage from './pages/Map4FormPage'
@@ -95,6 +96,7 @@ export default function App() {
       <Route path="/tax-planner/login" element={<TaxPlannerLogin />} />
       <Route path="/tax-planner" element={<TaxPlannerPortal />} />
       <Route path="/tax-planner/client/:clientId" element={<ClientDetail />} />
+      <Route path="/tax-planner/member/:memberNumber" element={<PlannerMemberView />} />
       <Route path="/specialist-ddc-help" element={<SpecialistDdcHelpPage />} />
       <Route path="/specialist-revshare-final" element={<SpecialistRevShareFinalPage />} />
       <Route path="*" element={<Navigate to="/" />} />
