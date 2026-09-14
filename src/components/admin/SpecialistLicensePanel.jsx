@@ -178,7 +178,7 @@ function LicenseSetupForm({ allExperts = [], onSent }) {
   const note = active
     ? 'This specialist already has an active license subscription.'
     : current?.link_sent_at
-      ? `A setup link was already sent on ${fmtDate(current.link_sent_at)} — sending again replaces it.`
+      ? `A setup link was already sent on ${fmtDate(current.link_sent_at)}. Sending again drafts another copy of the same link and restarts the reminder clock — delete the earlier Gmail draft if it hasn't gone out.`
       : ''
 
   async function send() {
