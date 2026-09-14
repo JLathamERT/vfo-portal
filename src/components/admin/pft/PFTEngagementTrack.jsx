@@ -27,9 +27,13 @@ const PFT_DECISION_EMAILS = [
   { name: 'PFT_decision_vfo_ft', when: 'If VFO Fast Track' },
   { name: 'PFT_decision_vfo_ft_reminder', when: 'Automatic reminder on the Fast Track follow-up (2 business days)' },
   { name: 'PFT_decision_vfo_associate', when: 'If VFO Associate' },
+  { name: 'PFT_decision_vfo_associate_reminder', when: 'Automatic reminder on the VFO Associate follow-up (2 business days)' },
   { name: 'PFT_decision_no', when: 'If No' },
-  { name: 'PFT_decision_undecided', when: 'If Undecided — three path buttons (re-sent automatically as the reminder)' },
+  { name: 'PFT_decision_undecided', when: 'If Undecided — the path buttons you pick (VFO FT / No, or VFO FT / VFO Associate / No); re-sent automatically as the reminder' },
 ]
+// Which paths the Undecided email offers — mirrors UNDECIDED_OPTIONS in
+// actions/pft/_shared.ts and pft_engagement.decision_options (NULL = legacy = 3).
+const UNDECIDED_OPTION_LABELS = { ft_no: 'VFO FT / No', ft_associate_no: 'VFO FT / VFO Associate / No' }
 
 // Backend-exact meeting-dependent substitution strings (see
 // supabase/functions/vfo-admin-api/actions/pft/meeting-email.ts): PRIOR maps to
@@ -354,12 +358,15 @@ function GateStep({ task, p, readOnly, onChoose }) {
 // Final 3-button decision step (VFO FT / VFO Associate / No).
 function DecisionStep({ task, p, readOnly, client, onChoose, onCompleteNoEmail, onDate }) {
   const [pending, setPending] = useState(null)
+  // Undecided opens a second question first: which paths the accountant may
+  // pick from. The variant rides to the backend and is stored on the engagement.
+  const [undecidedOpen, setUndecidedOpen] = useState(false)
   const isDone = !!p.status
   const statusColor = pftStatusColors[p.status] || 'var(--vfo-muted)'
-  async function fire(choice) {
+  async function fire(choice, options) {
     if (pending) return
     setPending(choice)
-    try { await onChoose(choice) } catch (err) { console.error(err) } finally { setPending(null) }
+    try { await onChoose(choice, options); setUndecidedOpen(false) } catch (err) { console.error(err) } finally { setPending(null) }
   }
   async function fireNoEmail(choice) {
     if (pending) return
@@ -374,11 +381,18 @@ function DecisionStep({ task, p, readOnly, client, onChoose, onCompleteNoEmail, 
         ? <StatusPill status={p.status} color={statusColor} />
         : readOnly
           ? <NotStarted />
+          : undecidedOpen
+          ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', fontWeight: 600 }}>Which options should the accountant see?</span>
+              <button onClick={() => fire('undecided', 'ft_no')} disabled={!!pending} style={{ ...amberBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'undecided' ? 'Sending…' : 'VFO FT or No'}</button>
+              <button onClick={() => fire('undecided', 'ft_associate_no')} disabled={!!pending} style={{ ...amberBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'undecided' ? 'Sending…' : 'VFO FT, VFO Associate or No'}</button>
+              <button onClick={() => { if (!pending) setUndecidedOpen(false) }} disabled={!!pending} style={cancelBtn}>Cancel</button>
+            </div>
           : <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-end' }}>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <button onClick={() => fire('vfo_ft')} disabled={!!pending} style={greenBtn}>{pending === 'vfo_ft' ? 'Sending…' : 'Email confirming VFO FT'}</button>
                 <button onClick={() => fire('vfo_associate')} disabled={!!pending} style={greenBtn}>{pending === 'vfo_associate' ? 'Sending…' : 'Email confirming VFO Associate'}</button>
-                <button onClick={() => fire('undecided')} disabled={!!pending} style={amberBtn}>{pending === 'undecided' ? 'Sending…' : 'Undecided email'}</button>
+                <button onClick={() => setUndecidedOpen(true)} disabled={!!pending} style={amberBtn}>Undecided email</button>
                 <button onClick={() => fire('no')} disabled={!!pending} style={redBtn}>{pending === 'no' ? 'Sending…' : 'Email confirming No'}</button>
               </div>
               {SHOW_NO_EMAIL_BACKFILL && (
@@ -477,7 +491,7 @@ function DecisionHistory({ eng, decStatus, onboarding, readOnly, onAck }) {
       <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
         {decEmailSent && (
           <>
-            {autoStep('Undecided — decision email sent to client (VFO FT / VFO Associate / No)', true, eng?.decision_email_sent_at)}
+            {autoStep(`Undecided — decision email sent to client (${UNDECIDED_OPTION_LABELS[eng?.decision_options] || UNDECIDED_OPTION_LABELS.ft_associate_no})`, true, eng?.decision_email_sent_at)}
             {reminderStep(eng?.decision_reminder_sent_at)}
             {pfNotifiedStep('decision', eng?.decision_pf_notified_at, eng?.decision_pf_ack_at)}
             {decResp
@@ -681,12 +695,12 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, not
     setProgress(prev => ({ ...prev, [task.id]: { ...prev[task.id], task_id: task.id, status, completed_date: today, notes } }))
   }
 
-  async function handleDecision(task, choice) {
+  async function handleDecision(task, choice, options) {
     const today = new Date().toISOString().split('T')[0]
-    // Undecided: defer the choice to the client — email them the 3 buttons
-    // (VFO FT / VFO Associate / No) and wait for their click. No phase reveal yet.
+    // Undecided: defer the choice to the client — email them the path buttons
+    // (`options` = ft_no | ft_associate_no) and wait for their click. No phase reveal yet.
     if (choice === 'undecided') {
-      await callApi('automation_PFT_undecided', { client_id: clientId, task_id: task.id })
+      await callApi('automation_PFT_undecided', { client_id: clientId, task_id: task.id, options })
       setProgress(prev => ({ ...prev, [task.id]: { ...prev[task.id], task_id: task.id, status: 'Undecided - awaiting client', completed_date: today } }))
       try { const engData = await callApi('pft_load_engagement', { client_id: clientId }); setEngagement(engData || null) } catch (err) { console.error(err) }
       return
@@ -880,7 +894,7 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, not
       if (phase.name === 'Accountant Meeting 2' && gateStatus !== 'No') return null
       return (
         <div key={task.id}>
-          <DecisionStep task={task} p={p} readOnly={readOnly} client={client} onChoose={(choice) => handleDecision(task, choice)} onCompleteNoEmail={(choice) => handleDecisionNoEmail(task, choice)} onDate={(d) => saveTask(task.id, p.status, d)} />
+          <DecisionStep task={task} p={p} readOnly={readOnly} client={client} onChoose={(choice, options) => handleDecision(task, choice, options)} onCompleteNoEmail={(choice) => handleDecisionNoEmail(task, choice)} onDate={(d) => saveTask(task.id, p.status, d)} />
           <DecisionHistory eng={eng} decStatus={p.status} onboarding={onboarding} readOnly={readOnly} onAck={applyStallAck} />
         </div>
       )
