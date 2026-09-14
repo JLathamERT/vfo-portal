@@ -23,6 +23,7 @@ Ordered by complexity (highest first). Highest-complexity flow drives the rest o
 | [msm-tracking.md](msm-tracking.md) | Member-Servicing-Manager tracking — enrollments, training, clients, priorities |
 | [coaching-renewals.md](coaching-renewals.md) | Coaching meeting log + renewal lifecycle |
 | [gift-credits.md](gift-credits.md) | GC marketplace — buy credits via Stripe, redeem for services |
+| [member-help-faq.md](member-help-faq.md) | Member Help button (FAQs + Wistia videos + client-side search, mounted app-level on every `/member*` page) and the grantable FAQ Editor admin tab (2026-09-14) |
 | [notifications.md](notifications.md) | How portal notifications get inserted and read |
 | [additional-contacts.md](additional-contacts.md) | Per-client email Cc + greeting: `client_contacts.cc_on_emails` / `use_in_greeting` → `loadAdditionalContacts` → every client-facing email. Replaces the old per-form `extra_cc`. |
 
