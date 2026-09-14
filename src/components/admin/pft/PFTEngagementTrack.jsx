@@ -90,6 +90,13 @@ function parseSlotNotes(notes) {
 // Statuses the two confirm paths write. Only these can be rescheduled — a
 // declined meeting or a no-email backfill has no slot to move.
 const PFT_CONFIRM_STATUSES = ['Confirmation email sent', 'Email sent - date not yet arranged']
+// 2026-09-14: the admin backfill buttons ("Complete - NO EMAIL" on the meeting
+// steps + the decision step's no-email VFO FT / VFO Associate / No row) and the
+// "date not confirmed" meeting send are hidden from every portal, not deleted —
+// flip these to bring them back. The backend still accepts confirm_no_date and
+// existing rows holding its status keep rendering.
+const SHOW_NO_EMAIL_BACKFILL = false
+const SHOW_CONFIRM_NO_DATE = false
 
 // MM/DD for the AI PC Admin auto rows. Plain 'YYYY-MM-DD' DATE columns are split
 // as strings (new Date() would shift them a day west of UTC); timestamptz values
@@ -269,16 +276,18 @@ function MeetingStep({ task, meeting, p, readOnly, client, onSend, onCompleteNoE
                 ? null
                 : <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-end' }}>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <button onClick={() => setShowDate(true)} disabled={!!pending} style={greenBtn}>Send Email - Date Confirmed</button>
-                      <button onClick={() => fire('confirm_no_date')} disabled={!!pending} style={{ ...greenBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'confirm_no_date' ? 'Sending…' : 'Send Email - Date Not Confirmed'}</button>
+                      <button onClick={() => setShowDate(true)} disabled={!!pending} style={greenBtn}>Send email (with date)</button>
+                      {SHOW_CONFIRM_NO_DATE && <button onClick={() => fire('confirm_no_date')} disabled={!!pending} style={{ ...greenBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'confirm_no_date' ? 'Sending…' : 'Send Email - Date Not Confirmed'}</button>}
                     </div>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       <button onClick={() => fire('declined')} disabled={!!pending} style={{ ...redBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'declined' ? 'Sending…' : 'Send Email - Client Declined'}</button>
                       <button onClick={() => { setReason(''); setDeclineOpen(true) }} disabled={!!pending} style={redBtn}>{usDecline.label}</button>
                     </div>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <button onClick={fireNoEmail} disabled={!!pending} style={{ ...greenSolidBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'no_email' ? 'Saving…' : 'Complete - NO EMAIL'}</button>
-                    </div>
+                    {SHOW_NO_EMAIL_BACKFILL && (
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button onClick={fireNoEmail} disabled={!!pending} style={{ ...greenSolidBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'no_email' ? 'Saving…' : 'Complete - NO EMAIL'}</button>
+                      </div>
+                    )}
                   </div>
         }
         {readOnly
@@ -372,12 +381,14 @@ function DecisionStep({ task, p, readOnly, client, onChoose, onCompleteNoEmail, 
                 <button onClick={() => fire('undecided')} disabled={!!pending} style={amberBtn}>{pending === 'undecided' ? 'Sending…' : 'Undecided email'}</button>
                 <button onClick={() => fire('no')} disabled={!!pending} style={redBtn}>{pending === 'no' ? 'Sending…' : 'Email confirming No'}</button>
               </div>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <span style={{ fontSize: '10px', color: 'var(--vfo-muted)', fontWeight: 600 }}>Complete - NO EMAIL:</span>
-                <button onClick={() => fireNoEmail('vfo_ft')} disabled={!!pending} style={{ ...greenSolidBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'ne_vfo_ft' ? 'Saving…' : 'VFO FT'}</button>
-                <button onClick={() => fireNoEmail('vfo_associate')} disabled={!!pending} style={{ ...greenSolidBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'ne_vfo_associate' ? 'Saving…' : 'VFO Associate'}</button>
-                <button onClick={() => fireNoEmail('no')} disabled={!!pending} style={{ ...greenSolidBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'ne_no' ? 'Saving…' : 'No'}</button>
-              </div>
+              {SHOW_NO_EMAIL_BACKFILL && (
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+                  <span style={{ fontSize: '10px', color: 'var(--vfo-muted)', fontWeight: 600 }}>Complete - NO EMAIL:</span>
+                  <button onClick={() => fireNoEmail('vfo_ft')} disabled={!!pending} style={{ ...greenSolidBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'ne_vfo_ft' ? 'Saving…' : 'VFO FT'}</button>
+                  <button onClick={() => fireNoEmail('vfo_associate')} disabled={!!pending} style={{ ...greenSolidBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'ne_vfo_associate' ? 'Saving…' : 'VFO Associate'}</button>
+                  <button onClick={() => fireNoEmail('no')} disabled={!!pending} style={{ ...greenSolidBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'ne_no' ? 'Saving…' : 'No'}</button>
+                </div>
+              )}
             </div>
       }
       {readOnly
