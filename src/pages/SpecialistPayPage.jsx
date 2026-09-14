@@ -110,7 +110,7 @@ export default function SpecialistPayPage() {
             { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
           ]}
           footer={isContinuation
-            ? `Funds transfer directly from your bank account. Your first payment collects on the ${dayText} — or right at setup if that day has already passed this month — and monthly on that day after that.`
+            ? `Funds transfer directly from your bank account. Nothing is charged today — your first payment collects on the ${dayText} (next month's if this month's has already passed) and monthly on that day after that.`
             : isLicense ? 'Funds transfer directly from your bank account. Your license renews automatically each month.' : 'Funds transfer directly from your bank account. Takes 2-4 business days to process.'}
         />
 
@@ -132,7 +132,7 @@ export default function SpecialistPayPage() {
 
         <p style={securityNoteStyle}>
           {isContinuation
-            ? `Your bank details are saved securely through Stripe. $99 is transferred on the ${dayText} each month until cancelled — your first payment may be collected at setup if this month's day has already passed. To change your bank details, contact us.`
+            ? `Your bank details are saved securely through Stripe. Nothing is charged at setup — $99 is transferred on the ${dayText} each month until cancelled. To change your bank details, contact us.`
             : isLicense ? 'The payment method you choose will be charged $99 each month until cancelled. To change it, contact us.' : ''}<br />
           Your payment details are handled securely by Stripe.<br />
           VFO Services never sees or stores your payment information.

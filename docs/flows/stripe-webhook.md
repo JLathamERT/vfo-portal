@@ -19,6 +19,8 @@ Body: <raw event JSON>
 
 The Stripe webhook URL is configured **outside this codebase** in the Stripe Dashboard. **Since 2026-09-11 there are FOUR endpoints pointing at that one URL** — VFO Services live, VFO Services sandbox, ERT live, ERT sandbox — each subscribed to its own event list. A new event must be subscribed **on all four** or the handler is dead code for whichever endpoint missed it.
 
+> **SUBSCRIBED 2026-09-14 (Jake, VFO Services live + sandbox; deliberately not on ERT):** `setup_intent.succeeded`, `setup_intent.setup_failed` and `setup_intent.canceled`, for the Specialist Licence Continuation micro-deposit flow. They are **primary-only** — not on ERT's two endpoints, because the licence rides only the VFO Services account. The reason they are required: a $0-today subscription collects its mandate through a **SetupIntent**, so none of the PaymentIntent-shaped events arrive on that path. Without them a specialist who enters bank details manually is stranded at `awaiting_verification` with no confirmation email, no failure bell and no cancellation. The handler code ships on branch `claude/vfo-session-setup-c5a8e5` (not yet deployed). See [specialist-license-continuation.md](specialist-license-continuation.md).
+
 ## Handler dispatch ([admin-api:222-441](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts))
 
 Triggered by presence of the `stripe-signature` header. Always returns before reaching the action dispatcher.
