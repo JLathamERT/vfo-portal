@@ -46,6 +46,7 @@ docs/
 │   ├── specialists.md                (experts + onboarding workflow)
 │   ├── coaching.md                   (coaching meetings + renewals)
 │   ├── marketplace-gc.md             (gc_*)
+│   ├── faq.md                        (faq_items — member Help button content)
 │   ├── documents.md                  (agreement_templates + email_templates + document_numbers)
 │   ├── growth.md                     (growth_plan_scores/actions/partnerships/history — Advisor Growth Plan)
 │   └── notifications.md
@@ -63,6 +64,7 @@ docs/
 │   ├── msm-tracking.md               (32-action MSM subsystem map)
 │   ├── coaching-renewals.md          (coaching meeting + renewal log)
 │   ├── gift-credits.md               (GC marketplace buy/redeem)
+│   ├── member-help-faq.md            (member Help button + FAQ Editor tab)
 │   ├── pip-meetings.md               (PIP Meetings purchase + payment + invoice/receipt + revshare + unlock)
 │   ├── partnership-fast-track.md     (PFT accountant engagement track + meeting emails + discovery form + onboarding handoff)
 │   ├── advisor-accountant-onboarding.md (Stage 1 cascade + preliminary-meeting reminder ladder + Membership Deposit + balance charge)
@@ -110,6 +112,7 @@ docs/
 | Member buys credits | [flows/gift-credits.md](flows/gift-credits.md) → [flows/stripe-webhook.md](flows/stripe-webhook.md#sub-branch-a1--gc-credit-purchase) |
 | Admin logs in | [architecture/04-auth-and-sessions.md](architecture/04-auth-and-sessions.md) |
 | Member fills out a CIQ | [flows/ciq.md](flows/ciq.md) → [tables/ciq.md](tables/ciq.md) |
+| Member clicks the Help (?) button / admin edits the FAQs | [flows/member-help-faq.md](flows/member-help-faq.md) → [tables/faq.md](tables/faq.md) |
 | A second person on the client's side gets Cc'd (or named in the greeting) | [flows/additional-contacts.md](flows/additional-contacts.md) → [integrations/gmail.md](integrations/gmail.md) → [tables/clients.md](tables/clients.md) |
 | Admin reviews the pipeline state | [architecture/02-frontend-shell.md](architecture/02-frontend-shell.md#what-automationpanel-shows) → [tables/pipeline.md](tables/pipeline.md) |
 

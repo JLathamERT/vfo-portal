@@ -10,6 +10,7 @@ const TAB_OPTIONS = [
   { key: 'accounting', label: 'Accounting' },
   { key: 'automation', label: 'Automation & Config' },
   { key: 'growth_credits', label: 'Growth Credits' },
+  { key: 'faq_editor', label: 'FAQ Editor' },
 ]
 
 export default function AdminEditor({ onBack }) {

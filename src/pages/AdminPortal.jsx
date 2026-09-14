@@ -7,6 +7,7 @@ import TaxPlannersPanel from '../components/admin/TaxPlannersPanel'
 import MembersPanel, { MEMBER_PROFILE_ORIGIN_KEY } from '../components/admin/MembersPanel'
 import MemberOverviewPanel from '../components/admin/MemberOverviewPanel'
 import ClientOverviewPanel from '../components/admin/ClientOverviewPanel'
+import FaqEditorPanel from '../components/admin/FaqEditorPanel'
 import AdminEditor from '../components/admin/AdminEditor'
 import AdminSettings from '../components/admin/AdminSettings'
 import AutomationPanel from '../components/admin/AutomationPanel'
@@ -162,6 +163,7 @@ export default function AdminPortal() {
     if (t === 'member_overview' && !canSeeTab('member_overview')) return null
     if (t === 'client_overview' && !canSeeTab('client_overview')) return null
     if (t === 'growth_credits' && !canSeeTab('growth_credits')) return null
+    if (t === 'faq_editor' && !canSeeTab('faq_editor')) return null
     if (t === 'members') return 'advisors'
     // Legacy: the standalone Payments tab is now a sub-tab of Accounting.
     if (t === 'payments') return 'accounting'
@@ -423,6 +425,14 @@ export default function AdminPortal() {
     setShowSettings(false)
   }
 
+  function selectFaqEditor() {
+    setActiveTab('faq_editor')
+    sessionStorage.setItem('adminActiveTab', 'faq_editor')
+    setNavClickCount(c => c + 1)
+    setShowEditor(false)
+    setShowSettings(false)
+  }
+
   // Member Overview → open a member's full existing detail view in their own
   // category tab (Advisors / Accountants / Strategic). Each MemberDirectoryView
   // restores its selection from sessionStorage on mount, so we pre-seed the right
@@ -602,6 +612,7 @@ export default function AdminPortal() {
     ...(canSeeTab('member_overview') ? [{ key: 'more_mo', options: [{ key: '__member_overview', label: 'Member Overview' }] }] : []),
     ...(canSeeTab('client_overview') ? [{ key: 'more_co', options: [{ key: '__client_overview', label: 'Client Overview' }] }] : []),
     ...(canSeeTab('growth_credits') ? [{ key: 'more_gc', options: [{ key: '__growth_credits', label: 'Growth Credits' }] }] : []),
+    ...(canSeeTab('faq_editor') ? [{ key: 'more_faq', options: [{ key: '__faq_editor', label: 'FAQ Editor' }] }] : []),
     ...(canSeeTab('automation') ? [
       { key: 'more_auto_h', header: 'Automation & Config' },
       { key: 'more_auto', options: automationDropdownItems[0].options.map(o => ({ ...o, key: 'auto:' + o.key })) },
@@ -616,6 +627,7 @@ export default function AdminPortal() {
     if (key === '__member_overview') return selectMemberOverview()
     if (key === '__client_overview') return selectClientOverview()
     if (key === '__growth_credits') return selectGrowthCredits()
+    if (key === '__faq_editor') return selectFaqEditor()
     if (key.startsWith('auto:')) return selectAutomationSection(key.slice(5))
     if (key.startsWith('acct:')) return selectAccountingSection(key.slice(5))
   }
@@ -685,17 +697,17 @@ export default function AdminPortal() {
             {/* Secondary "other" tabs — beside the key tabs, muted, access-gated,
                 separated by a faint divider. On narrow screens they collapse
                 into a single More ▾ menu so nothing falls off-screen. */}
-            {(canSeeTab('member_overview') || canSeeTab('client_overview') || canSeeTab('growth_credits') || canSeeTab('automation') || canSeeTab('accounting')) && navNarrow && (
+            {(canSeeTab('member_overview') || canSeeTab('client_overview') || canSeeTab('growth_credits') || canSeeTab('faq_editor') || canSeeTab('automation') || canSeeTab('accounting')) && navNarrow && (
               <div style={{ display: 'flex', alignItems: 'center', marginLeft: '10px', paddingLeft: '12px', borderLeft: '1px solid var(--vfo-tint)' }}>
                 <NavDropdown
                   label="More" muted
                   items={moreDropdownItems}
                   onSelect={selectMoreOption}
-                  isActive={['member_overview', 'client_overview', 'growth_credits', 'automation', 'accounting'].includes(activeTab)}
+                  isActive={['member_overview', 'client_overview', 'growth_credits', 'faq_editor', 'automation', 'accounting'].includes(activeTab)}
                 />
               </div>
             )}
-            {(canSeeTab('member_overview') || canSeeTab('client_overview') || canSeeTab('growth_credits') || canSeeTab('automation') || canSeeTab('accounting')) && !navNarrow && (
+            {(canSeeTab('member_overview') || canSeeTab('client_overview') || canSeeTab('growth_credits') || canSeeTab('faq_editor') || canSeeTab('automation') || canSeeTab('accounting')) && !navNarrow && (
               <div style={{ display: 'flex', alignItems: 'center', marginLeft: '10px', paddingLeft: '12px', borderLeft: '1px solid var(--vfo-tint)' }}>
                 {canSeeTab('member_overview') && (
                   <button onClick={selectMemberOverview} style={{
@@ -728,6 +740,17 @@ export default function AdminPortal() {
                     fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap'
                   }}>
                     Growth Credits
+                  </button>
+                )}
+                {canSeeTab('faq_editor') && (
+                  <button onClick={selectFaqEditor} style={{
+                    padding: '14px 14px', background: 'transparent', border: 'none',
+                    borderBottom: activeTab === 'faq_editor' ? '2px solid #125ecc' : '2px solid transparent',
+                    color: activeTab === 'faq_editor' ? '#125ecc' : '#97a3ba', fontSize: '13px',
+                    fontWeight: activeTab === 'faq_editor' ? '600' : '500', cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap'
+                  }}>
+                    FAQ Editor
                   </button>
                 )}
                 {canSeeTab('automation') && (
@@ -810,6 +833,10 @@ export default function AdminPortal() {
 
           {activeTab === 'client_overview' && !loading && (
             <ClientOverviewPanel />
+          )}
+
+          {activeTab === 'faq_editor' && !loading && (
+            <FaqEditorPanel />
           )}
 
           {activeTab === 'advisors' && !loading && (
