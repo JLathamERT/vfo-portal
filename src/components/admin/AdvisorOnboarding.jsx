@@ -771,7 +771,10 @@ function OnboardingDetail({ id, onBack }) {
             <option value={PRELIM_SEND_DEPOSIT}>{PRELIM_SEND_DEPOSIT}</option>
             <option value={PRELIM_NO_DEPOSIT}>{PRELIM_NO_DEPOSIT}</option>
             <option value="No Show">No Show</option>
-            <option value="Request no meeting">Requested no meeting</option>
+            {/* "Request no meeting" is written only by the PFT accountant fast track
+                (pft/ft-response.ts); advisors never take that path, so the option is
+                accountant-only. Kept as a fallback so a legacy row holding it renders. */}
+            {prelimStatus === 'Request no meeting' && <option value="Request no meeting">Requested no meeting</option>}
           </select>
         </Row>
         {prelimStatus === PRELIM_SEND_DEPOSIT && (

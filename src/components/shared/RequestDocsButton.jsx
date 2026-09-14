@@ -64,7 +64,7 @@ export default function RequestDocsButton({ entityType, entityKey, section, reci
             <div style={{ margin: '0 0 12px' }}>
               <span style={{ display: 'inline-block', padding: '10px 18px', borderRadius: '6px', background: '#0095ff', color: '#fff', fontSize: '13px', fontWeight: 600, pointerEvents: 'none' }}>Upload Documents</span>
             </div>
-            <p style={{ margin: '0 0 12px' }}>If you have any questions, please reply to this email.</p>
+            <p style={{ margin: '0 0 12px' }}>If you have any questions, please <strong>reply all</strong> to this email.</p>
             <p style={{ margin: 0 }}>Thank you,</p>
           </div>
           <div style={{ marginTop: '14px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
