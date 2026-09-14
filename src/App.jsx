@@ -46,9 +46,11 @@ import SpecialistRevenuePayPage from './pages/SpecialistRevenuePayPage'
 import MembershipPayPage from './pages/MembershipPayPage'
 import MembershipMeetingPage from './pages/MembershipMeetingPage'
 import OnboardingMeetingPage from './pages/OnboardingMeetingPage'
+import { MemberHelpMount } from './components/member/MemberHelpButton'
 
 export default function App() {
   return (
+    <>
     <Routes>
       <Route path="/" element={<RolePicker />} />
       <Route path="/admin/login" element={<AdminLogin />} />
@@ -101,5 +103,7 @@ export default function App() {
       <Route path="/specialist-revshare-final" element={<SpecialistRevShareFinalPage />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
+    <MemberHelpMount />
+    </>
   )
 }
