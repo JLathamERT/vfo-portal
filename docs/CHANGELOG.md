@@ -47,6 +47,14 @@
 
 ---
 
+## 2026-09-14 — data-only: Pat Hurst retainer via bank transfer applied; review-complete bell + Tracy on PFT; Stripe cash-balance recipe
+
+**No code, no deploy, no DDL, no migration.** Three `execute_sql` edits and one hand procedure; this entry is their only trace.
+
+- **`notification_rules.TAX_planner_review_complete`** — `recipients` override set to `["tvaldes@elitert.com","tnmiller@elitert.com"]` (was NULL → code default Tray only). The "Book the ROI meeting" bell for BOTH tax programs now reaches Tray and Tracy; action-required, both copies clear together when the ROI meeting is booked or skipped. `TAX_book_roi_meeting` stays dormant (no fire site since 2026-08-11).
+- **Tracy off Partnership Fast Track** — no PFT `notification_rules` row ever named her (all route to ASSIGNED_PF / ACCOUNTANT / rhopson) and no PFT handler hard-codes her, so the bells needed nothing; `tnmiller@vfo-services.com` removed from the `cc_list` of all ten `PFT_*` `email_templates` rows (104–110, 193, 196, 197). Tray, MEMBER, ASSIGNED_PF and every Bcc unchanged.
+- **Pat Hurst plan 87 — the $6,750 retainer arrived by bank transfer 2026-09-14 06:01Z** on the SpecRev house customer `cus_VC0xmAZZLVfV93` as **cash balance** (not account balance). Applied by hand because the dashboard "+ payment" button is gated on account-owner phone verification: **Create invoice** on that customer → one line *"Tax Planning - (59473-001) Pat Hurst - Retainer"* $6,750 → tax off, payment method **Bank transfer only** → **Finalize only** (never Send) → Stripe applied the cash balance at finalization and the invoice read Paid. Then plan 87 booked through **Paid by check → Check cleared** in the portal. **Recipe of record for any non-SpecRev money that lands on the house customer.** Joanne's ACH was released 09-10 (not 09-09 as first said) and posted the second business day after — normal for a standard CCD credit.
+
 ## 2026-09-12 — Members run their own 90 Day Plan: a second, narrower training-status writer, three security ride-alongs, and member add-client moved to the CIQ tab (branch `claude/vfo-session-setup-d2d906`, action count 496 → 497)
 
 **Branch `claude/vfo-session-setup-d2d906` in both repos.** `vfo-admin-api` deployed as **v836**; `boldsign-webhook` untouched at **v46**. The frontend is **dev-server-verified only** — no `npm run deploy`, no `live-N` tag from this session.
