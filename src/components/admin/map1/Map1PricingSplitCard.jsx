@@ -22,7 +22,7 @@
 //     RESIDUAL of the net installment once the legs that do pay out are taken off. On a
 //     member-contribution row (net < gross) that leaves MORE with VFO, not less.
 // The table shows the per-installment dollars.
-import { HELD_SUSPENDED_NOTE, HELD_PAUSED_NOTE } from '../shareLegState'
+import { HELD_SUSPENDED_NOTE, HELD_PAUSED_NOTE, HELD_ARREARS_NOTE } from '../shareLegState'
 
 const money = v => parseFloat(String(v ?? '0').replace(/[,$]/g, '')) || 0
 const round2 = x => Math.round(x * 100) / 100
@@ -32,9 +32,9 @@ const TERMINAL = ['Yes', 'Money Mapping', 'N/A — No Share Due']
 // Non-terminal: the share is due but the member has no payout account yet. The nightly
 // sweep pays it the moment one exists, so it must never read as settled.
 const AWAITING_CONNECT = 'Awaiting Connect Setup'
-// Non-terminal too: parked while the member is suspended or paused, released on
-// reinstatement.
-const HELD_MEMBER = ['Held - Member Suspended', 'Held - Member Paused']
+// Non-terminal too: parked while the member is suspended, paused or in arrears on
+// membership fees, released on reinstatement / catch-up.
+const HELD_MEMBER = ['Held - Member Suspended', 'Held - Member Paused', 'Held - Member In Arrears']
 
 function legNote(status, isHistoric) {
   if (isHistoric && status === 'N/A — No Share Due') return 'settled on old system'
@@ -49,6 +49,7 @@ function legNote(status, isHistoric) {
   // raw column value, which is not the wording Accounting shows for the same leg.
   if (status === 'Held - Member Suspended') return HELD_SUSPENDED_NOTE
   if (status === 'Held - Member Paused') return HELD_PAUSED_NOTE
+  if (status === 'Held - Member In Arrears') return HELD_ARREARS_NOTE
   return String(status).toLowerCase()
 }
 

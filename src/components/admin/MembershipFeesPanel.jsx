@@ -619,8 +619,9 @@ function PlanCard({ plan, onChanged, onEdit, isSuperadmin, autoOpen = false, onA
             <MemberNameLink memberNumber={plan.member_number}>{plan.member_name || plan.member_number}</MemberNameLink>
             {plan.transfer && <StatusPill label="Transferred" color="#6b7280" />}
             {openMeeting && <StatusPill label="Meeting requested" color="#e06717" />}
-            {(m.suspended || m.membership_suspended) && <StatusPill label="Suspended" color="#ef4444" />}
+            {m.suspended && <StatusPill label="Suspended" color="#ef4444" />}
             {m.paused && <StatusPill label="Paused" color="#e06717" />}
+            {m.membership_arrears && <StatusPill label="In arrears" color="#b45309" />}
             {/* Payments pause. Suppressed when the member record's own paused
                 flag already renders an identically-worded pill. */}
             {pausedNow && <StatusPill label="Payments paused" color={PAUSE_COLOR} />}
@@ -1491,7 +1492,8 @@ function OutstandingRow({ plan, overdue, total, isSuperadmin }) {
           </span>
         )}
         <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MEMBER_MEMBERSHIP_FEES" title="Payment reminder email" context={emailCtx} templates={[
-          { name: 'MEMBERSHIP_payment_failed', when: 'Payment failed / reminder to the member' },
+          { name: 'MEMBERSHIP_payment_failed', when: 'Payment failed / reminder to the member — update method and pay the arrears now' },
+          { name: 'MEMBERSHIP_arrears_digest', when: 'Friday morning digest to Paul — every member currently in arrears (Gmail draft)' },
         ]} /></span>
       </div>
       {msg && (

@@ -395,7 +395,7 @@ function MemberDirectoryView({
     ...(typeOptions.length ? [{ key: 'type', label: 'Member Type', options: typeOptions, get: m => m.member_type || '' }] : []),
     // Suspended / Paused are boolean flags that sit on top of an Active member.
     // `get` returns the set of flags so a member matches when EITHER is selected.
-    { key: 'standing', label: 'Standing', options: ['Suspended', 'Paused'], get: m => { const f = []; if (m.suspended || m.membership_suspended) f.push('Suspended'); if (m.paused) f.push('Paused'); return f } },
+    { key: 'standing', label: 'Standing', options: ['Suspended', 'Paused', 'In Arrears'], get: m => { const f = []; if (m.suspended) f.push('Suspended'); if (m.paused) f.push('Paused'); if (m.membership_arrears) f.push('In Arrears'); return f } },
     // VFO Certified / Accredited are date columns; presence = the credential is held.
     // Hidden for strategic members (they don't carry these credentials).
     ...(showCredential ? [{ key: 'credential', label: 'VFO Credential', options: ['VFO Certified', 'VFO Accredited'], get: m => { const f = []; if (m.vfo_certified_date) f.push('VFO Certified'); if (m.vfo_accredited_date) f.push('VFO Accredited'); return f } }] : []),
@@ -448,10 +448,11 @@ function MemberDirectoryView({
                 </span>
                 <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', width: '160px', flexShrink: 0 }}>{m.member_type || '—'}</span>
                 {showModel && <span style={{ fontSize: '12px', color: m.advisor_model === 'New Model' ? '#0095ff' : 'var(--vfo-muted)' }}>{m.advisor_model || '—'}</span>}
-                {(m.paused || m.suspended || m.membership_suspended) && (
+                {(m.paused || m.suspended || m.membership_arrears) && (
                   <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '12px', flexShrink: 0 }}>
                     {m.paused && <span style={{ fontSize: '12px', fontWeight: 700, color: '#e06717' }}>Paused</span>}
-                    {(m.suspended || m.membership_suspended) && <span style={{ fontSize: '12px', fontWeight: 700, color: '#e74c3c' }}>Suspended</span>}
+                    {m.suspended && <span style={{ fontSize: '12px', fontWeight: 700, color: '#e74c3c' }}>Suspended</span>}
+                    {m.membership_arrears && <span style={{ fontSize: '12px', fontWeight: 700, color: '#b45309' }}>In Arrears</span>}
                   </span>
                 )}
               </div>
@@ -484,7 +485,8 @@ function MemberDirectoryView({
                 {selectedMember.elite_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: selectedMember.elite_status === 'Active' ? '#1b9254' : selectedMember.elite_status === 'Lost' ? '#e74c3c' : 'var(--vfo-faint)', flexShrink: 0 }} />{selectedMember.elite_status}</span></>}
                 {engagementMeta(selectedMember.engagement_level) && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: engagementMeta(selectedMember.engagement_level).color, flexShrink: 0 }} />{engagementMeta(selectedMember.engagement_level).label}</span></>}
                 {selectedMember.paused && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e06717', flexShrink: 0 }} />Paused</span></>}
-                {(selectedMember.suspended || selectedMember.membership_suspended) && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e74c3c', flexShrink: 0 }} />Suspended</span></>}
+                {selectedMember.suspended && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e74c3c', flexShrink: 0 }} />Suspended</span></>}
+                {selectedMember.membership_arrears && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#b45309', flexShrink: 0 }} />In Arrears</span></>}
               </>
             }
           />
@@ -1118,6 +1120,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '18px 24px' }}>
                     <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{profile.join_date ? profile.join_date.split('T')[0] : '—'}</div></div>
                     {(profile.elite_status === 'Lost' || profile.elite_status === 'Removed') && <div><div style={fieldLabel}>Leave Date</div><div style={fieldValue}>{profile.leave_date ? profile.leave_date.split('T')[0] : '—'}</div></div>}
+                    <div><div style={fieldLabel}>Renewal Date</div><div style={fieldValue}>{profile.membership_renewal_date ? String(profile.membership_renewal_date).split('T')[0] : '—'}</div></div>
                     <div><div style={fieldLabel}>Work email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{profile.email || '—'}</div></div>
                     <div><div style={fieldLabel}>Personal email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{profile.personal_email || '—'}</div></div>
                     {(isAccountant || isAdvisor) && <div><div style={fieldLabel}>Company Name</div><div style={fieldValue}>{profile.trading_name || '—'}</div></div>}
@@ -1377,6 +1380,8 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               </div>
               <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Join Date</label><input type="date" value={profile.join_date || ''} onChange={e => update('join_date', e.target.value)} style={inputStyle} /></div>
               {(profile.elite_status === 'Lost' || profile.elite_status === 'Removed') && <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Leave Date</label><input type="date" value={profile.leave_date || ''} onChange={e => update('leave_date', e.target.value)} style={inputStyle} /></div>}
+              {/* Derived from the member's membership fee plan (Accounting → Membership Fees) — display only. */}
+              <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Renewal Date</label><input type="text" readOnly value={profile.membership_renewal_date ? String(profile.membership_renewal_date).split('T')[0] : '—'} title="Set by the membership fee plan under Accounting" style={{ ...inputStyle, background: 'var(--vfo-tint)', color: 'var(--vfo-muted)', cursor: 'not-allowed' }} /></div>
             </div>
           </div>
           <div style={sectionStyle}>
@@ -1387,9 +1392,9 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
                 <div style={{ position: 'absolute', top: '2px', left: profile.suspended ? '22px' : '2px', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--vfo-card)', transition: 'left 0.2s' }} />
               </div>
             </div>
-            {profile.membership_suspended && (
-              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', padding: '0 0 8px', lineHeight: 1.45 }}>
-                Suspended for membership dues — clears automatically when payments catch up.
+            {profile.membership_arrears && (
+              <div style={{ fontSize: '12px', color: '#b45309', padding: '0 0 8px', lineHeight: 1.45, fontWeight: 600 }}>
+                In arrears on membership fees — revenue shares are held; clears automatically when the arrears are paid.
               </div>
             )}
             <div style={{ ...rowStyle, borderBottom: 'none' }}>

@@ -27,7 +27,7 @@ import { AccountingTableSkeleton } from '../shared/Skeleton'
 // it contributes $0 to the member / money-mapping totals anyway — those are bucketed off
 // line.revenue_decision, not payout_status, so nothing about this year's figures moves.
 const PENDING_PAYOUT = new Set(['pending', 'awaiting_connect', 'failed'])
-const HELD_REASON = { held_member_suspended: 'suspended', held_member_paused: 'paused' }
+const HELD_REASON = { held_member_suspended: 'suspended', held_member_paused: 'paused', held_member_arrears: 'in arrears' }
 
 function memberName(m) {
   return m.name || `${m.first_name || ''} ${m.last_name || ''}`.trim() || '—'
@@ -99,7 +99,7 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
     for (const l of memberLines) {
       if (l.year !== year) continue
       const k = l.member_number
-      const t = map[k] || (map[k] = { member: 0, vfos: 0, ert: 0, mm: 0, memberPending: 0, mmPending: 0, memberHeldSus: 0, memberHeldPau: 0, mmHeldSus: 0, mmHeldPau: 0 })
+      const t = map[k] || (map[k] = { member: 0, vfos: 0, ert: 0, mm: 0, memberPending: 0, mmPending: 0, memberHeldSus: 0, memberHeldPau: 0, memberHeldArr: 0, mmHeldSus: 0, mmHeldPau: 0, mmHeldArr: 0 })
       const isMM = (l.revenue_decision || '') === 'Money Mapping'
       const ms = Number(l.member_share) || 0
       const pending = PENDING_PAYOUT.has(l.payout_status)
@@ -108,11 +108,13 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
         t.mm += ms
         if (held === 'suspended') t.mmHeldSus += ms
         else if (held === 'paused') t.mmHeldPau += ms
+        else if (held === 'arrears') t.mmHeldArr += ms
         else if (pending) t.mmPending += ms
       } else {
         t.member += ms
         if (held === 'suspended') t.memberHeldSus += ms
         else if (held === 'paused') t.memberHeldPau += ms
+        else if (held === 'arrears') t.memberHeldArr += ms
         else if (pending) t.memberPending += ms
       }
       t.vfos += Number(l.vfos_share) || 0
@@ -140,7 +142,7 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
   const tot = rows.reduce((s, r) => ({
     member: s.member + r.t.member, vfos: s.vfos + r.t.vfos, ert: s.ert + r.t.ert, mm: s.mm + r.t.mm, cn: s.cn + (r.cn || 0),
     memberPending: s.memberPending + r.t.memberPending, mmPending: s.mmPending + r.t.mmPending,
-    memberHeld: s.memberHeld + r.t.memberHeldSus + r.t.memberHeldPau, mmHeld: s.mmHeld + r.t.mmHeldSus + r.t.mmHeldPau,
+    memberHeld: s.memberHeld + r.t.memberHeldSus + r.t.memberHeldPau + r.t.memberHeldArr, mmHeld: s.mmHeld + r.t.mmHeldSus + r.t.mmHeldPau + r.t.mmHeldArr,
   }), { member: 0, vfos: 0, ert: 0, mm: 0, cn: 0, memberPending: 0, mmPending: 0, memberHeld: 0, mmHeld: 0 })
 
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
@@ -187,8 +189,8 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
               <div key={mn} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
                 <span style={{ color: 'var(--vfo-muted)' }}>{mn || '—'}</span>
                 <span style={{ fontWeight: 600 }}>{m ? memberName(m) : '—'}</span>
-                <span style={{ textAlign: 'right', fontWeight: t.member ? 700 : 400, color: t.member ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.member ? money(t.member) : '—'}{t.member ? <><PendingNote amount={t.memberPending} money={money} /><HeldNote suspended={t.memberHeldSus} paused={t.memberHeldPau} money={money} /></> : null}</span>
-                <span style={{ textAlign: 'right', fontWeight: t.mm ? 700 : 400, color: t.mm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.mm ? money(t.mm) : '—'}{t.mm ? <><PendingNote amount={t.mmPending} money={money} /><HeldNote suspended={t.mmHeldSus} paused={t.mmHeldPau} money={money} /></> : null}</span>
+                <span style={{ textAlign: 'right', fontWeight: t.member ? 700 : 400, color: t.member ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.member ? money(t.member) : '—'}{t.member ? <><PendingNote amount={t.memberPending} money={money} /><HeldNote suspended={t.memberHeldSus} paused={t.memberHeldPau} arrears={t.memberHeldArr} money={money} /></> : null}</span>
+                <span style={{ textAlign: 'right', fontWeight: t.mm ? 700 : 400, color: t.mm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.mm ? money(t.mm) : '—'}{t.mm ? <><PendingNote amount={t.mmPending} money={money} /><HeldNote suspended={t.mmHeldSus} paused={t.mmHeldPau} arrears={t.mmHeldArr} money={money} /></> : null}</span>
                 <span style={{ textAlign: 'right', fontWeight: t.vfos ? 700 : 400, color: t.vfos ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{money(t.vfos)}</span>
                 <span style={{ textAlign: 'right', fontWeight: t.ert ? 700 : 400, color: t.ert ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.ert ? money(t.ert) : '—'}</span>
                 <span style={{ textAlign: 'right', ...muted }}>—</span>

@@ -5,7 +5,7 @@ import { callApi } from '../../lib/api'
 // Wording only. shareLegState imports `money` from here, so this is a cycle — safe
 // because neither module touches the other's bindings at module scope, only inside
 // functions that run at render.
-import { HELD_SUSPENDED_NOTE, HELD_PAUSED_NOTE, PENDING_COLOR } from './shareLegState'
+import { HELD_SUSPENDED_NOTE, HELD_PAUSED_NOTE, HELD_ARREARS_NOTE, PENDING_COLOR } from './shareLegState'
 
 export const NAVY = '#002973'
 export const BLUE = '#125ecc'
@@ -47,6 +47,7 @@ function lineStatusMeta(line, requestReceived) {
     case 'awaiting_connect': return { label: 'Awaiting Stripe Connect setup', color: '#b45309' }
     case 'held_member_suspended': return { label: HELD_SUSPENDED_NOTE, color: '#b45309' }
     case 'held_member_paused': return { label: HELD_PAUSED_NOTE, color: '#b45309' }
+    case 'held_member_arrears': return { label: HELD_ARREARS_NOTE, color: '#b45309' }
     case 'failed': return { label: 'Transfer failed', color: '#ef4444' }
     default: return { label: 'Pending', color: 'var(--vfo-muted)' }
   }
@@ -67,6 +68,7 @@ export function memberShareNote(line, requestReceived) {
   if (line.payout_status === 'revenue_share_sent') return { text: 'paid', color: '#1b9254' }
   if (line.payout_status === 'held_member_suspended') return { text: HELD_SUSPENDED_NOTE, color: PENDING_COLOR }
   if (line.payout_status === 'held_member_paused') return { text: HELD_PAUSED_NOTE, color: PENDING_COLOR }
+  if (line.payout_status === 'held_member_arrears') return { text: HELD_ARREARS_NOTE, color: PENDING_COLOR }
   return null
 }
 
@@ -96,7 +98,7 @@ export function isErtLegOpen(line) {
 export const shareNoteStyle = { display: 'block', fontSize: '9px', lineHeight: 1.2, fontWeight: 400 }
 
 export function isHeldLine(line) {
-  return line.payout_status === 'held_member_suspended' || line.payout_status === 'held_member_paused'
+  return line.payout_status === 'held_member_suspended' || line.payout_status === 'held_member_paused' || line.payout_status === 'held_member_arrears'
 }
 
 export function StatusPill({ label, color }) {

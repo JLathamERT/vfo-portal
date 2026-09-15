@@ -49,6 +49,7 @@ const LENSES = [
   { key: 'active', label: 'Active', color: '#1b9254', desc: 'of total' },
   { key: 'suspended', label: 'Suspended', color: '#c98a14', desc: 'of active', sub: true },
   { key: 'paused', label: 'Paused', color: '#e06717', desc: 'of active', sub: true },
+  { key: 'arrears', label: 'In Arrears', color: '#b45309', desc: 'of active', sub: true },
   { key: 'lost', label: 'Lost', color: '#e74c3c', desc: 'of total' },
   { key: 'removed', label: 'Removed', color: '#9fb1d6', desc: 'of total' },
   { key: 'all', label: 'Total', color: '#125ecc', desc: 'incl. lost & removed' },
@@ -60,23 +61,26 @@ const isActive = (m) => statusOf(m) === 'Active'
 const LENS_PREDICATE = {
   all: () => true,
   active: isActive,
-  suspended: (m) => isActive(m) && (!!m.suspended || !!m.membership_suspended),
+  suspended: (m) => isActive(m) && !!m.suspended,
   paused: (m) => isActive(m) && !!m.paused,
+  // Membership fees in arrears — set/cleared by the membership sweep, not a suspension.
+  arrears: (m) => isActive(m) && !!m.membership_arrears,
   lost: (m) => statusOf(m) === 'Lost',
   removed: (m) => statusOf(m) === 'Removed',
 }
 
 // Colors match the member-profile Suspended/Paused toggles: suspended = red,
-// paused = orange.
+// paused = orange; arrears = amber, the held-payout colour Accounting uses.
 const STANDING = {
   suspended: { label: 'Suspended', color: '#e74c3c' },
   paused: { label: 'Paused', color: '#e06717' },
+  arrears: { label: 'In Arrears', color: '#b45309' },
 }
 
 export default function MemberKpiPanel({ allMembers, category }) {
   const [lens, setLens] = useState('active')
   const [subTab, setSubTab] = useState('kpis')          // 'kpis' | 'standing'
-  const [standing, setStanding] = useState('suspended') // 'suspended' | 'paused'
+  const [standing, setStanding] = useState('suspended') // 'suspended' | 'paused' | 'arrears'
 
   const isAdvisorPage = category === 'advisor'
   const isStrategic = category === 'strategic_member'
@@ -132,6 +136,7 @@ export default function MemberKpiPanel({ allMembers, category }) {
     active: pool.filter(LENS_PREDICATE.active).length,
     suspended: pool.filter(LENS_PREDICATE.suspended).length,
     paused: pool.filter(LENS_PREDICATE.paused).length,
+    arrears: pool.filter(LENS_PREDICATE.arrears).length,
     lost: pool.filter(LENS_PREDICATE.lost).length,
     removed: pool.filter(LENS_PREDICATE.removed).length,
   }), [pool])
@@ -180,11 +185,12 @@ export default function MemberKpiPanel({ allMembers, category }) {
 
   const activeLens = LENSES.find((l) => l.key === lens)
 
-  // The Suspended & Paused sub-tab is offered on advisor + accountant pages only.
+  // The Suspended, Paused & Arrears sub-tab is offered on advisor + accountant pages only.
   const showStandingTab = !isStrategic
   const standingLists = useMemo(() => ({
     suspended: pool.filter(LENS_PREDICATE.suspended),
     paused: pool.filter(LENS_PREDICATE.paused),
+    arrears: pool.filter(LENS_PREDICATE.arrears),
   }), [pool])
 
   return (
@@ -193,7 +199,7 @@ export default function MemberKpiPanel({ allMembers, category }) {
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
           <SubTabButton active={subTab === 'kpis'} onClick={() => setSubTab('kpis')}>KPIs</SubTabButton>
           <SubTabButton active={subTab === 'standing'} onClick={() => setSubTab('standing')}>
-            Suspended &amp; Paused {nounTitle}
+            Suspended, Paused &amp; Arrears {nounTitle}
           </SubTabButton>
         </div>
       )}
@@ -305,7 +311,7 @@ function StandingView({ nounTitle, standing, setStanding, lists }) {
   return (
     <div>
       <div style={{ display: 'flex', gap: '10px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {['suspended', 'paused'].map((k) => {
+        {['suspended', 'paused', 'arrears'].map((k) => {
           const sel = standing === k
           return (
             <button
@@ -345,8 +351,9 @@ function StandingView({ nounTitle, standing, setStanding, lists }) {
                 </span>
                 <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', width: '200px', flexShrink: 0 }}>{m.member_type || '—'}</span>
                 <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '12px', flexShrink: 0 }}>
-                  {(m.suspended || m.membership_suspended) && <span style={{ fontSize: '12px', fontWeight: 700, color: STANDING.suspended.color }}>Suspended</span>}
+                  {m.suspended && <span style={{ fontSize: '12px', fontWeight: 700, color: STANDING.suspended.color }}>Suspended</span>}
                   {m.paused && <span style={{ fontSize: '12px', fontWeight: 700, color: STANDING.paused.color }}>Paused</span>}
+                  {m.membership_arrears && <span style={{ fontSize: '12px', fontWeight: 700, color: STANDING.arrears.color }}>In Arrears</span>}
                 </span>
               </div>
             ))}

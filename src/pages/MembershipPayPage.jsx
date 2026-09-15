@@ -110,30 +110,54 @@ export default function MembershipPayPage() {
     </TokenShell>
   )
 
-  if (status === 'update') return (
+  if (status === 'update') {
+    // An active plan in arrears: the link collects the missed months now (the
+    // backend quotes the same rows it will charge) and saves the method for
+    // the pulls that follow. With nothing owed it is the save-only update page.
+    const owed = Number(data.amount) || 0
+    const owedToday = !!data.pay_today && owed > 0
+    const owedFee = !!data.card_fee_applies
+    const owedCardTotal = owedFee && owedToday ? Math.round((owed + 0.30) / (1 - 0.029) * 100) / 100 : owed
+    const owedCardFee = Math.round((owedCardTotal - owed) * 100) / 100
+    const owedMonths = Array.isArray(data.arrears_months) ? data.arrears_months.join(', ') : ''
+    return (
     <TokenShell>
       <div style={{ width: '100%' }}>
-        <div style={{ ...iconCircle, width: '64px', height: '64px', background: 'rgba(0,149,255,0.15)' }}>
+        <div style={{ ...iconCircle, width: '64px', height: '64px', background: owedToday ? 'rgba(180,83,9,0.15)' : 'rgba(0,149,255,0.15)' }}>
           <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
         </div>
-        <h1 style={{ ...title, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>Update Your Payment Method</h1>
+        <h1 style={{ ...title, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>{owedToday ? 'Update Your Payment Method & Pay Now' : 'Update Your Payment Method'}</h1>
         <p style={{ ...subtitle, textAlign: 'center', marginBottom: '32px' }}>
           Hi {data.first_name} — choose a new payment method for your membership.
           {data.current_method ? <> You're currently paying by {data.current_method === 'ach' ? 'bank account' : 'card'}{data.current_last4 ? ` ending ${data.current_last4}` : ''}.</> : null}
-          <br />Nothing is charged now — future membership payments use the new method automatically.
+          <br />
+          {owedToday ? (
+            <>Your outstanding membership payment of <strong>${fmt(owed)}</strong>{owedMonths ? <> for <strong>{owedMonths}</strong></> : null} is collected securely today, and future membership payments use the new method automatically.</>
+          ) : (
+            <>Nothing is charged now — future membership payments use the new method automatically.</>
+          )}
         </p>
         <OptionCard
           isHovered={hoveredOption === 'ach'} onHover={() => setHoveredOption('ach')} onLeave={() => setHoveredOption(null)}
           onClick={() => handleChoice('ach')}
-          title="Bank Account (ACH)" badgeText="No Fee" badgeClass="green" amount={null} cadence={null}
-          breakdown={[]} footer="Payments transfer directly from your bank account."
+          title="Bank Account (ACH)" badgeText="No Fee" badgeClass="green" amount={owedToday ? owed : null} cadence={owedToday ? 'due today' : null}
+          breakdown={owedToday ? [
+            { label: 'Outstanding membership fees', value: `$${fmt(owed)}`, valueColor: 'var(--vfo-ink-2)' },
+            { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
+          ] : []} footer="Payments transfer directly from your bank account."
         />
         <div style={divider}>— or —</div>
         <OptionCard
           isHovered={hoveredOption === 'card'} onHover={() => setHoveredOption('card')} onLeave={() => setHoveredOption(null)}
           onClick={() => handleChoice('card')}
-          title="Credit / Debit Card" badgeText={data.card_fee_applies ? '2.9% + $0.30 Fee on charges' : 'No Fee'} badgeClass={data.card_fee_applies ? 'blue' : 'green'} amount={null} cadence={null}
-          breakdown={[]} footer="Payments charge to your card automatically."
+          title="Credit / Debit Card" badgeText={owedFee && owedToday ? '2.9% + $0.30 Fee' : owedFee ? '2.9% + $0.30 Fee on charges' : 'No Fee'} badgeClass={owedFee ? 'blue' : 'green'} amount={owedToday ? owedCardTotal : null} cadence={owedToday ? 'due today' : null}
+          breakdown={owedToday ? (owedFee ? [
+            { label: 'Outstanding membership fees', value: `$${fmt(owed)}`, valueColor: 'var(--vfo-ink-2)' },
+            { label: 'Card Processing Fee (2.9% + $0.30)', value: `$${fmt(owedCardFee)}`, valueColor: 'var(--vfo-ink-2)' },
+          ] : [
+            { label: 'Outstanding membership fees', value: `$${fmt(owed)}`, valueColor: 'var(--vfo-ink-2)' },
+            { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
+          ]) : []} footer="Payments charge to your card automatically."
         />
         <p style={securityNote}>
           Your payment details are handled securely by Stripe.<br />
@@ -141,7 +165,8 @@ export default function MembershipPayPage() {
         </p>
       </div>
     </TokenShell>
-  )
+    )
+  }
 
   const base = Number(data.amount) || 0
   const feeApplies = !!data.card_fee_applies
