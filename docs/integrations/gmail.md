@@ -40,6 +40,8 @@ const accessToken = (await tokenRes.json()).access_token;
 |---|---|---|---|
 | `https://gmail.googleapis.com/gmail/v1/users/me/drafts` | POST | Create a Gmail draft | lines 690, 848, 1039, 1609, 1638, 1788, 2161, 4055, 4303, 4543, 4929 |
 | `https://gmail.googleapis.com/gmail/v1/users/me/drafts/r-8771745882155742140?format=full` | GET | **Debug fetch** of a hardcoded draft ID | line 2170 |
+| `…/users/me/messages?q=subject:"<subject>" to:<email>` and `…/users/me/threads/<id>?format=metadata` | GET | **2026-09-15** — find the original invoice email's thread + its first `Message-ID`, to place the revised tax invoice as a reply in it (`utils/gmail-thread.ts`). The first READ of the mailbox the portal makes; the refresh token carries the scope (proven live). Failure → null → fresh email. |
+| `…/users/me/drafts` with `message.threadId` | POST | **2026-09-15** — `gmailDraftFetch` / `deliverRaw` accept an optional `threadId`; with `In-Reply-To` / `References` in the raw message and the thread's subject, Gmail files the draft as a reply. A draft only threads onto a SENT message (drafts have no `Message-ID`). |
 
 > **Dev artifact:** [admin-api line 2170](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts) reads back a draft with a hardcoded ID `r-8771745882155742140` immediately after creation, just to log the multipart structure. This appears to be leftover debug code — it always fetches the same (now-stale) draft. Flagged in [03-edge-functions.md](../architecture/03-edge-functions.md).
 
