@@ -89,6 +89,12 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [warnings, setWarnings] = useState([])
+  // Negotiated partial refund (superadmin). Read only by the backend refund
+  // handler, so it changes nothing else on this card.
+  const [refundDraft, setRefundDraft] = useState('')
+  const [refundBusy, setRefundBusy] = useState(false)
+  const [refundErr, setRefundErr] = useState('')
+  const [refundOk, setRefundOk] = useState('')
 
   const retAmt = money(plan?.retainer_amount)
   const implAmt = money(plan?.implementation_amount)
@@ -119,6 +125,44 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   // handing VFO the partner's dollars. Teaching both sides the fourth leg is a backend
   // change, deliberately out of scope for this display fix.
   const canEdit = isSuperadmin && !readOnly && hasPricing && !locked && !hasStrategic
+
+  // What the client's Refund click would return. The captured base mirrors
+  // refund.ts: the initial retainer on a 3-payment plan, the retainer otherwise.
+  const refundOverride = money(plan?.refund_override_amount)
+  const refunded = plan?.refund_status === 'succeeded'
+  const revPaid = plan?.retainer_rev_paid === 'Yes'
+  const capturedBase = money(plan?.initial_retainer_amount) > 0 && money(plan?.final_retainer_amount) > 0
+    ? money(plan?.initial_retainer_amount)
+    : retAmt
+  const canSetRefund = isSuperadmin && !readOnly && hasPricing && !refunded && !revPaid
+
+  useEffect(() => {
+    setRefundDraft(refundOverride > 0 ? refundOverride.toFixed(2) : '')
+    setRefundErr('')
+    setRefundOk('')
+  }, [plan?.id, plan?.refund_override_amount])
+
+  async function saveRefundOverride(clear = false) {
+    setRefundBusy(true)
+    setRefundErr('')
+    setRefundOk('')
+    try {
+      const amount = clear ? '' : refundDraft
+      if (!clear) {
+        const n = money(amount)
+        if (!(n > 0)) { setRefundErr('Enter an amount greater than 0, or use Clear.'); return }
+        if (capturedBase > 0 && n > capturedBase + 0.005) { setRefundErr(`Cannot exceed the retainer collected (${fmt(capturedBase)}).`); return }
+      }
+      const res = await callApi('tax_set_refund_override', { tax_plan_id: plan.id, amount })
+      if (res?.error) { setRefundErr(res.error); return }
+      setRefundOk(clear ? 'Override cleared — a Refund click returns the full retainer.' : `Saved — a Refund click now returns ${fmt(money(amount))}.`)
+      if (onSaved) await onSaved()
+    } catch (e) {
+      setRefundErr(e?.message || 'Save failed')
+    } finally {
+      setRefundBusy(false)
+    }
+  }
 
   // Seed the form from the stored values, converted back into the active base.
   useEffect(() => {
@@ -234,6 +278,12 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
         {locked && hasPricing && (
           <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.3)', color: '#1b9254', fontWeight: 600 }}>Locked — charged</span>
         )}
+        {refundOverride > 0 && !refunded && (
+          <span title="A Refund click at Client decision 1 returns this amount instead of the full retainer" style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.12)', border: '1px solid rgba(224,103,23,0.35)', color: '#e06717', fontWeight: 600 }}>Refund on Stop: {fmt(refundOverride)}</span>
+        )}
+        {refunded && (
+          <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', fontWeight: 600 }}>Refunded {fmt(money(plan?.refund_amount))}</span>
+        )}
         <span style={{ flex: 1 }} />
         {expanded && canEdit && !editing && (
           <button onClick={e => { e.stopPropagation(); setEditing(true) }} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600 }}>Edit split</button>
@@ -312,6 +362,24 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
               </tbody>
             </table>
           </div>
+
+          {canSetRefund && (
+            <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '8px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ ...label, fontWeight: 600, color: 'var(--vfo-ink)' }}>Refund override ($)</div>
+                <input value={refundDraft} onChange={e => setRefundDraft(e.target.value)} placeholder={capturedBase > 0 ? `full retainer ${fmt(capturedBase)}` : 'full retainer'} inputMode="decimal" style={{ ...inputStyle, width: '150px' }} />
+                <button disabled={refundBusy} onClick={() => saveRefundOverride(false)} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '11px', cursor: refundBusy ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }}>{refundBusy ? 'Saving…' : 'Save'}</button>
+                {refundOverride > 0 && (
+                  <button disabled={refundBusy} onClick={() => saveRefundOverride(true)} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '11px', cursor: refundBusy ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Clear</button>
+                )}
+              </div>
+              <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--vfo-muted)' }}>
+                If the client clicks <b>Refund</b> on their decision email, Stripe returns this amount instead of the full retainer{capturedBase > 0 ? ` (${fmt(capturedBase)})` : ''}. It changes nothing else — Continue, rev-share and the implementation fee all run as normal. Blank = full retainer.
+              </div>
+              {refundErr && <div style={{ marginTop: '6px', fontSize: '11px', color: '#e74c3c' }}>{refundErr}</div>}
+              {refundOk && <div style={{ marginTop: '6px', fontSize: '11px', color: '#1b9254' }}>{refundOk}</div>}
+            </div>
+          )}
 
           {/* Says why there is no Edit button, rather than leaving a superadmin to
               wonder. Only shown to someone who would otherwise have had one. */}
