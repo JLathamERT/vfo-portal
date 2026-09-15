@@ -58,7 +58,7 @@
 > | Growth Credits | 2 | ✗ no section |
 > | Growth Plan | 4 | 2 |
 > | MAP 1 | **18** | **15** |
-> | Membership Fees | 2 | ✗ no section |
+> | Membership Fees | 4 | ✗ no section |
 > | Partnership Fast Track | 10 | 8 |
 > | Payment Continuation | 2 | 2 ✓ |
 > | Payment Failure Alerts | **19** | **18** |
