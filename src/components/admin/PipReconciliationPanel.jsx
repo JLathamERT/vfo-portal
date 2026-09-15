@@ -56,7 +56,7 @@ export default function PipReconciliationPanel({ embedded = false }) {
     for (const p of payments) {
       if (!inPeriod(p.clearedAt, year, -1)) continue
       const k = p.clientId
-      const t = map[k] || (map[k] = { clientId: k, clientName: p.clientName, memberName: p.memberName || '—', member: 0, mm: 0, vfos: 0, memberPending: 0, mmPending: 0, vfosPending: 0, memberHeldSus: 0, memberHeldPau: 0, mmHeldSus: 0, mmHeldPau: 0 })
+      const t = map[k] || (map[k] = { clientId: k, clientName: p.clientName, memberName: p.memberName || '—', member: 0, mm: 0, vfos: 0, memberPending: 0, mmPending: 0, vfosPending: 0, memberHeldSus: 0, memberHeldPau: 0, memberHeldArr: 0, mmHeldSus: 0, mmHeldPau: 0, mmHeldArr: 0 })
       if (!t.memberName && p.memberName) t.memberName = p.memberName
       const pending = p.memberState?.tone === 'pending'
       // The share figures stay exactly as they were — this view attributes configured
@@ -68,12 +68,14 @@ export default function PipReconciliationPanel({ embedded = false }) {
       if (isMoneyMappingLeg(p.memberState, p.decision)) {
         t.mm += p.member
         if (held === 'suspended') t.mmHeldSus += p.member
-        else if (held === 'paused') t.mmHeldPau += p.member
+        else if (held === 'paused') t.mmHeldPau += p
+        else if (held === 'arrears') t.mmHeldArr += p.member
         else if (pending) t.mmPending += p.member
       } else {
         t.member += p.member
         if (held === 'suspended') t.memberHeldSus += p.member
-        else if (held === 'paused') t.memberHeldPau += p.member
+        else if (held === 'paused') t.memberHeldPau += p
+        else if (held === 'arrears') t.memberHeldArr += p.member
         else if (pending) t.memberPending += p.member
       }
       t.vfos += p.vfos
@@ -85,7 +87,7 @@ export default function PipReconciliationPanel({ embedded = false }) {
   const tot = clients.reduce((s, c) => ({
     member: s.member + c.member, mm: s.mm + c.mm, vfos: s.vfos + c.vfos,
     memberPending: s.memberPending + c.memberPending, mmPending: s.mmPending + c.mmPending, vfosPending: s.vfosPending + c.vfosPending,
-    memberHeld: s.memberHeld + c.memberHeldSus + c.memberHeldPau, mmHeld: s.mmHeld + c.mmHeldSus + c.mmHeldPau,
+    memberHeld: s.memberHeld + c.memberHeldSus + c.memberHeldPau + c.memberHeldArr, mmHeld: s.mmHeld + c.mmHeldSus + c.mmHeldPau + c.mmHeldArr,
   }), { member: 0, mm: 0, vfos: 0, memberPending: 0, mmPending: 0, vfosPending: 0, memberHeld: 0, mmHeld: 0 })
 
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1150px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
@@ -127,8 +129,8 @@ export default function PipReconciliationPanel({ embedded = false }) {
             <div key={c.clientId} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
               <span><ClientNameLink clientId={c.clientId} tab="pip" style={{ fontWeight: 600 }}>{c.clientName}</ClientNameLink></span>
               <span style={{ color: 'var(--vfo-muted)' }}>{c.memberName}</span>
-              <span style={{ textAlign: 'right', fontWeight: c.member ? 700 : 400, color: c.member ? '#16a34a' : 'var(--vfo-faint)' }}>{c.member ? money(c.member) : '—'}{c.member ? <><PendingNote amount={c.memberPending} money={money} /><HeldNote suspended={c.memberHeldSus} paused={c.memberHeldPau} money={money} /></> : null}</span>
-              <span style={{ textAlign: 'right', fontWeight: c.mm ? 700 : 400, color: c.mm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.mm ? money(c.mm) : '—'}{c.mm ? <><PendingNote amount={c.mmPending} money={money} /><HeldNote suspended={c.mmHeldSus} paused={c.mmHeldPau} money={money} /></> : null}</span>
+              <span style={{ textAlign: 'right', fontWeight: c.member ? 700 : 400, color: c.member ? '#16a34a' : 'var(--vfo-faint)' }}>{c.member ? money(c.member) : '—'}{c.member ? <><PendingNote amount={c.memberPending} money={money} /><HeldNote suspended={c.memberHeldSus} paused={c.memberHeldPau} arrears={c.memberHeldArr} money={money} /></> : null}</span>
+              <span style={{ textAlign: 'right', fontWeight: c.mm ? 700 : 400, color: c.mm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.mm ? money(c.mm) : '—'}{c.mm ? <><PendingNote amount={c.mmPending} money={money} /><HeldNote suspended={c.mmHeldSus} paused={c.mmHeldPau} arrears={c.mmHeldArr} money={money} /></> : null}</span>
               <span style={{ textAlign: 'right', fontWeight: c.vfos ? 700 : 400, color: c.vfos ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{money(c.vfos)}{c.vfos ? <PendingNote amount={c.vfosPending} money={money} /> : null}</span>
             </div>
           ))}

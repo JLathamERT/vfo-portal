@@ -89,7 +89,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
   const filterGroups = [
     { key: 'category', label: 'Category', options: ['Advisor', 'Accountant', 'Strategic'], get: m => catLabel(m) },
     { key: 'status', label: 'Status', options: ['Active', 'Lost', 'Removed'], get: m => m.elite_status || 'Active' },
-    { key: 'standing', label: 'Standing', options: ['Suspended', 'Paused'], get: m => { const f = []; if (m.suspended || m.membership_suspended) f.push('Suspended'); if (m.paused) f.push('Paused'); return f } },
+    { key: 'standing', label: 'Standing', options: ['Suspended', 'Paused', 'In Arrears'], get: m => { const f = []; if (m.suspended) f.push('Suspended'); if (m.paused) f.push('Paused'); if (m.membership_arrears) f.push('In Arrears'); return f } },
     ...(typeOptions.length ? [{ key: 'type', label: 'Member Type', options: typeOptions, get: m => m.member_type || '' }] : []),
     ...(programOptions.length ? [{ key: 'programs', label: 'Programs', options: programOptions, get: m => programsByMember[m.plugin_member_number] || [] }] : []),
     { key: 'engagement', label: 'Engagement', options: ENGAGEMENT_LABELS, get: m => { const meta = engMeta(engOf(m)); return meta ? meta.label : '(none)' } },
@@ -201,8 +201,9 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
                   <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--vfo-muted)' }}>{m.join_date ? String(m.join_date).slice(0, 10) : '—'}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 600, background: m.elite_status === 'Active' ? 'rgba(27,146,84,0.13)' : m.elite_status === 'Lost' ? 'rgba(231,76,60,0.13)' : 'var(--vfo-tint)', color: m.elite_status === 'Active' ? '#1b9254' : m.elite_status === 'Lost' ? '#e74c3c' : 'var(--vfo-muted)' }}>{m.elite_status || 'Active'}</span>
-                    {(m.suspended || m.membership_suspended) && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(231,76,60,0.13)', color: '#e74c3c' }}>SUSP</span>}
+                    {m.suspended && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(231,76,60,0.13)', color: '#e74c3c' }}>SUSP</span>}
                     {m.paused && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(224,103,23,0.14)', color: '#e06717' }}>PAUSE</span>}
+                    {m.membership_arrears && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(180,83,9,0.14)', color: '#b45309' }}>ARREARS</span>}
                   </span>
                   <span style={{ fontSize: '12px', color: m.assigned_msm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{m.assigned_msm || '—'}</span>
                   <span>

@@ -143,6 +143,7 @@ function ExpandedRow({ row, onRefresh }) {
     // parked until they are reinstated.
     if (paidVal === 'Held - Member Suspended') return 'Share held — member suspended'
     if (paidVal === 'Held - Member Paused') return 'Share held — member paused'
+    if (paidVal === 'Held - Member In Arrears') return 'Share held — membership in arrears'
     if (share || paidVal === 'Yes' || paidVal === 'Failed') return 'Revenue Share'
     return null
   }

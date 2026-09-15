@@ -15,7 +15,7 @@
 //     'settled on old system' reading of a legacy row's no-share-due leg
 //   - edge utils/tax-planner-payout.ts (PLANNER_SHARE_WITHHELD),
 //     utils/member-share-held.ts (AWAITING_CONNECT),
-//     utils/member-payout-hold.ts (HELD_MEMBER_SUSPENDED / HELD_MEMBER_PAUSED),
+//     utils/member-payout-hold.ts (HELD_MEMBER_SUSPENDED / HELD_MEMBER_PAUSED / HELD_MEMBER_ARREARS),
 //     actions/tax/revshare.ts and
 //     actions/msm/pip-revshare.ts ('Yes' / 'Money Mapping' / 'N/A — No Share Due' /
 //     'Failed' / 'Pending')
@@ -29,11 +29,13 @@ const MUTED = 'var(--vfo-muted)'
 
 const TERMINAL = ['Yes', 'Money Mapping', 'N/A — No Share Due', 'N/A']
 
-// The two member-hold readings, spelled the way Accounting shows them. Deliberately
+// The three member-hold readings, spelled the way Accounting shows them. Deliberately
 // Title Case where every other note is lowercase: a hold is the one pending reading an
 // operator is expected to act on, so it is meant to catch the eye under the dollars.
 export const HELD_SUSPENDED_NOTE = 'Held - Suspended'
 export const HELD_PAUSED_NOTE = 'Held - Paused'
+// Membership fees in arrears — not a suspension; released when the arrears are paid.
+export const HELD_ARREARS_NOTE = 'Held - In Arrears'
 
 export function isTerminalLeg(status) {
   return TERMINAL.includes(status)
@@ -46,10 +48,11 @@ export function legState(status, { revShare, paymentStatus, context } = {}) {
   // Nothing will ever pay on this leg, so it is neither done nor pending.
   if (status === 'N/A — No Share Due' || status === 'N/A') return { note: 'no share due', tone: null }
   if (status === 'Awaiting Connect Setup') return { note: 'awaiting payout setup', tone: 'pending' }
-  // A suspended / paused member still earns the share — the payout is parked and the
-  // reinstatement pass sends it, so the leg is owed money, never settled money.
+  // A suspended / paused / in-arrears member still earns the share — the payout is
+  // parked and the reinstatement pass sends it, so the leg is owed money, never settled money.
   if (status === 'Held - Member Suspended') return { note: HELD_SUSPENDED_NOTE, tone: 'pending' }
   if (status === 'Held - Member Paused') return { note: HELD_PAUSED_NOTE, tone: 'pending' }
+  if (status === 'Held - Member In Arrears') return { note: HELD_ARREARS_NOTE, tone: 'pending' }
   if (status === 'Awaiting Planner Allocation') return { note: 'awaiting planner', tone: 'pending' }
   if (status === 'Failed') return { note: 'failed — retrying', tone: 'pending' }
   if (status == null || status === '') {
@@ -122,6 +125,7 @@ export function isMoneyMappingLeg(state, decision) {
 export function heldReason(state) {
   if (state?.note === HELD_SUSPENDED_NOTE) return 'suspended'
   if (state?.note === HELD_PAUSED_NOTE) return 'paused'
+  if (state?.note === HELD_ARREARS_NOTE) return 'arrears'
   return null
 }
 
@@ -133,19 +137,21 @@ export function PendingNote({ amount, money = defaultMoney }) {
   return <span style={{ ...noteStyle, color: PENDING_COLOR }}>{money(amount)} pending</span>
 }
 
-// "$X held - suspended" / "$X held - paused" under an aggregate cell — or, given `total`
-// instead, one combined "$X held" for a totals row where the per-reason breakdown would
-// only add noise. Held money is owed money parked behind a suspended or paused member and
-// released on reinstatement; separating it out is the whole point of the note.
-export function HeldNote({ suspended = 0, paused = 0, total, money = defaultMoney }) {
+// "$X held - suspended" / "$X held - paused" / "$X held - in arrears" under an aggregate
+// cell — or, given `total` instead, one combined "$X held" for a totals row where the
+// per-reason breakdown would only add noise. Held money is owed money parked behind a
+// suspended, paused or in-arrears member and released on reinstatement / catch-up;
+// separating it out is the whole point of the note.
+export function HeldNote({ suspended = 0, paused = 0, arrears = 0, total, money = defaultMoney }) {
   if (total != null) {
     return total > 0 ? <span style={{ ...noteStyle, color: PENDING_COLOR }}>{money(total)} held</span> : null
   }
-  if (!suspended && !paused) return null
+  if (!suspended && !paused && !arrears) return null
   return (
     <>
       {suspended > 0 && <span style={{ ...noteStyle, color: PENDING_COLOR }}>{money(suspended)} held - suspended</span>}
       {paused > 0 && <span style={{ ...noteStyle, color: PENDING_COLOR }}>{money(paused)} held - paused</span>}
+      {arrears > 0 && <span style={{ ...noteStyle, color: PENDING_COLOR }}>{money(arrears)} held - in arrears</span>}
     </>
   )
 }

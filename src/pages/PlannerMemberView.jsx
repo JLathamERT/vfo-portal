@@ -114,7 +114,8 @@ export default function PlannerMemberView() {
                   {profile.member_type && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>{profile.member_type}</span></>}
                   {profile.elite_status && metaDot(profile.elite_status === 'Active' ? '#1b9254' : profile.elite_status === 'Lost' ? '#e74c3c' : 'var(--vfo-faint)', profile.elite_status)}
                   {profile.paused && metaDot('#e06717', 'Paused')}
-                  {(profile.suspended || profile.membership_suspended) && metaDot('#e74c3c', 'Suspended')}
+                  {profile.suspended && metaDot('#e74c3c', 'Suspended')}
+                  {profile.membership_arrears && metaDot('#b45309', 'In Arrears')}
                 </>
               }
             />

@@ -209,7 +209,8 @@ export const TEMPLATE_META = {
   'MEMBER_MEMBERSHIP_FEES': [
     ['MEMBERSHIP_setup_link', 'Membership fee plan created — link where the member pays their first payment and saves their card or bank account', 'To: Member'],
     ['MEMBERSHIP_transfer_setup_link', 'Member moving over from the old billing mid-year — same setup link, but explains the transfer and where they are in their year', 'To: Member'],
-    ['MEMBERSHIP_payment_failed', 'A monthly membership charge failed — friendly note that next month doubles to catch up, with an update-payment-method link', 'To: Member'],
+    ['MEMBERSHIP_payment_failed', 'A monthly membership charge failed — asks the member to update their payment method and pay the arrears now at their /membership-pay link', 'To: Member'],
+    ['MEMBERSHIP_arrears_digest', 'Friday-morning digest listing every member currently in arrears on membership fees (member number, name, amount, months) — sends "no one in arrears" when the list is empty', 'To: Paul'],
     ['MEMBERSHIP_update_link', 'Admin-sent fresh update-payment-method link for an active plan (links expire after 30 days)', 'To: Member'],
     ['MEMBERSHIP_confirmation|card', 'First sign-up on card — immediate acknowledgement that the payment went through; invoice and receipt follow moments later', 'To: Member · Cc: Tray · Bcc: Paul, Anna'],
     ['MEMBERSHIP_confirmation|ach', 'First sign-up on ACH — immediate acknowledgement; invoice and receipt follow when the transfer clears', 'To: Member · Cc: Tray · Bcc: Paul, Anna'],
@@ -263,6 +264,7 @@ export const TEMPLATE_META = {
   ],
   'MEMBERS': [
     ['MEMBER_revshare_held', 'Revenue share held — internal notice when a suspended/paused member\'s revenue share is parked instead of paid (any pipeline); it releases automatically on reinstatement', 'To: Paul · Cc: Anton, Tray, Tracy'],
+    ['MEMBER_revshare_held_arrears', 'Revenue share held — internal notice when a member in arrears on membership fees has a revenue share parked instead of paid (any pipeline); it releases automatically once the arrears are paid', 'To: Paul · Cc: Anton, Tray, Tracy'],
   ],
 }
 

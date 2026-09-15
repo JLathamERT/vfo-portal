@@ -146,6 +146,13 @@ one. Gotcha **#332**.
   `["rhopson@elitert.com"]` is what fires until an admin edits it in Automation → Notification
   Editor, #176).
 - pg_cron jobid 16 `membership-sweep-daily` @12:00 UTC — **five passes as of 2026-08-04**
-  (renewal notices → renewals → waive → charges → auto-unsuspend). **Pass 4 also releases the
-  member's held revenue-share payouts when the unsuspend leaves no hold reason at all
-  (2026-08-24); summary gains `payouts_released`.**
+  (renewal notices → renewals → waive → charges → clear `members.membership_arrears`). **Pass 4 also releases the
+  member's held revenue-share payouts when the clear leaves no hold reason at all
+  (2026-08-24); summary gains `payouts_released` (+ `arrears_cleared`, 2026-09-15).**
+- pg_cron jobid 19 `membership-arrears-digest-weekly` @13:00 UTC Fridays (2026-09-15) —
+  `automation_MEMBERSHIP_arrears_digest`, a read-only Gmail draft to platham@ of every member whose
+  active plan carries missed/declined rows.
+- **A `missed`/`declined` row can also be booked by the member at `/membership-pay` (2026-09-15):**
+  the Checkout SESSION carries `payment_kind=membership_arrears_payment` + `row_ids`, the PI carries
+  `payment_kind=membership_pull`; `utils/membership-arrears-payment.ts` flips the rows `paid`/`processing`
+  with the PI id and stamps `card_processing_fee` — the same columns a sweep pull writes.

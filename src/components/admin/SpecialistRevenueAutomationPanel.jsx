@@ -8,14 +8,14 @@ import { TableSkeleton } from '../shared/Skeleton'
 // where-everything-is-at status and a Retry-payout action. Sandbox toggle shares the
 // MAP 1 row (the same toggle that controls the Connect accounts + transfers).
 
-// Payout states that still owe the recipient money. The held_member_* pair is parked
-// behind a suspended / paused member and is released on reinstatement, so it counts as
+// Payout states that still owe the recipient money. The held_member_* trio is parked
+// behind a suspended / paused / in-arrears member and is released on reinstatement, so it counts as
 // open and stays retryable — a retry pays it the moment the member is reinstated.
 // POSITIVE list, mirroring PAYABLE_STATUSES in utils/specialist-revenue-payout.ts: the
 // three terminal values (revenue_share_sent, money_mapping, no_payout_due) are excluded
 // by construction, so a $0 line closed as no_payout_due drops out of "Payouts pending"
 // and stops keeping the Retry button lit.
-const OPEN_PAYOUT = ['pending', 'awaiting_connect', 'failed', 'held_member_suspended', 'held_member_paused']
+const OPEN_PAYOUT = ['pending', 'awaiting_connect', 'failed', 'held_member_suspended', 'held_member_paused', 'held_member_arrears']
 
 // A line has two independent legs — the member's (payout_status) and ERT's
 // (ert_payout_status) — and either one still owing keeps the line open. It counts ONCE

@@ -57,7 +57,7 @@ export default function HolisticReconciliationPanel({ embedded = false }) {
       if (!p.memberNumber) continue
       if (!inPeriod(p.clearedAt, year, -1)) continue
       const k = p.memberNumber
-      const t = map[k] || (map[k] = { memberNumber: k, name: p.memberName || '—', member: 0, mm: 0, vfos: 0, strategic: 0, memberPending: 0, mmPending: 0, strategicPending: 0, vfosPending: 0, memberHeldSus: 0, memberHeldPau: 0, mmHeldSus: 0, mmHeldPau: 0 })
+      const t = map[k] || (map[k] = { memberNumber: k, name: p.memberName || '—', member: 0, mm: 0, vfos: 0, strategic: 0, memberPending: 0, mmPending: 0, strategicPending: 0, vfosPending: 0, memberHeldSus: 0, memberHeldPau: 0, memberHeldArr: 0, mmHeldSus: 0, mmHeldPau: 0, mmHeldArr: 0 })
       if (!t.name && p.memberName) t.name = p.memberName
       const pend = st => st?.tone === 'pending'
       // The share figures stay exactly as they were — this view attributes configured
@@ -69,12 +69,14 @@ export default function HolisticReconciliationPanel({ embedded = false }) {
       if (isMoneyMappingLeg(p.memberState, p.decision)) {
         t.mm += p.member
         if (held === 'suspended') t.mmHeldSus += p.member
-        else if (held === 'paused') t.mmHeldPau += p.member
+        else if (held === 'paused') t.mmHeldPau += p
+        else if (held === 'arrears') t.mmHeldArr += p.member
         else if (pend(p.memberState)) t.mmPending += p.member
       } else {
         t.member += p.member
         if (held === 'suspended') t.memberHeldSus += p.member
-        else if (held === 'paused') t.memberHeldPau += p.member
+        else if (held === 'paused') t.memberHeldPau += p
+        else if (held === 'arrears') t.memberHeldArr += p.member
         else if (pend(p.memberState)) t.memberPending += p.member
       }
       t.vfos += p.vfos
@@ -88,7 +90,7 @@ export default function HolisticReconciliationPanel({ embedded = false }) {
   const tot = members.reduce((s, m) => ({
     member: s.member + m.member, mm: s.mm + m.mm, vfos: s.vfos + m.vfos, strategic: s.strategic + m.strategic,
     memberPending: s.memberPending + m.memberPending, mmPending: s.mmPending + m.mmPending, strategicPending: s.strategicPending + m.strategicPending, vfosPending: s.vfosPending + m.vfosPending,
-    memberHeld: s.memberHeld + m.memberHeldSus + m.memberHeldPau, mmHeld: s.mmHeld + m.mmHeldSus + m.mmHeldPau,
+    memberHeld: s.memberHeld + m.memberHeldSus + m.memberHeldPau + m.memberHeldArr, mmHeld: s.mmHeld + m.mmHeldSus + m.mmHeldPau + m.mmHeldArr,
   }), { member: 0, mm: 0, vfos: 0, strategic: 0, memberPending: 0, mmPending: 0, strategicPending: 0, vfosPending: 0, memberHeld: 0, mmHeld: 0 })
 
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1150px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
@@ -131,8 +133,8 @@ export default function HolisticReconciliationPanel({ embedded = false }) {
             <div key={m.memberNumber} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
               <span style={{ color: 'var(--vfo-muted)' }}>{m.memberNumber}</span>
               <span><MemberNameLink memberNumber={m.memberNumber} style={{ fontWeight: 600 }}>{m.name}</MemberNameLink></span>
-              <span style={{ textAlign: 'right', fontWeight: m.member ? 700 : 400, color: m.member ? '#16a34a' : 'var(--vfo-faint)' }}>{m.member ? money(m.member) : '—'}{m.member ? <><PendingNote amount={m.memberPending} money={money} /><HeldNote suspended={m.memberHeldSus} paused={m.memberHeldPau} money={money} /></> : null}</span>
-              <span style={{ textAlign: 'right', fontWeight: m.mm ? 700 : 400, color: m.mm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{m.mm ? money(m.mm) : '—'}{m.mm ? <><PendingNote amount={m.mmPending} money={money} /><HeldNote suspended={m.mmHeldSus} paused={m.mmHeldPau} money={money} /></> : null}</span>
+              <span style={{ textAlign: 'right', fontWeight: m.member ? 700 : 400, color: m.member ? '#16a34a' : 'var(--vfo-faint)' }}>{m.member ? money(m.member) : '—'}{m.member ? <><PendingNote amount={m.memberPending} money={money} /><HeldNote suspended={m.memberHeldSus} paused={m.memberHeldPau} arrears={m.memberHeldArr} money={money} /></> : null}</span>
+              <span style={{ textAlign: 'right', fontWeight: m.mm ? 700 : 400, color: m.mm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{m.mm ? money(m.mm) : '—'}{m.mm ? <><PendingNote amount={m.mmPending} money={money} /><HeldNote suspended={m.mmHeldSus} paused={m.mmHeldPau} arrears={m.mmHeldArr} money={money} /></> : null}</span>
               <span style={{ textAlign: 'right', fontWeight: m.vfos ? 700 : 400, color: m.vfos ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{money(m.vfos)}{m.vfos ? <PendingNote amount={m.vfosPending} money={money} /> : null}</span>
               <span style={{ textAlign: 'right', fontWeight: m.strategic ? 700 : 400, color: m.strategic ? '#8b5cf6' : 'var(--vfo-faint)' }}>{m.strategic ? money(m.strategic) : '—'}{m.strategic ? <PendingNote amount={m.strategicPending} money={money} /> : null}</span>
             </div>

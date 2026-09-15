@@ -499,13 +499,13 @@ The counterpart to Step 10¾ and **not to be confused with it**: cancelling clos
 11. Creates Gmail draft.
 12. **On payment 1 only:** also creates a "Tracy intro email" Gmail draft to `tnmiller@elitert.com` with the priorities list. Sets `c24_email_sent=true`.
 
-**Tables read:** `pipeline_map1`, `clients`, `members` (incl. `suspended` / `paused` / `membership_suspended`), `pipeline_sandbox_config`, `email_templates` (`MEMBERS`/`MEMBER_revshare_held`, hold only).
+**Tables read:** `pipeline_map1`, `clients`, `members` (incl. `suspended` / `paused` / `membership_arrears`), `pipeline_sandbox_config`, `email_templates` (`MEMBERS`/`MEMBER_revshare_held`, hold only).
 **Tables written:** `pipeline_map1` (rec{N}_rev_share, _rev_paid, _rev_email_sent, member_contrib_status, c24_email_sent).
 **External calls:** Google OAuth, optionally Stripe transfers, Gmail drafts ×1-2 (+1 internal held notice on a hold). (**No Sheets calls** since the Revenue-Master cross-check was removed — #164.)
 
 ### The member-standing HOLD (2026-08-24) *(v: 2026-08-24)*
 
-**A member who is suspended or paused is not paid.** `utils/member-payout-hold.ts` `memberHoldReason(member)` reads three booleans off the `members` row — `suspended` **or** `membership_suspended` → `"suspended"`, else `paused` → `"paused"` (**suspension outranks a pause**; a member who is both reads as suspended). Non-null ⇒ this branch:
+**A member who is suspended or paused is not paid.** `utils/member-payout-hold.ts` `memberHoldReason(member)` reads three booleans off the `members` row — `suspended` → `"suspended"`, else `paused` → `"paused"`, else (2026-09-15) `membership_arrears` → `"arrears"` (`Held - Member In Arrears`, its own Paul notice `MEMBER_revshare_held_arrears`; suspension outranks a pause outranks arrears). Non-null ⇒ this branch:
 
 - `rec{N}_rev_paid` = **`'Held - Member Suspended'`** or **`'Held - Member Paused'`** — **non-terminal**, exactly like `AWAITING_CONNECT`. `rec{N}_rev_share` still becomes `'Completed - Revenue Share'` and **`rec{N}_rev_completed_at` is NOT written**.
 - **No transfer, no member confirmation email** (that draft is gated on `Yes`/`Money Mapping`) and no held-share Connect bell.
