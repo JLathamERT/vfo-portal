@@ -327,6 +327,27 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
    holistic Outstanding tabs, sandbox rows are SHOWN here** (orange Sandbox badge) rather than
    hidden — this panel is where sandbox test runs are watched. Keep that exception if the
    "outstanding" pills are ever unified.
+7. **Setup-link reminder ladder (2026-09-15)** — until then a `setup_pending` plan got exactly
+   one email and nothing chased it (24 plans were sitting idle, the oldest from 2026-08-18). The
+   12:00 sweep's LAST pass (`utils/membership-setup-reminder.ts`, try/catch-isolated so a Gmail
+   hiccup can never fail the money passes) is the MAP 1 first-payment ladder's shape: **(a)** rule
+   `MEMBERSHIP_setup_reminder_email` — 2 business days after `setup_email_sent_at`, ONE
+   `MEMBERSHIP_setup_reminder` email (**Draft mode**, Jake's decision — a human sends it from
+   Gmail) carrying the SAME `/membership-pay?token=` link the setup email did, as its OWN email
+   under the template's "Reminder: …" subject — a fresh thread like almost every other portal
+   email. (An in-thread reply via `utils/gmail-thread.ts` was built and proven on all 22 drafts
+   on 2026-09-15 — after a first run matched 0 of 22 because an exact-subject search cannot
+   survive a template's subject being edited — and then REVERSED by Jake's decision the same
+   day; the window-search helper was removed with it.) **(b)** rule `MEMBERSHIP_setup_stalled_bell` — 2 business days after the
+   **reminder**, ONE dismissible FYI bell to Tray (`tvaldes@elitert.com`, link
+   `/admin?tab=accounting`). The bell clocks off the reminder rather than the send (MAP 1 clocks
+   both off the send) — deliberate: on day one ~23 plans were already past 4 business days.
+   Guards: `setup_reminder_sent_at` / `setup_stalled_notified_at`, `IS NULL` in each candidate
+   query. **The ladder never re-mints `setup_token`, never re-stamps `setup_email_sent_at` and
+   never touches `setup_link_expires_at`** — the link already in the inbox stays exactly as
+   valid. A plan with no token, a member with no email, or a missing/inactive template is logged
+   and skipped, unstamped, so it retries the next day. Both tiers' delays + enabled flags are
+   rule-configurable; sandbox mode redirects the reminder like every other membership email.
 
 ## Data
 

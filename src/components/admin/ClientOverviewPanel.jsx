@@ -31,14 +31,18 @@ const CLIENT_SORT_OPTIONS = [
   { value: 'za', label: 'Name: Z to A' },
 ]
 
-// Client · [Priority/Plan] · Member Name · Status · PF · [Service level] · Next action · Owner
+// Client · [Priority/Plan] · Member Name · Status · PF · [Service level] · [Phase] · Next action · Owner
 const GRID_BY_SECTION = {
   map1: '1.4fr 1.3fr 96px 120px 1fr 1.9fr 1.1fr',
   regular: '1.4fr 1.7fr 1.3fr 96px 120px 1.9fr 1.1fr',
-  tax_planning: '1.4fr 130px 1.3fr 96px 120px 1.9fr 1.1fr',
+  tax_planning: '1.4fr 130px 1.3fr 96px 120px 90px 1.9fr 1.1fr',
   pft: '1.4fr 1.3fr 96px 120px 1.9fr 1.1fr',
 }
-const MIN_WIDTH_BY_SECTION = { map1: '1060px', regular: '1080px', tax_planning: '1020px', pft: '940px' }
+const MIN_WIDTH_BY_SECTION = { map1: '1060px', regular: '1080px', tax_planning: '1120px', pft: '940px' }
+
+// A stopped / declined / otherwise closed track always sinks below the live ones
+// in the dropdown orderings; a clicked column header sorts purely by that column.
+const isClosedTrack = (t) => t.state === 'closed'
 
 const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
@@ -128,17 +132,21 @@ export default function ClientOverviewPanel() {
   }, [filtered, listSort])
 
   // Flatten to one row per track; the client order above survives inside each
-  // header sort because sortByColumn is stable.
+  // header sort because sortByColumn is stable. Closed tracks go last (stable,
+  // so the dropdown order holds inside each half).
   const flatRows = sorted.flatMap(c => (c.tracks || []).map(t => ({ client: c, track: t })))
+  const liveFirst = [...flatRows.filter(r => !isClosedTrack(r.track)), ...flatRows.filter(r => isClosedTrack(r.track))]
   const sortColumns = {
     name: { type: 'text', get: r => r.client.name },
     member_name: { type: 'text', get: r => r.client.member_name },
     status: { type: 'text', get: r => capitalize(r.client.status) || 'Active' },
     pf: { type: 'text', get: r => r.client.assigned_pf },
+    phase: { type: 'number', get: r => r.track.phase_rank },
   }
-  const rows = sortByColumn(flatRows, colSort, sortColumns)
+  const rows = sortByColumn(liveFirst, colSort, sortColumns)
 
   const isMap1 = activeSection === 'map1'
+  const isTax = activeSection === 'tax_planning'
   const secondCol = SECOND_COL[activeSection]
   const grid = GRID_BY_SECTION[activeSection]
 
@@ -185,6 +193,7 @@ export default function ClientOverviewPanel() {
               <SortHeader label="Status" sortKey="status" sort={colSort} onSort={onSort} />
               <SortHeader label="PF" sortKey="pf" sort={colSort} onSort={onSort} />
               {isMap1 && <span>Service level</span>}
+              {isTax && <SortHeader label="Phase" sortKey="phase" sort={colSort} onSort={onSort} />}
               <span>Next action</span>
               <span>Owner</span>
             </div>
@@ -225,6 +234,9 @@ export default function ClientOverviewPanel() {
                   </span>
                   <span style={{ fontSize: '12px', color: c.assigned_pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.assigned_pf || '—'}</span>
                   {isMap1 && <span style={{ fontSize: '12px', color: t.service_level ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.service_level || '—'}</span>}
+                  {isTax && (
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: t.state === 'closed' ? '#b23c30' : t.state === 'complete' ? '#1b9254' : t.phase ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.phase || '—'}</span>
+                  )}
                   <span style={{ fontSize: '12.5px' }}>
                     {t.state === 'complete' ? (
                       <span style={{ ...line, display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#1b9254', fontWeight: 600 }}><span style={dot('#1b9254')} />Complete</span>

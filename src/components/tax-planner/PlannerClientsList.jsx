@@ -194,15 +194,22 @@ export default function PlannerClientsList() {
                 onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,149,255,0.4)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border-soft)'}>
                 <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '12.5px', color: 'var(--vfo-muted)', width: '90px', flexShrink: 0 }}>{row.client_ref}</span>
-                <span style={{ fontSize: '14px', color: 'var(--vfo-ink)', fontWeight: 600, flexShrink: 0 }}>{row.client_name || '—'}</span>
-                <span style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{row.member_name || '—'}</span>
+                <span style={{ display: 'flex', flexDirection: 'column', minWidth: '160px', flexShrink: 0 }}>
+                  <span style={{ fontSize: '14px', color: 'var(--vfo-ink)', fontWeight: 600 }}>{row.client_name || '—'}</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{row.member_name || '—'}</span>
+                </span>
                 {/* Next step is an Active-only column: on a finished or stopped
                     plan there is nothing owed, so the slot collapses rather than
                     printing a stale instruction. */}
                 {section.showNextStep && (
-                  <span title={row.next_step || ''} style={{ marginLeft: 'auto', minWidth: 0, fontSize: '12px', color: row.next_step ? 'var(--vfo-muted)' : 'var(--vfo-faint)', textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.next_step || '—'}</span>
+                  <span title={row.next_step || ''} style={{ flex: 1, minWidth: 0, fontSize: '12px', color: row.next_step ? 'var(--vfo-muted)' : 'var(--vfo-faint)', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.next_step || '—'}</span>
                 )}
                 <span style={{ marginLeft: section.showNextStep ? 0 : 'auto', flexShrink: 0, fontSize: '12px', color: 'var(--vfo-faint)', whiteSpace: 'nowrap' }}>{row.planner_name || '—'}</span>
+                {/* When the VFO team sent the client over — the team-member
+                    allocation date, shown to team member and planner alike. */}
+                <span title="Date this client was assigned" style={{ flexShrink: 0, width: '78px', textAlign: 'right', fontSize: '12px', color: row.assigned_at ? 'var(--vfo-muted)' : 'var(--vfo-faint)', whiteSpace: 'nowrap' }}>
+                  {row.assigned_at ? new Date(row.assigned_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                </span>
               </div>
             ))}
           </div>

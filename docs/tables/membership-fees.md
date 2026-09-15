@@ -30,6 +30,7 @@ when checking, so terminate → create-new works).
 | `status` | `setup_pending` → `active` → `canceled` \| `terminated` |
 | `stripe_customer_id` / `default_payment_method_id` / `payment_method_type` / `acct_last4` | charge rails (`ach`/`card`) |
 | `setup_token` / `setup_email_sent_at` | the /membership-pay link (doubles as the update-method link once active) |
+| `setup_reminder_sent_at` / `setup_stalled_notified_at` | **2026-09-15**, migration `20260915170000`. One-shot guards for the setup-link reminder ladder (pass 5 of the daily sweep, `utils/membership-setup-reminder.ts`): the reminder email 2 business days after `setup_email_sent_at` on a `setup_pending` plan, then the dismissible Tray FYI 2 business days after the REMINDER. NULL = not yet; each tier's query requires NULL so it can never repeat. Neither tier touches `setup_token` / `setup_email_sent_at` / `setup_link_expires_at` |
 | `setup_link_expires_at` | update-method links (ACTIVE plans only) expire 30 days after last emailed; re-stamped by every link emailer + activation; NULL/past = expired (gotcha #241) |
 | `next_year_amount` / `next_year_credit_note` | admin-editable renewal terms, consumed + cleared by the renewal pass |
 | `termination_fee` / `terminated_at` | set by `membership_terminate` |
