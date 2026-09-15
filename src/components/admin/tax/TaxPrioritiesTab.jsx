@@ -642,6 +642,10 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAn
   const [totalInput, setTotalInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  // What happened to the revised invoice the server drafts after a real amendment
+  // (amended_invoice on the automation_TAX_amend_fee response). Session-local;
+  // the durable record is plan.amended_invoice_sent_at.
+  const [invoiceNote, setInvoiceNote] = useState(null)   // { ok, text }
 
   const stamp = stage === 'tax4' ? plan?.fee_amended_at_tax4 : plan?.fee_amended_at_tax5
   // Mirrors isTaskStatused's rule for these two sentinels, and the backend's
@@ -681,6 +685,12 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAn
       // yet sent, nothing in flight) — show its refusal verbatim and leave the
       // step OPEN so it can still be answered once the blocker clears.
       if (res?.error) { setSubmitError(res.error); return }
+      if (kind !== 'keep') {
+        const ai = res?.amended_invoice
+        if (ai?.ok && ai.skipped) setInvoiceNote({ ok: true, text: `Revised invoice not needed — ${ai.reason}` })
+        else if (ai?.ok) setInvoiceNote({ ok: true, text: `Revised invoice ${ai.invoice_number || ''} drafted${ai.threaded ? ' in the original email thread' : ' as a new email (original thread not found)'}.` })
+        else setInvoiceNote({ ok: false, text: `Fee amended, but the revised invoice was NOT drafted: ${ai?.error || 'unknown error'}` })
+      }
       await onAnswer(kind === 'keep' ? 'Completed - Kept' : 'Completed - Amended')
       setMode('')
       setTotalInput('')
@@ -816,6 +826,14 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAn
           swallowing that refusal renders the save as "nothing happened". */}
       {submitError && (
         <div style={{ marginLeft: '18px', marginBottom: '10px', color: '#e74c3c', fontWeight: 500, fontSize: '12px' }}>{submitError}</div>
+      )}
+      {invoiceNote && (
+        <div style={{ marginLeft: '18px', marginBottom: '10px', color: invoiceNote.ok ? '#1b9254' : '#e06717', fontWeight: 500, fontSize: '12px' }}>{invoiceNote.text}</div>
+      )}
+      {!invoiceNote && plan?.amended_invoice_sent_at && (
+        <div style={{ marginLeft: '18px', marginBottom: '10px', color: 'var(--vfo-muted)', fontSize: '11px' }}>
+          Revised invoice drafted {new Date(plan.amended_invoice_sent_at).toLocaleDateString()}{plan.amended_invoice_threaded === false ? ' (as a new email — original thread not found)' : plan.amended_invoice_threaded ? ' in the original email thread' : ''}.
+        </div>
       )}
     </div>
   )
