@@ -8,6 +8,12 @@
 
 ---
 
+## 2026-09-15 — Bcc dgorriaran@elitert.com on every invoice/receipt email (DATA ONLY — no code, no deploy)
+
+Jake asked that every email carrying an invoice and/or receipt Bcc `dgorriaran@elitert.com`. Every such sender (MAP 1 `contract-invoice-receipt`, the three TAX receipt handlers, `pip-invoice-receipt`, `membership/invoice-receipt`, advisor + accountant `invoice-receipt`, `specialist-revenue/invoice-receipt`, `onboarding/bg-receipt` + `license-invoice-receipt`) reads its Bcc from `email_templates.bcc_list` through `resolveTemplateRecipients`, which is how `aanderson@` / `platham@` already rode the family — so the change is a single guarded `UPDATE` on the **20** `*invoice*` / `*receipt*` template rows, applied via MCP `execute_sql` (20 rows returned) and committed as `20260915100000_invoice_receipt_bcc_gorriaran.sql` (edge) for the trace. Boundary: templates whose handler ATTACHES an INV-/REC- PDF; confirmation, deposit-received, payment-link, failure and agreement emails carry none and were left alone. Reversible per row in the Email Templates panel. Standing rule recorded in [integrations/gmail.md](integrations/gmail.md). **Owed: the first real invoice/receipt draft after 2026-09-15 is the proof** (sandbox drops every Bcc); and a future invoice/receipt template must add the address by hand — nothing in code enforces it.
+
+---
+
 ## 2026-09-14 — Member Help button + FAQ Editor tab (branch `claude/vfo-session-setup-5a43a1`, both repos, `vfo-admin-api` v844 → **v845** LIVE, one DDL migration APPLIED, frontend dev-server-only at wrap-up, action count 498 → **500**)
 
 **What was built.** A members-only Help widget and the admin surface that feeds it. On every `/member*` page (portal home with all tabs + Settings, and `/member/client/:id`) a fixed blue **?** circle sits bottom-right; it opens a panel with a search box, an **FAQs** accordion and a **Videos** list. Content is one new table, `faq_items` (question required; answer and/or a Wistia video; `sort_order`; `active`), edited from a new **FAQ Editor** admin tab that the superadmin grants per admin with a checkbox in the Admin Editor — the seventh grantable tab key (`faq_editor`) and the first whose read half is member-callable. Jake's brief was explicit that the point is never rewriting code when a new question is thought of: every row is data. Flow of record → [flows/member-help-faq.md](flows/member-help-faq.md); table → [tables/faq.md](tables/faq.md).
