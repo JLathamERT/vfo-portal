@@ -24,7 +24,7 @@
 
 **Fixture.** Plan 187 on client 62 was primed four times (2-pay refund, 2-pay amend, 3-pay amend, decision re-click) and WIPED: plan + progress + audit + specialist rows deleted, client 62 back to **zero** plans; bells left per the standing rule; sandbox Stripe payment/refund, Drive `INV-59524-001-0060` (+ two Revised copies) / `REC-59524-001-0039`, and ~8 Gmail drafts/sent test mails are Jake's to clean.
 
-**Owed at wrap-up.** Smoke gate vs **v850** (the last smoke was 5/5 vs v848; v849/v850 touched `dispatch.ts` + shared `utils/email-delivery.ts`); the **Tax 5b implementation-decision arm** of the chain is code-only (both live runs were Tax 4); a **member-pays** revised invoice (template 270) has never rendered; the **not-threaded fallback** (`amended_invoice_threaded=false`) has never fired live; the **`skipped` re-send guard** was proven once (decision re-click); `refund.ts`'s **over-cap 400** is UI-unreachable (the box refuses first); **Lana's revised invoice draft is unsent**. Frontend needs `npm run deploy`.
+**Post-merge, same day.** Frontend published as `live-196-tax-refund-override-revised-invoice` (tree identical to merged main `8f3b784`, bundle `index-BZusGJXG.js`); Jake ran the **smoke gate 5/5 vs v850** and **sent Lana's revised invoice** from her original thread — the feature's first real client document. **Still owed:** the **Tax 5b implementation-decision arm** of the chain is code-only (both live runs were Tax 4); a **member-pays** revised invoice (template 270) has never rendered; the **not-threaded fallback** (`amended_invoice_threaded=false`) has never fired live; the **`skipped` re-send guard** was proven once (decision re-click); `refund.ts`'s **over-cap 400** is UI-unreachable (the box refuses first).
 
 ---
 
