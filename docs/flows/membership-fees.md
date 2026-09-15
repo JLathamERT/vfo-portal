@@ -195,17 +195,37 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
   bit a real member on 2026-08-21 (Gary Watts opened his link mid-test). Nothing breaks and no link
   needs re-issuing — but **flip it back in the same sitting, and never leave it on across a
   link-emailing action.** Gotcha **#430**.
-- **Missed payment**: row → `missed` (red), member gets the friendly `MEMBERSHIP_payment_failed`
-  email (no suspension mention — fix your method at the link; next month doubles to catch up),
-  `members.membership_suspended` flips on automatically (auto-clears when caught up; login NOT blocked; SEPARATE from the admin's manual `suspended` toggle — displays OR the two, gotcha #240; **since 2026-08-24 it also HOLDS the member's revenue-share payouts across all four engines** — see [tables/members.md](../tables/members.md)),
-  admin gets the `MEMBERSHIP_charge_failed` bell. The catch-up is automatic: the next due month
-  and ALL arrears go out as ONE combined off-session charge.
+- **Missed payment** *(v: 2026-09-15)*: row → `missed` (red), member gets the `MEMBERSHIP_payment_failed`
+  email — **"update your payment method and pay the outstanding amount now"**, button *Update payment
+  method & pay now* to their `/membership-pay` link, which on an active plan in arrears COLLECTS the
+  missed rows (see *Update payment method* below); the pre-2026-09-15 "next month doubles" promise is gone.
+  `members.membership_arrears` flips on automatically (the old `membership_suspended` is DROPPED): the
+  member is **in arrears, NOT suspended** — amber *In Arrears* chip, login unaffected, and the one
+  effect is that their revenue-share payouts are HELD across all four engines (`Held - Member In Arrears`
+  / `held_member_arrears`, Paul's `MEMBER_revshare_held_arrears` notice) until caught up — see
+  [tables/members.md](../tables/members.md). Admin gets the `MEMBERSHIP_charge_failed` bell ("marked in
+  arrears — revenue shares held until paid"). The sweep's combined due+arrears pull next month is still
+  the BACKSTOP if the member never clicks. **Friday digest:** cron jobid 19
+  `membership-arrears-digest-weekly` @13:00 UTC Fri (`automation_MEMBERSHIP_arrears_digest`) drafts
+  `MEMBERSHIP_arrears_digest` to platham@ — one bullet per member in arrears (number, name, amount, months),
+  or "No members are currently in arrears" (user decision: still drafted when empty; Draft mode like
+  every template).
 - **Termination**: "Terminate member" (replaces cancel on active plans) → admin enters a fee →
   charged to the saved method immediately (whole dollars; New Model card gross-up), remaining
   scheduled rows voided, plan `terminated`. $0 fee just terminates. A failed fee charge still
   terminates and leaves a `declined` termination row visible for follow-up.
-- **Update payment method**: an active plan's same `/membership-pay` link becomes a save-only
-  "Update Your Payment Method" page (the failed-email button target). **Links on ACTIVE plans
+- **Update payment method**: an active plan's same `/membership-pay` link becomes an
+  "Update Your Payment Method" page (the failed-email button target) — **save-only when nothing is
+  owed; when the plan carries missed/declined rows it is "Update Your Payment Method & Pay Now"
+  (2026-09-15):** `setup-load` returns `pay_today:true` + `amount` + `arrears_months` from
+  `loadPlanArrearsRows` (`utils/membership-arrears-payment.ts`), `setup-checkout` mints `mode=payment`
+  for the arrears total (New Model card gross-up as usual) with **SESSION** `payment_kind=membership_arrears_payment`
+  + `row_ids`, and **PI** `payment_kind=membership_pull` so the webhook's settle / card-fee /
+  invoice-receipt / late-ACH-bounce branches serve it like a sweep pull. `checkout.session.completed`
+  → `settleMembershipArrearsPayment`: refreshes the method (`activateMembershipPlan` "refreshed" arm),
+  books the rows `paid` (card) / `processing` (ACH) against the PI, stamps the card fee, and on a card
+  payment clears `membership_arrears` + releases held payouts immediately and chains
+  `automation_MEMBERSHIP_invoicereceipt`; ACH clears at pass 4 once settled. **Links on ACTIVE plans
   expire 30 days after last being emailed** (`setup_link_expires_at`, re-stamped by every
   emailer of the link + by activation; expired/NULL → "ask VFO Services for a fresh one"); the
   admin's "Send payment update link" button on active plan cards re-sends via the same
@@ -280,20 +300,20 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
    **waive** due $0 rows, **charges** (one off-session PI per plan = due + missed rows;
    LOGICAL/date-less sorted row-set idempotency keys `membership-pull-<plan>-<rowids>`, gotcha
    #228 class; a charge that succeeds but whose ledger write fails alerts Jake loudly; sync
-   card decline → missed/email/suspend/bell), **auto-unsuspend** caught-up members.
-   **Pass 4 now also RELEASES HELD REVENUE SHARES (2026-08-24)** *(v: 2026-08-24)* — after
-   clearing `membership_suspended` for a caught-up plan it **re-reads the member row** and, only
+   card decline → missed/email/arrears flag/bell), **clear arrears** on caught-up members.
+   **Pass 4 now also RELEASES HELD REVENUE SHARES (2026-08-24)** *(v: 2026-09-15)* — after
+   clearing `membership_arrears` for a caught-up plan it **re-reads the member row** and, only
    when `memberHoldReason` finds **no reason left** (the admin's own `suspended`/`paused` toggles
    hold independently — #240), calls `releaseHeldMemberPayouts(member_number)`, which HTTP-chains
    `automation_CONTRACT_revshare` / `automation_TAX_revshare` / `automation_PIP_revshare` /
    `specialist_revenue_payout` for every leg parked by the standing hold. The summary gains
    **`payouts_released`** (count of legs re-fired). A failed re-read logs and SKIPS the release
-   rather than guessing; the unsuspend itself is never blocked by it. Chain bodies + the both-linkage
+   rather than guessing; the arrears clear itself is never blocked by it (summary key `arrears_cleared`). Chain bodies + the both-linkage
    client resolution: [07-server-chains.md § Member reinstatement](../architecture/07-server-chains.md).
    Off-session PI settlement has a webhook block (`payment_intent.succeeded/_failed` routed by
    membership metadata) covering ACH pulls + termination fees — and since v617 the
    `payment_intent.payment_failed` branch mirrors the sweep's failure arm for late ACH bounces
-   of monthly pulls (suspend + bell + email via the shared
+   of monthly pulls (arrears flag + bell + email via the shared
    `utils/membership-payment-failure.ts` helper; gotcha #236).
 6. **Reconciliation UI** — the Members section renders the ledger per member (green paid rows with
    payment id + method, red missed with the Stripe decline reason, waived, per-membership-year
@@ -320,11 +340,14 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
   `payment_intent.payment_failed` block, each gated on rows-actually-flipped — Stripe doesn't
   order the two events and in live testing the PI event won the race (gotcha #238, v620).
 - Off-session pull fails **synchronously (card)** → sweep marks the newly-due row `missed`,
-  drafts the friendly email once per row (`reminder_sent_at` guard), suspends, bells.
+  drafts the pay-now email once per row (`reminder_sent_at` guard), flags arrears, bells.
 - Off-session pull bounces **late (ACH)** → `payment_intent.payment_failed` flips the charge's
-  rows `declined` AND (v617) suspends + bells + drafts the same email via the shared helper —
+  rows `declined` AND (v617) flags arrears + bells + drafts the same email via the shared helper —
   previously this path was totally silent (gotcha #236). No auto-retry of the failing method
-  either way — the catch-up rides next month's charge; the member fixes the method via their link.
+  either way — the member pays the arrears at their link (2026-09-15), and next month's combined
+  charge is the backstop. **An arrears ACH payment that bounces re-flips its rows `declined` but
+  emails NOBODY** (their `reminder_sent_at` is already stamped) — the bell is the signal; use
+  *Send reminder email*.
 - The failed-payment email's `[Failed Amount]` token = the failed charge's total (may span
   months); `[Amount]` = the regular per-pull ("your usual"). Different tokens — keep both.
 - Charge succeeds but the ledger write fails → Jake gets a "charge SUCCEEDED / write FAILED"
@@ -457,7 +480,7 @@ this pass quoted a different figure than pass 1 would charge, which was caught i
 deploy. Quoting a renewal price the system then does not charge is the worst failure this feature
 has available to it.
 
-There is **no per-plan Stripe-mode guard** on this pass, matching renewals/waive/unsuspend: it
+There is **no per-plan Stripe-mode guard** on this pass, matching renewals/waive/arrears-clear: it
 touches no Stripe object. Email sandboxing is handled the one way it is everywhere else —
 `resolveTemplateRecipients` redirects the whole send to `sandbox_email` while `MEMBER_MEMBERSHIP`
 is in sandbox mode.
