@@ -4168,19 +4168,34 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           : "Mark client as Continue?\n\nThis sends them an email with a green Confirm button and a red Refund button. The revenue share fires ONLY when they click Confirm. After 2 business days with no click they get a reminder email, after 4 business days the PF is notified to reach out.")) return
         if (value === 'Stop - Refund' && !confirm("Stop - Refund? This will IMMEDIATELY fire a Stripe refund of the retainer and draft a refund confirmation email to the client.")) return
         if (value === 'Undecided' && !confirm("Mark client as Undecided?\n\nThey'll get an email with two buttons (Proceed / Refund). After 2 business days with no click we send a reminder, after 4 business days we notify you to call the client.")) return
-        await saveTask(task.id, value, new Date().toISOString().slice(0, 10))
-        let res
+        // The step row + the decision email + (maybe) the revised invoice take
+        // several seconds; hold the clicked button in a Sending state and
+        // disable the other two until the plan re-reads. saveTask runs with
+        // skipBusy so it cannot clear this flag halfway through.
+        setSaving(p => ({ ...p, [key]: value }))
         try {
-          res = await callApi('automation_TAX_postreviewdecision', { tax_plan_id: plan.id, decision: value })
-        } catch (err) {
-          alert(`Post-review request failed: ${err.message || err}`)
-          return
+          await saveTask(task.id, value, new Date().toISOString().slice(0, 10), null, { skipRefresh: true, skipBusy: true })
+          let res
+          try {
+            res = await callApi('automation_TAX_postreviewdecision', { tax_plan_id: plan.id, decision: value })
+          } catch (err) {
+            alert(`Post-review request failed: ${err.message || err}`)
+            return
+          }
+          if (res?.error) alert(`Error: ${res.error}`)
+          else if (res?.refund_result?.error) alert(`Refund failed: ${res.refund_result.error}`)
+          else if (res?.amended_invoice && res.amended_invoice.ok === false) alert(`The decision email was drafted, but the revised invoice was NOT: ${res.amended_invoice.error || 'unknown error'}`)
+          await refreshLivePlan()
+        } finally {
+          setSaving(p => ({ ...p, [key]: false }))
         }
-        if (res?.error) alert(`Error: ${res.error}`)
-        else if (res?.refund_result?.error) alert(`Refund failed: ${res.refund_result.error}`)
-        else if (res?.amended_invoice && res.amended_invoice.ok === false) alert(`The decision email was drafted, but the revised invoice was NOT: ${res.amended_invoice.error || 'unknown error'}`)
-        await refreshLivePlan()
       }
+      const picking = saving[key]   // false | the value being sent
+      const pickBtn = (value, label, rgb, color) => (
+        <button disabled={!!picking} onClick={() => handlePick(value)} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: picking ? 'not-allowed' : 'pointer', border: `1px solid rgba(${rgb},0.4)`, background: `rgba(${rgb},${picking === value ? 0.22 : 0.12})`, color, fontWeight: 600, opacity: picking && picking !== value ? 0.5 : 1 }}>
+          {picking === value ? 'Sending…' : label}
+        </button>
+      )
 
       const autoStep = (label, done, opts = {}) => {
         const na = !!opts.na
@@ -4208,9 +4223,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
             ) : (
               !readOnly && (
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <button onClick={() => handlePick('Continue - Revenue Share')} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }}>{continueLabel}</button>
-                  <button onClick={() => handlePick('Undecided')} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(251,137,90,0.4)', background: 'rgba(251,137,90,0.12)', color: '#e06717', fontWeight: 600 }}>Undecided</button>
-                  <button onClick={() => handlePick('Stop - Refund')} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600 }}>Stop - Refund</button>
+                  {pickBtn('Continue - Revenue Share', continueLabel, '27,146,84', '#1b9254')}
+                  {pickBtn('Undecided', 'Undecided', '251,137,90', '#e06717')}
+                  {pickBtn('Stop - Refund', 'Stop - Refund', '231,76,60', '#e74c3c')}
                 </div>
               )
             )}
