@@ -642,12 +642,14 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAn
   const [totalInput, setTotalInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  // What happened to the revised invoice the server drafts after a real amendment
-  // (amended_invoice on the automation_TAX_amend_fee response). Session-local;
-  // the durable record is plan.amended_invoice_sent_at.
-  const [invoiceNote, setInvoiceNote] = useState(null)   // { ok, text }
 
   const stamp = stage === 'tax4' ? plan?.fee_amended_at_tax4 : plan?.fee_amended_at_tax5
+  // The revised invoice is NOT sent here — it rides with the next client email
+  // (Client decision 1 for tax4, the implementation decision for tax5) into the
+  // original invoice thread. These two stamps say where that stands.
+  const revisedSentAt = plan?.amended_invoice_sent_at
+  const revisedPending = !!stamp && (!revisedSentAt || new Date(revisedSentAt) < new Date(stamp))
+  const revisedDone = !!stamp && !!revisedSentAt && new Date(revisedSentAt) >= new Date(stamp)
   // Mirrors isTaskStatused's rule for these two sentinels, and the backend's
   // (utils/tax-plan-steps.ts + amendFeeStepState): the progress row is the
   // normal proof, the stamp is the independent one.
@@ -685,12 +687,6 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAn
       // yet sent, nothing in flight) — show its refusal verbatim and leave the
       // step OPEN so it can still be answered once the blocker clears.
       if (res?.error) { setSubmitError(res.error); return }
-      if (kind !== 'keep') {
-        const ai = res?.amended_invoice
-        if (ai?.ok && ai.skipped) setInvoiceNote({ ok: true, text: `Revised invoice not needed — ${ai.reason}` })
-        else if (ai?.ok) setInvoiceNote({ ok: true, text: `Revised invoice ${ai.invoice_number || ''} drafted${ai.threaded ? ' in the original email thread' : ' as a new email (original thread not found)'}.` })
-        else setInvoiceNote({ ok: false, text: `Fee amended, but the revised invoice was NOT drafted: ${ai?.error || 'unknown error'}` })
-      }
       await onAnswer(kind === 'keep' ? 'Completed - Kept' : 'Completed - Amended')
       setMode('')
       setTotalInput('')
@@ -827,12 +823,14 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAn
       {submitError && (
         <div style={{ marginLeft: '18px', marginBottom: '10px', color: '#e74c3c', fontWeight: 500, fontSize: '12px' }}>{submitError}</div>
       )}
-      {invoiceNote && (
-        <div style={{ marginLeft: '18px', marginBottom: '10px', color: invoiceNote.ok ? '#1b9254' : '#e06717', fontWeight: 500, fontSize: '12px' }}>{invoiceNote.text}</div>
-      )}
-      {!invoiceNote && plan?.amended_invoice_sent_at && (
+      {revisedPending && (
         <div style={{ marginLeft: '18px', marginBottom: '10px', color: 'var(--vfo-muted)', fontSize: '11px' }}>
-          Revised invoice drafted {new Date(plan.amended_invoice_sent_at).toLocaleDateString()}{plan.amended_invoice_threaded === false ? ' (as a new email — original thread not found)' : plan.amended_invoice_threaded ? ' in the original email thread' : ''}.
+          A revised invoice (same number, original and revised fee shown) will be drafted into the original invoice email thread when the {stage === 'tax4' ? 'Client decision 1' : 'implementation decision'} email is sent.
+        </div>
+      )}
+      {revisedDone && (
+        <div style={{ marginLeft: '18px', marginBottom: '10px', color: 'var(--vfo-muted)', fontSize: '11px' }}>
+          Revised invoice drafted {new Date(revisedSentAt).toLocaleDateString()}{plan.amended_invoice_threaded === false ? ' as a new email (original thread not found)' : ' in the original invoice email thread'}.
         </div>
       )}
     </div>
@@ -3656,6 +3654,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         await saveTask(task.id, 'Undecided', new Date().toISOString().slice(0, 10))
         const res = await callApi('automation_TAX_implementdecision', { tax_plan_id: plan.id, decision: 'Undecided' })
         if (res?.error) alert(`Error: ${res.error}`)
+        else if (res?.amended_invoice && res.amended_invoice.ok === false) alert(`The decision email was drafted, but the revised invoice was NOT: ${res.amended_invoice.error || 'unknown error'}`)
         await refreshLivePlan()
       }
 
@@ -4179,6 +4178,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         }
         if (res?.error) alert(`Error: ${res.error}`)
         else if (res?.refund_result?.error) alert(`Refund failed: ${res.refund_result.error}`)
+        else if (res?.amended_invoice && res.amended_invoice.ok === false) alert(`The decision email was drafted, but the revised invoice was NOT: ${res.amended_invoice.error || 'unknown error'}`)
         await refreshLivePlan()
       }
 
