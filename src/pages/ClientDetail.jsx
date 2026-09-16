@@ -334,8 +334,8 @@ export default function ClientDetail() {
           <ProfileTabSkeleton sections={isMember ? 3 : 4} />
         ) : (
           <>
-            {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
-            {activeTab === 'details' && isAdmin && <ClientDetails client={client} contacts={contacts} onUpdate={loadData} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} isAdmin={isAdmin} />}
+            {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
+            {activeTab === 'details' && isAdmin && <ClientDetails client={client} onUpdate={loadData} sectionStyle={sectionStyle} />}
             {pfLocked && PROGRAM_TABS.includes(activeTab) && (
               <div style={{ ...sectionStyle, borderColor: 'rgba(231,76,60,0.3)', textAlign: 'center', padding: '40px' }}>
                 <div style={{ fontSize: '15px', color: 'var(--vfo-muted)' }}>Please Select a PF</div>
@@ -369,7 +369,7 @@ export default function ClientDetail() {
   )
 }
 
-function ClientHome({ client, contacts = [], onUpdate, sectionStyle, readOnly = false, plannerMode = false, notes = [], onNotesChange, program }) {
+function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, sectionStyle, readOnly = false, plannerMode = false, notes = [], onNotesChange, program }) {
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [editNoteText, setEditNoteText] = useState('')
   const [status, setStatus] = useState(client?.status || 'pending')
@@ -432,7 +432,7 @@ function ClientHome({ client, contacts = [], onUpdate, sectionStyle, readOnly = 
           <div><div style={fieldLabel}>Email</div><div style={fieldValue}>{client?.email || '—'}</div></div>
           <div><div style={fieldLabel}>Phone</div><div style={fieldValue}>{client?.phone || '—'}</div></div>
         </div>
-        {contacts?.length > 0 && <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--vfo-tint)' }}>
+        {readOnly && contacts?.length > 0 && <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--vfo-tint)' }}>
           <div style={{ ...fieldLabel, marginBottom: '10px' }}>Additional Contacts</div>
           {contacts.map((c, i) => (
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: i < contacts.length - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
@@ -489,6 +489,10 @@ function ClientHome({ client, contacts = [], onUpdate, sectionStyle, readOnly = 
           </div>
         </div>
       </div>
+
+      {/* Admins manage Additional Contacts right here on the Profile tab;
+          members/planners get the read-only list in Contact Info instead. */}
+      {!readOnly && <ClientAdditionalContacts client={client} contacts={contacts} onReloadContacts={onReloadContacts} sectionStyle={sectionStyle} isAdmin />}
 
       {/* Notes — full width so long threads use the whole row. */}
       {!readOnly && (
@@ -581,13 +585,55 @@ function ClientHome({ client, contacts = [], onUpdate, sectionStyle, readOnly = 
   )
 }
 
-function ClientDetails({ client, contacts, onUpdate, onReloadContacts, sectionStyle, isAdmin = false }) {
+function ClientDetails({ client, onUpdate, sectionStyle }) {
   const [firstName, setFirstName] = useState(client?.first_name || '')
   const [lastName, setLastName] = useState(client?.last_name || '')
   const [email, setEmail] = useState(client?.email || '')
   const [phone, setPhone] = useState(client?.phone || '')
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
+
+  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
+
+  async function save() {
+    setSaving(true)
+    try {
+      await callApi('msm_update_client', { client_id: client.id, status: client.status, first_name: firstName, last_name: lastName, email, phone })
+      setStatus('saved')
+      setTimeout(() => setStatus(''), 4000)
+    } catch (err) { setStatus('error') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div>
+      <div style={sectionStyle}>
+        <div style={cardTitle}>Primary Contact</div>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name</label><input value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} /></div>
+          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name</label><input value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} /></div>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Email</label><input value={email} onChange={e => setEmail(e.target.value)} type="email" style={inputStyle} /></div>
+          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Phone</label><input value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} /></div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button onClick={save} disabled={saving} style={{ padding: '10px 24px', borderRadius: '8px', background: saving ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '14px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save Changes'}</button>
+          {status === 'saved' && <span style={{ color: '#1b9254', fontSize: '14px', fontWeight: '600' }}>✓ Changes saved</span>}
+          {status === 'error' && <span style={{ color: '#e74c3c', fontWeight: 500, fontSize: '14px' }}>Something went wrong</span>}
+        </div>
+      </div>
+
+    </div>
+  )
+}
+
+// Additional Contacts card — lives on the client Profile (home) tab for admins
+// (moved off Edit Profile 2026-09-16 so it is always visible, empty or not).
+// Members and planners see the read-only list inside ClientHome's Contact Info
+// card instead; this component is admin-only.
+function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sectionStyle, isAdmin = false }) {
   const [contactStatus, setContactStatus] = useState('')
   const [showAddContact, setShowAddContact] = useState(false)
   const [contactFirst, setContactFirst] = useState('')
@@ -612,16 +658,6 @@ function ClientDetails({ client, contacts, onUpdate, onReloadContacts, sectionSt
 
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
   const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
-
-  async function save() {
-    setSaving(true)
-    try {
-      await callApi('msm_update_client', { client_id: client.id, status: client.status, first_name: firstName, last_name: lastName, email, phone })
-      setStatus('saved')
-      setTimeout(() => setStatus(''), 4000)
-    } catch (err) { setStatus('error') }
-    finally { setSaving(false) }
-  }
 
   async function addContact() {
     if (!canAddContact) return
@@ -718,28 +754,13 @@ function ClientDetails({ client, contacts, onUpdate, onReloadContacts, sectionSt
   }
 
   return (
-    <div>
-      <div style={sectionStyle}>
-        <div style={cardTitle}>Primary Contact</div>
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name</label><input value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} /></div>
-          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name</label><input value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} /></div>
-        </div>
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Email</label><input value={email} onChange={e => setEmail(e.target.value)} type="email" style={inputStyle} /></div>
-          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Phone</label><input value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} /></div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={save} disabled={saving} style={{ padding: '10px 24px', borderRadius: '8px', background: saving ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '14px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save Changes'}</button>
-          {status === 'saved' && <span style={{ color: '#1b9254', fontSize: '14px', fontWeight: '600' }}>✓ Changes saved</span>}
-          {status === 'error' && <span style={{ color: '#e74c3c', fontWeight: 500, fontSize: '14px' }}>Something went wrong</span>}
-        </div>
-      </div>
-
       <div style={sectionStyle}>
         <div style={{ ...cardTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Additional Contacts</span>
           <button onClick={() => setShowAddContact(!showAddContact)} style={{ padding: '6px 14px', borderRadius: '6px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '12px', cursor: 'pointer' }}>+ Add</button>
+        </div>
+        <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '14px', lineHeight: 1.5 }}>
+          People on this client's side. With <strong>Cc on all client emails</strong> switched on, a contact is Cc'd on every portal email addressed to this client; <strong>Include in the greeting</strong> also names them in the salutation.
         </div>
 
         {showAddContact && (
@@ -814,7 +835,5 @@ function ClientDetails({ client, contacts, onUpdate, onReloadContacts, sectionSt
           </div>
         ))}
       </div>
-    </div>
   )
 }
-

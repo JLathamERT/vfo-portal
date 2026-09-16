@@ -19,6 +19,7 @@ import { VisibilityBadge, noteTint } from '../shared/NoteVisibility'
 import ImageCropModal from './ImageCropModal'
 import { MemberNameLink } from '../shared/personLinks'
 import { CORPORATE_TYPES, isCorporateMember, leadMemberNumberOf, findLeadMember } from '../shared/corporateMember'
+import { MEMBER_TYPES, ACCOUNTANT_TYPES } from '../shared/memberTypes'
 import { GCServicesView, GCTransactionHistory } from '../shared/GCMarketplaceViews'
 // The engagement rating is set on the Member Overview tab; the profile hero
 // only DISPLAYS it. Admin surface throughout — the member portal never renders
@@ -34,14 +35,6 @@ const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/o
 const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:\/\//i.test(s) ? 'https://' + s : s }
 import vfoCertifiedSeal from '../../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../../assets/vfo-accredited-emblem.png'
-
-const MEMBER_TYPES = [
-  'Implementation', 'Catalyst', 'Catalyst A', 'Free Catalyst',
-  'Fusion', 'Fusion A', 'Fusion A - I/M', 'Free Fusion', 'Free Legacy TBM', 'Legacy Fusion',
-  'Accelerator', 'Accelerator A', 'Legacy Accelerator',
-  'Corporate Member', 'Free Corporate Member', 'Free Corporate Member (Legacy)',
-  'Financial Collaborator', 'VFO Reconciliation (Free)'
-]
 
 // Members carrying the "VFO Reconciliation (Free)" type that ANY admin may still
 // open. 59524 is the standing sandbox-forced Test Member (#251) — it holds that
@@ -72,18 +65,6 @@ const STRATEGIC_MSM_OPTIONS = [
 // meeting counters.
 const STRATEGIC_PROGRAM_KEYS = ['holistic', 'tax']
 const STRATEGIC_EXTRA_TABS = [['specialists', 'Specialists'], ['showroom', 'Showroom'], ['ciq', 'CIQ']]
-
-const ACCOUNTANT_TYPES = [
-  'Implementation - VFO FT (Direct)',
-  'Implementation - VFO FT (Advisor)',
-  'Advanced (Direct)', 'Advanced (Advisor)',
-  'Plus (Direct)', 'Plus (Advisor)',
-  'VFO FT (Direct)', 'VFO FT (Advisor)',
-  'VFO Associate (Direct)', 'VFO Associate (Advisor)',
-  'Team Member',
-  'Survey #1', 'Survey #2', 'Survey #3',
-  'FAC Historic',
-]
 
 // Where the currently-open member profile was reached FROM. Written by
 // AdminPortal.openMemberProfile when the jump came off the Member Overview list,
@@ -871,6 +852,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
   const [saving, setSaving] = useState(false)
   const activeTab = activeSection === 'profile_edit' ? 'edit' : activeSection === 'profile_history' ? 'history' : 'details'
   const [typeHistory, setTypeHistory] = useState([])
+  const [contacts, setContacts] = useState([])
   const [corporateMembers, setCorporateMembers] = useState([])
   const [dirty, setDirty] = useState(false)
   const [status, setStatus] = useState('')
@@ -979,12 +961,22 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
     } catch (err) { console.error(err) }
   }
 
+  // Additional Contacts ride on member_profile_load; a silent re-read after
+  // every contact write keeps the list in step without flashing the skeleton.
+  async function reloadContacts() {
+    try {
+      const data = await callApi('member_profile_load', { member_number: member.plugin_member_number })
+      setContacts(data.contacts || [])
+    } catch (err) { console.error(err) }
+  }
+
   async function loadProfile() {
     setLoading(true)
     try {
       const data = await callApi('member_profile_load', { member_number: member.plugin_member_number })
       setProfile(data.profile || { member_number: member.plugin_member_number, first_name: member.name?.split(' ')[0] || '', last_name: member.name?.split(' ').slice(1).join(' ') || '', elite_status: 'Active', member_type: '', email: '', suspended: false, paused: false, revenue_decision: 'Revenue Share', credit_note_eligible: true, stripe_account_id: '', connected_member_number: null, introduced_by_member_number: null, connection_type: '', notes: '' })
       setTypeHistory(data.type_history || [])
+      setContacts(data.contacts || [])
       setCorporateMembers(allMembers.filter(m => m.plugin_member_number?.startsWith(member.plugin_member_number + '-C') || m.plugin_member_number?.startsWith(member.plugin_member_number + '-FC')))
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -1286,6 +1278,9 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
                 <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.bio}</div>
               </div>
             )}
+
+            <MemberAdditionalContacts memberNumber={member.plugin_member_number} contacts={contacts} onReload={reloadContacts}
+              styles={{ sectionStyle, cardTitle, inputStyle, labelStyle }} />
 
             {profile.notes && (
               <div style={sectionStyle}>
@@ -1927,6 +1922,172 @@ function MemberSettings({ member, allMembers = [], onDataChange }) {
             </div>
         }
       </div>
+    </div>
+  )
+}
+// Member Additional Contacts — the member-side twin of the client Profile
+// tab's Additional Contacts (ClientDetail.jsx). Admin-only by decision: one
+// switch, "Cc on all emails", no greeting toggle. A flagged contact is Cc'd by
+// the backend on EVERY portal email that addresses or Cc's the member
+// (resolveTemplateRecipients), so no per-email choice exists here.
+// Email bar matches the backend's (contact-add.ts / dedupeEmails).
+const MEMBER_CONTACT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) {
+  const { sectionStyle, cardTitle, inputStyle, labelStyle } = styles
+  const [showAdd, setShowAdd] = useState(false)
+  const [addFirst, setAddFirst] = useState('')
+  const [addLast, setAddLast] = useState('')
+  const [addEmail, setAddEmail] = useState('')
+  const [addPhone, setAddPhone] = useState('')
+  const [addError, setAddError] = useState('')
+  const [addedFlash, setAddedFlash] = useState(false)
+  const [editId, setEditId] = useState(null)
+  const [editFirst, setEditFirst] = useState('')
+  const [editLast, setEditLast] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [rowError, setRowError] = useState({})
+  const [rowSaved, setRowSaved] = useState({})
+  const [busyId, setBusyId] = useState(null)
+
+  const addEmailValid = MEMBER_CONTACT_EMAIL_RE.test(addEmail.trim())
+  const canAdd = !!addFirst.trim() && !!addLast.trim() && addEmailValid
+
+  function setError(id, msg) { setRowError(prev => ({ ...prev, [id]: msg })) }
+
+  async function addContact() {
+    if (!canAdd) return
+    setAddError('')
+    try {
+      await callApi('member_contact_add', { member_number: memberNumber, first_name: addFirst.trim(), last_name: addLast.trim(), email: addEmail.trim(), phone: addPhone.trim() })
+      setAddFirst(''); setAddLast(''); setAddEmail(''); setAddPhone(''); setShowAdd(false)
+      setAddedFlash(true); setTimeout(() => setAddedFlash(false), 4000)
+      onReload()
+    } catch (err) { setAddError(err?.message || 'Something went wrong') }
+  }
+
+  async function removeContact(c) {
+    if (!window.confirm(`Remove ${c.first_name} ${c.last_name} from this member's additional contacts?`)) return
+    try { await callApi('member_contact_delete', { contact_id: c.id }); onReload() }
+    catch (err) { setError(c.id, err?.message || 'Something went wrong') }
+  }
+
+  // One call per change; the backend re-checks the email invariant on the
+  // final state, so anything it rejects lands in this row's error line.
+  async function saveContact(id, patch) {
+    setBusyId(id)
+    try {
+      await callApi('member_contact_update', { contact_id: id, ...patch })
+      setError(id, '')
+      onReload()
+      return true
+    } catch (err) {
+      setError(id, err?.message || 'Something went wrong')
+      return false
+    } finally { setBusyId(null) }
+  }
+
+  function startEdit(c) {
+    setEditId(c.id)
+    setEditFirst(c.first_name || ''); setEditLast(c.last_name || ''); setEditEmail(c.email || ''); setEditPhone(c.phone || '')
+    setError(c.id, '')
+  }
+
+  async function saveEdit(id) {
+    const next = editEmail.trim()
+    if (!editFirst.trim() || !editLast.trim()) { setError(id, 'First and last name are required.'); return }
+    if (next && !MEMBER_CONTACT_EMAIL_RE.test(next)) { setError(id, 'Enter a valid email address.'); return }
+    const ok = await saveContact(id, { first_name: editFirst.trim(), last_name: editLast.trim(), email: next, phone: editPhone.trim() })
+    if (ok) setEditId(null)
+  }
+
+  // The switch fires on click — one flag, no staging needed.
+  async function toggleCc(c) {
+    if (!c.cc_on_emails && !String(c.email || '').trim()) {
+      setError(c.id, 'This contact has no email address on file — add one to enable Cc.')
+      return
+    }
+    const ok = await saveContact(c.id, { cc_on_emails: !c.cc_on_emails })
+    if (!ok) return
+    setRowSaved(prev => ({ ...prev, [c.id]: true }))
+    setTimeout(() => setRowSaved(prev => ({ ...prev, [c.id]: false })), 4000)
+  }
+
+  const primaryBtn = { padding: '6px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '12px', cursor: 'pointer' }
+  const ghostBtn = { padding: '6px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }
+
+  return (
+    <div style={sectionStyle}>
+      <div style={{ ...cardTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>Additional Contacts</span>
+        <button type="button" onClick={() => { setShowAdd(!showAdd); setAddError('') }} style={{ ...primaryBtn, padding: '6px 14px' }}>+ Add</button>
+      </div>
+      <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '14px', lineHeight: 1.5 }}>
+        People on this member's team. With <strong>Cc on all emails</strong> switched on, a contact is Cc'd on every portal email this member receives or is Cc'd on.
+      </div>
+
+      {showAdd && (
+        <div style={{ padding: '16px', background: 'var(--vfo-tint)', borderRadius: '8px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={addFirst} onChange={e => setAddFirst(e.target.value)} style={inputStyle} /></div>
+            <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={addLast} onChange={e => setAddLast(e.target.value)} style={inputStyle} /></div>
+            <div style={{ flex: 1, minWidth: '180px' }}>
+              <label style={labelStyle}>Email *</label>
+              <input value={addEmail} onChange={e => setAddEmail(e.target.value)} type="email" style={inputStyle} />
+              {!!addEmail.trim() && !addEmailValid && <div style={{ ...labelStyle, marginTop: '6px', marginBottom: 0 }}>Enter a valid email address.</div>}
+            </div>
+            <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Phone</label><input value={addPhone} onChange={e => setAddPhone(e.target.value)} style={inputStyle} /></div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button type="button" onClick={addContact} disabled={!canAdd} style={{ ...primaryBtn, padding: '8px 20px', fontSize: '13px', background: canAdd ? primaryBtn.background : 'var(--vfo-tint)', border: canAdd ? 'none' : '1px solid var(--vfo-border-mid)', boxShadow: canAdd ? primaryBtn.boxShadow : 'none', color: canAdd ? '#fff' : 'var(--vfo-muted)', cursor: canAdd ? 'pointer' : 'not-allowed' }}>Save</button>
+            <button type="button" onClick={() => setShowAdd(false)} style={{ ...ghostBtn, padding: '8px 20px', fontSize: '13px' }}>Cancel</button>
+            {addError && <span style={{ color: '#e74c3c', fontSize: '12px', fontWeight: 500 }}>{addError}</span>}
+          </div>
+        </div>
+      )}
+
+      {addedFlash && <div style={{ color: '#1b9254', fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>Contact added</div>}
+      {contacts.length === 0 && !showAdd && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', margin: 0 }}>No additional contacts yet.</p>}
+      {contacts.map(c => (
+        <div key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
+          {editId === c.id ? (
+            <div>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={editFirst} onChange={e => setEditFirst(e.target.value)} style={inputStyle} /></div>
+                <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={editLast} onChange={e => setEditLast(e.target.value)} style={inputStyle} /></div>
+                <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Email</label><input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email" style={inputStyle} /></div>
+                <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Phone</label><input value={editPhone} onChange={e => setEditPhone(e.target.value)} style={inputStyle} /></div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button type="button" onClick={() => saveEdit(c.id)} disabled={busyId === c.id} style={{ ...primaryBtn, cursor: busyId === c.id ? 'not-allowed' : 'pointer' }}>{busyId === c.id ? 'Saving...' : 'Save'}</button>
+                <button type="button" onClick={() => { setEditId(null); setError(c.id, '') }} style={ghostBtn}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ minWidth: '160px' }}>
+                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{c.first_name} {c.last_name}</div>
+                {c.email
+                  ? <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{c.email}{c.phone ? ` · ${c.phone}` : ''}</div>
+                  : <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '2px', fontStyle: 'italic' }}>No email on file{c.phone ? ` · ${c.phone}` : ''}</div>}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: 'var(--vfo-muted)', cursor: busyId === c.id ? 'not-allowed' : 'pointer' }}>
+                  <input type="checkbox" checked={!!c.cc_on_emails} disabled={busyId === c.id}
+                    onChange={() => toggleCc(c)} style={{ accentColor: '#125ecc', cursor: busyId === c.id ? 'not-allowed' : 'pointer' }} />
+                  Cc on all emails
+                </label>
+                {busyId === c.id && <span style={{ color: 'var(--vfo-muted)', fontSize: '12px' }}>Saving...</span>}
+                {busyId !== c.id && rowSaved[c.id] && <span style={{ color: '#1b9254', fontWeight: 600, fontSize: '12px' }}>Saved</span>}
+                <button type="button" onClick={() => startEdit(c)} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>
+                <button type="button" onClick={() => removeContact(c)} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.3)', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Remove</button>
+              </div>
+            </div>
+          )}
+          {rowError[c.id] && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '12px', marginTop: '6px' }}>{rowError[c.id]}</div>}
+        </div>
+      ))}
     </div>
   )
 }
