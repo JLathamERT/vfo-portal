@@ -8,6 +8,11 @@
 > to him was rerouted (gotcha #291). The tax client-decision bells and the Tax 4 meeting nudge now
 > resolve **assigned PF + allocated tax planner** (+ Tracy on the nudge, and as the universal
 > fallback); the specialist tax-risk-notes prompts go to Tracy. Rows below reflect that.
+>
+> **Widened 2026-09-16: every "allocated tax planner" recipient above now means the allocated
+> planner AND the allocated TEAM MEMBER** — `taxDecisionRecipients(pf, taxPlanPeopleEmails(plan).emails)`,
+> with the per-recipient `links` map built for each planner-portal address. `notifyAllocatedPlanner`
+> bells were already mirrored and are unchanged. No rule key, default recipient or title moved.
 > **(The Tax 4 meeting nudge itself went dormant on 2026-08-11 — see its row under Tax.)**
 
 ## How to read this

@@ -9,7 +9,7 @@ Read-only schema mapping — column lists, types, defaults, FKs, and which actio
 | Doc | Tables | One-liner |
 |---|---|---|
 | [auth.md](auth.md) | `admin_sessions`, `allowed_admins`, `member_logins`, `client_logins`, `specialist_logins`, `login_attempts` | Session tokens + login credentials for all four portals + the login brute-force throttle ledger |
-| [members.md](members.md) | `members`, `member_connections`, `member_plugin_settings`, `member_type_history`, `member_exclusions` | The advisor/accountant member roster + the mutual member-connection pairs (2026-07-31) + per-member website widget config |
+| [members.md](members.md) | `members`, `member_connections`, `member_plugin_settings`, `member_type_history`, `member_contacts`, `member_exclusions` | The advisor/accountant member roster + the mutual member-connection pairs (2026-07-31) + per-member website widget config |
 | [clients.md](clients.md) | `clients`, `client_contacts`, `client_notes`, `client_enrollments`, `client_progress`, `client_priority_tracks`, `priority_progress` | The advisor's clients (downstream of members) + program/priority progress |
 | [ciq.md](ciq.md) | `client_ciqs`, `ciq_answers`, `ciq_priorities`, `ciq_priority_snapshots`, `ciq_assignments` | Client Intake Questionnaire data + ranked priority decisions + snapshots |
 | [tax.md](tax.md) | `client_tax_plans`, `client_tax_progress`, `client_tax_specialists`, `client_tax_fee_amendments` | Tax engagement plan + per-specialist progress |

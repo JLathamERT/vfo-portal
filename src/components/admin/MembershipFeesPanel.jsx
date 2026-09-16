@@ -5,6 +5,7 @@ import { OnboardingListSkeleton } from '../shared/Skeleton'
 import SandboxModeToggle from './SandboxModeToggle'
 import StepEmailsChip from '../shared/StepEmailsChip'
 import { MemberNameLink } from '../shared/personLinks'
+import { MEMBER_TYPES, ACCOUNTANT_TYPES } from '../shared/memberTypes'
 
 // Accounting > Members > Advisor/Accountant Membership Fees.
 //
@@ -360,7 +361,7 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && section === 'members' && (
-        <MembersSection plans={plans} onChanged={load} onEdit={startEdit} isSuperadmin={isSuperadmin}
+        <MembersSection plans={plans} category={category} onChanged={load} onEdit={startEdit} isSuperadmin={isSuperadmin}
           focusMember={focusMember} onFocusConsumed={() => { focusConsumed.current = true; setFocusMember(null) }} />
       )}
       {!loading && !error && section === 'setup' && isSuperadmin && (
@@ -379,7 +380,7 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
 
 // ── Members: the reconciliation list ──────────────────────────────────────────
 
-function MembersSection({ plans, onChanged, onEdit, isSuperadmin, focusMember, onFocusConsumed }) {
+function MembersSection({ plans, category, onChanged, onEdit, isSuperadmin, focusMember, onFocusConsumed }) {
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
@@ -411,7 +412,7 @@ function MembersSection({ plans, onChanged, onEdit, isSuperadmin, focusMember, o
         </div>
       )}
       {filtered.map(p => (
-        <PlanCard key={p.id} plan={p} onChanged={onChanged} onEdit={onEdit} isSuperadmin={isSuperadmin}
+        <PlanCard key={p.id} plan={p} category={category} onChanged={onChanged} onEdit={onEdit} isSuperadmin={isSuperadmin}
           autoOpen={!!focusMember && String(p.member_number) === String(focusMember)}
           onAutoOpened={onFocusConsumed} />
       ))}
@@ -419,7 +420,7 @@ function MembersSection({ plans, onChanged, onEdit, isSuperadmin, focusMember, o
   )
 }
 
-function PlanCard({ plan, onChanged, onEdit, isSuperadmin, autoOpen = false, onAutoOpened }) {
+function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = false, onAutoOpened }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
@@ -431,6 +432,7 @@ function PlanCard({ plan, onChanged, onEdit, isSuperadmin, autoOpen = false, onA
   const [showNextYear, setShowNextYear] = useState(false)
   const [nyAmount, setNyAmount] = useState(plan.next_year_amount ? String(plan.next_year_amount) : '')
   const [nyCredit, setNyCredit] = useState(plan.next_year_credit_note ? String(plan.next_year_credit_note) : '')
+  const [nyType, setNyType] = useState(plan.next_year_member_type || plan.member?.member_type || '')
   const [showPause, setShowPause] = useState(false)
   const [pauseMonths, setPauseMonths] = useState('1')
   const [pausePreview, setPausePreview] = useState(null)
@@ -602,9 +604,14 @@ function PlanCard({ plan, onChanged, onEdit, isSuperadmin, autoOpen = false, onA
   async function saveNextYear(clear) {
     const res = await run('membership_next_year_save', clear
       ? { plan_id: plan.id, clear: true }
-      : { plan_id: plan.id, next_year_amount: parseMoney(nyAmount), next_year_credit_note: parseMoney(nyCredit) })
+      : { plan_id: plan.id, next_year_amount: parseMoney(nyAmount), next_year_credit_note: parseMoney(nyCredit), next_year_member_type: nyType || undefined })
     if (!res) return
     setShowNextYear(false)
+    // The terms are saved either way — a Gmail problem is amber, never an error.
+    if (!clear) {
+      if (res.email) setMsg({ tone: 'success', text: `Next year's terms saved — email ${res.email} to ${m.email || 'the member'}.` })
+      else setMsg({ tone: 'amber', text: `Next year's terms saved, but the member email could not be drafted: ${res.email_error || 'unknown'}.` })
+    }
     onChanged?.()
   }
 
@@ -633,7 +640,8 @@ function PlanCard({ plan, onChanged, onEdit, isSuperadmin, autoOpen = false, onA
               : `Annual (${money(perPull)}/yr)`}
             {Number(plan.credit_note) > 0 ? ` · Credit note ${money(plan.credit_note)}` : ''}
             {plan.payment_method_type ? ` · ${plan.payment_method_type === 'ach' ? 'ACH' : 'Card'}${plan.acct_last4 ? ` ••${plan.acct_last4}` : ''}` : ''}
-            {plan.next_year_amount ? ` · Next year ${money(plan.next_year_amount)}${Number(plan.next_year_credit_note) > 0 ? ` − ${money(plan.next_year_credit_note)} credit` : ''}` : ''}
+            {plan.next_year_amount ? ` · Next year ${money(plan.next_year_amount)}${Number(plan.next_year_credit_note) > 0 ? ` − ${money(plan.next_year_credit_note)} credit` : ''}${plan.next_year_member_type ? ` · ${plan.next_year_member_type}` : ''}` : ''}
+            {plan.sandbox ? ' · Sandbox' : ''}
             {!plan.auto_renew && !closed ? ' · Auto-renew OFF' : ''}
             {plan.status === 'terminated' && Number(plan.termination_fee) > 0 ? ` · Termination fee ${money(plan.termination_fee)}` : ''}
           </div>
@@ -841,6 +849,7 @@ function PlanCard({ plan, onChanged, onEdit, isSuperadmin, autoOpen = false, onA
                 { name: 'MEMBERSHIP_transfer_setup_link', when: 'Transfer plan — setup link' },
                 { name: 'MEMBERSHIP_transfer_setup_link|monthly-saveonly', when: 'Transfer plan with fixed charge day — setup link (save-only)' },
                 { name: 'MEMBERSHIP_update_link', when: 'Active plan — update payment method link' },
+                { name: 'MEMBERSHIP_next_year_terms', when: "Active plan — next year's terms saved" },
               ]} /></span>
             </div>
           )}
@@ -857,13 +866,25 @@ function PlanCard({ plan, onChanged, onEdit, isSuperadmin, autoOpen = false, onA
                   <div style={label}>Credit note ($)</div>
                   <input value={nyCredit} onChange={e => setNyCredit(e.target.value)} placeholder="0" style={input} />
                 </div>
-                <button type="button" disabled={busy} style={primaryBtn(busy)} onClick={() => saveNextYear(false)}>Save</button>
+                <div style={{ width: '240px' }}>
+                  <div style={label}>Member type from renewal</div>
+                  {/* A legacy/retired type is prepended so an existing value never renders blank. */}
+                  <select value={nyType} onChange={e => setNyType(e.target.value)} style={input}>
+                    <option value="">—</option>
+                    {(() => {
+                      const opts = category === 'accountant' ? ACCOUNTANT_TYPES : MEMBER_TYPES
+                      return (nyType && !opts.includes(nyType) ? [nyType, ...opts] : opts)
+                        .map(t => <option key={t} value={t}>{t}</option>)
+                    })()}
+                  </select>
+                </div>
+                <button type="button" disabled={busy} style={primaryBtn(busy)} onClick={() => saveNextYear(false)}>Save &amp; email member</button>
                 {(plan.next_year_amount || plan.next_year_credit_note) && (
                   <button type="button" disabled={busy} style={ghostBtn} onClick={() => saveNextYear(true)}>Clear (use current terms)</button>
                 )}
               </div>
               <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
-                Unset = renews at the current annual value with no credit. Monthly amounts stay whole dollars (round half up).
+                Saving emails the member a note confirming the new terms (Draft mode — it lands in Gmail Drafts for you to send). Unset = renews at the current annual value with no credit. Monthly amounts stay whole dollars (round half up).
               </div>
             </div>
           )}

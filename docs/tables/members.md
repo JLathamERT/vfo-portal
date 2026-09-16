@@ -145,7 +145,27 @@ Audit trail of `member_type` changes.
 | `changed_at` | timestamptz | default `now()` |
 | `changed_by` | text | |
 
-**Touched by:** Any handler that changes `members.member_type` (currently `member_profile_save`). Also written by hand — the 2026-08-04 superadmin correction of member **30006** (the accountant `member_type` clone defect, gotcha #329) inserted an audit row alongside the `members` update; a manual data fix should do the same.
+**Touched by:** Any handler that changes `members.member_type` — `member_profile_save`, and since 2026-09-16 the **membership renewal sweep** (`actions/membership/sweep.ts` pass 1, `changed_by='membership-renewal-sweep'`) when the plan carried a `next_year_member_type` that differs from the current one. Also written by hand — the 2026-08-04 superadmin correction of member **30006** (the accountant `member_type` clone defect, gotcha #329) inserted an audit row alongside the `members` update; a manual data fix should do the same.
+
+---
+
+## `member_contacts`
+
+**Additional Contacts for a MEMBER** — people on an advisor's / accountant's / strategic member's own team who ride along in Cc on the member's portal email. The member-side twin of `client_contacts` ([clients.md](clients.md)). Created 2026-09-16, migration `20260916120000_member_contacts.sql`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigint | pk, `generated always as identity` |
+| `member_number` | text | not null, fk → `members.member_number` **ON DELETE CASCADE**. Indexed (`member_contacts_member_idx`). |
+| `first_name` / `last_name` | text | Both REQUIRED by `member_contact_add` (the column itself is nullable). |
+| `email` | text | Regex-validated on write with the same shape as `dedupeEmails` — an additional contact is a future Cc recipient, so anything that would not survive that filter must never be stored. |
+| `phone` | text | nullable, **display-only — nothing sends to it.** `client_contacts` has no equivalent; this table was asked for with one. |
+| `cc_on_emails` | boolean | not null default `false`. **The only switch** — there is deliberately NO `use_in_greeting` twin. Requires a non-empty `email`, enforced by `member_contact_update` on the FINAL state. |
+| `created_at` | timestamptz | default `now()`. The list is returned oldest-first. |
+
+**RLS:** `enable row level security` + `create policy "Deny all access" … for all to public using (false)` in the **same migration** as the table (#141); anon probe returned `Content-Range: */0` and the security advisor stayed GREEN at the exact baseline.
+
+**Touched by:** `member_profile_load` (returns `contacts[]`), `member_contact_add` / `member_contact_update` / `member_contact_delete` (all `ADMIN_ONLY_ACTIONS`), and — read-only, centrally — **`utils/email-recipients.ts resolveTemplateRecipients`**, which Cc's every `cc_on_emails=true` row whose member's address is already in To or Cc of the send (never Bcc). Frontend: `MemberAdditionalContacts` in `src/components/admin/MembersPanel.jsx`. Full mechanism → [flows/additional-contacts.md](../flows/additional-contacts.md).
 
 ---
 

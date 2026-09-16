@@ -38,7 +38,7 @@ docs/
 │   ├── auth.md                       (admin_sessions, allowed_admins, member_logins)
 │   ├── pipeline.md                   (pipeline_map1 — 143 columns)
 │   ├── membership-fees.md            (member_payment_plans/schedule/pauses + renewal meetings)
-│   ├── members.md                    (members + plugin settings + history)
+│   ├── members.md                    (members + plugin settings + history + member_contacts)
 │   ├── clients.md                    (clients + contacts + notes + progress)
 │   ├── ciq.md                        (client_ciqs + answers + priorities + snapshots)
 │   ├── tax.md                        (client_tax_*)

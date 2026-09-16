@@ -28,6 +28,8 @@ A client is a member's **end customer** — the person whose tax/financial plann
 
 Additional contacts attached to a client (spouse, business partner, etc.). **Since 2026-08-20 this table also drives who gets Cc'd on the client's automation emails** — full mechanism → [flows/additional-contacts.md](../flows/additional-contacts.md).
 
+> **There is a MEMBER-side twin: `member_contacts`** ([members.md](members.md), 2026-09-16). It is a different table with different wiring — one switch (no greeting), a `phone` column, admin-managed only, and resolved **centrally inside `resolveTemplateRecipients`** rather than per-handler via `loadAdditionalContacts`. Do not reason about one from the other.
+
 | Column | Type | Notes |
 |---|---|---|
 | `id` | integer | pk |
