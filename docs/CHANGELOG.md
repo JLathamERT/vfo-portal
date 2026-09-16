@@ -8,6 +8,99 @@
 
 ---
 
+## 2026-09-16 — Member Additional Contacts, the tax planner + team member mirrored on EVERY email, a sandbox recipient log, next year's terms carry the member TYPE, and Test Member 59524 forced sandbox in MEMBERSHIP (branch `claude/vfo-session-setup-36e80b`, both repos, `vfo-admin-api` v854 → v855 → v856 → **v857** LIVE, two migrations APPLIED, frontend NOT yet published at wrap-up, action count 504 → **507**)
+
+**Five features, one shipping unit, four deploys.** v854 = features 1 + 2, v855 = the sandbox recipient log, v856 = feature 4, v857 = feature 5. `boldsign-webhook` untouched at **v46**; helpers `draft-agreement-pdfs` v7 / `boldsign-template-fields` v7. `send_mode=true` census unmoved at **31**; crons unmoved at **18**; `notification_rules` unchanged and **no new bell rule**.
+
+---
+
+### 1. Member Additional Contacts — the member twin of `client_contacts`
+
+**The ask.** Advisors, accountants and strategic members are all `members` rows, and each has people on their own team (an assistant, an office manager, a partner) who should see the portal email the member gets. Client contacts had done this since 2026-08-20; members had nothing.
+
+**Table.** `member_contacts (id, member_number FK members ON DELETE CASCADE, first_name, last_name, email, phone, cc_on_emails bool default false, created_at)` — migration `20260916120000_member_contacts.sql`, **RLS deny-all in the SAME migration** (#141), anon probe `Content-Range: */0`, security advisor **GREEN at the exact baseline** (a genuinely NEW public table that stayed off the list because its policy shipped with it — the STRONG version of the check). Two deliberate divergences from `client_contacts`: **no `use_in_greeting`** (one switch, by decision) and **a `phone` column** (asked for; display-only, nothing sends to it).
+
+**Actions.** `member_contact_add` / `member_contact_update` / `member_contact_delete`, all `ADMIN_ONLY_ACTIONS` with **no `TAB_ACTIONS` key** (action count 504 → **507**). **Admin-only by decision — there is no member self-service path**, unlike client contacts which a member may manage on their own client; do not "complete the pattern" by widening the gate (#490). Add requires first/last/email (regex-validated with the `dedupeEmails` shape) and always creates the row **Cc-off**; update enforces the one invariant — `cc_on_emails` requires a non-empty email — **on the FINAL state** (stored row merged with the patch), so a two-step edit cannot sneak past it. The list rides on **`member_profile_load.contacts`**; there is no separate loader.
+
+**Resolution is CENTRAL, and that is the structural point.** `utils/email-recipients.ts resolveTemplateRecipients` computes the real To/Cc/Bcc, then `loadMemberContactCc` fetches every `cc_on_emails=true` row joined to `members.email` and appends the contacts of any member whose own address is already in **To or Cc** — **never Bcc, so a hidden member stays hidden.** No handler was changed and no handler can forget it. Case-insensitive in JS (36 `members` rows are mixed-case); never throws. New 7th `options` parameter with `skipMemberContacts`, set on **exactly five credential emails** — `login-setup/send-email.ts`, `login-setup/request-reset.ts`, `advisor/login-setup-email.ts`, `accountant/login-setup-email.ts`, `onboarding/login-setup-email.ts` — the same exclusion client contacts have always carried.
+
+**Frontend.** `MembersPanel.jsx` gained a `MemberAdditionalContacts` card on the admin Member Profile **DETAILS** tab, **below Bio and above Notes**; the checkbox fires per click (one switch, nothing to stage). **And the CLIENT card MOVED**: `ClientDetail.jsx`'s Additional Contacts (add/edit/remove/toggles) came off Edit Profile (`details` / `ClientDetails`, now the Primary Contact form alone) onto the **Profile tab** (`home` / `ClientHome`) as its own `ClientAdditionalContacts` component, **below the Client Status / Assigned PF row, above All Notes, and always visible even when empty** — the old placement hid the whole mechanism behind a tab nobody opened. Members and planners keep the read-only pill list inside Contact Info (now gated on `readOnly`, so an admin no longer sees the list twice). An explanatory notice line was added under **both** card titles.
+
+**LIVE-PROVEN** on Test Member 59524: a contact added, edited, removed and toggled; a **REAL (non-sandbox) Stripe Connect setup draft** carried the contact in Cc; and a sandbox log line proved the contact rides when the member is merely **Cc'd on a client email**.
+
+---
+
+### 2. The tax planner AND the allocated team member are now mirrored on emails as well as bells
+
+**Origin: Traci Moran, plan 98** — planner Evan Jensen, team member Noah Thompson. Noah was missing from a **real** Client-decision-1 confirmation Cc. Since the 2026-08-26 two-slot split, `notifyAllocatedPlanner` had resolved **both** slots for BELLS while every EMAIL still resolved the planner slot alone, and nothing announced the divergence — the template row said `TAX_PLANNER`, the chip rendered, the email sent, and the team member was simply absent (**#503**).
+
+**Built.** New `taxPlanPeopleEmails(supabase, plan)` in `utils/tax-planner-notify.ts` returning `{ plannerEmail, teamMemberEmail, emails }`, with `tax_team_member_id` on the same **three-state** contract as `notifyAllocatedPlanner` (#451): `undefined` → one lookup by plan id (#448), `null` → none, a number → that row. `RecipientCtx` values may now be **`string | string[]`**; `resolveList` and the `RECIPIENT` fallback both flatten. **Every `taxPlannerEmail(supabase, plan.tax_planner_id)` ctx producer was replaced — 36 ctx sites across 26 files** (censused by grepping the one helper they all call, never by reading template rows). `taxPlannerEmail` itself is **KEPT** for callers that genuinely mean the planner alone (the per-recipient planner-portal link). `taxDecisionRecipients(pf, plannerEmails)` in `utils/tax-notify.ts` takes both; `implement-final-decision.ts` and `postreview-client-decision.ts` build the planner-portal `links` map for **both** addresses and pass both in the `TAX_PLANNER` bell `dynamic`. `utils/tax-planner-payout.ts` Cc's the team member on the planner rev-share email.
+
+**`revshare-sweep.ts` — a recipient REMOVAL by decision.** Both assess-reminder tiers (2-day last call + 5-day early) now address **To = the allocated planner + the allocated team member**, and the old code-added Cc of **every active `planner_role='Team Member'` in the planner's group** was **REMOVED** (Jake: *"just allocated"*). Both tiers' selects were widened with `tax_team_member_id`, plus two helper selects in the same file with `id, tax_team_member_id` (#448).
+
+**Recorded for Jake — what the assess reminder used to address:** To the planner; Cc the assigned PF + `tnmiller@vfo-services.com` + `tvaldes@vfo-services.com` + every Team Member in the planner's group; no Bcc.
+
+**Frontend.** `templateMeta.js`: `ROLE_LABELS.TAX_PLANNER = 'Tax Planner + allocated Team Member'`, and the four assess-reminder catalogue rows now read *"To: Allocated Tax Planner + Team Member · Cc: PF"*.
+
+**Proven** by the sandbox log on plan 191 (client 62) — *Request additional info* showed both `test@taxplanner.com` and `test@teammember.com` in Cc — and by Test TeamMember's planner-portal bells. **A real Traci-style client email is still the production proof.**
+
+---
+
+### 3. The sandbox recipient log (v855) — kept by decision
+
+`resolveTemplateRecipients` now computes the REAL To/Cc/Bcc **first** (`resolveRealRecipients`) and, in sandbox, logs `sandbox: would have sent to=[…] cc=[…] bcc=[…]` before returning the sandbox shape. **Non-sandbox output is byte-identical.** It discharges nothing by itself — a logged recipient is not a delivered one — but it is the only way to see recipients on a sandbox send (#324's standing blind spot) and it is what made features 1 and 2 checkable before shipping. Kept permanently, by decision. Gotcha **#505**.
+
+---
+
+### 4. "Edit next year's terms" carries the member TYPE and emails the member
+
+**Origin: Rachael asked how to downgrade Scott Burch 58145** (Accelerator → Catalyst) at his 2026-10-15 renewal, plan 58, monthly on the 10th. **The answer is that Edit next year's terms IS the tool** — the renewal pass bills the new year at `(next_year_amount ?? annual_amount) − next_year_credit_note` and is tier-blind. **Eric Restrepo needed cancel + restart (plan 48 → 76) only because his `auto_renew` was OFF at the renewal date**, so the plan had lapsed dark (#333) and there was no next year to edit.
+
+**Built.** `member_payment_plans.next_year_member_type` (nullable) + template **272** `MEMBERSHIP_next_year_terms` (`MEMBER_MEMBERSHIP_FEES`, **Draft mode**) — migration `20260916130000_membership_next_year_member_type.sql`, advisor GREEN confirmation. `membership_next_year_save` accepts and trims the field (**> 80 chars → 400**), nulls it on `clear`, and **after every non-clear save drafts template 272 to the member**: tokens `[First Name] [Member Name] [Renewal Date] [Next Member Type] [Billing Frequency] [Renewal Terms]`, where `[Renewal Terms]` is `$X/year, billed monthly|annually` or `$X/year (after a $Y credit), billed …` using **the SAME arithmetic and `fmtMoney`** as the renewal notice. **That figure is now written in THREE places** (notice, terms email, renewal pass) and all three must move together — gotcha **#506**. The email block is fail-soft; the response became `{ ok, email: "drafted" | false, email_error? }`. **A true `"sent"` cannot be reported** because `draftGmail` does not surface `maybeSendDraft`'s result — accepted. Recipients mirror template 212: To member · Cc `tvaldes@elitert.com`, `rhopson@elitert.com` · Bcc `aanderson@elitert.com`, `platham@elitert.com`.
+
+**The renewal pass consumes it.** `sweep.ts` section 1: after the plan update, if `next_year_member_type` differs from `members.member_type`, update the member and insert a `member_type_history` row (`changed_by='membership-renewal-sweep'`). **Isolated try/catch, LAST, after the money commit — a failed flip never aborts a renewal.** All three next-year fields are cleared by the same update.
+
+**Frontend.** `MembershipFeesPanel.jsx` gained a **"Member type from renewal"** select (advisor panel → `MEMBER_TYPES`, accountant → `ACCOUNTANT_TYPES`; **both arrays MOVED VERBATIM** out of `MembersPanel.jsx` into the new `src/components/shared/memberTypes.js`, with `category` threaded `MembershipFeesPanel → MembersSection → PlanCard`), defaulting to the member's current type. Button relabelled **"Save & email member"**; the helper line says the email lands in Gmail Drafts; the row summary appends `· <type>` and `· Sandbox` when `plan.sandbox`. `templateMeta` catalogue entry added, and `MEMBERSHIP_next_year_terms` joined the "Payment link emails" chip.
+
+**LIVE-PROVEN on a SQL fixture plan 77 for 59524** (deleted after): both drafts rendered ($9,000/year billed monthly; $8,500/year after a $500 credit), `clear` produced **no** draft, and a hand-fired sweep (jobid 16's own stored command, renewal back-dated) renewed at $9,000 → **12 rows at $750, Oct 10 2026 – Sep 10 2027**, renewal → 2027-09-15, all three fields cleared, 59524's type flipped to Catalyst with the history row, **0 bells, nothing charged**.
+
+> **FLAGGED, NOT BUILT: a renewal notice already sent is NOT re-sent when next-year terms change afterwards.** `renewal_notice_for` is stamped once per renewal. **Scott's notice quoted $12,500** and Rachael must tell him the new figure by hand.
+
+---
+
+### 5. Test Member 59524 is forced to sandbox in MEMBERSHIP (v857)
+
+**Why.** There is ONE `MEMBER_MEMBERSHIP` toggle shared by the Advisor and Accountant panels, and flipping it globally exposes every member mid-setup — every live setup/update link 400s with *"link is out of date"* (#430, which bit Gary Watts). Stamping a test plan `sandbox=true` under a live toggle is **worse**, not a shortcut: every mode-mismatch guard then trips and the charge is skipped (**#504**).
+
+**Built.** `integrations/sandbox-config.ts` gained `isTestSandboxMember(memberNumber)` (constant check, no DB read) and `loadSandboxConfigForMember(supabase, pipelineName, memberNumber)` — the member-keyed twin of `loadSandboxConfigForClient`, same **force-ON-only** shape, global row untouched for everyone else, `sandboxEmail` and `stripeAccount` preserved. Swapped into `send-setup-link.ts` (**the site that STAMPS `plan.sandbox` at mint**), `setup-checkout.ts`, `setup-load.ts`, `terminate.ts`, `send-reminder.ts`, `renewal-meeting-outcome.ts`, `invoice-receipt.ts`, `next-year-save.ts`, `utils/membership-confirmation.ts`, `utils/membership-payment-failure.ts`. **`sweep.ts` keeps its single global read** but ORs `isTestSandboxMember(plan.member_number)` into every per-plan use — renewal-notice recipients, the charge pass's mode-mismatch guard **and its message**; `utils/membership-setup-reminder.ts` likewise. `constants/test-sandbox.ts`'s comment was widened. **Webhooks, `stripe-remap`, `plans-load` (the header toggle) and `arrears-digest` are deliberately untouched** — they key off the row stamp.
+
+**This DISCHARGES the hub's standing *"Membership is NOT covered (it is member-keyed…)"* caveat**, which had stood since 2026-08-14.
+
+**Proven:** plan 77 (stamped sandbox) behaved consistently with the global toggle OFF — drafts redirected to `jlatham@elitert.com`, no mismatch bell, the sweep renewed it.
+
+---
+
+### Gates vs the shipping version
+
+`deno check --no-lock` **0** · action count **507** (6 + 501) · `npm run build` **exit 0, 34 route pages**, bundle `index-D4csjx_c.js` · security advisor **GREEN at the exact baseline** after both migrations, including the STRONG `member_contacts` check and its anon `*/0` probe · **smoke 5/5 vs `v857`** (Jake, after the final deploy).
+
+### Fixtures and cleanup — all done
+
+Client 62 plans **190 + 191** and 3 `client_tax_progress` rows deleted (client 62 back to **zero** plans; **no bells were minted today**). `member_contacts` row **2** deleted — the table is empty. Plan **77** + its 13 schedule rows + its `member_type_history` row deleted, and 59524's `member_type` restored to `VFO Reconciliation (Free)`. The `MEMBER_MEMBERSHIP` toggle was flipped ON then OFF by SQL during the test and is **OFF** — all 8 pipelines live. **Jake owes hand-deletion of ~5 Gmail drafts.**
+
+### OWED
+
+The first **REAL member-contact Cc on a non-Stripe-Connect send**; the planner/team-member mirror has only been seen in a sandbox **LOG line** and a Traci-style real client email is its production proof; the **five `skipMemberContacts` credential arms**; `TAX_PLANNER` as a `notification_rules` **recipients override** (dynamic) with two people; the next-year email's **failure arm** (the amber line) and the sweep's **type-flip failure path**; the **ACCOUNTANT panel's `ACCOUNTANT_TYPES` picker** (only the advisor list was clicked); an **ORGANIC renewal with a type set** — every run was hand-fired, and **Scott Burch 58145 on 2026-10-15 is the first production use IF Rachael sets his Catalyst terms**; the renewal-notice-not-resent gap above; and the member-keyed force on a **REAL setup link / checkout** for 59524 (only a pre-stamped fixture was exercised).
+
+### Superseded hub facts moved here this pass
+
+- **Hub STANDING (2026-08-14 → 2026-09-16):** *"Membership is NOT covered (it is member-keyed, not client-keyed) — testing a membership plan on 59524 means flipping the panel toggle by hand, and forgetting means a real charge."* Superseded by feature 5.
+- **The 2026-09-11 `feature/second-stripe-account` hub entry's narrative** was folded out of the hub in this pass; the full story (the two rules, the four-endpoint webhook, the go-live flips, the four live tests, the 37/37 copy + remap and its traps) is the 2026-09-11 entry further down this file. Only that branch's still-unexercised residue remains in the hub, consolidated onto the same line as the 2026-09-11 SpecRev ERT-share branch.
+
+**Gotchas #503–#506.**
+
+---
+
 ## 2026-09-15 — Five misc edits: FAQ categories + PDF documents, Client Overview tax Phase column + stopped-at-bottom, planner-portal assigned date, membership setup-link reminder ladder (branch `claude/vfo-session-setup-dbaee7`, both repos, `vfo-admin-api` v851 → v852 → **v853** LIVE, three migrations APPLIED, frontend PUBLISHED as `live-197-misc-faq-phase-assigned-reminders`, action count 503 → **504**)
 
 **What was asked (Jake, one chat, five items).** (1) FAQ Editor: admin-managed **categories** (always addable / removable) with a per-FAQ dropdown, plus a third media kind — a **PDF document** that renders small and expands to fill the screen, like the video. (2) Client Overview → Tax Planning: a **Phase** column (Setup / Tax 1 … Tax 6) that sorts on click. (3) Every Client Overview pill: **stopped clients at the bottom by default** — activity tracking was discussed and REJECTED ("stopped at bottom only"; there is no activity log, and `updated_at` exists on `pipeline_map1` alone). (4) Tax-planner portal client list: the **date the client was assigned** at the far right, the same date for a team member and the planner. (5) A **reminder ladder for the membership setup link** (Accounting → Membership Fees → Set Up Payments — NOT advisor/accountant onboarding, which already has one): copy the MAP 1 first-payment ladder — reminder email after 2 business days, Tray bell 2 business days after that, links untouched. Email drafts were shown and approved before seeding; **Draft mode** by decision.

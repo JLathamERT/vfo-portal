@@ -112,7 +112,8 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
   formula made a day-15 payer's 12th pull EQUAL the renewal date, permanently blocking the
   renewal guard; gotcha #235.)
   Auto-renews at the full annual value — or at admin-set **next-year terms**
-  (`next_year_amount` − `next_year_credit_note`, editable on any active plan, consumed at renewal) —
+  (`next_year_amount` − `next_year_credit_note` **+ `next_year_member_type`**, editable on any
+  active plan, consumed at renewal — see *"Edit next year's terms"* below) —
   unless auto-renew is toggled off.
 - **Transfers** (members moving off the old billing mid-year): keep their existing renewal 15th
   (admin inputs it) — **the renewal date never moves**. **A MONTHLY transfer has TWO shapes, and
@@ -185,16 +186,34 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
   next nightly sweep. `transferLinkPulls` and `buildActivatedSchedule` were not touched — the
   legacy path is byte-identical by construction. **Year 2 needs no special handling:** the sweep's
   renewal pass already reads `plan.charge_day`, so it lands on the chosen day automatically.
-- **Membership sandbox follows the panel's own toggle.** The `MEMBER_MEMBERSHIP` sandbox row is
-  **member-keyed**, so the `constants/test-sandbox.ts` force-sandbox override for test member
-  **59524** (#251) — which is client-pipeline only (TAX / MAP 1 / PIP) — **does NOT apply here**.
-  Testing a membership plan means setting the panel's SANDBOX badge by hand. **While that toggle is
-  ON, EVERY live setup/update link in the pipeline 400s with *"link is out of date"*** — the v619
-  mode guards compare each plan's stamped `sandbox` against the pipeline toggle, and every real plan
-  is `sandbox=false`, so flipping the toggle inverts the comparison for all of them at once. This
-  bit a real member on 2026-08-21 (Gary Watts opened his link mid-test). Nothing breaks and no link
-  needs re-issuing — but **flip it back in the same sitting, and never leave it on across a
-  link-emailing action.** Gotcha **#430**.
+- **Membership sandbox — the global toggle, plus a per-member force for Test Member 59524
+  (2026-09-16, v857).** There is ONE `pipeline_sandbox_config` row `MEMBER_MEMBERSHIP` shared by
+  the Advisor **and** Accountant panels, so flipping it globally exposes every member mid-setup:
+  **while that toggle is ON, EVERY live setup/update link in the pipeline 400s with *"link is out
+  of date"*** — the v619 mode guards compare each plan's stamped `sandbox` against the pipeline
+  toggle, and every real plan is `sandbox=false`, so flipping it inverts the comparison for all of
+  them at once (it bit Gary Watts on 2026-08-21, mid-test). Gotcha **#430**.
+  **That is why the test-member force is now member-keyed rather than a toggle flip.**
+  `integrations/sandbox-config.ts` gained the member twin of `loadSandboxConfigForClient`:
+  - `isTestSandboxMember(memberNumber)` — a constant check against `constants/test-sandbox.ts`,
+    no DB read (membership is keyed by `member_number`, which every caller already holds).
+  - `loadSandboxConfigForMember(supabase, pipelineName, memberNumber)` — resolves the global
+    config, then **forces sandbox ON and only ever ON** for a listed test member. Every other
+    member gets the UNCHANGED global result, so real plans stay byte-equivalent and this can
+    never weaken live behaviour. `sandboxEmail` and `stripeAccount` are preserved.
+
+  Swapped in at every member-keyed read: `send-setup-link.ts` (the site that **STAMPS**
+  `plan.sandbox` at mint — the one that matters most), `setup-checkout.ts`, `setup-load.ts`,
+  `terminate.ts`, `send-reminder.ts`, `renewal-meeting-outcome.ts`, `invoice-receipt.ts`,
+  `next-year-save.ts`, `utils/membership-confirmation.ts`, `utils/membership-payment-failure.ts`.
+  **`sweep.ts` keeps its single global read** but ORs `isTestSandboxMember(plan.member_number)` into
+  every per-plan use — the renewal-notice recipients and the charge pass's mode-mismatch guard
+  *and its message*; `utils/membership-setup-reminder.ts` does the same.
+  **Deliberately untouched:** `router/webhooks.ts`, `stripe-remap`, `plans-load` (the header
+  toggle) and `arrears-digest` — they key off the row stamp, not a per-member decision.
+  This **discharges** the long-standing "membership is NOT covered by #251" caveat.
+  **The force must be applied at the same read the guards use** — stamping a row `sandbox`
+  under a live global toggle trips every mode-mismatch guard (gotcha **#504**).
 - **Missed payment** *(v: 2026-09-15)*: row → `missed` (red), member gets the `MEMBERSHIP_payment_failed`
   email — **"update your payment method and pay the outstanding amount now"**, button *Update payment
   method & pay now* to their `/membership-pay` link, which on an active plan in arrears COLLECTS the
@@ -494,12 +513,15 @@ the sweep: load the member (skip + log when they have no email), load the templa
 `renewal_notice_for = renewal_date`. A failure therefore retries tomorrow rather than being lost,
 and a plan can never be double-noticed for one renewal.
 
-**`[Renewal Terms]` is the renewal pass's own arithmetic, written twice.**
+**`[Renewal Terms]` is the renewal pass's own arithmetic, and it is now written in THREE places.**
 `(next_year_amount ?? annual_amount) − (next_year_credit_note ?? 0)`, rendered as
-*"$X/year, billed monthly|annually"*. **The two copies must move together** — an earlier draft of
-this pass quoted a different figure than pass 1 would charge, which was caught in review before
-deploy. Quoting a renewal price the system then does not charge is the worst failure this feature
-has available to it.
+*"$X/year, billed monthly|annually"* (or *"$X/year (after a $Y credit), billed …"* in the
+next-year-terms email). The three copies are the **renewal notice** (this pass), the
+**next-year-terms email** (`membership_next_year_save`, 2026-09-16) and the **renewal pass itself**
+(pass 1, which actually charges). **All three must move together** — an earlier draft of this pass
+quoted a different figure than pass 1 would charge, which was caught in review before deploy.
+Quoting a renewal price the system then does not charge is the worst failure this feature has
+available to it. Gotcha **#506**.
 
 There is **no per-plan Stripe-mode guard** on this pass, matching renewals/waive/arrears-clear: it
 touches no Stripe object. Email sandboxing is handled the one way it is everywhere else —
@@ -534,6 +556,66 @@ notice is only useful once the frontend is deployed** (gotcha #333).
 `status='active'`, no notice pass touches it (the window filters on `auto_renew`), no bell fires,
 and the schedule simply runs out. Nobody is told — not the member, not an admin. Closing that
 needs its own decision about what "lapsed" should mean; it was named this session and left alone.
+
+## Edit next year's terms — amount, credit, and TYPE (2026-09-16, v856)
+
+**This is the tool for a tier change at renewal**, and the question that produced it was
+*"how do I downgrade Scott Burch 58145 from Accelerator to Catalyst at his 2026-10-15 renewal?"*
+(plan 58, monthly on the 10th). The answer: **Edit next year's terms IS the tool.** The renewal
+pass bills the new year at `(next_year_amount ?? annual_amount) − next_year_credit_note` and is
+**tier-blind** — it charges the number, whatever the member is called.
+
+> **Why Eric Restrepo needed cancel + restart (plan 48 → 76) and Scott does not:** Eric's
+> `auto_renew` was OFF at his renewal date, so the plan **lapsed dark** (#333 — the gap named
+> above) and there was no next year to edit. A live `auto_renew` plan never needs that surgery.
+
+**`membership_next_year_save`** (AUTH, superadmin, accounting tab) now accepts a third field:
+
+| Field | Behaviour |
+|---|---|
+| `next_year_amount` | > 0, required on a non-clear save |
+| `next_year_credit_note` | ≥ 0 |
+| `next_year_member_type` | trimmed; **> 80 chars → 400**; empty → stored NULL |
+| `clear: true` | nulls **all three** and returns `{ ok, cleared: true }` — **no email** |
+
+Response on a non-clear save: `{ ok: true, email: "drafted" | false, email_error? }`.
+**A true `"sent"` cannot be reported** — `draftGmail` does not surface `maybeSendDraft`'s result.
+Accepted; the template is Draft mode anyway.
+
+**Every non-clear save drafts `MEMBERSHIP_next_year_terms` to the member** (template **272**,
+pipeline `MEMBER_MEMBERSHIP_FEES`, Draft mode, migration
+`20260916130000_membership_next_year_member_type.sql`). Tokens: `[First Name]` `[Member Name]`
+`[Renewal Date]` `[Next Member Type]` `[Billing Frequency]` `[Renewal Terms]`.
+`[Renewal Terms]` uses **the same arithmetic and the same `fmtMoney`** as the renewal notice —
+see the three-copies warning above. Recipients mirror template 212: **To member · Cc
+tvaldes@elitert.com, rhopson@elitert.com · Bcc aanderson@elitert.com, platham@elitert.com**.
+The whole email block is **fail-soft**: the terms are already saved when it runs, so a Gmail or
+template problem is reported in the response and rendered as an **amber** line on screen, never
+as an error.
+
+**The renewal pass (sweep section 1) consumes the type.** After the plan update lands, if
+`next_year_member_type` differs from `members.member_type` it updates the member and inserts a
+`member_type_history` row (`{old_type, new_type, changed_by: 'membership-renewal-sweep'}`).
+That block sits **LAST and inside its own try/catch, after the money commit** — a failed type
+flip is logged for a human and **never aborts a renewal**. All three next-year fields are cleared
+by the same update that rolls the year.
+
+**Frontend** (`MembershipFeesPanel.jsx`): a **"Member type from renewal"** select beside the two
+money boxes — options from `MEMBER_TYPES` on the advisor panel and `ACCOUNTANT_TYPES` on the
+accountant panel (both arrays **moved verbatim** out of `MembersPanel.jsx` into the new
+`src/components/shared/memberTypes.js`; `category` is threaded
+`MembershipFeesPanel → MembersSection → PlanCard`). It defaults to the member's current type, and
+a stored legacy/retired value is prepended so it never renders blank. The button reads
+**"Save & email member"**, the helper line says the email lands in Gmail Drafts, and the row
+summary appends `· <type>` after the next-year figures plus `· Sandbox` when `plan.sandbox`.
+`templateMeta` gained the catalogue row and the "Payment link emails" chip gained
+`MEMBERSHIP_next_year_terms`.
+
+> ⚠️ **FLAGGED, NOT BUILT: a renewal notice already sent is NOT re-sent when next-year terms
+> change afterwards.** `renewal_notice_for` is stamped once per renewal, so if the 30-day notice
+> has gone out quoting the OLD figure and someone then edits next year's terms, the member has a
+> correct new-terms email and a stale notice, and nothing reconciles them. **Scott Burch's notice
+> quoted $12,500** — telling him the new figure is a human job.
 
 ## Pause Membership Payments (added 2026-08-04, v702–v703)
 
