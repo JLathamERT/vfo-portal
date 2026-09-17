@@ -35,7 +35,7 @@ Run these instead of believing any version/tag/count written anywhere. Expected 
 #    Re-stamp these THREE lines AFTER wrap-up Part 4D, not during Part 1: the
 #    version and tag do not exist yet when the hub is written (#408).
 cd C:\vfo-react;          git tag -l 'live-*'         --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-16 → live-198-member-contacts-planner-mirror)
-cd C:\vfo-edge-functions; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-16 → backend-good-2026-09-16-v857)
+cd C:\vfo-edge-functions; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-17 → backend-good-2026-09-17-v859)
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
 #    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-09-17 → 6 + 501 = 507, UNMOVED — the Petrus tax branch added no action, only handler bodies)
