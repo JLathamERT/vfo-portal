@@ -5,6 +5,7 @@ import { Skeleton, ClientsListSkeleton, TrainingTrackSkeleton, CoachingMeetingsS
 import { TrackHero, PhaseBadge } from '../shared/TrackKit'
 import { countedTasks, countedDone, phaseState, isPositiveStatus, isTrackStopped, planStatusLabel, STATUS_STOPPED, STATUS_NOT_APPLICABLE } from '../shared/trainingStatus'
 import { isTrackerTask } from '../shared/trackerSteps'
+import TaxIntakeForm from './TaxIntakeForm'
 
 // Group a phase's tasks so each section header owns the contiguous sub-steps beneath it,
 // letting the UI enclose the group and keep following standalone tasks visually separate.
@@ -23,6 +24,11 @@ const groupTasks = (list) => {
   }
   return nodes
 }
+
+// ANY member may start a tax client (decision 2026-09-17): this program is
+// always visible and its Clients tab renders even with no enrollment row, which
+// the first successful intake creates.
+const TAX_PROGRAM_NAME = 'VFO Tax Planning'
 
 const PROGRAMS = [
   { key: 'holistic', name: 'VFO Holistic Planning' },
@@ -159,6 +165,16 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
     return enrollments.find(e => e.programs?.name === programName) || null
   }
 
+  // The FIRST tax intake creates the member's program-4 enrollment server-side,
+  // so the tab has to re-read them or it keeps rendering the enrollment-less
+  // (empty) Clients view over a list that now exists.
+  async function refreshEnrollments() {
+    try {
+      const d = await callApi('msm_load_enrollments', { member_number: member.member_number })
+      setEnrollments(d.enrollments || [])
+    } catch (err) { console.error(err) }
+  }
+
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
   const msmCount = meetings.filter(m => m.meeting_type === 'MSM Meeting').length
@@ -221,7 +237,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
           {PROGRAMS.map(p => {
             const dbProgram = programs.find(prog => prog.name === p.name)
             if (!dbProgram) return null
-            const isEnabled = enabledPrograms.some(e => e.program_id === dbProgram.id)
+            const isEnabled = p.name === TAX_PROGRAM_NAME || enabledPrograms.some(e => e.program_id === dbProgram.id)
             if (!isEnabled) return null
             const tabKey = { holistic: 'msm_holistic', partnership: 'msm_partnership', tax: 'msm_tax', coaching: 'msm_coaching', standard: 'msm_standard' }[p.key]
             return (
@@ -271,7 +287,8 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
   if (activeProgramKey) {
     const p = PROGRAMS.find(p => p.key === activeProgramKey)
     const dbProgram = programs.find(prog => prog.name === p?.name)
-    const isEnabled = dbProgram && enabledPrograms.some(e => e.program_id === dbProgram.id)
+    const isTaxProgram = p?.name === TAX_PROGRAM_NAME
+    const isEnabled = dbProgram && (isTaxProgram || enabledPrograms.some(e => e.program_id === dbProgram.id))
 
     if (!isEnabled) return (
       <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--vfo-muted)' }}>
@@ -284,12 +301,14 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 
     return (
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
-        {!enrollment
+        {(!enrollment && !isTaxProgram)
           ? <>
               <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em', fontSize: '22px', color: 'var(--vfo-ink)', marginBottom: '20px' }}>{p.name}</div>
               <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>You are not yet enrolled in this program.</div>
             </>
-          : <MemberEnrolledView enrollment={enrollment} program={dbProgram} member={member} />
+          // Tax Planning with no enrollment still renders: an empty Clients tab
+          // with the Add button, which is what creates the enrollment.
+          : <MemberEnrolledView enrollment={enrollment || null} program={dbProgram} member={member} onEnrollmentsChanged={refreshEnrollments} />
         }
       </div>
     )
@@ -300,7 +319,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 
 
 
-function MemberEnrolledView({ enrollment, program, member }) {
+function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged = null }) {
   const isCoaching = program.name === 'Advanced Coaching'
   const isStandard = program.name === 'Standard Coaching'
   // Standard Coaching mirrors Advanced Coaching minus the Renewal tab.
@@ -319,8 +338,8 @@ function MemberEnrolledView({ enrollment, program, member }) {
         <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>Program</div>
         <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>{program.name}</div>
         <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span>Joined {enrollment.date_enrolled ? enrollment.date_enrolled.split('T')[0] : '—'}</span>
-          {!isCoachingLike && enrollment.program_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[enrollment.program_status] || 'var(--vfo-faint)', flexShrink: 0 }} />{enrollment.program_status}</span></>}
+          <span>Joined {enrollment?.date_enrolled ? enrollment.date_enrolled.split('T')[0] : '—'}</span>
+          {!isCoachingLike && enrollment?.program_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[enrollment.program_status] || 'var(--vfo-faint)', flexShrink: 0 }} />{enrollment?.program_status}</span></>}
         </div>
       </div>
       <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px' }}>
@@ -356,7 +375,7 @@ function MemberEnrolledView({ enrollment, program, member }) {
         />
       )}
       {activeTab === 'training' && <MemberTrainingView enrollment={enrollment} program={program} />}
-      {activeTab === 'clients' && <MemberClientsView enrollment={enrollment} member={member} program={program} />}
+      {activeTab === 'clients' && <MemberClientsView enrollment={enrollment} member={member} program={program} onEnrollmentsChanged={onEnrollmentsChanged} />}
       {activeTab === 'meetings' && <MemberCoachingMeetings enrollment={enrollment} eyebrow={program.name} />}
       {activeTab === 'renewal' && <MemberCoachingRenewal enrollment={enrollment} />}
     </div>
@@ -695,20 +714,60 @@ function TrackerEntryCard({ entry, onRemove }) {
   )
 }
 
-function MemberClientsView({ enrollment, member, program }) {
+function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged = null }) {
   const navigate = useNavigate()
   const isPFT = program?.name === 'Partnership Fast Track'
+  const isTax = program?.name === TAX_PROGRAM_NAME
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [contactsMap, setContactsMap] = useState({})
+  // Tax intake (2026-09-17). `mode` drives the whole tab: 'list' is the client
+  // list, 'form' the 37-question form, 'done' the post-submit card.
+  const [mode, setMode] = useState('list')
+  const [intakeClient, setIntakeClient] = useState(null)
+  const [doneMessage, setDoneMessage] = useState('')
 
-  useEffect(() => { loadClients() }, [enrollment.id])
+  useEffect(() => { loadClients() }, [enrollment?.id])
+
+  // Returning from the deposit Checkout (?intake=<id>&paid=1) or arriving from
+  // the Holistic "complete the form" email (?intake_client=<id>). Read once,
+  // then stripped from the URL so a refresh does not replay them.
+  useEffect(() => {
+    if (!isTax) return
+    const qs = new URLSearchParams(window.location.search)
+    const paid = qs.get('intake') && qs.get('paid') === '1'
+    const forClient = qs.get('intake_client')
+    if (!paid && !forClient) return
+    if (paid) {
+      setDoneMessage('Client created. We have emailed you a confirmation.')
+      setMode('done')
+      loadClients()
+      onEnrollmentsChanged?.()
+      // The client is created by the Stripe WEBHOOK, which can land a second or
+      // two after the browser gets back here — one delayed re-read so the list
+      // is right by the time they click through to it.
+      setTimeout(() => { loadClients(); onEnrollmentsChanged?.() }, 4000)
+    } else if (forClient) {
+      callApi('msm_load_member_clients', { member_number: member.member_number })
+        .then(d => {
+          const hit = (d.clients || []).find(c => String(c.id) === String(forClient))
+          if (hit) { setIntakeClient(hit); setMode('form') }
+          else setDoneMessage('We could not find that client on your account. Please contact your VFO team.')
+        })
+        .catch(() => setDoneMessage('We could not open that form. Please try again.'))
+    }
+    const url = new URL(window.location.href)
+    ;['intake', 'paid', 'intake_client'].forEach(k => url.searchParams.delete(k))
+    window.history.replaceState({}, '', url.toString())
+  }, [isTax])
 
   async function loadClients() {
     setLoading(true)
     try {
+      // A member with no program-4 enrollment yet has no clients to list — the
+      // Add button below is what creates both.
       const [data, contactData] = await Promise.all([
-        callApi('msm_load_clients', { enrollment_id: enrollment.id }),
+        enrollment?.id ? callApi('msm_load_clients', { enrollment_id: enrollment.id }) : Promise.resolve({ clients: [] }),
         callApi('load_member_contacts', { member_number: member.member_number }),
       ])
       setClients(data.clients || [])
@@ -717,8 +776,43 @@ function MemberClientsView({ enrollment, member, program }) {
     finally { setLoading(false) }
   }
 
+  function finishIntake(res) {
+    setIntakeClient(null)
+    // tax_plan_id comes back only from the WAIVED new-client path; the Holistic
+    // route stores answers against a client that already exists; link_sent_to is
+    // the "send my client a link" route, where nothing exists yet at all.
+    setDoneMessage(res?.link_sent_to
+      ? `We have drafted the Tax Planning Form link for ${res.link_sent_to}. It will be sent shortly.`
+      : res?.tax_plan_id
+        ? 'Client created. We have emailed you a confirmation.'
+        : 'Thank you — your Tax Planning Form has been received.')
+    setMode('done')
+    loadClients()
+    onEnrollmentsChanged?.()
+  }
+
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
   const statusColors = { pending: '#e06717', active: '#1b9254', declined: '#e74c3c' }
+
+  if (isTax && mode === 'form') return (
+    <TaxIntakeForm
+      member={member}
+      existingClient={intakeClient}
+      onCancel={() => { setIntakeClient(null); setMode('list') }}
+      onDone={finishIntake}
+    />
+  )
+
+  if (isTax && mode === 'done') return (
+    <div style={{ ...sectionStyle, borderColor: 'rgba(27,146,84,0.35)' }}>
+      <div style={{ fontSize: '15px', fontWeight: 700, color: '#1b9254', marginBottom: '8px' }}>Thank you</div>
+      <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>{doneMessage}</div>
+      <button type="button" onClick={() => { setDoneMessage(''); setMode('list') }}
+        style={{ marginTop: '16px', padding: '8px 18px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: 'none', background: '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
+        Back to clients
+      </button>
+    </div>
+  )
 
   if (loading) return <ClientsListSkeleton />
 
@@ -730,13 +824,19 @@ function MemberClientsView({ enrollment, member, program }) {
           <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>TOTAL</div></div>
           <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.filter(c => c.status === 'active').length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>ACTIVE</div></div>
         </div>
+        {isTax && (
+          <button type="button" onClick={() => { setIntakeClient(null); setMode('form') }}
+            style={{ padding: '9px 20px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: 'none', background: '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', whiteSpace: 'nowrap' }}>
+            + Add new tax client
+          </button>
+        )}
       </div>
 
       {clients.length === 0
         ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No {isPFT ? 'accountants' : 'clients'} added yet.</div>
         : clients.map(client => (
           <div key={client.id} style={{ ...sectionStyle, cursor: 'pointer' }}
-            onClick={() => navigate(`/member/client/${client.id}`, { state: { enrollment_id: enrollment.id } })}
+            onClick={() => navigate(`/member/client/${client.id}`, { state: { enrollment_id: enrollment?.id } })}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
             onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -1,0 +1,58 @@
+
+===== SHEET: Sheet1 dims=J2:AP133 max_row=133 max_col=42 images=13 merged=0
+U2=This process should follow on all tax cases  | X2=When a Member instigates this process we need an EMAIL that confirms to all parties what is happening 
+U3=Except
+J5=We need something that distinguishes between VFOS Tax Planning v DIRECT to Tax Planning Team  | U5=using VFO Services Tax Planning process - [x] | Y5=Hello [MEMBER NAME] 
+K6=We need something that confirms that Member has successfully introduced 2 tax clients (THAT HAVE RESULTED IN A GUARANTEED TAX FEE - Completed Step 4)  | U6=with same wording as here  | Y6=Confirmation of new case using Direct to Tax Planning Team process - [CLIENT NAME]
+Y8=We can confirm that we have received your tax planning diagnostic in respect of [CLIENT NAME]. [We have also received the $500 deposit for which we attach a receipt] | AI8=Only where applicable for deposit
+J10=We need to ADD TAX DIAGNOSTIC - so that it can be added via Member Portal   | P10=This also needs adding for all types of tax planning process on the Portal | Y10=In this case, the Tax Planning Team will be [X]. 
+J12=We need to ADD the $500 Deposit feature  | M12=Shared 50:50 Tax Plan Team as a REV SHARE (after we PROCEED) . This is the case for all types of tax planning cases on the Portal | Y12=Thank you. Please do not hesitate to reach out with any questions!
+L13=We need Portal to say that this is N/A for a Member who has already introduced 2 tax clients (THAT HAVE RESULTED IN A TAX FEE)  | Y13=VFO Services - Proactive Coordinator Team
+M14=This is the case irrespective of what type of tax planning process a Member has introduced (THAT HAVE RESULTED IN A GUARANTEED TAX FEE - so once we have a YES at step 4
+P20=LOGO  | R20=LOGO  | U20=LOGO 
+L21=The Member LOGO should be built into Portal generally  | P21=Tax Plan Team  | R21=Member | U21=VFOS | X21=Note this is continued on ALL SLIDES at the bottom (very small logos)
+M22=The Member should have option to remove LOGO
+M23=Where they remove - leave blank space in middle 
+J26=Complete within 2-3 day review - reminder on VFO Portal after [2] days  
+J27=Link to request for more information - reminder 
+J28=On all presentations - including DIRECT to Tax Planning Team
+K29=Presentations btanded with just LOGO for 3 participants
+L30=Tax Planning Team 
+L31=Member
+L32=VFOS
+K35=Presentation needs extra slide to show new BENEFITS 
+L36=This is added after the "double guarantee" slide
+M37=This is ALL tax ROI presentations
+J38=On Direct the PF is MEMBER  | M38=I have a copy of the slide | W38=LOGO  | Y38=LOGO  | AA38=LOGO 
+W39=Tax Plan Team  | Y39=Member | AA39=VFOS
+K40=Tax Agreement needs amending (see notes) - for all tax planning cases
+K42=Upon receipt of ROI fee we
+L43=SEND VFO Portal to Client - with training video 
+M44=Email needs to say this is 12 months 
+M45=Email needs to reference Y2 benefits 
+N46=See detail in additional benefits slide
+M47=See separate notes
+J50=Detailed presentation needs similarly branding  | M50=We just produce standard book-ends
+J54=Once the client decision has been confirmed: | M54=CHARGE $300 for VFO Portal License | P54=Same on all tax planning cases 
+M56=Revenue share in proportion 45:45:10 (after license deducted)
+N58=The rev share invoice needs to reflect this $300 cost (like a disbursement)
+N59=The $300 will need to be transferred to VFO Portal Bank A/C
+N60=Set up accounting for this in VFO Portal 
+O61=Once this is paid - the Member Portal allows them to also do CIQ on that client for 12 months
+M63=On standard VFOS tax cases trhe proportion will typically be 1/3 each - so the license disbursement will be $100 x 3 =$300.00 
+V77=Add an additional sentence at the end of the above paragraph 
+Q78=MEMBER PROFILE - AS JAKE SAID 
+Q79=Note - Member can choose not to be included here  | V79=...... fees for our engagement. In this case your collaborating team are [TAX PLANNING TEAM BUSINESS NAME]
+Q80=Note - if no Member Business Name on Portal use personal name | V80=and [MEMBER BUSINESS NAME] and VFO Services
+Q90=AFTER  Double Guarantee and BEFORE Term & Termination
+Q92=Additional Benefits
+Q94=Replicate the wording on the above slide 
+Q95=Without the check marks 
+Q97=Remove the bullet line that says Annual saving of $2600 etc 
+Q99=Add the following words after the last bullet.
+Q101=Where additional tax planning work is subsequently requested for Q4 (after the 25% discount has been previously provided), that additional tax planning work will be treated as a separate and new engagement.  
+R125=Insert AFTER the line that starts with ..... Following the above confirmation the team ......
+N127=This is now the format for all tax planning process  | R127=Finally, and as previously discussed, we are pleased to confirm that you now have free VFO Portal Membership for the next 12 months (starting today and concluding on [DATE). 
+R129=We attach a link to your VFO Portal together with a video outlining how to get started. If you have any questions regarding this please do not hesitate to reach out to [MEMBER FULL NAME]
+R131=Thank you. We are looking forward to working with you!
+R133=VFO Services - Proactive Coordinator Team

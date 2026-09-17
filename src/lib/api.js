@@ -15,6 +15,15 @@ const SLOW_WRITE_TIMEOUT_MS = 60000
 // auto-retries.
 const LONG_TIMEOUT_ACTIONS = {
   tax_generate_presentation: 90000,
+  // The member tax-intake submit. On the WAIVED branch it creates the
+  // enrollment, client, junction row and tax plan, then drafts the confirmation
+  // Gmail (OAuth + drafts.create) before it answers — comfortably past a cold
+  // start plus 20s. It is a WRITE: isReadAction() does not match it, so a
+  // timeout still never auto-retries.
+  tax_intake_submit: 30000,
+  // Same shape on the client-link route: it mints the token, writes the row and
+  // drafts the TAX_intake_link Gmail (OAuth + drafts.create) before answering.
+  tax_intake_send_link: 30000,
 }
 function timeoutFor(action) {
   if (LONG_TIMEOUT_ACTIONS[action]) return LONG_TIMEOUT_ACTIONS[action]
