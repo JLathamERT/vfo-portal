@@ -3900,6 +3900,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     if (task.status_options === 'tax_refund') {
       const decision = p.status || ''
       const hasPi = !!livePlan?.deposit_payment_intent_id
+      // A waived intake closes the Deposit Paid row as "N/A — No Deposit": there is
+      // nothing to refund, but Proceed must still be offered (the $250 leg then
+      // closes itself as N/A — No Deposit with nothing moved).
+      const depositWaived = (() => {
+        const dt = findStepTask('tax_deposit_pi', 'Deposit Paid')
+        return !!dt && localProgress[dt.id]?.status === 'N/A — No Deposit'
+      })()
       const refunded = livePlan?.deposit_refund_status === 'succeeded'
       const locked = readOnly || plannerMode
       // Always listed, on every surface (Jake, 2026-09-18 — it used to hide from
@@ -3918,7 +3925,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       const showControls = !readOnly && !refunded && !decision && !refundOpen
       // Without a PaymentIntent BOTH buttons are dead, so the deposit is the honest
       // blocker to name — the Proceed chain only becomes the story once it exists.
-      const refundLockHint = !hasPi
+      const refundLockHint = !hasPi && !depositWaived
         ? 'Enter the Stripe deposit payment (Set Up) first'
         : !canProceed ? proceedLockHint : ''
       const trGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }
@@ -3949,8 +3956,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
             <span style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: '1 1 auto', minWidth: '140px' }}>
-              {taskLabel(task)}{!locked && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_deposit_refund', when: 'Refund — deposit refunded with decline reason(s)' }]} context={{ ...emailCtx, 'Refund Reason': reason.trim() || 'your reason(s) — typed on this step' }} /></span>}
-              {taskSubLabel(task) && <div style={taskSubLabelStyle}>{taskSubLabel(task)}</div>}
+              {taskLabel(task)}{!locked && !depositWaived && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_deposit_refund', when: 'Refund — deposit refunded with decline reason(s)' }]} context={{ ...emailCtx, 'Refund Reason': reason.trim() || 'your reason(s) — typed on this step' }} /></span>}
+              {depositWaived
+                ? <div style={taskSubLabelStyle}>No deposit was taken for this client</div>
+                : taskSubLabel(task) && <div style={taskSubLabelStyle}>{taskSubLabel(task)}</div>}
             </span>
             {showControls && !sending && refundLockHint && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
@@ -3974,10 +3983,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           </div>
           {/* Buttons sit on their own line under the step name, indented past the
               dot — inline they squeezed the name into a four-line wrap. */}
-          {showControls && hasPi && (
+          {showControls && (hasPi || depositWaived) && (
             <div style={{ paddingLeft: '18px', paddingBottom: '7px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               {canProceed && <button disabled={sending} onClick={() => saveTask(task.id, 'Proceed', p.completed_date, taxSpecialistId)} style={trGreen}>Proceed</button>}
-              <button disabled={sending} onClick={() => setRefundReasonDrafts(d => ({ ...d, [task.id]: { open: true, reason: '', sending: false } }))} style={trRed}>Refund</button>
+              {hasPi && <button disabled={sending} onClick={() => setRefundReasonDrafts(d => ({ ...d, [task.id]: { open: true, reason: '', sending: false } }))} style={trRed}>Refund</button>}
             </div>
           )}
           {refundOpen && !done && !locked && (
@@ -4043,6 +4052,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     if (task.status_options === 'tax_deposit_pi') {
       const savedPi = livePlan?.deposit_payment_intent_id || ''
       const paidViaPortal = !!taxIntake?.tax_plan_id && String(taxIntake.tax_plan_id) === String(livePlan?.id ?? plan?.id ?? '')
+      // A waived intake (2+ qualifying clients) writes this row as
+      // "N/A — No Deposit": nothing to paste, the step is closed.
+      const depositWaived = p.status === 'N/A — No Deposit'
+      const depositClosed = !!savedPi || depositWaived
       const draftVal = depositPiDrafts[task.id]
       const inputVal = draftVal !== undefined ? draftVal : savedPi
       async function saveDepositPi() {
@@ -4061,9 +4074,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       }
       return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone && savedPi ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone && savedPi ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone && depositClosed ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone && depositClosed ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
           <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
-          {readOnly ? (
+          {depositWaived ? (
+            <span style={neutralChipStyle} title="No deposit was taken: the member already had two qualifying tax clients">N/A — No Deposit</span>
+          ) : readOnly ? (
             savedPi && <span style={{ ...chipStyle('#1b9254'), fontFamily: 'monospace' }}>{savedPi}</span>
           ) : (
             <>
