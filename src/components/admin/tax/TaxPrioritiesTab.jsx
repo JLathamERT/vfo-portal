@@ -429,8 +429,8 @@ const isPlannerEditable = (task) => PLANNER_EDITABLE_TASK_NAMES.has(task?.name)
 // same precedence tax_direct_save_task resolves in), and the remaining sentinels
 // are the steps whose saves go through their own tax_direct_* action rather than
 // a step-row write. A step here escapes the lock wrapper and the member
-// catch-all rows; a step absent here renders inert with the "Handled by the
-// Tax Planning Team" hint. Widening either side alone is a regression.
+// catch-all rows; a step absent here renders inert with the lock hint its
+// OWNER dictates (lockHintFor). Widening either side alone is a regression.
 const DIRECT_EDITABLE_TASKS = {
   // status_options -> required task name (null = any name under that sentinel)
   sentinels: {
@@ -483,7 +483,47 @@ const DIRECT_ACTION_MAP = {
   tax_save_task: 'tax_direct_save_task',
 }
 const actFor = (directMode) => (name) => (directMode ? DIRECT_ACTION_MAP[name] || name : name)
-const DIRECT_LOCK_HINT = 'Handled by the Tax Planning Team'
+
+// Who OWNS each step. Cross-repo contract with utils/tax-plan-steps.ts
+// Step.owner (#339): the backend names Tray / Tracy / Admin / PF (all VFO
+// Services), PLANNER (the Tax Planning Team) and Client. Match by
+// status_options sentinel first, then exact task name — the same precedence
+// isDirectEditable uses. Drives the owner chip beside every step name and the
+// wording of both lock tooltips, so a step whose owner changes server-side must
+// change here in the same breath.
+const STEP_OWNER = {
+  sentinels: {
+    tax_deposit_pi: 'vfos', tax_returns_request: 'vfos', tax_planner_select: 'vfos', tax_refund: 'vfos',
+    tax_3_decision: 'vfos', tax_generate_presentation: 'vfos', tax_presentation_link: 'vfos',
+    enter_details: 'vfos', tax_hlm_confirm: 'vfos', [AMEND_FEE_CODE]: 'vfos', [AMEND_FEE_TAX5_CODE]: 'vfos',
+    tax_continue_stop: 'team', tax_implement_decision: 'team', specialist_select: 'team', tax_dd_implementation: 'team',
+  },
+  names: {
+    'Client risk profile complete': 'vfos', 'ROI Presentation': 'vfos',
+    'Additional information required': 'team', 'Tax planner review complete': 'team',
+    'Detailed tax plan presentation': 'team', 'Client decision 2': 'team',
+    'Assess tax planning opportunities (and enter presentation details)': 'team',
+  },
+}
+// The 'auto' cascade cards (Tax 3 / Tax 5b "AI PC Admin" and the sweep rows) are
+// the system's, not a person's — no chip. The two phases that run one row PER
+// ALLOCATED SPECIALIST are the Tax Planning Team's whatever the row is called,
+// which is what the phase fallback covers (tax-plan-steps.ts pushes PLANNER for
+// every step in both).
+const stepOwner = (task, phase = null) => {
+  const so = task?.status_options
+  if (so === 'auto' || task?.name === 'AI PC Admin') return null
+  if (Object.prototype.hasOwnProperty.call(STEP_OWNER.sentinels, so)) return STEP_OWNER.sentinels[so]
+  if (STEP_OWNER.names[task?.name]) return STEP_OWNER.names[task.name]
+  if (phase?.name === TAX5A_PHASE || phase?.name === 'Tax 6 - Implementation') return 'team'
+  return null
+}
+const lockHintFor = (owner) => (
+  owner === 'team' ? 'Handled by the Tax Planning Team'
+    : owner === 'vfos' ? 'Handled by VFO Services'
+      : owner === 'client' ? 'Completed by the client'
+        : 'Not available on this view'
+)
 
 // The allocation step, matched exactly as its renderer does. It is the one step
 // whose progress status is a PERSON'S NAME rather than a status vocabulary word,
@@ -637,6 +677,29 @@ function LockedIcon({ size = 13 }) {
 
 const lockedHintStyle = { fontSize: '11px', color: 'var(--vfo-muted)', fontWeight: 500 }
 
+// Owner marker beside a step name, on every surface. Deliberately quieter than
+// the status chips it shares a row with: it answers "whose step is this?", it is
+// never a state. Keyed by the LABEL, because the same owner reads differently to
+// each viewer (a VFO Services step is the member's own work on a Direct plan).
+const OWNER_CHIP_COLORS = {
+  You: ['rgba(18,94,204,0.12)', '#125ecc'],
+  Member: ['rgba(18,94,204,0.12)', '#125ecc'],
+  VFOS: ['var(--vfo-tint)', 'var(--vfo-muted)'],
+  'Tax Team': ['rgba(224,103,23,0.12)', '#e06717'],
+  Client: ['rgba(27,146,84,0.12)', '#1b9254'],
+}
+const OWNER_LONG_FORM = { vfos: 'VFO Services', team: 'Tax Planning Team', client: 'The client' }
+function OwnerChip({ owner, label }) {
+  const colors = OWNER_CHIP_COLORS[label]
+  if (!colors) return null
+  const title = label === 'You' ? 'You run this step'
+    : label === 'Member' ? 'The member runs this step'
+      : OWNER_LONG_FORM[owner] || ''
+  return (
+    <span title={title} style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '999px', background: colors[0], color: colors[1], fontWeight: 600, marginLeft: '8px', verticalAlign: 'middle', whiteSpace: 'nowrap', display: 'inline-block' }}>{label}</span>
+  )
+}
+
 // Display-only shortening. The stored program_client_tasks.name values are lookup
 // keys across both repos (planner whitelists, done-math, bell titles, email chips),
 // so they are never edited — only what the row prints.
@@ -721,7 +784,7 @@ function TotalFeeField({ label, hint, value, onChange, split, readOnly = false, 
 // not leave a completed step behind. The amounts' truth is always the plan
 // columns (#286): this card re-reads them from `plan` after every save, and the
 // step's completion is proven by the progress row OR the fee_amended_at_* stamp.
-function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAnswer, act = (n) => n }) {
+function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAnswer, act = (n) => n, nameChip = null }) {
   const [mode, setMode] = useState('')          // '' | 'amend'
   const [totalInput, setTotalInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -788,7 +851,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAn
     <div style={{ borderBottom: '1px solid var(--vfo-border-soft)' }}>
       <div style={rowStyle}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: answered ? green : 'transparent', flexShrink: 0, border: `1.5px solid ${answered ? green : 'var(--vfo-border-mid)'}` }} />
-        <span style={{ fontSize: '13px', color: answered ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+        <span style={{ fontSize: '13px', color: answered ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}{nameChip}</span>
         {answered && !editable ? (
           <span style={chipStyle(green)}>{amended ? 'Amended' : 'Fee kept'}</span>
         ) : editable ? (
@@ -929,6 +992,10 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
   // member + VFOS), auto-computed off the total fee. programType is 'holistic'
   // (Tax Priorities, program_id 1) or 'tax' (Tax Planning, program_id 4).
   const isStrategic = memberCategory === 'strategic_member' && hasStrategicSplit(memberType)
+  // DIRECT plans carry a fixed 45/45/10 preset the server applies on its own
+  // (unit 2 phase 4), so the split controls would only invite a choice that
+  // cannot be made. Display only — nothing about what is submitted changes.
+  const isDirectPlan = plan?.tax_route === 'direct'
 
   const [decision, setDecision] = useState(existing.decision || '')
   const [memberPayingOnBehalf, setMemberPayingOnBehalf] = useState(existing.memberPayingOnBehalf || 'No')
@@ -1241,6 +1308,9 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
 
           <div style={sectionStyle}>
             <div style={{ fontSize: '12px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Revenue split</div>
+            {isDirectPlan ? (
+              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Direct pricing: 45% member / 45% tax planning group / 10% VFO Services (set automatically)</div>
+            ) : (<>
             <div style={{ marginBottom: '10px' }}>
               <label style={labelStyle}>Split type</label>
               {isViewMode || isStrategic
@@ -1286,6 +1356,7 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
                 </div>
               </div>
             )}
+            </>)}
           </div>
 
           {isDironInsley && (
@@ -1536,6 +1607,9 @@ function TaxPricingForm({ submitLabel = 'Submit', onSubmit, onCancel, memberCate
 
       <div style={sectionStyle}>
         <div style={{ fontSize: '12px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>Revenue split</div>
+        {plan?.tax_route === 'direct' ? (
+          <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Direct pricing: 45% member / 45% tax planning group / 10% VFO Services (set automatically)</div>
+        ) : (<>
         <div style={{ marginBottom: '10px' }}>
           <label style={labelStyle}>Split type</label>
           {isStrategic
@@ -1581,6 +1655,7 @@ function TaxPricingForm({ submitLabel = 'Submit', onSubmit, onCancel, memberCate
             </div>
           </div>
         )}
+        </>)}
       </div>
 
       {isDironInsley && (
@@ -3051,6 +3126,25 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   const phasesBeforeSpec = phases.filter(p => ['Set Up', 'Tax 1 - Diagnostic', 'Tax 2 - Deeper Dive', 'Tax 3 - ROI Meeting', 'Tax 4 - Tax Plan Review'].includes(p.name))
   const phasesAfterSpec = phases.filter(p => p.name === 'Tax 6 - Implementation')
 
+  // The owner chip says whose step it is FROM THE VIEWER'S SEAT, so the same
+  // step reads "VFOS" to an admin on a classic plan, "Member" to that admin on a
+  // Direct plan and "You" to the Direct member themselves. The tax-planning-team
+  // steps are the planner's "You" in the planner portal.
+  const adminDirectPlan = !readOnly && !plannerMode && (livePlan || plan)?.tax_route === 'direct'
+  const ownerLabel = (owner, task, phase) => {
+    if (owner === 'client') return 'Client'
+    if (owner === 'team') return plannerMode ? 'You' : 'Tax Team'
+    if (owner !== 'vfos') return null
+    if (!isDirectEditable(task, phase)) return 'VFOS'
+    if (directMode) return 'You'
+    return adminDirectPlan ? 'Member' : 'VFOS'
+  }
+  // Every step row on every surface prints its name through this.
+  const stepName = (task, phase) => {
+    const owner = stepOwner(task, phase)
+    return <>{taskLabel(task)}<OwnerChip owner={owner} label={ownerLabel(owner, task, phase)} /></>
+  }
+
   // Planner lock gate: in the tax-planner portal, every non-whitelisted step
   // renders its normal admin UI (readOnly stays false) but is made inert here —
   // pointer-events off on the body so no control fires, with the not-allowed
@@ -3088,7 +3182,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isRoiBookingStep ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isRoiBookingStep ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-          <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: '1 1 auto', minWidth: '140px' }}>{taskLabel(task)}</span>
+          <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: '1 1 auto', minWidth: '140px' }}>{stepName(task, phase)}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
             <span style={chipStyle(isRoiBookingStep ? '#1b9254' : 'var(--vfo-muted)')}>{skipChip}</span>
           </span>
@@ -3110,7 +3204,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       return (
         <div key={key} title="The client decision for this stage has already been recorded, so the fee can no longer be amended." style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
-          <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: '1 1 auto', minWidth: '140px' }}>{taskLabel(task)}</span>
+          <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: '1 1 auto', minWidth: '140px' }}>{stepName(task, phase)}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
             <span style={chipStyle('var(--vfo-muted)')}>Not applicable</span>
           </span>
@@ -3118,17 +3212,20 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         </div>
       )
     }
-    // The prerequisite gate is an admin's and, on Direct, the member's on the
-    // steps they run. A team step in directMode skips it: its lock is the
-    // "Handled by the Tax Planning Team" row below, not a prerequisite hint.
+    // The prerequisite gate is an admin's and, on Direct, EVERY row's — the
+    // member's own steps and the tax-planning-team steps alike, so the whole
+    // plan reads with one vocabulary instead of team rows saying "Not started"
+    // beside gated rows saying why they cannot run yet. A team step whose
+    // prerequisites are met still falls through to its inert lock wrapper below.
+    // The classic member view (readOnly without directMode) stays exempt.
     const directEditable = directMode && isDirectEditable(task, phase)
-    if ((!readOnly || directEditable) && !alreadyDone) {
+    if ((!readOnly || directMode) && !alreadyDone) {
       const gate = stepGate(task, phase)
       if (gate?.locked) {
         return (
           <div key={key} title={gate.hint} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
-            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: '1 1 auto', minWidth: '140px' }}>{taskLabel(task)}</span>
+            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: '1 1 auto', minWidth: '140px' }}>{stepName(task, phase)}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
               <LockedIcon />
               <span style={lockedHintStyle}>{gate.hint}</span>
@@ -3140,26 +3237,21 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     }
     const node = renderTaskInner(task, phase, taxSpecialistId)
     if (!node) return node
-    // DIRECT: a tax-planning-team step renders its normal (read-only) row made
-    // inert exactly like the planner lock (#263), headed by the same icon + hint
-    // markup the prerequisite gate uses, so the two locks read identically
-    // (decision 10). Ahead of the planner wrapper: the two modes never overlap.
+    // DIRECT: a step the member does not run renders its normal (read-only) row
+    // made inert exactly like the planner lock (#263). The tooltip names the
+    // step's OWNER — "Handled by the Tax Planning Team" was false on the VFO
+    // Services steps (Deposit Paid is stamped by the intake). Ahead of the
+    // planner wrapper: the two modes never overlap.
     if (directMode && !directEditable) {
       return (
-        <div key={key} title={DIRECT_LOCK_HINT} style={{ cursor: 'not-allowed' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingTop: '7px' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right', marginLeft: 'auto' }}>
-              <LockedIcon />
-              <span style={lockedHintStyle}>{DIRECT_LOCK_HINT}</span>
-            </span>
-          </div>
+        <div key={key} title={lockHintFor(stepOwner(task, phase))} style={{ cursor: 'not-allowed' }}>
           <div style={{ pointerEvents: 'none' }}>{node}</div>
         </div>
       )
     }
     if (!plannerMode || isPlannerEditable(task)) return node
     return (
-      <div key={key} style={{ cursor: 'not-allowed' }}>
+      <div key={key} title={lockHintFor(stepOwner(task, phase))} style={{ cursor: 'not-allowed' }}>
         <div style={{ pointerEvents: 'none' }}>{node}</div>
       </div>
     )
@@ -3188,6 +3280,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           readOnly={memberLocked}
           onAnswer={(st) => saveTask(task.id, st)}
           act={act}
+          nameChip={<OwnerChip owner={stepOwner(task, phase)} label={ownerLabel(stepOwner(task, phase), task, phase)} />}
         />
       )
     }
@@ -3201,7 +3294,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         return (
           <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: submitted ? green : 'transparent', flexShrink: 0, border: `1.5px solid ${submitted ? green : 'var(--vfo-border-mid)'}` }} />
-            <span style={{ fontSize: '13px', color: submitted ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+            <span style={{ fontSize: '13px', color: submitted ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
             {submitted
               ? <span style={chipStyle(green)}>Submitted</span>
               : <span style={neutralChipStyle}>Not started</span>}
@@ -3218,7 +3311,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           <div key={key} style={{ borderBottom: '1px solid var(--vfo-border-soft)', padding: '7px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexWrap: 'wrap' }} onClick={() => setExpanded(prev => ({ ...prev, [expandKey]: !prev[expandKey] }))}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: green, flexShrink: 0, border: `1.5px solid ${green}` }} />
-              <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{taskLabel(task)}</span>
+              <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{stepName(task, phase)}</span>
               <span style={chipStyle(green)}>Submitted</span>
               {!isEditing && (
                 <button onClick={e => { e.stopPropagation(); setExpanded(prev => ({ ...prev, [expandKey]: true, [editKey]: true })) }} style={{ padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Edit</button>
@@ -3255,7 +3348,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         <div key={key} style={{ borderBottom: '1px solid var(--vfo-border-soft)', padding: '7px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
-            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
             <button onClick={() => setExpanded(prev => ({ ...prev, [expandKey]: !prev[expandKey] }))} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600 }}>Enter Details</button>
             <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}></span>
           </div>
@@ -3359,7 +3452,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         <div key={key} style={{ borderBottom: '1px solid var(--vfo-border-soft)', padding: '7px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: generated ? green : 'transparent', flexShrink: 0, border: `1.5px solid ${generated ? green : 'var(--vfo-border-mid)'}` }} />
-            <span style={{ fontSize: '13px', color: generated ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: '1 1 auto', minWidth: '140px' }}>{taskLabel(task)}</span>
+            <span style={{ fontSize: '13px', color: generated ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: '1 1 auto', minWidth: '140px' }}>{stepName(task, phase)}</span>
             {generated ? (
               <>
                 <span style={chipStyle(green)}>Generated — {formatStamp(generatedAt)}</span>
@@ -3397,7 +3490,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           return (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: decisionColor, flexShrink: 0 }} />
-              <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{taskLabel(task)}</span>
+              <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{stepName(task, phase)}</span>
               <span style={chipStyle(decisionColor)}>{decisionLabel}</span>
               <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>
             </div>
@@ -3407,7 +3500,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           return (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
-              <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+              <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
               <span style={neutralChipStyle}>Not started</span>
               <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}></span>
             </div>
@@ -3423,7 +3516,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           <div key={key} style={{ borderBottom: '1px solid var(--vfo-border-soft)', padding: '7px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: isDone ? 'pointer' : 'default', flexWrap: 'wrap' }} onClick={() => isDone && setExpanded(prev => ({ ...prev, [formExpandKey]: !prev[formExpandKey] }))}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? decisionColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? decisionColor : 'var(--vfo-border-mid)'}` }} />
-              <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}<span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_agreementsent|Yes', when: 'If Yes — congratulations + agreement signing link' }, { name: 'TAX_decision_undecided', when: 'If Undecided — options email to the client' }, { name: 'TAX_decision_decline', when: 'If Decline' }, { name: 'TAX_decision_reminder', when: 'Automatic reminder if the Undecided email gets no response (2 business days)' }]} context={emailCtx} /></span></span>
+              <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}<span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_agreementsent|Yes', when: 'If Yes — congratulations + agreement signing link' }, { name: 'TAX_decision_undecided', when: 'If Undecided — options email to the client' }, { name: 'TAX_decision_decline', when: 'If Decline' }, { name: 'TAX_decision_reminder', when: 'Automatic reminder if the Undecided email gets no response (2 business days)' }]} context={emailCtx} /></span></span>
               {isDone && <span style={chipStyle(decisionColor)}>{decisionLabel}</span>}
               {isDone && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
               {isDone && <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isFormShown ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
@@ -3457,7 +3550,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       if (!enterDetailsStatus || !enterDetailsStatus.startsWith('Completed')) return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
-          <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+          <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
           <span style={neutralChipStyle}>Waiting for details</span>
           <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}></span>
         </div>
@@ -3543,7 +3636,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         <div key={key} style={{ padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: aipcDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${aipcDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
           </div>
           <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
             {decision === 'No' && autoStep('Decline email sent to client', true)}
@@ -3668,7 +3761,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0, border: `1.5px solid ${dotBorder}` }} />
-          <span style={{ fontSize: '13px', color: (done || scheduled) ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_presentation_link', when: 'Automatic — ROI meeting email drafted on the scheduled date' }]} context={emailCtx} /></span>}</span>
+          <span style={{ fontSize: '13px', color: (done || scheduled) ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_presentation_link', when: 'Automatic — ROI meeting email drafted on the scheduled date' }]} context={emailCtx} /></span>}</span>
           {done ? (
             <span style={chipStyle('#1b9254')}>Email drafted for {formatDate(sendDate)}</span>
           ) : memberLocked ? (
@@ -3746,7 +3839,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         <div key={key}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0, border: `1.5px solid ${dotBorder}` }} />
-            <span style={{ fontSize: '13px', color: (done || requestedAt) ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: (plan.program_id || 1) === 1 ? 'TAX_request_returns|holistic' : 'TAX_request_returns', when: 'Asks the client to upload tax returns via a secure link' }]} context={emailCtx} /></span>}</span>
+            <span style={{ fontSize: '13px', color: (done || requestedAt) ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: (plan.program_id || 1) === 1 ? 'TAX_request_returns|holistic' : 'TAX_request_returns', when: 'Asks the client to upload tax returns via a secure link' }]} context={emailCtx} /></span>}</span>
             {done ? (
               <span style={chipStyle('#1b9254')}>{requestedAt ? `Returns received — ${formatStamp(receivedAt)}` : 'Returns on file'}</span>
             ) : memberLocked ? (
@@ -3802,7 +3895,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: savedDate ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${savedDate ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-          <span style={{ fontSize: '13px', color: savedDate ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_highlevelmeeting_confirm|Yes', when: 'High-level meeting confirmation' }]} context={emailCtx} /></span>}</span>
+          <span style={{ fontSize: '13px', color: savedDate ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_highlevelmeeting_confirm|Yes', when: 'High-level meeting confirmation' }]} context={emailCtx} /></span>}</span>
           {savedDate && !formOpen ? (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={chipStyle('#1b9254')}>Confirmation sent — {confirmedLabel}</span>
@@ -3853,7 +3946,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: implDecision ? decisionColor : 'transparent', flexShrink: 0, border: `1.5px solid ${implDecision ? decisionColor : 'var(--vfo-border-mid)'}` }} />
-          <span style={{ fontSize: '13px', color: implDecision ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_implementdecision|Undecided', when: 'Sent when you click "Send implementation decision email" — Proceed / Do not proceed buttons' }, { name: 'TAX_implementdecision|Not Implementing', when: 'Sent if the client clicks "No - Do not proceed"' }, { name: 'TAX_implementdecision|Reminder', when: 'Automatic reminder if no response (2 business days)' }]} context={emailCtx} /></span>}</span>
+          <span style={{ fontSize: '13px', color: implDecision ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_implementdecision|Undecided', when: 'Sent when you click "Send implementation decision email" — Proceed / Do not proceed buttons' }, { name: 'TAX_implementdecision|Not Implementing', when: 'Sent if the client clicks "No - Do not proceed"' }, { name: 'TAX_implementdecision|Reminder', when: 'Automatic reminder if no response (2 business days)' }]} context={emailCtx} /></span>}</span>
           {implDecision ? (
             <span style={chipStyle(decisionColor)}>{decisionLabel}</span>
           ) : (
@@ -3892,7 +3985,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         return (
           <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
-            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
             <span style={neutralChipStyle}>Waiting for decision</span>
           </div>
         )
@@ -3932,7 +4025,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         <div key={key} style={{ padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: aipcDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${aipcDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
           </div>
           <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
             {implDecision === 'Not Implementing' && autoStep('Decline email sent to client', emailSentFor === 'Not Implementing')}
@@ -4008,7 +4101,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: autoIsDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${autoIsDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-          <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{taskLabel(task)}</span>
+          <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{stepName(task, phase)}</span>
           <span style={autoIsDone ? chipStyle('#1b9254') : neutralChipStyle}>{autoIsDone ? 'Completed' : 'Not completed'}</span>
           {autoIsDone && p.status && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{autoIsDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
         </div>
@@ -4078,7 +4171,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
             <span style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: '1 1 auto', minWidth: '140px' }}>
-              {taskLabel(task)}{!locked && !depositWaived && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_deposit_refund', when: 'Refund — deposit refunded with decline reason(s)' }]} context={{ ...emailCtx, 'Refund Reason': reason.trim() || 'your reason(s) — typed on this step' }} /></span>}
+              {stepName(task, phase)}{!locked && !depositWaived && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_deposit_refund', when: 'Refund — deposit refunded with decline reason(s)' }]} context={{ ...emailCtx, 'Refund Reason': reason.trim() || 'your reason(s) — typed on this step' }} /></span>}
               {depositWaived
                 ? <div style={taskSubLabelStyle}>No deposit was taken for this client</div>
                 : taskSubLabel(task) && <div style={taskSubLabelStyle}>{taskSubLabel(task)}</div>}
@@ -4152,7 +4245,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     if (memberLocked && !isAllocTask(task)) return (
       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-        <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+        <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
         {isDone
           ? <span style={chipStyle(statusColor)}>{p.status}</span>
           : <span style={neutralChipStyle}>Not started</span>
@@ -4165,7 +4258,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     if (task.status_options === 'enter_details') return (
       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-        <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+        <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
         {isDone
           ? <span style={chipStyle('#1b9254')}>Completed</span>
           : <button onClick={() => saveTask(task.id, 'Completed', p.completed_date, taxSpecialistId)} style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600 }}>Enter details</button>
@@ -4200,7 +4293,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone && depositClosed ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone && depositClosed ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-          <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+          <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
           {depositWaived ? (
             <span style={neutralChipStyle} title="No deposit was taken: the member already had two qualifying tax clients">N/A — No Deposit</span>
           ) : readOnly ? (
@@ -4293,7 +4386,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         <div key={key} style={{ borderBottom: '1px solid var(--vfo-border-soft)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-            <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_readyfortax3|Yes', when: 'If the meeting is booked' }, { name: 'TAX_readyfortax3|No', when: 'If declined' }]} context={emailCtx} /></span>}</span>
+            <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_readyfortax3|Yes', when: 'If the meeting is booked' }, { name: 'TAX_readyfortax3|No', when: 'If declined' }]} context={emailCtx} /></span>}</span>
             {dateOpen && !memberLocked
               ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <input type="date" value={draft.date || ''} onChange={e => setDraft({ date: e.target.value })} style={tdInput} />
@@ -4445,7 +4538,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         <div key={key} style={{ borderBottom: '1px solid var(--vfo-border-soft)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: adminDecision ? decisionColor : 'transparent', flexShrink: 0, border: `1.5px solid ${adminDecision ? decisionColor : 'var(--vfo-border-mid)'}` }} />
-            <span style={{ fontSize: '13px', color: adminDecision ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_postreview|Continue', when: 'If Continue — green Confirm / red Refund buttons (client must click Confirm)' }, { name: 'TAX_postreview|Undecided', when: 'If Undecided — Proceed / Refund buttons' }, { name: 'TAX_postreview|Reminder', when: 'Automatic reminder if no response (2 business days)' }]} context={emailCtx} /></span>}</span>
+            <span style={{ fontSize: '13px', color: adminDecision ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_postreview|Continue', when: 'If Continue — green Confirm / red Refund buttons (client must click Confirm)' }, { name: 'TAX_postreview|Undecided', when: 'If Undecided — Proceed / Refund buttons' }, { name: 'TAX_postreview|Reminder', when: 'Automatic reminder if no response (2 business days)' }]} context={emailCtx} /></span>}</span>
             {adminDecision ? (
               <span style={chipStyle(decisionColor)}>{adminDecision}</span>
             ) : (
@@ -4575,7 +4668,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         return (
           <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isAllocated ? green : 'transparent', flexShrink: 0, border: `1.5px solid ${isAllocated ? green : 'var(--vfo-border-mid)'}` }} />
-            <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{taskLabel(task)}</span>
+            <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{stepName(task, phase)}</span>
             {/* The member view has no roster, so the team member's name rides on
                 the plan payload (tax_load_plans.team_member_name). */}
             {(selectedTeamMember || (teamMemberId != null && livePlan?.team_member_name)) && (
@@ -4622,7 +4715,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isAllocated ? green : 'transparent', flexShrink: 0, border: `1.5px solid ${isAllocated ? green : 'var(--vfo-border-mid)'}` }} />
-          <span style={{ fontSize: '13px', color: isAllocated ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+          <span style={{ fontSize: '13px', color: isAllocated ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
           {selectedTeamMember && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               <span style={teamMemberChip}>{teamMemberName} — Team Member</span>
@@ -4755,7 +4848,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         <div key={key}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-            <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
+            <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
             <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)' }}>
               <option value="">-- Select --</option>
               {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
@@ -4842,7 +4935,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     return (
       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap', opacity: isGreyedOut ? 0.3 : 1, pointerEvents: isGreyedOut ? 'none' : undefined }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-        <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}{greyNote && <span style={{ fontSize: '11px', color: '#e06717', fontWeight: 600, marginLeft: '8px' }}>({greyNote})</span>}</span>
+        <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{greyNote && <span style={{ fontSize: '11px', color: '#e06717', fontWeight: 600, marginLeft: '8px' }}>({greyNote})</span>}</span>
         <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)' }}>
           <option value="">-- Select --</option>
           {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
