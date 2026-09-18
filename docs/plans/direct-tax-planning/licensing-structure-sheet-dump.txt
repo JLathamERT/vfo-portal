@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "C:\Users\jakel_fjetgbx\AppData\Local\Temp\claude\C--vfo-edge-functions--claude-worktrees-vfo-session-setup-96fda1\b7b7fd0e-89c3-4f98-96ed-a15625a1ff4e\scratchpad\dump_xlsx.py", line 3, in <module>
+    wb = openpyxl.load_workbook(p, data_only=True)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jakel_fjetgbx\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\reader\excel.py", line 346, in load_workbook
+    reader = ExcelReader(filename, read_only, keep_vba,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jakel_fjetgbx\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\reader\excel.py", line 123, in __init__
+    self.archive = _validate_archive(fn)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jakel_fjetgbx\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\reader\excel.py", line 95, in _validate_archive
+    archive = ZipFile(filename, 'r')
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jakel_fjetgbx\AppData\Local\Programs\Python\Python312\Lib\zipfile\__init__.py", line 1336, in __init__
+    self.fp = io.open(file, filemode)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'C:SERSJAKEL_FJETGBXDOWNLOADSicensing strucure for portal & amends to fc and vfo-a members .xlsx'

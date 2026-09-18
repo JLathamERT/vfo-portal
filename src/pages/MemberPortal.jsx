@@ -26,8 +26,14 @@ export default function MemberPortal() {
   const session = getSession()
   usePortalTheme()
   const [activeTab, setActiveTab] = useState(() => {
+    const qs = new URLSearchParams(window.location.search)
     // Land returning Stripe buyers (/member?gc_success=1) on the GC Marketplace.
-    if (new URLSearchParams(window.location.search).get('gc_success') === '1') return 'gc'
+    if (qs.get('gc_success') === '1') return 'gc'
+    // Tax intake (2026-09-17): the $500 deposit Checkout returns to
+    // ?tab=msm_tax&intake=<id>&paid=1, and the Holistic "complete the form"
+    // email opens ?tab=msm_tax&intake_client=<id>. Either one lands on the Tax
+    // Planning tab regardless of the tab the member last used.
+    if (qs.get('intake') || qs.get('intake_client')) return 'msm_tax'
     return sessionStorage.getItem('memberActiveTab') || 'profile'
   })
   const [showSettings, setShowSettings] = useState(false)
@@ -90,11 +96,16 @@ export default function MemberPortal() {
 
   if (!session) return null
 
+  const ALWAYS_VISIBLE_PROGRAM = 'VFO Tax Planning'
   const PROGRAM_KEYS = { 'VFO Holistic Planning': 'msm_holistic', 'Partnership Fast Track': 'msm_partnership', 'VFO Tax Planning': 'msm_tax', 'Advanced Coaching': 'msm_coaching', 'Standard Coaching': 'msm_standard' }
   // Canonical program order — matches the admin MSM Home program-toggle list.
   const PROGRAM_ORDER = ['VFO Holistic Planning', 'Partnership Fast Track', 'VFO Tax Planning', 'Advanced Coaching', 'Standard Coaching']
+  // ANY member may start a tax client (decision 2026-09-17), so VFO Tax Planning
+  // is always offered — its Clients tab carries the "Add new tax client" button
+  // and the first successful intake is what creates the enrollment. Gating for
+  // every OTHER program is unchanged: they still need a member_program_enabled row.
   const orderedEnabledPrograms = allPrograms
-    .filter(p => enabledPrograms.some(e => e.program_id === p.id))
+    .filter(p => p.name === ALWAYS_VISIBLE_PROGRAM || enabledPrograms.some(e => e.program_id === p.id))
     .sort((a, b) => {
       const ia = PROGRAM_ORDER.indexOf(a.name), ib = PROGRAM_ORDER.indexOf(b.name)
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib)

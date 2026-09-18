@@ -111,7 +111,7 @@ Two **new ERT webhook endpoints** (live + sandbox) were added on the **same func
 Stripe handles **nine** distinct payment flows in this system:
 
 1. **MAP1 service payments** — recurring quarterly or one-time payment for the VFO membership engagement. Customers, Checkout Sessions, PaymentIntents, and Transfers (revenue share to advisors).
-2. **Tax Planning payments** — retainer (Tax 3) + implementation off-session charge (Tax 5). Routed by `metadata.payment_kind` in `retainer` / `implementation`. **"Off-session" describes the charge, not the trigger: as of 2026-08-14 the implementation fee fires from exactly ONE runtime call site — the client's own Proceed click on `/tax-implement-decide` (`actions/tax/implement-final-decision.ts`). The nightly sweep's 24h auto-charge tier is deleted; no cron, sweep or timer charges this fee.** See [../flows/tax-planning.md](../flows/tax-planning.md).
+2. **Tax Planning payments** — retainer (Tax 3) + implementation off-session charge (Tax 5). Routed by `metadata.payment_kind` in `retainer` / `implementation`. **Plus, since 2026-09-17, the $500 tax intake DEPOSIT** (`payment_kind=tax_intake_deposit`), minted from the member portal's intake form **before any client or Stripe customer exists** — see "Tax intake deposit" below and [../flows/tax-intake.md](../flows/tax-intake.md). **"Off-session" describes the charge, not the trigger: as of 2026-08-14 the implementation fee fires from exactly ONE runtime call site — the client's own Proceed click on `/tax-implement-decide` (`actions/tax/implement-final-decision.ts`). The nightly sweep's 24h auto-charge tier is deleted; no cron, sweep or timer charges this fee.** See [../flows/tax-planning.md](../flows/tax-planning.md).
 3. **Advisor Onboarding payments** — one-time charge for advisor's chosen plan combo (dynamic $4,000–$8,600 based on vfo_ft / pft / corporate checkbox picks at BoldSign sign time). `setup_future_usage=off_session` so the card is saved for 6-month renewal review (no auto-renew cron yet). See `ADVISOR_ONBOARDING_RESUMPTION.md` at repo root.
 4. **Accountant Onboarding payments** — one-time charge for accountant's plan combo (dynamic $2,000 / $2,600 / $4,000 / $4,600 based on partnership choice + corporate add-on). `setup_future_usage=off_session` so the card is saved for 6-month renewal review (no auto-renew cron yet). See `ACCOUNTANT_ONBOARDING_RESUMPTION.md` at repo root.
 5. **PIP Meetings purchases** — one-shot purchase for Tax Planning or N Additional PIP meetings. See [../flows/pip-meetings.md](../flows/pip-meetings.md).
@@ -127,11 +127,11 @@ All nine flows route through the same webhook **URL** (the `vfo-admin-api` funct
 | Field | MAP1 | Tax | Advisor | Accountant | PIP | GC | Specialist | Card-update |
 |---|---|---|---|---|---|---|---|---|
 | `metadata.pipeline` | (none) | `TAX` | `ADVISOR_ONBOARDING` | `ACCOUNTANT_ONBOARDING` | `PIP` | (none) | `SPECIALIST_ONBOARDING` | `MAP 1` / `TAX` / `SPECIALIST_LICENSE` (which engagement) |
-| `metadata.payment_kind` | (none — uses `payment_number` for quarterly) | `retainer` / `implementation` | `onboarding` / **`onboarding_deposit`** / **`onboarding_balance`** *(2026-09-04)* | `onboarding` / **`onboarding_deposit`** / **`onboarding_balance`** *(2026-09-04)* | `purchase` | (none — uses `member_number` + `credits`) | `background_check` (+ `bg_type=core\|max`) **or `license`** (`mode=subscription`, $99/mo) | **`card_update`** (`mode=setup`, no charge) |
+| `metadata.payment_kind` | (none — uses `payment_number` for quarterly) | `retainer` / `implementation` / **`tax_intake_deposit`** *(2026-09-17 — the $500 intake deposit; routed by `metadata.intake_id` → `tax_intake_requests`, NO customer)* | `onboarding` / **`onboarding_deposit`** / **`onboarding_balance`** *(2026-09-04)* | `onboarding` / **`onboarding_deposit`** / **`onboarding_balance`** *(2026-09-04)* | `purchase` | (none — uses `member_number` + `credits`) | `background_check` (+ `bg_type=core\|max`) **or `license`** (`mode=subscription`, $99/mo) | **`card_update`** (`mode=setup`, no charge) |
 | `metadata.payment_number` | `1` (P1) / `2-4` (chargescheduled sweep) | — | — | — | — | — | — | — |
 | `metadata.client_id` / `metadata.onboarding_id` | `client_id` | `tax_plan_id` (via `client_tax_plans`) | `onboarding_id` | `onboarding_id` | `priority_track_id` | — | `row_id` (the engagement row) + `token` |
 
-The webhook router uses these fields to pick the right DB table on `checkout.session.completed` and `payment_intent.succeeded`. Fallback chain: MAP1 lookup by `stripe_customer_id` → Tax lookup → Advisor lookup → PIP lookup → Accountant lookup. The **card-update** `mode=setup` branch is matched by `payment_kind=card_update` and routed directly by `metadata.pipeline` + `metadata.row_id` (no customer-id cascade).
+The webhook router uses these fields to pick the right DB table on `checkout.session.completed` and `payment_intent.succeeded`. Fallback chain: MAP1 lookup by `stripe_customer_id` → Tax lookup → Advisor lookup → PIP lookup → Accountant lookup. **The `tax_intake_deposit` session never enters that cascade** — it carries no `customer`, so its `checkout.session.completed` branch is matched on `metadata.payment_kind` + `metadata.intake_id` alone and sits BEFORE the customer-keyed lookups; the four keys (`pipeline`, `payment_kind`, `intake_id`, `member_number`) are stamped on the session AND the PaymentIntent (#473) so a PI-level event cannot be mistaken for a retainer. The **card-update** `mode=setup` branch is matched by `payment_kind=card_update` and routed directly by `metadata.pipeline` + `metadata.row_id` (no customer-id cascade).
 
 **2026-09-04 — the customer-lookup cascade is no longer sufficient on its own for the two onboarding pipelines (#473).** The refundable **Membership Deposit** and the onboarding payment are two collections on the SAME `advisor_onboarding` / `accountant_onboarding` row and the SAME Stripe customer, so the branch is chosen by `payment_kind` rather than by the lookup: `payment_kind` is set on **both** the Checkout Session and the PaymentIntent, because `checkout.session.completed` picks its branch before the PI is ever fetched. A deposit session also carries **`setup_future_usage=off_session`**, which is what lets `automation_<P>_chargebalance` charge the remainder off-session at CEO countersign. The generic first-payment failure resolver **skips both new kinds** — it writes `payment_status`, which belongs to the onboarding payment.
 
@@ -167,6 +167,8 @@ Sandbox switching is per-pipeline and per-action: handlers read `pipeline_sandbo
 | `POST /v1/transfers` | Revenue share payout to member's connected account | line 1463 (`automation_CONTRACT_revshare`) |
 | `POST /v1/transfers` | **SpecRev ERT share** — forwards a line's `ert_share` from the VFO Services balance to ERT's connected account (2026-09-11) | `utils/specialist-revenue-payout.ts` (the ERT loop, after the member loop) |
 | `POST /v1/transfers` | **Manual ERT catch-up** — superadmin-only free-hand transfer for money collected before the ERT share existed (2026-09-11) | `actions/specialist-revenue/ert-transfer.ts` (`specialist_revenue_ert_transfer`) |
+| `POST /v1/checkout/sessions` | **Tax intake deposit** — $500, card only, NO customer (2026-09-17) | `actions/tax/intake-submit.ts` (route A) / `intake-link-submit.ts` (route B) |
+| `POST /v1/transfers` | **Tax intake deposit team share** — $250 of the $500 forwarded to the planner's group on Green/Red Proceed (2026-09-17) | `utils/tax-deposit-team-share.ts` (from `save-task.ts`, `allocate-planner.ts`, `revshare-sweep.ts`) |
 | `GET /v1/accounts/{id}` | **Transfers-capability probe** before any Connect transfer — true only when `capabilities.transfers === 'active'`; never throws. Probed once per request on the ERT leg, and by the manual action | `utils/connect-payout-readiness.ts` `connectTransfersActive` (shared with `automation_CONTRACT_revshare` + `automation_TAX_revshare`) |
 | `POST /v1/charges/<destination_payment>` **with header `Stripe-Account: <ERT acct>`** | Copies an ERT transfer's description + metadata onto the payment Stripe created on **ERT's** side, which is otherwise bare (2026-09-11). Best-effort — never affects payout status | `utils/ert-destination-memo.ts` `stampErtDestinationPayment` |
 
@@ -233,6 +235,37 @@ metadata.credits: <amount>
 ```
 
 No `customer` is attached. Sandbox keys are not honored here — purchases always go to live Stripe.
+
+## Checkout Session shape — Tax intake deposit (2026-09-17)
+
+`tax_intake_submit` (route A, the member pays — [actions/tax/intake-submit.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/tax/intake-submit.ts)) and `tax_intake_link_submit` (route B, the client pays from the public `/tax-intake?token=` page — `intake-link-submit.ts`) mint the same session:
+
+```
+mode: payment
+# NO customer — the client does not exist yet (no clients row, no Stripe customer);
+# route B adds customer_email: <intake.client_email> so the hosted page is prefilled
+payment_method_types: ["card"]                    # card ONLY — no ACH, no check
+line_items[0]:
+  price_data.currency: usd
+  price_data.unit_amount: 50000                   # TAX_INTAKE_DEPOSIT_CENTS, flat — no card-fee gross-up
+  price_data.product_data.name: "VFO Tax Planning Deposit - Client: <First Last> - Member: (<member_number>) <Member Name>"
+success_url: <origin>/member?tab=msm_tax&intake=<id>&paid=1     (route B: <origin>/tax-intake?token=…&paid=1)
+cancel_url:  <origin>/member?tab=msm_tax&intake=<id>&paid=0     (route B: …&paid=0)
+payment_intent_data.description: <same memo>
+metadata AND payment_intent_data.metadata (the same four keys, #473):
+  pipeline:      TAX
+  payment_kind:  tax_intake_deposit
+  intake_id:     <tax_intake_requests.id>
+  member_number: <member_number>
+```
+
+**Where the account is decided:** `loadSandboxConfigForMember(sb, "TAX", memberNumber)` — the **member-keyed** sandbox helper, because no client exists to key on (it is also what forces Test Member 59524 into sandbox for the whole route). Its `stripeAccount` (rule 1, the `TAX` row of `pipeline_sandbox_config.stripe_account` — `'vfos'` today) is **stamped on `tax_intake_requests.stripe_account` at mint and never re-derived (#485)**; the mode lands on `tax_intake_requests.sandbox`. **Be precise about what reads that stamp today: nothing.** The webhook takes `session.payment_intent` straight off the event (no PI expand, so no key needed), and the later $500 refund runs through the EXISTING `automation_TAX_depositrefund`, which resolves the client-keyed `TAX` sandbox config and reads `STRIPE_SECRET_KEY[_SANDBOX]` inline — i.e. the PRIMARY account, which is correct only because `TAX` is `'vfos'`. The stamp is the row's record of where the money went, and the column any future `TAX`→`ert` move would need to start reading (rule 2) before the refund path could follow it. The session id is written back to `stripe_checkout_session_id` (unique) and is what the webhook resolves the row by. **No deposit is minted at all when the member's waiver applies** (two qualifying tax clients) — the row is inserted `waived` and finalized directly.
+
+**Re-submission differs by route.** Route A: every submit inserts a NEW row, and a session-mint failure marks that row `expired` before returning the Stripe error. Route B: the token IS the row — `tax_intake_link_submit` accepts a row in `invited` or `expired` only (anything else is a **409** *"This form has already been submitted"*), updates the SAME row, and a session-mint failure puts it back to `invited` with the answers saved so the client can press pay again.
+
+**Webhook:** `checkout.session.completed` with `payment_kind='tax_intake_deposit'` and `payment_status='paid'` (its own branch in `router/webhooks.ts`, ahead of the customer-keyed cascade) stamps `stripe_payment_intent_id` + `paid_at` + `status='paid'` and runs `utils/tax-intake-finalize.ts` — client + enrollment + plan + Deposit Paid + the house invoice/receipt pair + the confirmation email — latched on `created_client_at` (#327) so a redelivery is a no-op. `checkout.session.expired` with the same `payment_kind` marks the row `expired` (route A re-submits as a new row; route B's link re-opens the same row). **The expired branch has never fired live.** No `payment_intent.*` handling is needed: card only, so the session completes settled.
+
+**The refund** (Green/Red Light → Refund) is the EXISTING `automation_TAX_depositrefund` path by PaymentIntent — `client_tax_plans.deposit_payment_intent_id`, which finalize copied from the intake row — full $500 on the primary account (see the stamp note above); only the EMAIL changed (addressed to whoever paid — see [tables/documents.md](../tables/documents.md)).
 
 ## Webhook handler ([line 222](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts))
 
@@ -484,6 +517,24 @@ It is deliberately **DB-free** — no row, no email, no bell — so **Stripe's o
 ### Tax Planner Share → the GROUP account (2026-07-21)
 
 The Tax Planning 3-way split adds a **third Connect transfer** (beyond the member share + the 10% strategic-partner share): the **Tax Planner Share**, paid by `utils/tax-planner-payout.ts transferPlannerShare`. Its destination is NOT the planner's own account but the planner's **Tax Planning Group** ("company") account, resolved `tax_planners.member_type` → `tax_planning_groups.name` (exact match) → `tax_planning_groups.stripe_account_id` (exactly mirrors the strategic-partner group model). It lands `Failed` (Jake bell + daily sweep retry) when the planner has no `member_type`, the group is missing, or the group has no Stripe account. Idempotency key `planner-tax-<plan.id>-<retainer|implementation>`; memo `Tax Planning Revenue Share - Client: (<ref>) <name> - Tax Planner: <planner> — <group> - Retainer|Implementation`. Group Connect setup is `tax_planning_group_stripe_connect_request` (mirrors `strategic_group_stripe_connect_request`). Gotcha #253.
+
+### Tax intake deposit team share (2026-09-17)
+
+A FOURTH tax Connect transfer, and the second instance of the #488 rule after the SpecRev ERT share: the **$250 Tax Planning Team half of the $500 intake deposit** is collected on VFO Services with the deposit and **FORWARDED** to the planner's group — never carved out of an existing leg. `utils/tax-deposit-team-share.ts transferDepositTeamShare`, with its OWN four columns on `client_tax_plans` (`deposit_team_share_status` / `_transfer_id` / `_at` — vocabulary in [tables/tax.md](../tables/tax.md#set-up-phase--deposit-and-the-greenred-light-decision)):
+
+```
+POST /v1/transfers
+amount: 25000                                    # DEPOSIT_TEAM_SHARE_CENTS, flat — half of $500, not prorated
+currency: usd
+destination: <tax_planning_groups.stripe_account_id>   # resolved tax_planners.member_type → group, exactly like the planner leg
+description: "Tax Planning Revenue Share - Client: (<client_ref>) <Client Name> - Tax Planner: <planner> — <group> - Deposit"
+metadata: pipeline=TAX, kind=tax_deposit_team_share, tax_plan_id, client_id, client_ref, tax_planning_group
+Idempotency-Key: deposit-team-tax-<plan.id>[-r<Date.parse(deposit_team_share_at)> when the leg is already Failed]
+```
+
+**The memo is the planner leg's shape with `Deposit` where that one says `Retainer` / `Implementation`** (Jake, 2026-09-18 — this superseded the first shape, *"Tax Planning Deposit Team Share ($250 of $500) - …"*, on the live test the same day), so the three transfers for one plan sort together on the dashboard. **Also stamped on the group's destination payment** via `stampErtDestinationPayment` (the same `Stripe-Account:` header trick built for ERT) — best-effort, after the status write, so a failed stamp can never re-open a paid leg.
+
+**Trigger: the Green/Red Light `Proceed` click and nothing else** (plan decision 4; `actions/tax/save-task.ts`) — one step drives both deposit money movements, Proceed → this transfer, Refund → the full $500 refund. Same discipline as the ERT leg: **`connectTransfersActive` is probed BEFORE the call** and a not-active destination parks `Failed` with the `FAILURE_tax_deposit_team_share` bell and no Stripe call, so no key is consumed until the money can move (#489); **the key rotates only once a `Failed` stamp exists**, because `Failed` is written only after Stripe returned an error body. A Proceed with **no deposit PI** on the plan writes `N/A — No Deposit` (terminal, no call); a Proceed with **no planner allocated** writes `Awaiting Planner Allocation`, released by `allocate-planner.ts` the moment the planner slot fills; the nightly `revshare-sweep.ts` retries `Failed` + `Awaiting Planner Allocation` as a third pass. A re-click on a terminal leg is a no-op. **It applies to EVERY VFO Tax Planning plan with a deposit PI, the pre-portal hand-pasted ones included** — the first real Proceed on one of those forwards $250 with nobody watching. Live so far: one sandbox transfer (`tr_1UH2F7Rv8yMNbvOJTCy763TT`, 2026-09-18, fixture since wiped); the `Failed`, `Awaiting Planner Allocation` and bell arms are code-only.
 
 ### Per-case test-member sandbox override (2026-07-21; migration handlers converted 2026-07-29, v672)
 

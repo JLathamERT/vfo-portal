@@ -1,0 +1,398 @@
+import { useEffect, useMemo, useState } from 'react'
+import { callApi } from '../../lib/api'
+import {
+  TAX_INTAKE_QUESTIONS,
+  TAX_INTAKE_Q18_POOR_FIT,
+  validateTaxIntakeAnswers,
+  normalizeTaxIntakeAnswers,
+} from './taxIntakeQuestions'
+
+// The 37-question VFO Tax Planning intake form.
+//
+// Four entry points, one component:
+//   CHOOSER      the member portal's "Add new tax client" button lands here
+//                first: complete the form themselves (route A) or send the
+//                client a link to complete it (route B).
+//   NEW CLIENT   route A. Shows the deposit line ($500, or waived with the
+//                qualifying count), submits to tax_intake_submit, and either
+//                follows the Stripe Checkout url or lands straight on the
+//                success card (waived).
+//   HOLISTIC     ?intake_client=<id>, reached from the "Complete the Tax
+//                Planning Form" email. The client already exists, so name /
+//                email / phone are prefilled and locked, there is NO deposit,
+//                and it submits to tax_intake_holistic_submit. Skips the chooser.
+//   PUBLIC       the client's own /tax-intake page (TaxIntakePage.jsx). No
+//                session, so no eligibility call and no callApi: the page owns
+//                the fetch and passes `onPublicSubmit`.
+//
+// Q1 "Who is completing this form?" is never rendered on any of them — the
+// server derives it (taxIntakeQuestions.js, type "derived").
+//
+// Validation is the SAME module the server re-validates with
+// (taxIntakeQuestions.js mirrors the edge function's copy), so a message shown
+// here is the message the server would have produced.
+
+const green = '#1b9254'
+
+export default function TaxIntakeForm({
+  member,
+  existingClient = null,
+  onCancel,
+  onDone,
+  // Public (client-link) mode.
+  publicMode = false,
+  publicIntake = null,
+  onPublicSubmit = null,
+}) {
+  const holistic = !!existingClient
+  const [step, setStep] = useState(() => (holistic || publicMode ? 'form' : 'choose'))
+  const [answers, setAnswers] = useState(() => {
+    const seed = {}
+    for (const q of TAX_INTAKE_QUESTIONS) seed[q.id] = ''
+    // Q7-Q9 come from the session and are never shown.
+    seed.q7 = `${member?.first_name || ''} ${member?.last_name || ''}`.trim() || member?.member_number || ''
+    seed.q8 = member?.email || ''
+    seed.q9 = member?.trading_name || ''
+    if (existingClient) {
+      seed.q2 = existingClient.first_name || ''
+      seed.q3 = existingClient.last_name || ''
+      seed.q4 = existingClient.email || ''
+      seed.q5 = existingClient.phone || ''
+    }
+    if (publicIntake) {
+      // The member filled these three in when they sent the link. The client may
+      // correct their name; the email is the one we invited and is locked.
+      seed.q2 = publicIntake.client_first_name || ''
+      seed.q3 = publicIntake.client_last_name || ''
+      seed.q4 = publicIntake.client_email || ''
+      seed.q7 = publicIntake.member_display_name || ''
+    }
+    return seed
+  })
+  const [eligibility, setEligibility] = useState(null)
+  const [errors, setErrors] = useState([])
+  const [submitting, setSubmitting] = useState(false)
+  const [failed, setFailed] = useState('')
+  // Route B mini form.
+  const [linkForm, setLinkForm] = useState({ first: '', last: '', email: '' })
+
+  useEffect(() => {
+    if (holistic || publicMode) return
+    let live = true
+    callApi('tax_intake_eligibility', { member_number: member?.member_number })
+      .then(d => { if (live) setEligibility(d) })
+      .catch(() => { if (live) setEligibility(null) })
+    return () => { live = false }
+  }, [holistic, publicMode, member?.member_number])
+
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const labelStyle = { fontSize: '12.5px', fontWeight: 600, color: 'var(--vfo-ink)', display: 'block', marginBottom: '6px', lineHeight: 1.45 }
+  const noteStyle = { fontSize: '11.5px', color: 'var(--vfo-muted)', lineHeight: 1.55, marginTop: '-2px', marginBottom: '8px' }
+
+  // Hidden = session-filled; derived = server-filled. Neither is ever rendered.
+  const visible = useMemo(() => TAX_INTAKE_QUESTIONS.filter(q => !q.hidden && q.type !== 'derived'), [])
+  // Test Member 59524 only (mirrors the backend TEST_SANDBOX_MEMBER_NUMBERS):
+  // one button that fills every field with plausible test values so a
+  // click-through does not mean typing 36 answers. The public link page learns
+  // it from the token row via publicIntake.test_member, never from the URL.
+  const isTestMember = publicMode ? publicIntake?.test_member === true : String(member?.member_number || '') === '59524'
+  function fillTestValues() {
+    const stamp = new Date().toISOString().slice(11, 16).replace(':', '')
+    setAnswers(a => {
+      const next = { ...a }
+      for (const q of visible) {
+        if (lockedIds.has(q.id) && next[q.id]) continue
+        if (q.id === 'q2') next.q2 = next.q2 || 'Test'
+        else if (q.id === 'q3') next.q3 = next.q3 || `Client ${stamp}`
+        else if (q.id === 'q4') next.q4 = next.q4 || `test.client.${stamp}@example.com`
+        else if (q.id === 'q5') next.q5 = '555-555-0100'
+        else if (q.id === 'q18') next.q18 = q.options.find(o => o.startsWith('$100k')) || q.options[1]
+        else if (q.type === 'radio') next[q.id] = q.options[0]
+        else if (q.type === 'select') next[q.id] = q.options.find(o => o && !/select/i.test(String(o))) || q.options[0]
+        else if (q.type === 'money') next[q.id] = '100000'
+        else if (q.type === 'textarea') next[q.id] = 'Test answer - sandbox click-through, ignore.'
+        else next[q.id] = 'Test answer'
+      }
+      return next
+    })
+  }
+  const lockedIds = holistic ? new Set(['q2', 'q3', 'q4', 'q5']) : publicMode ? new Set(['q4']) : new Set()
+
+  function set(id, value) {
+    setAnswers(a => ({ ...a, [id]: value }))
+  }
+
+  const poorFit = answers.q18 === TAX_INTAKE_Q18_POOR_FIT
+
+  async function submit() {
+    const found = validateTaxIntakeAnswers(answers)
+    setErrors(found)
+    setFailed('')
+    if (found.length > 0) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    setSubmitting(true)
+    try {
+      const normalized = normalizeTaxIntakeAnswers(answers)
+      const res = publicMode
+        ? await onPublicSubmit(normalized)
+        : holistic
+          ? await callApi('tax_intake_holistic_submit', { answers: normalized, client_id: existingClient.id })
+          : await callApi('tax_intake_submit', { answers: normalized })
+      // A Checkout url means the deposit is owed — hand the browser to Stripe.
+      if (res?.url) { window.location.assign(res.url); return }
+      onDone?.(res)
+    } catch (err) {
+      setFailed(err?.message || 'Something went wrong — please try again.')
+      setSubmitting(false)
+    }
+  }
+
+  async function sendLink() {
+    setFailed('')
+    const first = linkForm.first.trim()
+    const last = linkForm.last.trim()
+    const email = linkForm.email.trim()
+    const found = []
+    if (!first) found.push('Client First Name is required')
+    if (!last) found.push('Client Last Name is required')
+    if (!email) found.push('Client Email is required')
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) found.push('Client Email must be a valid email address')
+    setErrors(found)
+    if (found.length > 0) return
+    setSubmitting(true)
+    try {
+      await callApi('tax_intake_send_link', {
+        member_number: member?.member_number,
+        client_first_name: first,
+        client_last_name: last,
+        client_email: email,
+      })
+      onDone?.({ link_sent_to: `${first} ${last}`.trim() })
+    } catch (err) {
+      setFailed(err?.message || 'Something went wrong — please try again.')
+      setSubmitting(false)
+    }
+  }
+
+  function renderInput(q) {
+    const locked = lockedIds.has(q.id)
+    const val = answers[q.id] || ''
+    if (q.type === 'radio') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {q.options.map(opt => (
+            <label key={opt} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: 'var(--vfo-ink)', cursor: 'pointer', lineHeight: 1.5 }}>
+              <input type="radio" name={q.id} value={opt} checked={val === opt} onChange={() => set(q.id, opt)} style={{ marginTop: '3px', flexShrink: 0 }} />
+              <span>{opt}</span>
+            </label>
+          ))}
+        </div>
+      )
+    }
+    if (q.type === 'select') {
+      return (
+        <select value={val} onChange={e => set(q.id, e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
+          <option value="">-- Select --</option>
+          {q.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+        </select>
+      )
+    }
+    if (q.type === 'textarea') {
+      return <textarea value={val} onChange={e => set(q.id, e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+    }
+    return (
+      <input
+        type="text"
+        value={val}
+        disabled={locked}
+        onChange={e => set(q.id, e.target.value)}
+        placeholder={q.type === 'money' ? '$' : ''}
+        style={{ ...inputStyle, opacity: locked ? 0.65 : 1, cursor: locked ? 'not-allowed' : 'text' }}
+      />
+    )
+  }
+
+  const depositRequired = publicMode
+    ? publicIntake?.deposit_required
+    : eligibility?.deposit_required
+  const depositAmount = publicMode ? (publicIntake?.deposit_amount || 500) : (eligibility?.deposit_amount || 500)
+
+  const depositLine = holistic
+    ? null
+    : publicMode
+      ? (depositRequired ? `Deposit: $${depositAmount}` : 'Deposit: waived')
+      : eligibility == null
+        ? 'Checking your deposit...'
+        : eligibility.deposit_required
+          ? `Deposit: $${eligibility.deposit_amount}`
+          : `Deposit: waived (you have ${eligibility.qualifying_count} qualifying clients)`
+
+  const errorBox = errors.length > 0 && (
+    <div style={{ background: 'rgba(217,48,37,0.10)', border: '1px solid rgba(217,48,37,0.32)', borderRadius: '12px', padding: '14px 16px', marginBottom: '20px' }}>
+      <div style={{ fontSize: '13px', fontWeight: 700, color: '#d93025', marginBottom: '6px' }}>Please complete the following:</div>
+      <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12.5px', color: 'var(--vfo-ink)' }}>
+        {errors.map(e => <li key={e}>{e}</li>)}
+      </ul>
+    </div>
+  )
+  const failBox = failed && (
+    <div style={{ background: 'rgba(217,48,37,0.10)', border: '1px solid rgba(217,48,37,0.32)', borderRadius: '12px', padding: '14px 16px', marginBottom: '20px', fontSize: '13px', color: '#d93025' }}>{failed}</div>
+  )
+
+  // ─── Step 1: who fills the form in? ───────────────────────────────────
+  if (step === 'choose') {
+    const cardStyle = { ...sectionStyle, marginBottom: 0, cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s' }
+    return (
+      <div>
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>Add a new tax client</div>
+          {depositLine && (
+            <div style={{ fontSize: '13px', fontWeight: 600, color: eligibility && !eligibility.deposit_required ? green : 'var(--vfo-ink)', marginTop: '8px' }}>{depositLine}</div>
+          )}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          <div role="button" tabIndex={0} style={cardStyle}
+            onClick={() => setStep('form')}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setStep('form') }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = '#125ecc'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border-soft)'}>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }}>Complete the form for my client</div>
+            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.6 }}>
+              You answer the Tax Planning Form now{depositRequired === false ? '' : ' and pay the deposit'}. The client is created as soon as you are done.
+            </div>
+          </div>
+          <div role="button" tabIndex={0} style={cardStyle}
+            onClick={() => { setErrors([]); setStep('link') }}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setErrors([]); setStep('link') } }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = '#125ecc'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border-soft)'}>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }}>Send my client a link</div>
+            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.6 }}>
+              We email your client the Tax Planning Form{depositRequired === false ? '' : ', and they pay the deposit'}. You only need their name and email address.
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '32px' }}>
+          <button type="button" onClick={onCancel}
+            style={{ padding: '10px 20px', borderRadius: '999px', fontSize: '13px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── Route B: the three fields we need to email the client ────────────
+  if (step === 'link') {
+    return (
+      <div>
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>Send my client a link</div>
+          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px', lineHeight: 1.6 }}>
+            We will email your client the Tax Planning Form{depositRequired === false ? '.' : ' and take the $500 deposit at the end of it.'} You will be copied in.
+          </div>
+        </div>
+        {errorBox}
+        {failBox}
+        <div style={sectionStyle}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px 28px' }}>
+            <div>
+              <label style={labelStyle}>Client First Name<span style={{ color: '#d93025' }}> *</span></label>
+              <input type="text" value={linkForm.first} onChange={e => setLinkForm(f => ({ ...f, first: e.target.value }))} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Client Last Name<span style={{ color: '#d93025' }}> *</span></label>
+              <input type="text" value={linkForm.last} onChange={e => setLinkForm(f => ({ ...f, last: e.target.value }))} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Client Email<span style={{ color: '#d93025' }}> *</span></label>
+              <input type="text" value={linkForm.email} onChange={e => setLinkForm(f => ({ ...f, email: e.target.value }))} style={inputStyle} />
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginBottom: '32px' }}>
+          <button type="button" onClick={() => { setErrors([]); setStep('choose') }} disabled={submitting}
+            style={{ padding: '10px 20px', borderRadius: '999px', fontSize: '13px', cursor: submitting ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
+            Back
+          </button>
+          <button type="button" onClick={sendLink} disabled={submitting}
+            style={{ padding: '10px 24px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', border: 'none', background: submitting ? 'var(--vfo-faint)' : '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif', boxShadow: submitting ? 'none' : '0 2px 8px rgba(18,94,204,0.28)' }}>
+            {submitting ? 'Sending...' : 'Send link'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── The 37 questions ─────────────────────────────────────────────────
+  return (
+    <div>
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>Tax Planning Form</div>
+        {publicMode && publicIntake?.member_display_name && (
+          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px', lineHeight: 1.6 }}>
+            {publicIntake.member_display_name} has asked us to start your tax planning. Please answer the questions below.
+          </div>
+        )}
+        {depositLine && (
+          <div style={{ fontSize: '13px', fontWeight: 600, color: depositRequired === false ? green : 'var(--vfo-ink)', marginTop: '8px' }}>{depositLine}</div>
+        )}
+        {holistic && (
+          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px' }}>
+            For {existingClient.first_name} {existingClient.last_name} — no deposit is required.
+          </div>
+        )}
+      </div>
+
+      {errorBox}
+      {failBox}
+
+      <div style={sectionStyle}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px 28px' }}>
+          {visible.map((q, i) => (
+            <div key={q.id} style={q.type === 'textarea' ? { gridColumn: '1 / -1' } : undefined}>
+              <label style={labelStyle}>
+                {i + 1}. {q.label}{q.required && <span style={{ color: '#d93025' }}> *</span>}
+              </label>
+              {q.note && <div style={noteStyle}>{q.note}</div>}
+              {renderInput(q)}
+              {q.id === 'q18' && poorFit && (
+                <div style={{ marginTop: '8px', fontSize: '12px', color: '#e06717', lineHeight: 1.55 }}>
+                  The client is currently not a good fit for VFO Tax Planning. Please reach out to Tracy Miller if you have any questions.
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {isTestMember && (
+        <div style={{ margin: '0 0 16px', padding: '12px 16px', border: '1px dashed #e06717', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '12.5px', color: '#e06717', fontWeight: 600 }}>Test member only: fill every question with test values.</span>
+          <button type="button" onClick={fillTestValues} disabled={submitting}
+            style={{ padding: '8px 16px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid #e06717', background: 'transparent', color: '#e06717', fontFamily: 'Inter, sans-serif' }}>
+            Fill with test values
+          </button>
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginBottom: '32px' }}>
+        {!publicMode && (
+          <button type="button" onClick={holistic ? onCancel : () => setStep('choose')} disabled={submitting}
+            style={{ padding: '10px 20px', borderRadius: '999px', fontSize: '13px', cursor: submitting ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
+            {holistic ? 'Cancel' : 'Back'}
+          </button>
+        )}
+        <button type="button" onClick={submit} disabled={submitting}
+          style={{ padding: '10px 24px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', border: 'none', background: submitting ? 'var(--vfo-faint)' : '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif', boxShadow: submitting ? 'none' : '0 2px 8px rgba(18,94,204,0.28)' }}>
+          {submitting ? 'Submitting...' : (holistic || depositRequired === false ? 'Submit' : 'Submit and pay deposit')}
+        </button>
+      </div>
+    </div>
+  )
+}

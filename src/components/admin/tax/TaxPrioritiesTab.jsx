@@ -542,6 +542,23 @@ const chipStyle = (hex) => {
 
 // Shared by every prerequisite-lock surface (locked step rows, the Green/Red Light
 // Proceed hint, the Tax 6 header note) so they read as one thing.
+// Status chip for the $250 deposit Team share (client_tax_plans.
+// deposit_team_share_status). Null status = Proceed was clicked before the
+// column existed, or the write is still in flight — nothing to report yet.
+const DEPOSIT_TEAM_CHIP_COLORS = {
+  'Yes': '#1b9254',
+  'Failed': '#e74c3c',
+  'Awaiting Planner Allocation': '#e06717',
+  'N/A — No Deposit': 'var(--vfo-muted)',
+}
+function depositTeamChip(status) {
+  const s = String(status || '')
+  const color = DEPOSIT_TEAM_CHIP_COLORS[s]
+  if (!color) return null
+  const label = s === 'Yes' ? '$250 team share paid' : s === 'Failed' ? '$250 team share failed' : s
+  return <span style={chipStyle(color)} title="Tax Planning Team share of the $500 deposit">{label}</span>
+}
+
 function LockedIcon({ size = 13 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ opacity: 0.75, flexShrink: 0 }}>
@@ -1979,7 +1996,68 @@ function AssessTaxForm({ task, plan, saveTask, existingData, onSubmitted, onCanc
   )
 }
 
+// Read-only "Tax Planning Form" card — the 37 answers the member submitted when
+// they started the case (tax_intake_requests). Shown on ALL THREE tax-plan
+// surfaces (admin, tax-planner portal, member view), which is why
+// tax_intake_load is confined per role in-handler rather than by an allowlist.
+//
+// Presentational: TaxPlanTrackView owns the single tax_intake_load call (it also
+// needs the row to tell a portal-paid deposit from a hand-typed one), and the 37
+// rows are only built when the card is expanded. The whole card hides when there
+// is no form — every pre-2026-09-17 plan, and every case an admin started by hand.
+function TaxIntakeCard({ intake, questions }) {
+  const [open, setOpen] = useState(false)
+  if (!intake) return null
+
+  const submitted = intake.created_at ? String(intake.created_at).split('T')[0] : ''
+  // Which of the two intake routes produced this form (unit 1b). 'client' means
+  // the member emailed a tokened link and the client filled it in and paid.
+  const byClient = intake.payer === 'client'
+  const linkDate = intake.link_sent_at ? String(intake.link_sent_at).split('T')[0] : submitted
+  const completedBy = byClient
+    ? `Completed by the client via link on ${linkDate}`
+    : 'Completed by the member'
+  return (
+    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden' }}>
+      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer' }}>
+        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tax Planning Form</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{completedBy}</span>
+          {submitted && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Submitted {submitted}</span>}
+          <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
+        </div>
+      </div>
+      {open && (
+        <div style={{ borderTop: '1px solid var(--vfo-border)', padding: '14px 18px' }}>
+          {(questions || []).map((q, i) => {
+            const val = intake.answers?.[q.id]
+            return (
+              <div key={q.id} style={{ display: 'flex', gap: '12px', padding: '6px 0', borderBottom: i === questions.length - 1 ? 'none' : '1px solid var(--vfo-border-soft)', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flex: '1 1 300px', lineHeight: 1.5 }}>{i + 1}. {q.label}</span>
+                <span style={{ fontSize: '12px', color: val ? 'var(--vfo-ink)' : 'var(--vfo-muted)', flex: '1 1 240px', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '—'}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists, expertBios = {}, onBack, readOnly = false, plannerMode = false, notes = [], onNotesChange, clientId, programName, client }) {
+  // The member's submitted Tax Planning Form, if any. One read per plan view:
+  // it backs both the read-only answers card and the "Paid via portal" chip on
+  // the Deposit Paid step.
+  const [taxIntake, setTaxIntake] = useState(null)
+  const [taxIntakeQuestions, setTaxIntakeQuestions] = useState([])
+  useEffect(() => {
+    let live = true
+    if (!clientId) return
+    callApi('tax_intake_load', { client_id: clientId })
+      .then(d => { if (!live) return; setTaxIntake(d?.intake || null); setTaxIntakeQuestions(d?.questions || []) })
+      .catch(() => { if (live) setTaxIntake(null) })
+    return () => { live = false }
+  }, [clientId])
   const [localProgress, setLocalProgress] = useState(initialProgress)
   const [saving, setSaving] = useState({})
   const [expanded, setExpanded] = useState({})
@@ -3822,11 +3900,18 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     if (task.status_options === 'tax_refund') {
       const decision = p.status || ''
       const hasPi = !!livePlan?.deposit_payment_intent_id
+      // A waived intake closes the Deposit Paid row as "N/A — No Deposit": there is
+      // nothing to refund, but Proceed must still be offered (the $250 leg then
+      // closes itself as N/A — No Deposit with nothing moved).
+      const depositWaived = (() => {
+        const dt = findStepTask('tax_deposit_pi', 'Deposit Paid')
+        return !!dt && localProgress[dt.id]?.status === 'N/A — No Deposit'
+      })()
       const refunded = livePlan?.deposit_refund_status === 'succeeded'
       const locked = readOnly || plannerMode
-      // The go/no-go is an internal call — the client-facing track only ever
-      // sees this step once a refund has actually been issued.
-      if (readOnly && !refunded) return null
+      // Always listed, on every surface (Jake, 2026-09-18 — it used to hide from
+      // the member view until a refund landed). The member view shows the
+      // outcome only; the buttons below are gated on !readOnly.
       const done = decision === 'Proceed' || refunded
       const draft = refundReasonDrafts[task.id] || {}
       const refundOpen = !!draft.open
@@ -3837,10 +3922,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       // verdict). Refund below is deliberately NOT gated — see stepGate.
       const canProceed = diagnosticChain && !sending
       const proceedLockHint = 'Proceed locked — complete "Tax planner review complete"'
-      const showControls = !refunded && !decision && !refundOpen
+      const showControls = !readOnly && !refunded && !decision && !refundOpen
       // Without a PaymentIntent BOTH buttons are dead, so the deposit is the honest
       // blocker to name — the Proceed chain only becomes the story once it exists.
-      const refundLockHint = !hasPi
+      const refundLockHint = !hasPi && !depositWaived
         ? 'Enter the Stripe deposit payment (Set Up) first'
         : !canProceed ? proceedLockHint : ''
       const trGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }
@@ -3871,8 +3956,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
             <span style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: '1 1 auto', minWidth: '140px' }}>
-              {taskLabel(task)}{!locked && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_deposit_refund', when: 'Refund — deposit refunded with decline reason(s)' }]} context={{ ...emailCtx, 'Refund Reason': reason.trim() || 'your reason(s) — typed on this step' }} /></span>}
-              {taskSubLabel(task) && <div style={taskSubLabelStyle}>{taskSubLabel(task)}</div>}
+              {taskLabel(task)}{!locked && !depositWaived && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_deposit_refund', when: 'Refund — deposit refunded with decline reason(s)' }]} context={{ ...emailCtx, 'Refund Reason': reason.trim() || 'your reason(s) — typed on this step' }} /></span>}
+              {depositWaived
+                ? <div style={taskSubLabelStyle}>No deposit was taken for this client</div>
+                : taskSubLabel(task) && <div style={taskSubLabelStyle}>{taskSubLabel(task)}</div>}
             </span>
             {showControls && !sending && refundLockHint && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
@@ -3881,25 +3968,31 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
               </span>
             )}
             {refunded
-              ? <span style={chipStyle('#1b9254')}>Refunded ${livePlan?.deposit_refund_amount}</span>
+              ? <span style={chipStyle('#e74c3c')}>Refunded ${livePlan?.deposit_refund_amount}</span>
               : decision
                 ? <span style={chipStyle(statusColor)}>{decision}</span>
-                : null
+                : readOnly
+                  ? <span style={neutralChipStyle}>Not started</span>
+                  : null
             }
+            {/* The $250 Tax Planning Team leg of the deposit, which Proceed
+                triggers. Admin-only: it is VFO's own money movement, the same
+                reason PricingSplitCard is hidden from readOnly/plannerMode. */}
+            {!locked && decision === 'Proceed' && depositTeamChip(livePlan?.deposit_team_share_status)}
             {refunded && livePlan?.deposit_refund_date ? <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{formatDate(livePlan.deposit_refund_date)}</span> : (done && p.status && !readOnly) ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{done && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
           </div>
           {/* Buttons sit on their own line under the step name, indented past the
               dot — inline they squeezed the name into a four-line wrap. */}
-          {showControls && hasPi && (
+          {showControls && (hasPi || depositWaived) && (
             <div style={{ paddingLeft: '18px', paddingBottom: '7px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               {canProceed && <button disabled={sending} onClick={() => saveTask(task.id, 'Proceed', p.completed_date, taxSpecialistId)} style={trGreen}>Proceed</button>}
-              <button disabled={sending} onClick={() => setRefundReasonDrafts(d => ({ ...d, [task.id]: { open: true, reason: '', sending: false } }))} style={trRed}>Refund</button>
+              {hasPi && <button disabled={sending} onClick={() => setRefundReasonDrafts(d => ({ ...d, [task.id]: { open: true, reason: '', sending: false } }))} style={trRed}>Refund</button>}
             </div>
           )}
           {refundOpen && !done && !locked && (
             <div style={{ marginLeft: '18px', marginBottom: '8px', padding: '14px 16px', background: 'var(--vfo-tint)', borderRadius: '10px', border: '1px solid var(--vfo-tint-deep)', fontFamily: 'Inter, sans-serif' }}>
               <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
-                Subject: VFO Services - Tax Planning Deposit Refunded — {client?.first_name ? `${client.first_name} ${client.last_name || ''}`.trim() : '[Client Name]'}
+                Subject: VFO Services - Tax Planning Deposit Refunded - {client?.first_name ? `${client.first_name} ${client.last_name || ''}`.trim() : '[Client Name]'}
               </div>
               <div style={{ fontSize: '13px', color: '#44557a', lineHeight: '1.6' }}>
                 <p style={{ margin: '0 0 12px' }}>Hi {client?.first_name || '[Client First]'},</p>
@@ -3958,6 +4051,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
 
     if (task.status_options === 'tax_deposit_pi') {
       const savedPi = livePlan?.deposit_payment_intent_id || ''
+      const paidViaPortal = !!taxIntake?.tax_plan_id && String(taxIntake.tax_plan_id) === String(livePlan?.id ?? plan?.id ?? '')
+      // A waived intake (2+ qualifying clients) writes this row as
+      // "N/A — No Deposit": nothing to paste, the step is closed.
+      const depositWaived = p.status === 'N/A — No Deposit'
+      const depositClosed = !!savedPi || depositWaived
       const draftVal = depositPiDrafts[task.id]
       const inputVal = draftVal !== undefined ? draftVal : savedPi
       async function saveDepositPi() {
@@ -3976,9 +4074,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       }
       return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone && savedPi ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone && savedPi ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone && depositClosed ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone && depositClosed ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
           <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}</span>
-          {readOnly ? (
+          {depositWaived ? (
+            <span style={neutralChipStyle} title="No deposit was taken: the member already had two qualifying tax clients">N/A — No Deposit</span>
+          ) : readOnly ? (
             savedPi && <span style={{ ...chipStyle('#1b9254'), fontFamily: 'monospace' }}>{savedPi}</span>
           ) : (
             <>
@@ -3993,6 +4093,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
               <button onClick={saveDepositPi} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600 }}>Save</button>
             </>
           )}
+          {/* Stamped by the member's own portal intake rather than typed in by
+              an admin — the tell is an intake row that carries this plan. */}
+          {savedPi && paidViaPortal && <span style={chipStyle('#1b9254')}>Paid via portal</span>}
           {isDone && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
         </div>
       )
@@ -4308,7 +4411,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         : null
       // Display name carries the certifications suffix; the stored value (p.status)
       // is the plain full name and is never rewritten from here.
-      const allocatedName = selectedPlanner ? plannerDisplayName(selectedPlanner) : (p.status || '')
+      const allocatedName = selectedPlanner ? plannerDisplayName(selectedPlanner) : (p.status || livePlan?.tax_planner_name || '')
       const teamMemberName = selectedTeamMember ? plannerDisplayName(selectedTeamMember) : ''
       // Allocated means a real id in EITHER slot on the plan. Allocating the team
       // member is this step's whole job for an admin — the hand-off to a Tax
@@ -4348,7 +4451,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isAllocated ? green : 'transparent', flexShrink: 0, border: `1.5px solid ${isAllocated ? green : 'var(--vfo-border-mid)'}` }} />
             <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{taskLabel(task)}</span>
-            {selectedTeamMember && <span style={teamMemberChip}>{teamMemberName} — Team Member</span>}
+            {/* The member view has no roster, so the team member's name rides on
+                the plan payload (tax_load_plans.team_member_name). */}
+            {(selectedTeamMember || (teamMemberId != null && livePlan?.team_member_name)) && (
+              <span style={teamMemberChip}>{teamMemberName || livePlan.team_member_name} — Team Member</span>
+            )}
             {plannerShown
               ? <span style={greenPill}>{allocatedName || 'Allocated'}</span>
               : !selectedTeamMember && (
@@ -4709,6 +4816,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           onSaved={refreshLivePlan}
         />
       )}
+
+      <TaxIntakeCard intake={taxIntake} questions={taxIntakeQuestions} />
 
       {phasesBeforeSpec.map((phase, phaseIdx) => {
         const state = getPhaseState(phase)

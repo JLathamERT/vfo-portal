@@ -37,6 +37,7 @@ const ROUTES = [
   'specialist-sif',
   'tax-decide',
   'tax-implement-decide',
+  'tax-intake',
   'tax-pay',
   'tax-postreview-decide',
   'tax-upload',
