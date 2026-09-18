@@ -50,7 +50,7 @@
 ## Every notification in the system
 
 > **⚠️ THE TABLES BELOW ARE A SNAPSHOT, NOT AN INVENTORY — the DB is the source of truth.**
-> They were written when there were 128 rules in 11 areas. As of **2026-09-12 there are 211 rules in
+> They were written when there were 128 rules in 11 areas. As of **2026-09-18 there are 218 rules in
 > 16 areas**, so roughly a third of the live rules are NOT listed here. Derive the current picture
 > instead of trusting a count on this page:
 > `select area, count(*) from notification_rules group by area order by area;`
@@ -66,7 +66,7 @@
 > | Membership Fees | 4 | ✗ no section |
 > | Partnership Fast Track | 10 | 8 |
 > | Payment Continuation | 2 | 2 ✓ |
-> | Payment Failure Alerts | **19** | **18** |
+> | Payment Failure Alerts | **20** | **19** |
 > | Regular Priorities (MAP 4) | 4 | 4 ✓ |
 > | Specialist Onboarding | 35 | 34 |
 > | Tax | **41** | **25** |
@@ -83,9 +83,10 @@
 > `MAP1_ach_bank_verification_pending` / `TAX_ach_bank_verification_pending`, both written up below, so
 > the "listed" column moved with the live one), then `90 Day Plan` and `VFO Specialist Revenue` on
 > **2026-09-12**, and `Tax` again on **2026-09-17** (**40 → 41**, the new `TAX_amended_invoice_not_sent`, written up
-> below, so the "listed" column moved with it). Every other row is still the 2026-08-17 snapshot and is
+> below, so the "listed" column moved with it), and `Payment Failure Alerts` on **2026-09-18** (**19 → 20**, the new
+> `FAILURE_tax_deposit_team_share`, written up below, so the "listed" column moved with it). Every other row is still the 2026-08-17 snapshot and is
 > only getting staler. Re-derive the row you touch rather than regenerating the page. The one honest
-> mismatch left in the two 2026-08-26 areas: **Payment Failure Alerts lists 18 of its 19 live rules** —
+> mismatch left in the two 2026-08-26 areas: **Payment Failure Alerts lists 19 of its 20 live rules** —
 > `FAILURE_tax_planner_share` ("Tax planner revshare transfer failed (Jake)", action-required) has
 > never been written up here.
 >
@@ -292,7 +293,7 @@
 | **Setup-link reminder email** (`MIGRATION_setup_link_reminder_email`) — nudges a migrated client who was emailed the `/connect-card` link but never saved a card or bank; includes the same `[PAYMENT_SCHEDULE]` block as the original setup email — **for MAP 1 a date/amount table, split since v762 (2026-08-19) into "Past-due payments:" and "Your upcoming payments:" (a DATE-ONLY split that deliberately promises no collection — only the `/connect-card` page mirrors the charge sweep, #421), but since v715 (2026-08-10) NO figure at all for TAX**, just the fixed "set up proactively … to collect any future payments" sentence (#352). **If the link has EXPIRED the sweep mints a fresh 7-day one and emails that instead** (capped at 3 automatic re-sends per row). | Reminder email | The client (email) | Nightly check-reminder sweep — after **2 business day(s)** (editable) — gotcha #300 |
 | **Client hasn't set up their payment method** (`MIGRATION_setup_link_stall_bell`) — their remaining scheduled payments cannot run. Wording is four-way truthful: reach out / a fresh link was automatically emailed / re-send manually / automatic re-sends exhausted. | FYI | Tracy + Jake | Nightly check-reminder sweep — after **4 business day(s)** (editable) |
 
-### Payment Failure Alerts (18)
+### Payment Failure Alerts (19)
 
 | Notification | Type | Who gets it (default) | When it fires |
 |---|---|---|---|
@@ -314,6 +315,14 @@
 | **Refund failed (Jake)** — A refund FAILED — the money was not returned to the customer. | FYI | Jake | Stripe webhook: refund.failed — instant |
 | **Rev-share transfer reversed (Jake)** — A revenue-share Stripe Connect transfer was reversed/clawed back. | FYI | Jake | Stripe webhook: transfer.reversed — instant |
 | **MAP 1 cancelled installment collected (Jake)** (`FAILURE_map1_cancelled_installment_collected`, NEW 2026-08-26) — money arrived on a MAP 1 quarterly installment (P2–P4) that VFO had already **CANCELLED** through the superadmin *Cancel all remaining payments* button (`payments_cancel_remaining`, which writes the literal status `'cancelled'`). Reachable as a race — the charge was raised before the cancel landed, or Stripe redelivered the event afterwards (#327). **The webhook still records `succeeded` + receipt + revenue share, because the money really did move**; a silent skip would leave a collected payment with no receipt and an unpaid member share. This bell is raised *in addition*, so a human decides whether the client is owed a refund. Never fired live as of 2026-08-26. | **Action required** | Jake | `router/webhooks.ts` P2–P4 `payment_intent.succeeded` branch, installment status was `'cancelled'` — instant |
+| **Tax deposit team share transfer failed (Jake)** (`FAILURE_tax_deposit_team_share`, NEW 2026-09-17, sort 52) — the **$250 Tax Planning Team share of a $500 tax intake deposit** could not be forwarded to the planning group's Connect account: the planner has no group, the group has no `stripe_account_id`, its transfers capability is not active (probed before the idempotency key is spent, #489), Stripe is unconfigured for the mode, or Stripe refused. The message names the specific reason and says the daily tax sweep will retry; `client_tax_plans.deposit_team_share_status` reads `Failed`. Auto-clears (`clearJakeFailure`, one title per plan) on the successful transfer from a re-clicked Proceed, `tax_allocate_planner` or the sweep's third pass. Never fired live. See [flows/tax-intake.md](flows/tax-intake.md#the-250-tax-planning-team-share--greenred-light-proceed). | **Action required** | Jake | Green/Red Light **Proceed** (`tax_save_task` → `utils/tax-deposit-team-share.ts`), or either retry site — instant |
+
+> **One tax-intake bell has NO row in this area or any other: `FAILURE_tax_deposit_docs` (2026-09-17).**
+> `utils/tax-deposit-docs.ts` raises it through `notifyJakeFailure` when a freshly allocated deposit
+> invoice/receipt number is not found in `document_numbers` (#282); the pair is skipped and the
+> confirmation email goes out without attachments. With no `notification_rules` row, `notifyByRule`
+> falls back to the call's default — **Jake, action-required** — and the Notification Editor can neither
+> re-route nor disable it. Nothing clears it (the documents are issued by hand). Never fired.
 
 > **Update 2026-07-03 — Phases A + B of the gap list are BUILT** (8 new rules, so the editor now
 > holds 130): gap #2 (tax-return uploads -> `UPLOAD_tax_return_uploaded`, new "Uploads" area,

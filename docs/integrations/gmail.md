@@ -251,6 +251,20 @@ An HTML signature is appended to most bodies. It is **not** stored in templates 
 
 Changing the footer for the whole system is therefore a one-line edit to the constant plus a redeploy — no template edits, no per-handler sweep.
 
+### The delivery-layer footer guard (2026-09-17)
+
+**`VFO_SIGNATURE` moved to `utils/email-signature.ts`** (`utils/gmail-draft.ts` re-exports it, so every existing `import { VFO_SIGNATURE } from "../../utils/gmail-draft.ts"` still compiles), and the footer is now **guaranteed by the delivery layer rather than by the ~118 call sites**. Three functions apply it, which is every place a Gmail message is actually created:
+
+| Function | File | How |
+|---|---|---|
+| `draftGmail` | `utils/gmail-draft.ts` | `ensureSignature(opts.htmlBody)` on the HTML before the RFC 2822 build |
+| `gmailDraftFetch` | `utils/email-delivery.ts` | `ensureSignatureEncoded(encodedRaw)` — decodes the base64url raw message, patches the HTML part, re-encodes |
+| `deliverRaw` | `utils/email-delivery.ts` | same |
+
+`ensureSignature` appends the block **only when the body does not already carry it**, matching on the sign-off TEXT `Proactive Coordinator Team` rather than the markup — so a hand-written variant of the same line still counts as present, and every existing per-handler `+ VFO_SIGNATURE` append is now **idempotent** (they were left in place, untouched). The insertion point is BEFORE any trailing run of `</div>` closers, so a template whose whole body sits in a styled `max-width:640px` container gets the footer inside the card, where the old in-body block used to sit. **Rule 16 of the [DIRECT plan](../plans/direct-tax-planning/README.md): every outbound email ends with `VFO Services - Proactive Coordinator Team` — exactly once.**
+
+**Two consequences, both deliberate.** (1) The retired **AI-PC / Proactive Coordinator / VFO SERVICES** block does NOT match the guard (it has no "Team"), so a template body that still carried it would have shipped with TWO footers — which is why `20260917120100_tax_intake_email_templates.sql` stripped it from the six revshare templates that had it (`TAX_member_revshare|retainer` / `|implementation`, `TAX_planner_revshare|retainer` / `|implementation`, `strategic_partner_revshare`, `PIP_member_revshare`) and from `TAX_deposit_refund` (181); **0 bodies carry it live**, and the five new intake templates carry no footer by design. The glossary's "gone from admin-api" claim about that block now holds for the DATA as well. (2) A NEW sender gets the footer for free and cannot forget it; a template edited in the Email Templates tab to include its own sign-off is left alone. Verified on the 2026-09-18 test: the old refund template (181) went out with the footer exactly once.
+
 ## Drafts vs. sent
 
 Every email is a **draft**, never a sent message. A human (presumably someone with the OAuth account) opens Gmail, reviews the draft, and clicks Send. There is no `users.me/messages/send` call anywhere in the codebase.

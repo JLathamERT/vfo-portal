@@ -27,8 +27,8 @@ The top-level picture. Two repos, one Supabase project, four external integratio
                                ▼                                  ▼
                           ┌─────────────────────────────────────────────┐
                           │   SUPABASE EDGE FUNCTION: vfo-admin-api      │
-                          │   (498 actions, 123-line orchestrator        │
-                          │    + 507 handler files + 2 routers)          │
+                          │   (514 actions, 123-line orchestrator        │
+                          │    + 527 handler files + 2 routers)          │
                           │                                              │
                           │   Three dispatch surfaces:                   │
                           │   1. Stripe webhook  (router/webhooks.ts —   │
@@ -103,7 +103,7 @@ The top-level picture. Two repos, one Supabase project, four external integratio
 ## Data direction
 
 - **Browser → admin-api**: every action via [src/lib/api.js](src/lib/api.js). Includes session token in body.
-- **Browser → admin-api (token-link pages)**: `/decide`, `/pay`, `/tax-decide`, `/tax-pay`, `/tax-implement-decide`, `/tax-postreview-decide`, `/advisor-decide`, `/advisor-pay`, `/accountant-decide`, `/accountant-pay`, `/pip-pay`, `/member-setup` use raw `fetch` with URL token (no session). Reach the public-token handlers via `PUBLIC_HANDLERS` in `router/dispatch.ts` (which is dispatched BEFORE the `middleware/auth.ts` gate). Public-token actions span MAP1, Tax, Advisor Onboarding, Accountant Onboarding, and PIP pipelines — see [05-api-action-catalog.md](05-api-action-catalog.md). The `/member-setup` page falls through advisor → accountant token lookup so one shared page handles login-setup for both onboarding pipelines.
+- **Browser → admin-api (token-link pages)**: `/decide`, `/pay`, `/tax-decide`, `/tax-pay`, `/tax-implement-decide`, `/tax-postreview-decide`, `/advisor-decide`, `/advisor-pay`, `/accountant-decide`, `/accountant-pay`, `/pip-pay`, `/member-setup`, **`/tax-intake`** (2026-09-17 — the client route of the tax intake, token = `tax_intake_requests.intake_token`; full list of 35 route pages in [02-frontend-shell.md](02-frontend-shell.md)) use raw `fetch` with URL token (no session). Reach the public-token handlers via `PUBLIC_HANDLERS` in `router/dispatch.ts` (which is dispatched BEFORE the `middleware/auth.ts` gate). Public-token actions span MAP1, Tax, Advisor Onboarding, Accountant Onboarding, and PIP pipelines — see [05-api-action-catalog.md](05-api-action-catalog.md). The `/member-setup` page falls through advisor → accountant token lookup so one shared page handles login-setup for both onboarding pipelines.
 - **admin-api → Postgres**: via `createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)` — service-role bypasses RLS. Auth is application-level.
 - **admin-api → admin-api (loopback chains)**: server-to-server `fetch` with `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`. Used by webhooks and automation handlers to chain into other handlers. The chains route to public-token actions, so they bypass the user-session gate.
 - **admin-api → external APIs**: Stripe, BoldSign, Google OAuth, Gmail, Sheets, Drive, html2pdf.app, and (2026-09-14, `faq_manage` only) Wistia's public oEmbed endpoint `fast.wistia.com/oembed.json` to resolve a pasted share link to its media id — unauthenticated, best-effort, 6 s timeout. All the others via `fetch` with API-specific auth.

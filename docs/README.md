@@ -41,7 +41,7 @@ docs/
 │   ├── members.md                    (members + plugin settings + history + member_contacts)
 │   ├── clients.md                    (clients + contacts + notes + progress)
 │   ├── ciq.md                        (client_ciqs + answers + priorities + snapshots)
-│   ├── tax.md                        (client_tax_*)
+│   ├── tax.md                        (client_tax_* + tax_planners / groups / logins + tax_intake_requests)
 │   ├── programs.md                   (programs + phases + tasks + enrollments)
 │   ├── specialists.md                (experts + onboarding workflow)
 │   ├── coaching.md                   (coaching meetings + renewals)
@@ -56,6 +56,7 @@ docs/
 │   ├── contract-and-payment.md       (the master MAP1 flow — all 13 steps)
 │   ├── tax-planning.md               (the Tax Planning flow within Holistic Planning — parallel to MAP1)
 │   ├── tax-fee-process.md            (the tax fee/pricing flow — one total in, derived amounts, the 3-payment split, the amend steps)
+│   ├── tax-intake.md                 (the member-run tax intake — 37-question form, $500 deposit / waiver, routes A / B / Holistic, deposit docs, $250 team share, linked refund)
 │   ├── boldsign-webhook.md           (sign events → pipeline updates → chains)
 │   ├── stripe-webhook.md             (payment events → pipeline updates → chains)
 │   ├── ciq.md                        (intake questionnaire workflow)
@@ -113,6 +114,7 @@ docs/
 | Admin logs in | [architecture/04-auth-and-sessions.md](architecture/04-auth-and-sessions.md) |
 | Member fills out a CIQ | [flows/ciq.md](flows/ciq.md) → [tables/ciq.md](tables/ciq.md) |
 | Member clicks the Help (?) button / admin edits the FAQs | [flows/member-help-faq.md](flows/member-help-faq.md) → [tables/faq.md](tables/faq.md) |
+| A member starts a tax client from the portal (the 37-question form + $500 deposit) | [flows/tax-intake.md](flows/tax-intake.md) → [tables/tax.md](tables/tax.md#tax_intake_requests-added-2026-09-17) → [integrations/stripe.md](integrations/stripe.md#checkout-session-shape--tax-intake-deposit-2026-09-17) |
 | A second person on the client's side gets Cc'd (or named in the greeting) | [flows/additional-contacts.md](flows/additional-contacts.md) → [integrations/gmail.md](integrations/gmail.md) → [tables/clients.md](tables/clients.md) |
 | Admin reviews the pipeline state | [architecture/02-frontend-shell.md](architecture/02-frontend-shell.md#what-automationpanel-shows) → [tables/pipeline.md](tables/pipeline.md) |
 

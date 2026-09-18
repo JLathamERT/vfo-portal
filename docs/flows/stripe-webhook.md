@@ -98,6 +98,27 @@ The handler `if`-checks `event.type === "checkout.session.completed"` and `event
 **Tables written:** `gc_balances` (insert or update), `gc_transactions` (insert).
 **Chains:** none.
 
+### Sub-branch A1½ — Tax intake deposit ($500, member portal) *(added 2026-09-17, v860; `router/webhooks.ts` "TAX INTAKE DEPOSIT" block)*
+
+**Trigger:** the member (route A) or the client (route B) paid the $500 tax intake deposit on the Checkout minted by `tax_intake_submit` / `tax_intake_link_submit` — see [tax-intake.md](tax-intake.md).
+
+**Position:** immediately after the GC block and **AHEAD of every customer-keyed branch** (MAP 1 → TAX → Advisor → PIP → Accountant). This session has **no Stripe customer** — the client does not exist yet — so nothing in the cascade below can claim it, and the block is **positively guarded on the session's own `metadata.payment_kind === 'tax_intake_deposit'`** (#473) so it can never claim a retainer. The same four keys (`pipeline=TAX`, `payment_kind`, `intake_id`, `member_number`) sit on the session and the PaymentIntent.
+
+**Discriminant:** `session.metadata.payment_kind === 'tax_intake_deposit'` AND `session.payment_status === 'paid'`. Card only, so there is no `async_payment_succeeded` twin — the money is settled when this arrives.
+
+**What it does:**
+1. Loads `tax_intake_requests` by `stripe_checkout_session_id` (unique). No row → logged, nothing else.
+2. **Redelivery guard:** `status` already `'paid'` or `'completed'` → logged and skipped.
+3. Stamps `stripe_payment_intent_id`, `paid_at = existing || now` (a redelivery never re-dates the payment, #470), `status='paid'`.
+4. Calls `finalizeTaxIntake` ([utils/tax-intake-finalize.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/utils/tax-intake-finalize.ts)), which latches a second time on `tax_intake_requests.created_client_at` (#327) and then creates the program-4 enrollment, the `clients` row, the `client_enrollments` row, the `client_tax_plans` row and the Deposit Paid step, issues the deposit invoice + receipt pair, and drafts the confirmation email to whoever paid. Every step is best-effort behind the money write; the block is try/caught so a failure is logged and the webhook still answers 200.
+
+**The `checkout.session.expired` twin** (same positive `payment_kind` guard): flips the row `'pending' → 'expired'` for that session id and touches nothing else — a paid or completed row is never expired. Route B may resubmit on the same token afterwards; route A starts a fresh form. `checkout.session.expired` is subscribed on the primary endpoints already (SpecRev uses it).
+
+**Tables read:** `tax_intake_requests`. **Tables written:** `tax_intake_requests`, then everything `finalizeTaxIntake` writes (`member_enrollments`, `clients`, `client_enrollments`, `client_tax_plans`, `client_tax_progress`, `document_numbers`, `notifications` on a document-number failure).
+**Chains:** none by HTTP — finalize runs in-process.
+
+> A declined card inside the Checkout emits `payment_intent.payment_failed` on a PI that carries `pipeline=TAX` but **no customer**; Branch C's generic first-payment resolver finds no row for a null customer and raises nothing. The client retries inside Stripe. (Read from the code; never exercised.)
+
 ### Sub-branch A2 — MAP1 first payment ([lines 290-392](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts))
 
 **Trigger:** client paid the first MAP1 payment via `/pay`.
@@ -248,7 +269,7 @@ Each update is matched by `stripe_customer_id` and further narrowed with `.not(<
 
 ## Tables touched (across all branches)
 
-- **Read:** `pipeline_map1`, `pipeline_sandbox_config`, `gc_balances`, `client_tax_plans`.
+- **Read:** `pipeline_map1`, `pipeline_sandbox_config`, `gc_balances`, `client_tax_plans`, `tax_intake_requests` (A1½).
 - **Written:** `pipeline_map1` (status/method/dates, **+ `pay1_bank_verification_pending_at`**), `gc_balances` (insert/update), `gc_transactions` (insert), `client_tax_plans` (retainer / implementation / **final-retainer** status, method, dates, **+ `retainer_bank_verification_pending_at` / `final_retainer_bank_verification_pending_at`**, and **a card fee per payment** — `card_processing_fee` / `final_retainer_card_fee` / `implementation_card_fee`, never shared), `notifications` (the failure bells + the two bank-verification-pending FYIs).
 
 > This list has always been MAP1-centric and is still not exhaustive — the tax, advisor, accountant, PIP and specialist branches all write their own pipeline tables. Derive from `router/webhooks.ts`, not from here.
@@ -258,6 +279,7 @@ Each update is matched by `stripe_customer_id` and further narrowed with `.not(<
 | Branch | Chains |
 |---|---|
 | A1 (GC) | none |
+| A1½ (Tax intake deposit) | none by HTTP — `finalizeTaxIntake` runs in-process (enrollment → client → plan → Deposit Paid → invoice/receipt pair → confirmation draft) |
 | A2 (MAP1 card) | `automation_CONTRACT_confirmationemail` (side effects only — **no client email**, status `'Skipped - Card (Receipt Only)'`) + `automation_CONTRACT_invoicereceipt` + `automation_CONTRACT_revshare` (payment 1) |
 | A2 (MAP1 ACH) | `automation_CONTRACT_confirmationemail` only (client confirmation email **is** drafted — `\|ach`, or **`\|ach_verify`** when `pay1_bank_verification_pending_at` was just stamped) |
 | B1 (Quarterly N) | `automation_CONTRACT_invoicereceipt` + `automation_CONTRACT_revshare` (payment N) |
@@ -274,7 +296,7 @@ There is also `if (action === "automation_CONTRACT_stripewebhook")` at [admin-ap
 3. **`pipeline_map1` lookup fails** → returns 200 with no action. Stripe considers it delivered. Pipeline stalls.
 4. **Chain call fails** (admin-api → admin-api) → caught and logged. DB writes succeeded, but downstream emails/PDFs not produced. Manual replay required.
 5. **Both A1 and A2 blocks execute** for an event that incidentally has both a customer match AND member_number metadata — they touch independent tables (gc_* vs pipeline_map1) so this is benign, but worth noting that they're not gated as exclusive.
-6. **Idempotency** — A2 is gated on `!pipeRow.pay1_status` — duplicate webhooks won't double-process. B2 is gated on `pay1_status === 'processing'` — won't fire if already 'succeeded'. A1 is **not idempotent** — duplicate delivery would credit twice. Stripe's "at-least-once" delivery model means this is theoretically possible.
+6. **Idempotency** — A2 is gated on `!pipeRow.pay1_status` — duplicate webhooks won't double-process. B2 is gated on `pay1_status === 'processing'` — won't fire if already 'succeeded'. A1 is **not idempotent** — duplicate delivery would credit twice. Stripe's "at-least-once" delivery model means this is theoretically possible. A1½ (tax intake deposit) is latched twice — the row's `status` in the webhook and `created_client_at` inside `finalizeTaxIntake` (#327) — so a redelivery returns the existing client/plan ids and creates nothing.
 
 ## Open questions
 

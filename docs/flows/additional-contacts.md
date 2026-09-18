@@ -211,6 +211,14 @@ Live-proven on Test Member 59524: a contact added, edited, removed and toggled; 
 
 ---
 
+## The footer is also central — `utils/email-signature.ts` (2026-09-17)
+
+Same shape as the member-contact Cc, one layer down: **the standard sign-off is enforced in the delivery layer, not per handler.** `ensureSignature` (HTML body) / `ensureSignatureEncoded` (the base64url MIME string every `gmailDraftFetch` and `deliverRaw` caller hands in, decoded, patched in the first `text/html` part — single-part or multipart — and re-encoded) run inside **`draftGmail`, `gmailDraftFetch` and `deliverRaw`**, so every templated and non-templated Gmail draft ends with `VFO Services - Proactive Coordinator Team` whether or not its handler appended one. The guard is **idempotent on the sign-off text** (`"Proactive Coordinator Team"`, not the markup), so the ~118 existing `+ VFO_SIGNATURE` appends are untouched and harmless, and **no new handler needs to append `VFO_SIGNATURE`** — `gmail-draft.ts` still re-exports the constant for the callers that do. The block is inserted **before any run of trailing `</div>` closers** so a styled-container body keeps the footer inside the card; a message it cannot parse is returned unchanged rather than corrupted.
+
+The older in-body *"AI-PC / Proactive Coordinator / VFO SERVICES"* block deliberately does **not** match the marker, so migration `20260917120100_tax_intake_email_templates.sql` stripped it (guarded `replace()`s, re-runnable) from **six revshare templates** — `TAX_member_revshare|retainer`, `TAX_member_revshare|implementation`, `TAX_planner_revshare|retainer`, `TAX_planner_revshare|implementation`, `strategic_partner_revshare` (pipeline STRATEGIC) and `PIP_member_revshare` (with its bare *Regards* paragraph) — and rewrote 181 `TAX_deposit_refund` without its block; all seven now pick the standard footer up from the guard. A template body that still carries its own AI-PC block would render two footers, so new templates ship with none.
+
+---
+
 ## The predecessor — why `extra_cc` is dormant, not deleted
 
 The old mechanism was a free-text chip list on the **MAP 1 PIP Follow-Up decision form** and the **Tax decision form**, stored as a comma-separated string in `pipeline_map1.extra_cc` / `client_tax_plans.extra_cc` and read by `utils/extra-cc.ts extraCcList()`.
