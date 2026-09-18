@@ -472,8 +472,12 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
         <div style={{ flex: '1 1 300px', minWidth: '260px' }}>
           <div style={sectionStyle}>
             <div style={cardTitle}>Assigned PF</div>
-            {readOnly
-              ? <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{client?.assigned_pf || '—'}</div>
+            {/* A DIRECT case's PF is the member themselves (clients.pf_member_number),
+                a name that is not in the dropdown — a select whose value has no
+                option silently reads "-- Select --", and an admin must not
+                reassign it from here anyway. */}
+            {readOnly || client?.pf_member_number
+              ? <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{client?.pf_member_number ? `${client?.assigned_pf || '—'} (Member — Direct)` : (client?.assigned_pf || '—')}</div>
               : <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <select value={assignedPf} onChange={e => setAssignedPf(e.target.value)} style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'Inter, sans-serif', minWidth: '160px', flex: 1 }}>
                     <option value="">-- Select --</option>
