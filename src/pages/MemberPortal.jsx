@@ -352,6 +352,17 @@ function MemberSpecialists({ member, allExperts, exclusions, ecoMap = {}, onData
 }
 
 function MemberProfile({ member, allMembers = [] }) {
+  // The member's own Stripe Connect setup state — a tag, never the account id
+  // (member_my_connect_status is session-scoped and strips it).
+  const [connectStatus, setConnectStatus] = useState(null)
+  useEffect(() => {
+    let alive = true
+    callApi('member_my_connect_status', {})
+      .then(r => { if (alive) setConnectStatus(r?.status || 'unavailable') })
+      .catch(() => { if (alive) setConnectStatus('unavailable') })
+    return () => { alive = false }
+  }, [member?.member_number])
+
   // Mirrors the admin-side member profile (MembersPanel MemberProfile):
   // hero header with headshot + status meta, short facts side by side, then
   // full-width long-form (bio).
@@ -400,14 +411,27 @@ function MemberProfile({ member, allMembers = [] }) {
       <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 340px', minWidth: '300px', display: 'flex' }}>
           <div style={{ ...sectionStyle, flex: 1 }}>
-            <div style={cardTitle}>Membership Details</div>
+            <div style={cardTitle}>Member Details</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '18px 24px' }}>
               <div><div style={fieldLabel}>Member Number</div><div style={{ ...fieldValue, fontFamily: 'monospace' }}>{member.member_number}</div></div>
               <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{member.join_date ? member.join_date.split('T')[0] : '—'}</div></div>
-              {member.email && <div><div style={fieldLabel}>Email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{member.email}</div></div>}
-              {(isAccountant || isAdvisor) && member.trading_name && <div><div style={fieldLabel}>Company Name</div><div style={fieldValue}>{member.trading_name}</div></div>}
-              {!isAccountant && <div><div style={fieldLabel}>Revenue Decision</div><div style={fieldValue}>{member.revenue_decision || '—'}</div></div>}
+              <div><div style={fieldLabel}>Work email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{member.email || '—'}</div></div>
+              <div><div style={fieldLabel}>Personal email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{member.personal_email || '—'}</div></div>
+              <div><div style={fieldLabel}>Company Name</div><div style={fieldValue}>{member.trading_name || '—'}</div></div>
               {member.website_url && <div><div style={fieldLabel}>Website</div><div style={fieldValue}><a href={normalizeUrl(member.website_url)} target="_blank" rel="noopener noreferrer" style={{ color: '#0095ff', textDecoration: 'none', wordBreak: 'break-all' }}>{member.website_url}</a></div></div>}
+              {!isAccountant && <div><div style={fieldLabel}>Revenue Decision</div><div style={fieldValue}>{member.revenue_decision || '—'}</div></div>}
+              <div><div style={fieldLabel}>Revenue Share Payout Account</div><div style={fieldValue}>
+                {(() => {
+                  const st = connectStatus
+                  const pill = st === 'complete' ? { dot: '#16a34a', label: 'Account set up' }
+                    : st === 'eligible_capped' ? { dot: '#f59e0b', label: 'Account set up — details outstanding' }
+                    : st === 'pending' ? { dot: '#dc2626', label: 'Setup pending' }
+                    : st === 'none' ? { dot: 'var(--vfo-faint)', label: 'Not set up' }
+                    : st === null ? { dot: 'var(--vfo-faint)', label: 'Checking…' }
+                    : { dot: 'var(--vfo-faint)', label: 'Status unavailable' }
+                  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pill.dot, flexShrink: 0 }} />{pill.label}</span>
+                })()}
+              </div></div>
             </div>
           </div>
         </div>

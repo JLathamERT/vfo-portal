@@ -451,12 +451,12 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
       </div>
 
       {/* Status + assigned PF — side by side. */}
-      <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 300px', minWidth: '260px' }}>
-          <div style={sectionStyle}>
+      <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 300px', minWidth: '260px', display: 'flex' }}>
+          <div style={{ ...sectionStyle, flex: 1 }}>
             <div style={cardTitle}>Client Status</div>
             {readOnly
-              ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '10px', height: '10px', borderRadius: '50%', background: statusColors[status], flexShrink: 0 }} />{status.charAt(0).toUpperCase() + status.slice(1)}</span>
+              ? <div style={{ display: 'flex', alignItems: 'center', minHeight: '42px' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--vfo-ink)' }}><span style={{ width: '10px', height: '10px', borderRadius: '50%', background: statusColors[status], flexShrink: 0 }} />{status.charAt(0).toUpperCase() + status.slice(1)}</span></div>
               : <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: statusColors[status], flexShrink: 0 }} />
                   <select value={status} onChange={e => updateStatus(e.target.value)} disabled={saving} style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'Inter, sans-serif', minWidth: '160px', flex: 1 }}>
@@ -469,15 +469,15 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
             }
           </div>
         </div>
-        <div style={{ flex: '1 1 300px', minWidth: '260px' }}>
-          <div style={sectionStyle}>
-            <div style={cardTitle}>Assigned PF</div>
+        <div style={{ flex: '1 1 300px', minWidth: '260px', display: 'flex' }}>
+          <div style={{ ...sectionStyle, flex: 1 }}>
+            <div style={cardTitle}>Proactive Facilitator</div>
             {/* A DIRECT case's PF is the member themselves (clients.pf_member_number),
                 a name that is not in the dropdown — a select whose value has no
                 option silently reads "-- Select --", and an admin must not
                 reassign it from here anyway. */}
             {readOnly || client?.pf_member_number
-              ? <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{client?.pf_member_number ? `${client?.assigned_pf || '—'} (Member — Direct)` : (client?.assigned_pf || '—')}</div>
+              ? <div style={{ display: 'flex', alignItems: 'center', minHeight: '42px', fontSize: '14px', color: 'var(--vfo-ink)' }}>{client?.pf_member_number ? `${client?.assigned_pf || '—'} (Member — Direct)` : (client?.assigned_pf || '—')}</div>
               : <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <select value={assignedPf} onChange={e => setAssignedPf(e.target.value)} style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'Inter, sans-serif', minWidth: '160px', flex: 1 }}>
                     <option value="">-- Select --</option>

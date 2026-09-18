@@ -1120,11 +1120,22 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
                     <div><div style={fieldLabel}>Work email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{profile.email || '—'}</div></div>
                     <div><div style={fieldLabel}>Personal email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{profile.personal_email || '—'}</div></div>
                     {(isAccountant || isAdvisor) && <div><div style={fieldLabel}>Company Name</div><div style={fieldValue}>{profile.trading_name || '—'}</div></div>}
+                    {profile.website_url && <div><div style={fieldLabel}>Website</div><div style={fieldValue}><a href={normalizeUrl(profile.website_url)} target="_blank" rel="noopener noreferrer" style={{ color: '#0095ff', textDecoration: 'none', wordBreak: 'break-all' }}>{profile.website_url}</a></div></div>}
+                    <div><div style={fieldLabel}>Eligible for Credit Note</div><div style={fieldValue}>{profile.credit_note_eligible === false ? 'No' : 'Yes'}</div></div>
+                    {directEligibility && (
+                      <div>
+                        <div style={fieldLabel}>Tax Planning (Direct)</div>
+                        <div style={fieldValue}>
+                          {directEligibility.eligible ? 'Eligible' : 'Ineligible'}
+                          <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginLeft: '6px' }}>
+                            ({directEligibility.qualifying_count} of 2 qualifying clients{directEligibility.feature_released === false ? ', not released' : ''})
+                          </span>
+                        </div>
+                      </div>
+                    )}
                     {!hiddenFields.includes('revenue_decision') && (
                       <div><div style={fieldLabel}>Revenue Decision</div><div style={fieldValue}>{profile.revenue_decision || '—'}</div></div>
                     )}
-                    <div><div style={fieldLabel}>Eligible for Credit Note</div><div style={fieldValue}>{profile.credit_note_eligible === false ? 'No' : 'Yes'}</div></div>
-                    {profile.website_url && <div><div style={fieldLabel}>Website</div><div style={fieldValue}><a href={normalizeUrl(profile.website_url)} target="_blank" rel="noopener noreferrer" style={{ color: '#0095ff', textDecoration: 'none', wordBreak: 'break-all' }}>{profile.website_url}</a></div></div>}
                   </div>
                   {profile.stripe_account_id ? (
                     <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--vfo-tint)' }}>
@@ -1280,15 +1291,6 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               <div style={sectionStyle}>
                 <div style={cardTitle}>Bio</div>
                 <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.bio}</div>
-              </div>
-            )}
-
-            {directEligibility && (
-              <div style={{ ...sectionStyle, fontSize: '13px', color: 'var(--vfo-muted)' }}>
-                Direct tax planning: {directEligibility.eligible
-                  ? `eligible (${directEligibility.qualifying_count} qualifying clients)`
-                  : `not yet eligible (${directEligibility.qualifying_count} of 2 qualifying clients)`}
-                {directEligibility.feature_released === false && ' — feature not released'}
               </div>
             )}
 
