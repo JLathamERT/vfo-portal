@@ -45,6 +45,7 @@ export default function MemberPortal() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [enabledPrograms, setEnabledPrograms] = useState([])
+  const [features, setFeatures] = useState({})
   const [allPrograms, setAllPrograms] = useState([])
 
   useEffect(() => {
@@ -83,6 +84,7 @@ export default function MemberPortal() {
       setEcoMap(eco)
       setAllPrograms(progData.programs || [])
       setEnabledPrograms(enabledData.enabled || [])
+      setFeatures(enabledData.features || {})
     } catch (err) {
       console.error('Load error:', err)
       setLoadError(err.message || 'Something went wrong')
@@ -96,16 +98,17 @@ export default function MemberPortal() {
 
   if (!session) return null
 
-  const ALWAYS_VISIBLE_PROGRAM = 'VFO Tax Planning'
+  const TAX_PROGRAM_NAME = 'VFO Tax Planning'
+  const taxIntakeEnabled = features.tax_intake === true
   const PROGRAM_KEYS = { 'VFO Holistic Planning': 'msm_holistic', 'Partnership Fast Track': 'msm_partnership', 'VFO Tax Planning': 'msm_tax', 'Advanced Coaching': 'msm_coaching', 'Standard Coaching': 'msm_standard' }
   // Canonical program order — matches the admin MSM Home program-toggle list.
   const PROGRAM_ORDER = ['VFO Holistic Planning', 'Partnership Fast Track', 'VFO Tax Planning', 'Advanced Coaching', 'Standard Coaching']
-  // ANY member may start a tax client (decision 2026-09-17), so VFO Tax Planning
-  // is always offered — its Clients tab carries the "Add new tax client" button
-  // and the first successful intake is what creates the enrollment. Gating for
-  // every OTHER program is unchanged: they still need a member_program_enabled row.
+  // ANY member may start a tax client (decision 2026-09-17) — but only once Jake
+  // flips portal_feature_flags.tax_intake. Until then VFO Tax Planning falls back
+  // to the pre-unit-1 rule it shares with every other program: a
+  // member_program_enabled row.
   const orderedEnabledPrograms = allPrograms
-    .filter(p => p.name === ALWAYS_VISIBLE_PROGRAM || enabledPrograms.some(e => e.program_id === p.id))
+    .filter(p => enabledPrograms.some(e => e.program_id === p.id) || (taxIntakeEnabled && p.name === TAX_PROGRAM_NAME))
     .sort((a, b) => {
       const ia = PROGRAM_ORDER.indexOf(a.name), ib = PROGRAM_ORDER.indexOf(b.name)
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib)

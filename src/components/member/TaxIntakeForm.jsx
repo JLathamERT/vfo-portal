@@ -242,6 +242,23 @@ export default function TaxIntakeForm({
     <div style={{ background: 'rgba(217,48,37,0.10)', border: '1px solid rgba(217,48,37,0.32)', borderRadius: '12px', padding: '14px 16px', marginBottom: '20px', fontSize: '13px', color: '#d93025' }}>{failed}</div>
   )
 
+  // ─── The feature gate, belt and braces ────────────────────────────────
+  // The button that opens this form is already hidden when the flag is off, and
+  // every write behind it 403s — this only covers a stale tab or a hand-typed
+  // deep link. `null` is "still loading", so the form is never flashed away.
+  if (eligibility?.intake_enabled === false) return (
+    <div style={{ ...sectionStyle, borderColor: 'rgba(224,103,23,0.35)' }}>
+      <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }}>Not available yet</div>
+      <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>
+        Adding a tax client from the portal is not available for your account yet. Please speak to your VFO team.
+      </div>
+      <button type="button" onClick={onCancel}
+        style={{ marginTop: '16px', padding: '8px 18px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
+        Back to clients
+      </button>
+    </div>
+  )
+
   // ─── Step 1: who fills the form in? ───────────────────────────────────
   if (step === 'choose') {
     const cardStyle = { ...sectionStyle, marginBottom: 0, cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s' }
