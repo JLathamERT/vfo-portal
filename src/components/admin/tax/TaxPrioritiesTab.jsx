@@ -550,6 +550,8 @@ const DEPOSIT_TEAM_CHIP_COLORS = {
   'Failed': '#e74c3c',
   'Awaiting Planner Allocation': '#e06717',
   'N/A — No Deposit': 'var(--vfo-muted)',
+  // Proceeded before the leg existed; deposit split by hand. Terminal, never paid.
+  'N/A — Legacy': 'var(--vfo-muted)',
 }
 function depositTeamChip(status) {
   const s = String(status || '')
