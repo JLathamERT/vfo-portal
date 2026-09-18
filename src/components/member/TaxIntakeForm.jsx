@@ -70,6 +70,10 @@ export default function TaxIntakeForm({
     return seed
   })
   const [eligibility, setEligibility] = useState(null)
+  // Who runs the case (unit 2). Classic by default — Direct is an option the
+  // member takes deliberately, never one they fall into. The server re-decides
+  // whether they may have it.
+  const [taxRoute, setTaxRoute] = useState('classic')
   const [errors, setErrors] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [failed, setFailed] = useState('')
@@ -140,7 +144,7 @@ export default function TaxIntakeForm({
         ? await onPublicSubmit(normalized)
         : holistic
           ? await callApi('tax_intake_holistic_submit', { answers: normalized, client_id: existingClient.id })
-          : await callApi('tax_intake_submit', { answers: normalized })
+          : await callApi('tax_intake_submit', { answers: normalized, ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}) })
       // A Checkout url means the deposit is owed — hand the browser to Stripe.
       if (res?.url) { window.location.assign(res.url); return }
       onDone?.(res)
@@ -169,6 +173,7 @@ export default function TaxIntakeForm({
         client_first_name: first,
         client_last_name: last,
         client_email: email,
+        ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}),
       })
       onDone?.({ link_sent_to: `${first} ${last}`.trim() })
     } catch (err) {
@@ -262,6 +267,21 @@ export default function TaxIntakeForm({
   // ─── Step 1: who fills the form in? ───────────────────────────────────
   if (step === 'choose') {
     const cardStyle = { ...sectionStyle, marginBottom: 0, cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s' }
+    // Who RUNS the case, asked on both routes and decided here — the client is
+    // never asked. Shown only to a member the server says is eligible; when the
+    // feature is off for them, nothing about Direct is shown at all.
+    const routeOptions = [
+      {
+        key: 'classic',
+        title: 'VFO Services runs this case',
+        body: 'Our tax planning team and your VFO team run every step; you follow along.',
+      },
+      {
+        key: 'direct',
+        title: 'I run this case (Direct)',
+        body: "You run the steps our VFO team normally runs; the tax planning team's steps stay with them. You act as the Planning Facilitator for this client.",
+      },
+    ]
     return (
       <div>
         <div style={{ marginBottom: '20px' }}>
@@ -270,7 +290,34 @@ export default function TaxIntakeForm({
           {depositLine && (
             <div style={{ fontSize: '13px', fontWeight: 600, color: eligibility && !eligibility.deposit_required ? green : 'var(--vfo-ink)', marginTop: '8px' }}>{depositLine}</div>
           )}
+          {eligibility?.direct_enabled && !eligibility?.direct_eligible && (
+            <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '6px', lineHeight: 1.55 }}>
+              Direct (run the case yourself) becomes available once you have 2 qualifying tax clients — you have {eligibility.qualifying_count}.
+            </div>
+          )}
         </div>
+        {/* Asked BEFORE the two cards below: those advance the moment they are
+            clicked, so a choice placed under them could never be made. */}
+        {eligibility?.direct_eligible && (
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>Who runs this case?</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+              {routeOptions.map(opt => (
+                <label key={opt.key} style={{ ...cardStyle, display: 'flex', alignItems: 'flex-start', gap: '10px', borderColor: taxRoute === opt.key ? '#125ecc' : 'var(--vfo-border-soft)' }}>
+                  <input type="radio" name="tax_route" value={opt.key} checked={taxRoute === opt.key}
+                    onChange={() => setTaxRoute(opt.key)} style={{ marginTop: '4px', flexShrink: 0 }} />
+                  <span>
+                    <span style={{ display: 'block', fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }}>{opt.title}</span>
+                    <span style={{ display: 'block', fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.6 }}>{opt.body}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '10px' }}>
+              Direct is available because you have {eligibility.qualifying_count} qualifying tax clients.
+            </div>
+          </div>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '24px' }}>
           <div role="button" tabIndex={0} style={cardStyle}
             onClick={() => setStep('form')}

@@ -853,6 +853,9 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
   const activeTab = activeSection === 'profile_edit' ? 'edit' : activeSection === 'profile_history' ? 'history' : 'details'
   const [typeHistory, setTypeHistory] = useState([])
   const [contacts, setContacts] = useState([])
+  // Read-only: computed by the loader from the member's qualifying tax clients
+  // and the tax_direct release flag. No control — Direct is never granted here.
+  const [directEligibility, setDirectEligibility] = useState(null)
   const [corporateMembers, setCorporateMembers] = useState([])
   const [dirty, setDirty] = useState(false)
   const [status, setStatus] = useState('')
@@ -977,6 +980,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
       setProfile(data.profile || { member_number: member.plugin_member_number, first_name: member.name?.split(' ')[0] || '', last_name: member.name?.split(' ').slice(1).join(' ') || '', elite_status: 'Active', member_type: '', email: '', suspended: false, paused: false, revenue_decision: 'Revenue Share', credit_note_eligible: true, stripe_account_id: '', connected_member_number: null, introduced_by_member_number: null, connection_type: '', notes: '' })
       setTypeHistory(data.type_history || [])
       setContacts(data.contacts || [])
+      setDirectEligibility(data.direct_eligibility || null)
       setCorporateMembers(allMembers.filter(m => m.plugin_member_number?.startsWith(member.plugin_member_number + '-C') || m.plugin_member_number?.startsWith(member.plugin_member_number + '-FC')))
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -1276,6 +1280,15 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               <div style={sectionStyle}>
                 <div style={cardTitle}>Bio</div>
                 <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.bio}</div>
+              </div>
+            )}
+
+            {directEligibility && (
+              <div style={{ ...sectionStyle, fontSize: '13px', color: 'var(--vfo-muted)' }}>
+                Direct tax planning: {directEligibility.eligible
+                  ? `eligible (${directEligibility.qualifying_count} qualifying clients)`
+                  : `not yet eligible (${directEligibility.qualifying_count} of 2 qualifying clients)`}
+                {directEligibility.feature_released === false && ' — feature not released'}
               </div>
             )}
 

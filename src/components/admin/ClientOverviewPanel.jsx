@@ -67,6 +67,14 @@ function ProgramPill({ label }) {
   )
 }
 
+// The member runs this case (client_tax_plans.tax_route). Rides beside the
+// program pill in the same cell rather than taking a column of its own.
+function DirectPill() {
+  return (
+    <span title="Direct: the member runs this case" style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', whiteSpace: 'nowrap', background: 'rgba(224,103,23,0.12)', color: '#e06717' }}>Direct</span>
+  )
+}
+
 export default function ClientOverviewPanel() {
   const navigate = useNavigate()
 
@@ -218,10 +226,11 @@ export default function ClientOverviewPanel() {
                     <span style={{ fontSize: '12.5px' }}>{t.title || '—'}</span>
                   )}
                   {activeSection === 'tax_planning' && (
-                    <span style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                       {t.program_label
                         ? <ProgramPill label={t.program_label} />
                         : <span style={{ fontSize: '12.5px', color: 'var(--vfo-faint)' }}>—</span>}
+                      {t.tax_route === 'direct' && <DirectPill />}
                     </span>
                   )}
                   {c.member_name

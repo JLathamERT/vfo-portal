@@ -4785,7 +4785,12 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       <TrackHero
         eyebrow={programName}
         title="Tax Plan"
-        meta={`Started ${plan.created_at?.split('T')[0] || ''}`}
+        meta={<>
+          <span>Started {plan.created_at?.split('T')[0] || ''}</span>
+          {(livePlan || plan)?.tax_route === 'direct' && (
+            <span style={chipStyle('#125ecc')} title="Direct: the member runs this case and is the Planning Facilitator">Direct</span>
+          )}
+        </>}
         completed={heroDoneTasks}
         total={heroTotalTasks}
         steps={heroSteps}
@@ -5269,6 +5274,11 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
                   <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{plan.created_at?.split('T')[0]}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {/* Only when there is a choice to tell apart — a single plan
+                      carries the pill on its own header. */}
+                  {taxPlans.length > 1 && plan.tax_route === 'direct' && (
+                    <span style={chipStyle('#125ecc')} title="Direct: the member runs this case">Direct</span>
+                  )}
                   <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: plan.status === 'stopped' ? 'rgba(231,76,60,0.15)' : 'rgba(27,146,84,0.15)', color: plan.status === 'stopped' ? '#e74c3c' : '#1b9254', border: `1px solid ${plan.status === 'stopped' ? 'rgba(231,76,60,0.3)' : 'rgba(27,146,84,0.3)'}` }}>{plan.status === 'stopped' ? 'Stopped' : 'Live'}</span>
                   {plan.status !== 'stopped' && <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: `${stateColor}22`, color: stateColor, border: `1px solid ${stateColor}44`, textTransform: 'capitalize' }}>{state}</span>}
                   <span style={{ color: '#0095ff', fontWeight: 500, fontSize: '13px' }}>View →</span>
