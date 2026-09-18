@@ -39,14 +39,16 @@ export default function TaxIntakePage() {
           setStatus('error')
           return
         }
+        // Back from Stripe: the webhook has usually already flipped the row to
+        // completed by the time this page loads, so the paid return is checked
+        // FIRST — the client just paid, this is their thank-you, not a re-visit.
+        if (paid) { setStatus('thanks'); return }
         if (data.status === 'completed' || data.status === 'paid' || data.status === 'waived') {
           setStatus('already')
           return
         }
         setIntake(data)
-        // Back from Stripe: the webhook creates the case, so there is nothing
-        // for this page to do but say thank you.
-        setStatus(paid ? 'thanks' : 'form')
+        setStatus('form')
       } catch (err) {
         if (!live) return
         setError('Unable to connect. Please try again later.')
@@ -67,17 +69,19 @@ export default function TaxIntakePage() {
     return data
   }
 
+  // Same states and the same text-glyph icon circle as the other token pages
+  // (TaxDecidePage / OnboardingMeetingPage) — no emoji anywhere.
   if (status === 'loading') {
-    return <TokenShell maxWidth={520}><Message icon="⏳" color="#0095ff" title="One moment" message="Loading your Tax Planning Form..." /></TokenShell>
+    return <TokenShell maxWidth={520}><Message icon="…" color="#0095ff" title="One moment" message="Loading your Tax Planning Form..." /></TokenShell>
   }
   if (status === 'error') {
-    return <TokenShell maxWidth={520}><Message icon="⚠️" color="#d93025" title="We could not open this form" message={error} /></TokenShell>
+    return <TokenShell maxWidth={520}><Message icon="!" color="#d93025" title="We could not open this form" message={error} /></TokenShell>
   }
   if (status === 'already') {
-    return <TokenShell maxWidth={520}><Message icon="✅" color="#1b9254" title="Already submitted" message="This form has already been submitted. There is nothing more for you to do — your VFO member will be in touch." /></TokenShell>
+    return <TokenShell maxWidth={520}><Message icon="✓" color="#64748b" title="Thank you." message="We have already received your Tax Planning Form — no further action is needed. Your VFO member will be in touch." /></TokenShell>
   }
   if (status === 'thanks') {
-    return <TokenShell maxWidth={520}><Message icon="✅" color="#1b9254" title="Thank you" message="Thank you. Your Tax Planning Form has been received." /></TokenShell>
+    return <TokenShell maxWidth={520}><Message icon="✓" color="#16a34a" title="Thank you." message="Your Tax Planning Form has been received. A confirmation email is on its way, and the tax planning team will be allocated in due course." /></TokenShell>
   }
 
   return (
@@ -94,8 +98,8 @@ export default function TaxIntakePage() {
 
 function Message({ icon, color, title, message }) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ width: '64px', height: '64px', borderRadius: '50%', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '20' }}>
+    <div style={{ textAlign: 'center', padding: '12px 0' }}>
+      <div style={{ width: '72px', height: '72px', borderRadius: '50%', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '20' }}>
         <span style={{ fontSize: '32px', lineHeight: 1 }}>{icon}</span>
       </div>
       <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: '21px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--vfo-heading)', margin: '0 0 12px' }}>{title}</h1>
