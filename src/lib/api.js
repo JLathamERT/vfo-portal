@@ -15,6 +15,11 @@ const SLOW_WRITE_TIMEOUT_MS = 60000
 // auto-retries.
 const LONG_TIMEOUT_ACTIONS = {
   tax_generate_presentation: 90000,
+  // The Direct member's twin runs the same generator (#487: the tier follows the
+  // NAME, so the twin needs its own entry). tax_save_task carries no entry, so
+  // tax_direct_save_task carries none either — the tax_direct_ prefix below
+  // already lands it in the slow-write tier.
+  tax_direct_generate_presentation: 90000,
   // The member tax-intake submit. On the WAIVED branch it creates the
   // enrollment, client, junction row and tax plan, then drafts the confirmation
   // Gmail (OAuth + drafts.create) before it answers — comfortably past a cold
@@ -25,9 +30,11 @@ const LONG_TIMEOUT_ACTIONS = {
   // drafts the TAX_intake_link Gmail (OAuth + drafts.create) before answering.
   tax_intake_send_link: 30000,
 }
+// tax_direct_* are the member-callable twins of automation_TAX_* (unit 2 phase
+// 5) and chain the same external services, so they share the slow-write tier.
 function timeoutFor(action) {
   if (LONG_TIMEOUT_ACTIONS[action]) return LONG_TIMEOUT_ACTIONS[action]
-  return action?.startsWith('automation_') && !isReadAction(action)
+  return (action?.startsWith('automation_') || action?.startsWith('tax_direct_')) && !isReadAction(action)
     ? SLOW_WRITE_TIMEOUT_MS
     : REQUEST_TIMEOUT_MS
 }

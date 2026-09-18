@@ -87,6 +87,11 @@ export default function ClientDetail() {
   const isPlanner = location.pathname.startsWith('/tax-planner')
   const isAdmin = !isMember && !isPlanner
   const backUrl = location.state?.from || (isMember ? '/member' : isPlanner ? '/tax-planner' : '/admin')
+  // DIRECT route (unit 2 phase 5): this member is the PF of this client
+  // (clients.pf_member_number, stamped by the intake finalize), so they run the
+  // tax plan themselves and manage its contacts and notes. Compared against the
+  // SESSION member number; the backend re-proves it on every write.
+  const isDirect = isMember && !!client?.pf_member_number && String(client.pf_member_number) === String(session?.member_number ?? '')
 
   // Program sub-tabs (PFT / MAP 1 / Regular / Tax / PIP) are locked on the admin
   // side until a PF is assigned to this client (set on the Profile tab). Members
@@ -334,7 +339,7 @@ export default function ClientDetail() {
           <ProfileTabSkeleton sections={isMember ? 3 : 4} />
         ) : (
           <>
-            {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
+            {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
             {activeTab === 'details' && isAdmin && <ClientDetails client={client} onUpdate={loadData} sectionStyle={sectionStyle} />}
             {pfLocked && PROGRAM_TABS.includes(activeTab) && (
               <div style={{ ...sectionStyle, borderColor: 'rgba(231,76,60,0.3)', textAlign: 'center', padding: '40px' }}>
@@ -345,7 +350,7 @@ export default function ClientDetail() {
             {activeTab === 'map1' && program && !pfLocked && !isPlanner && <ClientTrackViewV2 clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} />}
             {activeTab === 'pft' && program && !pfLocked && !isPlanner && <PFTEngagementTrack clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} />}
             {activeTab === 'regular' && program && !pfLocked && !isPlanner && <RegularPrioritiesTab clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} initialTrackId={initialTrackId} />}
-            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} plannerMode={isPlanner} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} />}
+            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} />}
             {activeTab === 'pip' && program && !pfLocked && !isPlanner && <PipMeetingsTab clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} />}
             {/* memberMode is its own flag, not a relaxed readOnly: a member gets
                 view on all three sections + add on the two client-owned ones,
@@ -369,7 +374,7 @@ export default function ClientDetail() {
   )
 }
 
-function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, sectionStyle, readOnly = false, plannerMode = false, notes = [], onNotesChange, program }) {
+function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, sectionStyle, readOnly = false, plannerMode = false, directMode = false, notes = [], onNotesChange, program }) {
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [editNoteText, setEditNoteText] = useState('')
   const [status, setStatus] = useState(client?.status || 'pending')
@@ -432,7 +437,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
           <div><div style={fieldLabel}>Email</div><div style={fieldValue}>{client?.email || '—'}</div></div>
           <div><div style={fieldLabel}>Phone</div><div style={fieldValue}>{client?.phone || '—'}</div></div>
         </div>
-        {readOnly && contacts?.length > 0 && <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--vfo-tint)' }}>
+        {readOnly && !directMode && contacts?.length > 0 && <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--vfo-tint)' }}>
           <div style={{ ...fieldLabel, marginBottom: '10px' }}>Additional Contacts</div>
           {contacts.map((c, i) => (
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: i < contacts.length - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
@@ -495,8 +500,11 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
       </div>
 
       {/* Admins manage Additional Contacts right here on the Profile tab;
-          members/planners get the read-only list in Contact Info instead. */}
+          members/planners get the read-only list in Contact Info instead. A
+          DIRECT member runs this client, so they get the editing card too —
+          name/email only, the Cc switches stay admin-only (isAdmin off). */}
       {!readOnly && <ClientAdditionalContacts client={client} contacts={contacts} onReloadContacts={onReloadContacts} sectionStyle={sectionStyle} isAdmin />}
+      {readOnly && directMode && <ClientAdditionalContacts client={client} contacts={contacts} onReloadContacts={onReloadContacts} sectionStyle={sectionStyle} />}
 
       {/* Notes — full width so long threads use the whole row. */}
       {!readOnly && (
@@ -567,10 +575,16 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
         </div>
       )}
 
-      {/* Member view — read-only list of notes the team chose to share. */}
-      {readOnly && !plannerMode && notes.length > 0 && (
+      {/* Member view — read-only list of notes the team chose to share. A
+          DIRECT member also adds their own (always shared, so the team sees
+          them on this same profile). */}
+      {readOnly && !plannerMode && (directMode || notes.length > 0) && (
         <div style={sectionStyle}>
-          <div style={{ ...cardTitle, marginBottom: '4px' }}>Notes from your team</div>
+          <div style={{ ...cardTitle, marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>{directMode ? 'Notes' : 'Notes from your team'}</span>
+            {directMode && <DirectAddNote clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />}
+          </div>
+          {directMode && notes.length === 0 && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '10px' }}>No notes yet.</div>}
           {notes.map(note => (
             <div key={note.id} style={{ padding: '10px 12px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
               <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
@@ -585,6 +599,45 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// The Direct member's note composer (unit 2 phase 5). One button, one box, no
+// visibility picker: tax_direct_note_add forces visibility='shared' and signs
+// the note with the member's own name server-side.
+function DirectAddNote({ clientId, notes, onNotesChange, programName }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function save() {
+    if (!text.trim()) return
+    setSaving(true)
+    setError('')
+    try {
+      const result = await callApi('tax_direct_note_add', { client_id: clientId, program_name: programName, note_text: text.trim() })
+      if (result?.error) { setError(result.error); return }
+      onNotesChange([result.note, ...notes])
+      setText('')
+      setOpen(false)
+    } catch (err) { setError(err?.message || 'Something went wrong') }
+    finally { setSaving(false) }
+  }
+
+  if (!open) {
+    return <button onClick={() => setOpen(true)} style={{ padding: '4px 12px', borderRadius: '6px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', textTransform: 'none', letterSpacing: 0 }}>+ Add Note</button>
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, marginLeft: '16px', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+        <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Add a note for the Tax Planning Team..." rows={2} maxLength={5000} style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
+        <button onClick={save} disabled={saving || !text.trim()} style={{ padding: '8px 14px', borderRadius: '8px', background: (saving || !text.trim()) ? 'var(--vfo-tint)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: (saving || !text.trim()) ? '1px solid var(--vfo-border-mid)' : 'none', color: (saving || !text.trim()) ? 'var(--vfo-muted)' : '#fff', fontSize: '12px', cursor: (saving || !text.trim()) ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>{saving ? 'Saving...' : 'Save'}</button>
+        <button onClick={() => { setOpen(false); setText(''); setError('') }} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }}>✕</button>
+      </div>
+      {error && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '12px' }}>{error}</div>}
     </div>
   )
 }
@@ -636,7 +689,9 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
 // Additional Contacts card — lives on the client Profile (home) tab for admins
 // (moved off Edit Profile 2026-09-16 so it is always visible, empty or not).
 // Members and planners see the read-only list inside ClientHome's Contact Info
-// card instead; this component is admin-only.
+// card instead. Since unit 2 phase 5 a DIRECT member gets this card as well
+// (isAdmin=false: name/email add/edit/remove, no Cc switches) — the three
+// msm_*_client_contact handlers re-prove own + Direct client server-side.
 function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sectionStyle, isAdmin = false }) {
   const [contactStatus, setContactStatus] = useState('')
   const [showAddContact, setShowAddContact] = useState(false)
@@ -764,7 +819,9 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
           <button onClick={() => setShowAddContact(!showAddContact)} style={{ padding: '6px 14px', borderRadius: '6px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '12px', cursor: 'pointer' }}>+ Add</button>
         </div>
         <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '14px', lineHeight: 1.5 }}>
-          People on this client's side. With <strong>Cc on all client emails</strong> switched on, a contact is Cc'd on every portal email addressed to this client; <strong>Include in the greeting</strong> also names them in the salutation.
+          {isAdmin
+            ? <>People on this client's side. With <strong>Cc on all client emails</strong> switched on, a contact is Cc'd on every portal email addressed to this client; <strong>Include in the greeting</strong> also names them in the salutation.</>
+            : <>People on this client's side. The Tax Planning Team decides whether a contact is Cc'd on this client's emails.</>}
         </div>
 
         {showAddContact && (
