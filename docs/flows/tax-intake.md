@@ -142,6 +142,7 @@ All six are Draft (`send_mode=false`); all carry Anton + Paul in Bcc. **None car
 |---|---|---|
 | `Yes` | transfer created | yes |
 | `N/A — No Deposit` | no `deposit_payment_intent_id` (waived intake, or a plan that never had one) | yes |
+| `N/A — Legacy` | stamped by SQL only (migration `20260918170000`, v865): the 33 plans that had Proceeded before the leg existed, deposits split by hand — never written by code, never paid | yes |
 | `Awaiting Planner Allocation` | a PI exists but `tax_planner_id` is NULL | no — released by allocation, retried by the sweep |
 | `Failed` | planner has no group, group missing, group has no `stripe_account_id`, transfers capability not active, no Stripe key, or Stripe refused | no — retried by the sweep |
 
