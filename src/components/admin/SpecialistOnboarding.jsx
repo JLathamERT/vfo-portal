@@ -471,14 +471,19 @@ function OnboardingDetail({ id, onBack }) {
   // Automated (no-click) step — mirrors the MAP 1 tracker's autoStep exactly
   // (small dot, 12px label that greens when done, tiny "Done / Not completed"
   // chip) so it never reads as a clickable button.
-  function AutoStep({ done, label, detail, date }) {
+  // `pending` = an ACH is in flight (bg_payment_status 'processing'). Mirrors
+  // AutoRow in AdvisorOnboarding.jsx — orange dot + orange tag instead of
+  // "Not completed".
+  function AutoStep({ done, label, detail, date, pending = false }) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
+        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : pending ? '#e06717' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : pending ? '#e06717' : 'var(--vfo-border-mid)'}` }} />
         <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center' }}>
           {detail && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{detail}</span>}
-          <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: done ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: done ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: done ? '#1b9254' : 'var(--vfo-muted)' }}>{done ? 'Done' : 'Not completed'}</span>
+          {!done && pending
+            ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>Pending — ACH clearing</span>
+            : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: done ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: done ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: done ? '#1b9254' : 'var(--vfo-muted)' }}>{done ? 'Done' : 'Not completed'}</span>}
         </span>
         {done && date && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(date)}</span>}
       </div>
@@ -1457,7 +1462,7 @@ function OnboardingDetail({ id, onBack }) {
         {(confirmSent || ob.bg_payment_method_type !== 'card') && (
           <AutoStep done={confirmSent} label="Payment confirmation email sent" date={ob.bg_confirmation_email_sent_at} />
         )}
-        <AutoStep done={bgPaid} label="Payment cleared — receipt, next steps, and DD checklist sent" date={ob.bg_payment_completed_at} />
+        <AutoStep done={bgPaid} pending={ob.bg_payment_status === 'processing'} label="Payment cleared — receipt, next steps, and DD checklist sent" date={ob.bg_payment_completed_at} />
 
         {/* ── Background Check ── */}
         <div style={{ borderTop: '1px solid var(--vfo-border)', margin: '16px 0' }} />

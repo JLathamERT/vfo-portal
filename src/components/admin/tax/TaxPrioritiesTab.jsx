@@ -3365,21 +3365,30 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       const decision = enterDetailsStatus.replace('Completed - ', '')
       let aiState = {}
       try { aiState = JSON.parse(localProgress[key]?.notes || '{}') } catch(e) { aiState = {} }
-      const autoStep = (label, done, chip = null, at = null) => (
+      // `pending` = an ACH is in flight (retainer_status 'processing'); pass a
+      // string to override the tag text (bank verification). Mirrors AutoRow in
+      // AdvisorOnboarding.jsx — orange dot + orange tag instead of "Not completed".
+      const autoStep = (label, done, chip = null, at = null, pending = false) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
+          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : pending ? '#e06717' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : pending ? '#e06717' : 'var(--vfo-border-mid)'}` }} />
           <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}{chip && <span style={{ marginLeft: '8px' }}>{chip}</span>}</span>
           {done && <span style={{ ...chipStyle('#1b9254'), marginLeft: 'auto' }}>Done</span>}
+          {!done && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717', marginLeft: 'auto' }}>{typeof pending === 'string' ? pending : 'Pending — ACH clearing'}</span>}
           {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
         </div>
       )
       const stallRows = (stall) => stallSteps(stall, (label, done, at) => autoStep(label, done, null, at))
+      // Retainer ACH in flight: micro-deposits still being verified reads as
+      // "bank verification"; otherwise the debit is simply clearing.
+      const retainerPending = livePlan?.retainer_status === 'processing'
+        ? (livePlan?.retainer_bank_verification_pending_at ? 'Pending — bank verification' : true)
+        : false
       const sharedSteps = [
         { label: 'Engagement agreement created and sent for signing', done: !!livePlan?.boldsign_doc_id, at: livePlan?.agreement_sent_at, stall: 'signed' },
         { label: 'Engagement agreement signed',                       done: livePlan?.client_signed === 'Yes' },
         { label: 'Engagement agreement signed by CEO',                done: livePlan?.ceo_signed === 'Yes', chip: (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Engagement agreement signed by CEO" templates={[{ name: 'TAX_ceocountersign|Yes', when: 'Automatic — asks the CEO to countersign' }, { name: 'TAX_signing_reminder', when: 'Automatic reminder if unsigned (2 business days)' }]} context={emailCtx} /> },
         { label: 'Payment link sent (ACH or Card choice)',            done: !!livePlan?.checkout_token, at: livePlan?.payment_email_sent_at, stall: 'payment', chip: (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Payment link sent (ACH or Card choice)" templates={[{ name: 'TAX_paymentemail|Yes', when: 'Automatic — retainer payment link' }, { name: 'TAX_payment_reminder', when: 'Automatic reminder if unpaid (2 business days)' }]} context={emailCtx} /> },
-        { label: 'Payment collected',                                 done: livePlan?.retainer_confirmation_status === 'Sent' || livePlan?.retainer_confirmation_status === CONFIRMATION_CARD_SKIP, at: livePlan?.retainer_date, chip: (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Payment collected" templates={[{ name: 'TAX_confirmationemail|card', when: 'No longer sent automatically — card gets the invoice/receipt instead' }, { name: 'TAX_confirmationemail|ach', when: 'If paid by bank transfer (ACH) — the only method that gets a confirmation' }, { name: 'TAX_confirmationemail|check', when: 'If paid by check' }, { name: 'TAX_paidbycheck|check', when: 'When admin records a check is on the way' }]} context={emailCtx} /> },
+        { label: 'Payment collected',                                 done: livePlan?.retainer_confirmation_status === 'Sent' || livePlan?.retainer_confirmation_status === CONFIRMATION_CARD_SKIP, pending: retainerPending, at: livePlan?.retainer_date, chip: (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Payment collected" templates={[{ name: 'TAX_confirmationemail|card', when: 'No longer sent automatically — card gets the invoice/receipt instead' }, { name: 'TAX_confirmationemail|ach', when: 'If paid by bank transfer (ACH) — the only method that gets a confirmation' }, { name: 'TAX_confirmationemail|check', when: 'If paid by check' }, { name: 'TAX_paidbycheck|check', when: 'When admin records a check is on the way' }]} context={emailCtx} /> },
         { label: 'Invoice and receipt created and emailed to client', done: livePlan?.retainer_invoice_email_sent === true, at: livePlan?.retainer_invoice_email_sent_at, chip: (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Invoice and receipt created and emailed to client" templates={[{ name: 'TAX_invoicereceipt_email|retainer', when: 'Retainer invoice + receipt' }]} context={emailCtx} /> },
       ]
       const signingEmailSent = livePlan?.agreement_sent === 'Yes'
@@ -3439,7 +3448,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
             {decision === 'Yes' && (
               <>
                 {autoStep('Signing link and next steps email sent', signingEmailSent, null, livePlan?.agreement_sent_at)}
-                {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at)}{s.stall && stallRows(s.stall)}</div>)}
+                {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at, s.pending)}{s.stall && stallRows(s.stall)}</div>)}
               </>
             )}
             {decision === 'Undecided' && (() => {
@@ -3471,7 +3480,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                       )}
                       {hasPricing && pricingStep(true)}
                       {autoStep('Signing link and next steps email sent', signingEmailSent, null, livePlan?.agreement_sent_at)}
-                      {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at)}{s.stall && stallRows(s.stall)}</div>)}
+                      {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at, s.pending)}{s.stall && stallRows(s.stall)}</div>)}
                     </>
                   )}
 
@@ -3524,7 +3533,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                           {autoStep('PF confirmed — Yes with pricing', true)}
                           {pricingStep(true)}
                           {autoStep('Signing link and next steps email sent', signingEmailSent, null, livePlan?.agreement_sent_at)}
-                          {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at)}{s.stall && stallRows(s.stall)}</div>)}
+                          {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at, s.pending)}{s.stall && stallRows(s.stall)}</div>)}
                         </>
                       )}
                     </>
@@ -3790,12 +3799,16 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       // Cascade done state for the bullet/pill
       const aipcDone = tax5bAipcDone
 
-      const autoStep = (label, done, chip = null, at = null) => (
+      // `pending` = the implementation ACH debit is in flight
+      // (implementation_charge_status 'processing'). Mirrors AutoRow in
+      // AdvisorOnboarding.jsx — orange dot + orange tag instead of "Not completed".
+      const autoStep = (label, done, chip = null, at = null, pending = false) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
+          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : pending ? '#e06717' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : pending ? '#e06717' : 'var(--vfo-border-mid)'}` }} />
           <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}{chip && <span style={{ marginLeft: '8px' }}>{chip}</span>}</span>
           {done && <span style={{ ...chipStyle('#1b9254'), marginLeft: 'auto' }}>Done</span>}
-          {!done && <span style={{ ...neutralChipStyle, marginLeft: 'auto' }}>Not completed</span>}
+          {!done && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717', marginLeft: 'auto' }}>Pending — ACH clearing</span>}
+          {!done && !pending && <span style={{ ...neutralChipStyle, marginLeft: 'auto' }}>Not completed</span>}
           {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
         </div>
       )
@@ -3807,7 +3820,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         </>
       ) : (
         <>
-          {autoStep('Implementation fee charged to saved payment method', chargeStatus === 'succeeded', (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Implementation fee auto-charged using saved payment method" templates={[{ name: 'TAX_implementdecision|Proceeding', when: 'Automatic — drafted when the client clicks Proceed on the implementation decision email' }, { name: 'TAX_invoicereceipt_email|implementation', when: 'Automatic — implementation invoice + receipt' }, { name: 'TAX_implementation_charge_failed', when: 'Automatic — if the implementation charge fails' }]} context={emailCtx} />, livePlan?.implementation_charge_date)}
+          {autoStep('Implementation fee charged to saved payment method', chargeStatus === 'succeeded', (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Implementation fee auto-charged using saved payment method" templates={[{ name: 'TAX_implementdecision|Proceeding', when: 'Automatic — drafted when the client clicks Proceed on the implementation decision email' }, { name: 'TAX_invoicereceipt_email|implementation', when: 'Automatic — implementation invoice + receipt' }, { name: 'TAX_implementation_charge_failed', when: 'Automatic — if the implementation charge fails' }]} context={emailCtx} />, livePlan?.implementation_charge_date, chargeStatus === 'processing')}
           {autoStep('Implementation fee receipt created and emailed to client', recStatus === 'Sent', null, livePlan?.implementation_receipt_email_sent_at)}
           {autoStep('Implementation fee revenue share verified, member paid, member emailed', revEmailSent === true, (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Implementation fee revenue share verified, member paid, member emailed" templates={[{ name: 'TAX_member_revshare|retainer', when: 'Automatic — member revenue-share notice (retainer)' }, { name: 'TAX_member_revshare|implementation', when: 'Automatic — member revenue-share notice (implementation)' }, { name: 'TAX_planner_revshare|retainer', when: 'Automatic — tax planner revenue-share notice (retainer)' }, { name: 'TAX_planner_revshare|implementation', when: 'Automatic — tax planner revenue-share notice (implementation)' }]} context={emailCtx} />, livePlan?.implementation_rev_email_sent_at || livePlan?.implementation_rev_completed_at)}
         </>
