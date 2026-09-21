@@ -427,7 +427,20 @@ const PLANNER_EDITABLE_TASK_NAMES = new Set([
   'Amend fee',
   'Amend implementation fee',
 ])
-const isPlannerEditable = (task) => PLANNER_EDITABLE_TASK_NAMES.has(task?.name)
+// Phase 5f (2026-09-21): a planner may ALSO run two Tax 3 surfaces, but only on
+// a Direct plan — the "Client tax planning decision" step and the Automated-steps
+// card that hosts its two Undecided follow-ups. Cross-repo contract with
+// actions/tax/save-task.ts (the DIRECT_PLANNER_TASK_NAME exception beside
+// PLANNER_EDITABLE_TASK_NAMES) and constants/role-gates.ts (the four Direct-only
+// planner actions). The name set above stays unconditional: on a classic plan
+// both surfaces 403.
+const isPlannerEditable = (task, phase = null, direct = false) => (
+  PLANNER_EDITABLE_TASK_NAMES.has(task?.name)
+  || (direct && (
+    (task?.status_options === 'enter_details' && task?.name === 'Client tax planning decision')
+    || (task?.name === 'AI PC Admin' && phase?.name === 'Tax 3 - ROI Meeting')
+  ))
+)
 
 // DIRECT route (unit 2 phase 5): the steps the MEMBER runs on their own Direct
 // plan — every VFO-team step; the tax-planning-team steps stay visible but
@@ -439,6 +452,11 @@ const isPlannerEditable = (task) => PLANNER_EDITABLE_TASK_NAMES.has(task?.name)
 // a step-row write. A step here escapes the lock wrapper and the member
 // catch-all rows; a step absent here renders inert with the lock hint its
 // OWNER dictates (lockHintFor). Widening either side alone is a regression.
+//
+// Phase 5f removed three sentinels and the whole namesInPhase mechanism: the Tax
+// 3 decision (enter_details) is the allocated Tax Planner's on Direct, both amend
+// steps are the Tax Planning Team's, and with the decision gone the Tax 3
+// Automated-steps card no longer hosts anything the member runs.
 const DIRECT_EDITABLE_TASKS = {
   // status_options -> required task name (null = any name under that sentinel)
   sentinels: {
@@ -447,28 +465,19 @@ const DIRECT_EDITABLE_TASKS = {
     tax_3_decision: null,
     tax_generate_presentation: null,
     tax_presentation_link: null,
-    enter_details: 'Client tax planning decision',
     tax_hlm_confirm: null,
-    [AMEND_FEE_CODE]: null,
-    [AMEND_FEE_TAX5_CODE]: null,
   },
   // Generic dropdown steps, matched by exact name; statuses come from the
   // task's own status_options.
   names: ['Client risk profile complete', 'ROI Presentation'],
-  // The Tax 3 AI PC Admin cascade card is 'auto' and writes no step row, but it
-  // HOSTS the two Undecided follow-ups the member runs (pricing / extra
-  // meeting), so it is unlocked in that phase only.
-  namesInPhase: { 'AI PC Admin': 'Tax 3 - ROI Meeting' },
 }
-const isDirectEditable = (task, phase = null) => {
+const isDirectEditable = (task) => {
   const so = task?.status_options
   if (Object.prototype.hasOwnProperty.call(DIRECT_EDITABLE_TASKS.sentinels, so)) {
     const nm = DIRECT_EDITABLE_TASKS.sentinels[so]
     return !nm || nm === task?.name
   }
-  if (DIRECT_EDITABLE_TASKS.names.includes(task?.name)) return true
-  const ph = DIRECT_EDITABLE_TASKS.namesInPhase[task?.name]
-  return !!ph && ph === phase?.name
+  return DIRECT_EDITABLE_TASKS.names.includes(task?.name)
 }
 
 // admin action -> the member-callable tax_direct_* twin (constants/role-gates.ts
@@ -484,11 +493,7 @@ const DIRECT_ACTION_MAP = {
   tax_generate_presentation: 'tax_direct_generate_presentation',
   tax_presentation_downloaded: 'tax_direct_presentation_downloaded',
   automation_TAX_presentation_schedule: 'tax_direct_presentation_schedule',
-  automation_TAX_decision: 'tax_direct_decision',
-  automation_TAX_pricing: 'tax_direct_pricing',
-  automation_TAX_extrameeting: 'tax_direct_extrameeting',
   automation_TAX_highlevelmeeting_confirm: 'tax_direct_highlevelmeeting_confirm',
-  automation_TAX_amend_fee: 'tax_direct_amend_fee',
   tax_save_task: 'tax_direct_save_task',
 }
 const actFor = (directMode) => (name) => (directMode ? DIRECT_ACTION_MAP[name] || name : name)
@@ -520,10 +525,16 @@ const STEP_OWNER = {
 // stays chip-less. The two phases that run one row PER ALLOCATED SPECIALIST are
 // the Tax Planning Team's whatever the row is called, which is what the phase
 // fallback covers (tax-plan-steps.ts pushes PLANNER for every step in both).
-const stepOwner = (task, phase = null) => {
+// Phase 5f (2026-09-21): on a DIRECT plan these three steps are the Tax Planning
+// Team's, not VFO Services' — the backend dropped them from
+// actions/tax/save-task.ts DIRECT_MEMBER_EDITABLE the same day, so the member has
+// no path to any of them. On a classic plan all three stay VFOS.
+const DIRECT_TEAM_SENTINELS = new Set(['enter_details', AMEND_FEE_CODE, AMEND_FEE_TAX5_CODE])
+const stepOwner = (task, phase = null, direct = false) => {
   const so = task?.status_options
   if (task?.name === AUTO_STEP_NAME) return 'auto'
   if (so === 'auto') return null
+  if (direct && DIRECT_TEAM_SENTINELS.has(so)) return 'team'
   if (Object.prototype.hasOwnProperty.call(STEP_OWNER.sentinels, so)) return STEP_OWNER.sentinels[so]
   if (STEP_OWNER.names[task?.name]) return STEP_OWNER.names[task.name]
   if (phase?.name === TAX5A_PHASE || phase?.name === 'Tax 6 - Implementation') return 'team'
@@ -913,7 +924,9 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAn
               )
             })()}
           </div>
-        ) : null}
+        ) : (
+          <span style={neutralChipStyle}>Not started</span>
+        )}
         <StepDate value={completedDate || ''} />
       </div>
 
@@ -1569,19 +1582,33 @@ function TaxPricingForm({ submitLabel = 'Submit', onSubmit, onCancel, memberCate
       alert('Please select a tax risk mindset.')
       return
     }
-    if (!feeSplit || !splitType) return
+    if (!feeSplit) {
+      alert('Please enter the total tax planning fee.')
+      return
+    }
+    // A Direct plan shows no split controls — the server applies the fixed
+    // 45/45/10 preset whatever is sent — so the split is not required there.
+    // Everywhere else a missing split gets a MESSAGE, not a silent return.
+    const isDirectPlan = plan?.tax_route === 'direct'
+    if (!isDirectPlan && !splitType) {
+      alert('Please select a split type.')
+      return
+    }
     // Toggle Yes with no usable amount submits as no-discount — see the same
     // rule on the Tax 3 decision form.
     if (splitType === 'Custom') {
       const splitTotal = (parseFloat(memberShare) || 0) + (parseFloat(taxPlannerShare) || 0) + (parseFloat(vfosShare) || 0)
-      if (Math.abs(splitTotal - totalFee) > 0.01) return
+      if (Math.abs(splitTotal - totalFee) > 0.01) {
+        alert('The three shares must add up to the total fee.')
+        return
+      }
     }
     setSubmitting(true)
     try {
       await onSubmit({
         taxRiskMindset,
         totalFee: feeSplit.total.toFixed(2),
-        splitType,
+        splitType: isDirectPlan ? 'Direct 45/45/10' : splitType,
         memberShare,
         taxPlannerShare,
         vfosShare,
@@ -2829,6 +2856,12 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   const redLightVisible = reviewStop || depositRefunded || (!!redLightTask && isTaskStatused(redLightTask))
   // True once the meeting is booked OR the skip closed the step (isTaskStatused).
   const roiBooked = prereqDone('tax_3_decision', null)
+  // The risk grade the ROI deck is built from. Plan-level progress row only (no
+  // specialist), and "answered" means the stored status carries a grade — a blank
+  // or gradeless row is not a risk profile. One source for both the booking gate
+  // and the generate-presentation card's own readiness hint.
+  const riskProfileTask = allTasks.find(t => t.name === 'Client risk profile complete')
+  const riskProfileDone = !!riskProfileTask && String(localProgress[riskProfileTask.id]?.status || '').includes('Risk')
   // The five steps that skip takes off the board (for ROW RENDERING — all five
   // render as inert skip rows). Sentinels first; the two whose sentinel isn't
   // guaranteed on every program row also match by name.
@@ -3013,9 +3046,16 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       // leaves the booking reachable because booking the meeting anyway
       // overrides the stop recommendation — which is exactly what
       // actions/tax/ready-for-tax3.ts does with the bell.
+      // The risk profile joins it (2026-09-21, every plan): the grade feeds the
+      // ROI deck, so it is settled before the meeting is booked. The admin Skip
+      // button shares this row and waits too — deliberate. Mirrored by the 400
+      // in actions/tax/ready-for-tax3.ts.
+      const chainOk = diagnosticChain || reviewStop
       return {
-        locked: !(diagnosticChain || reviewStop),
-        hint: 'Complete "Tax planner review complete" first',
+        locked: !chainOk || !riskProfileDone,
+        hint: !chainOk
+          ? 'Complete "Tax planner review complete" first'
+          : 'Set the "Client risk profile complete" step first',
       }
     }
     if (so === 'assess_form' || nm === 'Assess tax planning opportunities (and enter presentation details)') {
@@ -3184,7 +3224,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   }
   // Every step row on every surface prints its name through this.
   const stepName = (task, phase) => {
-    const owner = stepOwner(task, phase)
+    const owner = stepOwner(task, phase, isDirectPlanView)
     return <>{taskLabel(task)}<OwnerChip owner={owner} label={ownerLabel(owner, task, phase)} /></>
   }
 
@@ -3292,14 +3332,14 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     // planner wrapper: the two modes never overlap.
     if (directMode && !directEditable) {
       return (
-        <div key={key} title={lockHintFor(stepOwner(task, phase))} style={{ cursor: 'not-allowed' }}>
+        <div key={key} title={lockHintFor(stepOwner(task, phase, isDirectPlanView))} style={{ cursor: 'not-allowed' }}>
           <div style={{ pointerEvents: 'none' }}>{node}</div>
         </div>
       )
     }
-    if (!plannerMode || isPlannerEditable(task)) return node
+    if (!plannerMode || isPlannerEditable(task, phase, isDirectPlanView)) return node
     return (
-      <div key={key} title={lockHintFor(stepOwner(task, phase))} style={{ cursor: 'not-allowed' }}>
+      <div key={key} title={lockHintFor(stepOwner(task, phase, isDirectPlanView))} style={{ cursor: 'not-allowed' }}>
         <div style={{ pointerEvents: 'none' }}>{node}</div>
       </div>
     )
@@ -3328,7 +3368,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           readOnly={memberLocked}
           onAnswer={(st) => saveTask(task.id, st)}
           act={act}
-          nameChip={<OwnerChip owner={stepOwner(task, phase)} label={ownerLabel(stepOwner(task, phase), task, phase)} />}
+          nameChip={<OwnerChip owner={stepOwner(task, phase, isDirectPlanView)} label={ownerLabel(stepOwner(task, phase, isDirectPlanView), task, phase)} />}
         />
       )
     }
@@ -3449,15 +3489,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       const assessY2Broken = !!assessY2 && typeof assessY2 === 'object' && !Array.isArray(assessY2) &&
         !(assessTotal(assessY2.taxes_without_plan) &&
           assessTotal(assessY2.taxes_with_plan) && assessTotal(assessY2.cash_outlay))
-      const riskTask = allTasks.find(t => t.name === 'Client risk profile complete')
-      const riskSet = !!riskTask && String(localProgress[riskTask.id]?.status || '').includes('Risk')
       const blockedHint = !assessStamped
         ? 'Submit the tax planning opportunities form first'
         : !assessSubmitted
           ? 'Re-save the Assess form — it uses the old strategy format'
           : assessY2Broken
             ? 'Re-save the Assess form — the Year 2 totals are incomplete'
-            : !riskSet
+            : !riskProfileDone
               ? 'Set the Client risk profile step first'
               : ''
       const ready = !blockedHint
@@ -3564,7 +3602,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           <div key={key} style={{ borderBottom: '1px solid var(--vfo-border-soft)', padding: '7px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: isDone ? 'pointer' : 'default', flexWrap: 'wrap' }} onClick={() => isDone && setExpanded(prev => ({ ...prev, [formExpandKey]: !prev[formExpandKey] }))}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? decisionColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? decisionColor : 'var(--vfo-border-mid)'}` }} />
-              <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}<span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_agreementsent|Yes', when: 'If Yes — congratulations + agreement signing link' }, { name: 'TAX_decision_undecided', when: 'If Undecided — options email to the client' }, { name: 'TAX_decision_decline', when: 'If Decline' }, { name: 'TAX_decision_reminder', when: 'Automatic reminder if the Undecided email gets no response (2 business days)' }]} context={emailCtx} /></span></span>
+              <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_agreementsent|Yes', when: 'If Yes — congratulations + agreement signing link' }, { name: 'TAX_decision_undecided', when: 'If Undecided — options email to the client' }, { name: 'TAX_decision_decline', when: 'If Decline' }, { name: 'TAX_decision_reminder', when: 'Automatic reminder if the Undecided email gets no response (2 business days)' }]} context={emailCtx} /></span>}</span>
               {isDone && <span style={chipStyle(decisionColor)}>{decisionLabel}</span>}
               {isDone && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
               {isDone && <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isFormShown ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
