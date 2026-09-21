@@ -234,9 +234,9 @@ export default function ClientDetail() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* Mirror the AdminPortal header for admin sessions so the top bar
               stays identical on the client-detail route (bell + Settings /
-              Admin Editor deep-link back into the portal). Members keep the
-              slim name + Sign Out variant. */}
-          {!isMember && <NotificationBell />}
+              Admin Editor deep-link back into the portal). Members get the
+              same bar as their portal home: bell + Settings + Sign Out. */}
+          <NotificationBell />
           <span style={{ color: 'rgba(255,255,255,0.88)', fontSize: '14px', fontWeight: 500, whiteSpace: 'nowrap', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session?.name || ''}</span>
           {isAdmin && session?.is_superadmin && (
             <button onClick={() => { sessionStorage.setItem('adminOpenView', 'editor'); navigate('/admin') }}
@@ -246,6 +246,12 @@ export default function ClientDetail() {
           )}
           {isAdmin && (
             <button onClick={() => { sessionStorage.setItem('adminOpenView', 'settings'); navigate('/admin') }}
+              style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+              Settings
+            </button>
+          )}
+          {isMember && (
+            <button onClick={() => { sessionStorage.setItem('memberOpenView', 'settings'); navigate('/member') }}
               style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
               Settings
             </button>

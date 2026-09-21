@@ -51,6 +51,10 @@ export default function MemberPortal() {
 
   useEffect(() => {
     if (!session || session.role !== 'member') { navigate('/member/login'); return }
+    if (sessionStorage.getItem('memberOpenView') === 'settings') {
+      sessionStorage.removeItem('memberOpenView')
+      setShowSettings(true); setActiveTab(null)
+    }
     loadData()
   }, [])
 
