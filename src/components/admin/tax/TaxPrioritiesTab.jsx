@@ -647,6 +647,10 @@ const chipStyle = (hex) => {
 
 // Shared by every prerequisite-lock surface (locked step rows, the Green/Red Light
 // Proceed hint, the Tax 6 header note) so they read as one thing.
+// client_tax_progress.status on the Deposit Paid step of a WAIVED intake, and
+// the terminal value the $250 leg then carries. Verbatim, both repos
+// (utils/tax-deposit-team-share.ts DEPOSIT_TEAM_SHARE_NA).
+const DEPOSIT_NA_STATUS = 'N/A — No Deposit'
 // Status chip for the $250 deposit Team share (client_tax_plans.
 // deposit_team_share_status). Null status = Proceed was clicked before the
 // column existed, or the write is still in flight — nothing to report yet.
@@ -654,7 +658,7 @@ const DEPOSIT_TEAM_CHIP_COLORS = {
   'Yes': '#1b9254',
   'Failed': '#e74c3c',
   'Awaiting Planner Allocation': '#e06717',
-  'N/A — No Deposit': 'var(--vfo-muted)',
+  [DEPOSIT_NA_STATUS]: 'var(--vfo-muted)',
   // Proceeded before the leg existed; deposit split by hand. Terminal, never paid.
   'N/A — Legacy': 'var(--vfo-muted)',
 }
@@ -692,8 +696,7 @@ const OWNER_LONG_FORM = { vfos: 'VFO Services', team: 'Tax Planning Team', clien
 function OwnerChip({ owner, label }) {
   const colors = OWNER_CHIP_COLORS[label]
   if (!colors) return null
-  const title = label === 'You' ? 'You run this step'
-    : label === 'Member' ? 'The member runs this step'
+  const title = label === 'Member' ? 'The member runs this step'
       : OWNER_LONG_FORM[owner] || ''
   return (
     <span title={title} style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '999px', background: colors[0], color: colors[1], fontWeight: 600, marginLeft: '8px', verticalAlign: 'middle', whiteSpace: 'nowrap', display: 'inline-block' }}>{label}</span>
@@ -2768,7 +2771,16 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
 
   const isTaxProgram = (livePlan?.program_id ?? plan?.program_id ?? 1) === 4
   const depositOk = !isTaxProgram || prereqDone('tax_deposit_pi', 'Deposit Paid') || !!livePlan?.deposit_payment_intent_id
-  const greenRedOk = !isTaxProgram || prereqDone('tax_refund', null)
+  // A WAIVED intake closes Deposit Paid as "N/A — No Deposit", and such a plan
+  // has no Green/Red Light step at all — nothing to refund, nothing to forward
+  // (Jake, 2026-09-21). NOT "no PaymentIntent": a hand-created plan awaiting an
+  // admin's paste still owes the deposit and keeps the step. Mirrors
+  // isNoDepositPlan / buildTaxPlanSteps server-side (#339).
+  const noDeposit = isTaxProgram && (() => {
+    const dt = findStepTask('tax_deposit_pi', 'Deposit Paid')
+    return !!dt && localProgress[dt.id]?.status === DEPOSIT_NA_STATUS
+  })()
+  const greenRedOk = !isTaxProgram || noDeposit || prereqDone('tax_refund', null)
   const returnsReceived = prereqDone('tax_returns_request', 'Request Tax Returns')
   const allocDone = prereqDone('tax_planner_select', 'Allocate Team Member / Tax Planner')
   // Only a Tax Planner unlocks the review steps — a Team Member may hold the plan
@@ -2842,9 +2854,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   }
   const isAmendNotApplicable = (t) =>
     isAmendStepTask(t) && !newFeeProcess && !isTaskStatused(t) && !amendWindowOpen(t)
-  // Excluded from the done-math: skipped-away rows, plus the not-applicable
-  // amend rows. One helper so every count site uses the same rule.
+  // Excluded from the done-math: skipped-away rows, the not-applicable amend
+  // rows, and — on a waived (no-deposit) intake — the Green/Red Light step,
+  // which that plan does not carry. One helper so every count site uses the same
+  // rule. renderTask drops the Green/Red row outright, so unlike the other two
+  // it has no inert row either.
   const isStepExcluded = (t) => isSkippedAway(t) || isAmendNotApplicable(t)
+    || (noDeposit && t?.status_options === 'tax_refund')
 
   // "Has the amend step been answered?" for the steps that wait on it. An ABSENT
   // task row reads as answered — the program_client_tasks seed lands after this
@@ -2966,10 +2982,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     if (so === 'tax_refund') return null
     if (so === 'tax_3_decision') {
       // Program 4 pairs the booking with the Green/Red call (one Tray bell asks
-      // for both); a plan without its green light gets no meeting booked.
+      // for both); a plan without its green light gets no meeting booked. A
+      // waived (no-deposit) plan has no such step, so it reads as Holistic does
+      // — including the Stop route, where the decline is recorded on this very
+      // step, and the hint, which must never name a step the plan does not have.
       return {
-        locked: !((diagnosticChain && greenRedOk) || (!isTaxProgram && reviewStop)),
-        hint: diagnosticChain
+        locked: !((diagnosticChain && greenRedOk) || ((!isTaxProgram || noDeposit) && reviewStop)),
+        hint: diagnosticChain && !noDeposit
           ? 'Select Proceed on the "Tax Plan Green/Red Light" step first'
           : 'Complete "Tax planner review complete" first',
       }
@@ -3127,17 +3146,15 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   const phasesAfterSpec = phases.filter(p => p.name === 'Tax 6 - Implementation')
 
   // The owner chip says whose step it is FROM THE VIEWER'S SEAT, so the same
-  // step reads "VFOS" to an admin on a classic plan, "Member" to that admin on a
-  // Direct plan and "You" to the Direct member themselves. The tax-planning-team
-  // steps are the planner's "You" in the planner portal.
-  const adminDirectPlan = !readOnly && !plannerMode && (livePlan || plan)?.tax_route === 'direct'
+  // step reads "VFOS" on a classic plan and "Member" on a Direct plan — the
+  // SAME words on every surface (admin, planner, member), by decision
+  // 2026-09-21: no viewer-relative "You".
+  const isDirectPlanView = directMode || (livePlan || plan)?.tax_route === 'direct'
   const ownerLabel = (owner, task, phase) => {
     if (owner === 'client') return 'Client'
-    if (owner === 'team') return plannerMode ? 'You' : 'Tax Team'
+    if (owner === 'team') return 'Tax Team'
     if (owner !== 'vfos') return null
-    if (!isDirectEditable(task, phase)) return 'VFOS'
-    if (directMode) return 'You'
-    return adminDirectPlan ? 'Member' : 'VFOS'
+    return isDirectPlanView && isDirectEditable(task, phase) ? 'Member' : 'VFOS'
   }
   // Every step row on every surface prints its name through this.
   const stepName = (task, phase) => {
@@ -3152,6 +3169,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   // across browsers). Admin (no flags) and member (readOnly) pass straight
   // through unchanged.
   function renderTask(task, phase, taxSpecialistId = null) {
+    // A waived intake carries no Green/Red Light step — not shown, not counted
+    // (isStepExcluded), on every surface.
+    if (noDeposit && task?.status_options === 'tax_refund') return null
     const key = taxSpecialistId ? `${task.id}_${taxSpecialistId}` : task.id
     // Already-actioned steps always render normally, so history stays visible and
     // editable even when a prerequisite is later un-set.
@@ -4111,13 +4131,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     if (task.status_options === 'tax_refund') {
       const decision = p.status || ''
       const hasPi = !!livePlan?.deposit_payment_intent_id
-      // A waived intake closes the Deposit Paid row as "N/A — No Deposit": there is
-      // nothing to refund, but Proceed must still be offered (the $250 leg then
-      // closes itself as N/A — No Deposit with nothing moved).
-      const depositWaived = (() => {
-        const dt = findStepTask('tax_deposit_pi', 'Deposit Paid')
-        return !!dt && localProgress[dt.id]?.status === 'N/A — No Deposit'
-      })()
+      // A waived intake has no Green/Red Light step at all (2026-09-21), so this
+      // renderer never runs there — renderTask drops the row. Kept so the chips
+      // below stay correct if the rule is ever narrowed again.
+      const depositWaived = noDeposit
       const refunded = livePlan?.deposit_refund_status === 'succeeded'
       // Chips and the $250 team-share leg: VFO-internal, hidden from every
       // non-admin surface (the Direct member included).
@@ -4272,7 +4289,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       const paidViaPortal = !!taxIntake?.tax_plan_id && String(taxIntake.tax_plan_id) === String(livePlan?.id ?? plan?.id ?? '')
       // A waived intake (2+ qualifying clients) writes this row as
       // "N/A — No Deposit": nothing to paste, the step is closed.
-      const depositWaived = p.status === 'N/A — No Deposit'
+      const depositWaived = p.status === DEPOSIT_NA_STATUS
       const depositClosed = !!savedPi || depositWaived
       const draftVal = depositPiDrafts[task.id]
       const inputVal = draftVal !== undefined ? draftVal : savedPi
@@ -4323,11 +4340,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       // The confirmation email names the allocated Team Member / Tax Planner, so
       // the confirm send is blocked until one is allocated (decline stays open).
       const plannerAllocated = !!(livePlan?.tax_planner_id ?? plan?.tax_planner_id)
-      // Declining here is the Holistic-only stop route (it is what retires the
-      // program-1 "Tax Planner review complete" Stop bell). VFO Tax Planning
-      // (program 4) stops via the Green/Red Light step's $500 deposit refund
-      // instead, so it gets no decline affordance.
-      const canDecline = (plan.program_id || 1) === 1
+      // Declining here is the stop route for every plan with no Green/Red Light
+      // step (it is what retires their "Tax Planner review complete" Stop bell):
+      // Holistic, and since 2026-09-21 a waived program-4 intake, whose Stop bell
+      // carries this step's instruction verbatim. A program-4 plan that took a
+      // deposit stops via the Green/Red refund instead and gets no decline
+      // affordance, exactly as before.
+      const canDecline = (plan.program_id || 1) === 1 || noDeposit
       const draft = declineDrafts[task.id] || {}
       const declineOpen = !!draft.open
       const sending = !!draft.sending
@@ -5424,7 +5443,13 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
       const windowOpen = decision === null || decision === undefined || decision === ''
       return !answered && !windowOpen
     }
-    const allTasks = phases.filter(p => p.name !== 'Tax 5 - Education & DD (Specialist Allocation)' && p.name !== 'Tax 5 - Education & DD (Post Allocation)').flatMap(p => p.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !amendNotApplicable(t))
+    // A WAIVED intake carries no Green/Red Light step, so leaving it in the
+    // denominator would hold the plan out of "completed" on a step it can never
+    // answer. Same predicate as the track view's `noDeposit` and the backend's
+    // isNoDepositPlan (#339).
+    const depositTask = phases.flatMap(p => p.program_client_tasks || []).find(t => t.status_options === 'tax_deposit_pi')
+    const planNoDeposit = !!depositTask && prog[depositTask.id]?.status === DEPOSIT_NA_STATUS
+    const allTasks = phases.filter(p => p.name !== 'Tax 5 - Education & DD (Specialist Allocation)' && p.name !== 'Tax 5 - Education & DD (Post Allocation)').flatMap(p => p.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !amendNotApplicable(t) && !(planNoDeposit && t.status_options === 'tax_refund'))
     if (allTasks.length === 0) return 'not started'
     if (allTasks.every(t => prog[t.id]?.status)) return 'completed'
     if (allTasks.some(t => prog[t.id]?.status)) return 'in progress'
