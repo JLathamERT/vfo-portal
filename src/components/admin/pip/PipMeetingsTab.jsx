@@ -285,7 +285,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                       <div key={task.id} style={{ padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: allDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${allDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                          <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                          <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{'Automated steps'}</span>
                         </div>
                         <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
                           {autoStep('Payment link sent (ACH or Card choice)', !!track.pip_payment_email_sent_at, null, [{ name: 'PIP_payment', when: 'Automatic — payment link' }], track.pip_payment_email_sent_at)}

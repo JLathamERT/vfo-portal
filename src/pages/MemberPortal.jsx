@@ -9,6 +9,7 @@ import MemberMSMTracking from '../components/member/MemberMSMTracking'
 import MemberShowroom from '../components/member/MemberShowroom'
 import MemberGrowthPlan from '../components/member/MemberGrowthPlan'
 import VfoWordmark from '../components/shared/VfoWordmark'
+import NotificationBell from '../components/NotificationBell'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { HeroAvatar } from '../components/shared/TrackKit'
 import { usePortalTheme } from '../lib/theme'
@@ -130,6 +131,10 @@ export default function MemberPortal() {
       <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
         <VfoWordmark size={17} light onClick={handleTitleClick} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Mounted exactly as TaxPlannerPortal.jsx mounts it. The member's
+              rows are scoped server-side to their own login email — never the
+              'admin'/'all' broadcasts (#259). */}
+          <NotificationBell />
           <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.88)', fontWeight: 500, whiteSpace: 'nowrap', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.name}</span>
           <button onClick={() => { setShowSettings(true); setActiveTab(null) }} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Settings</button>
           <button onClick={signOut} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Sign Out</button>

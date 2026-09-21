@@ -43,7 +43,7 @@ Single table: [`notifications`](../tables/notifications.md). Key columns:
 
 ## Frontend display
 
-[NotificationBell.jsx](src/components/NotificationBell.jsx) is mounted in [AdminPortal.jsx:203](src/pages/AdminPortal.jsx) (admin only — not in MemberPortal).
+[NotificationBell.jsx](src/components/NotificationBell.jsx) is mounted in [AdminPortal.jsx:203](src/pages/AdminPortal.jsx), in [TaxPlannerPortal.jsx](src/pages/TaxPlannerPortal.jsx)'s header, and — **since 2026-09-21 (unit 2 phase 5e)** — in [MemberPortal.jsx](src/pages/MemberPortal.jsx)'s header. One component, three portals. The **View all** link is hidden for `tax_planner` and `member` sessions (`VIEW_ALL_HIDDEN_ROLES`): it opens `/admin?tab=notifications`, a page only the admin portal has. The bell is deliberately NOT mounted on the member's client-detail route (`ClientDetail.jsx` keeps `{!isMember && <NotificationBell />}`) — members keep the slim name + Sign Out header there.
 
 ```
 useEffect(() => {
@@ -60,6 +60,10 @@ The bell renders a count badge + dropdown of titles. Click an item → navigates
 
 Returns up to 20 unread notifications matching the caller. Filter: `recipient = session.email OR recipient = 'admin' OR recipient = 'all'`. Sorted by `created_at DESC`.
 
+**Own-email-only roles (`OWN_EMAIL_ONLY_ROLES` = `tax_planner`, `member`).** A restricted portal role gets `recipient = session.email` ONLY — never the `'admin'` / `'all'` internal broadcasts (#259). `mark_notification_read` carries the mirror-image scoping (`OWN_ROWS_ONLY_ROLES`), so one of those callers can only retire a row addressed to them; anything else 404s. Adding a role to one list without the other is the leak #259 records.
+
+**Gate note (2026-09-21).** `load_notifications` and `mark_notification_read` were removed from `ADMIN_ONLY_ACTIONS` when the member bell shipped. They stay on `TAX_PLANNER_ALLOWED_ACTIONS` and are in no `TAB_ACTIONS` list; the narrowing lives in the handlers, not in the gate (#490). `load_notifications_page` and `mark_notifications_read` remain ADMIN_ONLY — members have no notifications page and no bulk clear.
+
 ```sql
 SELECT * FROM notifications
 WHERE (recipient = '<session.email>' OR recipient = 'admin' OR recipient = 'all')
@@ -68,7 +72,28 @@ ORDER BY created_at DESC
 LIMIT 20
 ```
 
-> **Note:** for member sessions, `recipient = session.email` would match notifications addressed to the member's email. But no observed handler inserts notifications with a member's email as recipient — current notification inserts all use `recipient='admin'` (see Step 2). Members likely see an empty bell. The bell is also not mounted in MemberPortal anyway.
+> **SUPERSEDED 2026-09-21.** The old note here said members would see an empty bell because nothing addressed a row to a member. That is no longer true — see **Direct tax plans: the PF IS the member** below. A member's address is their `member_logins.email`, which is exactly what `admin_sessions.email` carries for a member session.
+
+### Direct tax plans: the PF IS the member (2026-09-21, unit 2 phase 5e)
+
+On a **Direct** tax plan `clients.pf_member_number` names the MEMBER who runs their own case, so every bell addressed to "the PF" belongs to them and not to a VFO Services login. The resolution moved out of the PF **name** and into the **client row**:
+
+| helper (`utils/tax-notify.ts`) | what it answers |
+| --- | --- |
+| `resolveTaxPf(sb, client)` | `pf_member_number` set → that member's `member_logins.email`; else `taxPfLoginEmail(assigned_pf)`. A Direct member with no portal login resolves to `null` → Tracy, **never** to `assigned_pf` (on a Direct plan that name is the member's own and no VFO login answers to it). |
+| `taxPfRecipientsFor(sb, client)` | the async twin of `taxPfRecipients` — `{ recipients, pfEmail, isMember, memberNumber }`, same Tracy fallback. |
+| `taxDecisionRecipientsFor(sb, client, plannerEmails)` | the async twin of `taxDecisionRecipients`. |
+| `taxMemberLinks(routing, clientId)` | the per-recipient `links` entry a member bell needs: `/member/client/<id>?tab=tax` (the member portal has no `/admin` route). Vault bells use `?tab=vault`. |
+
+Three rules that come with it:
+
+1. **`pf_member_number` is now part of every bell site's `.select(...)` contract** (#448). A handler that omits it resolves as a classic plan for every Direct plan, silently and forever, because the FALSE branch is the pre-existing correct-looking behaviour.
+2. **`links` carries the member's route**, keyed by lowercase email, so the admin/Tray/planner rows keep their own links in the same insert.
+3. **`forceRecipients`** (new on `NotifyByRuleArgs`) is passed on a Direct fire only. It tells `notifyByRule` to ignore the rule's `recipients` override for that call: a Notification Editor list can only ever name VFO logins, so on a Direct plan it cannot describe the audience (`TAX_planner_review_complete` carries a live Tray+Tracy override that would otherwise win — #413). `enabled` and `delay_days` still apply, so the editor can still silence the rule. **Classic plans are byte-identical** — `forceRecipients` is false and the whole override path runs exactly as before.
+
+The five bells that read as "Tray's" but are really the PF's next step route to the member on a Direct plan and stay Tray's on a classic one: `TAX_planner_review_complete` (book the ROI meeting / the Red Light instruction), `TAX_deposit_refund_issued`, `TAX_plan_stopped_no_deposit`, `TAX_assess_completed_pf` (download the ROI presentation), `TAX_planner_hlm_ready` + `TAX_roi_skipped_hlm_ready` (send the detailed tax plan meeting confirmation email). **Titles are unchanged**, so every clear site retires either vintage untouched (#411 — recipient is data, title is API).
+
+**The one exception to the rule above: `TAX_client_decision_needed`.** On a Direct plan it does NOT go to the member — it goes to the **allocated Tax Planner and Team Member**, via `notifyAllocatedPlanner` with the planner-portal link, exactly how `TAX_planner_assess_needed` is addressed (Jake, 2026-09-21: on Direct the planner records the client's decision, not the member). Classic plans keep the assigned PF. The title is identical on both routes, so the single clear site in `actions/tax/decision.ts` retires either. A Direct plan with no allocated planner raises nothing at all.
 
 ## Step 2 — Insertion points
 

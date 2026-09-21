@@ -2,6 +2,10 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession } from '../lib/api'
  
+// The "View all" link opens /admin?tab=notifications, a page only the admin
+// portal has. Portals that mount the bell without one hide the link.
+const VIEW_ALL_HIDDEN_ROLES = ['tax_planner', 'member']
+
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState([])
   const [open, setOpen] = useState(false)
@@ -128,7 +132,7 @@ export default function NotificationBell() {
               )}
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {getSession()?.role !== 'tax_planner' && (
+              {!VIEW_ALL_HIDDEN_ROLES.includes(getSession()?.role) && (
                 <button
                   onClick={() => { setOpen(false); navigate(`/admin?tab=notifications&_n=${Date.now()}`) }}
                   style={{ background: 'transparent', border: 'none', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>

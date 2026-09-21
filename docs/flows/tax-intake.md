@@ -224,6 +224,6 @@ Live test 2026-09-18 on Test Member 59524 (sandbox-forced, fixtures deleted afte
 - The plan the case lands on: [tax-planning.md](tax-planning.md) (Step 0 / Step 0b)
 - Webhook placement: [stripe-webhook.md](stripe-webhook.md)
 - Recipients and the footer guard: [additional-contacts.md](additional-contacts.md)
-- Bells: [notifications.md](notifications.md), [../NOTIFICATION_AUDIT.md](../NOTIFICATION_AUDIT.md)
+- Bells: [notifications.md](notifications.md), [../NOTIFICATION_AUDIT.md](../NOTIFICATION_AUDIT.md) — **and, from 2026-09-21, the member's OWN bell**: the member portal header carries a `NotificationBell` scoped to the member's `member_logins.email`, and on a **Direct** plan (`clients.pf_member_number` set, stamped by this intake's finalize) every bell addressed to "the PF" is addressed to that member instead of a VFO login. The one exception is `TAX_client_decision_needed`, which goes to the allocated Tax Planner(s) on Direct. See [notifications.md § Direct tax plans: the PF IS the member](notifications.md#direct-tax-plans-the-pf-is-the-member-2026-09-21-unit-2-phase-5e).
 - Columns: [../tables/tax.md](../tables/tax.md)
 - Plan of record and the unit briefs: [../plans/direct-tax-planning/README.md](../plans/direct-tax-planning/README.md)

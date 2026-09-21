@@ -9,6 +9,14 @@ import StepEmailsChip from '../../shared/StepEmailsChip'
 import PricingSplitCard from './PricingSplitCard'
 import { CONFIRMATION_CARD_SKIP } from '../../../lib/confirmationStatus'
 
+// The automated cascade card. The STORED program_client_tasks.name is a lookup
+// key on both sides of the wire — the two cards below switch on it, MAP 1 keys
+// its email chips by label string (#382) — so it is never renamed. Only what a
+// row PRINTS changes, and it changes in one place here and at the backend emit
+// (utils/tax-plan-steps.ts displayLabel).
+const AUTO_STEP_NAME = 'AI PC Admin'
+const AUTO_STEP_LABEL = 'Automated steps'
+
 // Matches the backend invoice money formatting ($X,XXX.XX).
 const fmtMoney = (n) => (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -506,14 +514,16 @@ const STEP_OWNER = {
     'Assess tax planning opportunities (and enter presentation details)': 'team',
   },
 }
-// The 'auto' cascade cards (Tax 3 / Tax 5b "AI PC Admin" and the sweep rows) are
-// the system's, not a person's — no chip. The two phases that run one row PER
-// ALLOCATED SPECIALIST are the Tax Planning Team's whatever the row is called,
-// which is what the phase fallback covers (tax-plan-steps.ts pushes PLANNER for
-// every step in both).
+// The 'auto' cascade cards are the system's, not a person's. The two "AI PC
+// Admin" cards (Tax 3 / Tax 5b) say so out loud since 2026-09-21 — they render
+// as "Automated steps" with a grey Automated chip — while every OTHER auto row
+// stays chip-less. The two phases that run one row PER ALLOCATED SPECIALIST are
+// the Tax Planning Team's whatever the row is called, which is what the phase
+// fallback covers (tax-plan-steps.ts pushes PLANNER for every step in both).
 const stepOwner = (task, phase = null) => {
   const so = task?.status_options
-  if (so === 'auto' || task?.name === 'AI PC Admin') return null
+  if (task?.name === AUTO_STEP_NAME) return 'auto'
+  if (so === 'auto') return null
   if (Object.prototype.hasOwnProperty.call(STEP_OWNER.sentinels, so)) return STEP_OWNER.sentinels[so]
   if (STEP_OWNER.names[task?.name]) return STEP_OWNER.names[task.name]
   if (phase?.name === TAX5A_PHASE || phase?.name === 'Tax 6 - Implementation') return 'team'
@@ -689,11 +699,12 @@ const lockedHintStyle = { fontSize: '11px', color: 'var(--vfo-muted)', fontWeigh
 const OWNER_CHIP_COLORS = {
   You: ['rgba(18,94,204,0.12)', '#125ecc'],
   Member: ['rgba(18,94,204,0.12)', '#125ecc'],
-  VFOS: ['var(--vfo-tint)', 'var(--vfo-muted)'],
+  VFOS: ['rgba(27,146,84,0.12)', '#1b9254'],
   'Tax Team': ['rgba(224,103,23,0.12)', '#e06717'],
-  Client: ['rgba(27,146,84,0.12)', '#1b9254'],
+  Client: ['rgba(111,66,193,0.12)', '#6f42c1'],
+  Automated: ['var(--vfo-tint)', 'var(--vfo-muted)'],
 }
-const OWNER_LONG_FORM = { vfos: 'VFO Services', team: 'Tax Planning Team', client: 'The client' }
+const OWNER_LONG_FORM = { vfos: 'VFO Services', team: 'Tax Planning Team', client: 'The client', auto: 'Runs by itself — nobody has to do anything' }
 function OwnerChip({ owner, label }) {
   const colors = OWNER_CHIP_COLORS[label]
   if (!colors) return null
@@ -708,6 +719,7 @@ function OwnerChip({ owner, label }) {
 // keys across both repos (planner whitelists, done-math, bell titles, email chips),
 // so they are never edited — only what the row prints.
 const TASK_DISPLAY_LABELS = {
+  [AUTO_STEP_NAME]: AUTO_STEP_LABEL,
   'Tax Plan Green/Red Light - Refund $500 Deposit if unable to proceed based on the information provided': 'Tax Plan Red Light',
   'Assess tax planning opportunities (and enter presentation details)': 'Assess tax planning opportunities',
   'Additional information required': 'Additional information required?',
@@ -2945,7 +2957,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     if (['Refund initial 50%', 'Revenue share for initial 50%', 'Email to obtain information required sent', 'Information received', 'Information passed to VFO-L'].includes(nm)) return null
 
     if (phase?.name === 'Tax 6 - Implementation') {
-      return { locked: !tax6Unlocked, hint: 'Locked until Implementation decision + AI PC Admin complete' }
+      return { locked: !tax6Unlocked, hint: 'Locked until Implementation decision + Automated steps complete' }
     }
     if (phase?.name === TAX5B_PHASE) {
       // The whole phase waits on the Tax 5a confirmation — that is what "reaches"
@@ -3044,7 +3056,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       // Meeting first books this meeting BEFORE the client decides, signs or pays,
       // so there is nothing left to wait for — the skip itself is the unlock.
       if (roiSkipMeetingFirst) return null
-      return { locked: !tax3AipcDone, hint: 'Waiting for the Tax 3 AI PC Admin steps to complete' }
+      return { locked: !tax3AipcDone, hint: 'Waiting for the Tax 3 Automated steps to complete' }
     }
     if (nm === 'Detailed tax plan presentation') {
       // Same on both routes — this step confirms the meeting the step above booked.
@@ -3166,6 +3178,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   const ownerLabel = (owner, task, phase) => {
     if (owner === 'client') return 'Client'
     if (owner === 'team') return 'Tax Team'
+    if (owner === 'auto') return 'Automated'
     if (owner !== 'vfos') return null
     return isDirectPlanView && isDirectEditable(task, phase) ? 'Member' : 'VFOS'
   }
@@ -3586,7 +3599,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
           <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
-          <span style={neutralChipStyle}>Waiting for details</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <LockedIcon />
+            <span style={lockedHintStyle}>Starts automatically after the "Client tax planning decision" step</span>
+          </span>
           <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}></span>
         </div>
       )
@@ -3894,7 +3910,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
             <div style={{ padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1, fontWeight: '600' }}>AI PC Admin</span>
+                <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1, fontWeight: '600' }}>{AUTO_STEP_LABEL}</span>
               </div>
               <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
                 {aiStep('Request email sent to client', !!requestedAt, requestedAt)}
@@ -4021,7 +4037,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
             <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
-            <span style={neutralChipStyle}>Waiting for decision</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <LockedIcon />
+              <span style={lockedHintStyle}>Starts automatically after the "Implementation decision" step</span>
+            </span>
           </div>
         )
       }
@@ -4944,7 +4963,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                 <div style={{ padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                    <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1, fontWeight: '600' }}>AI PC Admin</span>
+                    <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1, fontWeight: '600' }}>{AUTO_STEP_LABEL}</span>
                   </div>
                   <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
                     {requests.length > 0
@@ -5297,7 +5316,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                 {!readOnly && !tax6Unlocked && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px', ...lockedHintStyle }}>
                     <LockedIcon />
-                    Locked until the Implementation decision and its AI PC Admin steps are complete
+                    Locked until the Implementation decision and its Automated steps are complete
                   </span>
                 )}
               </div>
