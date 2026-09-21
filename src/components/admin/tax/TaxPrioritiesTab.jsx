@@ -4199,7 +4199,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       return (
         <div key={key} style={{ borderBottom: '1px solid var(--vfo-border-soft)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? ((refunded || stopped) ? '#e74c3c' : '#1b9254') : 'transparent', flexShrink: 0, border: `1.5px solid ${done ? ((refunded || stopped) ? '#e74c3c' : '#1b9254') : 'var(--vfo-border-mid)'}` }} />
             <span style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: '1 1 auto', minWidth: '140px' }}>
               {stepName(task, phase)}{!locked && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={depositWaived
                 ? [{ name: 'TAX_stop_no_deposit', when: 'Stop tax planning — no deposit was taken, nothing to refund' }]
@@ -4361,7 +4361,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       // (its Stop bell now names that button; this decline is the pre-existing
       // route and clears the same bell). A program-4 plan that took a deposit
       // stops via the Red Light Refund and gets no decline affordance.
-      const canDecline = (plan.program_id || 1) === 1 || noDeposit
+      const canDecline = directMode || (plan.program_id || 1) === 1 || noDeposit
       const draft = declineDrafts[task.id] || {}
       const declineOpen = !!draft.open
       const sending = !!draft.sending
@@ -4457,8 +4457,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                             afterwards, and the ROUTE is equally one-way — the two
                             unlock different steps and raise different bells, so the
                             backend refuses a later click on the other button. */}
-                        <button disabled={sending} onClick={() => fireSkipRoi('retainer_first', 'Skip the ROI meeting, retainer first?\n\nThis is final. The client completes the tax planning decision, signs and pays BEFORE the detailed tax plan meeting is booked.')} style={tdSkip} title="No ROI meeting. The client decides, signs and pays first; the detailed tax plan meeting is booked after that.">Skip ROI — retainer first</button>
-                        <button disabled={sending} onClick={() => fireSkipRoi('meeting_first', 'Skip the ROI meeting, meeting first?\n\nThis is final. The detailed tax plan meeting is booked and held BEFORE the client decides, signs and pays.')} style={tdSkip} title="No ROI meeting. The detailed tax plan meeting is booked and held first; the decision, signing and payment follow it.">Skip ROI — meeting first</button>
+                        {!directMode && <button disabled={sending} onClick={() => fireSkipRoi('retainer_first', 'Skip the ROI meeting, retainer first?\n\nThis is final. The client completes the tax planning decision, signs and pays BEFORE the detailed tax plan meeting is booked.')} style={tdSkip} title="No ROI meeting. The client decides, signs and pays first; the detailed tax plan meeting is booked after that.">Skip ROI — retainer first</button>}
+                        {!directMode && <button disabled={sending} onClick={() => fireSkipRoi('meeting_first', 'Skip the ROI meeting, meeting first?\n\nThis is final. The detailed tax plan meeting is booked and held BEFORE the client decides, signs and pays.')} style={tdSkip} title="No ROI meeting. The detailed tax plan meeting is booked and held first; the decision, signing and payment follow it.">Skip ROI — meeting first</button>}
                       </div>
                     )
             }
