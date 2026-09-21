@@ -470,6 +470,7 @@ const DIRECT_ACTION_MAP = {
   automation_TAX_request_returns: 'tax_direct_request_returns',
   automation_TAX_returns_already_have: 'tax_direct_returns_already_have',
   automation_TAX_depositrefund: 'tax_direct_deposit_refund',
+  automation_TAX_stopnodeposit: 'tax_direct_stop_no_deposit',
   automation_TAX_readyfortax3: 'tax_direct_readyfortax3',
   automation_TAX_skiproimeeting: 'tax_direct_skiproimeeting',
   tax_generate_presentation: 'tax_direct_generate_presentation',
@@ -645,8 +646,8 @@ const chipStyle = (hex) => {
   return { fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: `rgba(${rgb},0.15)`, color: hex, fontWeight: 600, border: `1px solid rgba(${rgb},0.3)` }
 }
 
-// Shared by every prerequisite-lock surface (locked step rows, the Green/Red Light
-// Proceed hint, the Tax 6 header note) so they read as one thing.
+// Shared by every prerequisite-lock surface (locked step rows, the Tax 6 header
+// note) so they read as one thing.
 // client_tax_progress.status on the Deposit Paid step of a WAIVED intake, and
 // the terminal value the $250 leg then carries. Verbatim, both repos
 // (utils/tax-deposit-team-share.ts DEPOSIT_TEAM_SHARE_NA).
@@ -707,12 +708,12 @@ function OwnerChip({ owner, label }) {
 // keys across both repos (planner whitelists, done-math, bell titles, email chips),
 // so they are never edited — only what the row prints.
 const TASK_DISPLAY_LABELS = {
-  'Tax Plan Green/Red Light - Refund $500 Deposit if unable to proceed based on the information provided': 'Tax Plan Green/Red Light',
+  'Tax Plan Green/Red Light - Refund $500 Deposit if unable to proceed based on the information provided': 'Tax Plan Red Light',
   'Assess tax planning opportunities (and enter presentation details)': 'Assess tax planning opportunities',
   'Additional information required': 'Additional information required?',
 }
 const TASK_SUB_LABELS = {
-  'Tax Plan Green/Red Light - Refund $500 Deposit if unable to proceed based on the information provided': 'Refund the $500 deposit if unable to proceed',
+  'Tax Plan Green/Red Light - Refund $500 Deposit if unable to proceed based on the information provided': 'Refund the deposit, or stop tax planning, if unable to proceed',
 }
 const taskLabel = (task) => TASK_DISPLAY_LABELS[task?.name] || task?.name
 const taskSubLabel = (task) => TASK_SUB_LABELS[task?.name] || null
@@ -2720,10 +2721,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     if (t.status_options === 'assess_form' || t.name === 'Assess tax planning opportunities (and enter presentation details)') {
       return !!localProgress[t.id]?.status || !!livePlan?.assess_form_submitted_at
     }
-    // Green/Red light call: 'Proceed' closes the step, and so does a completed
-    // refund. The refund path writes no progress status of its own.
+    // Tax Plan Red Light. 'Proceed' is a HISTORY value (that button was removed
+    // 2026-09-21); 'Stopped' is the no-deposit stop route's own record, and a
+    // completed refund closes the step through the plan column, writing no
+    // progress status of its own (#293). Mirrors utils/tax-plan-steps.ts.
     if (t.status_options === 'tax_refund') {
-      return localProgress[t.id]?.status === 'Proceed' || livePlan?.deposit_refund_status === 'succeeded'
+      const st = localProgress[t.id]?.status
+      return st === 'Proceed' || st === 'Stopped' || livePlan?.deposit_refund_status === 'succeeded'
     }
     // Allocating a tax planner completes only when a planner is actually allocated
     // (client_tax_plans.tax_planner_id), not when the progress row merely holds a
@@ -2762,8 +2766,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     || (name ? allTasks.find(t => t.name === name) : null)
     || null
   // A step the program doesn't carry cannot be a prerequisite: Holistic (program 1)
-  // has neither the deposit nor the Green/Red Light refund step, and gating on an
-  // absent task would lock everything downstream of it forever.
+  // has neither the deposit nor the Red Light step, and gating on an absent task
+  // would lock everything downstream of it forever.
   const prereqDone = (sentinel, name) => {
     const t = findStepTask(sentinel, name)
     return !t || isTaskStatused(t)
@@ -2771,16 +2775,16 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
 
   const isTaxProgram = (livePlan?.program_id ?? plan?.program_id ?? 1) === 4
   const depositOk = !isTaxProgram || prereqDone('tax_deposit_pi', 'Deposit Paid') || !!livePlan?.deposit_payment_intent_id
-  // A WAIVED intake closes Deposit Paid as "N/A — No Deposit", and such a plan
-  // has no Green/Red Light step at all — nothing to refund, nothing to forward
-  // (Jake, 2026-09-21). NOT "no PaymentIntent": a hand-created plan awaiting an
-  // admin's paste still owes the deposit and keeps the step. Mirrors
-  // isNoDepositPlan / buildTaxPlanSteps server-side (#339).
+  // A WAIVED intake closes Deposit Paid as "N/A — No Deposit". It decides WHICH
+  // stop route the Red Light step offers — "Stop tax planning" rather than a
+  // Refund — and it is the ROI-decline affordance's test. NOT "no PaymentIntent":
+  // a hand-created plan awaiting an admin's paste still owes the deposit and
+  // refunds. Mirrors isNoDepositPlan server-side (#339).
   const noDeposit = isTaxProgram && (() => {
     const dt = findStepTask('tax_deposit_pi', 'Deposit Paid')
     return !!dt && localProgress[dt.id]?.status === DEPOSIT_NA_STATUS
   })()
-  const greenRedOk = !isTaxProgram || noDeposit || prereqDone('tax_refund', null)
+  const depositRefunded = livePlan?.deposit_refund_status === 'succeeded'
   const returnsReceived = prereqDone('tax_returns_request', 'Request Tax Returns')
   const allocDone = prereqDone('tax_planner_select', 'Allocate Team Member / Tax Planner')
   // Only a Tax Planner unlocks the review steps — a Team Member may hold the plan
@@ -2794,12 +2798,20 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   const addlInfoDone = prereqDone(null, 'Additional information required')
   // The review verdict is directional, so "answered" is never enough: only Proceed
   // carries the plan forward. Stop is a terminal answer that must re-lock the
-  // forward path — the stop route is the Green/Red Refund (program 4), or the
-  // ROI-booked decline button on Holistic, which has no Green/Red step (#367).
+  // forward path — the stop route is the Tax Plan Red Light step (Refund on a
+  // deposit plan, Stop tax planning on a waived one), or the ROI-booked decline
+  // button on Holistic, which has no Red Light step (#367).
   const reviewTask = findStepTask(null, 'Tax planner review complete')
   const reviewStatus = reviewTask ? localProgress[reviewTask.id]?.status : null
   const reviewProceed = !reviewTask || reviewStatus === 'Proceed with tax planning'
   const reviewStop = !!reviewTask && reviewStatus === 'Stop tax planning'
+  // "Tax Plan Red Light" is the STOP route and nothing else (Jake, 2026-09-21):
+  // it appears only when the reviewer said Stop, or when it already carries
+  // history — a legacy 'Proceed', the new 'Stopped', or a completed refund. On a
+  // Proceed it is not shown and not counted, on EVERY plan, deposit or not.
+  // Mirrors `reviewStop || redLightDone` in utils/tax-plan-steps.ts (#339).
+  const redLightTask = findStepTask('tax_refund', null)
+  const redLightVisible = reviewStop || depositRefunded || (!!redLightTask && isTaskStatused(redLightTask))
   // True once the meeting is booked OR the skip closed the step (isTaskStatused).
   const roiBooked = prereqDone('tax_3_decision', null)
   // The five steps that skip takes off the board (for ROW RENDERING — all five
@@ -2855,12 +2867,12 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   const isAmendNotApplicable = (t) =>
     isAmendStepTask(t) && !newFeeProcess && !isTaskStatused(t) && !amendWindowOpen(t)
   // Excluded from the done-math: skipped-away rows, the not-applicable amend
-  // rows, and — on a waived (no-deposit) intake — the Green/Red Light step,
-  // which that plan does not carry. One helper so every count site uses the same
-  // rule. renderTask drops the Green/Red row outright, so unlike the other two
-  // it has no inert row either.
+  // rows, and the Tax Plan Red Light step whenever it is not visible (every
+  // plan whose review has not said Stop). One helper so every count site uses
+  // the same rule. renderTask drops the Red Light row outright, so unlike the
+  // other two it has no inert row either.
   const isStepExcluded = (t) => isSkippedAway(t) || isAmendNotApplicable(t)
-    || (noDeposit && t?.status_options === 'tax_refund')
+    || (t?.status_options === 'tax_refund' && !redLightVisible)
 
   // "Has the amend step been answered?" for the steps that wait on it. An ABSENT
   // task row reads as answered — the program_client_tasks seed lands after this
@@ -2975,22 +2987,19 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           : 'Allocate a Tax Planner (not a Team Member) first',
       }
     }
-    // Green/Red Light stays unlocked at row level — its Refund is the escape hatch for
-    // a client who never provides information, so it must stay reachable when the
-    // diagnostic chain can never complete. Only its Proceed button is gated, in
-    // renderTaskInner.
+    // The Red Light step stays unlocked at row level — its stop buttons are the
+    // escape hatch for a client who never provides information, so they must
+    // stay reachable when the diagnostic chain can never complete.
     if (so === 'tax_refund') return null
     if (so === 'tax_3_decision') {
-      // Program 4 pairs the booking with the Green/Red call (one Tray bell asks
-      // for both); a plan without its green light gets no meeting booked. A
-      // waived (no-deposit) plan has no such step, so it reads as Holistic does
-      // — including the Stop route, where the decline is recorded on this very
-      // step, and the hint, which must never name a step the plan does not have.
+      // One gate for every plan since 2026-09-21: the review's Proceed is the
+      // whole forward chain (nothing pairs with it any more), and a Stop still
+      // leaves the booking reachable because booking the meeting anyway
+      // overrides the stop recommendation — which is exactly what
+      // actions/tax/ready-for-tax3.ts does with the bell.
       return {
-        locked: !((diagnosticChain && greenRedOk) || ((!isTaxProgram || noDeposit) && reviewStop)),
-        hint: diagnosticChain && !noDeposit
-          ? 'Select Proceed on the "Tax Plan Green/Red Light" step first'
-          : 'Complete "Tax planner review complete" first',
+        locked: !(diagnosticChain || reviewStop),
+        hint: 'Complete "Tax planner review complete" first',
       }
     }
     if (so === 'assess_form' || nm === 'Assess tax planning opportunities (and enter presentation details)') {
@@ -3005,7 +3014,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       return { locked: !(roiBooked && deckGenerated), hint: 'Book the ROI meeting and generate the presentation first' }
     }
     if (nm === 'ROI Presentation') {
-      const ready = depositOk && greenRedOk && returnsReceived && allocDone && addlInfoDone && reviewProceed
+      const ready = depositOk && returnsReceived && allocDone && addlInfoDone && reviewProceed
         && roiBooked && assessDone && deckGenerated && sendLinkDone
       return { locked: !ready, hint: 'Complete every Tax 1 and Tax 2 step first' }
     }
@@ -3169,9 +3178,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   // across browsers). Admin (no flags) and member (readOnly) pass straight
   // through unchanged.
   function renderTask(task, phase, taxSpecialistId = null) {
-    // A waived intake carries no Green/Red Light step — not shown, not counted
-    // (isStepExcluded), on every surface.
-    if (noDeposit && task?.status_options === 'tax_refund') return null
+    // The Tax Plan Red Light step is hidden unless the review said Stop or the
+    // step already carries history — not shown, not counted (isStepExcluded),
+    // on every surface.
+    if (task?.status_options === 'tax_refund' && !redLightVisible) return null
     const key = taxSpecialistId ? `${task.id}_${taxSpecialistId}` : task.id
     // Already-actioned steps always render normally, so history stays visible and
     // editable even when a prerequisite is later un-set.
@@ -4131,45 +4141,48 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     if (task.status_options === 'tax_refund') {
       const decision = p.status || ''
       const hasPi = !!livePlan?.deposit_payment_intent_id
-      // A waived intake has no Green/Red Light step at all (2026-09-21), so this
-      // renderer never runs there — renderTask drops the row. Kept so the chips
-      // below stay correct if the rule is ever narrowed again.
+      // The two stop routes. A WAIVED intake has no $500 to hand back, so it
+      // stops through automation_TAX_stopnodeposit and no money moves; every
+      // other plan refunds the deposit. The step itself only renders when the
+      // review said Stop, or it already carries history — see redLightVisible.
       const depositWaived = noDeposit
       const refunded = livePlan?.deposit_refund_status === 'succeeded'
+      const stopped = decision === 'Stopped'
       // Chips and the $250 team-share leg: VFO-internal, hidden from every
       // non-admin surface (the Direct member included).
       const locked = readOnly || plannerMode
-      // Always listed, on every surface (Jake, 2026-09-18 — it used to hide from
-      // the member view until a refund landed). The member view shows the
-      // outcome only; the buttons below are gated on !memberLocked — which on a
-      // Direct plan is the member's own call (decision 4: their Proceed moves the
-      // $250 team share exactly as an admin's).
-      const done = decision === 'Proceed' || refunded
+      // Listed on every surface (Jake, 2026-09-18). The member view shows the
+      // outcome only; the button below is gated on !memberLocked — which on a
+      // Direct plan is the member's own call (decision 7: they may refund or
+      // stop their own case exactly as an admin can).
+      const done = decision === 'Proceed' || stopped || refunded
       const draft = refundReasonDrafts[task.id] || {}
       const refundOpen = !!draft.open
       const sending = !!draft.sending
       const reason = draft.reason || ''
-      const canSend = hasPi && !!reason.trim() && !sending
-      // Proceed carries the plan forward, so it needs the diagnostic chain (or a Stop
-      // verdict). Refund below is deliberately NOT gated — see stepGate.
-      const canProceed = diagnosticChain && !sending
-      const proceedLockHint = 'Proceed locked — complete "Tax planner review complete"'
-      const showControls = !memberLocked && !refunded && !decision && !refundOpen
-      // Without a PaymentIntent BOTH buttons are dead, so the deposit is the honest
-      // blocker to name — the Proceed chain only becomes the story once it exists.
+      const canSend = (depositWaived || hasPi) && !!reason.trim() && !sending
+      const showControls = !memberLocked && !done && !refundOpen
+      // On a deposit plan without a PaymentIntent the Refund button is dead, so
+      // the deposit is the honest blocker to name. A waived plan waits on
+      // nothing — its stop moves no money.
       const refundLockHint = !hasPi && !depositWaived
         ? 'Enter the Stripe deposit payment (Set Up) first'
-        : !canProceed ? proceedLockHint : ''
-      const trGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }
+        : ''
       const trRed = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600 }
       const closeRefundDraft = () => setRefundReasonDrafts(d => { const next = { ...d }; delete next[task.id]; return next })
+      // One card, two destinations: a deposit plan refunds, a waived plan simply
+      // stops. Everything after the call — refresh, reload progress, close the
+      // card — is identical, so it is written once.
       async function sendDepositRefund() {
         const trimmed = reason.trim()
-        if (!confirm('Refund the deposit via Stripe and draft the decline email?\n\nThis refunds the saved PaymentIntent in full and drafts an email to the client including your reason(s). Cannot be undone.')) return
+        const confirmText = depositWaived
+          ? 'Stop tax planning for this client and draft the email?\n\nThe plan is closed and an email is drafted to the client carrying your reason(s). No deposit was taken, so no money moves. Cannot be undone.'
+          : 'Refund the deposit via Stripe and draft the decline email?\n\nThis refunds the saved PaymentIntent in full and drafts an email to the client including your reason(s). Cannot be undone.'
+        if (!confirm(confirmText)) return
         setRefundReasonDrafts(d => ({ ...d, [task.id]: { ...(d[task.id] || {}), sending: true } }))
-        const res = await callApi(act('automation_TAX_depositrefund'), { tax_plan_id: plan.id, reason: trimmed })
+        const res = await callApi(act(depositWaived ? 'automation_TAX_stopnodeposit' : 'automation_TAX_depositrefund'), { tax_plan_id: plan.id, reason: trimmed })
         if (res?.error) {
-          alert(`Refund failed: ${res.error}`)
+          alert(`${depositWaived ? 'Stop' : 'Refund'} failed: ${res.error}`)
           setRefundReasonDrafts(d => ({ ...d, [task.id]: { ...(d[task.id] || {}), sending: false } }))
           return
         }
@@ -4188,9 +4201,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
             <span style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: '1 1 auto', minWidth: '140px' }}>
-              {stepName(task, phase)}{!locked && !depositWaived && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={[{ name: 'TAX_deposit_refund', when: 'Refund — deposit refunded with decline reason(s)' }]} context={{ ...emailCtx, 'Refund Reason': reason.trim() || 'your reason(s) — typed on this step' }} /></span>}
+              {stepName(task, phase)}{!locked && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={task.name} templates={depositWaived
+                ? [{ name: 'TAX_stop_no_deposit', when: 'Stop tax planning — no deposit was taken, nothing to refund' }]
+                : [{ name: 'TAX_deposit_refund', when: 'Refund — deposit refunded with decline reason(s)' }]} context={{ ...emailCtx, 'Refund Reason': reason.trim() || 'your reason(s) — typed on this step', 'Stop Reason': reason.trim() || 'your reason(s) — typed on this step' }} /></span>}
               {depositWaived
-                ? <div style={taskSubLabelStyle}>No deposit was taken for this client</div>
+                ? <div style={taskSubLabelStyle}>No deposit was taken for this client — stopping refunds nothing</div>
                 : taskSubLabel(task) && <div style={taskSubLabelStyle}>{taskSubLabel(task)}</div>}
             </span>
             {showControls && !sending && refundLockHint && (
@@ -4201,33 +4216,31 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
             )}
             {refunded
               ? <span style={chipStyle('#e74c3c')}>Refunded ${livePlan?.deposit_refund_amount}</span>
-              : decision
-                ? <span style={chipStyle(statusColor)}>{decision}</span>
-                : memberLocked
-                  ? <span style={neutralChipStyle}>Not started</span>
-                  : null
+              : stopped
+                ? <span style={chipStyle('#e74c3c')}>Stopped</span>
+                : decision
+                  ? <span style={chipStyle(statusColor)}>{decision}</span>
+                  : memberLocked
+                    ? <span style={neutralChipStyle}>Not started</span>
+                    : null
             }
-            {/* The $250 Tax Planning Team leg of the deposit, which Proceed
-                triggers. Admin-only: it is VFO's own money movement, the same
-                reason PricingSplitCard is hidden from readOnly/plannerMode. */}
-            {!locked && decision === 'Proceed' && depositTeamChip(livePlan?.deposit_team_share_status)}
-            {refunded && livePlan?.deposit_refund_date ? <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{formatDate(livePlan.deposit_refund_date)}</span> : (done && p.status && !readOnly) ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{done && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
+            {stopped && livePlan?.tax_stopped_at ? <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{formatDate(String(livePlan.tax_stopped_at).slice(0, 10))}</span> : refunded && livePlan?.deposit_refund_date ? <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{formatDate(livePlan.deposit_refund_date)}</span> : (done && p.status && !readOnly) ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{done && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
           </div>
           {/* Buttons sit on their own line under the step name, indented past the
               dot — inline they squeezed the name into a four-line wrap. */}
           {showControls && (hasPi || depositWaived) && (
             <div style={{ paddingLeft: '18px', paddingBottom: '7px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {canProceed && <button disabled={sending} onClick={() => saveTask(task.id, 'Proceed', p.completed_date, taxSpecialistId)} style={trGreen}>Proceed</button>}
-              {hasPi && <button disabled={sending} onClick={() => setRefundReasonDrafts(d => ({ ...d, [task.id]: { open: true, reason: '', sending: false } }))} style={trRed}>Refund</button>}
+              <button disabled={sending} onClick={() => setRefundReasonDrafts(d => ({ ...d, [task.id]: { open: true, reason: '', sending: false } }))} style={trRed}>{depositWaived ? 'Stop tax planning' : 'Refund'}</button>
             </div>
           )}
           {refundOpen && !done && !(memberLocked || plannerMode) && (
             <div style={{ marginLeft: '18px', marginBottom: '8px', padding: '14px 16px', background: 'var(--vfo-tint)', borderRadius: '10px', border: '1px solid var(--vfo-tint-deep)', fontFamily: 'Inter, sans-serif' }}>
               <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
-                Subject: VFO Services - Tax Planning Deposit Refunded - {client?.first_name ? `${client.first_name} ${client.last_name || ''}`.trim() : '[Client Name]'}
+                Subject: {depositWaived ? 'VFO Services - Tax Planning Update' : 'VFO Services - Tax Planning Deposit Refunded'} - {client?.first_name ? `${client.first_name} ${client.last_name || ''}`.trim() : '[Client Name]'}
               </div>
               <div style={{ fontSize: '13px', color: '#44557a', lineHeight: '1.6' }}>
                 <p style={{ margin: '0 0 12px' }}>Hi {client?.first_name || '[Client First]'},</p>
+                {depositWaived && <p style={{ margin: '0 0 12px' }}>After reviewing the information provided, we will not be moving forward with tax planning at this time for the following reason:</p>}
                 <textarea
                   value={reason}
                   onChange={e => setRefundReasonDrafts(d => ({ ...d, [task.id]: { ...(d[task.id] || {}), reason: e.target.value } }))}
@@ -4235,15 +4248,17 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                   disabled={sending}
                   style={{ width: '100%', minHeight: '90px', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.06)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', fontSize: '13px', lineHeight: '1.55', boxSizing: 'border-box', resize: 'vertical', marginBottom: '12px' }}
                 />
-                <p style={{ margin: '0 0 12px' }}>We have refunded your $500 tax planning deposit — you should see the funds back in your account within the next few days.</p>
+                <p style={{ margin: '0 0 12px' }}>{depositWaived
+                  ? 'No deposit was taken, so there is nothing to refund.'
+                  : 'We have refunded your $500 tax planning deposit — you should see the funds back in your account within the next few days.'}</p>
                 <p style={{ margin: '0 0 12px' }}>If you have any questions, just let us know.</p>
                 <p style={{ margin: '0 0 12px' }}>Thank you for your time.</p>
                 <p style={{ margin: 0 }}>Best regards,</p>
               </div>
-              {!hasPi && <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--vfo-muted)' }}>Enter the Deposit PaymentIntent ID on the Deposit Paid step first</div>}
+              {!hasPi && !depositWaived && <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--vfo-muted)' }}>Enter the Deposit PaymentIntent ID on the Deposit Paid step first</div>}
               <div style={{ marginTop: '14px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                 <button disabled={sending} onClick={closeRefundDraft} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '12px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Cancel</button>
-                <button disabled={!canSend} onClick={sendDepositRefund} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '12px', cursor: canSend ? 'pointer' : 'not-allowed', border: '1px solid rgba(231,76,60,0.4)', background: canSend ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.06)', color: '#e74c3c', fontWeight: '600' }} title={!hasPi ? 'Enter the Deposit PaymentIntent ID on the Deposit Paid step first' : (!reason.trim() ? 'Enter the reason(s) first' : '')}>{sending ? 'Sending...' : 'Send Refund'}</button>
+                <button disabled={!canSend} onClick={sendDepositRefund} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '12px', cursor: canSend ? 'pointer' : 'not-allowed', border: '1px solid rgba(231,76,60,0.4)', background: canSend ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.06)', color: '#e74c3c', fontWeight: '600' }} title={(!hasPi && !depositWaived) ? 'Enter the Deposit PaymentIntent ID on the Deposit Paid step first' : (!reason.trim() ? 'Enter the reason(s) first' : '')}>{sending ? 'Sending...' : (depositWaived ? 'Send' : 'Send Refund')}</button>
               </div>
             </div>
           )}
@@ -4340,12 +4355,12 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       // The confirmation email names the allocated Team Member / Tax Planner, so
       // the confirm send is blocked until one is allocated (decline stays open).
       const plannerAllocated = !!(livePlan?.tax_planner_id ?? plan?.tax_planner_id)
-      // Declining here is the stop route for every plan with no Green/Red Light
-      // step (it is what retires their "Tax Planner review complete" Stop bell):
-      // Holistic, and since 2026-09-21 a waived program-4 intake, whose Stop bell
-      // carries this step's instruction verbatim. A program-4 plan that took a
-      // deposit stops via the Green/Red refund instead and gets no decline
-      // affordance, exactly as before.
+      // Declining here is the stop route for every plan whose Red Light step
+      // cannot refund: Holistic, which has no such step, and a waived program-4
+      // intake, which since 2026-09-21 stops through "Stop tax planning" instead
+      // (its Stop bell now names that button; this decline is the pre-existing
+      // route and clears the same bell). A program-4 plan that took a deposit
+      // stops via the Red Light Refund and gets no decline affordance.
       const canDecline = (plan.program_id || 1) === 1 || noDeposit
       const draft = declineDrafts[task.id] || {}
       const declineOpen = !!draft.open
@@ -4951,10 +4966,19 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       greyNote = 'Due Diligence Skipped - Moved to Implementation'
     }
 
+    // The $250 Tax Planning Team leg of the $500 deposit. It rides THIS step's
+    // Proceed since 2026-09-21 (it used to ride the Green/Red Light Proceed), so
+    // the chip reports beside the decision that fires it. Admin-only: it is
+    // VFO's own money movement, the same reason PricingSplitCard is hidden from
+    // readOnly/plannerMode.
+    const showTeamShareChip = task.name === 'Tax planner review complete'
+      && isTaxProgram && !(readOnly || plannerMode)
+      && p.status === 'Proceed with tax planning'
     return (
       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap', opacity: isGreyedOut ? 0.3 : 1, pointerEvents: isGreyedOut ? 'none' : undefined }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
         <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{greyNote && <span style={{ fontSize: '11px', color: '#e06717', fontWeight: 600, marginLeft: '8px' }}>({greyNote})</span>}</span>
+        {showTeamShareChip && depositTeamChip(livePlan?.deposit_team_share_status)}
         <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)' }}>
           <option value="">-- Select --</option>
           {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
@@ -5443,13 +5467,19 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
       const windowOpen = decision === null || decision === undefined || decision === ''
       return !answered && !windowOpen
     }
-    // A WAIVED intake carries no Green/Red Light step, so leaving it in the
-    // denominator would hold the plan out of "completed" on a step it can never
-    // answer. Same predicate as the track view's `noDeposit` and the backend's
-    // isNoDepositPlan (#339).
-    const depositTask = phases.flatMap(p => p.program_client_tasks || []).find(t => t.status_options === 'tax_deposit_pi')
-    const planNoDeposit = !!depositTask && prog[depositTask.id]?.status === DEPOSIT_NA_STATUS
-    const allTasks = phases.filter(p => p.name !== 'Tax 5 - Education & DD (Specialist Allocation)' && p.name !== 'Tax 5 - Education & DD (Post Allocation)').flatMap(p => p.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !amendNotApplicable(t) && !(planNoDeposit && t.status_options === 'tax_refund'))
+    // The Tax Plan Red Light step exists only on a plan the reviewer STOPPED,
+    // so leaving it in the denominator anywhere else would hold the plan out of
+    // "completed" on a step it can never answer. Same predicate as the track
+    // view's `redLightVisible` and the backend's buildTaxPlanSteps (#339).
+    const flat = phases.flatMap(p => p.program_client_tasks || [])
+    const planReviewTask = flat.find(t => t.name === 'Tax planner review complete')
+    const planRedLightTask = flat.find(t => t.status_options === 'tax_refund')
+    const planRedLightStatus = planRedLightTask ? prog[planRedLightTask.id]?.status : null
+    const redLightHidden = !!planRedLightTask
+      && !(planReviewTask && prog[planReviewTask.id]?.status === 'Stop tax planning')
+      && planRedLightStatus !== 'Proceed' && planRedLightStatus !== 'Stopped'
+      && plan?.deposit_refund_status !== 'succeeded'
+    const allTasks = phases.filter(p => p.name !== 'Tax 5 - Education & DD (Specialist Allocation)' && p.name !== 'Tax 5 - Education & DD (Post Allocation)').flatMap(p => p.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !amendNotApplicable(t) && !(redLightHidden && t.status_options === 'tax_refund'))
     if (allTasks.length === 0) return 'not started'
     if (allTasks.every(t => prog[t.id]?.status)) return 'completed'
     if (allTasks.some(t => prog[t.id]?.status)) return 'in progress'
