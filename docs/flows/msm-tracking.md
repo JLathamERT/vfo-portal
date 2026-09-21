@@ -22,7 +22,7 @@ The 32 `msm_*` actions fall into 5 subsystems. Each is a small CRUD island — n
 | `msm_load_enrollments` | `member_enrollments` | Filtered by `member_number`. |
 | `msm_enroll_member` | inserts `member_enrollments` | Creates enrollment with default `training_status='pre'`, `program_status='active'`. |
 | `msm_update_enrollment` | updates `member_enrollments` | Updates training/program status, target_clients, assigned_msm. |
-| `msm_load_enabled_programs` | `member_program_enabled` | Reads which programs are enabled for the member. |
+| `msm_load_enabled_programs` | `member_program_enabled`, `portal_feature_flags` | Reads which programs are enabled for the member. **Since 2026-09-18 the payload also carries `features: { tax_intake, tax_direct }`** — the member's two feature-flag reads (`utils/feature-flags.ts`, fail-closed) that the member portal gates the VFO Tax Planning tab, its "+ Add new tax client" button and the intake's Direct choice on; with `tax_intake` on, Tax Planning is offered without a `member_program_enabled` row. Cosmetic — every write behind it re-checks the flag. |
 | `msm_toggle_program` | upserts `member_program_enabled` | Enables/disables a program for a member. Drives MemberPortal's dynamic tab list. |
 | `msm_update_assigned_msm` | updates `members.assigned_msm` (or enrollment-level) | Reassigns the MSM. |
 

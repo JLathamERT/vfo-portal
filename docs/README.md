@@ -42,7 +42,7 @@ docs/
 │   ├── clients.md                    (clients + contacts + notes + progress)
 │   ├── ciq.md                        (client_ciqs + answers + priorities + snapshots)
 │   ├── tax.md                        (client_tax_* + tax_planners / groups / logins + tax_intake_requests)
-│   ├── programs.md                   (programs + phases + tasks + enrollments)
+│   ├── programs.md                   (programs + phases + tasks + enrollments + portal_feature_flags)
 │   ├── specialists.md                (experts + onboarding workflow)
 │   ├── coaching.md                   (coaching meetings + renewals)
 │   ├── marketplace-gc.md             (gc_*)
@@ -115,6 +115,8 @@ docs/
 | Member fills out a CIQ | [flows/ciq.md](flows/ciq.md) → [tables/ciq.md](tables/ciq.md) |
 | Member clicks the Help (?) button / admin edits the FAQs | [flows/member-help-faq.md](flows/member-help-faq.md) → [tables/faq.md](tables/faq.md) |
 | A member starts a tax client from the portal (the 37-question form + $500 deposit) | [flows/tax-intake.md](flows/tax-intake.md) → [tables/tax.md](tables/tax.md#tax_intake_requests-added-2026-09-17) → [integrations/stripe.md](integrations/stripe.md#checkout-session-shape--tax-intake-deposit-2026-09-17) |
+| A member runs a tax case themselves (the DIRECT route: the member is the PF, the `tax_direct_*` twins, the member bell) | [plans/direct-tax-planning/README.md](plans/direct-tax-planning/README.md) (decisions 26–29) → [flows/tax-intake.md](flows/tax-intake.md#feature-flag-and-the-direct-choice-unit-2-2026-09-18) → [flows/tax-planning.md](flows/tax-planning.md) → [flows/notifications.md](flows/notifications.md#direct-tax-plans-the-pf-is-the-member-2026-09-21-unit-2-phase-5e) → [architecture/05-api-action-catalog.md](architecture/05-api-action-catalog.md) (the DIRECT member twins table) |
+| A member-facing feature is released or held back (feature flags) | [tables/programs.md](tables/programs.md#portal_feature_flags-new-2026-09-18-migration-20260918200000_portal_feature_flagssql-deny-all-rls-from-creation) → [flows/tax-intake.md](flows/tax-intake.md#feature-flag-and-the-direct-choice-unit-2-2026-09-18) |
 | A second person on the client's side gets Cc'd (or named in the greeting) | [flows/additional-contacts.md](flows/additional-contacts.md) → [integrations/gmail.md](integrations/gmail.md) → [tables/clients.md](tables/clients.md) |
 | Admin reviews the pipeline state | [architecture/02-frontend-shell.md](architecture/02-frontend-shell.md#what-automationpanel-shows) → [tables/pipeline.md](tables/pipeline.md) |
 

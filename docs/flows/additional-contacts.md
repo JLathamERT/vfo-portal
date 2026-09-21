@@ -48,11 +48,11 @@ Blanking the email out from under a live Cc is refused with its own message (*"R
 
 | Action | File | Who | Notes |
 |---|---|---|---|
-| `msm_add_client_contact` | `actions/msm/add-client-contact.ts` | admin, or a member on their own client | **Email is REQUIRED** and regex-validated. Toggle fields are **not accepted** — a contact is always created Cc-off. |
-| `msm_update_client_contact` | `actions/msm/update-client-contact.ts` | name/email: same as above · **toggles: admin only** | New 2026-08-20. |
-| `msm_delete_client_contact` | `actions/msm/delete-client-contact.ts` | admin, or a member on their own client | Unchanged. |
+| `msm_add_client_contact` | `actions/msm/add-client-contact.ts` | admin, or a member on a **Direct** client they run (own client AND `clients.pf_member_number` = the session member — `denyIfNotDirectClient`, 2026-09-18) | **Email is REQUIRED** and regex-validated. Toggle fields are **not accepted** — a contact is always created Cc-off. Dispatch passes `c.auth`; the old `body.member_number` ownership test is gone. |
+| `msm_update_client_contact` | `actions/msm/update-client-contact.ts` | name/email: same as above (a member only on a Direct client, resolved from the STORED row's `client_id`) · **toggles: admin only** | New 2026-08-20. |
+| `msm_delete_client_contact` | `actions/msm/delete-client-contact.ts` | admin, or a member on a Direct client they run (stored `client_id`) | `denyIfNotDirectClient` since 2026-09-18 (was `denyIfNotOwnClient`). |
 
-Both write actions sit in **`MEMBER_SCOPED_ACTIONS` only** — no `ADMIN_ONLY_ACTIONS` entry — and re-check ownership in-handler via `denyIfNotOwnClient` (#142).
+The add + update actions sit in **`MEMBER_SCOPED_ACTIONS` only** — no `ADMIN_ONLY_ACTIONS` entry — and all three re-check ownership in-handler. **Since 2026-09-18 (DIRECT unit 2 phase 5) the member-side guard is `denyIfNotDirectClient`** (`utils/tax-direct-member.ts`): session-derived ownership (`denyIfNotOwnClient`, #142) AND `clients.pf_member_number` equal to the session's member number — a member edits contacts only on a client they RUN, i.e. a Direct tax case where they are the PF (403 `This client is not run by you` otherwise). No member surface reached these three before Direct; the member `ClientDetail` Profile tab now renders the editing card in `directMode` (name/email only). Admins pass straight through.
 
 > ⚠️ **The admin test is `auth.callerRole === "admin"`, deliberately NOT the `!== "member"` idiom** that `msm_update_client` uses for status/assigned_pf. A **tax planner authenticates as `callerRole "tax_planner"`** (`middleware/auth.ts`), so the loose form would have handed planners the two toggles. For a non-admin caller the toggle fields are **silently ignored**, not rejected.
 
