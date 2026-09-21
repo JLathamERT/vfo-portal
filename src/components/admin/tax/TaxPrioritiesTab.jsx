@@ -2780,6 +2780,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   // Refund — and it is the ROI-decline affordance's test. NOT "no PaymentIntent":
   // a hand-created plan awaiting an admin's paste still owes the deposit and
   // refunds. Mirrors isNoDepositPlan server-side (#339).
+  // Direct (the member runs the case): the member already has the deck, so the
+  // "Send presentation link to member" step does not exist on their plan.
+  const directPlan = (livePlan || plan)?.tax_route === 'direct'
   const noDeposit = isTaxProgram && (() => {
     const dt = findStepTask('tax_deposit_pi', 'Deposit Paid')
     return !!dt && localProgress[dt.id]?.status === DEPOSIT_NA_STATUS
@@ -2873,6 +2876,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   // other two it has no inert row either.
   const isStepExcluded = (t) => isSkippedAway(t) || isAmendNotApplicable(t)
     || (t?.status_options === 'tax_refund' && !redLightVisible)
+    || (t?.status_options === 'tax_presentation_link' && directPlan)
 
   // "Has the amend step been answered?" for the steps that wait on it. An ABSENT
   // task row reads as answered — the program_client_tasks seed lands after this
@@ -2899,7 +2903,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   // submitted-form stamp, which is the only thing that completes this step.
   const assessDone = prereqDone('assess_form', 'Assess tax planning opportunities (and enter presentation details)')
   const deckGenerated = prereqDone('tax_generate_presentation', 'Generate and download presentation')
-  const sendLinkDone = prereqDone('tax_presentation_link', null)
+  const sendLinkDone = directPlan || prereqDone('tax_presentation_link', null)
   const roiPresentationDone = prereqDone(null, 'ROI Presentation')
   const hlmConfirmDone = prereqDone('tax_hlm_confirm', null)
   const detailedPresDone = prereqDone(null, 'Detailed tax plan presentation')
@@ -3182,6 +3186,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     // step already carries history — not shown, not counted (isStepExcluded),
     // on every surface.
     if (task?.status_options === 'tax_refund' && !redLightVisible) return null
+    if (task?.status_options === 'tax_presentation_link' && directPlan) return null
     const key = taxSpecialistId ? `${task.id}_${taxSpecialistId}` : task.id
     // Already-actioned steps always render normally, so history stays visible and
     // editable even when a prerequisite is later un-set.
