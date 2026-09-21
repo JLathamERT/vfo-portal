@@ -614,7 +614,7 @@ function OnboardingDetail({ id, onBack }) {
     <div style={{ marginLeft: '18px', marginBottom: '4px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
       <AutoRow label="Deposit payment link sent (ACH or Card choice)" done={!!ob.deposit_email_sent_at} date={ob.deposit_email_sent_at} />
       <StallRows ob={ob} setOb={setOb} stall="deposit" />
-      <AutoRow label="Deposit collected" done={depositStatus === 'succeeded' || depositRefunded} date={ob.deposit_completed_at} tag={ob.deposit_method_type ? ob.deposit_method_type.toUpperCase() : null} />
+      <AutoRow label="Deposit collected" done={depositStatus === 'succeeded' || depositRefunded} pending={depositStatus === 'processing'} date={ob.deposit_completed_at} tag={ob.deposit_method_type ? ob.deposit_method_type.toUpperCase() : null} />
       <AutoRow label="Deposit confirmation emailed" done={!!ob.deposit_confirmation_email_sent_at} date={ob.deposit_confirmation_email_sent_at} />
       {depositRefunded && (
         <>
@@ -708,7 +708,7 @@ function OnboardingDetail({ id, onBack }) {
       {emRequested && emStage === 'payment' && emCard}
       {/* The ACH confirmation email no longer gets its own row — preview it here. */}
       {!depositCoversAll && (
-        <AutoRow label={depositPaid > 0 ? 'Remaining payment collected after deposit' : 'Payment collected'} done={ob.payment_status === 'succeeded'} date={ob.payment_completed_at} tag={withTags ? (ob.payment_method_type ? ob.payment_method_type.toUpperCase() : null) : undefined} emails={ADVISOR_CONFIRMATION_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
+        <AutoRow label={depositPaid > 0 ? 'Remaining payment collected after deposit' : 'Payment collected'} done={ob.payment_status === 'succeeded'} pending={ob.payment_status === 'processing'} date={ob.payment_completed_at} tag={withTags ? (ob.payment_method_type ? ob.payment_method_type.toUpperCase() : null) : undefined} emails={ADVISOR_CONFIRMATION_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
       )}
       {!depositCoversAll && depositPaid > 0 && balanceStatus === 'awaiting_deposit' && (
         <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '2px 0 4px 14px' }}>Waiting for the deposit to clear before charging the balance</div>
@@ -972,17 +972,19 @@ function Row({ label, done, date, children, emails, pipeline, emailCtx, onDateCh
   )
 }
 
-function AutoRow({ label, done, date, tag, emails, pipeline, emailCtx }) {
+function AutoRow({ label, done, date, tag, emails, pipeline, emailCtx, pending = false }) {
   const tags = tag == null ? [] : Array.isArray(tag) ? tag.filter(Boolean) : [tag]
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
+      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : pending ? '#e06717' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : pending ? '#e06717' : 'var(--vfo-border-mid)'}` }} />
       <span style={{ fontSize: '12px', color: 'var(--vfo-ink)', flex: 1 }}>{label}{emails && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline={pipeline} title={label} templates={emails} context={emailCtx} /></span>}</span>
       <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
         {done && tags.length > 0 && tags.map((t, i) => (
           <span key={i} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{t}</span>
         ))}
-        <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: done ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: done ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: done ? '#1b9254' : 'var(--vfo-muted)' }}>{done ? 'Done' : 'Not completed'}</span>
+        {!done && pending
+          ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>Pending — ACH clearing</span>
+          : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: done ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: done ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: done ? '#1b9254' : 'var(--vfo-muted)' }}>{done ? 'Done' : 'Not completed'}</span>}
         <span style={dateTextStyle}>{done && date ? formatDate(date) : ''}</span>
       </span>
     </div>

@@ -70,6 +70,11 @@ export default function TaxIntakeForm({
     return seed
   })
   const [eligibility, setEligibility] = useState(null)
+  // Who runs the case (unit 2). Classic by default — Direct is an option the
+  // member takes deliberately, never one they fall into. The server re-decides
+  // whether they may have it.
+  const [taxRoute, setTaxRoute] = useState('classic')
+  const [fillMode, setFillMode] = useState('form')
   const [errors, setErrors] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [failed, setFailed] = useState('')
@@ -140,7 +145,7 @@ export default function TaxIntakeForm({
         ? await onPublicSubmit(normalized)
         : holistic
           ? await callApi('tax_intake_holistic_submit', { answers: normalized, client_id: existingClient.id })
-          : await callApi('tax_intake_submit', { answers: normalized })
+          : await callApi('tax_intake_submit', { answers: normalized, ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}) })
       // A Checkout url means the deposit is owed — hand the browser to Stripe.
       if (res?.url) { window.location.assign(res.url); return }
       onDone?.(res)
@@ -169,6 +174,7 @@ export default function TaxIntakeForm({
         client_first_name: first,
         client_last_name: last,
         client_email: email,
+        ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}),
       })
       onDone?.({ link_sent_to: `${first} ${last}`.trim() })
     } catch (err) {
@@ -242,9 +248,40 @@ export default function TaxIntakeForm({
     <div style={{ background: 'rgba(217,48,37,0.10)', border: '1px solid rgba(217,48,37,0.32)', borderRadius: '12px', padding: '14px 16px', marginBottom: '20px', fontSize: '13px', color: '#d93025' }}>{failed}</div>
   )
 
+  // ─── The feature gate, belt and braces ────────────────────────────────
+  // The button that opens this form is already hidden when the flag is off, and
+  // every write behind it 403s — this only covers a stale tab or a hand-typed
+  // deep link. `null` is "still loading", so the form is never flashed away.
+  if (eligibility?.intake_enabled === false) return (
+    <div style={{ ...sectionStyle, borderColor: 'rgba(224,103,23,0.35)' }}>
+      <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }}>Not available yet</div>
+      <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>
+        Adding a tax client from the portal is not available for your account yet. Please speak to your VFO team.
+      </div>
+      <button type="button" onClick={onCancel}
+        style={{ marginTop: '16px', padding: '8px 18px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
+        Back to clients
+      </button>
+    </div>
+  )
+
   // ─── Step 1: who fills the form in? ───────────────────────────────────
   if (step === 'choose') {
-    const cardStyle = { ...sectionStyle, marginBottom: 0, cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s' }
+    // Who RUNS the case, asked on both routes and decided here — the client is
+    // never asked. Shown only to a member the server says is eligible; when the
+    // feature is off for them, nothing about Direct is shown at all.
+    const routeOptions = [
+      {
+        key: 'classic',
+        title: 'VFO Services runs this case',
+        body: 'Our tax planning team and your VFO team run every step; you follow along.',
+      },
+      {
+        key: 'direct',
+        title: 'I run this case (Direct)',
+        body: "You run the steps our VFO team normally runs; the tax planning team's steps stay with them. You act as the Planning Facilitator for this client.",
+      },
+    ]
     return (
       <div>
         <div style={{ marginBottom: '20px' }}>
@@ -254,29 +291,65 @@ export default function TaxIntakeForm({
             <div style={{ fontSize: '13px', fontWeight: 600, color: eligibility && !eligibility.deposit_required ? green : 'var(--vfo-ink)', marginTop: '8px' }}>{depositLine}</div>
           )}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-          <div role="button" tabIndex={0} style={cardStyle}
-            onClick={() => setStep('form')}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setStep('form') }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = '#125ecc'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border-soft)'}>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }}>Complete the form for my client</div>
-            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.6 }}>
-              You answer the Tax Planning Form now{depositRequired === false ? '' : ' and pay the deposit'}. The client is created as soon as you are done.
+        {/* Asked BEFORE the two cards below: those advance the moment they are
+            clicked, so a choice placed under them could never be made. */}
+        {(() => {
+          const fillOptions = [
+            { key: 'form', title: 'Complete the form for my client', body: `You answer the Tax Planning Form now${depositRequired === false ? '' : ' and pay the deposit'}. The client is created as soon as you are done.` },
+            { key: 'link', title: 'Send my client a link', body: `We email your client the Tax Planning Form${depositRequired === false ? '' : ', and they pay the deposit'}. You only need their name and email address.` },
+          ]
+          // Both questions render at once. Direct starts DISABLED (grey) and only
+          // lights up once eligibility confirms it, so nothing appears late or
+          // jumps; the note under it explains the state without a loading flash.
+          const directOk = !!eligibility?.direct_eligible
+          const directOff = eligibility && eligibility.direct_enabled === false
+          const questionStyle = { fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }
+          const groupStyle = { display: 'inline-flex', border: '1px solid var(--vfo-border-strong)', borderRadius: '999px', padding: '3px', background: 'var(--vfo-card)' }
+          const pillStyle = (on, disabled) => ({ padding: '7px 16px', borderRadius: '999px', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '12.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+            background: on ? '#125ecc' : 'transparent', color: on ? '#fff' : disabled ? 'var(--vfo-border-strong)' : 'var(--vfo-ink)', transition: 'background 0.15s, color 0.15s' })
+          // Fixed height so switching an option never shoves the next question around.
+          const explainStyle = { fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.6, marginTop: '10px', maxWidth: '640px', minHeight: '42px' }
+          const Toggle = ({ options, value, onChange, disabledKeys = [] }) => (
+            <div role="radiogroup" style={groupStyle}>
+              {options.map(opt => {
+                const disabled = disabledKeys.includes(opt.key)
+                return (
+                  <button key={opt.key} type="button" role="radio" aria-checked={value === opt.key} aria-disabled={disabled}
+                    onClick={() => { if (!disabled) onChange(opt.key) }} style={pillStyle(value === opt.key, disabled)}>
+                    {opt.title}
+                  </button>
+                )
+              })}
             </div>
-          </div>
-          <div role="button" tabIndex={0} style={cardStyle}
-            onClick={() => { setErrors([]); setStep('link') }}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setErrors([]); setStep('link') } }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = '#125ecc'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border-soft)'}>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }}>Send my client a link</div>
-            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.6 }}>
-              We email your client the Tax Planning Form{depositRequired === false ? '' : ', and they pay the deposit'}. You only need their name and email address.
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '32px' }}>
+          )
+          const directNote = !eligibility
+            ? 'Direct (run the case yourself) is available once you have 2 qualifying tax clients.'
+            : directOff
+              ? 'Direct (run the case yourself) is not available for your account yet.'
+              : directOk
+                ? `Direct is available because you have ${eligibility.qualifying_count} qualifying tax clients.`
+                : `Direct (run the case yourself) becomes available once you have 2 qualifying tax clients — you have ${eligibility.qualifying_count}.`
+          return (
+            <>
+              <div style={{ marginBottom: '24px' }}>
+                <div style={questionStyle}>1. Who runs this case?</div>
+                <Toggle options={routeOptions} value={taxRoute} onChange={setTaxRoute} disabledKeys={directOk ? [] : ['direct']} />
+                <div style={explainStyle}>{routeOptions.find(o => o.key === taxRoute)?.body}</div>
+                <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{directNote}</div>
+              </div>
+              <div style={{ marginBottom: '24px' }}>
+                <div style={questionStyle}>2. How will the Tax Planning Form be completed?</div>
+                <Toggle options={fillOptions} value={fillMode} onChange={setFillMode} />
+                <div style={explainStyle}>{fillOptions.find(o => o.key === fillMode)?.body}</div>
+              </div>
+            </>
+          )
+        })()}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '32px' }}>
+          <button type="button" onClick={() => { setErrors([]); setStep(fillMode) }}
+            style={{ padding: '10px 22px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: 'none', background: '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
+            Continue
+          </button>
           <button type="button" onClick={onCancel}
             style={{ padding: '10px 20px', borderRadius: '999px', fontSize: '13px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
             Cancel

@@ -853,6 +853,9 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
   const activeTab = activeSection === 'profile_edit' ? 'edit' : activeSection === 'profile_history' ? 'history' : 'details'
   const [typeHistory, setTypeHistory] = useState([])
   const [contacts, setContacts] = useState([])
+  // Read-only: computed by the loader from the member's qualifying tax clients
+  // and the tax_direct release flag. No control — Direct is never granted here.
+  const [directEligibility, setDirectEligibility] = useState(null)
   const [corporateMembers, setCorporateMembers] = useState([])
   const [dirty, setDirty] = useState(false)
   const [status, setStatus] = useState('')
@@ -977,6 +980,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
       setProfile(data.profile || { member_number: member.plugin_member_number, first_name: member.name?.split(' ')[0] || '', last_name: member.name?.split(' ').slice(1).join(' ') || '', elite_status: 'Active', member_type: '', email: '', suspended: false, paused: false, revenue_decision: 'Revenue Share', credit_note_eligible: true, stripe_account_id: '', connected_member_number: null, introduced_by_member_number: null, connection_type: '', notes: '' })
       setTypeHistory(data.type_history || [])
       setContacts(data.contacts || [])
+      setDirectEligibility(data.direct_eligibility || null)
       setCorporateMembers(allMembers.filter(m => m.plugin_member_number?.startsWith(member.plugin_member_number + '-C') || m.plugin_member_number?.startsWith(member.plugin_member_number + '-FC')))
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -1116,11 +1120,22 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
                     <div><div style={fieldLabel}>Work email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{profile.email || '—'}</div></div>
                     <div><div style={fieldLabel}>Personal email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{profile.personal_email || '—'}</div></div>
                     {(isAccountant || isAdvisor) && <div><div style={fieldLabel}>Company Name</div><div style={fieldValue}>{profile.trading_name || '—'}</div></div>}
+                    {profile.website_url && <div><div style={fieldLabel}>Website</div><div style={fieldValue}><a href={normalizeUrl(profile.website_url)} target="_blank" rel="noopener noreferrer" style={{ color: '#0095ff', textDecoration: 'none', wordBreak: 'break-all' }}>{profile.website_url}</a></div></div>}
+                    <div><div style={fieldLabel}>Eligible for Credit Note</div><div style={fieldValue}>{profile.credit_note_eligible === false ? 'No' : 'Yes'}</div></div>
+                    {directEligibility && (
+                      <div>
+                        <div style={fieldLabel}>Tax Planning (Direct)</div>
+                        <div style={fieldValue}>
+                          {directEligibility.eligible ? 'Eligible' : 'Ineligible'}
+                          <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginLeft: '6px' }}>
+                            ({directEligibility.qualifying_count} of 2 qualifying clients{directEligibility.feature_released === false ? ', not released' : ''})
+                          </span>
+                        </div>
+                      </div>
+                    )}
                     {!hiddenFields.includes('revenue_decision') && (
                       <div><div style={fieldLabel}>Revenue Decision</div><div style={fieldValue}>{profile.revenue_decision || '—'}</div></div>
                     )}
-                    <div><div style={fieldLabel}>Eligible for Credit Note</div><div style={fieldValue}>{profile.credit_note_eligible === false ? 'No' : 'Yes'}</div></div>
-                    {profile.website_url && <div><div style={fieldLabel}>Website</div><div style={fieldValue}><a href={normalizeUrl(profile.website_url)} target="_blank" rel="noopener noreferrer" style={{ color: '#0095ff', textDecoration: 'none', wordBreak: 'break-all' }}>{profile.website_url}</a></div></div>}
                   </div>
                   {profile.stripe_account_id ? (
                     <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--vfo-tint)' }}>

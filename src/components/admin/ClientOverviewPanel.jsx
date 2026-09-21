@@ -31,14 +31,14 @@ const CLIENT_SORT_OPTIONS = [
   { value: 'za', label: 'Name: Z to A' },
 ]
 
-// Client · [Priority/Plan] · Member Name · Status · PF · [Service level] · [Phase] · Next action · Owner
+// Client (member beneath) · [Priority/Plan] · Status · PF · [Service level] · [Phase] · Next action · Owner
 const GRID_BY_SECTION = {
-  map1: '1.4fr 1.3fr 96px 120px 1fr 1.9fr 1.1fr',
-  regular: '1.4fr 1.7fr 1.3fr 96px 120px 1.9fr 1.1fr',
-  tax_planning: '1.4fr 130px 1.3fr 96px 120px 90px 1.9fr 1.1fr',
-  pft: '1.4fr 1.3fr 96px 120px 1.9fr 1.1fr',
+  map1: '1.1fr 96px 130px 1fr 1.9fr 1.1fr',
+  regular: '1.1fr 1.7fr 96px 130px 1.9fr 1.1fr',
+  tax_planning: '1.1fr 170px 96px 130px 90px 1.9fr 1.1fr',
+  pft: '1.1fr 96px 130px 1.9fr 1.1fr',
 }
-const MIN_WIDTH_BY_SECTION = { map1: '1060px', regular: '1080px', tax_planning: '1120px', pft: '940px' }
+const MIN_WIDTH_BY_SECTION = { map1: '980px', regular: '1000px', tax_planning: '1040px', pft: '860px' }
 
 // A stopped / declined / otherwise closed track always sinks below the live ones
 // in the dropdown orderings; a clicked column header sorts purely by that column.
@@ -60,12 +60,17 @@ const dot = (color) => ({ width: '8px', height: '8px', borderRadius: '50%', flex
 // reads across as two aligned pairs.
 const line = { lineHeight: '17px', padding: '1px 0' }
 
-function ProgramPill({ label }) {
+function ProgramPill({ label, direct = false }) {
   const isPlanning = label === 'Tax Planning'
+  // A Direct case is one pill, not two: the same Tax Planning pill turned orange.
+  const bg = direct ? 'rgba(224,103,23,0.12)' : isPlanning ? 'rgba(18,94,204,0.10)' : 'var(--vfo-tint)'
+  const color = direct ? '#e06717' : isPlanning ? '#125ecc' : 'var(--vfo-muted)'
   return (
-    <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', whiteSpace: 'nowrap', background: isPlanning ? 'rgba(18,94,204,0.10)' : 'var(--vfo-tint)', color: isPlanning ? '#125ecc' : 'var(--vfo-muted)' }}>{label}</span>
+    <span title={direct ? 'Direct: the member runs this case and is the Planning Facilitator' : undefined}
+      style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', whiteSpace: 'nowrap', background: bg, color }}>{direct ? `${label} - Direct` : label}</span>
   )
 }
+
 
 export default function ClientOverviewPanel() {
   const navigate = useNavigate()
@@ -187,9 +192,8 @@ export default function ClientOverviewPanel() {
         <div style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
           <div style={{ minWidth: MIN_WIDTH_BY_SECTION[activeSection] }}>
             <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
-              <SortHeader label="Client" sortKey="name" sort={colSort} onSort={onSort} />
+              <SortHeader label="Name" sortKey="name" sort={colSort} onSort={onSort} />
               {secondCol && <span>{secondCol}</span>}
-              <SortHeader label="Member Name" sortKey="member_name" sort={colSort} onSort={onSort} />
               <SortHeader label="Status" sortKey="status" sort={colSort} onSort={onSort} />
               <SortHeader label="PF" sortKey="pf" sort={colSort} onSort={onSort} />
               {isMap1 && <span>Service level</span>}
@@ -211,22 +215,24 @@ export default function ClientOverviewPanel() {
               const done = t.state === 'complete' || t.state === 'closed'
               return (
                 <div key={`${c.id}:${t.id ?? activeSection}`} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
-                  <span onClick={() => openTrack(c, t)} style={{ fontWeight: 600, color: '#125ecc', cursor: 'pointer' }}
-                    onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
-                    onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{c.name || '—'}</span>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                    <span onClick={() => openTrack(c, t)} style={{ fontWeight: 600, color: '#125ecc', cursor: 'pointer', alignSelf: 'flex-start' }}
+                      onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                      onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{c.name || '—'}</span>
+                    {c.member_name
+                      ? <MemberNameLink memberNumber={c.member_number} style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{c.member_name}</MemberNameLink>
+                      : <span style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>No member</span>}
+                  </span>
                   {activeSection === 'regular' && (
                     <span style={{ fontSize: '12.5px' }}>{t.title || '—'}</span>
                   )}
                   {activeSection === 'tax_planning' && (
-                    <span style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       {t.program_label
-                        ? <ProgramPill label={t.program_label} />
+                        ? <ProgramPill label={t.program_label} direct={t.tax_route === 'direct'} />
                         : <span style={{ fontSize: '12.5px', color: 'var(--vfo-faint)' }}>—</span>}
                     </span>
                   )}
-                  {c.member_name
-                    ? <MemberNameLink memberNumber={c.member_number} style={{ fontSize: '12px' }}>{c.member_name}</MemberNameLink>
-                    : <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>—</span>}
                   <span>
                     {c.status
                       ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: sc.bg, color: sc.color }}>{capitalize(c.status)}</span>

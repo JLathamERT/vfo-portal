@@ -181,7 +181,25 @@ Flag table — which programs are enabled for which members.
 | `program_id` | integer | fk → `programs.id` (NO ACTION) |
 | `enabled` | boolean | default `false`. Status field. |
 
-**Touched by:** `msm_load_enabled_programs`, `msm_toggle_program`.
+**Touched by:** `msm_load_enabled_programs` (whose payload also carries `features` — the two `portal_feature_flags` reads below, 2026-09-18), `msm_toggle_program`. **The member portal's VFO Tax Planning tab no longer needs a row here once the member's `tax_intake` flag is on** (unit 2 phase 0): with the flag on the tab is offered to every member; with it off, this table gates Tax Planning exactly like every other program.
+
+---
+
+## `portal_feature_flags` *(new 2026-09-18, migration `20260918200000_portal_feature_flags.sql`; deny-all RLS from creation)*
+
+Portal feature gates — the release switch for member-facing features that ship dark. One row per feature key. Read ONLY through [utils/feature-flags.ts](../../../vfo-edge-functions/supabase/functions/vfo-admin-api/utils/feature-flags.ts) `featureEnabledForMember(sb, key, memberNumber)`, which **fails closed**: a missing row, a failed read or a thrown error all answer `false`, so a database blip opens a feature to nobody rather than to everybody. No action writes it — **release is one SQL update, no deploy**: `update portal_feature_flags set enabled_for_all = true where key = 'tax_intake'`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `key` | text | pk — the feature name the code passes (`FEATURE_TAX_INTAKE = 'tax_intake'`, `FEATURE_TAX_DIRECT = 'tax_direct'`). |
+| `enabled_for_all` | boolean | not null, default `false`. **The release switch** — `true` short-circuits the allowlist for every member. |
+| `member_numbers` | text[] | not null, default `'{}'`. The pre-release allowlist, matched by trimmed string equality against the member number. Seeded `{59524}` (Test Member) on both rows. |
+| `note` | text | Free text — what the flag gates and how to release it. |
+| `updated_at` | timestamptz | not null, default `now()`. Not maintained by a trigger — set it by hand in the same update. |
+
+**Rows (seeded, `on conflict (key) do nothing`):** `tax_intake` — the member-run tax intake (unit 1): the member portal's Tax Planning tab and "+ Add new tax client" button, every intake write (`tax_intake_submit` / `_holistic_submit` / `_send_link` / `_link_submit` → 403 `This feature is not available for your account yet.`), the public `tax_intake_link_load` (404), and the Holistic "complete the Tax Planning Form" email (`utils/tax-intake-request-email.ts`, which then does NOT stamp `clients.tax_intake_requested_at`). `tax_direct` — the DIRECT route (unit 2): whether `tax_route='direct'` may be chosen on the intake (with 2+ qualifying clients) and the `direct_enabled` / `direct_eligibility` reads the form and the member profile render from. Both `enabled_for_all=false` at ship.
+
+**Touched by (reads only):** `msm_load_enabled_programs` (`features`), `tax_intake_eligibility` (`intake_enabled` / `direct_enabled`), `member_profile_load` (`direct_eligibility.feature_released`), the four intake writes, `tax_intake_link_load`, and `utils/tax-intake-request-email.ts`. Flow: [flows/tax-intake.md § Feature flag and the Direct choice](../flows/tax-intake.md#feature-flag-and-the-direct-choice-unit-2-2026-09-18).
 
 ---
 

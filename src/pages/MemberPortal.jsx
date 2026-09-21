@@ -9,6 +9,7 @@ import MemberMSMTracking from '../components/member/MemberMSMTracking'
 import MemberShowroom from '../components/member/MemberShowroom'
 import MemberGrowthPlan from '../components/member/MemberGrowthPlan'
 import VfoWordmark from '../components/shared/VfoWordmark'
+import NotificationBell from '../components/NotificationBell'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { HeroAvatar } from '../components/shared/TrackKit'
 import { usePortalTheme } from '../lib/theme'
@@ -45,10 +46,15 @@ export default function MemberPortal() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [enabledPrograms, setEnabledPrograms] = useState([])
+  const [features, setFeatures] = useState({})
   const [allPrograms, setAllPrograms] = useState([])
 
   useEffect(() => {
     if (!session || session.role !== 'member') { navigate('/member/login'); return }
+    if (sessionStorage.getItem('memberOpenView') === 'settings') {
+      sessionStorage.removeItem('memberOpenView')
+      setShowSettings(true); setActiveTab(null)
+    }
     loadData()
   }, [])
 
@@ -83,6 +89,7 @@ export default function MemberPortal() {
       setEcoMap(eco)
       setAllPrograms(progData.programs || [])
       setEnabledPrograms(enabledData.enabled || [])
+      setFeatures(enabledData.features || {})
     } catch (err) {
       console.error('Load error:', err)
       setLoadError(err.message || 'Something went wrong')
@@ -96,16 +103,17 @@ export default function MemberPortal() {
 
   if (!session) return null
 
-  const ALWAYS_VISIBLE_PROGRAM = 'VFO Tax Planning'
+  const TAX_PROGRAM_NAME = 'VFO Tax Planning'
+  const taxIntakeEnabled = features.tax_intake === true
   const PROGRAM_KEYS = { 'VFO Holistic Planning': 'msm_holistic', 'Partnership Fast Track': 'msm_partnership', 'VFO Tax Planning': 'msm_tax', 'Advanced Coaching': 'msm_coaching', 'Standard Coaching': 'msm_standard' }
   // Canonical program order — matches the admin MSM Home program-toggle list.
   const PROGRAM_ORDER = ['VFO Holistic Planning', 'Partnership Fast Track', 'VFO Tax Planning', 'Advanced Coaching', 'Standard Coaching']
-  // ANY member may start a tax client (decision 2026-09-17), so VFO Tax Planning
-  // is always offered — its Clients tab carries the "Add new tax client" button
-  // and the first successful intake is what creates the enrollment. Gating for
-  // every OTHER program is unchanged: they still need a member_program_enabled row.
+  // ANY member may start a tax client (decision 2026-09-17) — but only once Jake
+  // flips portal_feature_flags.tax_intake. Until then VFO Tax Planning falls back
+  // to the pre-unit-1 rule it shares with every other program: a
+  // member_program_enabled row.
   const orderedEnabledPrograms = allPrograms
-    .filter(p => p.name === ALWAYS_VISIBLE_PROGRAM || enabledPrograms.some(e => e.program_id === p.id))
+    .filter(p => enabledPrograms.some(e => e.program_id === p.id) || (taxIntakeEnabled && p.name === TAX_PROGRAM_NAME))
     .sort((a, b) => {
       const ia = PROGRAM_ORDER.indexOf(a.name), ib = PROGRAM_ORDER.indexOf(b.name)
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib)
@@ -127,6 +135,10 @@ export default function MemberPortal() {
       <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
         <VfoWordmark size={17} light onClick={handleTitleClick} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Mounted exactly as TaxPlannerPortal.jsx mounts it. The member's
+              rows are scoped server-side to their own login email — never the
+              'admin'/'all' broadcasts (#259). */}
+          <NotificationBell />
           <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.88)', fontWeight: 500, whiteSpace: 'nowrap', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.name}</span>
           <button onClick={() => { setShowSettings(true); setActiveTab(null) }} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Settings</button>
           <button onClick={signOut} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Sign Out</button>
@@ -349,6 +361,17 @@ function MemberSpecialists({ member, allExperts, exclusions, ecoMap = {}, onData
 }
 
 function MemberProfile({ member, allMembers = [] }) {
+  // The member's own Stripe Connect setup state — a tag, never the account id
+  // (member_my_connect_status is session-scoped and strips it).
+  const [connectStatus, setConnectStatus] = useState(null)
+  useEffect(() => {
+    let alive = true
+    callApi('member_my_connect_status', {})
+      .then(r => { if (alive) setConnectStatus(r?.status || 'unavailable') })
+      .catch(() => { if (alive) setConnectStatus('unavailable') })
+    return () => { alive = false }
+  }, [member?.member_number])
+
   // Mirrors the admin-side member profile (MembersPanel MemberProfile):
   // hero header with headshot + status meta, short facts side by side, then
   // full-width long-form (bio).
@@ -397,14 +420,27 @@ function MemberProfile({ member, allMembers = [] }) {
       <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 340px', minWidth: '300px', display: 'flex' }}>
           <div style={{ ...sectionStyle, flex: 1 }}>
-            <div style={cardTitle}>Membership Details</div>
+            <div style={cardTitle}>Member Details</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '18px 24px' }}>
               <div><div style={fieldLabel}>Member Number</div><div style={{ ...fieldValue, fontFamily: 'monospace' }}>{member.member_number}</div></div>
               <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{member.join_date ? member.join_date.split('T')[0] : '—'}</div></div>
-              {member.email && <div><div style={fieldLabel}>Email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{member.email}</div></div>}
-              {(isAccountant || isAdvisor) && member.trading_name && <div><div style={fieldLabel}>Company Name</div><div style={fieldValue}>{member.trading_name}</div></div>}
-              {!isAccountant && <div><div style={fieldLabel}>Revenue Decision</div><div style={fieldValue}>{member.revenue_decision || '—'}</div></div>}
+              <div><div style={fieldLabel}>Work email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{member.email || '—'}</div></div>
+              <div><div style={fieldLabel}>Personal email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{member.personal_email || '—'}</div></div>
+              <div><div style={fieldLabel}>Company Name</div><div style={fieldValue}>{member.trading_name || '—'}</div></div>
               {member.website_url && <div><div style={fieldLabel}>Website</div><div style={fieldValue}><a href={normalizeUrl(member.website_url)} target="_blank" rel="noopener noreferrer" style={{ color: '#0095ff', textDecoration: 'none', wordBreak: 'break-all' }}>{member.website_url}</a></div></div>}
+              {!isAccountant && <div><div style={fieldLabel}>Revenue Decision</div><div style={fieldValue}>{member.revenue_decision || '—'}</div></div>}
+              <div><div style={fieldLabel}>Revenue Share Payout Account</div><div style={fieldValue}>
+                {(() => {
+                  const st = connectStatus
+                  const pill = st === 'complete' ? { dot: '#16a34a', label: 'Account set up' }
+                    : st === 'eligible_capped' ? { dot: '#f59e0b', label: 'Account set up — details outstanding' }
+                    : st === 'pending' ? { dot: '#dc2626', label: 'Setup pending' }
+                    : st === 'none' ? { dot: 'var(--vfo-faint)', label: 'Not set up' }
+                    : st === null ? { dot: 'var(--vfo-faint)', label: 'Checking…' }
+                    : { dot: 'var(--vfo-faint)', label: 'Status unavailable' }
+                  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pill.dot, flexShrink: 0 }} />{pill.label}</span>
+                })()}
+              </div></div>
             </div>
           </div>
         </div>

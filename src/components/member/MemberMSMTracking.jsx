@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import DirectPill from '../shared/DirectPill'
 import { useNavigate } from 'react-router-dom'
 import { callApi, loadCachedAction } from '../../lib/api'
 import { Skeleton, ClientsListSkeleton, TrainingTrackSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, MsmHomeSkeleton } from '../shared/Skeleton'
@@ -26,8 +27,11 @@ const groupTasks = (list) => {
 }
 
 // ANY member may start a tax client (decision 2026-09-17): this program is
-// always visible and its Clients tab renders even with no enrollment row, which
-// the first successful intake creates.
+// visible with no member_program_enabled row and its Clients tab renders even
+// with no enrollment row, which the first successful intake creates. Both
+// bypasses — and the Add button — ride on the tax_intake feature flag, so until
+// Jake flips it only Test Member 59524 sees any of it and everyone else gets
+// the pre-unit-1 behaviour.
 const TAX_PROGRAM_NAME = 'VFO Tax Planning'
 
 const PROGRAMS = [
@@ -96,6 +100,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
   const [programs, setPrograms] = useState([])
   const [enrollments, setEnrollments] = useState([])
   const [enabledPrograms, setEnabledPrograms] = useState([])
+  const [features, setFeatures] = useState({})
   const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
   const [vfo90Count, setVfo90Count] = useState(0)
@@ -135,6 +140,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
       setPrograms(progData.programs || [])
       setEnrollments(enrollData.enrollments || [])
       setEnabledPrograms(enabledData.enabled || [])
+      setFeatures(enabledData.features || {})
       setMeetings(meetData.meetings || [])
 
       // Count completed coaching meetings for the two coaching programs.
@@ -174,6 +180,8 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
       setEnrollments(d.enrollments || [])
     } catch (err) { console.error(err) }
   }
+
+  const taxIntakeEnabled = features.tax_intake === true
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
@@ -237,7 +245,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
           {PROGRAMS.map(p => {
             const dbProgram = programs.find(prog => prog.name === p.name)
             if (!dbProgram) return null
-            const isEnabled = p.name === TAX_PROGRAM_NAME || enabledPrograms.some(e => e.program_id === dbProgram.id)
+            const isEnabled = enabledPrograms.some(e => e.program_id === dbProgram.id) || (taxIntakeEnabled && p.name === TAX_PROGRAM_NAME)
             if (!isEnabled) return null
             const tabKey = { holistic: 'msm_holistic', partnership: 'msm_partnership', tax: 'msm_tax', coaching: 'msm_coaching', standard: 'msm_standard' }[p.key]
             return (
@@ -287,8 +295,10 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
   if (activeProgramKey) {
     const p = PROGRAMS.find(p => p.key === activeProgramKey)
     const dbProgram = programs.find(prog => prog.name === p?.name)
-    const isTaxProgram = p?.name === TAX_PROGRAM_NAME
-    const isEnabled = dbProgram && (isTaxProgram || enabledPrograms.some(e => e.program_id === dbProgram.id))
+    // The flag is what turns the tax program's two bypasses on: visible with no
+    // member_program_enabled row, and a Clients tab with no enrollment row.
+    const isTaxBypass = p?.name === TAX_PROGRAM_NAME && taxIntakeEnabled
+    const isEnabled = dbProgram && (isTaxBypass || enabledPrograms.some(e => e.program_id === dbProgram.id))
 
     if (!isEnabled) return (
       <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--vfo-muted)' }}>
@@ -301,14 +311,14 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 
     return (
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
-        {(!enrollment && !isTaxProgram)
+        {(!enrollment && !isTaxBypass)
           ? <>
               <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em', fontSize: '22px', color: 'var(--vfo-ink)', marginBottom: '20px' }}>{p.name}</div>
               <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>You are not yet enrolled in this program.</div>
             </>
           // Tax Planning with no enrollment still renders: an empty Clients tab
           // with the Add button, which is what creates the enrollment.
-          : <MemberEnrolledView enrollment={enrollment || null} program={dbProgram} member={member} onEnrollmentsChanged={refreshEnrollments} />
+          : <MemberEnrolledView enrollment={enrollment || null} program={dbProgram} member={member} onEnrollmentsChanged={refreshEnrollments} taxIntakeEnabled={taxIntakeEnabled} />
         }
       </div>
     )
@@ -319,7 +329,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 
 
 
-function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged = null }) {
+function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged = null, taxIntakeEnabled = false }) {
   const isCoaching = program.name === 'Advanced Coaching'
   const isStandard = program.name === 'Standard Coaching'
   // Standard Coaching mirrors Advanced Coaching minus the Renewal tab.
@@ -375,7 +385,7 @@ function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged 
         />
       )}
       {activeTab === 'training' && <MemberTrainingView enrollment={enrollment} program={program} />}
-      {activeTab === 'clients' && <MemberClientsView enrollment={enrollment} member={member} program={program} onEnrollmentsChanged={onEnrollmentsChanged} />}
+      {activeTab === 'clients' && <MemberClientsView enrollment={enrollment} member={member} program={program} onEnrollmentsChanged={onEnrollmentsChanged} taxIntakeEnabled={taxIntakeEnabled} />}
       {activeTab === 'meetings' && <MemberCoachingMeetings enrollment={enrollment} eyebrow={program.name} />}
       {activeTab === 'renewal' && <MemberCoachingRenewal enrollment={enrollment} />}
     </div>
@@ -714,10 +724,13 @@ function TrackerEntryCard({ entry, onRemove }) {
   )
 }
 
-function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged = null }) {
+function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged = null, taxIntakeEnabled = false }) {
   const navigate = useNavigate()
   const isPFT = program?.name === 'Partnership Fast Track'
-  const isTax = program?.name === TAX_PROGRAM_NAME
+  // Every intake surface below — the Add button, the two deep links, the form
+  // itself — rides on this. A tax member with the flag off sees the client list
+  // exactly as it looked before unit 1.
+  const intakeOn = program?.name === TAX_PROGRAM_NAME && taxIntakeEnabled
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [contactsMap, setContactsMap] = useState({})
@@ -733,7 +746,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
   // the Holistic "complete the form" email (?intake_client=<id>). Read once,
   // then stripped from the URL so a refresh does not replay them.
   useEffect(() => {
-    if (!isTax) return
+    if (!intakeOn) return
     const qs = new URLSearchParams(window.location.search)
     const paid = qs.get('intake') && qs.get('paid') === '1'
     const forClient = qs.get('intake_client')
@@ -759,7 +772,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     const url = new URL(window.location.href)
     ;['intake', 'paid', 'intake_client'].forEach(k => url.searchParams.delete(k))
     window.history.replaceState({}, '', url.toString())
-  }, [isTax])
+  }, [intakeOn])
 
   async function loadClients() {
     setLoading(true)
@@ -794,7 +807,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
   const statusColors = { pending: '#e06717', active: '#1b9254', declined: '#e74c3c' }
 
-  if (isTax && mode === 'form') return (
+  if (intakeOn && mode === 'form') return (
     <TaxIntakeForm
       member={member}
       existingClient={intakeClient}
@@ -803,7 +816,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     />
   )
 
-  if (isTax && mode === 'done') return (
+  if (intakeOn && mode === 'done') return (
     <div style={{ ...sectionStyle, borderColor: 'rgba(27,146,84,0.35)' }}>
       <div style={{ fontSize: '15px', fontWeight: 700, color: '#1b9254', marginBottom: '8px' }}>Thank you</div>
       <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>{doneMessage}</div>
@@ -824,7 +837,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
           <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>TOTAL</div></div>
           <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.filter(c => c.status === 'active').length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>ACTIVE</div></div>
         </div>
-        {isTax && (
+        {intakeOn && (
           <button type="button" onClick={() => { setIntakeClient(null); setMode('form') }}
             style={{ padding: '9px 20px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: 'none', background: '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', whiteSpace: 'nowrap' }}>
             + Add new tax client
@@ -845,6 +858,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
                   <span style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{client.first_name} {client.last_name}</span>
                   <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{client.client_ref}</span>
                   {client.status && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[client.status] || 'var(--vfo-faint)', flexShrink: 0 }} />{client.status.charAt(0).toUpperCase() + client.status.slice(1)}</span>}
+                  {intakeOn && client.pf_member_number && String(client.pf_member_number) === String(member?.member_number) && <DirectPill />}
                 </div>
                 {(client.email || client.phone) && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client.email}{client.email && client.phone ? ' · ' : ''}{client.phone}</div>}
                 {contactsMap[client.id]?.length > 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px', fontStyle: 'italic' }}>with {contactsMap[client.id].map(c => `${c.first_name} ${c.last_name}`).join(', ')}</div>}
@@ -980,7 +994,7 @@ function MemberClientTrackView({ client, program }) {
                       <div key={task.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: pd?.c18_ceo_signed === 'Yes' ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${pd?.c18_ceo_signed === 'Yes' ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                          <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                          <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{'Automated steps'}</span>
                         </div>
                         {pipDecision && (
                           <div style={{ marginLeft: '18px' }}>

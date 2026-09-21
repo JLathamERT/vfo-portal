@@ -549,21 +549,34 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
                       { name: 'PCADMIN_followup|No', when: 'Decline email' },
                     ],
                   }
-                  const autoStep = (label, done = false, tag = null, na = false, at = null) => {
+                  // `pending` = the P1 ACH is in flight (pay1_status 'processing');
+                  // pass a string to override the tag text (bank verification).
+                  // Mirrors AutoRow in AdvisorOnboarding.jsx — orange dot + orange
+                  // tag instead of "Not completed".
+                  const autoStep = (label, done = false, tag = null, na = false, at = null, pending = false) => {
                     const emailTpls = STEP_EMAIL_TPLS[label]
+                    const showPending = !done && !na && !!pending
                     return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: (done || na) ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${(done || na) ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: (done || na) ? '#1b9254' : showPending ? '#e06717' : 'transparent', flexShrink: 0, border: `1px solid ${(done || na) ? '#1b9254' : showPending ? '#e06717' : 'var(--vfo-border-mid)'}` }} />
                       <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
                       {!readOnly && emailTpls && <StepEmailsChip pipeline="MAP 1" display="modal" title={label} templates={emailTpls} context={emailCtx} />}
                       <span style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
                         {done && tag && !na && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{tag}</span>}
-                        <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: (done || na) ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: (done || na) ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: (done || na) ? '#1b9254' : 'var(--vfo-muted)' }}>{na ? 'N/A' : (done ? 'Done' : 'Not completed')}</span>
+                        {showPending
+                          ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>{typeof pending === 'string' ? pending : 'Pending — ACH clearing'}</span>
+                          : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: (done || na) ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: (done || na) ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: (done || na) ? '#1b9254' : 'var(--vfo-muted)' }}>{na ? 'N/A' : (done ? 'Done' : 'Not completed')}</span>}
                       </span>
                       {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
                     </div>
                     )
                   }
+
+                  // P1 ACH in flight: micro-deposits still being verified reads as
+                  // "bank verification"; otherwise the debit is simply clearing.
+                  const pay1Pending = (row) => row?.pay1_status === 'processing'
+                    ? (row?.pay1_bank_verification_pending_at ? 'Pending — bank verification' : true)
+                    : false
 
                   // 48h client reminder / 96h PF notification for one stalled step.
                   // Both only exist once the cron has stamped them.
@@ -603,7 +616,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
                             {autoStep('Payment link sent (ACH or Card choice)', !!pd?.pay1_email_sent_at || !!pd?.pay1_status, null, false, pd?.pay1_email_sent_at)}
                             {reminderStep(pd?.pay1_reminder_sent_at)}
                             {pfNotifiedStep('pay1', pd?.pay1_pf_notified_at, pd?.pay1_pf_ack_at)}
-                            {autoStep('Payment collected', pd?.pay1_status === 'succeeded', pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null, false, pd?.pay1_date)}
+                            {autoStep('Payment collected', pd?.pay1_status === 'succeeded', pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null, false, pd?.pay1_date, pay1Pending(pd))}
                             {autoStep('Invoice and receipt created and emailed to client', !!pd?.invoice_number, null, false, pd?.invoice_email_sent_at)}
                             {autoStep('Revenue share paid', ['Yes', 'Money Mapping', 'N/A — No Share Due'].includes(pd?.rec1_rev_paid), null, isZeroShare(pd?.member_share), pd?.rec1_rev_completed_at)}
                             {autoStep('Member notified of revenue share', pd?.c24_email_sent === true, null, isZeroShare(pd?.member_share), pd?.c24_email_sent_at)}
@@ -668,7 +681,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
                                         {autoStep('Payment link sent (ACH or Card choice)', !!pd?.pay1_email_sent_at || !!pd?.pay1_status, null, false, pd?.pay1_email_sent_at)}
                                         {reminderStep(pd?.pay1_reminder_sent_at)}
                                         {pfNotifiedStep('pay1', pd?.pay1_pf_notified_at, pd?.pay1_pf_ack_at)}
-                                        {autoStep('Payment collected', pd?.pay1_status === 'succeeded', pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null, false, pd?.pay1_date)}
+                                        {autoStep('Payment collected', pd?.pay1_status === 'succeeded', pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null, false, pd?.pay1_date, pay1Pending(pd))}
                                         {autoStep('Invoice and receipt created and emailed to client', !!pd?.invoice_number, null, false, pd?.invoice_email_sent_at)}
                                         {autoStep('Revenue share paid', ['Yes', 'Money Mapping', 'N/A — No Share Due'].includes(pd?.rec1_rev_paid), null, isZeroShare(pd?.member_share), pd?.rec1_rev_completed_at)}
                                         {autoStep('Member notified of revenue share', pd?.c24_email_sent === true, null, isZeroShare(pd?.member_share), pd?.c24_email_sent_at)}
@@ -692,7 +705,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
                                 {autoStep('Engagement agreement signed', pd?.c17_client_signed === 'Yes')}
                                 {autoStep('Engagement agreement signed by CEO', pd?.c18_ceo_signed === 'Yes')}
                                 {autoStep('Payment link sent (ACH or Card choice)', !!pd?.pay1_email_sent_at || !!pd?.pay1_status, null, false, pd?.pay1_email_sent_at)}
-                                {autoStep('Payment collected', pd?.pay1_status === 'succeeded', pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null, false, pd?.pay1_date)}
+                                {autoStep('Payment collected', pd?.pay1_status === 'succeeded', pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null, false, pd?.pay1_date, pay1Pending(pd))}
                                 {autoStep('Invoice and receipt created and emailed to client', !!pd?.invoice_number, null, false, pd?.invoice_email_sent_at)}
                                 {autoStep('Revenue share paid', ['Yes', 'Money Mapping', 'N/A — No Share Due'].includes(pd?.rec1_rev_paid), null, isZeroShare(pd?.member_share))}
                                 {autoStep('Member notified of revenue share', pd?.c24_email_sent === true, null, isZeroShare(pd?.member_share), pd?.c24_email_sent_at)}
