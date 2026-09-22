@@ -4,6 +4,7 @@ import { callApi, getSession } from '../../lib/api'
 import { SpecialistOnboardingListSkeleton, SpecialistOnboardingDetailSkeleton } from '../shared/Skeleton'
 import { TrackHero, PhaseBadge, ListHeader } from '../shared/TrackKit'
 import StepEmailsChip from '../shared/StepEmailsChip'
+import { formatDate } from '../../lib/dates'
  
 const STAGE_NAMES = ['', 'Preliminary Meeting', 'Detail Meetings', 'Due Diligence', 'Contract & Details', 'Going Live']
 
@@ -187,7 +188,7 @@ export default function SpecialistOnboarding() {
               onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border)'}>
               <div>
                 <div style={{ fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: '500', marginBottom: '4px' }}>{ob.specialist_name}</div>
-                <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{ob.specialist_email || 'No email'} · Started {ob.created_at?.split('T')[0]}</div>
+                <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{ob.specialist_email || 'No email'} · Started {formatDate(ob.created_at)}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: isStopped ? 'rgba(231,76,60,0.15)' : isDone ? 'rgba(27,146,84,0.15)' : 'rgba(0,149,255,0.15)', color: stageColor, border: `1px solid ${isStopped ? 'rgba(231,76,60,0.3)' : isDone ? 'rgba(27,146,84,0.3)' : 'rgba(0,149,255,0.3)'}` }}>
@@ -1856,7 +1857,7 @@ function OnboardingDetail({ id, onBack }) {
             {isStopped && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(231,76,60,0.15)', color: '#e74c3c', fontWeight: 600, border: '1px solid rgba(231,76,60,0.3)' }}>Stopped</span>}
             {isCompleted && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>}
             {!isStopped && !isCompleted && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>Stage {ob.current_stage} · {STAGE_NAMES[ob.current_stage]}</span>}
-            <span>{ob.specialist_email || 'No email'} · Started {ob.created_at?.split('T')[0]}</span>
+            <span>{ob.specialist_email || 'No email'} · Started {formatDate(ob.created_at)}</span>
           </>
         }
         steps={[1, 2, 3, 4, 5].map(s => ({ label: STAGE_NAMES[s], state: getStageState(s) }))}

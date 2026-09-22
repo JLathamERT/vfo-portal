@@ -21,6 +21,7 @@ import vfoCertifiedSeal from '../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../assets/vfo-accredited-emblem.png'
 import { MemberProfileSkeleton } from '../components/shared/Skeleton'
 import { leadMemberNumberOf, findLeadMember } from '../components/shared/corporateMember'
+import { formatDate } from '../lib/dates'
 
 export default function MemberPortal() {
   const navigate = useNavigate()
@@ -192,7 +193,7 @@ export default function MemberPortal() {
           {!loading && activeTab === 'specialists' && memberData && (
             <MemberSpecialists member={memberData} allExperts={allExperts} exclusions={exclusions} ecoMap={ecoMap} onDataChange={loadData} />
           )}
-          {!loading && activeTab === 'showroom' && <MemberShowroom experts={allExperts} exclusions={exclusions} ecoMap={ecoMap} showMemberServices />}
+          {!loading && activeTab === 'showroom' && <MemberShowroom experts={allExperts} exclusions={exclusions} ecoMap={ecoMap} showMemberServices showRevenueShare />}
           {!loading && activeTab === 'website' && memberData && memberData.website_enabled && (
             <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
               <MemberWebsitePlugin member={memberData} onDataChange={loadData} />
@@ -423,7 +424,7 @@ function MemberProfile({ member, allMembers = [] }) {
             <div style={cardTitle}>Member Details</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '18px 24px' }}>
               <div><div style={fieldLabel}>Member Number</div><div style={{ ...fieldValue, fontFamily: 'monospace' }}>{member.member_number}</div></div>
-              <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{member.join_date ? member.join_date.split('T')[0] : '—'}</div></div>
+              <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{member.join_date ? formatDate(member.join_date) : '—'}</div></div>
               <div><div style={fieldLabel}>Work email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{member.email || '—'}</div></div>
               <div><div style={fieldLabel}>Personal email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{member.personal_email || '—'}</div></div>
               <div><div style={fieldLabel}>Company Name</div><div style={fieldValue}>{member.trading_name || '—'}</div></div>
@@ -454,7 +455,7 @@ function MemberProfile({ member, allMembers = [] }) {
                   <img src={vfoCertifiedSeal} style={{ width: '44px', height: '44px' }} />
                   <div>
                     <div style={{ fontSize: '14px', color: '#b08d26', fontWeight: '600' }}>VFO Certified</div>
-                    <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{member.vfo_certified_date.split('T')[0]}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{formatDate(member.vfo_certified_date)}</div>
                   </div>
                 </div>
               )}
@@ -463,7 +464,7 @@ function MemberProfile({ member, allMembers = [] }) {
                   <img src={vfoAccreditedSeal} style={{ width: '44px', height: '44px' }} />
                   <div>
                     <div style={{ fontSize: '14px', color: 'var(--vfo-muted)', fontWeight: '600' }}>VFO Accredited</div>
-                    <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{member.vfo_accredited_date.split('T')[0]}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{formatDate(member.vfo_accredited_date)}</div>
                   </div>
                 </div>
               )}

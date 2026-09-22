@@ -8,6 +8,7 @@ import { countedTasks, countedDone, phaseState, isPositiveStatus, planStatusLabe
 import { isTrackerTask } from '../shared/trackerSteps'
 import { VisibilityBadge, noteTint, SaveVisibilityButtons } from '../shared/NoteVisibility'
 import StepDate from '../shared/StepDate'
+import { formatDate as formatFullDate } from '../../lib/dates'
 
 const PROGRAMS = [
   { key: 'holistic', name: 'VFO Holistic Planning' },
@@ -436,7 +437,7 @@ function ProgramNotes({ memberNumber, programName }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
-                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_at?.split('T')[0]}</span>
+                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatFullDate(note.created_at)}</span>
                 <VisibilityBadge visibility={note.visibility} />
                 <button onClick={() => { setEditingId(note.id); setEditText(note.note_text) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>
                 <button onClick={() => deleteNote(note.id)} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Delete</button>
@@ -493,7 +494,7 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
           <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>Program</div>
           <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>{program.name}</div>
           <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span>Joined {enrollment.date_enrolled ? enrollment.date_enrolled.split('T')[0] : '—'}</span>
+            <span>Joined {enrollment.date_enrolled ? formatFullDate(enrollment.date_enrolled) : '—'}</span>
             {!isCoachingLike && enrollment.program_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[enrollment.program_status] || 'var(--vfo-faint)', flexShrink: 0 }} />{enrollment.program_status}</span></>}
             {!isCoachingLike && !isTaxPlanning && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><PlanStatusBadge enrollmentId={enrollment.id} programId={program.id} liveStatus={livePlanStatus} /></>}
           </div>
@@ -891,7 +892,7 @@ function AdminTrackerEntryCard({ entry, onRemove }) {
         {field('Source', entry.source)}
       </div>
       {field('Notes', entry.notes)}
-      {entry.created_at && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>Added {entry.created_at.split('T')[0]}</div>}
+      {entry.created_at && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>Added {formatFullDate(entry.created_at)}</div>}
     </div>
   )
 }
@@ -1347,7 +1348,7 @@ function CoachingMeetings({ enrollment, member, eyebrow = 'Advanced Coaching' })
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1b9254', flexShrink: 0 }} />{completedCount} completed</span>
           <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0095ff', flexShrink: 0 }} />{scheduledCount} scheduled</span>
-          {nextScheduled && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Next meeting {nextScheduled.meeting_date.split('T')[0]}</span></>}
+          {nextScheduled && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Next meeting {formatFullDate(nextScheduled.meeting_date)}</span></>}
         </>}
         action={<button onClick={() => setShowLog(!showLog)} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Log Meeting</button>}
       />
@@ -1387,7 +1388,7 @@ function CoachingMeetings({ enrollment, member, eyebrow = 'Advanced Coaching' })
               <div onClick={() => setExpandedMeeting(expandedMeeting === m.id ? null : m.id)}
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{m.meeting_date.split('T')[0]}</span>
+                  <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatFullDate(m.meeting_date)}</span>
                   <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>Scheduled</span>
                 </div>
                 <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: expandedMeeting === m.id ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
@@ -1419,7 +1420,7 @@ function CoachingMeetings({ enrollment, member, eyebrow = 'Advanced Coaching' })
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   
-                  <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{m.meeting_date.split('T')[0]}</span>
+                  <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatFullDate(m.meeting_date)}</span>
                   <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1510,7 +1511,7 @@ function CoachingRenewal({ enrollment, member }) {
   const latestRenewal = renewals.length > 0 ? renewals[0] : null
   const latestAction = latestRenewal?.action
   const nextDate = latestRenewal?.next_renewal_date
-  const joinDate = enrollment.date_enrolled?.split('T')[0]
+  const joinDate = formatFullDate(enrollment.date_enrolled)
   const currentPeriod = latestRenewal?.period_label || 'Year 1'
   const currentStatus = latestAction === 'cancelled' ? 'Cancelled' : 'Active'
   const statusColor = currentStatus === 'Active' ? '#1b9254' : '#e74c3c'
@@ -1541,7 +1542,7 @@ function CoachingRenewal({ enrollment, member }) {
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor, flexShrink: 0 }} />{currentStatus}</span>
           <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>
           <span>{currentPeriod}</span>
-          {nextDate && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ fontWeight: 600, color: renewalUrgency }}>{daysUntilRenewal !== null && daysUntilRenewal < 0 ? `Overdue ${Math.abs(daysUntilRenewal)} days` : `Ends ${nextDate.split('T')[0]}${daysUntilRenewal !== null ? ` (${daysUntilRenewal} days)` : ''}`}</span></>}
+          {nextDate && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ fontWeight: 600, color: renewalUrgency }}>{daysUntilRenewal !== null && daysUntilRenewal < 0 ? `Overdue ${Math.abs(daysUntilRenewal)} days` : `Ends ${formatFullDate(nextDate)}${daysUntilRenewal !== null ? ` (${daysUntilRenewal} days)` : ''}`}</span></>}
         </>}
         action={<button onClick={() => setShowLog(!showLog)} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Log Renewal</button>}
       />
@@ -1591,7 +1592,7 @@ function CoachingRenewal({ enrollment, member }) {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${actionColors[r.action] || 'var(--vfo-muted)'}22`, color: actionColors[r.action] || 'var(--vfo-muted)', border: `1px solid ${actionColors[r.action] || 'var(--vfo-muted)'}44`, textTransform: 'capitalize' }}>{r.action}</span>
-                  <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{r.action_date?.split('T')[0]}</span>
+                  <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatFullDate(r.action_date)}</span>
                   {r.period_label && <span style={{ fontSize: '12px', color: '#0095ff', fontWeight: 600 }}>{r.period_label}</span>}
                   {r.notes && <VisibilityBadge visibility={r.visibility} />}
                 </div>

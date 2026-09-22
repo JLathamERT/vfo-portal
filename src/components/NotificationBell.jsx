@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession } from '../lib/api'
+import { formatDate } from '../lib/dates'
  
 // The "View all" link opens /admin?tab=notifications, a page only the admin
 // portal has. Portals that mount the bell without one hide the link.
@@ -194,7 +195,7 @@ export default function NotificationBell() {
                         <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: '#7c3aed', letterSpacing: '0.4px' }}>REMINDER</span>
                       )}
                       {n.pipeline && !isReminder && <span style={{ fontSize: '10px', color: '#0095ff', fontWeight: 600, padding: '1px 6px', borderRadius: '3px', background: 'rgba(0,149,255,0.15)' }}>{n.pipeline}</span>}
-                      <span style={{ fontSize: '10px', color: 'var(--vfo-faint)' }}>{n.created_at?.split('T')[0]}</span>
+                      <span style={{ fontSize: '10px', color: 'var(--vfo-faint)' }}>{formatDate(n.created_at)}</span>
                     </div>
                   </div>
                   {isDismissible && (

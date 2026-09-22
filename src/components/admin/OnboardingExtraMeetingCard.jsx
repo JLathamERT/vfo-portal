@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { callApi } from '../../lib/api'
+import { formatDate } from '../../lib/dates'
 
 // Shared outcome card for the advisor/accountant "extra meeting" flow (clones
 // MAP 1's PFExtraMeetingForm styling). Renders the request's detail lines plus,
@@ -11,7 +12,7 @@ const STAGE_TEXT = { decision: 'Decision stage', signing: 'Signing stage', payme
 
 function emDate(d) {
   if (!d) return null
-  return String(d).split('T')[0]
+  return formatDate(d)
 }
 
 export default function OnboardingExtraMeetingCard({ ob, pipeline, onComplete, compact }) {

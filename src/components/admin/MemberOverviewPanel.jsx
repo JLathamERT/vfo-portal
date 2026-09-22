@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi } from '../../lib/api'
 import ListFilterButton, { matchesFilter, sortMembers, SortSelect, MEMBER_SORT_OPTIONS, useHeaderSort, sortByColumn, SortHeader } from './ListFilterButton'
+import { formatDate } from '../../lib/dates'
 
 // Member Overview — one unified list of every member (advisor / accountant /
 // strategic) with at-a-glance columns, an expandable client drill-down, a
@@ -198,7 +199,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
                     <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', color: CAT_COLORS[cat], background: `${CAT_COLORS[cat]}1f` }}>{cat}</span>
                   </span>
                   <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{m.member_type || '—'}</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--vfo-muted)' }}>{m.join_date ? String(m.join_date).slice(0, 10) : '—'}</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--vfo-muted)' }}>{m.join_date ? formatDate(m.join_date) : '—'}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 600, background: m.elite_status === 'Active' ? 'rgba(27,146,84,0.13)' : m.elite_status === 'Lost' ? 'rgba(231,76,60,0.13)' : 'var(--vfo-tint)', color: m.elite_status === 'Active' ? '#1b9254' : m.elite_status === 'Lost' ? '#e74c3c' : 'var(--vfo-muted)' }}>{m.elite_status || 'Active'}</span>
                     {m.suspended && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(231,76,60,0.13)', color: '#e74c3c' }}>SUSP</span>}
@@ -245,7 +246,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
                             style={{ display: 'grid', gridTemplateColumns: CLIENT_GRID, gap: '10px', padding: '9px 14px', borderTop: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '12.5px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
                             <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{c.ref || '—'}</span>
                             <span style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{c.name}</span>
-                            <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{c.joined ? String(c.joined).slice(0, 10) : '—'}</span>
+                            <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{c.joined ? formatDate(c.joined) : '—'}</span>
                             <span>
                               {c.status
                                 ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, ...(() => { const s = clientStatusColors(c.status); return { background: s.bg, color: s.color } })() }}>{capitalize(c.status)}</span>

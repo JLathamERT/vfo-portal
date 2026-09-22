@@ -4,6 +4,7 @@ import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptySt
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import { CONFIRMATION_CARD_SKIP } from '../../lib/confirmationStatus'
 import { ClientNameLink } from '../shared/personLinks'
+import { formatDate } from '../../lib/dates'
 
 const STAGE_LABELS = {
   c81: 'PIP 1 — Reconfirmation Email',
@@ -554,7 +555,7 @@ export default function AutomationPanel({ section }) {
                       <td style={{ padding: '12px', fontSize: '13px', color: 'var(--vfo-muted)' }}>{row.c15_final_decision || row.c13_decision || '—'}</td>
                       <td style={{ padding: '12px', fontSize: '13px', color: 'var(--vfo-muted)' }}>{row.service_level || row.c15_service_level || '—'}</td>
                       <td style={{ padding: '12px', fontSize: '13px', color: 'var(--vfo-muted)' }}>{row.pay1_status || '—'}</td>
-                      <td style={{ padding: '12px', fontSize: '12px', color: 'var(--vfo-muted)' }}>{row.updated_at ? row.updated_at.split('T')[0] : '—'}</td>
+                      <td style={{ padding: '12px', fontSize: '12px', color: 'var(--vfo-muted)' }}>{row.updated_at ? formatDate(row.updated_at) : '—'}</td>
                     </tr>
                     {isExpanded && (
                       <tr>

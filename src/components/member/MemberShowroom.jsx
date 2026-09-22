@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
+import { detailEntries, entryLabel, DB_FIELDS, REVENUE_SHARE_KEY } from '../shared/specialistDetails'
 
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
 const HEADSHOT_FALLBACK = 'https://biz-diagnostic.com/img/expert/'
@@ -88,7 +89,46 @@ function BackgroundCheckBadge({ value, large = false }) {
   )
 }
 
-function ShowroomModal({ expert, onClose }) {
+// The Details & Benefits panel the modal's button opens. Everything it renders
+// already exists on the experts row — this is a new VIEW of it, not new data.
+// `showRevenueShare` gates the Revenue Share section to admins and members
+// (Jake, 2026-09-22); the client and specialist showroom payloads also have the
+// column stripped server-side, so on those surfaces it is absent as well as hidden.
+function DetailsAndBenefits({ entries, showRevenueShare }) {
+  const [active, setActive] = useState(0)
+  const idx = Math.min(active, entries.length - 1)
+  const c = entries[idx].content
+  const fields = DB_FIELDS.filter(([k]) => String(c[k] || '').trim() !== '')
+  const revenueShare = showRevenueShare ? String(c[REVENUE_SHARE_KEY] || '').trim() : ''
+
+  return (
+    <div className="vfo-sr-db">
+      {entries.length > 1 && (
+        <div className="vfo-sr-db-chips">
+          {entries.map((en, i) => (
+            <button key={en.eco + i} onClick={() => setActive(i)}
+              className={'vfo-sr-db-chip' + (i === idx ? ' is-active' : '')}>{entryLabel(entries, i)}</button>
+          ))}
+        </div>
+      )}
+      {fields.map(([k, label]) => (
+        <div key={k} className="vfo-sr-db-field">
+          <div className="vfo-sr-db-label">{label}</div>
+          <div className="vfo-sr-db-value">{c[k]}</div>
+        </div>
+      ))}
+      {revenueShare && (
+        <div className="vfo-sr-db-revshare">
+          <div className="vfo-sr-db-label">Revenue Share</div>
+          <div className="vfo-sr-db-value">{revenueShare}</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ShowroomModal({ expert, onClose, showRevenueShare = false }) {
+  const [showDetails, setShowDetails] = useState(false)
   // useLayoutEffect (not useEffect) so the scroll lock applies BEFORE the browser
   // paints the modal — otherwise the background reflow lands a frame late and the
   // screen visibly flickers as the modal appears.
@@ -115,6 +155,7 @@ function ShowroomModal({ expert, onClose }) {
   }, [onClose])
 
   const bio = (expert.long_bio || '').replace(/\r\n/g, '\n')
+  const entries = detailEntries(expert, expert.categories)
   return (
     <div className="vfo-sr-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="vfo-sr-modal">
@@ -132,6 +173,16 @@ function ShowroomModal({ expert, onClose }) {
             {expert.categories.map(cat => <span key={cat} className="vfo-sr-modal-tag">{cat}</span>)}
           </div>
         )}
+        {entries.length > 0 && (
+          <div className="vfo-sr-db-wrap">
+            <button className={'vfo-sr-db-toggle' + (showDetails ? ' is-open' : '')} onClick={() => setShowDetails(o => !o)}
+              aria-expanded={showDetails}>
+              Details &amp; Benefits
+              <span className="vfo-sr-db-caret">{showDetails ? '▲' : '▼'}</span>
+            </button>
+            {showDetails && <DetailsAndBenefits entries={entries} showRevenueShare={showRevenueShare} />}
+          </div>
+        )}
         <div className="vfo-sr-modal-divider" />
         <div className="vfo-sr-modal-bio">{bio}</div>
       </div>
@@ -139,7 +190,7 @@ function ShowroomModal({ expert, onClose }) {
   )
 }
 
-export default function MemberShowroom({ experts = [], exclusions = [], ecoMap = {}, showMemberServices = false }) {
+export default function MemberShowroom({ experts = [], exclusions = [], ecoMap = {}, showMemberServices = false, showRevenueShare = false }) {
   const [activeFilter, setActiveFilter] = useState('All')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
@@ -208,7 +259,7 @@ export default function MemberShowroom({ experts = [], exclusions = [], ecoMap =
         )}
       </div>
 
-      {selected && <ShowroomModal expert={selected} onClose={() => setSelected(null)} />}
+      {selected && <ShowroomModal expert={selected} onClose={() => setSelected(null)} showRevenueShare={showRevenueShare} />}
     </div>
   )
 }
@@ -251,6 +302,19 @@ function showroomCss(s, scale) {
     .vfo-sr-modal-tagline { font-size: ${r(15)}px; margin: 7px 0 0; font-weight: 500; color: ${s.card_text_color}cc; }
     .vfo-sr-modal-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
     .vfo-sr-modal-tag { padding: 6px 14px; border-radius: 8px; font-size: ${r(12)}px; font-weight: 500; display: inline-block; background: ${s.card_text_color}1a; color: ${s.card_text_color}; border: 1px solid ${s.card_text_color}33; }
+    .vfo-sr-db-wrap { margin-bottom: 24px; }
+    .vfo-sr-db-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 12px 18px; border-radius: 10px; border: 1px solid ${s.primary_color}80; background: ${s.card_text_color}0f; color: ${s.card_text_color}; font-family: 'DM Sans', sans-serif; font-size: ${r(13.5)}px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+    .vfo-sr-db-toggle:hover { background: ${s.card_text_color}1f; border-color: ${s.primary_color}; }
+    .vfo-sr-db-toggle.is-open { background: ${s.card_text_color}1f; border-color: ${s.primary_color}; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+    .vfo-sr-db-caret { font-size: 9px; opacity: 0.75; }
+    .vfo-sr-db { border: 1px solid ${s.primary_color}80; border-top: none; border-radius: 0 0 10px 10px; padding: 20px 18px 6px; background: ${s.card_text_color}0a; }
+    .vfo-sr-db-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .vfo-sr-db-chip { padding: 5px 12px; border-radius: 999px; font-size: ${r(11.5)}px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; background: transparent; color: ${s.card_text_color}99; border: 1px solid ${s.card_text_color}33; }
+    .vfo-sr-db-chip.is-active { background: ${s.primary_color}; color: #241004; border-color: ${s.primary_color}; }
+    .vfo-sr-db-field { margin-bottom: 18px; }
+    .vfo-sr-db-revshare { margin-bottom: 18px; padding-top: 16px; border-top: 1px solid ${s.card_text_color}26; }
+    .vfo-sr-db-label { font-family: 'DM Sans', sans-serif; font-size: ${r(10.5)}px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: ${s.primary_color}; margin-bottom: 6px; }
+    .vfo-sr-db-value { font-size: ${r(13.5)}px; line-height: 1.75; font-weight: 300; white-space: pre-wrap; color: ${s.card_text_color}d9; }
     .vfo-sr-modal-divider { height: 1px; margin-bottom: 24px; background: linear-gradient(90deg, transparent, ${s.primary_color}59, transparent); }
     .vfo-sr-modal-bio { font-size: ${r(15)}px; line-height: 1.8; white-space: pre-wrap; font-weight: 300; color: ${s.card_text_color}d9; }
     @keyframes vfoSrFadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }

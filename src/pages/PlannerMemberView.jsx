@@ -9,6 +9,7 @@ import VfoWordmark from '../components/shared/VfoWordmark'
 import NotificationBell from '../components/NotificationBell'
 import vfoCertifiedSeal from '../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../assets/vfo-accredited-emblem.png'
+import { formatDate } from '../lib/dates'
 
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
 const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:\/\//i.test(s) ? 'https://' + s : s }
@@ -125,8 +126,8 @@ export default function PlannerMemberView() {
                 <div style={sectionStyle}>
                   <div style={cardTitle}>Member Details</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '18px 24px' }}>
-                    <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{profile.join_date ? profile.join_date.split('T')[0] : '—'}</div></div>
-                    {(profile.elite_status === 'Lost' || profile.elite_status === 'Removed') && <div><div style={fieldLabel}>Leave Date</div><div style={fieldValue}>{profile.leave_date ? profile.leave_date.split('T')[0] : '—'}</div></div>}
+                    <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{profile.join_date ? formatDate(profile.join_date) : '—'}</div></div>
+                    {(profile.elite_status === 'Lost' || profile.elite_status === 'Removed') && <div><div style={fieldLabel}>Leave Date</div><div style={fieldValue}>{profile.leave_date ? formatDate(profile.leave_date) : '—'}</div></div>}
                     <div><div style={fieldLabel}>Work email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{profile.email || '—'}</div></div>
                     <div><div style={fieldLabel}>Personal email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{profile.personal_email || '—'}</div></div>
                     {(profile.member_category === 'accountant' || profile.member_category === 'advisor') && <div><div style={fieldLabel}>Company Name</div><div style={fieldValue}>{profile.trading_name || '—'}</div></div>}
@@ -195,13 +196,13 @@ export default function PlannerMemberView() {
                       {profile.vfo_certified_date && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: profile.vfo_accredited_date ? '12px' : 0 }}>
                           <img src={vfoCertifiedSeal} style={{ width: '36px', height: '36px' }} />
-                          <div><div style={{ fontSize: '14px', color: '#b08d26', fontWeight: '600' }}>VFO Certified</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{profile.vfo_certified_date.split('T')[0]}</div></div>
+                          <div><div style={{ fontSize: '14px', color: '#b08d26', fontWeight: '600' }}>VFO Certified</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{formatDate(profile.vfo_certified_date)}</div></div>
                         </div>
                       )}
                       {profile.vfo_accredited_date && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <img src={vfoAccreditedSeal} style={{ width: '36px', height: '36px' }} />
-                          <div><div style={{ fontSize: '14px', color: 'var(--vfo-muted)', fontWeight: '600' }}>VFO Accredited</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{profile.vfo_accredited_date.split('T')[0]}</div></div>
+                          <div><div style={{ fontSize: '14px', color: 'var(--vfo-muted)', fontWeight: '600' }}>VFO Accredited</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{formatDate(profile.vfo_accredited_date)}</div></div>
                         </div>
                       )}
                     </div>
@@ -236,7 +237,7 @@ export default function PlannerMemberView() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
                       <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
-                      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_at?.split('T')[0]}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
                       <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.program_name}</span>
                       <VisibilityBadge visibility={note.visibility} />
                     </div>

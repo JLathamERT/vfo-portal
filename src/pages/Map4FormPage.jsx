@@ -13,7 +13,9 @@ export default function Map4FormPage() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
   const [state, setState] = useState('loading') // loading | valid | invalid | success
-  const [ctx, setCtx] = useState({ client_first: '', pf_name: 'your VFO Services team', priority_name: '', meeting_date: null })
+  // specialist_name is who actually ran the meeting; pf_name stays for anything
+  // that is genuinely about the client's PF.
+  const [ctx, setCtx] = useState({ client_first: '', pf_name: 'your VFO Services team', specialist_name: 'your VFO Specialist', priority_name: '', meeting_date: null })
   const [form, setForm] = useState(EMPTY)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -33,6 +35,7 @@ export default function Map4FormPage() {
       setCtx({
         client_first: data.client_first || '',
         pf_name: data.pf_name || 'your VFO Services team',
+        specialist_name: data.specialist_name || 'your VFO Specialist',
         priority_name: data.priority_name || '',
         meeting_date: data.meeting_date || null,
       })
@@ -82,7 +85,7 @@ export default function Map4FormPage() {
             <span style={{ fontSize: '32px', lineHeight: 1 }}>⚠️</span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--vfo-ink)', marginBottom: '12px' }}>Link Not Valid</h1>
-          <p style={{ fontSize: '15px', color: 'var(--vfo-muted)', lineHeight: 1.6 }}>This MAP 4 form link is invalid or has expired. Please contact your VFO representative for a new link.</p>
+          <p style={{ fontSize: '15px', color: 'var(--vfo-muted)', lineHeight: 1.6 }}>This form link is invalid or has expired. Please contact your VFO representative for a new link.</p>
         </div>
       </div>
     )
@@ -107,11 +110,11 @@ export default function Map4FormPage() {
     <div style={pageStyle}>
       <div style={cardStyle}>
         <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em', fontSize: '28px', color: 'var(--vfo-ink)', marginBottom: '6px' }}>MAP 4 Meeting Follow-Up</div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em', fontSize: '28px', color: 'var(--vfo-ink)', marginBottom: '6px' }}>VFO Specialist Meeting Follow-Up</div>
           <div style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>Let us know how your meeting went{ctx.priority_name ? ` — ${ctx.priority_name}` : ''}</div>
         </div>
 
-        <SectionLabel n="1" required>How was your meeting with {ctx.pf_name}{meetingStr ? ` on ${meetingStr}` : ''}?</SectionLabel>
+        <SectionLabel n="1" required>How was your meeting with {ctx.specialist_name}{meetingStr ? ` on ${meetingStr}` : ''}?</SectionLabel>
         <Area value={form.q1_meeting} onChange={v => set('q1_meeting', v)} />
 
         <SectionLabel n="2" required>Do you have any questions or concerns?</SectionLabel>

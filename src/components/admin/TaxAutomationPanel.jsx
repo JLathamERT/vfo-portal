@@ -4,6 +4,7 @@ import { StepCard, Detail, Badge, Pending, fmtDate, PanelHero, EmptyState, Table
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import { CONFIRMATION_CARD_SKIP } from '../../lib/confirmationStatus'
 import { ClientNameLink, MemberNameLink } from '../shared/personLinks'
+import { formatDate } from '../../lib/dates'
 
 const STAGE_LABELS = {
   not_started:     'Not Started',
@@ -443,7 +444,7 @@ export default function TaxAutomationPanel({ programScope = 'holistic' }) {
                       <td style={{ padding: 12, fontSize: 13, color: 'var(--vfo-muted)' }}>{row.tax_final_decision || row.tax_decision || '—'}</td>
                       <td style={{ padding: 12, fontSize: 13, color: 'var(--vfo-muted)' }}>{fmtMoney(row.retainer_amount) ? `$${fmtMoney(row.retainer_amount)}` : '—'}</td>
                       <td style={{ padding: 12, fontSize: 13, color: 'var(--vfo-muted)' }}>{row.retainer_status || '—'}</td>
-                      <td style={{ padding: 12, fontSize: 12, color: 'var(--vfo-muted)' }}>{row.created_at ? row.created_at.split('T')[0] : '—'}</td>
+                      <td style={{ padding: 12, fontSize: 12, color: 'var(--vfo-muted)' }}>{row.created_at ? formatDate(row.created_at) : '—'}</td>
                     </tr>
                     {isExpanded && (
                       <tr>
