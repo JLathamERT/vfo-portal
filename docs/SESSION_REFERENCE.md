@@ -34,8 +34,8 @@ Run these instead of believing any version/tag/count written anywhere. Expected 
 # 2. Deploy tags — git is the source of truth, these lines are not (#222, #376).
 #    Re-stamp these THREE lines AFTER wrap-up Part 4D, not during Part 1: the
 #    version and tag do not exist yet when the hub is written (#408).
-cd C:\vfo-react;          git tag -l 'live-*'         --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-21 → live-200-direct-unit2)
-cd C:\vfo-edge-functions; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-21 → backend-good-2026-09-21-v874)
+cd C:\vfo-react;          git tag -l 'live-*'         --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-22 → live-201-misc-seven)
+cd C:\vfo-edge-functions; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-22 → backend-good-2026-09-22-v877)
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
 #    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-09-22 → 6 + 522 = **528**, UNMOVED by the 2026-09-22 misc branch, which added no action at all; unit 2 added 14 (12 `tax_direct_*` twins, `automation_TAX_stopnodeposit`, `member_my_connect_status`); five more twins were retired on the branch before ship; past values in CHANGELOG)
