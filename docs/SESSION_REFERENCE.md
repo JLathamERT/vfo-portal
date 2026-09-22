@@ -34,7 +34,7 @@ Run these instead of believing any version/tag/count written anywhere. Expected 
 # 2. Deploy tags — git is the source of truth, these lines are not (#222, #376).
 #    Re-stamp these THREE lines AFTER wrap-up Part 4D, not during Part 1: the
 #    version and tag do not exist yet when the hub is written (#408).
-cd C:\vfo-react;          git tag -l 'live-*'         --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-22 → live-201-misc-seven)
+cd C:\vfo-react;          git tag -l 'live-*'         --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-22 → live-202-member-overview-msm)
 cd C:\vfo-edge-functions; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1   # (v: 2026-09-22 → backend-good-2026-09-22-v877)
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
@@ -47,7 +47,7 @@ $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatc
 # 4. Type-check baseline — must be 0; --no-lock avoids the v5 deno.lock the bundler rejects (#112)
 & C:\Users\jakel_fjetgbx\.deno\bin\deno.exe check --no-lock supabase/functions/vfo-admin-api/index.ts
 
-# 5. Frontend build — expect exit 0. (v: 2026-09-22 → **35** route pages, unmoved, bundle index-BAEeZp4T.js — built AND published 2026-09-22; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
+# 5. Frontend build — expect exit 0. (v: 2026-09-22 → **35** route pages, unmoved, bundle index-DeZN3S8e.js — built AND published 2026-09-22 from MERGED main, twice that day (index-BAEeZp4T.js was the seven-misc-edits ship); whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
 cd C:\vfo-react; npm run build
 
 # 6. Pipeline smoke gate — hand it to Jake in EXACTLY this form (literal <password>, never a token, never Read-Host)
