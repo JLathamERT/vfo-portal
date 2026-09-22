@@ -19,6 +19,7 @@ import { TrackHero, HeroAvatar } from '../components/shared/TrackKit'
 import { MemberNameLink } from '../components/shared/personLinks'
 import VfoWordmark from '../components/shared/VfoWordmark'
 import NotificationBell from '../components/NotificationBell'
+import { formatDate } from '../lib/dates'
 
 const TEAM_MEMBERS = ['Sarah Freitas', 'Rachael', 'Bridger Silvester', 'Tracy Miller', 'Evan Anderson']
 const statusColors = { Completed: '#1b9254', Confirmed: '#1b9254', Yes: '#1b9254', 'In Progress': '#e06717', Scheduled: '#0095ff', No: '#e74c3c', 'N/A': 'var(--vfo-muted)', Pending: '#e06717' }
@@ -538,7 +539,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
-                    <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_at?.split('T')[0]}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
                     <VisibilityBadge visibility={note.visibility} />
                     {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
                     <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.tab_name}</span>
@@ -570,7 +571,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
-                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_at?.split('T')[0]}</span>
+                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
                 <VisibilityBadge visibility={note.visibility} />
                 {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
                 {note.tab_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.tab_name}</span>}
@@ -597,7 +598,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
-                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_at?.split('T')[0]}</span>
+                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
                 {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
                 {note.tab_name && note.phase_name !== 'General' && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.phase_name}</span>}
               </div>

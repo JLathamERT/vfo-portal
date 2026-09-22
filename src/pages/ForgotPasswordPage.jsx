@@ -50,7 +50,18 @@ export default function ForgotPasswordPage() {
     <AuthShell>
       <p style={{ fontSize: '11.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2.5px', margin: '0 0 10px' }}>{portal ? `${portal.label} Portal` : 'VFO Portal'}</p>
       <h2 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--vfo-heading)', marginTop: 0, marginBottom: '8px', fontSize: '28px' }}>Reset your passcode</h2>
-      <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', marginBottom: '28px' }}>Enter the email address on your account and we'll send you a link to choose a new passcode.</p>
+      <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', marginBottom: portal ? '16px' : '28px' }}>Enter the email address on your account and we'll send you a link to choose a new passcode.</p>
+      {/* The four portals each hold their own passcode, and people land on the wrong
+          one. Naming the portal here — BEFORE they type — is the part of that fix
+          the person can see; the backend's silent cross-portal fallback is the other
+          half, and it deliberately never says which portal matched. */}
+      {portal && (
+        <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', lineHeight: 1.6, marginTop: 0, marginBottom: '28px', padding: '12px 14px', borderRadius: '10px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border)' }}>
+          This resets your <strong style={{ color: 'var(--vfo-ink)' }}>{portal.label}</strong> passcode.{' '}
+          {Object.values(PORTAL).filter(p => p.label !== portal.label).map(p => p.label).join(', ')} accounts sign in separately —{' '}
+          <span onClick={() => navigate('/')} style={{ color: '#0a85e8', fontWeight: 600, cursor: 'pointer' }}>choose your portal</span>.
+        </p>
+      )}
       {sent ? (
         <p style={{ color: '#16a34a', fontWeight: 500, fontSize: '13px', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: '10px', padding: '12px 14px', margin: 0, lineHeight: 1.6 }}>If an account exists for that email, a reset link is on its way. It expires in 1 hour.</p>
       ) : (

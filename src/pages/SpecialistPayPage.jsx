@@ -80,12 +80,19 @@ export default function SpecialistPayPage() {
   )
 
   const baseAmount = isLicense ? (Number(data.monthly_amount) || 0) : (Number(data.payment_amount) || 0)
-  const cardTotal = Math.round((baseAmount + 0.30) / (1 - 0.029) * 100) / 100
-  const cardFee = Math.round((cardTotal - baseAmount) * 100) / 100
+  // The $99 licence carries NO card fee on either method (2026-09-22) — the same
+  // shape as a legacy (non-"New Model") membership plan, where VFO absorbs the
+  // 2.9% + $0.30 instead of passing it on. The loader says so explicitly rather
+  // than the page inferring it from the product. The background check still charges it.
+  const cardFeeApplies = isLicense ? data.card_fee_applies === true : true
+  const cardFee = cardFeeApplies ? Math.round(((baseAmount + 0.30) / (1 - 0.029) - baseAmount) * 100) / 100 : 0
+  const cardTotal = Math.round((baseAmount + cardFee) * 100) / 100
   const lineLabel = isLicense ? 'VFO Monthly License' : `${data.check_type} Background Check & Due Diligence`
   const amtSuffix = isLicense ? '/mo' : ''
-  // A license CONTINUATION (existing specialist moved onto the portal) is ACH-only —
-  // the checkout action rejects card for these, so the card option is never offered.
+  // A license CONTINUATION (an existing specialist moved onto the portal) takes both
+  // methods as of 2026-09-22. What still makes it different is that NOTHING is
+  // collected at setup on either one — the first charge lands on the charge day —
+  // so every piece of copy below is about when money moves, not about which method.
   const isContinuation = isLicense && !!data.continuation
   const chargeDay = Number(data.charge_day) || 0
   const dayText = chargeDay ? `${ordinal(chargeDay)} of the month` : 'charge day'
@@ -97,7 +104,7 @@ export default function SpecialistPayPage() {
           <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
         </div>
         <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>{isLicense ? 'VFO Specialist Monthly License' : 'VFO Specialist Background Check & Due Diligence'}</h1>
-        <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: '12px' }}>{isContinuation ? 'Set up your monthly bank transfer (ACH)' : 'Choose your preferred payment method'}</p>
+        <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: '12px' }}>{isContinuation ? 'Set up your monthly payment method' : 'Choose your preferred payment method'}</p>
         <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: '32px', fontSize: '13px', color: 'var(--vfo-muted)' }}>
           {isLicense ? `$99/month recurring · ${data.specialist_name}` : `${data.check_type} background check & due diligence · ${data.specialist_name}`}
         </p>
@@ -114,25 +121,27 @@ export default function SpecialistPayPage() {
             : isLicense ? 'Funds transfer directly from your bank account. Your license renews automatically each month.' : 'Funds transfer directly from your bank account. Takes 2-4 business days to process.'}
         />
 
-        {!isContinuation && (
-          <>
-            <div style={dividerStyle}>— or —</div>
+        <div style={dividerStyle}>— or —</div>
 
-            <OptionCard
-              isHovered={hoveredOption === 'card'} onHover={() => setHoveredOption('card')} onLeave={() => setHoveredOption(null)}
-              onClick={() => handleChoice('card')} title="Credit / Debit Card" badgeText="2.9% + $0.30 Fee" badgeClass="blue" amount={cardTotal} suffix={amtSuffix}
-              breakdown={[
-                { label: lineLabel, value: `$${formatMoney(baseAmount)}`, valueColor: 'var(--vfo-ink-2)' },
-                { label: 'Card Processing Fee (2.9% + $0.30)', value: `$${formatMoney(cardFee)}`, valueColor: 'var(--vfo-ink-2)' },
-              ]}
-              footer={isLicense ? 'Charged immediately and automatically each month. The processing fee covers card transaction costs.' : 'Processes immediately. The processing fee covers card transaction costs.'}
-            />
-          </>
-        )}
+        <OptionCard
+          isHovered={hoveredOption === 'card'} onHover={() => setHoveredOption('card')} onLeave={() => setHoveredOption(null)}
+          onClick={() => handleChoice('card')} title="Credit / Debit Card"
+          badgeText={cardFeeApplies ? '2.9% + $0.30 Fee' : 'No Fee'} badgeClass={cardFeeApplies ? 'blue' : 'green'}
+          amount={cardTotal} suffix={amtSuffix}
+          breakdown={[
+            { label: lineLabel, value: `$${formatMoney(baseAmount)}`, valueColor: 'var(--vfo-ink-2)' },
+            cardFeeApplies
+              ? { label: 'Card Processing Fee (2.9% + $0.30)', value: `$${formatMoney(cardFee)}`, valueColor: 'var(--vfo-ink-2)' }
+              : { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
+          ]}
+          footer={isContinuation
+            ? `Your card is saved securely through Stripe. Nothing is charged today — your first payment collects on the ${dayText} (next month's if this month's has already passed) and monthly on that day after that.`
+            : isLicense ? 'Charged immediately and automatically each month.' : 'Processes immediately. The processing fee covers card transaction costs.'}
+        />
 
         <p style={securityNoteStyle}>
           {isContinuation
-            ? `Your bank details are saved securely through Stripe. Nothing is charged at setup — $99 is transferred on the ${dayText} each month until cancelled. To change your bank details, contact us.`
+            ? `Your payment details are saved securely through Stripe. Nothing is charged at setup — $99 is collected on the ${dayText} each month until cancelled. To change your payment details, contact us.`
             : isLicense ? 'The payment method you choose will be charged $99 each month until cancelled. To change it, contact us.' : ''}<br />
           Your payment details are handled securely by Stripe.<br />
           VFO Services never sees or stores your payment information.

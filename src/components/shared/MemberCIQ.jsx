@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { CiqListSkeleton, SkeletonText } from './Skeleton'
 import { HubGrid, HubCard, HubBanner } from './HubKit'
+import { formatDate } from '../../lib/dates'
 
 export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true, ciqVfosManaged = true, isAdmin = false }) {
   const [ciqs, setCiqs] = useState([])
@@ -293,7 +294,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             <button onClick={() => { setActiveCiq(null); setAnswers({}); setActiveSection('intro'); setCiqView(null); loadCiqs() }} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>← Back to list</button>
           </div>
 
-          <HubBanner complete title="CIQ Diagnostic completed" meta={activeCiq.completed_at ? activeCiq.completed_at.split('T')[0] : ''} />
+          <HubBanner complete title="CIQ Diagnostic completed" meta={activeCiq.completed_at ? formatDate(activeCiq.completed_at) : ''} />
 
           <HubGrid>
             <HubCard title="Diagnostic" sub="View or edit the questionnaire answers" accent="#002973" onClick={() => setCiqView('diagnostic')} />
@@ -631,7 +632,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <div>
-                      <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>Snapshot from {selectedSnapshot.saved_at?.split('T')[0]}</div>
+                      <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>Snapshot from {formatDate(selectedSnapshot.saved_at)}</div>
                       <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Saved by {selectedSnapshot.saved_by}</div>
                     </div>
                     <button onClick={() => setSelectedSnapshot(null)} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }}>← Back to list</button>
@@ -659,7 +660,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                         onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-tint)'}>
                         <div>
-                          <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{snap.saved_at?.split('T')[0]} at {snap.saved_at?.split('T')[1]?.substring(0, 5)}</div>
+                          <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatDate(snap.saved_at)} at {snap.saved_at?.split('T')[1]?.substring(0, 5)}</div>
                           <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Saved by {snap.saved_by}</div>
                         </div>
                         <span style={{ color: '#0095ff', fontWeight: 600, fontSize: '12px' }}>View →</span>
@@ -703,7 +704,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
             <div>
               <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--vfo-ink)' }}>CIQ Report — {client?.first_name} {client?.last_name}</div>
-              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client?.client_ref} · Completed {activeCiq.completed_at?.split('T')[0] || 'just now'}</div>
+              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client?.client_ref} · Completed {formatDate(activeCiq.completed_at) || 'just now'}</div>
             </div>
             <button onClick={() => { setShowReport(false); setCiqView('chooser') }} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '8px 16px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', boxShadow: 'var(--vfo-shadow-card)' }}>← CIQ Menu</button>
           </div>
@@ -1590,8 +1591,8 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-tint)'}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', background: `${statusColors[ciq.status]}22`, color: statusColors[ciq.status], border: `1px solid ${statusColors[ciq.status]}44` }}>{ciq.status === 'draft' ? 'Draft' : 'Completed'}</span>
-                  <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>Started {ciq.created_at?.split('T')[0]}</span>
-                  {ciq.completed_at && <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>· Completed {ciq.completed_at.split('T')[0]}</span>}
+                  <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>Started {formatDate(ciq.created_at)}</span>
+                  {ciq.completed_at && <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>· Completed {formatDate(ciq.completed_at)}</span>}
                 </div>
                 <span style={{ color: '#0095ff', fontWeight: 600, fontSize: '12px' }}>{ciq.status === 'draft' ? 'Continue →' : 'View / Edit →'}</span>
               </div>

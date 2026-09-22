@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../../lib/api'
 import { hasStrategicSplit, computeStrategicShares } from '../../../lib/strategicSplits'
+import { formatDate } from '../../../lib/dates'
 
 // Jake-only per-client migration tool: backfill an in-flight MAP 1 / Tax plan from the
 // old system so the native engine resumes charging the rest. Two Stripe modes:
@@ -43,7 +44,7 @@ function HazardPanel({ existingRow, requiresForce, forceAck, onToggle, note }) {
       {existingRow && (
         <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.75 }}>
           <div>Source: <strong>{existingRow.legacy_source || 'organic row (no migration signature)'}</strong></div>
-          {existingRow.legacy_migrated_at && <div>Migrated: <strong>{String(existingRow.legacy_migrated_at).slice(0, 10)}</strong></div>}
+          {existingRow.legacy_migrated_at && <div>Migrated: <strong>{formatDate(existingRow.legacy_migrated_at)}</strong></div>}
           <div>Stripe customer: <strong>{existingRow.stripe_customer_id ? 'yes' : 'no'}</strong></div>
           {existingRow.payment_method_type && <div>Payment method: <strong>{existingRow.payment_method_type}</strong></div>}
           {statusEntries.map(([k, v]) => <div key={k}>{k}: <strong>{String(v)}</strong></div>)}

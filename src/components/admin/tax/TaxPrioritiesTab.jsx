@@ -8,6 +8,7 @@ import { hasStrategicSplit, computeStrategicShares } from '../../../lib/strategi
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import PricingSplitCard from './PricingSplitCard'
 import { CONFIRMATION_CARD_SKIP } from '../../../lib/confirmationStatus'
+import { formatDate as formatFullDate } from '../../../lib/dates'
 
 // The automated cascade card. The STORED program_client_tasks.name is a lookup
 // key on both sides of the wire — the two cards below switch on it, MAP 1 keys
@@ -2194,11 +2195,11 @@ function TaxIntakeCard({ intake, questions }) {
   const [open, setOpen] = useState(false)
   if (!intake) return null
 
-  const submitted = intake.created_at ? String(intake.created_at).split('T')[0] : ''
+  const submitted = intake.created_at ? formatFullDate(intake.created_at) : ''
   // Which of the two intake routes produced this form (unit 1b). 'client' means
   // the member emailed a tokened link and the client filled it in and paid.
   const byClient = intake.payer === 'client'
-  const linkDate = intake.link_sent_at ? String(intake.link_sent_at).split('T')[0] : submitted
+  const linkDate = intake.link_sent_at ? formatFullDate(intake.link_sent_at) : submitted
   const completedBy = byClient
     ? `Completed by the client via link on ${linkDate}`
     : 'Completed by the member'
@@ -5107,7 +5108,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         eyebrow={programName}
         title="Tax Plan"
         meta={<>
-          <span>Started {plan.created_at?.split('T')[0] || ''}</span>
+          <span>Started {formatFullDate(plan.created_at) || ''}</span>
           {(livePlan || plan)?.tax_route === 'direct' && <DirectPill />}
         </>}
         completed={heroDoneTasks}
@@ -5603,7 +5604,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>
                 <div>
                   <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)', marginBottom: '4px' }}>{plan.program_id === 4 ? 'VFO Tax Planning' : 'VFO Holistic Planning · Tax Priorities'}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{plan.created_at?.split('T')[0]}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{formatFullDate(plan.created_at)}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {/* Only when there is a choice to tell apart — a single plan

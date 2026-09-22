@@ -10,6 +10,7 @@ import { TrackHero, HeroAvatar, ListHeader } from '../shared/TrackKit'
 import { FeatureTabDropdown } from './MembersPanel'
 import SendSetupEmailButton from './SendSetupEmailButton'
 import { ClientNameLink } from '../shared/personLinks'
+import { formatDate } from '../../lib/dates'
 
 const STATUS_COLORS = { Active: '#1b9254', Lost: '#e74c3c', Removed: 'var(--vfo-muted)' }
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
@@ -541,8 +542,8 @@ function TaxPlannerProfileView({ planner }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '18px 24px' }}>
               <div><div style={fieldLabel}>Email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{planner.email || '—'}</div></div>
               <div><div style={fieldLabel}>Status</div><div style={fieldValue}>{planner.status || 'Active'}</div></div>
-              <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{planner.join_date ? String(planner.join_date).split('T')[0] : '—'}</div></div>
-              {hasLeaveDate && <div><div style={fieldLabel}>Leave Date</div><div style={fieldValue}>{planner.leave_date ? String(planner.leave_date).split('T')[0] : '—'}</div></div>}
+              <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{planner.join_date ? formatDate(planner.join_date) : '—'}</div></div>
+              {hasLeaveDate && <div><div style={fieldLabel}>Leave Date</div><div style={fieldValue}>{planner.leave_date ? formatDate(planner.leave_date) : '—'}</div></div>}
               <div><div style={fieldLabel}>Member Type</div><div style={fieldValue}>{roleOf(planner)}</div></div>
               <div><div style={fieldLabel}>Partnership</div><div style={fieldValue}>{planner.member_type || '—'}</div></div>
               <div><div style={fieldLabel}>Allocations</div><div style={fieldValue}>{allocations} tax plan{allocations === 1 ? '' : 's'}</div></div>

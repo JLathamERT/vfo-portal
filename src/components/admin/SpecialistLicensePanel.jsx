@@ -9,7 +9,8 @@ import { AccountingTableSkeleton } from '../shared/Skeleton'
 // $99/mo specialist license payments that cleared that period (read from the
 // specialist_license_payments ledger — one row per paid monthly invoice). The
 // "Setup Monthly License Fees" button reveals the continuation form inline: pick an
-// existing specialist + a charge day and the portal drafts their ACH setup email.
+// existing specialist + a charge day and the portal drafts their setup email. The
+// specialist then picks card or bank transfer on the link (card added 2026-09-22).
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -23,7 +24,9 @@ function fmtDate(s) {
 }
 
 // Status cell of a ledger row, laid out like the SpecRev table's: pill flush right.
-// No method chip — every license payment is ACH, so naming it on every row says nothing.
+// No method chip: the ledger is about whether the month was paid, not how. (Until
+// 2026-09-22 every licence payment was ACH; card is now selectable too, and the
+// method is on the onboarding row as lic_payment_method_type if it is ever wanted here.)
 export function LicenseStatusTag({ status }) {
   const paid = status === 'succeeded'
   return (
@@ -143,10 +146,10 @@ export default function SpecialistLicensePanel({ allExperts = [], embedded = fal
   )
 }
 
-// Moves an existing specialist onto the portal's $99/mo ACH license subscription:
+// Moves an existing specialist onto the portal's $99/mo license subscription:
 // pick the specialist + the day of the month they should be charged, and the portal
-// drafts their setup email. Nothing is charged here — the link only saves the bank
-// details; the first collection happens on the charge day.
+// drafts their setup email. Nothing is charged here — the link only saves the
+// payment method (card or bank transfer); the first collection happens on the charge day.
 function LicenseSetupForm({ allExperts = [], onSent }) {
   const [expertId, setExpertId] = useState('')
   const [chargeDay, setChargeDay] = useState('')
@@ -227,12 +230,12 @@ function LicenseSetupForm({ allExperts = [], onSent }) {
         </div>
         <div>
           <div style={label}>Monthly license fee</div>
-          <div style={{ ...field, cursor: 'default', fontWeight: 700, color: 'var(--vfo-heading)' }}>$99.00 · ACH</div>
+          <div style={{ ...field, cursor: 'default', fontWeight: 700, color: 'var(--vfo-heading)' }}>$99.00 · card or ACH, no fee</div>
         </div>
       </div>
 
       <p style={{ fontSize: '12.5px', color: 'var(--vfo-ink-3)', margin: '0 0 16px', lineHeight: 1.6 }}>
-        The specialist gets an email with a secure link. Their bank details are saved once, and the first payment collects on the {chargeDay ? ordinal(Number(chargeDay)) : 'charge day'} — or right at setup if that day has already passed this month. ACH only; no card option.
+        The specialist gets an email with a secure link and chooses card or bank transfer — $99.00 either way, with no processing fee. Their details are saved once, nothing is charged at setup, and the first payment collects on the {chargeDay ? ordinal(Number(chargeDay)) : 'charge day'} — next month's if this month's has already passed.
       </p>
 
       {note && (
@@ -241,7 +244,7 @@ function LicenseSetupForm({ allExperts = [], onSent }) {
 
       <button onClick={send} disabled={!ready}
         style={{ padding: '11px 26px', borderRadius: '8px', border: 'none', background: ready ? 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)' : '#93b4e8', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: ready ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif' }}>
-        {sending ? 'Sending…' : 'Send ACH setup link'}
+        {sending ? 'Sending…' : 'Send setup link'}
       </button>
 
       {sent && <p style={{ fontSize: '13px', color: '#1b9254', margin: '14px 0 0' }}>{sent}</p>}

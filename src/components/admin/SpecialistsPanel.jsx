@@ -10,6 +10,7 @@ import SendSetupEmailButton from './SendSetupEmailButton'
 import SpecialistKpiPanel from './SpecialistKpiPanel'
 import ListFilterButton, { matchesFilter, sortByJoin, SortSelect } from './ListFilterButton'
 import ImageCropModal from './ImageCropModal'
+import { formatDate } from '../../lib/dates'
 
 const ECOSYSTEMS = ['Tax Planning', 'Business Advisory', 'Legal Services', 'Risk Mitigation', 'Wealth Management', 'Member Services']
 // "Member Services" is internal-only and mutually exclusive with the five public
@@ -124,7 +125,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
   if (section === 'specialist_kpis') return <SpecialistKpiPanel experts={allExperts} ecoMap={ecoMap} />
   if (section === 'specialist_showroom') return (
     <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', overflow: 'hidden' }}>
-      <MemberShowroom experts={allExperts} exclusions={[]} ecoMap={ecoMap} showMemberServices />
+      <MemberShowroom experts={allExperts} exclusions={[]} ecoMap={ecoMap} showMemberServices showRevenueShare />
     </div>
   )
   const activeTab = section === 'add_specialist' ? 'add' : 'edit'
@@ -825,8 +826,8 @@ function SpecialistProfileView({ expert, ecos: ecosProp, connectBusy = false, co
               ['Work email', expert.email || '—'],
               ['Personal email', expert.personal_email || '—'],
               ['Status', expert.status || 'Active'],
-              ...(expert.leave_date ? [['Leave date', String(expert.leave_date).split('T')[0]]] : []),
-              ['Join date', expert.join_date ? String(expert.join_date).split('T')[0] : '—'],
+              ...(expert.leave_date ? [['Leave date', formatDate(expert.leave_date)]] : []),
+              ['Join date', expert.join_date ? formatDate(expert.join_date) : '—'],
               ['Revenue decision', expert.revenue_decision || '—'],
               ['Stripe Connect', expert.stripe_account_id ? 'Connected' : 'Not set up'],
             ].map(([label, value]) => (

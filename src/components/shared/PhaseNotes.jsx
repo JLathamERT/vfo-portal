@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { callApi } from '../../lib/api'
 import { getSession } from '../../lib/api'
 import { VisibilityBadge, noteTint, SaveVisibilityButtons } from './NoteVisibility'
+import { formatDate } from '../../lib/dates'
 
 export function PhaseNotesButton({ count, isOpen, onClick }) {
   return (
@@ -73,7 +74,7 @@ export function PhaseNotesPanel({ clientId, phaseName, phaseNames, tabName, prog
             <>
               <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '4px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by} · {note.created_at?.split('T')[0]}</span>
+                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by} · {formatDate(note.created_at)}</span>
                 <VisibilityBadge visibility={note.visibility} />
                 <button onClick={() => { setEditingId(note.id); setEditText(note.note_text) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>
                 <button onClick={() => deleteNote(note.id)} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Delete</button>
