@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-09-22 (b) — Member Overview: filter by MSM, and a member count that tracks the filters
+
+Branch `feature/member-overview-msm-filter`, react ONLY — **no backend change, no migration, no deploy of `vfo-admin-api`** (it stays at v877). `assigned_msm` was already in the `load_data` payload and already a sort column, so both halves are pure presentation.
+
+- **MSM filter group** in `MemberOverviewPanel`, options derived from the distinct `assigned_msm` values in the pool — the same shape as Member Type and Programs, so the group hides itself when nobody has one. Live spread: Sarah Freitas 55, Ian Welham 31, Rachael Hopson 5, Paul Latham 2, and **514 with none**.
+- **`Unassigned`** is offered as a real option for that last group, because *"who does nobody own?"* is the question this list gets asked most. It is a filter-only sentinel (`UNASSIGNED_MSM`), and it has to be a NON-EMPTY string: `matchesFilter` treats an empty selection as *no filter applied*, so an `''` option would have matched every member instead of none. Nothing writes it; the MSM column still renders an em dash.
+- **Count pill beside the title**, reading the list as RENDERED, so it moves with the search box and every filter rather than just the MSM one. `N of M` appears only while something is narrowing the list, which is what keeps the bare number unambiguous the rest of the time. Note the total is the overview's own pool, which excludes the free / historic / survey / team member types — it is deliberately not the 607 in `members`.
+
+Gates: `npm run build` exit 0, **35** route pages (unmoved). Jake click-tested the filter, the Unassigned arm, filter stacking and the count across search + filters.
+
+---
+
 ## 2026-09-22 — Seven misc edits in one unit: the tax deposit revenue share finally confirms itself, the $99 licence takes a card, wrong-portal logins and resets stop dead-ending, Details & Benefits in the showroom, MM/DD/YYYY dates, CIQ on by default, and "MAP 4" leaves client-facing copy
 
 Branch `claude/vfo-session-setup-f0b8f8`, both repos, ONE chat. `vfo-admin-api` **v874 → v877** (v875 = items 3/4/7, v876 = the deposit confirmation email, v877 = the MAP 4 specialist wiring), `boldsign-webhook` **untouched at v46**, frontend published. Five migrations, all DATA or additive-column only — **no new table**, so the advisor run is a confirmation rather than the STRONG check. Action count **528 UNMOVED**: not one new action was added, which is the shape of this whole unit — every item is a change to something that already existed.

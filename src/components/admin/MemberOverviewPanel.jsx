@@ -26,6 +26,9 @@ const EXCLUDED_TYPES = new Set([
   'Free Legacy TBM', 'Survey #1', 'Survey #2', 'Survey #3', 'Team Member',
 ])
 const ENGAGEMENT_LABELS = ENGAGEMENT.map(e => e.label)
+// Filter-only label for a member with no `assigned_msm`. It is a sentinel, not a
+// stored value — nothing writes it and the table column still renders an em dash.
+const UNASSIGNED_MSM = 'Unassigned'
 export const engagementMeta = (v) => ENGAGEMENT.find(e => e.value === v) || null
 const engMeta = engagementMeta
 
@@ -86,6 +89,18 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
     Object.values(programsByMember).forEach(list => (list || []).forEach(p => s.add(p)))
     return [...s].sort()
   }, [programsByMember])
+  // Derived from the data present, like every other option pool here — there is
+  // no MSM roster in this payload, and `assigned_msm` is free text on the member.
+  // UNASSIGNED is a real option rather than an absence, because "who does nobody
+  // own?" is the question this list gets asked most: the names sort first, then
+  // the catch-all. `UNASSIGNED_MSM` is a sentinel the getter maps to, so a member
+  // whose MSM really were the literal string would collide — no such MSM exists,
+  // and a bare '' cannot be used because matchesFilter treats it as no selection.
+  const msmOptions = useMemo(() => {
+    const named = [...new Set(basePool.map(m => (m.assigned_msm || '').trim()).filter(Boolean))].sort()
+    const hasUnassigned = basePool.some(m => !(m.assigned_msm || '').trim())
+    return hasUnassigned ? [...named, UNASSIGNED_MSM] : named
+  }, [basePool])
 
   const filterGroups = [
     { key: 'category', label: 'Category', options: ['Advisor', 'Accountant', 'Strategic'], get: m => catLabel(m) },
@@ -93,6 +108,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
     { key: 'standing', label: 'Standing', options: ['Suspended', 'Paused', 'In Arrears'], get: m => { const f = []; if (m.suspended) f.push('Suspended'); if (m.paused) f.push('Paused'); if (m.membership_arrears) f.push('In Arrears'); return f } },
     ...(typeOptions.length ? [{ key: 'type', label: 'Member Type', options: typeOptions, get: m => m.member_type || '' }] : []),
     ...(programOptions.length ? [{ key: 'programs', label: 'Programs', options: programOptions, get: m => programsByMember[m.plugin_member_number] || [] }] : []),
+    ...(msmOptions.length ? [{ key: 'msm', label: 'MSM', options: msmOptions, get: m => (m.assigned_msm || '').trim() || UNASSIGNED_MSM }] : []),
     { key: 'engagement', label: 'Engagement', options: ENGAGEMENT_LABELS, get: m => { const meta = engMeta(engOf(m)); return meta ? meta.label : '(none)' } },
   ]
 
@@ -142,7 +158,15 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
     <div style={wrap}>
       <div style={{ marginBottom: '18px' }}>
         <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Members</p>
-        <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '4px 0 0' }}>Member Overview</h2>
+        {/* The count is of the list as RENDERED, so it moves with the search box
+            and every filter. `of N` appears only once something is narrowing it,
+            which is what makes the bare number unambiguous the rest of the time. */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '4px 0 0' }}>Member Overview</h2>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-muted)', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border)', borderRadius: '999px', padding: '3px 12px', whiteSpace: 'nowrap' }}>
+            {rows.length}{rows.length === basePool.length ? '' : ` of ${basePool.length}`} member{rows.length === 1 ? '' : 's'}
+          </span>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
