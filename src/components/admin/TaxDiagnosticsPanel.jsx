@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { callApi } from '../../lib/api'
 import { formatDate, formatDateTime } from '../../lib/dates'
 import { TAX_INTAKE_QUESTIONS } from '../member/taxIntakeQuestions'
@@ -149,6 +150,11 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
   const chip = STATUS_CHIP[d.status] || { label: d.status, color: '#64748b' }
   const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim() || '(no name)'
   const answers = d.answers || {}
+  const navigate = useNavigate()
+  // Linked only once the diagnostic is an OFFICIAL client (the case was created).
+  const clientProfileUrl = d.intake?.status === 'completed' && d.intake?.client_id
+    ? `/admin/client/${d.intake.client_id}?program=4&tab=tax${d.intake.tax_plan_id ? `&plan=${d.intake.tax_plan_id}` : ''}`
+    : null
   const label = { fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginBottom: '3px' }
   const value = { fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }
 
@@ -156,7 +162,12 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
     <div id={`diag-${d.id}`} style={card}>
       <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', cursor: 'pointer' }}>
         <div style={{ flex: '1 1 260px' }}>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)' }}>{clientName}</div>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
+            {clientProfileUrl
+              ? <a href={clientProfileUrl} onClick={e => { e.preventDefault(); e.stopPropagation(); navigate(clientProfileUrl) }}
+                  title="Open client profile" style={{ color: '#125ecc', textDecoration: 'underline' }}>{clientName}</a>
+              : clientName}
+          </div>
           <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '3px', lineHeight: 1.55 }}>
             Submitted {formatDateTime(d.created_at)} · {d.completed_by === 'member' ? 'Completed by a VFO member' : 'Completed by the client'} · Referred by: {referrerText(d)}
           </div>
@@ -318,6 +329,94 @@ function ConfirmBox({ d, members, onChanged }) {
   )
 }
 
+// The confirmed diagnostic's deposit as a step track (the Automated-steps look):
+// link sent → payment made → payment cleared → client created. Chip wording is
+// the portal's own ("Pending — ACH clearing" / "Pending — bank verification",
+// TaxPrioritiesTab + the onboarding/PIP tracks). Read from the intake row the
+// Confirm produced; nothing here writes.
+function DepositTrack({ intake, payer }) {
+  const navigate = useNavigate()
+  const who = payer === 'member' ? 'the member' : 'the client'
+  const isAch = intake.deposit_payment_method_type === 'us_bank_account'
+  const isCard = intake.deposit_payment_method_type === 'card'
+  const finished = intake.status === 'paid' || intake.status === 'completed'
+  const waived = intake.status === 'waived' || (intake.status === 'completed' && intake.deposit_required === false)
+  const clientCreated = intake.status === 'completed' && intake.client_id
+  const orange = '#e06717'
+  const chip = (text, color) => (
+    <span style={{ fontSize: '10.5px', padding: '2px 9px', borderRadius: '999px', background: color + '26', border: `1px solid ${color}4d`, color, fontWeight: 600, whiteSpace: 'nowrap' }}>{text}</span>
+  )
+
+  const steps = waived
+    ? [
+        { label: 'Deposit', done: true, right: chip('Waived — member has 2+ qualifying clients', '#1b9254') },
+      ]
+    : [
+        {
+          label: `Payment link sent to ${who}`,
+          done: !!intake.link_sent_at,
+          right: intake.link_sent_at
+            ? <span>{formatDate(intake.link_sent_at)}{intake.link_opened_at ? ` · opened ${formatDate(intake.link_opened_at)}` : ''}</span>
+            : chip('Not sent yet', orange),
+        },
+        {
+          label: 'Payment made',
+          done: finished || !!intake.deposit_processing_at,
+          right: intake.deposit_failed_at && !intake.deposit_processing_at && !finished
+            ? chip(`Bank payment failed ${formatDate(intake.deposit_failed_at)} — link works again`, '#d93025')
+            : isAch && (intake.deposit_processing_at || finished)
+              ? <span>ACH Bank Transfer · {formatDate(intake.deposit_processing_at || intake.paid_at)}</span>
+              : isCard || finished
+                ? <span>Card · {formatDate(intake.paid_at)}</span>
+                : chip('Not paid yet', orange),
+        },
+        {
+          label: 'Payment cleared',
+          done: finished,
+          right: finished
+            ? <span>{formatDate(intake.paid_at)}</span>
+            : intake.deposit_bank_verification_pending_at
+              ? chip('Pending — bank verification', orange)
+              : intake.deposit_processing_at
+                ? chip('Pending — ACH clearing', orange)
+                : null,
+        },
+      ]
+  steps.push({
+    label: 'Client created',
+    done: !!clientCreated,
+    right: clientCreated
+      ? (
+        <button type="button"
+          onClick={() => navigate(`/admin/client/${intake.client_id}?program=4&tab=tax${intake.tax_plan_id ? `&plan=${intake.tax_plan_id}` : ''}`)}
+          style={{ padding: '4px 12px', borderRadius: '999px', border: 'none', background: '#125ecc', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+          Open client profile
+        </button>
+      )
+      : intake.status === 'paid' ? chip('Creating the case…', orange) : null,
+  })
+
+  return (
+    <div style={{ margin: '12px 0 4px', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '6px 14px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'var(--vfo-muted)', padding: '8px 0 4px' }}>
+        Deposit{intake.sandbox ? ' (sandbox)' : ''}
+      </div>
+      {steps.map((s, i) => (
+        <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '9px 0', borderTop: i === 0 ? 'none' : '1px solid var(--vfo-tint)' }}>
+          <span style={{ width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700,
+            background: s.done ? '#1b9254' : 'transparent', color: s.done ? '#fff' : 'var(--vfo-muted)', border: s.done ? 'none' : '1.5px solid var(--vfo-border-strong)' }}>
+            {s.done
+              ? <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2 5 8.6l4.5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              : i + 1}
+          </span>
+          <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: s.done ? 'var(--vfo-ink)' : 'var(--vfo-muted)' }}>{s.label}</span>
+          <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', textAlign: 'right' }}>{s.right}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function ConfirmedSummary({ d, onChanged }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -341,7 +440,8 @@ function ConfirmedSummary({ d, onChanged }) {
       <div><strong>Member:</strong> {m ? `${m.name} (${m.member_number})` : d.confirmed_member_number}</div>
       <div><strong>Deposit paid by:</strong> {d.deposit_payer === 'member' ? 'The member' : 'The client'}</div>
       <div><strong>Confirmed by:</strong> {d.confirmed_by} on {formatDate(d.confirmed_at)}</div>
-      {stage && <div><strong>Status:</strong> {stage}{d.intake?.sandbox ? ' (sandbox)' : ''}</div>}
+      {d.intake && <DepositTrack intake={d.intake} payer={d.deposit_payer} />}
+      {!d.intake && stage && <div><strong>Status:</strong> {stage}</div>}
       {(d.intake?.status === 'waived' || (d.intake?.status === 'invited' && !d.intake?.link_sent_at) || !d.intake) && (
         <button type="button" onClick={retry} disabled={busy}
           style={{ marginTop: '8px', padding: '7px 16px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', border: 'none', background: '#e06717', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
