@@ -153,7 +153,12 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
           </div>
         </div>
         <span style={{ padding: '4px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, color: chip.color, background: chip.color + '1a' }}>{chip.label}</span>
-        <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{open ? 'Hide' : 'Open'}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', fontSize: '12px', fontWeight: 600, color: '#125ecc' }}>
+          {open ? 'Hide' : 'Open'}
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ transition: 'transform 0.15s', transform: open ? 'rotate(180deg)' : 'none' }}>
+            <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
       </div>
 
       {open && (
