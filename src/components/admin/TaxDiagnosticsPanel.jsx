@@ -153,7 +153,7 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
   const navigate = useNavigate()
   // Linked only once the diagnostic is an OFFICIAL client (the case was created).
   const clientProfileUrl = d.intake?.status === 'completed' && d.intake?.client_id
-    ? `/admin/client/${d.intake.client_id}?program=4&tab=tax${d.intake.tax_plan_id ? `&plan=${d.intake.tax_plan_id}` : ''}`
+    ? `/admin/client/${d.intake.client_id}?program=4&tab=home`
     : null
   const label = { fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginBottom: '3px' }
   const value = { fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }
@@ -388,7 +388,7 @@ function DepositTrack({ intake, payer }) {
     right: clientCreated
       ? (
         <button type="button"
-          onClick={() => navigate(`/admin/client/${intake.client_id}?program=4&tab=tax${intake.tax_plan_id ? `&plan=${intake.tax_plan_id}` : ''}`)}
+          onClick={() => navigate(`/admin/client/${intake.client_id}?program=4&tab=home`)}
           style={{ padding: '4px 12px', borderRadius: '999px', border: 'none', background: '#125ecc', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
           Open client profile
         </button>
