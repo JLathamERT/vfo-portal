@@ -33,8 +33,17 @@ function intakeLabel(intake) {
     case 'invited': return intake.link_sent_at
       ? `Deposit link sent to ${who}${intake.link_opened_at ? ' (opened)' : ''}`
       : `Deposit link to ${who} NOT drafted yet (press Retry)`
-    case 'pending': return `${intake.payer === 'member' ? 'Member' : 'Client'} started the payment`
-    case 'expired': return 'Payment page abandoned — the link still works'
+    // A bank transfer in flight keeps the row 'pending' (a side-column, not a
+    // status — 2026-09-23); tax_diagnostic_list selects deposit_processing_at /
+    // deposit_failed_at so these two readings are possible.
+    case 'pending': return intake.deposit_processing_at
+      ? (intake.deposit_bank_verification_pending_at
+        ? 'Bank transfer awaiting bank verification (details entered by hand)'
+        : 'Bank transfer clearing (2-4 business days)')
+      : `${intake.payer === 'member' ? 'Member' : 'Client'} started the payment`
+    case 'expired': return intake.deposit_failed_at
+      ? 'Bank payment failed — link works again'
+      : 'Payment page abandoned — the link still works'
     case 'paid': return 'Deposit paid — creating the case'
     case 'waived': return 'Deposit waived — case not created yet (press Retry)'
     case 'completed': return 'Case created'

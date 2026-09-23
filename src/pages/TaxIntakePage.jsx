@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import TokenShell from '../components/shared/TokenShell'
 import TaxIntakeForm from '../components/member/TaxIntakeForm'
@@ -17,7 +17,6 @@ export default function TaxIntakePage() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') || ''
   const paid = searchParams.get('paid') === '1'
-  const cancelled = searchParams.get('cancelled') === '1'
 
   const [status, setStatus] = useState('loading')
   const [intake, setIntake] = useState(null)
@@ -46,6 +45,17 @@ export default function TaxIntakePage() {
         if (paid) { setStatus('thanks'); return }
         if (data.status === 'completed' || data.status === 'paid' || data.status === 'waived') {
           setStatus('already')
+          return
+        }
+        // A bank transfer for the deposit is clearing (2026-09-23): the form is
+        // finished, nothing to re-offer.
+        if (data.status === 'processing') { setStatus('already_processing'); return }
+        // A link from a confirmed VFO Tax Diagnostic is PAY-ONLY: the answers were
+        // already given and confirmed. Since 2026-09-23 the deposit is paid on the
+        // card-or-ACH choice page, so an old /tax-intake link (already in an inbox)
+        // is forwarded there with the same token.
+        if (data.diagnostic) {
+          window.location.replace(`/tax-deposit-pay?token=${encodeURIComponent(token)}`)
           return
         }
         setIntake(data)
@@ -81,20 +91,11 @@ export default function TaxIntakePage() {
   if (status === 'already') {
     return <TokenShell maxWidth={520}><Message icon="✓" color="#64748b" title="Thank you." message="We have already received your Tax Planning Form — no further action is needed. Your VFO member will be in touch." /></TokenShell>
   }
+  if (status === 'already_processing') {
+    return <TokenShell maxWidth={520}><Message icon="✓" color="#64748b" title="Thank you." message="We have already received your Tax Planning Form, and your bank transfer for the deposit is on its way. Bank transfers take 2-4 business days to clear; your invoice and receipt will follow by email." /></TokenShell>
+  }
   if (status === 'thanks') {
     return <TokenShell maxWidth={520}><Message icon="✓" color="#16a34a" title="Thank you." message="Your Tax Planning Form has been received. A confirmation email is on its way, and the tax planning team will be allocated in due course." /></TokenShell>
-  }
-
-  // A link from a confirmed VFO Tax Diagnostic is PAY-ONLY: the answers were
-  // already given and confirmed, so the email button goes straight on to Stripe's
-  // payment page. The card (with its own Pay button) only shows when the payer
-  // came BACK from Stripe without paying, or the hand-off failed.
-  if (intake?.diagnostic) {
-    return (
-      <TokenShell maxWidth={560}>
-        <DiagnosticDepositCard intake={intake} autoStart={!cancelled} onPay={() => submitAnswers({})} onDone={() => setStatus('thanks')} />
-      </TokenShell>
-    )
   }
 
   return (
@@ -106,64 +107,6 @@ export default function TaxIntakePage() {
         onDone={() => setStatus('thanks')}
       />
     </TokenShell>
-  )
-}
-
-function DiagnosticDepositCard({ intake, autoStart, onPay, onDone }) {
-  // Starts "busy" on the auto path so the card never flashes before the hand-off.
-  const [busy, setBusy] = useState(!!autoStart)
-  const [failed, setFailed] = useState('')
-  const started = useRef(false)
-  useEffect(() => {
-    if (!autoStart || started.current) return
-    started.current = true
-    pay()
-  }, [autoStart])
-  const clientName = `${intake.client_first_name || ''} ${intake.client_last_name || ''}`.trim()
-  const memberPays = intake.payer === 'member'
-  const amount = intake.deposit_amount || 500
-
-  async function pay() {
-    setBusy(true); setFailed('')
-    try {
-      const res = await onPay()
-      if (res?.url) { window.location.assign(res.url); return }
-      onDone()
-    } catch (err) {
-      setFailed(err?.message || 'Something went wrong — please try again.')
-      setBusy(false)
-    }
-  }
-
-  const row = { display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '13.5px' }
-  if (autoStart && busy && !failed) {
-    return <Message icon="…" color="#0095ff" title="One moment" message="Taking you to the secure payment page..." />
-  }
-  return (
-    <div>
-      <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>
-      <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: '22px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', margin: '0 0 8px' }}>Tax Planning Deposit</h1>
-      <p style={{ fontSize: '13.5px', lineHeight: 1.7, color: 'var(--vfo-muted)', margin: '0 0 18px' }}>
-        {memberPays
-          ? `Thank you for the VFO Tax Diagnostic for ${clientName || 'your client'}. The next step is the deposit, which starts their tax planning.`
-          : 'Thank you for your VFO Tax Diagnostic. The next step is the deposit, which starts your tax planning.'}
-      </p>
-      <div style={{ marginBottom: '18px' }}>
-        <div style={row}><span style={{ color: 'var(--vfo-muted)' }}>Client</span><span style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{clientName}</span></div>
-        {intake.member_display_name && (
-          <div style={row}><span style={{ color: 'var(--vfo-muted)' }}>VFO member</span><span style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{intake.member_display_name}</span></div>
-        )}
-        <div style={{ ...row, borderBottom: 'none' }}><span style={{ color: 'var(--vfo-muted)' }}>Deposit</span><span style={{ fontWeight: 700, color: 'var(--vfo-ink)' }}>{intake.deposit_required === false ? 'Waived' : `$${amount}`}</span></div>
-      </div>
-      {intake.deposit_required !== false && (
-        <p style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', margin: '0 0 18px', lineHeight: 1.6 }}>The deposit is fully refundable if we are unable to proceed.</p>
-      )}
-      {failed && <div style={{ marginBottom: '14px', fontSize: '13px', color: '#d93025' }}>{failed}</div>}
-      <button type="button" onClick={pay} disabled={busy}
-        style={{ width: '100%', padding: '12px 24px', borderRadius: '999px', fontSize: '14px', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', border: 'none', background: busy ? 'var(--vfo-faint)' : '#1b9254', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
-        {busy ? 'One moment...' : intake.deposit_required === false ? 'Continue' : `Pay $${amount} deposit`}
-      </button>
-    </div>
   )
 }
 

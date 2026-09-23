@@ -15,8 +15,8 @@ import {
 //                client a link to complete it (route B).
 //   NEW CLIENT   route A. Shows the deposit line ($500, or waived with the
 //                qualifying count), submits to tax_intake_submit, and either
-//                follows the Stripe Checkout url or lands straight on the
-//                success card (waived).
+//                follows the returned url (the /tax-deposit-pay card-or-ACH
+//                choice page) or lands straight on the success card (waived).
 //   HOLISTIC     ?intake_client=<id>, reached from the "Complete the Tax
 //                Planning Form" email. The client already exists, so name /
 //                email / phone are prefilled and locked, there is NO deposit,
@@ -158,7 +158,8 @@ export default function TaxIntakeForm({
         : holistic
           ? await callApi('tax_intake_holistic_submit', { answers: normalized, client_id: existingClient.id })
           : await callApi('tax_intake_submit', { answers: normalized, ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}) })
-      // A Checkout url means the deposit is owed — hand the browser to Stripe.
+      // A url means the deposit is owed — since 2026-09-23 it is the card-or-ACH
+      // choice page (/tax-deposit-pay), for route A and route B alike.
       if (res?.url) { window.location.assign(res.url); return }
       onDone?.(res)
     } catch (err) {
