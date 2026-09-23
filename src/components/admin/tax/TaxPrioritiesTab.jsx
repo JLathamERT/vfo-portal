@@ -4715,6 +4715,20 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                       {autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
+                  {/* A Continue client who answered from the REMINDER email. Until
+                      2026-09-23 that reminder reused the Undecided buttons, whose
+                      green one records 'Proceed' — a value a Continue email never
+                      writes, so this branch had no line for it and a genuine click
+                      rendered as nothing, revenue-share line included (Kenneth
+                      Bollinger 30004-003, Ariann Sentino 59123-002). The reminder
+                      now sends "Continue now", so this arm serves those historic
+                      rows; a click before 2026-08-28 carries no timestamp. */}
+                  {clientDecision === 'Proceed' && (
+                    <>
+                      {autoStep('Client confirmed Continue (from the reminder email)', true, { at: livePlan?.post_review_client_decision_at })}
+                      {autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
+                    </>
+                  )}
                 </>
               )}
               {adminDecision === 'Undecided' && (
