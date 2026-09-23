@@ -76,17 +76,6 @@ export default function TaxIntakeForm({
       seed.q3 = publicIntake.client_last_name || ''
       seed.q4 = publicIntake.client_email || ''
       seed.q7 = publicIntake.member_display_name || ''
-      // A link minted from a VFO Tax Diagnostic already holds every answer: the
-      // payer reviews them and pays. Only the visible questions are seeded — the
-      // server keeps Q1 and Q7–Q9 as Confirm set them.
-      if (publicIntake.diagnostic && publicIntake.answers) {
-        for (const q of TAX_INTAKE_QUESTIONS) {
-          if (q.hidden || q.type === 'derived') continue
-          const v = publicIntake.answers[q.id]
-          if (v != null && v !== '') seed[q.id] = String(v)
-        }
-        seed.q4 = publicIntake.client_email || seed.q4
-      }
     }
     return seed
   })
@@ -435,14 +424,7 @@ export default function TaxIntakeForm({
         {intro && (
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px', lineHeight: 1.6 }}>{intro}</div>
         )}
-        {publicMode && publicIntake?.diagnostic && (
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px', lineHeight: 1.6 }}>
-            {publicIntake.payer === 'member'
-              ? `These are the VFO Tax Diagnostic answers for ${`${publicIntake.client_first_name || ''} ${publicIntake.client_last_name || ''}`.trim() || 'your client'}. Please check them, correct anything that has changed, and pay the deposit to get their tax planning started.`
-              : 'These are your VFO Tax Diagnostic answers. Please check them, correct anything that has changed, and pay the deposit to get your tax planning started.'}
-          </div>
-        )}
-        {publicMode && !publicIntake?.diagnostic && publicIntake?.member_display_name && (
+        {publicMode && publicIntake?.member_display_name && (
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px', lineHeight: 1.6 }}>
             {publicIntake.member_display_name} has asked us to start your tax planning. Please answer the questions below.
           </div>
