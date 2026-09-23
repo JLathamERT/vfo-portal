@@ -201,7 +201,7 @@ The handler `if`-checks `event.type === "checkout.session.completed"` and `event
 2. UPDATEs `final_retainer_status='succeeded'` + `final_retainer_confirmation_status='Confirmation Needed'`, **NULLs `final_retainer_bank_verification_pending_at`**, and **re-states** the PI id and charge date, because on the fresh-link recovery path Stripe can deliver `payment_intent.succeeded` *before* `checkout.session.completed`.
 3. **Chains** `automation_TAX_final_retainer_receipt` (which also issues a fresh amended invoice when `fee_amended_at_tax4` is set).
 4. **Chains** `automation_TAX_revshare` with `payment_kind='retainer'` — the **deferred** retainer revenue share, paid on the FULL `retainer_amount`.
-5. Mints the "Complete Client decision 2" bell, but only after a `'Continue - Revenue Share'` decision — matching the 2-payment condition exactly.
+5. Mints the "Complete Client decision 2" bell, but only after a `'Continue - Revenue Share'` decision. On a 3-payment plan this branch is only reached after the client's green click started the final-retainer charge, so it has always waited on the client; the 2-payment / legacy mint moved to that same click on 2026-09-23 (`postreview-client-decision.ts`), and the two sites now agree.
 
 See [tax-fee-process.md](tax-fee-process.md) for why the revshare is deferred and which gate actually holds it (**#441**).
 
