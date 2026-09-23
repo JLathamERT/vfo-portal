@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import TokenShell from '../components/shared/TokenShell'
 import TaxIntakeForm from '../components/member/TaxIntakeForm'
@@ -17,6 +17,7 @@ export default function TaxIntakePage() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') || ''
   const paid = searchParams.get('paid') === '1'
+  const cancelled = searchParams.get('cancelled') === '1'
 
   const [status, setStatus] = useState('loading')
   const [intake, setIntake] = useState(null)
@@ -85,11 +86,13 @@ export default function TaxIntakePage() {
   }
 
   // A link from a confirmed VFO Tax Diagnostic is PAY-ONLY: the answers were
-  // already given and confirmed, so no form — one card and the deposit button.
+  // already given and confirmed, so the email button goes straight on to Stripe's
+  // payment page. The card (with its own Pay button) only shows when the payer
+  // came BACK from Stripe without paying, or the hand-off failed.
   if (intake?.diagnostic) {
     return (
       <TokenShell maxWidth={560}>
-        <DiagnosticDepositCard intake={intake} onPay={() => submitAnswers({})} onDone={() => setStatus('thanks')} />
+        <DiagnosticDepositCard intake={intake} autoStart={!cancelled} onPay={() => submitAnswers({})} onDone={() => setStatus('thanks')} />
       </TokenShell>
     )
   }
@@ -106,9 +109,16 @@ export default function TaxIntakePage() {
   )
 }
 
-function DiagnosticDepositCard({ intake, onPay, onDone }) {
-  const [busy, setBusy] = useState(false)
+function DiagnosticDepositCard({ intake, autoStart, onPay, onDone }) {
+  // Starts "busy" on the auto path so the card never flashes before the hand-off.
+  const [busy, setBusy] = useState(!!autoStart)
   const [failed, setFailed] = useState('')
+  const started = useRef(false)
+  useEffect(() => {
+    if (!autoStart || started.current) return
+    started.current = true
+    pay()
+  }, [autoStart])
   const clientName = `${intake.client_first_name || ''} ${intake.client_last_name || ''}`.trim()
   const memberPays = intake.payer === 'member'
   const amount = intake.deposit_amount || 500
@@ -126,6 +136,9 @@ function DiagnosticDepositCard({ intake, onPay, onDone }) {
   }
 
   const row = { display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '13.5px' }
+  if (autoStart && busy && !failed) {
+    return <Message icon="…" color="#0095ff" title="One moment" message="Taking you to the secure payment page..." />
+  }
   return (
     <div>
       <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>
