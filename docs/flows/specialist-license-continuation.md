@@ -141,6 +141,8 @@ Fed by **`specialist_license_payments_load`**, whose response gained a **`pendin
 
 State chips: **Setup pending** `#0095ff` · **Awaiting first payment** `#0095ff` · **Awaiting bank verification** `#e06717` · **Payment processing** `#e06717` · **Past due** `#ef4444` · **Payment failed** `#ef4444`.
 
+**Sibling tab (2026-09-23):** Accounting → Specialists → **VFO Specialist Background Checks** uses the same three-pill shape (monthly ledger · Reconciliation · Outstanding Payment Links) for background-check payments, including the one-time admin-sent requests — see [specialist-bg-requests.md](specialist-bg-requests.md).
+
 ## Traps
 
 - **`scheduled` is a NEW value in the `lic_payment_status` vocabulary** (subscription exists, zero money moved). The column is bare `text` with no CHECK, so nothing announces where the enumerations are — every reader that enumerates it must handle it. See **#437** (and the #431/#433 family).

@@ -119,6 +119,10 @@ The handler `if`-checks `event.type === "checkout.session.completed"` and `event
 
 > A declined card inside the Checkout emits `payment_intent.payment_failed` on a PI that carries `pipeline=TAX` but **no customer**; Branch C's generic first-payment resolver finds no row for a null customer and raises nothing. The client retries inside Stripe. (Read from the code; never exercised.)
 
+### Sub-branch A1¾ — Specialist Background Check payment REQUESTS *(added 2026-09-23, not yet deployed; `router/webhooks.ts` "SPECIALIST BACKGROUND CHECK PAYMENT REQUESTS" block → `utils/specialist-bg-request-webhook.ts`)*
+
+**Position:** one `if (fromPrimary)` block ahead of the MAP 1 handling and the whole customer cascade, keyed on `metadata.pipeline === 'SPECIALIST_BG_CHECK'` only (#473). Handles `checkout.session.completed`, `payment_intent.succeeded`, `payment_intent.payment_failed` / `.canceled` and `checkout.session.async_payment_failed`; the generic `async_payment_failed` and PI first-payment resolvers explicitly skip this pipeline. Row = `specialist_bg_requests` by `metadata.request_id` + matching `checkout_token`, with an `event.livemode` vs row `sandbox` guard (#485). Branch detail: [../architecture/07-server-chains.md](../architecture/07-server-chains.md) "Specialist Background Check payment REQUESTS"; flow: [specialist-bg-requests.md](specialist-bg-requests.md).
+
 ### Sub-branch A2 — MAP1 first payment ([lines 290-392](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts))
 
 **Trigger:** client paid the first MAP1 payment via `/pay`.

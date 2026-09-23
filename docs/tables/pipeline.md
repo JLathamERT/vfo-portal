@@ -52,7 +52,7 @@ The single most important automation table. One row per client journey through M
 | Column | Type | Notes |
 |---|---|---|
 | `c13_decision` | text | Status field. |
-| `member_paying_on_behalf` | boolean | default `false`. Set from the PIP Follow-Up decision form's "Is the member paying on behalf of the client?" question. When `true`, the MAP 1 contract/payment chain swaps to the member as signer + payer and uses the `payer_type='member'` agreement templates. |
+| `member_paying_on_behalf` | boolean | default `false`. Set from the PIP Follow-Up decision form's "Is the member paying on behalf of the client?" question. When `true`, the MAP 1 contract/payment chain swaps to the member as signer + payer and uses the `payer_type='member'` agreement templates; the invoice/receipt PDFs bill the member with a "Client: <client name>" line under them (2026-09-23). |
 | `current_priorities` / `parked_priorities` / `meeting_notes` | text | Free-form |
 | `c14_email_sent` | text | default `'No'`. Flipped to `'Yes'` by `automation_PIPFU_decision` after drafting the Undecided/No email. |
 | `c14_email_sent_at` | timestamptz | **Reminder-ladder timer base.** Written `now()` by `automation_PIPFU_decision` **only on the Undecided branch** (not No). Drives the 2-business-day client reminder + 4-business-day PF notification fired by `automation_CONTRACT_revshare_sweep`. **The ladder counts BUSINESS days (Mon–Fri UTC) as of 2026-08-14** — `notification_rules.delay_days` is unchanged, only the unit is; see `utils/notify.ts businessDelayCutoffIso`. |
