@@ -2954,6 +2954,28 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   const hlmConfirmDone = prereqDone('tax_hlm_confirm', null)
   const detailedPresDone = prereqDone(null, 'Detailed tax plan presentation')
   const decision1Done = prereqDone('tax_continue_stop', 'Client decision 1')
+  // Client decision 1 has TWO halves, and everything after it waits on the
+  // CLIENT's: `decision1Done` above only proves the ADMIN's pick was sent, because
+  // the step's own row is written the moment the email goes out. A Continue email
+  // still carries a "Refund my retainer" button, so reading that row as "done" let
+  // Client decision 2 and the whole implementation chain open while the client
+  // could still refund (Kenneth Bollinger, 2026-09-23). Mirrors
+  // utils/tax-decision1.ts in the edge repo — DECISION1_CONTINUE_CLICKS must stay
+  // byte-identical there and here (#339 family), and the backend refuses the same
+  // writes this lock hides (save-task, amend-fee tax5, implement-decision).
+  const decision1Gate = (() => {
+    const DECISION1_CONTINUE_CLICKS = ['Confirmed', 'Proceed', 'Auto-Locked']
+    const admin = livePlan?.post_review_decision ?? null
+    const client = livePlan?.post_review_client_decision ?? null
+    if (admin === 'Stop - Refund' || client === 'Refund') {
+      return { open: false, hint: 'The client chose a refund at Client decision 1' }
+    }
+    if (client != null && DECISION1_CONTINUE_CLICKS.includes(client)) return { open: true, hint: '' }
+    // No admin pick on the plan: not reached yet, or a legacy plan. The step row
+    // is then the only evidence, exactly as before this gate existed.
+    if (admin == null) return { open: decision1Done, hint: 'Complete "Client decision 1" first' }
+    return { open: false, hint: 'Waiting for the client to answer Client decision 1' }
+  })()
   const implDecisionDone = prereqDone('tax_implement_decision', 'Implementation decision') || !!livePlan?.implementation_decision
   const tax3AipcDone = (livePlan?.tax_decision === 'No' || livePlan?.tax_final_decision === 'No')
     || livePlan?.retainer_invoice_email_sent === true
@@ -2994,6 +3016,20 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       return { locked: !tax6Unlocked, hint: 'Locked until Implementation decision + Automated steps complete' }
     }
     if (phase?.name === TAX5B_PHASE) {
+      // Client decision 1 first, and directly — not only through the Tax 5a chain
+      // below, which a Confirm-ready row recorded before this gate existed would
+      // otherwise still satisfy. The HINT still names the nearest outstanding step,
+      // like every other lock here, rather than the root cause two steps back:
+      // Implementation decision waits on the amend step above it, and the amend
+      // step waits on Client decision 2. Only when those are somehow already
+      // recorded (a row saved before this gate existed) does it name decision 1.
+      if (!decision1Gate.open) {
+        if (so === 'tax_implement_decision') {
+          return { locked: true, hint: amendTax5Blocks ? 'Complete the "Amend implementation fee" step first' : decision1Gate.hint }
+        }
+        const decision2Done = prereqDone(null, 'Client decision 2')
+        return { locked: true, hint: decision2Done ? decision1Gate.hint : 'Complete "Client decision 2" first' }
+      }
       // The whole phase waits on the Tax 5a confirmation — that is what "reaches"
       // the amend step too, so it needs no gate of its own.
       if (!tax5bUnlocked) return { locked: true, hint: 'Unlocks when "Confirm ready for implementation" is Yes or Undecided on any specialist' }
@@ -3137,13 +3173,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       return { locked: false, hint: '' }
     }
     if (nm === 'Client decision 2') {
-      return {
-        locked: !(hlmConfirmDone && detailedPresDone && decision1Done),
-        hint: 'Complete "Client decision 1" first',
+      if (!(hlmConfirmDone && detailedPresDone)) {
+        return { locked: true, hint: 'Complete "Client decision 1" first' }
       }
+      return { locked: !decision1Gate.open, hint: decision1Gate.hint }
     }
     if (nm === 'VFO specialist introductions / discussions' || nm === 'Confirm ready for implementation') {
-      return { locked: !decision1Done, hint: 'Waiting for Client decision 1' }
+      return { locked: !decision1Gate.open, hint: decision1Gate.hint || 'Waiting for Client decision 1' }
     }
     return null
   }

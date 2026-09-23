@@ -8,6 +8,41 @@
 
 ---
 
+## 2026-09-23 — Client decision 1 now waits for the CLIENT: Kenneth Bollinger's plan ran ahead of his own answer, reverted by hand, and the gap closed in the step machine, the FE lock, a planner bell and three write handlers
+
+Branch `fix/tax-client-decision-1-gate`, both repos, ONE chat. `vfo-admin-api` **v877 — v878**, `boldsign-webhook` untouched at v46. **No migration, no DDL, no new action** (528 unmoved) — one new util, one new probe script. Frontend change is a single file.
+
+### What happened
+
+**Kenneth Bollinger `30004-003`, plan 79** (legacy 2-payment, $10,000, $5,000 retainer paid). Client decision 1 was sent as **`Continue - Revenue Share`** on 2026-09-18 21:45:41Z and he has **not answered it** — its Continue and Refund buttons are both still live. One second later (21:45:42) the portal minted **"Complete Client decision 2 for Kenneth Bollinger"** to the planner, reading *"[Client Name] chose to continue with revenue share"*, which was untrue. On 09-22 the team did what the bell said: Client decision 2 = *Move to Implementation*, Amend implementation fee = *Completed - Kept*, and the **Implementation decision email went out as Undecided** at 15:43Z. Kenneth then held two live decision emails that contradict each other — one offering to refund his retainer, one asking about implementation. A specialist (Carson Grover) had also been allocated 48s before the decision-1 email, with his intro step marked done. **No money had moved on the implementation side.**
+
+### Why
+
+Client decision 1 has two halves: the admin's pick (`post_review_decision`, written when the email is SENT) and the client's click (`post_review_client_decision`). Three readers took the first for the whole. **(1)** `utils/tax-plan-steps.ts resolvePostReview` returned `continue` for a Continue pick with no look at the click — `Undecided` was always read correctly. **(2)** The FE lock (`decision1Done`) read the step's row, which holds the admin's pick. **(3)** `postreview-decision.ts` minted the Client decision 2 bell on the admin's send for 2-payment and legacy plans. All three dated from when Continue AUTO-LOCKED after a timer, so "sent" really did mean "decided"; the timer was retired (#264) and none of them were revisited. The 3-payment path was never affected — its bell waits for the final retainer, which only the client's click can start. Gotcha **#526**.
+
+### The production fix on plan 79 (snapshot taken first, every statement fenced to the plan and the exact ids)
+
+Deleted progress rows **1590** (VFO specialist introductions, per-specialist — deleted BEFORE the specialist so it could not orphan into a plan-level row, #305), **1647** (Client decision 2), **1648** (Amend implementation fee), **1649** (Implementation decision); deleted `client_tax_specialists` **122** (Carson Grover); NULLed `implementation_decision`, `implementation_decision_email_sent`, `implementation_decision_email_sent_at` and **`implementation_token`** — so the link in his inbox now lands on "invalid or expired" instead of recording a click. **Untouched:** his Client decision 1 (pick, token and both buttons still live), the $5,000 retainer, and bells 2277/2278 (already read). The Implementation decision email itself is still in his inbox; only its link is dead.
+
+### The code fix
+
+- **`utils/tax-decision1.ts` (new)** — the one place the rule lives: `decision1State` (`unsent` / `pending` / `refund` / `continue`), `decision1Blocker`, `DECISION1_GATED_TASK_NAMES`, and the click list `Confirmed` / `Proceed` / `Auto-Locked`.
+- **`resolvePostReview`** delegates to it. Also fixes a second, never-noticed case: a Continue email the client then REFUNDED used to resolve `continue`.
+- **The bell moved to the client's click** (`postreview-client-decision.ts`, Proceed/Confirmed, 2-payment + legacy). Same key and title, so the single clear site in `save-task.ts` is untouched (#365). It also fills a gap: an **Undecided** email answered with Proceed never asked for Client decision 2 before.
+- **Server refusals (400)** on positive evidence only — sent-and-unanswered, or a refund: `save-task.ts` for the five gated steps (its own read, placed BEFORE the write, because the handler's plan select is an explicit list without these columns, #448; a CLEAR is always allowed), `amend-fee.ts` stage tax5 (ahead of the `keep` short-circuit — this is a precondition on the step existing, not a money guard), and `implement-decision.ts` (before the decision is written or a token minted). A plan with NO admin pick is left alone, because a NULL `post_review_decision` is also what a legacy migration looks like (#508).
+- **FE `decision1Gate`** in `TaxPrioritiesTab.jsx`, mirroring the util with a byte-identical click list. Client decision 2, the Tax 5a specialist steps and Tax 5b all read it; Tax 5b tests it directly as well as through its chain. Jake's wording pass: each locked step names the NEAREST step above it — *Amend implementation fee* `Complete "Client decision 2" first`, *Implementation decision* `Complete the "Amend implementation fee" step first`.
+- **Deliberately NOT gated:** adding a specialist. It sends nothing to anyone and has always been allowed at any time.
+
+### The audit
+
+Census before any code: **19 live plans** carry progress past Client decision 1, **every one** with a real `post_review_decision`, and **all 19 pass** the new lock (17 Continue+Confirmed, 1 Continue+Proceed, 1 Undecided+Proceed) — nothing legitimately in flight was frozen. Currently unanswered: **Kenneth** (the only one affected) and **Dave Clarenbach** (plan 106, Undecided sent 09-15, nothing downstream). Historical: **Michael Lorente** (plan 91) had Client decision 2 recorded 08-31, one day before he confirmed decision 1 on 09-01 — same inversion, harmless, he did confirm and nothing was charged.
+
+### Gates
+
+`deno check` **0** · action count **528** · `npm run build` exit 0, **35** route pages · **`scripts/probe-decision1-gate.ps1` 12/12 against v878** on three throwaway sandbox fixtures (217 pending / 218 confirmed / 219 refund — every gated write refused on 217 and 219, allowed on 218, a clear allowed, Tax 4 untouched; the refund fixture received NO row at all), fixtures and their two probe rows deleted after · **smoke 5/5 against v878** (Jake). Jake click-tested the lock on Kenneth's plan and a past-decision plan. No DB schema change, so the advisor is a confirmation.
+
+---
+
 ## 2026-09-22 (b) — Member Overview: filter by MSM, and a member count that tracks the filters
 
 Branch `feature/member-overview-msm-filter`, react ONLY — **no backend change, no migration, no deploy of `vfo-admin-api`** (it stays at v877). `assigned_msm` was already in the `load_data` payload and already a sort column, so both halves are pure presentation.
