@@ -302,7 +302,8 @@ function ConfirmBox({ d, members, onChanged }) {
       {msg && <div style={{ marginTop: '12px', fontSize: '12.5px', color: '#1b9254' }}>{msg}</div>}
       <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
         <button type="button" onClick={confirm} disabled={busy || !picked} style={btn(true, busy || !picked)}>{busy ? 'Working...' : 'Confirm'}</button>
-        <button type="button" onClick={dismiss} disabled={busy} style={btn(false, busy)}>Dismiss</button>
+        <button type="button" onClick={dismiss} disabled={busy}
+          style={{ ...btn(false, busy), border: 'none', background: busy ? 'var(--vfo-faint)' : '#d93025', color: '#fff' }}>Dismiss</button>
       </div>
     </div>
   )
