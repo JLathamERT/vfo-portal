@@ -177,13 +177,16 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
   // shares. "One" is counted on the text, not the number, so the long-standing habit of
   // typing a literal 0 in VFOS still completes a line; what is rejected is real money in
   // both boxes at once.
-  const lineComplete = (l) => !!l.recipientKey
+  const noMoney = paymentMethod === 'none'
+  const lineComplete = (l) => noMoney
+    ? (!!l.recipientKey && (parseInt(String(l.deals).replace(/[^0-9]/g, '')) || 0) > 0)
+    : !!l.recipientKey
     && String(l.member_share).trim() !== ''
     && String(l.deals).trim() !== ''
     && (String(l.ert_share).trim() !== '' || String(l.vfos_share).trim() !== '')
     && !(amount(l.ert_share) > 0 && amount(l.vfos_share) > 0)
   const allLinesComplete = lines.length > 0 && lines.every(lineComplete)
-  const canSend = !!selectedExpert && !!selectedExpert.email && allLinesComplete && totals.gross > 0 && !sending
+  const canSend = !!selectedExpert && !!selectedExpert.email && allLinesComplete && (noMoney ? totals.deals > 0 : totals.gross > 0) && !sending
 
   async function send() {
     if (!canSend) return
@@ -261,7 +264,13 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
           )}
         </div>
       )}
-      {result && !result.pending && !result.recurring && (
+      {result && result.recorded && (
+        <div style={{ ...card, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#166534', marginBottom: '4px' }}>Deals recorded</div>
+          <div style={{ fontSize: '13px', color: '#166534' }}>{result.total_deals} deal{result.total_deals === 1 ? '' : 's'} recorded with no payment. Nothing was charged and no email was sent. It shows in Accounting → VFO Specialist Revenue as "Deals Recorded".</div>
+        </div>
+      )}
+      {result && !result.pending && !result.recurring && !result.recorded && (
         <div style={{ ...card, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: '#166534', marginBottom: '4px' }}>Payment request created{result.sandbox ? ' (sandbox)' : ''}</div>
           <div style={{ fontSize: '13px', color: '#166534' }}>A {money(result.gross_amount)} payment request was drafted to <strong>{result.to_email}</strong>. Review &amp; send it from the Gmail drafts folder. Track its status in Accounting → VFO Specialist Revenue.</div>
@@ -285,15 +294,16 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
       {/* Payment method */}
       <div style={card}>
         <div style={{ ...colLabel, marginBottom: '10px' }}>Payment method</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
           {[
             { key: 'link', title: 'ACH debit — send payment link', desc: 'Specialist gets an email with a secure Stripe link and authorizes the debit.' },
             { key: 'pending', title: 'Bank transfer — record expected payment', desc: 'Specialist pushes to our fixed VFO account. No email is sent; you mark it received once the money lands.' },
             { key: 'recurring', title: 'Recurring monthly — send ACH setup link', desc: 'Emails the specialist a setup link to authorize an automatic monthly ACH payment on a day you choose.' },
+            { key: 'none', title: 'Record deals — no payment', desc: 'Records deals where no money changed hands. All money columns are $0. Nothing is charged and no email is sent.' },
           ].map(opt => {
             const active = paymentMethod === opt.key
             return (
-              <button key={opt.key} type="button" onClick={() => setPaymentMethod(opt.key)}
+              <button key={opt.key} type="button" onClick={() => { setPaymentMethod(opt.key); if (opt.key === 'none') setLines(ls => ls.map(l => ({ ...l, ert_share: '', vfos_share: '', member_share: '' }))) }}
                 style={{ textAlign: 'left', padding: '14px 16px', borderRadius: '10px', border: active ? `2px solid ${BLUE}` : '1px solid var(--vfo-border-strong)', background: active ? 'var(--vfo-tint)' : 'var(--vfo-card)', cursor: 'pointer', fontFamily: 'Inter, sans-serif', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                 <span style={{ marginTop: '2px', width: '16px', height: '16px', borderRadius: '50%', border: active ? `5px solid ${BLUE}` : '2px solid var(--vfo-border-strong)', boxSizing: 'border-box', flexShrink: 0 }} />
                 <span>
@@ -340,8 +350,8 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
           const r = l.recipientKey ? recipientByKey[l.recipientKey] : null
           // The house share lands on ERT or on VFOS. A real amount in one locks the other
           // box; a typed 0 locks nothing, so "0 in VFOS" still means "no house share here".
-          const ertLocked = amount(l.vfos_share) > 0
-          const vfosLocked = amount(l.ert_share) > 0
+          const ertLocked = noMoney || amount(l.vfos_share) > 0
+          const vfosLocked = noMoney || amount(l.ert_share) > 0
           const houseFilled = String(l.ert_share).trim() !== '' || String(l.vfos_share).trim() !== ''
           return (
             <div key={l.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '12px', alignItems: 'start', padding: '14px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
@@ -349,9 +359,9 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
                 <SearchSelect options={recipientOptions} value={l.recipientKey} onChange={k => updateLine(l.id, { recipientKey: k })} placeholder="Select a member…" />
                 {r && <RevenueBadge decision={r.revenue_decision} />}
               </div>
-              <input style={{ ...numInput, border: reqBorder(houseFilled), ...(ertLocked ? offInput : null) }} disabled={ertLocked} inputMode="decimal" placeholder="0.00" value={l.ert_share} onChange={e => updateLine(l.id, { ert_share: e.target.value })} />
-              <input style={{ ...numInput, border: reqBorder(houseFilled), ...(vfosLocked ? offInput : null) }} disabled={vfosLocked} inputMode="decimal" placeholder="0.00" value={l.vfos_share} onChange={e => updateLine(l.id, { vfos_share: e.target.value })} />
-              <input style={{ ...numInput, border: reqBorder(String(l.member_share).trim() !== '') }} inputMode="decimal" placeholder="0.00" value={l.member_share} onChange={e => updateLine(l.id, { member_share: e.target.value })} />
+              <input style={{ ...numInput, border: noMoney ? '1px solid var(--vfo-border-strong)' : reqBorder(houseFilled), ...(ertLocked ? offInput : null) }} disabled={ertLocked} inputMode="decimal" placeholder="0.00" value={l.ert_share} onChange={e => updateLine(l.id, { ert_share: e.target.value })} />
+              <input style={{ ...numInput, border: noMoney ? '1px solid var(--vfo-border-strong)' : reqBorder(houseFilled), ...(vfosLocked ? offInput : null) }} disabled={vfosLocked} inputMode="decimal" placeholder="0.00" value={l.vfos_share} onChange={e => updateLine(l.id, { vfos_share: e.target.value })} />
+              <input style={{ ...numInput, border: noMoney ? '1px solid var(--vfo-border-strong)' : reqBorder(String(l.member_share).trim() !== ''), ...(noMoney ? offInput : null) }} disabled={noMoney} inputMode="decimal" placeholder="0.00" value={l.member_share} onChange={e => updateLine(l.id, { member_share: e.target.value })} />
               <input style={{ ...numInput, border: reqBorder(String(l.deals).trim() !== '') }} inputMode="numeric" placeholder="0" value={l.deals} onChange={e => updateLine(l.id, { deals: e.target.value })} />
               <input style={numInput} placeholder="Optional" value={l.transaction_details} onChange={e => updateLine(l.id, { transaction_details: e.target.value })} />
               <button type="button" onClick={() => removeLine(l.id)} title="Remove"
@@ -382,16 +392,16 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
       {/* Gross + send */}
       <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <div style={colLabel}>Total gross (charged to specialist)</div>
+          <div style={colLabel}>{noMoney ? 'Total gross (nothing is charged)' : 'Total gross (charged to specialist)'}</div>
           <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--vfo-heading)', marginTop: '4px' }}>{money(totals.gross)}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
           <button type="button" disabled={!canSend} onClick={send}
             style={{ padding: '14px 28px', borderRadius: '10px', border: 'none', background: canSend ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : '#c7d2e4', color: '#fff', fontWeight: 700, fontSize: '15px', cursor: canSend ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif' }}>
-            {sending ? 'Sending…' : (paymentMethod === 'pending' ? `Record expected payment — ${money(totals.gross)}` : paymentMethod === 'recurring' ? `Send recurring payment link — ${money(totals.gross)}/mo` : `Send Payment Request — ${money(totals.gross)}`)}
+            {sending ? 'Sending…' : noMoney ? `Record ${totals.deals} deal${totals.deals === 1 ? '' : 's'} — no payment` : (paymentMethod === 'pending' ? `Record expected payment — ${money(totals.gross)}` : paymentMethod === 'recurring' ? `Send recurring payment link — ${money(totals.gross)}/mo` : `Send Payment Request — ${money(totals.gross)}`)}
           </button>
           {lines.length > 0 && !allLinesComplete && (
-            <div style={{ fontSize: '12px', color: '#b45309' }}>Fill in a recipient, an ERT $ or VFOS $ (not both), Member $, and Deals for every line before sending.</div>
+            <div style={{ fontSize: '12px', color: '#b45309' }}>{noMoney ? 'Pick a recipient and enter at least 1 deal on every line before recording.' : 'Fill in a recipient, an ERT $ or VFOS $ (not both), Member $, and Deals for every line before sending.'}</div>
           )}
         </div>
       </div>

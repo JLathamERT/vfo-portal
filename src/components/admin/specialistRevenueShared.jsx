@@ -27,6 +27,9 @@ const REQ_STATUS = {
   processing: { label: 'Payment processing', color: '#e06717' },
   received: { label: 'Payment received', color: '#16a34a' },
   failed: { label: 'Payment failed', color: '#ef4444' },
+  // A deal record with no money (+ New Payment → "Record deals — no payment"). Terminal;
+  // no sweep, webhook or payout engine ever touches it.
+  recorded: { label: 'Deals Recorded', color: '#16a34a' },
 }
 
 // Per-recipient status. Before the specialist's money is in, everything reads Pending.
@@ -163,7 +166,14 @@ export function MarkReceivedButton({ request, onDone }) {
 // payment_method_type 'bank_transfer'; processing / awaiting_verification / received /
 // failed all have a live or finished payment behind them). A recurring row is excluded —
 // recurring has its own cancel on the plan.
+// A no-money deal record ('recorded' + method 'none') is deletable too — nothing exists
+// downstream of it.
+export function isNoMoneyRecord(request) {
+  return request?.payment_status === 'recorded' && request?.payment_method_type === 'none'
+}
+
 export function canDeleteSpecrevRequest(request) {
+  if (isNoMoneyRecord(request)) return !request?.stripe_payment_intent_id
   return request?.payment_status === 'requested'
     && !request?.recurring_plan_id
     && !request?.stripe_payment_intent_id
@@ -177,7 +187,10 @@ export function DeleteRequestButton({ request, onDone }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
   async function go() {
-    if (!window.confirm(`Delete the ${money(request.gross_amount)} payment request for ${request.specialist_name || 'this specialist'}? This removes the request and its recipient lines completely, and the payment link already emailed will stop working. This cannot be undone.`)) return
+    const prompt = isNoMoneyRecord(request)
+      ? `Delete this deal record for ${request.specialist_name || 'this specialist'} (${request.total_deals || 0} deal(s), no payment)? This cannot be undone.`
+      : `Delete the ${money(request.gross_amount)} payment request for ${request.specialist_name || 'this specialist'}? This removes the request and its recipient lines completely, and the payment link already emailed will stop working. This cannot be undone.`
+    if (!window.confirm(prompt)) return
     setBusy(true); setMsg(null)
     try {
       const res = await callApi('specialist_revenue_delete_request', { request_id: request.id })
@@ -196,9 +209,9 @@ export function DeleteRequestButton({ request, onDone }) {
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
         <button disabled={busy} onClick={go}
           style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #fecaca', background: busy ? 'var(--vfo-tint)' : '#fef2f2', color: busy ? 'var(--vfo-faint)' : '#b91c1c', fontWeight: 700, fontSize: '13px', cursor: busy ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
-          {busy ? 'Deleting…' : 'Delete request'}
+          {busy ? 'Deleting…' : (isNoMoneyRecord(request) ? 'Delete record' : 'Delete request')}
         </button>
-        <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Removes the request completely and kills the payment link that was emailed.</span>
+        <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>{isNoMoneyRecord(request) ? 'Removes this deal record and its recipient lines.' : 'Removes the request completely and kills the payment link that was emailed.'}</span>
       </div>
       {msg && <div style={{ fontSize: '12.5px', padding: '8px 12px', borderRadius: '8px', color: tone.c, border: `1px solid ${tone.b}`, background: tone.bg }}>{msg.text}</div>}
     </div>
@@ -248,13 +261,16 @@ export function RequestRow({ request, actions, grid }) {
     || REQ_STATUS[request.payment_status]
     || { label: request.payment_status, color: 'var(--vfo-muted)' }
   const received = request.payment_status === 'received'
+  // A no-money record's lines are born 'no_payout_due'; read them as settled so they
+  // show "No payout due" rather than "Pending".
+  const settled = received || isNoMoneyRecord(request)
   const lines = request.lines || []
   // Member dollars parked behind a suspended/paused member. Only meaningful once the
   // specialist's payment is in — before that no line has been attempted at all.
   const heldMemberTotal = received ? lines.reduce((s, l) => s + (isHeldLine(l) ? Number(l.member_share) || 0 : 0), 0) : 0
   const d = requestDate(request)
   const dateStr = d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
-  const detail = <RequestDetail request={request} actions={actions} received={received} heldMemberTotal={heldMemberTotal} />
+  const detail = <RequestDetail request={request} actions={actions} received={settled} heldMemberTotal={heldMemberTotal} />
 
   if (grid) {
     return (
@@ -361,7 +377,7 @@ function RequestDetail({ request, actions, received, heldMemberTotal }) {
               {heldMemberTotal > 0 && <span style={{ ...shareNoteStyle, color: PENDING_COLOR }}>{money(heldMemberTotal)} held</span>}
             </div>
             <div>{request.total_deals || 0}</div>
-            <div style={{ textAlign: 'right', color: 'var(--vfo-muted)', fontWeight: 600 }}>{request.payment_method_type ? `${request.payment_method_type === 'bank_transfer' ? 'bank transfer' : request.payment_method_type}${request.acct_last4 ? ` ••${request.acct_last4}` : ''}` : ''}</div>
+            <div style={{ textAlign: 'right', color: 'var(--vfo-muted)', fontWeight: 600 }}>{request.payment_method_type ? `${request.payment_method_type === 'bank_transfer' ? 'bank transfer' : request.payment_method_type === 'none' ? 'no payment' : request.payment_method_type}${request.acct_last4 ? ` ••${request.acct_last4}` : ''}` : ''}</div>
           </div>
           {request.payment_status === 'pending' && request.account && (
             <div style={{ marginTop: '14px', padding: '14px 16px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px' }}>

@@ -202,6 +202,12 @@ export const TEMPLATE_META = {
   'SPECIALIST_LICENSE_CONTINUATION': [
     ['SPECIALIST_lic_continuation_request', 'Moves an existing specialist onto the portal’s $99/month license — set-up link', 'To: Specialist'],
   ],
+  'SPECIALIST_BG_CHECK': [
+    ['SPECIALIST_bgcheck_request', 'Background Check payment request sent from Accounting — secure link to pay by bank transfer or card', 'To: Specialist'],
+    ['SPECIALIST_bgcheck_reminder', '2-business-day reminder — the Background Check payment request hasn’t been paid', 'To: Specialist'],
+    ['SPECIALIST_bgcheck_confirmation|ach', 'Background Check payment started by bank transfer (ACH) — confirmation (card gets the invoice/receipt instead)', 'To: Specialist'],
+    ['SPECIALIST_bgcheck_invoicereceipt', 'Background Check payment cleared — invoice and receipt PDFs attached', 'To: Specialist'],
+  ],
   'CLIENT_PAYMENT_CONTINUATION': [
     ['setup_link', 'Migrated client — link to add their card or bank account so payments can continue', 'To: Client'],
     ['setup_link_reminder', 'Nudges a migrated client who was sent the payment-method setup link but never saved a card or bank', 'To: Client'],

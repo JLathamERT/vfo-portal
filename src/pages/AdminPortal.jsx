@@ -28,6 +28,8 @@ import SpecialistLicensePanel from '../components/admin/SpecialistLicensePanel'
 import SpecialistLicenseReconciliationPanel from '../components/admin/SpecialistLicenseReconciliationPanel'
 import SpecialistLicenseOutstandingPanel from '../components/admin/SpecialistLicenseOutstandingPanel'
 import SpecialistBgPanel from '../components/admin/SpecialistBgPanel'
+import SpecialistBgOutstandingPanel from '../components/admin/SpecialistBgOutstandingPanel'
+import SpecialistBgReconciliationPanel from '../components/admin/SpecialistBgReconciliationPanel'
 import SpecialistReconciliationPanel from '../components/admin/SpecialistReconciliationPanel'
 import HolisticRevenuePanel from '../components/admin/HolisticRevenuePanel'
 import HolisticReconciliationPanel from '../components/admin/HolisticReconciliationPanel'
@@ -601,7 +603,7 @@ export default function AdminPortal() {
       submenu: [
         { key: 'specialist_revenue', label: 'VFO Specialist Revenue' },
         { key: 'specialist_license', label: 'VFO Specialist License Fees' },
-        { key: 'specialist_bg', label: 'VFO Specialist Background Check & Due Diligence Fees' },
+        { key: 'specialist_bg', label: 'VFO Specialist Background Checks' },
       ],
     },
   ]
@@ -936,7 +938,15 @@ export default function AdminPortal() {
             />
           )}
           {activeTab === 'accounting' && !loading && canSeeTab('accounting') && accountingSection === 'specialist_bg' && (
-            <SpecialistBgPanel />
+            <AccountingCombinedPanel
+              breadcrumb="Accounting · Specialists" title="VFO Specialist Background Checks"
+              maxWidth="900px"
+              tabs={[
+                { key: 'specialist_bg', label: 'VFO Specialist Background Checks', render: () => <SpecialistBgPanel allExperts={allExperts} embedded /> },
+                { key: 'specialist_bg_reconciliation', label: 'Background Check Reconciliation', render: () => <SpecialistBgReconciliationPanel embedded /> },
+                { key: 'specialist_bg_outstanding', label: 'Outstanding Payment Links', render: () => <SpecialistBgOutstandingPanel embedded /> },
+              ]}
+            />
           )}
           {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'holistic_revenue' || accountingSection === 'holistic_reconciliation') && (
             <AccountingCombinedPanel
