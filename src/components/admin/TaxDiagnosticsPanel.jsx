@@ -85,17 +85,15 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
     return c
   }, [data])
 
-  const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '20px 24px', marginBottom: '14px' }
+  const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
   return (
-    <div style={{ padding: '24px 0' }}>
-      <div style={{ marginBottom: '18px' }}>
-        <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>Tax Diagnostics</div>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '6px', lineHeight: 1.6 }}>
-          Submissions from the public form at <span style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{PUBLIC_URL}</span>. Nothing is created until you confirm the member.
-        </div>
-      </div>
+    // Same page frame as the FAQ Editor / Growth Credits tabs.
+    <div style={{ maxWidth: '980px', margin: '0 auto', padding: '32px 24px' }}>
+      <h2 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '0 0 6px' }}>Tax Diagnostics</h2>
+      <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 24px', lineHeight: 1.6 }}>
+        Submissions from the public form at <span style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{PUBLIC_URL}</span>. Nothing is created until you confirm the member.
+      </p>
 
       {data && data.public_page_enabled === false && (
         <div style={{ ...card, borderColor: 'rgba(224,103,23,0.45)', background: 'rgba(224,103,23,0.06)', fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>
@@ -142,7 +140,7 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
   const chip = STATUS_CHIP[d.status] || { label: d.status, color: '#64748b' }
   const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim() || '(no name)'
   const answers = d.answers || {}
-  const label = { fontSize: '11px', fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'var(--vfo-muted)', marginBottom: '3px' }
+  const label = { fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginBottom: '3px' }
   const value = { fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }
 
   return (
@@ -172,11 +170,12 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
             </div>
           )}
 
-          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '8px 0 12px' }}>Answers</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px 24px' }}>
-            {visibleQuestions.map(q => (
-              <div key={q.id} style={q.type === 'textarea' ? { gridColumn: '1 / -1' } : undefined}>
-                <div style={label}>{q.label}</div>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '8px 0 4px' }}>Answers</div>
+          {/* One question per row — a list to scroll, not a grid. */}
+          <div>
+            {visibleQuestions.map((q, i) => (
+              <div key={q.id} style={{ padding: '10px 0', borderBottom: i === visibleQuestions.length - 1 ? 'none' : '1px solid var(--vfo-tint)' }}>
+                <div style={label}>{i + 1}. {q.label}</div>
                 <div style={value}>{answers[q.id] || '—'}</div>
               </div>
             ))}
