@@ -8,6 +8,69 @@
 
 ---
 
+## 2026-09-23 (d) — The public VFO Tax Diagnostic (replaces Unbounce) + the $500 intake deposit becomes card-or-ACH on every route
+
+Branch `claude/vfo-session-setup-7d6992`, both repos, ONE chat. Its own shipping unit, separate from DIRECT unit 3. `vfo-admin-api` **v883 → v884 → v885 → v886**, `boldsign-webhook` untouched at v46. Action count **533 → 541**, route pages **35 → 37**, crons 18 unmoved, `send_mode=true` 50 unmoved (the team email was seeded Send and turned Draft the same day). Decisions **30–41** in `plans/direct-tax-planning/README.md`; flow of record [flows/tax-diagnostic.md](flows/tax-diagnostic.md) + [flows/tax-intake.md](flows/tax-intake.md); gotchas **#531–#534**.
+
+**What was built — the diagnostic.**
+- **The page.** `vfoportal.com/tax-diagnostic` is public, with no login and no token. It asks the 37 intake questions plus three of its own:
+  - **Who is completing this form?** (the client / a VFO member for their client);
+  - for a client, **Were you referred by a VFO member?** (Yes → a names-only type-ahead; "No one / I heard about VFO elsewhere" → How did you hear about us?);
+  - for a member, their own name.
+- **Nothing is created by a submission.** It lands in the new admin **Tax Diagnostics** tab (grantable key `tax_diagnostics`), and bells Tracy, Evan, Paul and Jake. It also drafts a team email (template 286, Draft, To Tracy, Cc Evan / Paul / Anton).
+- **A person Confirms** the member, pre-selected when the form named exactly one, and the payer, pre-set from "who is completing" with a toggle. Confirm mints an ordinary `tax_intake_requests` row (`diagnostic_id` set, classic route, Q1 / Q7–Q9 from the CONFIRMED member):
+  - a waived member → the case is created at once;
+  - otherwise → a "Pay deposit" email (287 client / 288 member, Draft).
+- **Other pieces.**
+  - **Dismiss** handles spam.
+  - **Retry** resumes a failed finalize, an undrafted link or a half-stamped confirm on the same row.
+  - Each card shows a four-step deposit track and, once the client exists, an **Open client profile** link.
+- **Tables.** `tax_diagnostics` + `public_rate_hits` (both deny-all in the same migration, anon `*/0`, advisor GREEN — the STRONG check), `tax_intake_requests.diagnostic_id`, and flag `portal_feature_flags.tax_diagnostic`. A diagnostic row rides that flag, never the member's `tax_intake` flag, so it can go live on its own. The flag is **ON** as of 2026-09-23 by Jake's call; the page is unreachable until the frontend deploys.
+
+**What was built — the deposit choice page.** Jake found the member intake's $500 deposit had been built card-only straight-to-Stripe in unit 1, so the fix covers ALL routes: route A member form, route B client link, and the diagnostic. Each now lands on the public `/tax-deposit-pay?token=` card-or-ACH page, with the `/tax-pay` copy verbatim.
+- **Card:** `cardChargeCents(500)` = $515.24, from the new `constants/card-fee.ts`.
+- **ACH:** unpinned, bank sign-in first, manual entry as the fallback.
+- **The rule followed was "copy the verified precedents, do not reinvent".** The webhook branches (`utils/tax-intake-deposit-webhook.ts`) are the Background Check request's shape, with the Tax retainer's requires_action / micro-deposit handling:
+  - confirmation at ACH submit (289/290), or the verify-bank variant (291/292) plus a Jake+Tracy FYI bell;
+  - `payment_intent.processing` clears the verification stamp;
+  - **the case is created only at `payment_intent.succeeded`** (#533);
+  - failure / cancel / bounce acts only on a BOOKED PaymentIntent, releasing the row to `expired` so the payer's link works again, with a Jake bell (`FAILURE_tax_intake_deposit_ach`).
+- **Side-columns on `tax_intake_requests`, no new status value** (#475): `deposit_payment_method_type`, `deposit_acct_last4`, `deposit_card_fee`, `deposit_processing_at`, `deposit_bank_verification_pending_at`, `deposit_failed_at`, `deposit_ach_email_sent_at`.
+- **Also fixed:** the deposit invoice/receipt now print the real method and a card-fee row (they said "Credit/Debit Card" always), and the deposit refund returns the $500 BASE only for intake rows (legacy hand-pasted plans unchanged).
+- **Route A rows now carry `intake_token`.** It is the payment page's credential only; the `/tax-intake` form actions 404 it.
+
+**What broke / what reviews caught.**
+- **First Fable review** (APPROVE WITH NOTES), fixed:
+  - the rate limiter keyed on a caller-supplied `X-Forwarded-For` (#531);
+  - `tax_intake_send_link`'s reuse query could hijack a diagnostic row and re-route it to Direct;
+  - a failed link draft still read "link sent";
+  - an orphaned intake row on a half-stamped confirm;
+  - hidden answers (member email / firm) returned to the token holder;
+  - confirm while the flag was off.
+- **Second Fable review of the ACH build** (no blocker), fixed:
+  - a `paid` redelivery had stopped re-running the resumable finalize (a regression of the 2026-09-18 rule);
+  - a complete session with a dead PaymentIntent stranded its row;
+  - a failed `/expire` could leave two payable Checkouts;
+  - a backstop ACH confirmation on `processing`.
+- **Click-through changes Jake asked for:**
+  - the referral question now comes before the search;
+  - the admin tab uses the FAQ-tab page frame and a scrolling answer list;
+  - an Open/Hide chevron and a red Dismiss;
+  - the pay link is pay-only (no answer review) and goes straight to payment;
+  - the team email went Draft with the recipients above.
+- **The dev server served a half-written `App.jsx`**, so the new route fell to the login page (#534).
+
+**Proven live on Test Member 59524 (sandbox), all fixtures wiped afterwards:**
+- smoke **5/5 vs v884 and vs v886**;
+- `scripts/probe-tax-diagnostic.ps1` all-pass (Off mode vs v883, On mode vs v884 and v886);
+- a client-pay card deposit through a diagnostic (invoice/receipt fee row);
+- ACH by bank sign-in (processing email, case created at settle);
+- ACH by manual entry, with micro-deposits verified `SM11AA` (verify email, bell, case at settle);
+- the member's own route A form, card, including Stripe's back/cancel return;
+- Dismiss.
+
+**Code-only (see the hub OWED line):** the ACH bounce/failure release and its bell, micro-deposit EXPIRY, the dead-PaymentIntent release, the paid-redelivery re-finalize, the unknown-expire refusal, a route B client-link payment by ACH, a member-paid diagnostic deposit, a waived-member confirm, the processing backstop email, and every real (non-sandbox) send.
+
 ## 2026-09-23 (c) — Five misc tasks: arrears clear lifts a suspension, three $0 membership plans wiped, a one-time Background Check request pipeline, "Client:" on member-paid documents, and $0 SpecRev deal records
 
 Branch `claude/vfo-session-setup-10775e`, both repos, ONE chat. `vfo-admin-api` **v880** (items 1/4/5, deployed from a clean detached worktree of `origin/main` + only those 13 files, because the item-3 build was still in flight in the session worktree) → **v881** (the reissue thread fix) → **v882** (item 3, deployed from the session worktree after migrations). `boldsign-webhook` untouched at v46. Action count **528 → 533**. Route pages unmoved at **35** (the new pay page is a `kind=bgreq` branch of `/specialist-pay`). Crons unmoved at **18**. `send_mode=true` unmoved at **50** (every new template is Draft).

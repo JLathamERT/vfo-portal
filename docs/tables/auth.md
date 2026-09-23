@@ -117,6 +117,23 @@ Brute-force throttle ledger for all six login handlers (H1, added 2026-06-18; `t
 
 ---
 
+## `public_rate_hits` (added 2026-09-23)
+
+Rolling-window hit log for **public (no-session) actions** — today only the VFO Tax Diagnostic's. Migration `20260923180000_tax_diagnostics.sql`; RLS enabled, **deny-all** in the same migration. **Deliberately NOT `login_attempts`**: that table's per-IP count is the login throttle, so public-form traffic there would lock a member out of logging in. Written and read only by `utils/public-rate-limit.ts hitRateLimit`, which counts the bucket + IP hash over the window, **fails closed** (a failed count or insert is treated as blocked), records a hit only when under the cap, and prunes rows older than a day on about 5% of calls.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigserial | pk. |
+| `bucket` | text | not null. `diag_search` (60 per IP per 5 min), `diag_search_all` (600 per 5 min, one global key), `diag_submit` (5 per IP per hour, recorded last — only for a submission about to land). |
+| `ip_hash` | text | not null. HMAC-SHA256 (keyed by the service-role secret) of the IP the PLATFORM saw: `cf-connecting-ip`, then `x-real-ip`, then the LAST `x-forwarded-for` entry. Never the raw address. |
+| `created_at` | timestamptz | not null, default `now()`. The window column. |
+
+**Index:** `public_rate_hits_lookup_idx` (`bucket, ip_hash, created_at`).
+
+**Touched by:** `tax_diagnostic_member_search`, `tax_diagnostic_submit` (both via `utils/public-rate-limit.ts`).
+
+---
+
 ## Token flow
 
 1. Client calls `admin_login` / `member_login` with `{email, passcode}`.
