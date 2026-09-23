@@ -5,7 +5,165 @@ import { ordinal } from '../lib/ordinal'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
+// /specialist-pay serves three payment kinds off one route (so no new route page):
+//   kind=bgreq   → an admin-sent Background Check payment REQUEST (specialist_bg_requests,
+//                  Accounting > Specialists > VFO Specialist Background Checks)
+//   kind=license → the recurring $99/mo VFO License
+//   (none)       → the onboarding one-time Core/Max background check
 export default function SpecialistPayPage() {
+  const [searchParams] = useSearchParams()
+  if (searchParams.get('kind') === 'bgreq') return <BgRequestPay />
+  return <OnboardingOrLicensePay />
+}
+
+// A Background Check payment REQUEST. The token row is the whole credential; the page
+// sends the token and the chosen method and nothing else.
+function BgRequestPay() {
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token')
+  const returnedPaid = searchParams.get('paid') === '1'
+  const returnedCanceled = searchParams.get('canceled') === '1'
+  const [status, setStatus] = useState('loading')
+  const [error, setError] = useState('')
+  const [data, setData] = useState(null)
+  const [hoveredOption, setHoveredOption] = useState(null)
+
+  useEffect(() => {
+    if (!token) { setError('Invalid payment link.'); setStatus('error'); return }
+    ;(async () => {
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'automation_SPECIALIST_bgreqload', token }),
+        })
+        const d = await res.json()
+        if (d.error) { setError(d.error); setStatus('error'); return }
+        setData(d)
+        setStatus('ready')
+      } catch {
+        setError('Failed to load payment details.')
+        setStatus('error')
+      }
+    })()
+  }, [])
+
+  async function handleChoice(method) {
+    setStatus('redirecting')
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'automation_SPECIALIST_bgreqcheckout', token, method }),
+      })
+      const d = await res.json()
+      if (d.url) { window.location.href = d.url; return }
+      setError(d.error || 'Failed to create checkout session.')
+      setStatus('error')
+    } catch {
+      setError('Failed to initiate payment.')
+      setStatus('error')
+    }
+  }
+
+  if (status === 'loading') return (
+    <TokenShell><p style={{ color: 'var(--vfo-muted)', fontSize: '15px', textAlign: 'center', margin: 0 }}>Loading payment details…</p></TokenShell>
+  )
+
+  if (status === 'error') return (
+    <TokenShell maxWidth={520}>
+      <div style={messageCardStyle}>
+        <div style={{ ...iconCircleStyle, background: '#ef444420', color: '#ef4444', fontSize: '30px', fontWeight: 800 }}>!</div>
+        <h1 style={titleStyle}>Payment Error</h1>
+        <p style={subtitleStyle}>{error}</p>
+      </div>
+    </TokenShell>
+  )
+
+  if (status === 'redirecting') return (
+    <TokenShell><p style={{ color: 'var(--vfo-muted)', fontSize: '15px', textAlign: 'center', margin: 0 }}>Redirecting to Stripe…</p></TokenShell>
+  )
+
+  const amount = Number(data.amount) || 0
+  const payStatus = data.payment_status
+  // Back from Stripe with paid=1, or the row already says so: nothing left to choose.
+  // A just-returned card payer may beat the webhook, so paid=1 alone is trusted here.
+  if (data.already_paid || (returnedPaid && payStatus !== 'failed')) {
+    const received = payStatus === 'succeeded'
+    const bankInFlight = payStatus === 'processing'
+    return (
+      <TokenShell maxWidth={520}>
+        <div style={messageCardStyle}>
+          <div style={{ ...iconCircleStyle, background: 'rgba(34,197,94,0.15)' }}>
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+          </div>
+          <h1 style={titleStyle}>{received ? 'Payment received' : 'Thank you — payment submitted'}</h1>
+          <p style={subtitleStyle}>
+            {received
+              ? `Thanks, ${data.first_name}. Your Background Check payment of $${formatMoney(amount)} has been received. Your invoice and receipt are on their way by email.`
+              : bankInFlight
+                ? `Thanks, ${data.first_name}. Your Background Check payment of $${formatMoney(amount)} is on its way. Bank payments take 2–4 business days to clear; we'll email your invoice and receipt once it has.`
+                : `Thanks, ${data.first_name}. Your Background Check payment of $${formatMoney(amount)} has been submitted. We'll email your invoice and receipt as soon as it clears.`}
+          </p>
+        </div>
+      </TokenShell>
+    )
+  }
+
+  const cardFee = Math.round(((amount + 0.30) / (1 - 0.029) - amount) * 100) / 100
+  const cardTotal = Math.round((amount + cardFee) * 100) / 100
+  const lineLabel = 'VFO Specialist Background Check'
+  const notice = payStatus === 'failed'
+    ? 'Your previous payment did not go through. Please choose a payment method to try again.'
+    : returnedCanceled ? 'Your payment was not completed. You can choose a payment method below whenever you are ready.' : ''
+
+  return (
+    <TokenShell>
+      <div style={pageContainerStyle}>
+        <div style={{ ...iconCircleStyle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+        </div>
+        <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>VFO Specialist Background Check</h1>
+        <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: '12px' }}>Choose your preferred payment method</p>
+        <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: notice ? '16px' : '32px', fontSize: '13px', color: 'var(--vfo-muted)' }}>
+          One-time payment · {data.first_name}
+        </p>
+        {notice && (
+          <p style={{ fontSize: '13px', color: '#b7791f', background: 'rgba(214,158,46,0.10)', padding: '10px 14px', borderRadius: '10px', margin: '0 0 24px', textAlign: 'center' }}>{notice}</p>
+        )}
+
+        <OptionCard
+          isHovered={hoveredOption === 'ach'} onHover={() => setHoveredOption('ach')} onLeave={() => setHoveredOption(null)}
+          onClick={() => handleChoice('ach')} title="ACH Bank Transfer" badgeText="No Fee" badgeClass="green" amount={amount}
+          breakdown={[
+            { label: lineLabel, value: `$${formatMoney(amount)}`, valueColor: 'var(--vfo-ink-2)' },
+            { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
+          ]}
+          footer='Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. Takes 2-4 business days to process.'
+        />
+
+        <div style={dividerStyle}>— or —</div>
+
+        <OptionCard
+          isHovered={hoveredOption === 'card'} onHover={() => setHoveredOption('card')} onLeave={() => setHoveredOption(null)}
+          onClick={() => handleChoice('card')} title="Credit / Debit Card" badgeText="2.9% + $0.30 Fee" badgeClass="blue" amount={cardTotal}
+          breakdown={[
+            { label: lineLabel, value: `$${formatMoney(amount)}`, valueColor: 'var(--vfo-ink-2)' },
+            { label: 'Card Processing Fee (2.9% + $0.30)', value: `$${formatMoney(cardFee)}`, valueColor: 'var(--vfo-ink-2)' },
+          ]}
+          footer="Processes immediately. The processing fee covers card transaction costs."
+        />
+
+        <p style={securityNoteStyle}>
+          Your payment details are handled securely by Stripe.<br />
+          VFO Services never sees or stores your payment information.
+        </p>
+      </div>
+    </TokenShell>
+  )
+}
+
+function OnboardingOrLicensePay() {
   const [searchParams] = useSearchParams()
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')

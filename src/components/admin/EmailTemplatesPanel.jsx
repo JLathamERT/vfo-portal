@@ -16,6 +16,7 @@ const SECTIONS = [
   { key: 'accountant', label: 'Accountant Onboarding', pipeline: 'ACCOUNTANT_ONBOARDING' },
   { key: 'specialist', label: 'Specialist Onboarding', pipeline: 'SPECIALIST_ONBOARDING' },
   { key: 'specialist_continuation', label: 'Specialist License Fee Continuation', pipeline: 'SPECIALIST_LICENSE_CONTINUATION' },
+  { key: 'specialist_bg_check', label: 'Specialist Background Check Requests', pipeline: 'SPECIALIST_BG_CHECK' },
   { key: 'specialist_revenue', label: 'VFO Specialist Revenue', pipeline: 'VFO_SPECIALIST_REVENUE' },
   { key: 'client_continuation', label: 'Client Payment Continuation', pipeline: 'CLIENT_PAYMENT_CONTINUATION' },
   { key: 'member_membership', label: 'Member Membership Fees', pipeline: 'MEMBER_MEMBERSHIP_FEES' },

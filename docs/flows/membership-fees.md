@@ -243,7 +243,7 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
   invoice-receipt / late-ACH-bounce branches serve it like a sweep pull. `checkout.session.completed`
   → `settleMembershipArrearsPayment`: refreshes the method (`activateMembershipPlan` "refreshed" arm),
   books the rows `paid` (card) / `processing` (ACH) against the PI, stamps the card fee, and on a card
-  payment clears `membership_arrears` + releases held payouts immediately and chains
+  payment clears `membership_arrears` (lifting any suspension, see pass 4 below) + releases held payouts immediately and chains
   `automation_MEMBERSHIP_invoicereceipt`; ACH clears at pass 4 once settled. **Links on ACTIVE plans
   expire 30 days after last being emailed** (`setup_link_expires_at`, re-stamped by every
   emailer of the link + by activation; expired/NULL → "ask VFO Services for a fresh one"); the
@@ -320,14 +320,21 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
    LOGICAL/date-less sorted row-set idempotency keys `membership-pull-<plan>-<rowids>`, gotcha
    #228 class; a charge that succeeds but whose ledger write fails alerts Jake loudly; sync
    card decline → missed/email/arrears flag/bell), **clear arrears** on caught-up members.
-   **Pass 4 now also RELEASES HELD REVENUE SHARES (2026-08-24)** *(v: 2026-09-15)* — after
-   clearing `membership_arrears` for a caught-up plan it **re-reads the member row** and, only
-   when `memberHoldReason` finds **no reason left** (the admin's own `suspended`/`paused` toggles
-   hold independently — #240), calls `releaseHeldMemberPayouts(member_number)`, which HTTP-chains
-   `automation_CONTRACT_revshare` / `automation_TAX_revshare` / `automation_PIP_revshare` /
-   `specialist_revenue_payout` for every leg parked by the standing hold. The summary gains
-   **`payouts_released`** (count of legs re-fired). A failed re-read logs and SKIPS the release
-   rather than guessing; the arrears clear itself is never blocked by it (summary key `arrears_cleared`). Chain bodies + the both-linkage
+   **Pass 4** *(v: 2026-09-23)* calls the shared `utils/membership-arrears-payment.ts`
+   `clearMembershipArrearsIfCaughtUp` **once per MEMBER** with an active plan — the same helper the
+   card pay-now settle uses. It clears `membership_arrears` only when no missed/declined row
+   (`amount_due > 0`) is left across ALL the member's active plans; then **`liftSuspensionOnArrearsClear`
+   switches `members.suspended` OFF** if it is on — any suspension, whatever its original reason (the
+   portal records none; Jake's decision) — with the FYI bell **`MEMBERSHIP_arrears_suspension_lifted`**
+   (Jake; migration `20260923120000_membership_arrears_suspension_lifted_rule.sql`). `paused` is never
+   touched. It then **re-reads the member row** and, only when `memberHoldReason` finds **no reason
+   left** (a `paused` toggle still holds — #240), calls `releaseHeldMemberPayouts(member_number)`,
+   which HTTP-chains `automation_CONTRACT_revshare` / `automation_TAX_revshare` /
+   `automation_PIP_revshare` / `specialist_revenue_payout` for every leg parked by the standing hold.
+   The summary carries **`arrears_cleared`**, **`suspensions_lifted`** and **`payouts_released`**
+   (count of legs re-fired). A failed re-read logs and SKIPS the release
+   rather than guessing; the arrears clear itself is never blocked by it, and a failed suspension lift
+   logs and leaves the member suspended (only delaying the release). Chain bodies + the both-linkage
    client resolution: [07-server-chains.md § Member reinstatement](../architecture/07-server-chains.md).
    Off-session PI settlement has a webhook block (`payment_intent.succeeded/_failed` routed by
    membership metadata) covering ACH pulls + termination fees — and since v617 the

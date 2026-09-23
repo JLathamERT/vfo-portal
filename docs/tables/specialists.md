@@ -127,6 +127,35 @@ Per-task progress within a stage of an onboarding.
 
 ---
 
+## `specialist_bg_requests` (2026-09-23)
+
+Admin-sent, one-time, any-amount **VFO Specialist Background Check payment requests** (Accounting → Specialists → VFO Specialist Background Checks). **Independent of `specialist_onboarding.bg_*`** (the onboarding Core/Max check). One row = one request = one payment. Migration `20260923130000_specialist_bg_requests.sql` — **RLS enabled + `"Deny all access"` policy in the same migration** (SECURITY INVARIANT 1). Flow: [../flows/specialist-bg-requests.md](../flows/specialist-bg-requests.md).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigserial | pk. Also the source of the derived document numbers `INV-BGC-<0000>` / `REC-BGC-<0000>`. |
+| `expert_id` | integer | `experts.id` of the specialist (no FK). |
+| `specialist_name` / `specialist_email` | text | Snapshotted from `experts` at send time. |
+| `amount` | numeric(10,2) | not null, `CHECK (amount > 0)`. The BASE amount; a card payer pays it grossed up 2.9% + $0.30. |
+| `checkout_token` | text | unique. The whole credential of the public `/specialist-pay?kind=bgreq&token=` page (#310). |
+| `stripe_customer_id` | text | A FRESH primary-account customer per request (`metadata.pipeline=SPECIALIST_BG_CHECK`). Never `bg_stripe_customer_id`. |
+| `stripe_payment_intent_id` | text | The PI the row was BOOKED against at checkout — the only PI whose failure can fail the row (#482/#484). |
+| `payment_status` | text | not null, default `'requested'`. `requested` → `processing` (ACH submitted) → `succeeded`; `failed` (booked PI failed — the link works again). Bare text, no CHECK. A `requested` or `processing` row blocks a second send to the same `expert_id` (409); `failed` does not. |
+| `payment_method_type` / `acct_last4` | text | `card` / `ach` + last 4, from the PI's payment method. `unknown` when the PI could not be read on a paid session (Jake is belled and the invoice/receipt is held for a hand fix). |
+| `card_processing_fee` | numeric(10,2) | Card only: `amount_received/100 − amount`. |
+| `payment_requested_at` / `payment_completed_at` | timestamptz | Sent (drafted) / settled. `payment_requested_at` clocks the reminder ladder. |
+| `reminder_sent_at` / `tracy_notified_at` | timestamptz | Specialist sweep tier 8 guards (2-business-day email / 4-business-day Tracy bell). |
+| `confirmation_email_sent_at` | timestamptz | Once-only latch for `SPECIALIST_bgcheck_confirmation\|ach` (atomic claim). Cleared when the row is marked `failed`, so a re-pay by bank gets its own confirmation. |
+| `invoice_number` / `receipt_number` / `invoice_drive_id` / `receipt_drive_id` | text | Stamped by `automation_SPECIALIST_bgreqinvoicereceipt`. |
+| `invoice_email_sent_at` | timestamptz | Once-only latch for the invoice/receipt (atomic claim, released if the render or draft fails or throws). |
+| `sandbox` | boolean | not null default false. Stamped at send from `pipeline_sandbox_config` row `SPECIALIST_ONBOARDING`, forced true for `TEST_SANDBOX_EXPERT_IDS` (`constants/test-sandbox.ts`, `[6137]` = the production Test Specialist); every later Stripe key, recipient route and webhook mode check reads THIS, not the live config (#485). |
+| `created_by` | text | Admin email. |
+| `created_at` / `updated_at` | timestamptz | default `now()`. |
+
+**Touched by:** `specialist_bg_request_send` (insert; deletes its own row if the draft fails), `automation_SPECIALIST_bgreqload` / `_bgreqcheckout` (read), the `SPECIALIST_BG_CHECK` webhook branches (`utils/specialist-bg-request-webhook.ts`), `_bgreqconfirmation`, `_bgreqinvoicereceipt`, `automation_SPECIALIST_sweep` tier 8, `specialist_bg_payments_load` (read, as `requests`).
+
+---
+
 ## `specialist_onboarding_meetings`
 
 Meetings logged against an onboarding.

@@ -60,7 +60,7 @@ State machine for the tax-planning engagement. **161 columns as of 2026-08-16 �
 | `tax_final_decision` | text | `Yes` / `No` / `ExtraMeeting` — set by `automation_TAX_finaldecision` from the `/tax-decide` page. |
 | `tax_via_extra_meeting` | boolean | default false. True if Yes came through Extra Meeting outcome branch. |
 | `tax_decision_email_sent` | text | `Yes` once Undecided/decline Gmail draft succeeds. Idempotency guard. |
-| `member_paying_on_behalf` | boolean | default false. Set from the Yes/No "member signing & paying on the client's behalf?" question on the Tax 3 `TaxDecisionForm`; mirrors MAP 1 PIP-Follow-Up. Carries through Tax 3 → Tax 4 → Tax 5. When true, 14 tax handlers flip emails To member / Cc client, use the member `email_templates` variant (suffix ` (member signing/paying on clients behalf)`, ids 126–147), make the member the BoldSign signer 1 + Stripe payer, and set invoice/receipt "Bill To" = member. `send-agreement.ts` loads `agreement_templates` id 20 (`payer_type='member'`). |
+| `member_paying_on_behalf` | boolean | default false. Set from the Yes/No "member signing & paying on the client's behalf?" question on the Tax 3 `TaxDecisionForm`; mirrors MAP 1 PIP-Follow-Up. Carries through Tax 3 → Tax 4 → Tax 5. When true, 14 tax handlers flip emails To member / Cc client, use the member `email_templates` variant (suffix ` (member signing/paying on clients behalf)`, ids 126–147), make the member the BoldSign signer 1 + Stripe payer, and set invoice/receipt "Bill To" = member with a "Client: <client name>" line under it (2026-09-23). `send-agreement.ts` loads `agreement_templates` id 20 (`payer_type='member'`). |
 
 ### Agreement (BoldSign)
 | Column | Type | Notes |

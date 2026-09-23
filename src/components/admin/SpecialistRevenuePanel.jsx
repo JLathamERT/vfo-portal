@@ -59,8 +59,9 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
   // Money totals + the By-member rollup count only requests whose payment has been
   // received — pending/requested requests are expected money, not real revenue yet.
   // (The By-specialist list below still shows every request, incl. pending, so you can
-  // mark them received.)
-  const receivedFiltered = useMemo(() => filtered.filter(r => r.payment_status === 'received'), [filtered])
+  // mark them received.) No-money deal records ('recorded') ride along: every money
+  // column on them is 0, so they add deals and nothing else.
+  const receivedFiltered = useMemo(() => filtered.filter(r => r.payment_status === 'received' || r.payment_status === 'recorded'), [filtered])
 
   // Member view: every recipient line across ALL specialists in the period, grouped
   // by recipient (so a member's deals are together no matter which specialist billed).
@@ -144,7 +145,7 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
             <span>Specialist</span><span>Date</span><span style={{ textAlign: 'right' }}>Recipients</span><span style={{ textAlign: 'right' }}>Deals</span><span style={{ textAlign: 'right' }}>Member $</span><span style={{ textAlign: 'right' }}>ERT $</span><span style={{ textAlign: 'right' }}>VFOS $</span><span style={{ textAlign: 'right' }}>Gross</span><span style={{ textAlign: 'right' }}>Status</span>
           </div>
           <div style={{ ...totalsRowStyle, gridTemplateColumns: SPECIALIST_GRID }}>
-            <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>{periodLabel} · received</span></span>
+            <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>{periodLabel} · received + recorded deals</span></span>
             <span /><span /><span />
             <span style={{ textAlign: 'right' }}>{money(periodMember)}</span>
             <span style={{ textAlign: 'right' }}>{money(periodErt)}</span>
@@ -171,7 +172,7 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
             <span>Recipient</span><span>Decision</span><span style={{ textAlign: 'right' }}>Deals</span><span style={{ textAlign: 'right' }}>Member $</span><span style={{ textAlign: 'right' }}>ERT $</span><span style={{ textAlign: 'right' }}>VFOS $</span>
           </div>
           <div style={{ ...totalsRowStyle, gridTemplateColumns: MEMBER_GRID }}>
-            <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>{periodLabel} · received</span></span>
+            <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>{periodLabel} · received + recorded deals</span></span>
             <span />
             <span style={{ textAlign: 'right' }}>{memberDeals}</span>
             <span style={{ textAlign: 'right' }}>
@@ -299,7 +300,7 @@ function ErtCatchUpTransferSection() {
 // surfaces read the same: bordered card, uppercase header row, Totals above the data.
 // Nine columns inside the 1200px Specialists shell, so the fixed widths are trimmed
 // rather than letting the ERT column push the table into a horizontal scroll.
-const SPECIALIST_GRID = '1.4fr 104px 72px 56px 100px 100px 100px 100px 150px'
+const SPECIALIST_GRID = '1.4fr 104px 72px 56px 100px 100px 100px 100px 185px'
 const MEMBER_GRID = '1.6fr 140px 66px 118px 118px 118px'
 export const tableStyle = { border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }
 export const headerRowStyle = { display: 'grid', gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }

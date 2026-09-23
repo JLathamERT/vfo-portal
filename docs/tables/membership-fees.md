@@ -146,11 +146,16 @@ one. Gotcha **#332**.
   `MEMBERSHIP_renewal_meeting_requested` (area "Membership Fees", `kind='bell'`,
   **`action_required=true`**, `recipients` NULL so the `default_recipients`
   `["rhopson@elitert.com"]` is what fires until an admin edits it in Automation → Notification
-  Editor, #176).
+  Editor, #176). **Added 2026-09-23:** `MEMBERSHIP_arrears_suspension_lifted` (area "Membership Fees",
+  `kind='bell'`, FYI — `action_required=false`, `default_recipients` `["jlatham@elitert.com"]`;
+  migration `20260923120000_membership_arrears_suspension_lifted_rule.sql`) — raised when an arrears
+  clear switches a member's `suspended` flag off.
 - pg_cron jobid 16 `membership-sweep-daily` @12:00 UTC — **five passes as of 2026-08-04**
-  (renewal notices → renewals → waive → charges → clear `members.membership_arrears`). **Pass 4 also releases the
-  member's held revenue-share payouts when the clear leaves no hold reason at all
-  (2026-08-24); summary gains `payouts_released` (+ `arrears_cleared`, 2026-09-15).**
+  (renewal notices → renewals → waive → charges → clear `members.membership_arrears`). **Pass 4 runs
+  the shared `clearMembershipArrearsIfCaughtUp` once per member (all active plans counted), which also
+  lifts a `suspended` flag (2026-09-23) and releases the member's held revenue-share payouts when the
+  clear leaves no hold reason at all; summary carries `arrears_cleared`, `suspensions_lifted`,
+  `payouts_released`.**
 - pg_cron jobid 19 `membership-arrears-digest-weekly` @13:00 UTC Fridays (2026-09-15) —
   `automation_MEMBERSHIP_arrears_digest`, a read-only Gmail draft to platham@ of every member whose
   active plan carries missed/declined rows.
