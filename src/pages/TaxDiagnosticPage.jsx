@@ -37,6 +37,7 @@ export default function TaxDiagnosticPage() {
   const [completedBy, setCompletedBy] = useState('')
   const [referrerName, setReferrerName] = useState('')
   const [referrerNone, setReferrerNone] = useState(false)
+  const [referredYes, setReferredYes] = useState(false)
   const [heardFrom, setHeardFrom] = useState('')
   const [heardFromOther, setHeardFromOther] = useState('')
   const [website, setWebsite] = useState('')
@@ -58,17 +59,27 @@ export default function TaxDiagnosticPage() {
     return () => { live = false }
   }, [])
 
-  // A member must name themselves; "No one" is a client-only answer.
+  // A member must name themselves, so the "were you referred?" question is a
+  // client-only one; switching to member drops any "No" already given.
   function chooseCompletedBy(v) {
+    if (v === completedBy) return
     setCompletedBy(v)
-    if (v === 'member' && referrerNone) { setReferrerNone(false); setHeardFrom(''); setHeardFromOther('') }
+    setReferrerName(''); setReferredYes(false); setReferrerNone(false); setHeardFrom(''); setHeardFromOther('')
+  }
+  // Client only: were you referred by a VFO member? Yes → the name search;
+  // No → "How did you hear about us?". '' = not answered yet.
+  const referred = referrerNone ? 'no' : (referredYes ? 'yes' : '')
+  function chooseReferred(v) {
+    if (v === 'yes') { setReferredYes(true); setReferrerNone(false); setHeardFrom(''); setHeardFromOther('') }
+    else { setReferredYes(false); setReferrerNone(true); setReferrerName('') }
   }
 
   function validatePrelude() {
     const found = []
     if (!completedBy) found.push('Who is completing this form? is required')
     if (completedBy === 'member' && !referrerName) found.push('Please choose your name from the member list')
-    if (completedBy !== 'member' && !referrerName && !referrerNone) found.push(`Please choose the VFO member, or pick "${NONE_LABEL}"`)
+    if (completedBy === 'client' && !referred) found.push('Were you referred by a VFO member? is required')
+    if (completedBy === 'client' && referred === 'yes' && !referrerName) found.push('Please choose the VFO member from the list')
     if (referrerNone && !heardFrom) found.push('How did you hear about us? is required')
     if (referrerNone && heardFrom === 'Other' && !heardFromOther.trim()) found.push('Please tell us how you heard about us')
     return found
@@ -125,23 +136,36 @@ export default function TaxDiagnosticPage() {
         </div>
       </div>
 
-      <div>
-        <label style={labelStyle}>2. Which VFO member is this client working with?{req}</label>
-        <div style={hintStyle}>
-          {completedBy === 'member'
-            ? 'Start typing your name and choose it from the list.'
-            : `Start typing the member's name and choose it from the list. If no member referred you, choose "${NONE_LABEL}".`}
+      {completedBy === 'client' && (
+        <div>
+          <label style={labelStyle}>2. Were you referred by a VFO member?{req}</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {[['yes', 'Yes'], ['no', NONE_LABEL]].map(([v, text]) => (
+              <label key={v} style={radioRow}>
+                <input type="radio" name="referred" checked={referred === v} onChange={() => chooseReferred(v)} style={{ marginTop: '3px', flexShrink: 0 }} />
+                <span>{text}</span>
+              </label>
+            ))}
+          </div>
         </div>
-        <MemberPicker
-          value={referrerName}
-          none={referrerNone}
-          allowNone={completedBy !== 'member'}
-          inputStyle={inputStyle}
-          onPick={name => { setReferrerName(name); setReferrerNone(false); setHeardFrom(''); setHeardFromOther('') }}
-          onPickNone={() => { setReferrerName(''); setReferrerNone(true) }}
-          onClear={() => { setReferrerName(''); setReferrerNone(false); setHeardFrom(''); setHeardFromOther('') }}
-        />
-      </div>
+      )}
+
+      {(completedBy === 'member' || referred === 'yes') && (
+        <div>
+          <label style={labelStyle}>{completedBy === 'member' ? '2. Your name (VFO member)' : '3. Which VFO member referred you?'}{req}</label>
+          <div style={hintStyle}>
+            {completedBy === 'member'
+              ? 'Start typing your name and choose it from the list.'
+              : "Start typing the member's name and choose it from the list."}
+          </div>
+          <MemberPicker
+            value={referrerName}
+            inputStyle={inputStyle}
+            onPick={name => setReferrerName(name)}
+            onClear={() => setReferrerName('')}
+          />
+        </div>
+      )}
 
       {referrerNone && (
         <div>
@@ -172,7 +196,7 @@ export default function TaxDiagnosticPage() {
         onDone={() => setStatus('thanks')}
         prelude={prelude}
         validatePrelude={validatePrelude}
-        numberOffset={referrerNone ? 3 : 2}
+        numberOffset={!completedBy ? 1 : completedBy === 'member' ? 2 : referred ? 3 : 2}
         title="VFO Tax Diagnostic"
         intro="Please answer the questions below about the client. There is nothing to pay on this form — the VFO Services team will review it and be in touch."
         submitLabel="Submit"
@@ -184,7 +208,7 @@ export default function TaxDiagnosticPage() {
 
 // Type-ahead over member NAMES (like a country picker). Asks the server only once
 // MIN_LETTERS letters are typed; the server caps and rate-limits it too.
-function MemberPicker({ value, none, allowNone, inputStyle, onPick, onPickNone, onClear }) {
+function MemberPicker({ value, inputStyle, onPick, onClear }) {
   const [q, setQ] = useState('')
   const [names, setNames] = useState([])
   const [open, setOpen] = useState(false)
@@ -213,11 +237,11 @@ function MemberPicker({ value, none, allowNone, inputStyle, onPick, onPickNone, 
     return () => clearTimeout(t)
   }, [q])
 
-  if (value || none) {
+  if (value) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
         <span style={{ padding: '8px 14px', borderRadius: '999px', background: 'rgba(18,94,204,0.10)', color: '#125ecc', fontSize: '13px', fontWeight: 600 }}>
-          {none ? NONE_LABEL : value}
+          {value}
         </span>
         <button type="button" onClick={() => { onClear(); setQ(''); setOpen(true) }}
           style={{ padding: '6px 14px', borderRadius: '999px', fontSize: '12px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
@@ -251,12 +275,6 @@ function MemberPicker({ value, none, allowNone, inputStyle, onPick, onPickNone, 
           {names.map(n => (
             <button key={n} type="button" onMouseDown={e => e.preventDefault()} onClick={() => { onPick(n); setOpen(false) }} style={optionStyle}>{n}</button>
           ))}
-          {allowNone && (
-            <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => { onPickNone(); setOpen(false) }}
-              style={{ ...optionStyle, borderTop: '1px solid var(--vfo-border-soft)', color: 'var(--vfo-muted)', fontStyle: 'italic' }}>
-              {NONE_LABEL}
-            </button>
-          )}
         </div>
       )}
     </div>
