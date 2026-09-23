@@ -167,6 +167,7 @@ export default function AdminPortal() {
     if (t === 'client_overview' && !canSeeTab('client_overview')) return null
     if (t === 'growth_credits' && !canSeeTab('growth_credits')) return null
     if (t === 'faq_editor' && !canSeeTab('faq_editor')) return null
+    if (t === 'tax_diagnostics' && !canSeeTab('tax_diagnostics')) return null
     if (t === 'members') return 'advisors'
     // Legacy: the standalone Payments tab is now a sub-tab of Accounting.
     if (t === 'payments') return 'accounting'

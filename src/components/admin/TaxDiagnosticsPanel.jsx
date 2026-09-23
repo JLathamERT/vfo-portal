@@ -30,7 +30,9 @@ function intakeLabel(intake) {
   if (!intake) return null
   const who = intake.payer === 'member' ? 'the member' : 'the client'
   switch (intake.status) {
-    case 'invited': return `Deposit link sent to ${who}${intake.link_opened_at ? ' (opened)' : ''}`
+    case 'invited': return intake.link_sent_at
+      ? `Deposit link sent to ${who}${intake.link_opened_at ? ' (opened)' : ''}`
+      : `Deposit link to ${who} NOT drafted yet (press Retry)`
     case 'pending': return `${intake.payer === 'member' ? 'Member' : 'Client'} started the payment`
     case 'expired': return 'Payment page abandoned — the link still works'
     case 'paid': return 'Deposit paid — creating the case'
@@ -208,11 +210,13 @@ function ConfirmBox({ d, members, onChanged }) {
     setBusy(true); setErr(''); setMsg('')
     try {
       const res = await callApi('tax_diagnostic_confirm', { id: d.id, member_number: picked.member_number, deposit_payer: payer })
-      setMsg(res?.waived
+      const text = res?.waived
         ? 'Confirmed. The deposit is waived for this member, so the case has been created and the confirmation email drafted.'
         : res?.email_drafted
           ? `Confirmed. The deposit link email to the ${payer} has been ${res.email_sent ? 'sent' : 'drafted in Gmail'}.`
-          : `Confirmed, but the deposit link email could not be drafted (${res?.email_error || 'unknown'}).`)
+          : (res?.email_error || 'Confirmed, but the deposit link email could not be drafted. Press Retry.')
+      // The card moves to the Confirmed list on reload, so say it where it will still be seen.
+      window.alert(text)
       onChanged()
     } catch (e) {
       setErr(e?.message || 'Could not confirm')
@@ -310,6 +314,7 @@ function ConfirmedSummary({ d, onChanged }) {
     setBusy(true); setErr('')
     try {
       await callApi('tax_diagnostic_confirm', { id: d.id })
+      setBusy(false)
       onChanged()
     } catch (e) {
       setErr(e?.message || 'Retry failed')
@@ -323,10 +328,10 @@ function ConfirmedSummary({ d, onChanged }) {
       <div><strong>Deposit paid by:</strong> {d.deposit_payer === 'member' ? 'The member' : 'The client'}</div>
       <div><strong>Confirmed by:</strong> {d.confirmed_by} on {formatDate(d.confirmed_at)}</div>
       {stage && <div><strong>Status:</strong> {stage}{d.intake?.sandbox ? ' (sandbox)' : ''}</div>}
-      {d.intake?.status === 'waived' && (
+      {(d.intake?.status === 'waived' || (d.intake?.status === 'invited' && !d.intake?.link_sent_at) || !d.intake) && (
         <button type="button" onClick={retry} disabled={busy}
           style={{ marginTop: '8px', padding: '7px 16px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', border: 'none', background: '#e06717', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
-          {busy ? 'Retrying...' : 'Retry creating the case'}
+          {busy ? 'Retrying...' : d.intake?.status === 'waived' ? 'Retry creating the case' : d.intake ? 'Retry the deposit link email' : 'Retry'}
         </button>
       )}
       {err && <div style={{ color: '#d93025', marginTop: '6px' }}>{err}</div>}
