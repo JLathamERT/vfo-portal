@@ -8,6 +8,7 @@ import MembersPanel, { MEMBER_PROFILE_ORIGIN_KEY } from '../components/admin/Mem
 import MemberOverviewPanel from '../components/admin/MemberOverviewPanel'
 import ClientOverviewPanel from '../components/admin/ClientOverviewPanel'
 import FaqEditorPanel from '../components/admin/FaqEditorPanel'
+import TaxDiagnosticsPanel from '../components/admin/TaxDiagnosticsPanel'
 import AdminEditor from '../components/admin/AdminEditor'
 import AdminSettings from '../components/admin/AdminSettings'
 import AutomationPanel from '../components/admin/AutomationPanel'
@@ -181,6 +182,7 @@ export default function AdminPortal() {
   const [accountingSection, setAccountingSection] = useState(sessionStorage.getItem('adminAccountingSection') || 'payments')
   // Membership-fees deep link (?…&member=): the plan card to auto-open once.
   const [initialMemberNumber, setInitialMemberNumber] = useState(null)
+  const [initialDiagnosticId, setInitialDiagnosticId] = useState(null)
   const [showEditor, setShowEditor] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [allExperts, setAllExperts] = useState([])
@@ -246,6 +248,9 @@ export default function AdminPortal() {
     if (tab === 'member_overview' && !canSeeTab('member_overview')) return
     if (tab === 'client_overview' && !canSeeTab('client_overview')) return
     if (tab === 'growth_credits' && !canSeeTab('growth_credits')) return
+    if (tab === 'tax_diagnostics' && !canSeeTab('tax_diagnostics')) return
+    // The diagnostic bell carries its row id so the queue can open that card.
+    if (tab === 'tax_diagnostics' && params.get('diag')) setInitialDiagnosticId(Number(params.get('diag')))
     setActiveTab(tab)
     sessionStorage.setItem('adminActiveTab', tab)
     if (section) {
@@ -435,6 +440,14 @@ export default function AdminPortal() {
     setShowSettings(false)
   }
 
+  function selectTaxDiagnostics() {
+    setActiveTab('tax_diagnostics')
+    sessionStorage.setItem('adminActiveTab', 'tax_diagnostics')
+    setNavClickCount(c => c + 1)
+    setShowEditor(false)
+    setShowSettings(false)
+  }
+
   // Member Overview → open a member's full existing detail view in their own
   // category tab (Advisors / Accountants / Strategic). Each MemberDirectoryView
   // restores its selection from sessionStorage on mount, so we pre-seed the right
@@ -615,6 +628,7 @@ export default function AdminPortal() {
     ...(canSeeTab('client_overview') ? [{ key: 'more_co', options: [{ key: '__client_overview', label: 'Client Overview' }] }] : []),
     ...(canSeeTab('growth_credits') ? [{ key: 'more_gc', options: [{ key: '__growth_credits', label: 'Growth Credits' }] }] : []),
     ...(canSeeTab('faq_editor') ? [{ key: 'more_faq', options: [{ key: '__faq_editor', label: 'FAQ Editor' }] }] : []),
+    ...(canSeeTab('tax_diagnostics') ? [{ key: 'more_diag', options: [{ key: '__tax_diagnostics', label: 'Tax Diagnostics' }] }] : []),
     ...(canSeeTab('automation') ? [
       { key: 'more_auto_h', header: 'Automation & Config' },
       { key: 'more_auto', options: automationDropdownItems[0].options.map(o => ({ ...o, key: 'auto:' + o.key })) },
@@ -630,6 +644,7 @@ export default function AdminPortal() {
     if (key === '__client_overview') return selectClientOverview()
     if (key === '__growth_credits') return selectGrowthCredits()
     if (key === '__faq_editor') return selectFaqEditor()
+    if (key === '__tax_diagnostics') return selectTaxDiagnostics()
     if (key.startsWith('auto:')) return selectAutomationSection(key.slice(5))
     if (key.startsWith('acct:')) return selectAccountingSection(key.slice(5))
   }
@@ -755,6 +770,17 @@ export default function AdminPortal() {
                     FAQ Editor
                   </button>
                 )}
+                {canSeeTab('tax_diagnostics') && (
+                  <button onClick={selectTaxDiagnostics} style={{
+                    padding: '14px 14px', background: 'transparent', border: 'none',
+                    borderBottom: activeTab === 'tax_diagnostics' ? '2px solid #125ecc' : '2px solid transparent',
+                    color: activeTab === 'tax_diagnostics' ? '#125ecc' : '#97a3ba', fontSize: '13px',
+                    fontWeight: activeTab === 'tax_diagnostics' ? '600' : '500', cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap'
+                  }}>
+                    Tax Diagnostics
+                  </button>
+                )}
                 {canSeeTab('automation') && (
                   <NavDropdown
                     label="Automation & Config" muted
@@ -839,6 +865,10 @@ export default function AdminPortal() {
 
           {activeTab === 'faq_editor' && !loading && (
             <FaqEditorPanel />
+          )}
+
+          {activeTab === 'tax_diagnostics' && !loading && canSeeTab('tax_diagnostics') && (
+            <TaxDiagnosticsPanel initialDiagnosticId={initialDiagnosticId} />
           )}
 
           {activeTab === 'advisors' && !loading && (
