@@ -8,6 +8,22 @@
 
 ---
 
+## 2026-09-23 (b) — Kenneth answered: his click came from the reminder, which carried the wrong buttons, so the admin view showed nothing
+
+Branch `fix/tax-continue-reminder-proceed`, both repos, the same chat as the Client decision 1 gate above. `vfo-admin-api` **v878 → v879**, `boldsign-webhook` untouched at v46. No migration, no new action (528 unmoved).
+
+**What Jake saw.** Hours after the gate shipped, Kenneth Bollinger's Client decision 1 box lost its *"Waiting for client to confirm"* line and gained nothing in its place, and Client decision 2 unlocked. **Was it genuine? Yes.** `post_review_client_decision='Proceed'` at **14:15:44Z**, from a browser in **Raleigh, NC** (Edge on Windows), via the public decision page and **his own token**, after the page's confirmation card — two deliberate clicks. That IP appears exactly twice in 24 hours (the preflight and the decision) and never touched the admin portal, so no one on the team clicked it. The retainer revenue share then paid as designed for a genuine Continue: member share at 14:15:50, planner share at 14:15:51. **And the moved Client decision 2 bell fired correctly on his click** — bells 2425/2426 to Evan Jensen and the allocated team member at 14:15:47, the first live proof of the 2026-09-23 move.
+
+**Why the box showed nothing.** A *Continue* email's green button writes `Confirmed`. `Proceed` is the *Undecided* email's button — and the 02:30 Continue reminder had sent the **Undecided** pair (`buttonsPostReview` served both reminders). The admin view's Continue branch had lines for `Refund`, `Confirmed` and `Auto-Locked` only, so a genuine click, and the revenue-share line under it, rendered as nothing. **One other plan was the same shape:** Ariann Sentino `59123-002` (plan 76), clicked before click timestamps existed.
+
+**The fix.** (1) `buttonsPostReview(token, kind, threePayment)` — the Continue reminder now sends *"Continue now"* (`Confirmed`); both reminders say *"Refund my initial retainer"* on a 3-payment plan, matching their original emails. `isThreePaymentPlan` needs `fee_process_version` + `final_retainer_amount`, so both reminder reads gained those columns in the same change (#448). (2) The admin view renders a `Proceed` click under a Continue pick as *"Client confirmed Continue (from the reminder email)"* plus the revenue-share line, for the two historic rows. The implementation-decision reminders were checked and were already correct — separate button sets per branch, with a comment saying why — which is how the gap was recognised. Gotcha **#527**.
+
+**Still owed on plan 79:** Carson Grover to be re-allocated by hand (Kenneth has now decided). The *first real Continue reminder* carrying the new buttons is the proof of change (1); nothing can click-test it.
+
+Gates: `deno check` 0 · action count 528 · build exit 0, 35 pages · **smoke 5/5 vs v879** (Jake) · Jake click-tested Kenneth's box, Ariann's box, and an ordinary *Continue now* plan (unchanged). Frontend published from the branch before the squash, bundle `index-BL9WR_bQ.js`. No schema change.
+
+---
+
 ## 2026-09-23 — Client decision 1 now waits for the CLIENT: Kenneth Bollinger's plan ran ahead of his own answer, reverted by hand, and the gap closed in the step machine, the FE lock, a planner bell and three write handlers
 
 Branch `fix/tax-client-decision-1-gate`, both repos, ONE chat. `vfo-admin-api` **v877 — v878**, `boldsign-webhook` untouched at v46. **No migration, no DDL, no new action** (528 unmoved) — one new util, one new probe script. Frontend change is a single file.
