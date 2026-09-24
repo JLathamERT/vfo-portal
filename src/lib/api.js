@@ -29,6 +29,10 @@ const LONG_TIMEOUT_ACTIONS = {
   // Same shape on the client-link route: it mints the token, writes the row and
   // drafts the TAX_intake_link Gmail (OAuth + drafts.create) before answering.
   tax_intake_send_link: 30000,
+  // Tax Diagnostics Confirm: mints the intake row, then either runs the whole
+  // waived finalize (client + plan + confirmation Gmail) or drafts the deposit
+  // link Gmail before answering. A WRITE — never auto-retried.
+  tax_diagnostic_confirm: 30000,
 }
 // tax_direct_* are the member-callable twins of automation_TAX_* (unit 2 phase
 // 5) and chain the same external services, so they share the slow-write tier.

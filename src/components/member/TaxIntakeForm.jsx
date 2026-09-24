@@ -15,8 +15,8 @@ import {
 //                client a link to complete it (route B).
 //   NEW CLIENT   route A. Shows the deposit line ($500, or waived with the
 //                qualifying count), submits to tax_intake_submit, and either
-//                follows the Stripe Checkout url or lands straight on the
-//                success card (waived).
+//                follows the returned url (the /tax-deposit-pay card-or-ACH
+//                choice page) or lands straight on the success card (waived).
 //   HOLISTIC     ?intake_client=<id>, reached from the "Complete the Tax
 //                Planning Form" email. The client already exists, so name /
 //                email / phone are prefilled and locked, there is NO deposit,
@@ -43,6 +43,16 @@ export default function TaxIntakeForm({
   publicMode = false,
   publicIntake = null,
   onPublicSubmit = null,
+  // Public VFO Tax Diagnostic page (TaxDiagnosticPage.jsx): its own questions
+  // render above the 37 (`prelude`, checked by `validatePrelude`), the numbering
+  // continues after them, and the header/button copy is the page's.
+  prelude = null,
+  validatePrelude = null,
+  numberOffset = 0,
+  title = null,
+  intro = null,
+  submitLabel = null,
+  allowTestFill = false,
 }) {
   const holistic = !!existingClient
   const [step, setStep] = useState(() => (holistic || publicMode ? 'form' : 'choose'))
@@ -101,7 +111,7 @@ export default function TaxIntakeForm({
   // one button that fills every field with plausible test values so a
   // click-through does not mean typing 36 answers. The public link page learns
   // it from the token row via publicIntake.test_member, never from the URL.
-  const isTestMember = publicMode ? publicIntake?.test_member === true : String(member?.member_number || '') === '59524'
+  const isTestMember = allowTestFill || (publicMode ? publicIntake?.test_member === true : String(member?.member_number || '') === '59524')
   function fillTestValues() {
     const stamp = new Date().toISOString().slice(11, 16).replace(':', '')
     setAnswers(a => {
@@ -122,7 +132,9 @@ export default function TaxIntakeForm({
       return next
     })
   }
-  const lockedIds = holistic ? new Set(['q2', 'q3', 'q4', 'q5']) : publicMode ? new Set(['q4']) : new Set()
+  // q4 is locked on a link page (the invited address is half of what the token
+  // proves) but typed freely on the public diagnostic page, which has no token.
+  const lockedIds = holistic ? new Set(['q2', 'q3', 'q4', 'q5']) : publicMode && publicIntake ? new Set(['q4']) : new Set()
 
   function set(id, value) {
     setAnswers(a => ({ ...a, [id]: value }))
@@ -131,7 +143,7 @@ export default function TaxIntakeForm({
   const poorFit = answers.q18 === TAX_INTAKE_Q18_POOR_FIT
 
   async function submit() {
-    const found = validateTaxIntakeAnswers(answers)
+    const found = [...(validatePrelude ? validatePrelude() : []), ...validateTaxIntakeAnswers(answers)]
     setErrors(found)
     setFailed('')
     if (found.length > 0) {
@@ -146,7 +158,8 @@ export default function TaxIntakeForm({
         : holistic
           ? await callApi('tax_intake_holistic_submit', { answers: normalized, client_id: existingClient.id })
           : await callApi('tax_intake_submit', { answers: normalized, ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}) })
-      // A Checkout url means the deposit is owed — hand the browser to Stripe.
+      // A url means the deposit is owed — since 2026-09-23 it is the card-or-ACH
+      // choice page (/tax-deposit-pay), for route A and route B alike.
       if (res?.url) { window.location.assign(res.url); return }
       onDone?.(res)
     } catch (err) {
@@ -226,7 +239,8 @@ export default function TaxIntakeForm({
     : eligibility?.deposit_required
   const depositAmount = publicMode ? (publicIntake?.deposit_amount || 500) : (eligibility?.deposit_amount || 500)
 
-  const depositLine = holistic
+  // The public diagnostic page (no intake row yet) takes no payment and quotes none.
+  const depositLine = holistic || (publicMode && !publicIntake)
     ? null
     : publicMode
       ? (depositRequired ? `Deposit: $${depositAmount}` : 'Deposit: waived')
@@ -407,7 +421,10 @@ export default function TaxIntakeForm({
     <div>
       <div style={{ marginBottom: '20px' }}>
         <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>Tax Planning Form</div>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>{title || 'Tax Planning Form'}</div>
+        {intro && (
+          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px', lineHeight: 1.6 }}>{intro}</div>
+        )}
         {publicMode && publicIntake?.member_display_name && (
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px', lineHeight: 1.6 }}>
             {publicIntake.member_display_name} has asked us to start your tax planning. Please answer the questions below.
@@ -426,12 +443,14 @@ export default function TaxIntakeForm({
       {errorBox}
       {failBox}
 
+      {prelude && <div style={sectionStyle}>{prelude}</div>}
+
       <div style={sectionStyle}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px 28px' }}>
           {visible.map((q, i) => (
             <div key={q.id} style={q.type === 'textarea' ? { gridColumn: '1 / -1' } : undefined}>
               <label style={labelStyle}>
-                {i + 1}. {q.label}{q.required && <span style={{ color: '#d93025' }}> *</span>}
+                {i + 1 + numberOffset}. {q.label}{q.required && <span style={{ color: '#d93025' }}> *</span>}
               </label>
               {q.note && <div style={noteStyle}>{q.note}</div>}
               {renderInput(q)}
@@ -447,7 +466,7 @@ export default function TaxIntakeForm({
 
       {isTestMember && (
         <div style={{ margin: '0 0 16px', padding: '12px 16px', border: '1px dashed #e06717', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '12.5px', color: '#e06717', fontWeight: 600 }}>Test member only: fill every question with test values.</span>
+          <span style={{ fontSize: '12.5px', color: '#e06717', fontWeight: 600 }}>{allowTestFill ? 'Dev server only' : 'Test member only'}: fill every question with test values.</span>
           <button type="button" onClick={fillTestValues} disabled={submitting}
             style={{ padding: '8px 16px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid #e06717', background: 'transparent', color: '#e06717', fontFamily: 'Inter, sans-serif' }}>
             Fill with test values
@@ -463,7 +482,7 @@ export default function TaxIntakeForm({
         )}
         <button type="button" onClick={submit} disabled={submitting}
           style={{ padding: '10px 24px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', border: 'none', background: submitting ? 'var(--vfo-faint)' : '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif', boxShadow: submitting ? 'none' : '0 2px 8px rgba(18,94,204,0.28)' }}>
-          {submitting ? 'Submitting...' : (holistic || depositRequired === false ? 'Submit' : 'Submit and pay deposit')}
+          {submitting ? 'Submitting...' : (submitLabel || (holistic || depositRequired === false ? 'Submit' : 'Submit and pay deposit'))}
         </button>
       </div>
     </div>

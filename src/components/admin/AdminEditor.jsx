@@ -11,6 +11,7 @@ const TAB_OPTIONS = [
   { key: 'automation', label: 'Automation & Config' },
   { key: 'growth_credits', label: 'Growth Credits' },
   { key: 'faq_editor', label: 'FAQ Editor' },
+  { key: 'tax_diagnostics', label: 'Tax Diagnostics' },
 ]
 
 export default function AdminEditor({ onBack }) {

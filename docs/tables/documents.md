@@ -135,3 +135,22 @@ Three body/subject rules from those migrations, each a guarded `replace()` so a 
 - **Subject of 181 AND 279 is `VFO Services - Tax Planning Deposit Refunded - [Client Name]`** (2026-09-18, applied live by `execute_sql` the same day and committed as `20260918140000`). Jake: the client's name goes at the END after a dash, matching the house `" - Name"` subject shape — not in parentheses, which is how 279 was first seeded and how 181's old subject read.
 
 **Recipient contract reminder (#324):** every role token above is fed by its handler's `resolveTemplateRecipients` ctx — `ASSIGNED_PF` on 276 / 181 / 279 resolves through the four-name `pf-emails.ts` map, so a client whose PF is not in it gets no PF Cc silently. Sandbox drops every Cc, so the To/Cc shape above was verified from the `sandbox: would have sent` log line, not from a delivered mail; **no real (non-sandbox) send of any of the six has happened yet.**
+
+**VFO Tax Diagnostic templates (2026-09-23, migrations `20260923180100_tax_diagnostic_templates_rule.sql` seed, `20260923190000` + `20260923200000` re-address 286, `20260923210000` pay-only body wording; flow in [flows/tax-diagnostic.md](../flows/tax-diagnostic.md)):** three `TAX` rows. Every public-input token is HTML-escaped and substituted by function (#438); no in-body footer (#512).
+
+| id | template_name | To | Cc | Bcc | `send_mode` | Drafted by | Tokens |
+|---|---|---|---|---|---|---|---|
+| **286** | `TAX_diagnostic_submitted` | `tnmiller@vfo-services.com` (Tracy) | `eanderson@vfo-services.com` (Evan), `platham@elitert.com`, `aanderson@elitert.com` | none | **false** (seeded Send to four internal addresses; Draft since `20260923190000`, recipients as shown since `20260923200000`) | `tax_diagnostic_submit` → `utils/tax-diagnostic-emails.ts sendDiagnosticTeamEmail`; internal only, never sandbox-rerouted | `[Client Name]` `[Client Email]` `[Client Phone]` `[Client State]` `[Federal Taxes]` `[Completed By]` `[Referrer]` `[BUTTONS]` (onto the admin queue card) |
+| **287** | `TAX_diagnostic_deposit_link` | `CLIENT` | `MEMBER`, Tracy, Tray | Anton, Paul | false | `tax_diagnostic_confirm` when the client pays and a deposit is due | `[Client First]` `[Client Name]` `[Member First]` `[Member Name]` `[BUTTONS]` — the green **Pay deposit** button onto `/tax-deposit-pay?token=<intake_token>` |
+| **288** | `TAX_diagnostic_deposit_link\|member` | `MEMBER` | Tracy, Tray | Anton, Paul | false | the same, when the member pays | the same |
+
+**Tax intake deposit — ACH confirmation templates (2026-09-23, migrations `20260923220000_tax_intake_deposit_ach.sql` + `20260923220100_tax_intake_deposit_ach_verify_templates.sql`; copy approved by Jake 2026-09-23; flow in [flows/tax-intake.md](../flows/tax-intake.md)):** four `TAX` rows, all **`send_mode=false`**, all Bcc Anton + Paul, recipients mirroring 275 / 278 and picked by `tax_intake_requests.payer`. Drafted by `utils/tax-deposit-processing-email.ts` from the Stripe webhook at ACH **submit** (the Tax retainer precedent, #287 — the case, the invoice + receipt pair and 275 / 278 follow at settle), once-only on `tax_intake_requests.deposit_ach_email_sent_at`. Tokens `[First Name]` (the PAYER's) and `[Client Name]`, substituted by function (#438); no footer (#512).
+
+| id | template_name | To | Cc | When |
+|---|---|---|---|---|
+| **289** | `TAX_deposit_processing` | `MEMBER` | Tracy, Tray | member paid; PaymentIntent `processing` (debit in flight) — *"we have received your bank transfer … 2-4 business days"*; also the `payment_intent.processing` backstop when the submit-time draft never landed |
+| **290** | `TAX_deposit_processing\|client` | `CLIENT` | `MEMBER`, Tracy, Tray | the same, client paid |
+| **291** | `TAX_deposit_processing\|ach_verify` | `MEMBER` | Tracy, Tray | member paid; PaymentIntent `requires_action` (manual entry, micro-deposits pending, NOTHING debited) — explains the verification code step and that an unverified payment is cancelled after about 10 days, when the original link works again |
+| **292** | `TAX_deposit_processing\|ach_verify\|client` | `CLIENT` | `MEMBER`, Tracy, Tray | the same, client paid |
+
+Subjects: 289 / 290 `VFO Services - Tax Planning Deposit Processing - [Client Name]`; 291 / 292 `VFO Services - One more step to complete your Tax Planning Deposit - [Client Name]`. The ids are those of the seed order (the table has no id column in the migration); **no real (non-sandbox) send of any of 286–292 has happened yet.**

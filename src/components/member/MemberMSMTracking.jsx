@@ -753,7 +753,11 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     const forClient = qs.get('intake_client')
     if (!paid && !forClient) return
     if (paid) {
-      setDoneMessage('Client created. We have emailed you a confirmation.')
+      // ach=1: the member chose ACH on the choice page. Nothing exists yet — the
+      // client is created only when the transfer SETTLES (2026-09-23).
+      setDoneMessage(qs.get('ach') === '1'
+        ? 'Bank transfer submitted. The client will be created once it clears (2-4 business days).'
+        : 'Client created. We have emailed you a confirmation.')
       setMode('done')
       loadClients()
       onEnrollmentsChanged?.()
@@ -771,7 +775,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
         .catch(() => setDoneMessage('We could not open that form. Please try again.'))
     }
     const url = new URL(window.location.href)
-    ;['intake', 'paid', 'intake_client'].forEach(k => url.searchParams.delete(k))
+    ;['intake', 'paid', 'ach', 'intake_client'].forEach(k => url.searchParams.delete(k))
     window.history.replaceState({}, '', url.toString())
   }, [intakeOn])
 
