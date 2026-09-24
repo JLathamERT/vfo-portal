@@ -11,9 +11,10 @@ const LOGO_MAX_BYTES = 1_000_000
 
 // ROI template v9 puts every logo on blue AND white slides, so the stored PNG
 // carries its own small white badge (the preview shows this PNG as-is).
+// No border: on a white slide the badge melts into the slide (Jake, 2026-09-24 —
+// a visible edge where white meets white looked untidy); on blue it reads as a
+// clean white pill.
 const BADGE_RADIUS = 64
-const BADGE_BORDER = 3
-const BADGE_BORDER_COLOR = '#DCE2EB'
 const BADGE_PAD_X = 90
 const BADGE_PAD_Y = 55
 
@@ -85,19 +86,15 @@ export async function fileToLogoPng(file) {
   sctx.drawImage(img, 0, 0, srcW, srcH)
   const box = contentBox(sctx, srcW, srcH)
 
-  // The badge: transparent outside a white rounded rectangle filling the canvas
-  // (thin #DCE2EB border), the logo contain-fitted inside the padded inner box.
-  // Baked into the PNG because the deck cannot draw a badge shape itself.
+  // The badge: transparent outside a white rounded rectangle filling the canvas,
+  // the logo contain-fitted inside the padded inner box. Baked into the PNG
+  // because the deck cannot draw a badge shape itself.
   const out = document.createElement('canvas')
   out.width = LOGO_WIDTH; out.height = LOGO_HEIGHT
   const octx = out.getContext('2d')
-  const half = BADGE_BORDER / 2
-  roundedRect(octx, half, half, LOGO_WIDTH - BADGE_BORDER, LOGO_HEIGHT - BADGE_BORDER, BADGE_RADIUS)
+  roundedRect(octx, 0, 0, LOGO_WIDTH, LOGO_HEIGHT, BADGE_RADIUS)
   octx.fillStyle = '#FFFFFF'
   octx.fill()
-  octx.lineWidth = BADGE_BORDER
-  octx.strokeStyle = BADGE_BORDER_COLOR
-  octx.stroke()
 
   const innerW = LOGO_WIDTH - 2 * BADGE_PAD_X
   const innerH = LOGO_HEIGHT - 2 * BADGE_PAD_Y
