@@ -1,12 +1,31 @@
 // Turns whatever image a member or admin picks into the ONE logo shape the
-// backend accepts (utils/logo-png.ts): a PNG on a transparent 1200x400 canvas,
-// the logo trimmed of empty margins and centred to fit. The ROI deck drops every
-// logo into a fixed 3:1 frame, so this is what keeps a logo from stretching.
+// backend accepts (utils/logo-png.ts): a PNG on a 1200x400 canvas, transparent
+// outside a white rounded badge, the logo trimmed of empty margins and centred
+// to fit inside the badge. The ROI deck drops every logo into a fixed 3:1
+// frame, so this is what keeps a logo from stretching.
 // The backend re-checks the shape; this is the convenience, not the guard.
 
 export const LOGO_WIDTH = 1200
 export const LOGO_HEIGHT = 400
 const LOGO_MAX_BYTES = 1_000_000
+
+// ROI template v9 puts every logo on blue AND white slides, so the stored PNG
+// carries its own small white badge (the preview shows this PNG as-is).
+const BADGE_RADIUS = 64
+const BADGE_BORDER = 3
+const BADGE_BORDER_COLOR = '#DCE2EB'
+const BADGE_PAD_X = 90
+const BADGE_PAD_Y = 55
+
+function roundedRect(ctx, x, y, w, h, r) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
+}
 
 export const LOGO_BASE_URL = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
 export function logoUrl(filename) {
@@ -66,10 +85,23 @@ export async function fileToLogoPng(file) {
   sctx.drawImage(img, 0, 0, srcW, srcH)
   const box = contentBox(sctx, srcW, srcH)
 
+  // The badge: transparent outside a white rounded rectangle filling the canvas
+  // (thin #DCE2EB border), the logo contain-fitted inside the padded inner box.
+  // Baked into the PNG because the deck cannot draw a badge shape itself.
   const out = document.createElement('canvas')
   out.width = LOGO_WIDTH; out.height = LOGO_HEIGHT
   const octx = out.getContext('2d')
-  const scale = Math.min(LOGO_WIDTH / box.w, LOGO_HEIGHT / box.h)
+  const half = BADGE_BORDER / 2
+  roundedRect(octx, half, half, LOGO_WIDTH - BADGE_BORDER, LOGO_HEIGHT - BADGE_BORDER, BADGE_RADIUS)
+  octx.fillStyle = '#FFFFFF'
+  octx.fill()
+  octx.lineWidth = BADGE_BORDER
+  octx.strokeStyle = BADGE_BORDER_COLOR
+  octx.stroke()
+
+  const innerW = LOGO_WIDTH - 2 * BADGE_PAD_X
+  const innerH = LOGO_HEIGHT - 2 * BADGE_PAD_Y
+  const scale = Math.min(innerW / box.w, innerH / box.h)
   const dw = Math.round(box.w * scale)
   const dh = Math.round(box.h * scale)
   octx.imageSmoothingQuality = 'high'

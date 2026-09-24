@@ -36,7 +36,8 @@ const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:
 import vfoCertifiedSeal from '../../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../../assets/vfo-accredited-emblem.png'
 import { formatDate } from '../../lib/dates'
-import MemberBrandingCard, { MemberBrandingSummary } from '../shared/MemberBrandingCard'
+import MemberBrandingCard from '../shared/MemberBrandingCard'
+import MemberProfileDetails from '../shared/MemberProfileDetails'
 
 // Members carrying the "VFO Reconciliation (Free)" type that ANY admin may still
 // open. 59524 is the standing sandbox-forced Test Member (#251) — it holds that
@@ -948,6 +949,22 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
 
   useEffect(() => { loadProfile(); loadProgramNotes() }, [member.plugin_member_number])
 
+  // Branding is saved from the Edit Profile tab straight through
+  // member_branding_save, bypassing this form's state. On returning to Details,
+  // re-read ONLY the branding columns so they are current without touching any
+  // unsaved edit held in `profile`.
+  useEffect(() => {
+    if (activeTab !== 'details' || !profile) return
+    let alive = true
+    callApi('member_profile_load', { member_number: member.plugin_member_number })
+      .then(d => {
+        const p = d?.profile
+        if (alive && p) setProfile(cur => cur ? { ...cur, logo_image: p.logo_image, logo_enabled: p.logo_enabled, contract_name_mode: p.contract_name_mode } : cur)
+      })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [activeTab])
+
   const connectAcctId = profile?.stripe_account_id || ''
   useEffect(() => {
     if (!connectAcctId) { setConnectStatus(null); setConnectLoading(false); return }
@@ -1111,38 +1128,24 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
           : { dot: 'var(--vfo-faint)', label: 'Status unavailable' }
         return (
           <div>
-            {/* Short facts sit side by side; long-form (bio, notes) runs full
-                width below so a long bio never strands an empty sidebar. */}
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 340px', minWidth: '300px' }}>
-                <div style={sectionStyle}>
-                  <div style={cardTitle}>Member Details</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '18px 24px' }}>
-                    <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{profile.join_date ? formatDate(profile.join_date) : '—'}</div></div>
-                    {(profile.elite_status === 'Lost' || profile.elite_status === 'Removed') && <div><div style={fieldLabel}>Leave Date</div><div style={fieldValue}>{profile.leave_date ? formatDate(profile.leave_date) : '—'}</div></div>}
-                    <div><div style={fieldLabel}>Renewal Date</div><div style={fieldValue}>{profile.membership_renewal_date ? formatDate(profile.membership_renewal_date) : '—'}</div></div>
-                    <div><div style={fieldLabel}>Work email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{profile.email || '—'}</div></div>
-                    <div><div style={fieldLabel}>Personal email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{profile.personal_email || '—'}</div></div>
-                    {(isAccountant || isAdvisor) && <div><div style={fieldLabel}>Company Name</div><div style={fieldValue}>{profile.trading_name || '—'}</div></div>}
-                    {profile.website_url && <div><div style={fieldLabel}>Website</div><div style={fieldValue}><a href={normalizeUrl(profile.website_url)} target="_blank" rel="noopener noreferrer" style={{ color: '#0095ff', textDecoration: 'none', wordBreak: 'break-all' }}>{profile.website_url}</a></div></div>}
-                    <div><div style={fieldLabel}>Eligible for Credit Note</div><div style={fieldValue}>{profile.credit_note_eligible === false ? 'No' : 'Yes'}</div></div>
-                    {directEligibility && (
-                      <div>
-                        <div style={fieldLabel}>Tax Planning (Direct)</div>
-                        <div style={fieldValue}>
-                          {directEligibility.eligible ? 'Eligible' : 'Ineligible'}
-                          <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginLeft: '6px' }}>
-                            ({directEligibility.qualifying_count} of 2 qualifying clients{directEligibility.feature_released === false ? ', not released' : ''})
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {!hiddenFields.includes('revenue_decision') && (
-                      <div><div style={fieldLabel}>Revenue Decision</div><div style={fieldValue}>{profile.revenue_decision || '—'}</div></div>
-                    )}
-                  </div>
-                  {profile.stripe_account_id ? (
-                    <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--vfo-tint)' }}>
+            {/* The read-only body is SHARED with the member's own Profile tab
+                (shared/MemberProfileDetails) so the two always mirror; only the
+                Stripe controls and clickable names are admin extras. */}
+            <MemberProfileDetails
+              profile={profile}
+              memberNumber={member.plugin_member_number}
+              directEligibility={directEligibility}
+              hideRevenueDecision={hiddenFields.includes('revenue_decision')}
+              onOpenMember={onOpenMember}
+              styles={{ sectionStyle, cardTitle }}
+              people={{
+                introducedBy: introducedByObj && !CORPORATE_TYPES.includes(member.member_type) ? { ...introducedByObj, number: introducedByObj.plugin_member_number, chip: profile.connection_type || null } : null,
+                introducerOf: introducedByMe.map(m => ({ ...m, number: m.plugin_member_number, chip: m.connection_type || null })),
+                connections: connectedToMe.map(m => ({ ...m, number: m.plugin_member_number })),
+                corporate: corporateMembers.map(m => ({ ...m, number: m.plugin_member_number })),
+              }}
+              payoutSlot={profile.stripe_account_id ? (
+                    <div>
                       <div style={fieldLabel}>{linkedFrom ? 'Borrowed Stripe Account' : 'Stripe Account'}</div>
                       {linkedFrom && (
                         <div style={{ fontSize: '13px', color: 'var(--vfo-ink-2)', lineHeight: 1.5, marginTop: '7px' }}>
@@ -1169,7 +1172,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
                       {stripeMsg && <p style={{ fontSize: '12px', marginTop: '8px', color: stripeMsgType === 'success' ? '#1b9254' : '#d93025' }}>{stripeMsg}</p>}
                     </div>
                   ) : (
-                    <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--vfo-tint)' }}>
+                    <div>
                       <div style={fieldLabel}>Stripe Connect</div>
                       <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                         <button type="button" onClick={sendStripeRequest} disabled={stripeRequesting}
@@ -1186,119 +1189,10 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
                       </div>
                       {stripeMsg && <p style={{ fontSize: '12px', marginTop: '8px', color: stripeMsgType === 'success' ? '#1b9254' : '#d93025' }}>{stripeMsg}</p>}
                     </div>
-                  )}
-                </div>
-              </div>
+                  )
+              }
+            />
 
-              {((introducedByObj && !CORPORATE_TYPES.includes(member.member_type)) || introducedByMe.length > 0 || connectedToMe.length > 0 || corporateMembers.length > 0 || profile.vfo_certified_date || profile.vfo_accredited_date) && (
-                <div style={{ flex: '1 1 300px', minWidth: '280px' }}>
-                  {((introducedByObj && !CORPORATE_TYPES.includes(member.member_type)) || introducedByMe.length > 0) && (
-                    <div style={sectionStyle}>
-                      <div style={{ ...cardTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Introductions</span>
-                        <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{(introducedByObj && !CORPORATE_TYPES.includes(member.member_type) ? 1 : 0) + introducedByMe.length}</span>
-                      </div>
-                      {introducedByObj && !CORPORATE_TYPES.includes(member.member_type) && (
-                        <div style={{ marginBottom: introducedByMe.length > 0 ? '16px' : 0 }}>
-                          <div style={{ ...fieldLabel, marginBottom: '8px' }}>Introduced By</div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '14px', flexShrink: 0, boxShadow: '0 2px 8px rgba(18,94,204,0.28)' }}>{initials(introducedByObj.name)}</div>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <span onClick={() => onOpenMember && onOpenMember(introducedByObj)} {...linkHandlers} style={nameLink({ fontSize: '14px', fontWeight: 600, color: 'var(--vfo-ink)' })}>{introducedByObj.name}</span>
-                                {profile.connection_type && <span style={introChip}>{profile.connection_type}</span>}
-                              </div>
-                              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}><span style={{ fontFamily: 'monospace' }}>{introducedByObj.plugin_member_number}</span>{introducedByObj.member_type ? <> · {introducedByObj.member_type}</> : null}</div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {introducedByMe.length > 0 && (
-                        <div>
-                          <div style={{ ...fieldLabel, marginBottom: '2px' }}>Introducer Of</div>
-                          {introducedByMe.map((im, i) => (
-                            <div key={im.plugin_member_number} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: i < introducedByMe.length - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
-                              <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '11px', flexShrink: 0 }}>{initials(im.name)}</div>
-                              <div style={{ minWidth: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                  <span onClick={() => onOpenMember && onOpenMember(im)} {...linkHandlers} style={nameLink({ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink)' })}>{im.name}</span>
-                                  {im.connection_type && <span style={introChip}>{im.connection_type}</span>}
-                                </div>
-                                <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '1px' }}><span style={{ fontFamily: 'monospace' }}>{im.plugin_member_number}</span>{im.member_type ? <> · {im.member_type}</> : null}</div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {connectedToMe.length > 0 && (
-                    <div style={sectionStyle}>
-                      <div style={{ ...cardTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Connections</span>
-                        <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{connectedToMe.length}</span>
-                      </div>
-                      {connectedToMe.map((im, i) => (
-                        <div key={im.plugin_member_number} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: i < connectedToMe.length - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
-                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '11px', flexShrink: 0 }}>{initials(im.name)}</div>
-                          <div style={{ minWidth: 0 }}>
-                            <div onClick={() => onOpenMember && onOpenMember(im)} {...linkHandlers} style={nameLink({ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink)' })}>{im.name}</div>
-                            <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '1px' }}><span style={{ fontFamily: 'monospace' }}>{im.plugin_member_number}</span>{im.member_type ? <> · {im.member_type}</> : null}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {corporateMembers.length > 0 && (
-                    <div style={sectionStyle}>
-                      <div style={{ ...cardTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Corporate Members</span>
-                        <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{corporateMembers.length}</span>
-                      </div>
-                      {corporateMembers.map((cm, i) => (
-                        <div key={cm.plugin_member_number} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: i < corporateMembers.length - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
-                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '11px', flexShrink: 0 }}>{initials(cm.name)}</div>
-                          <div style={{ minWidth: 0 }}>
-                            <div onClick={() => onOpenMember && onOpenMember(cm)} {...linkHandlers} style={nameLink({ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink)' })}>{cm.name}</div>
-                            <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '1px' }}><span style={{ fontFamily: 'monospace' }}>{cm.plugin_member_number}</span>{cm.member_type ? <> · {cm.member_type}</> : null}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {(profile.vfo_certified_date || profile.vfo_accredited_date) && (
-                    <div style={sectionStyle}>
-                      <div style={cardTitle}>Certifications</div>
-                      {profile.vfo_certified_date && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: profile.vfo_accredited_date ? '12px' : 0 }}>
-                          <img src={vfoCertifiedSeal} style={{ width: '36px', height: '36px' }} />
-                          <div><div style={{ fontSize: '14px', color: '#b08d26', fontWeight: '600' }}>VFO Certified</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{formatDate(profile.vfo_certified_date)}</div></div>
-                        </div>
-                      )}
-                      {profile.vfo_accredited_date && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <img src={vfoAccreditedSeal} style={{ width: '36px', height: '36px' }} />
-                          <div><div style={{ fontSize: '14px', color: 'var(--vfo-muted)', fontWeight: '600' }}>VFO Accredited</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{formatDate(profile.vfo_accredited_date)}</div></div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Long-form — full width so a long bio uses the whole row. */}
-            {profile.bio && (
-              <div style={sectionStyle}>
-                <div style={cardTitle}>Bio</div>
-                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.bio}</div>
-              </div>
-            )}
-
-            <MemberBrandingSummary memberNumber={member.plugin_member_number} styles={{ sectionStyle, cardTitle }} />
 
             <MemberAdditionalContacts memberNumber={member.plugin_member_number} contacts={contacts} onReload={reloadContacts}
               styles={{ sectionStyle, cardTitle, inputStyle, labelStyle }} />

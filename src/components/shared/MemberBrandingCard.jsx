@@ -3,11 +3,13 @@ import { callApi } from '../../lib/api'
 import { fileToLogoPng, logoUrl } from './logoPng'
 import { Skeleton, SkeletonText } from './skeletons/primitives'
 
-// The Branding card: the member's logo (shown on their clients' ROI
-// presentations) and two switches. Rendered on the member's own Profile tab
-// (mode "member") and on the admin member profile (mode "admin"). Reads through
-// member_profile_load and writes ONLY through member_branding_save - never the
-// admin profile save, which deliberately ignores these three columns.
+// The Branding card (editing): the member's logo (shown on their clients' ROI
+// presentations), the "show my logo" switch and the agreement-name choice.
+// Rendered on the member's Edit Profile page (mode "member") and on the admin
+// member's Edit Profile tab (mode "admin"); the read-only views live in
+// shared/MemberProfileDetails. Reads through member_profile_load and writes ONLY
+// through member_branding_save - never the admin profile save, which
+// deliberately ignores these columns.
 
 function Switch({ on, disabled, onClick, label }) {
   return (
@@ -21,18 +23,18 @@ function Switch({ on, disabled, onClick, label }) {
   )
 }
 
-// The logo exactly as the deck shows it: a small white badge, on a white slide
-// and on a blue slide. Also used by the group logo on Tax Planning Partners.
+// The logo exactly as the deck shows it, on a white slide and on a blue slide.
+// Also used by the group logo on Tax Planning Partners. The stored PNG already
+// carries its white badge (logoPng.js), so it is shown as-is - no extra frame.
 export function LogoPreview({ src }) {
-  const badge = { width: '168px', height: '56px', background: '#fff', borderRadius: '8px', padding: '6px 10px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.18)' }
   const strip = { flex: '1 1 200px', minWidth: '200px', height: '96px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-  const img = src
-    ? <img src={src} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-    : <span style={{ fontSize: '11px', color: '#9aa4b2' }}>No logo</span>
+  const img = (onBlue) => src
+    ? <img src={src} alt="Logo" style={{ width: '168px', height: '56px', objectFit: 'contain', display: 'block' }} />
+    : <span style={{ fontSize: '11px', color: onBlue ? 'rgba(255,255,255,0.75)' : '#9aa4b2' }}>No logo</span>
   return (
     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-      <div style={{ ...strip, background: '#fff', border: '1px solid var(--vfo-border-soft)' }}><div style={{ ...badge, border: '1px solid #e5e7eb' }}>{img}</div></div>
-      <div style={{ ...strip, background: 'linear-gradient(135deg, #2f6fe0 0%, #1f47a8 100%)' }}><div style={badge}>{img}</div></div>
+      <div style={{ ...strip, background: '#fff', border: '1px solid var(--vfo-border-soft)' }}>{img(false)}</div>
+      <div style={{ ...strip, background: 'linear-gradient(135deg, #2f6fe0 0%, #1f47a8 100%)' }}>{img(true)}</div>
     </div>
   )
 }
@@ -53,51 +55,6 @@ function nameSentence(row, admin) {
   if (mode === 'company') return <>Company name is chosen but no company name is set, so {admin ? 'the member is' : 'you are'} left out.</>
   if (mode === 'none') return <>{admin ? 'The member is' : 'You are'} left out: the agreement names the tax planning team and VFO Services.</>
   return <>Not chosen yet, so {admin ? 'the member is' : 'you are'} left out of the agreement until one is picked.</>
-}
-
-// Read-only Branding section for the two profile VIEWS (member Profile tab and
-// the admin member Details tab). Editing happens on Edit Profile.
-export function MemberBrandingSummary({ memberNumber, styles }) {
-  const { sectionStyle, cardTitle } = styles
-  const [row, setRow] = useState(null)
-  const [loadError, setLoadError] = useState('')
-  useEffect(() => {
-    let alive = true
-    setRow(null); setLoadError('')
-    callApi('member_profile_load', { member_number: memberNumber })
-      .then(d => { if (alive) setRow(d?.profile || {}) })
-      .catch(err => { if (alive) setLoadError(err?.message || 'Branding could not be loaded') })
-    return () => { alive = false }
-  }, [memberNumber])
-
-  const label = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-faint)', textTransform: 'uppercase' }
-  const value = { fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: 600, marginTop: '5px' }
-  if (loadError) return <div style={sectionStyle}><div style={cardTitle}>Branding</div><div style={{ fontSize: '13px', color: '#d93025' }}>{loadError}</div></div>
-  if (!row) return <div style={sectionStyle}><div style={cardTitle}>Branding</div><div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>Loading…</div></div>
-
-  const mode = row.contract_name_mode
-  const company = (row.trading_name || '').trim()
-  const nameValue = mode === 'company' ? `Company name${company ? ` (${company})` : ' (not set)'}`
-    : mode === 'personal' ? `Real name (${realName(row) || '—'})`
-    : mode === 'none' ? 'Neither' : '—'
-  const src = logoUrl(row.logo_image)
-  // One row of three same-height facts: the logo is shown at text height, so it
-  // never stretches the row and leaves white space under the other two.
-  return (
-    <div style={sectionStyle}>
-      <div style={cardTitle}>Branding</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '18px 24px', alignItems: 'start' }}>
-        <div>
-          <div style={label}>Logo</div>
-          <div style={{ ...value, height: '22px', display: 'flex', alignItems: 'center' }}>
-            {src ? <img src={src} alt="Logo" style={{ maxHeight: '22px', maxWidth: '160px', objectFit: 'contain' }} /> : '—'}
-          </div>
-        </div>
-        <div><div style={label}>Logo on ROI presentations</div><div style={value}>{row.logo_image ? (row.logo_enabled ? 'On' : 'Off') : '—'}</div></div>
-        <div><div style={label}>Name in tax planning agreements</div><div style={value}>{nameValue}</div></div>
-      </div>
-    </div>
-  )
 }
 
 // reloadKey: bump it after the surrounding Edit Profile page saves, so the

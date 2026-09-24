@@ -20,9 +20,10 @@ const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:
 import vfoCertifiedSeal from '../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../assets/vfo-accredited-emblem.png'
 import { MemberProfileSkeleton, MemberEditProfileSkeleton } from '../components/shared/Skeleton'
-import { leadMemberNumberOf, findLeadMember } from '../components/shared/corporateMember'
+import { CORPORATE_TYPES, leadMemberNumberOf, findLeadMember } from '../components/shared/corporateMember'
 import { formatDate } from '../lib/dates'
-import MemberBrandingCard, { MemberBrandingSummary } from '../components/shared/MemberBrandingCard'
+import MemberBrandingCard from '../components/shared/MemberBrandingCard'
+import MemberProfileDetails, { PayoutStatusLine } from '../components/shared/MemberProfileDetails'
 import ImageCropModal from '../components/admin/ImageCropModal'
 
 export default function MemberPortal() {
@@ -43,6 +44,7 @@ export default function MemberPortal() {
   const [showSettings, setShowSettings] = useState(false)
   const [memberData, setMemberData] = useState(null)
   const [allMembers, setAllMembers] = useState([])
+  const [memberConnections, setMemberConnections] = useState([])
   const [allExperts, setAllExperts] = useState([])
   const [exclusions, setExclusions] = useState([])
   const [ecoMap, setEcoMap] = useState({})
@@ -79,6 +81,7 @@ export default function MemberPortal() {
       setMemberData(me || null)
       // Full roster is kept only to name a corporate member's lead member.
       setAllMembers(data.members || [])
+      setMemberConnections(data.member_connections || [])
       setAllExperts(data.experts || [])
       const myExclusions = (data.exclusions || [])
         .filter(e => e.member_number === session.member_number)
@@ -194,7 +197,7 @@ export default function MemberPortal() {
           {loading && activeTab && (activeTab === 'profile_edit' ? <MemberEditProfileSkeleton /> : <MemberProfileSkeleton />)}
 
           {!loading && activeTab === 'profile' && memberData && (
-            <MemberProfile member={memberData} allMembers={allMembers} />
+            <MemberProfile member={memberData} allMembers={allMembers} memberConnections={memberConnections} />
           )}
           {!loading && activeTab === 'profile_edit' && memberData && (
             <MemberEditProfile member={memberData} onSaved={() => { clearCachedData(); loadData() }} />
@@ -496,7 +499,7 @@ function MemberSpecialists({ member, allExperts, exclusions, ecoMap = {}, onData
   )
 }
 
-function MemberProfile({ member, allMembers = [] }) {
+function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
   // The member's own Stripe Connect setup state — a tag, never the account id
   // (member_my_connect_status is session-scoped and strips it).
   const [connectStatus, setConnectStatus] = useState(null)
@@ -507,6 +510,34 @@ function MemberProfile({ member, allMembers = [] }) {
       .catch(() => { if (alive) setConnectStatus('unavailable') })
     return () => { alive = false }
   }, [member?.member_number])
+
+  // The member's own full row (renewal date, credit note, Direct eligibility)
+  // through member_profile_load, which is confined to the session's member.
+  const [profileRow, setProfileRow] = useState(null)
+  const [directEligibility, setDirectEligibility] = useState(null)
+  const [profileLoadError, setProfileLoadError] = useState('')
+  useEffect(() => {
+    let alive = true
+    callApi('member_profile_load', { member_number: member.member_number })
+      .then(d => { if (alive) { setProfileRow({ ...member, ...(d?.profile || {}) }); setDirectEligibility(d?.direct_eligibility || null) } })
+      .catch(err => { if (alive) setProfileLoadError(err?.message || 'Your profile details could not be loaded') })
+    return () => { alive = false }
+  }, [member?.member_number])
+
+  // Network: the same four groups the admin Details tab shows, built from the
+  // roster load_data already returns. Names are plain text here.
+  const me = member.member_number
+  const person = m => ({ ...m, number: m.member_number || m.plugin_member_number })
+  const introducedByRow = member.introduced_by_member_number ? allMembers.find(m => m.member_number === member.introduced_by_member_number) : null
+  const partnerNumbers = [...new Set(memberConnections
+    .map(p => String(p.member_a) === String(me) ? String(p.member_b) : String(p.member_b) === String(me) ? String(p.member_a) : null)
+    .filter(Boolean))]
+  const people = {
+    introducedBy: introducedByRow && !CORPORATE_TYPES.includes(member.member_type) ? { ...person(introducedByRow), chip: member.connection_type || null } : null,
+    introducerOf: allMembers.filter(m => m.introduced_by_member_number === me && !CORPORATE_TYPES.includes(m.member_type)).map(m => ({ ...person(m), chip: m.connection_type || null })),
+    connections: partnerNumbers.map(n => allMembers.find(m => m.member_number === n)).filter(m => m && !CORPORATE_TYPES.includes(m.member_type)).map(person),
+    corporate: allMembers.filter(m => m.member_number?.startsWith(me + '-C') || m.member_number?.startsWith(me + '-FC')).map(person),
+  }
 
   // Mirrors the admin-side member profile (MembersPanel MemberProfile):
   // hero header with headshot + status meta, short facts side by side, then
@@ -552,69 +583,19 @@ function MemberProfile({ member, allMembers = [] }) {
         </div>
       </div>
 
-      {/* Short facts side by side; long-form (bio) runs full width below. */}
-      <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 340px', minWidth: '300px', display: 'flex' }}>
-          <div style={{ ...sectionStyle, flex: 1 }}>
-            <div style={cardTitle}>Member Details</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '18px 24px' }}>
-              <div><div style={fieldLabel}>Member Number</div><div style={{ ...fieldValue, fontFamily: 'monospace' }}>{member.member_number}</div></div>
-              <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{member.join_date ? formatDate(member.join_date) : '—'}</div></div>
-              <div><div style={fieldLabel}>Work email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{member.email || '—'}</div></div>
-              <div><div style={fieldLabel}>Personal email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{member.personal_email || '—'}</div></div>
-              <div><div style={fieldLabel}>Company Name</div><div style={fieldValue}>{member.trading_name || '—'}</div></div>
-              {member.website_url && <div><div style={fieldLabel}>Website</div><div style={fieldValue}><a href={normalizeUrl(member.website_url)} target="_blank" rel="noopener noreferrer" style={{ color: '#0095ff', textDecoration: 'none', wordBreak: 'break-all' }}>{member.website_url}</a></div></div>}
-              {!isAccountant && <div><div style={fieldLabel}>Revenue Decision</div><div style={fieldValue}>{member.revenue_decision || '—'}</div></div>}
-              <div><div style={fieldLabel}>Revenue Share Payout Account</div><div style={fieldValue}>
-                {(() => {
-                  const st = connectStatus
-                  const pill = st === 'complete' ? { dot: '#16a34a', label: 'Account set up' }
-                    : st === 'eligible_capped' ? { dot: '#f59e0b', label: 'Account set up — details outstanding' }
-                    : st === 'pending' ? { dot: '#dc2626', label: 'Setup pending' }
-                    : st === 'none' ? { dot: 'var(--vfo-faint)', label: 'Not set up' }
-                    : st === null ? { dot: 'var(--vfo-faint)', label: 'Checking…' }
-                    : { dot: 'var(--vfo-faint)', label: 'Status unavailable' }
-                  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pill.dot, flexShrink: 0 }} />{pill.label}</span>
-                })()}
-              </div></div>
-            </div>
-          </div>
-        </div>
-
-        {hasCerts && (
-          <div style={{ flex: '1 1 300px', minWidth: '280px' }}>
-            <div style={sectionStyle}>
-              <div style={cardTitle}>Certifications</div>
-              {member.vfo_certified_date && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: member.vfo_accredited_date ? '14px' : 0 }}>
-                  <img src={vfoCertifiedSeal} style={{ width: '44px', height: '44px' }} />
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#b08d26', fontWeight: '600' }}>VFO Certified</div>
-                    <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{formatDate(member.vfo_certified_date)}</div>
-                  </div>
-                </div>
-              )}
-              {member.vfo_accredited_date && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <img src={vfoAccreditedSeal} style={{ width: '44px', height: '44px' }} />
-                  <div>
-                    <div style={{ fontSize: '14px', color: 'var(--vfo-muted)', fontWeight: '600' }}>VFO Accredited</div>
-                    <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{formatDate(member.vfo_accredited_date)}</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <MemberBrandingSummary memberNumber={member.member_number} styles={{ sectionStyle, cardTitle }} />
-
-      {member.bio && (
-        <div style={sectionStyle}>
-          <div style={cardTitle}>Bio</div>
-          <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{member.bio}</div>
-        </div>
+      {/* The read-only body is SHARED with the admin member profile's Details
+          tab (shared/MemberProfileDetails) so the two always mirror. */}
+      {profileLoadError && <div style={{ ...sectionStyle, color: '#d93025', fontSize: '13px' }}>{profileLoadError}</div>}
+      {profileRow && (
+        <MemberProfileDetails
+          profile={profileRow}
+          memberNumber={member.member_number}
+          directEligibility={directEligibility}
+          hideRevenueDecision={isAccountant}
+          styles={{ sectionStyle, cardTitle }}
+          people={people}
+          payoutSlot={<div><div style={fieldLabel}>Revenue Share Payout Account</div><div style={fieldValue}><PayoutStatusLine status={connectStatus} /></div></div>}
+        />
       )}
     </div>
   )
