@@ -4,7 +4,7 @@ The public, no-login replacement for the Unbounce tax page. Anyone can open **`v
 
 ## The release switch
 
-`portal_feature_flags` row **`tax_diagnostic`**, seeded `enabled_for_all=false` and **switched ON for everyone on 2026-09-23 (Jake's call)** — the backend answers now; the page itself is reachable once the frontend is deployed. A public page has no member, so **only `enabled_for_all` is read** (`featureEnabledGlobally`, fail-closed). While it is off:
+`portal_feature_flags` row **`tax_diagnostic`**, seeded `enabled_for_all=false` and **switched ON for everyone on 2026-09-23 (Jake's call)** — and the frontend was published 2026-09-24 (`live-206-tax-diagnostic`), so the page is live to the public. A public page has no member, so **only `enabled_for_all` is read** (`featureEnabledGlobally`, fail-closed). While it is off:
 - the three public actions answer 404;
 - the page shows "This form is not available";
 - the deposit link of an already-confirmed diagnostic 404s as well (the choice page's `tax_intake_deposit_load` / `_checkout` and the old `/tax-intake` link actions alike), because such an intake row rides this flag (decision 34).
