@@ -36,6 +36,7 @@ const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:
 import vfoCertifiedSeal from '../../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../../assets/vfo-accredited-emblem.png'
 import { formatDate } from '../../lib/dates'
+import MemberBrandingCard, { MemberBrandingSummary } from '../shared/MemberBrandingCard'
 
 // Members carrying the "VFO Reconciliation (Free)" type that ANY admin may still
 // open. 59524 is the standing sandbox-forced Test Member (#251) — it holds that
@@ -879,6 +880,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
   const [cropState, setCropState] = useState(null)
+  const [brandingKey, setBrandingKey] = useState(0)
 
   function handlePhotoPick(e) {
     const file = e.target.files[0]
@@ -1012,6 +1014,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
       setDirty(false)
       setStatusType('success'); setStatus('Saved!')
       setTimeout(() => setStatus(''), 4000)
+      setBrandingKey(k => k + 1)
       await loadProfile()
       await onDataChange() // refresh the list so the header headshot updates
     } catch (err) { setStatusType('error'); setStatus(err.message) }
@@ -1295,6 +1298,8 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               </div>
             )}
 
+            <MemberBrandingSummary memberNumber={member.plugin_member_number} styles={{ sectionStyle, cardTitle }} />
+
             <MemberAdditionalContacts memberNumber={member.plugin_member_number} contacts={contacts} onReload={reloadContacts}
               styles={{ sectionStyle, cardTitle, inputStyle, labelStyle }} />
 
@@ -1439,6 +1444,9 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               </div>
             </div>
           </div>
+          {/* Branding saves on its own (member_branding_save), not through the
+              Save Changes button below — member_profile_save ignores it. */}
+          <MemberBrandingCard memberNumber={member.plugin_member_number} mode="admin" styles={{ sectionStyle, cardTitle }} reloadKey={brandingKey} />
           {/* Introduction slot — who introduced this member. The tier
               (connection_type) is what THAT introducer earns, so it lives here.
               Shown for every member category, accountants included. */}

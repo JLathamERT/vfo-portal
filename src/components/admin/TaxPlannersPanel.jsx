@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { callApi } from '../../lib/api'
+import { fileToLogoPng, logoUrl } from '../shared/logoPng'
+import { LogoPreview } from '../shared/MemberBrandingCard'
 import { fileSizeError } from '../../lib/fileUpload'
 import VaultSections from '../shared/VaultSections'
 import ImageCropModal from './ImageCropModal'
@@ -857,7 +859,31 @@ function TaxPartnerCard({ group, onSaved }) {
   const [name, setName] = useState(group.name || '')
   const [contactEmail, setContactEmail] = useState(group.contact_email || '')
   const [busy, setBusy] = useState(false)
+  const [logoPending, setLogoPending] = useState(null)
+  const [logoBusy, setLogoBusy] = useState(false)
+  const logoFileRef = useRef(null)
   const connected = (group.stripe_account_id || '').trim()
+
+  // The group's logo, shown bottom-left on its clients' ROI presentations.
+  async function pickLogo(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setMsg('')
+    try { setLogoPending(await fileToLogoPng(file)) }
+    catch (err) { setMsgType('error'); setMsg(err.message) }
+  }
+
+  async function saveLogo(patch, okText) {
+    setLogoBusy(true); setMsg('')
+    try {
+      await callApi('tax_planning_group_logo_save', { group_id: group.id, ...patch })
+      setLogoPending(null)
+      setMsgType('success'); setMsg(okText)
+      await onSaved()
+    } catch (err) { setMsgType('error'); setMsg(err.message) }
+    finally { setLogoBusy(false) }
+  }
 
   async function setUp() {
     if (!contactEmail.trim()) { setMsgType('error'); setMsg('Enter a contact email first.'); return }
@@ -909,6 +935,25 @@ function TaxPartnerCard({ group, onSaved }) {
         {connected
           ? <span style={{ fontSize: '12px', fontWeight: 600, color: '#1b9254', background: 'rgba(27,146,84,0.12)', border: '1px solid rgba(27,146,84,0.3)', borderRadius: '999px', padding: '4px 12px' }}>Payout connected</span>
           : <span style={{ fontSize: '12px', fontWeight: 600, color: '#b26a00', background: 'rgba(224,103,23,0.10)', border: '1px solid rgba(224,103,23,0.3)', borderRadius: '999px', padding: '4px 12px' }}>No payout account</span>}
+      </div>
+
+      <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Logo</div>
+      <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '10px' }}>Shown on this group's clients' ROI presentations, on a small white badge. PNG or JPG; empty space around the logo is trimmed automatically.</div>
+      <LogoPreview src={logoPending?.dataUrl || logoUrl(group.logo_image)} />
+      {logoPending && <div style={{ fontSize: '12.5px', color: '#b08d26', fontWeight: 500, marginTop: '8px' }}>Preview of the new logo. Save it to use it.</div>}
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', margin: '12px 0 20px' }}>
+        <input ref={logoFileRef} type="file" accept="image/png,image/jpeg" onChange={pickLogo} style={{ display: 'none' }} />
+        {logoPending ? (
+          <>
+            <button onClick={() => saveLogo({ logo_base64: logoPending.base64 }, 'Logo saved.')} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: logoBusy ? 'wait' : 'pointer' }}>{logoBusy ? 'Saving…' : 'Save logo'}</button>
+            <button onClick={() => setLogoPending(null)} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <button onClick={() => logoFileRef.current?.click()} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>{group.logo_image ? 'Replace logo' : 'Upload logo'}</button>
+            {group.logo_image && <button onClick={() => { if (window.confirm(`Remove the logo for "${group.name}"?`)) saveLogo({ remove_logo: true }, 'Logo removed.') }} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Remove logo</button>}
+          </>
+        )}
       </div>
 
       <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Payout account</div>

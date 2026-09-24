@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getSession, clearSession, callApi, loadCachedData, loadCachedAction } from '../lib/api'
+import { getSession, clearSession, callApi, loadCachedData, loadCachedAction, clearCachedData } from '../lib/api'
 import MemberWebsitePlugin from '../components/shared/MemberWebsitePlugin'
 import MemberVault from '../components/shared/MemberVault'
 import MemberCIQ from '../components/shared/MemberCIQ'
@@ -19,9 +19,11 @@ const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/o
 const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:\/\//i.test(s) ? 'https://' + s : s }
 import vfoCertifiedSeal from '../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../assets/vfo-accredited-emblem.png'
-import { MemberProfileSkeleton } from '../components/shared/Skeleton'
+import { MemberProfileSkeleton, MemberEditProfileSkeleton } from '../components/shared/Skeleton'
 import { leadMemberNumberOf, findLeadMember } from '../components/shared/corporateMember'
 import { formatDate } from '../lib/dates'
+import MemberBrandingCard, { MemberBrandingSummary } from '../components/shared/MemberBrandingCard'
+import ImageCropModal from '../components/admin/ImageCropModal'
 
 export default function MemberPortal() {
   const navigate = useNavigate()
@@ -151,7 +153,14 @@ export default function MemberPortal() {
       {!showSettings && (
         <>
           <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', padding: '0 24px', background: 'var(--vfo-card)', position: 'relative', zIndex: 100 }}>
-            <button onClick={() => setActiveTab('profile')} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === 'profile' ? '2px solid #125ecc' : '2px solid transparent', color: activeTab === 'profile' ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === 'profile' ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>Profile</button>
+            <NavDropdown
+              label="Profile"
+              isActive={activeTab === 'profile' || activeTab === 'profile_edit'}
+              activeTab={activeTab}
+              options={[{ key: 'profile', label: 'Profile' }, { key: 'profile_edit', label: 'Edit Profile' }]}
+              onSelect={setActiveTab}
+              onLabelClick={() => setActiveTab('profile')}
+            />
             <NavDropdown
               label="MSM"
               isActive={activeTab === 'msm_home' || activeTab?.startsWith('msm_')}
@@ -182,10 +191,13 @@ export default function MemberPortal() {
           )}
 
           <div style={{ flex: 1, overflow: 'auto' }}>
-          {loading && activeTab && <MemberProfileSkeleton />}
+          {loading && activeTab && (activeTab === 'profile_edit' ? <MemberEditProfileSkeleton /> : <MemberProfileSkeleton />)}
 
           {!loading && activeTab === 'profile' && memberData && (
             <MemberProfile member={memberData} allMembers={allMembers} />
+          )}
+          {!loading && activeTab === 'profile_edit' && memberData && (
+            <MemberEditProfile member={memberData} onSaved={() => { clearCachedData(); loadData() }} />
           )}
           {!loading && (activeTab === 'msm_home' || activeTab?.startsWith('msm_')) && memberData && (
             <MemberMSMTracking member={memberData} activeTab={activeTab} onNavigate={setActiveTab} />
@@ -226,7 +238,130 @@ export default function MemberPortal() {
   )
 }
 
-function NavDropdown({ label, isActive, options, activeTab, onSelect }) {
+// The member's own Edit Profile page. Profile fields save through
+// member_self_profile_save (the member's own row only; revenue decision, status
+// and the rest stay admin-owned); Branding saves through member_branding_save.
+function MemberEditProfile({ member, onSaved }) {
+  const [row, setRow] = useState(null)
+  const [form, setForm] = useState({ email: '', trading_name: '', website_url: '' })
+  const [loadError, setLoadError] = useState('')
+  const [dirty, setDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState('')
+  const [statusType, setStatusType] = useState('success')
+  const [photoPreview, setPhotoPreview] = useState(null)
+  const [cropState, setCropState] = useState(null)
+  const [brandingKey, setBrandingKey] = useState(0)
+
+  async function load() {
+    try {
+      const d = await callApi('member_profile_load', { member_number: member.member_number })
+      const p = d?.profile || {}
+      setRow(p)
+      setForm({ email: p.email || '', trading_name: p.trading_name || '', website_url: p.website_url || '' })
+      setDirty(false)
+    } catch (err) { setLoadError(err?.message || 'Your profile could not be loaded') }
+  }
+  useEffect(() => { load() }, [member.member_number])
+
+  function update(key, val) { setForm(f => ({ ...f, [key]: val })); setDirty(true); setStatus('') }
+
+  function pickPhoto(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setCropState({ src: ev.target.result })
+    reader.readAsDataURL(file)
+  }
+
+  async function save() {
+    setSaving(true); setStatus('')
+    try {
+      const payload = { email: form.email, trading_name: form.trading_name, website_url: form.website_url }
+      if (photoPreview) payload.headshot_base64 = photoPreview.split(',')[1]
+      await callApi('member_self_profile_save', payload)
+      setPhotoPreview(null)
+      await load()
+      setBrandingKey(k => k + 1)
+      setStatusType('success'); setStatus('Saved!')
+      onSaved()
+    } catch (err) { setStatusType('error'); setStatus(err?.message || 'Something went wrong') }
+    finally { setSaving(false) }
+  }
+
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
+  const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
+  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }
+  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+
+  if (loadError) return <div style={{ maxWidth: '980px', margin: '0 auto', padding: '24px' }}><div style={sectionStyle}><div style={{ color: '#d93025', fontSize: '13px' }}>{loadError}</div></div></div>
+  if (!row) return <MemberEditProfileSkeleton />
+
+  const currentPhoto = photoPreview || (row.headshot_image ? HEADSHOT_SUPABASE + encodeURIComponent(row.headshot_image) : null)
+  const initials = `${row.first_name || ''} ${row.last_name || ''}`.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
+
+  return (
+    <div style={{ maxWidth: '980px', margin: '0 auto', padding: '24px' }}>
+      <div style={sectionStyle}>
+        <div style={cardTitle}>Profile Picture</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+          <div style={{ width: '110px', height: '110px', borderRadius: '50%', overflow: 'hidden', background: currentPhoto ? 'var(--vfo-tint)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: '1px solid var(--vfo-border-chip)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {currentPhoto
+              ? <img src={currentPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ color: '#fff', fontSize: '30px', fontWeight: 700 }}>{initials || '?'}</span>}
+          </div>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <label style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+              {currentPhoto ? 'Change photo' : 'Upload photo'}
+              <input type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }} />
+            </label>
+            {currentPhoto && <button type="button" onClick={() => setCropState({ src: currentPhoto })} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Adjust / Zoom</button>}
+          </div>
+        </div>
+        {photoPreview && <div style={{ fontSize: '12.5px', color: '#b08d26', fontWeight: 500, marginTop: '10px' }}>New photo selected. Click Save Changes to use it.</div>}
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={cardTitle}>Contact &amp; Company</div>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '240px' }}>
+            <label style={labelStyle}>Work email (emails sent here)</label>
+            <input value={form.email} onChange={e => update('email', e.target.value)} type="email" style={inputStyle} />
+          </div>
+          <div style={{ flex: 1, minWidth: '240px' }}>
+            <label style={labelStyle}>Personal email (not emailed)</label>
+            <input value={row.personal_email || ''} readOnly title="Ask the VFO team to change this" style={{ ...inputStyle, background: 'var(--vfo-tint)', color: 'var(--vfo-muted)', cursor: 'not-allowed' }} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '240px' }}>
+            <label style={labelStyle}>Company Name</label>
+            <input value={form.trading_name} onChange={e => update('trading_name', e.target.value)} style={inputStyle} />
+          </div>
+          <div style={{ flex: 1, minWidth: '240px' }}>
+            <label style={labelStyle}>Website</label>
+            <input value={form.website_url} onChange={e => update('website_url', e.target.value)} placeholder="https://example.com" style={inputStyle} />
+          </div>
+        </div>
+      </div>
+
+      <div style={{ position: 'sticky', bottom: 0, background: 'var(--vfo-page)', borderTop: '1px solid var(--vfo-border)', padding: '16px 0', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '16px', zIndex: 5 }}>
+        {(dirty || photoPreview) && <span style={{ fontSize: '13px', color: '#b08d26', fontWeight: 500 }}>You have unsaved changes</span>}
+        <button onClick={save} disabled={saving || !(dirty || photoPreview)} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: saving ? 'wait' : 'pointer', opacity: (dirty || photoPreview) ? 1 : 0.55 }}>{saving ? 'Saving…' : 'Save Changes'}</button>
+        {status && <span style={{ color: statusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px' }}>{status}</span>}
+      </div>
+
+      <MemberBrandingCard memberNumber={member.member_number} mode="member" styles={{ sectionStyle, cardTitle }} reloadKey={brandingKey} />
+
+      {cropState && <ImageCropModal src={cropState.src} onApply={dataUrl => { setPhotoPreview(dataUrl); setCropState(null) }} onCancel={() => setCropState(null)} />}
+    </div>
+  )
+}
+
+// onLabelClick (optional): clicking the tab's own label navigates too, so the
+// first option is reachable without opening the menu (Profile uses it).
+function NavDropdown({ label, isActive, options, activeTab, onSelect, onLabelClick }) {
   const [open, setOpen] = useState(false)
   const closeTimer = useRef(null)
 
@@ -235,7 +370,7 @@ function NavDropdown({ label, isActive, options, activeTab, onSelect }) {
 
   return (
     <div style={{ position: 'relative' }} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <button style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: isActive ? '2px solid #125ecc' : '2px solid transparent', color: isActive ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: isActive ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
+      <button onClick={onLabelClick ? () => { onLabelClick(); setOpen(false) } : undefined} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: isActive ? '2px solid #125ecc' : '2px solid transparent', color: isActive ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: isActive ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
         {label}<span style={{ fontSize: '9px', opacity: 0.6 }}>▾</span>
       </button>
       {open && (
@@ -472,6 +607,8 @@ function MemberProfile({ member, allMembers = [] }) {
           </div>
         )}
       </div>
+
+      <MemberBrandingSummary memberNumber={member.member_number} styles={{ sectionStyle, cardTitle }} />
 
       {member.bio && (
         <div style={sectionStyle}>
