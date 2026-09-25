@@ -4,6 +4,7 @@ import { callApi } from '../../lib/api'
 import ListFilterButton, { matchesFilter, SortSelect, useHeaderSort, sortByColumn, SortHeader } from './ListFilterButton'
 import { ClientOverviewSkeleton } from '../shared/skeletons/admin'
 import { MemberNameLink } from '../shared/personLinks'
+import { taxDisplayName } from '../shared/taxDisplayNames'
 
 // Client Overview — a mirror of Member Overview, but oriented around clients and
 // their program tracks. Four sub-tabs, each lazily loaded from the backend
@@ -241,7 +242,7 @@ export default function ClientOverviewPanel() {
                   <span style={{ fontSize: '12px', color: c.assigned_pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.assigned_pf || '—'}</span>
                   {isMap1 && <span style={{ fontSize: '12px', color: t.service_level ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.service_level || '—'}</span>}
                   {isTax && (
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: t.state === 'closed' ? '#b23c30' : t.state === 'complete' ? '#1b9254' : t.phase ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.phase || '—'}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: t.state === 'closed' ? '#b23c30' : t.state === 'complete' ? '#1b9254' : t.phase ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.phase ? taxDisplayName(t.phase) : '—'}</span>
                   )}
                   <span style={{ fontSize: '12.5px' }}>
                     {t.state === 'complete' ? (
@@ -251,7 +252,7 @@ export default function ClientOverviewPanel() {
                     ) : entries.length === 0 ? (
                       <span style={{ ...line, display: 'block', color: 'var(--vfo-faint)' }}>—</span>
                     ) : entries.map((n, i) => (
-                      <span key={i} style={{ ...line, display: 'block' }}>{n.label}</span>
+                      <span key={i} style={{ ...line, display: 'block' }}>{taxDisplayName(n.label)}</span>
                     ))}
                   </span>
                   <span style={{ fontSize: '12.5px', color: 'var(--vfo-muted)' }}>
