@@ -966,11 +966,11 @@ function TaxPartnerCard({ group, onSaved }) {
         <button onClick={remove} disabled={busy} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid rgba(231,76,60,0.4)', background: 'transparent', color: '#e74c3c', fontSize: '13px', fontWeight: 500, cursor: busy ? 'not-allowed' : 'pointer' }}>Delete</button>
       </div>
       <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>Logo</div>
-      <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '10px' }}>Shown on this group's clients' ROI presentations, on a small white badge. PNG or JPG; empty space around the logo is trimmed automatically.</div>
+      <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '10px' }}>Shown on this group's clients' ROI presentations, on a small white badge. PNG, JPG or WebP; empty space around the logo is trimmed automatically.</div>
       <GroupLogoPreview src={logoPending?.dataUrl || logoUrl(group.logo_image)} />
       {logoPending && <div style={{ fontSize: '12.5px', color: '#b08d26', fontWeight: 500, marginTop: '8px' }}>Preview of the new logo. Save it to use it.</div>}
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', margin: '12px 0 0' }}>
-        <input ref={logoFileRef} type="file" accept="image/png,image/jpeg" onChange={pickLogo} style={{ display: 'none' }} />
+        <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={pickLogo} style={{ display: 'none' }} />
         {logoPending ? (
           <>
             <button onClick={() => saveLogo({ logo_base64: logoPending.base64 }, 'Logo saved.')} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: logoBusy ? 'wait' : 'pointer' }}>{logoBusy ? 'Saving…' : 'Save logo'}</button>

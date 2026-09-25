@@ -154,7 +154,7 @@ export default function MemberBrandingCard({ memberNumber, mode = 'member', styl
       {pending && <div style={{ fontSize: '12.5px', color: '#b08d26', fontWeight: 500, marginTop: '8px' }}>Preview of the new logo. Save it to use it.</div>}
 
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', margin: '14px 0 6px' }}>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg" onChange={pickFile} style={{ display: 'none' }} />
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={pickFile} style={{ display: 'none' }} />
         {pending ? (
           <>
             <button type="button" disabled={busy} onClick={saveLogo} style={primaryBtn}>{busy ? 'Saving…' : 'Save logo'}</button>
@@ -167,7 +167,7 @@ export default function MemberBrandingCard({ memberNumber, mode = 'member', styl
           </>
         )}
       </div>
-      <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginBottom: '8px' }}>PNG or JPG. Empty space around the logo is trimmed automatically.</div>
+      <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginBottom: '8px' }}>PNG, JPG or WebP. Empty space around the logo is trimmed automatically.</div>
 
       <div style={rowStyle}>
         <div>

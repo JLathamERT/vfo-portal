@@ -46,7 +46,7 @@ function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error('That file is not an image we can use. Please choose a PNG or JPG.'))
+    img.onerror = () => reject(new Error('That file is not an image we can use. Please choose a PNG, JPG or WebP.'))
     img.src = src
   })
 }
@@ -75,7 +75,7 @@ function contentBox(ctx, w, h) {
 
 export async function fileToLogoPng(file) {
   if (!file) throw new Error('No file chosen')
-  if (!/^image\//.test(file.type)) throw new Error('Please choose an image file (PNG or JPG).')
+  if (!/^image\//.test(file.type)) throw new Error('Please choose an image file (PNG, JPG or WebP).')
   const img = await loadImage(await readAsDataUrl(file))
   const srcW = img.naturalWidth || LOGO_WIDTH
   const srcH = img.naturalHeight || LOGO_HEIGHT
@@ -107,7 +107,7 @@ export async function fileToLogoPng(file) {
   const dataUrl = out.toDataURL('image/png')
   const base64 = dataUrl.split(',')[1]
   if (base64.length * 0.75 > LOGO_MAX_BYTES) {
-    throw new Error('That logo is too detailed to use (over 1 MB once sized). Please try a simpler PNG or JPG.')
+    throw new Error('That logo is too detailed to use (over 1 MB once sized). Please try a simpler PNG, JPG or WebP.')
   }
   return { base64, dataUrl }
 }
