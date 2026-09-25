@@ -3,6 +3,7 @@ import { callApi } from '../../lib/api'
 import {
   TAX_INTAKE_QUESTIONS,
   TAX_INTAKE_Q18_POOR_FIT,
+  TAX_INTAKE_Q38_TRADITIONAL,
   validateTaxIntakeAnswers,
   normalizeTaxIntakeAnswers,
 } from './taxIntakeQuestions'
@@ -59,6 +60,7 @@ export default function TaxIntakeForm({
   const [answers, setAnswers] = useState(() => {
     const seed = {}
     for (const q of TAX_INTAKE_QUESTIONS) seed[q.id] = ''
+    seed.q38 = TAX_INTAKE_Q38_TRADITIONAL
     // Q7-Q9 come from the session and are never shown.
     seed.q7 = `${member?.first_name || ''} ${member?.last_name || ''}`.trim() || member?.member_number || ''
     seed.q8 = member?.email || ''
@@ -205,7 +207,12 @@ export default function TaxIntakeForm({
           {q.options.map(opt => (
             <label key={opt} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: 'var(--vfo-ink)', cursor: 'pointer', lineHeight: 1.5 }}>
               <input type="radio" name={q.id} value={opt} checked={val === opt} onChange={() => set(q.id, opt)} style={{ marginTop: '3px', flexShrink: 0 }} />
-              <span>{opt}</span>
+              <span>
+                {opt}
+                {q.optionNotes?.[opt] && (
+                  <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{q.optionNotes[opt]}</span>
+                )}
+              </span>
             </label>
           ))}
         </div>

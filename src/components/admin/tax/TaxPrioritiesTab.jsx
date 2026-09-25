@@ -473,6 +473,16 @@ const DIRECT_EDITABLE_TASKS = {
   // task's own status_options.
   names: ['Client risk profile complete', 'ROI Presentation'],
 }
+// Rapid Route (2026-09-25). DISPLAY ONLY — the stored names are lookup keys
+// (#382/#540). Keyed by status_options sentinel; mirrors RAPID_STEP_LABELS in
+// utils/tax-plan-steps.ts (#339). The status is the booking step's row value
+// after a confirm_rapid send (save-task.ts DIRECT_MEMBER_EDITABLE lists it).
+const RAPID_STEP_LABELS = {
+  tax_3_decision: 'Rapid Route confirmed - Send Confirmation Email',
+  enter_details: 'Send Rapid Route email with video',
+}
+const RAPID_CONFIRM_STATUS = 'Yes - Rapid Route confirmation email to client'
+
 const isDirectEditable = (task) => {
   const so = task?.status_options
   if (Object.prototype.hasOwnProperty.call(DIRECT_EDITABLE_TASKS.sentinels, so)) {
@@ -492,6 +502,7 @@ const DIRECT_ACTION_MAP = {
   automation_TAX_stopnodeposit: 'tax_direct_stop_no_deposit',
   automation_TAX_readyfortax3: 'tax_direct_readyfortax3',
   automation_TAX_skiproimeeting: 'tax_direct_skiproimeeting',
+  tax_set_rapid_route: 'tax_direct_set_rapid_route',
   tax_generate_presentation: 'tax_direct_generate_presentation',
   tax_presentation_downloaded: 'tax_direct_presentation_downloaded',
   automation_TAX_presentation_schedule: 'tax_direct_presentation_schedule',
@@ -1016,7 +1027,12 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAn
   )
 }
 
-function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, onSubmitted, memberCategory, memberType, programType, memberNumber, act = (n) => n }) {
+// `rapid` (Rapid Route, 2026-09-25): the "Send Rapid Route email with video"
+// step. Exactly the Yes form (pricing, split, risk mindset, member-pays,
+// presentation link) with no Client decision dropdown, plus a required video
+// link; submits decision "Rapid" (actions/tax/decision.ts), which saves the
+// pricing and sends the Rapid email instead of the agreement.
+function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, onSubmitted, memberCategory, memberType, programType, memberNumber, act = (n) => n, rapid = false }) {
   const existing = existingData || {}
   const isViewMode = !!existingData
   const isDironInsley = memberNumber === DISCOUNT_MEMBER_NUMBER
@@ -1029,7 +1045,11 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
   // cannot be made. Display only — nothing about what is submitted changes.
   const isDirectPlan = plan?.tax_route === 'direct'
 
-  const [decision, setDecision] = useState(existing.decision || '')
+  const [decision, setDecision] = useState(existing.decision || (rapid ? 'Rapid' : ''))
+  // The Yes fields show and validate on a Yes AND on a Rapid send.
+  const yesFields = decision === 'Yes' || decision === 'Rapid'
+  const [videoLink, setVideoLink] = useState(existing.videoLink || '')
+  const videoLinkOk = /^https:\/\/\S+$/i.test(String(videoLink || '').trim())
   const [memberPayingOnBehalf, setMemberPayingOnBehalf] = useState(existing.memberPayingOnBehalf || 'No')
   const [taxRiskMindset, setTaxRiskMindset] = useState(existing.taxRiskMindset || '')
   const [retainerPayment] = useState(existing.retainerPayment || '')
@@ -1123,9 +1143,9 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
 
   async function handleSubmit() {
     if (!decision) return
-    if (decision === 'Yes' && !feeSplit) return
+    if (yesFields && !feeSplit) return
     if (decision === 'Undecided' && !projectedSplit) return
-    if (decision === 'Yes' && String(taxRiskMindset ?? '').trim() === '') {
+    if (yesFields && String(taxRiskMindset ?? '').trim() === '') {
       alert('Please select a tax risk mindset.')
       return
     }
@@ -1133,13 +1153,16 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
     // no-discount (the key is simply omitted below). Blocking here used to be
     // the only thing standing between an admin and a stuck form, and the
     // backend already stores 0/blank as NULL, so the two agree.
-    if (decision === 'Yes' && splitType === 'Custom') {
+    if (yesFields && splitType === 'Custom') {
       const splitTotal = (parseFloat(memberShare) || 0) + (parseFloat(taxPlannerShare) || 0) + (parseFloat(vfosShare) || 0)
       if (Math.abs(splitTotal - totalFee) > 0.01) return
     }
+    if (decision === 'Rapid' && !videoLinkOk) return
+    if (decision === 'Rapid' && !window.confirm('Send the Rapid Route email?\n\nThe client (or the member, if the member is paying) receives the video, the agreement PDF and the Yes / I have questions / No buttons. The pricing above is saved now; the agreement goes out automatically if the client clicks Yes.')) return
     setSubmitting(true)
     const formData = { decision, presentationLink, memberPayingOnBehalf }
-    if (decision === 'Yes') {
+    if (decision === 'Rapid') formData.videoLink = String(videoLink).trim()
+    if (yesFields) {
       formData.taxRiskMindset = taxRiskMindset
       formData.totalFee = feeSplit.total.toFixed(2)
       // Only ever present for an allowlisted client with the toggle on and a
@@ -1163,7 +1186,7 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
       formData.totalFee = projectedSplit.total.toFixed(2)
     }
     try {
-      await callApi(act('tax_save_task'), {
+      const saveStep = () => callApi(act('tax_save_task'), {
         tax_plan_id: plan.id,
         task_id: task.id,
         status: `Completed - ${decision}`,
@@ -1171,11 +1194,16 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
         notes: JSON.stringify(formData),
         tax_specialist_id: taxSpecialistId || null
       })
-      await callApi(act('automation_TAX_decision'), {
+      const sendDecision = () => callApi(act('automation_TAX_decision'), {
         tax_plan_id: plan.id,
         decision,
         form_data: formData,
       })
+      // A Rapid send is refused server-side until the confirmation and the deck
+      // are done, so it runs FIRST: a refusal must not leave the step reading
+      // complete. The other decisions keep their original order.
+      if (decision === 'Rapid') { await sendDecision(); await saveStep() }
+      else { await saveStep(); await sendDecision() }
       if (onSubmitted) onSubmitted(`Completed - ${decision}`, formData)
     } catch (err) {
       console.error(err)
@@ -1195,19 +1223,24 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
   const isCustomSplit = splitType === 'Custom'
   const isPresetSplit = splitType && !isCustomSplit
   const isLegacySplit = splitType && !isCustomSplit && splitType !== 'Strategic Partner' && !splitOptions.includes(splitType)
-  const needsPlannerAllocation = decision === 'Yes' && !plan?.tax_planner_id
+  const needsPlannerAllocation = yesFields && !plan?.tax_planner_id
   // Custom split must sum to the total fee (mirrors MAP 1 PIPDecisionForm).
   const customSplitTotal = (parseFloat(memberShare) || 0) + (parseFloat(taxPlannerShare) || 0) + (parseFloat(vfosShare) || 0)
-  const customSplitMismatch = decision === 'Yes' && isCustomSplit && Math.abs(customSplitTotal - totalFee) > 0.01
-  const feeMissing = (decision === 'Yes' && !feeSplit) || (decision === 'Undecided' && !projectedSplit)
+  const customSplitMismatch = yesFields && isCustomSplit && Math.abs(customSplitTotal - totalFee) > 0.01
+  const feeMissing = (yesFields && !feeSplit) || (decision === 'Undecided' && !projectedSplit)
   // The field prints the range error itself once something invalid is typed; this
   // only covers the still-blank case, so a greyed-out button always has a reason.
-  const feeBlank = feeMissing && String((decision === 'Yes' ? totalFeeInput : projectedTotalInput) || '').trim() === ''
+  const feeBlank = feeMissing && String((yesFields ? totalFeeInput : projectedTotalInput) || '').trim() === ''
   // A requested custom initial retainer that is blank or out of range blocks the
   // submit (feeSplit is already null there — this states it in its own right so
   // the reason is not buried in feeMissing).
-  const customInitialBlocking = decision === 'Yes' && customInitialActive && !customFeeSplit
-  const blockSubmit = submitting || needsPlannerAllocation || customSplitMismatch || feeMissing || customInitialBlocking
+  const customInitialBlocking = yesFields && customInitialActive && !customFeeSplit
+  const videoMissing = decision === 'Rapid' && !videoLinkOk
+  // Required on every decision (Jake, 2026-09-25); the Rapid email links to it,
+  // so there it must be https. Mirrors the 400s in actions/tax/decision.ts.
+  const presentationTrimmed = String(presentationLink || '').trim()
+  const presentationMissing = !!decision && (decision === 'Rapid' ? !/^https:\/\/\S+$/i.test(presentationTrimmed) : presentationTrimmed === '')
+  const blockSubmit = submitting || needsPlannerAllocation || customSplitMismatch || feeMissing || customInitialBlocking || videoMissing || presentationMissing
 
   return (
     <div style={{ marginLeft: '18px', padding: '16px', background: 'var(--vfo-tint)', borderRadius: '10px', border: '1px solid var(--vfo-tint-deep)', marginTop: '4px', marginBottom: '8px' }}>
@@ -1227,6 +1260,7 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
         )}
       </div>
 
+      {decision !== 'Rapid' && (
       <div style={{ marginBottom: '16px' }}>
         <label style={labelStyle}>Client decision</label>
         {isViewMode
@@ -1239,8 +1273,9 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
             </select>
         }
       </div>
+      )}
 
-      {decision === 'Yes' && (
+      {yesFields && (
         <>
           <div style={{ marginBottom: '16px' }}>
             <label style={labelStyle}>Tax risk mindset</label>
@@ -1483,10 +1518,18 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
           </div>
 
           <div style={{ marginBottom: '12px' }}>
-            <label style={labelStyle}>Presentation link</label>
+            <label style={labelStyle}>Presentation link <span style={{ color: '#d93025' }}>*</span></label>
             <input value={presentationLink} onChange={e => setPresentationLink(e.target.value)} placeholder="Paste Google Drive link to presentation..." style={isViewMode ? readOnlyInput : inputStyle} readOnly={isViewMode} />
             {!isViewMode && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '4px' }}>Export your presentation slides as a PDF, upload to Google Drive, then set sharing to "Anyone with the link can view" and paste the link here</div>}
           </div>
+
+          {decision === 'Rapid' && (
+            <div style={{ marginBottom: '12px' }}>
+              <label style={labelStyle}>Video link <span style={{ color: '#d93025' }}>*</span></label>
+              <input value={videoLink} onChange={e => setVideoLink(e.target.value)} placeholder="Paste the Loom link to the customized video..." style={isViewMode ? readOnlyInput : inputStyle} readOnly={isViewMode} />
+              {!isViewMode && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '4px' }}>The email shows the video's thumbnail with a "Watch the video" button (email cannot play video inline). Must start with https://</div>}
+            </div>
+          )}
 
 
           {!isViewMode && (
@@ -1495,13 +1538,19 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
                 <div style={{ fontSize: '12px', color: '#e06717', fontWeight: 600, marginBottom: '8px' }}>You must allocate a tax planner before submitting.</div>
               )}
               {feeBlank && (
-                <div style={{ fontSize: '12px', color: '#e06717', fontWeight: 600, marginBottom: '8px' }}>{decision === 'Yes' ? 'Enter the total tax planning fee before submitting.' : 'Enter the projected total tax planning fee before submitting.'}</div>
+                <div style={{ fontSize: '12px', color: '#e06717', fontWeight: 600, marginBottom: '8px' }}>{yesFields ? 'Enter the total tax planning fee before submitting.' : 'Enter the projected total tax planning fee before submitting.'}</div>
               )}
               {customSplitMismatch && (
                 <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '13px', marginBottom: '8px' }}>Revenue split (${customSplitTotal.toFixed(2)}) must equal Total Fee (${totalFee.toFixed(2)})</div>
               )}
+              {presentationMissing && !feeBlank && (
+                <div style={{ fontSize: '12px', color: '#e06717', fontWeight: 600, marginBottom: '8px' }}>{decision === 'Rapid' ? 'Paste the presentation link (https://…) before sending.' : 'Paste the presentation link before submitting.'}</div>
+              )}
+              {videoMissing && !feeBlank && !presentationMissing && (
+                <div style={{ fontSize: '12px', color: '#e06717', fontWeight: 600, marginBottom: '8px' }}>Paste the video link (https://…) before sending.</div>
+              )}
               <button onClick={handleSubmit} disabled={blockSubmit} style={{ width: '100%', padding: '12px', borderRadius: '8px', background: blockSubmit ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '15px', fontWeight: '600', cursor: blockSubmit ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                {submitting ? 'Submitting...' : 'Submit Outcome'}
+                {submitting ? (decision === 'Rapid' ? 'Sending...' : 'Submitting...') : (decision === 'Rapid' ? 'Send Rapid Route email' : 'Submit Outcome')}
               </button>
             </>
           )}
@@ -2192,6 +2241,32 @@ function AssessTaxForm({ task, plan, saveTask, existingData, onSubmitted, onCanc
 // Presentational: TaxPlanTrackView owns the single tax_intake_load call (it also
 // needs the row to tell a portal-paid deposit from a hand-typed one), and the 37
 // rows are only built when the card is expanded. The whole card hides when there
+// Rapid Route (2026-09-25): the plan's Traditional 6-Step / Rapid Route choice,
+// one bar above the phases so it reads (and can be changed) whatever state the
+// booking step is in. `canSwitch` is false once the server would refuse it —
+// the booking step answered, the TPOM skipped, the plan stopped — and on every
+// surface that does not own the booking step (planner, classic member).
+function TaxRouteCard({ rapid, canSwitch, busy, onChange }) {
+  const pill = (on) => ({ padding: '4px 12px', borderRadius: '999px', border: 'none', fontSize: '11.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+    cursor: busy ? 'not-allowed' : 'pointer', background: on ? '#125ecc' : 'transparent', color: on ? '#fff' : 'var(--vfo-ink)' })
+  return (
+    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 18px', flexWrap: 'wrap' }}>
+      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tax Planning Route</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{rapid ? 'The TPOM is replaced by a customized video' : 'The client attends the TPOM'}</span>
+        {canSwitch
+          ? (
+            <div role="radiogroup" style={{ display: 'inline-flex', border: '1px solid var(--vfo-border-strong)', borderRadius: '999px', padding: '2px', background: 'var(--vfo-card)' }}>
+              <button type="button" role="radio" aria-checked={!rapid} disabled={busy} onClick={() => onChange(false)} style={pill(!rapid)}>Traditional 6-Step</button>
+              <button type="button" role="radio" aria-checked={rapid} disabled={busy} onClick={() => onChange(true)} style={pill(rapid)}>Rapid Route</button>
+            </div>
+          )
+          : <span style={chipStyle(rapid ? '#125ecc' : 'var(--vfo-muted)')}>{rapid ? 'Rapid Route' : 'Traditional 6-Step'}</span>}
+      </div>
+    </div>
+  )
+}
+
 // is no form — every pre-2026-09-17 plan, and every case an admin started by hand.
 function TaxIntakeCard({ intake, questions }) {
   const [open, setOpen] = useState(false)
@@ -2242,6 +2317,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   // the Deposit Paid step.
   const [taxIntake, setTaxIntake] = useState(null)
   const [taxIntakeQuestions, setTaxIntakeQuestions] = useState([])
+  const [routeBusy, setRouteBusy] = useState(false)
+  // Rapid Route question reply box (Tax 3 Automated steps).
+  const [rapidReply, setRapidReply] = useState('')
+  const [rapidReplyBusy, setRapidReplyBusy] = useState(false)
+  const [rapidAgreementBusy, setRapidAgreementBusy] = useState(false)
   useEffect(() => {
     let live = true
     if (!clientId) return
@@ -2545,7 +2625,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
 
   async function fireReadyForTax3(taskId, decision, opts = {}) {
     const { declineReason, date, time, tz, existingDate } = opts
-    const status = decision === 'declined' ? 'No - Declined email to client' : 'Yes - Confirmation email to client'
+    // Cross-repo contract: save-task.ts DIRECT_MEMBER_EDITABLE lists all three.
+    const status = decision === 'declined'
+      ? 'No - Declined email to client'
+      : decision === 'confirm_rapid' ? RAPID_CONFIRM_STATUS : 'Yes - Confirmation email to client'
     setDeclineDrafts(d => ({ ...d, [taskId]: { ...(d[taskId] || {}), sending: true } }))
     try {
       await callApi(act('automation_TAX_readyfortax3'), {
@@ -2631,7 +2714,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     'Introductions Completed': '#1b9254', 'Introductions cancelled': '#e74c3c', 'Combo Tax Plan': '#1b9254', 'ROI Plan': '#1b9254', 'Custom (See Note)': '#1b9254',
     'Continue Process': '#1b9254', 'Move to Implementation': '#1b9254', 'Refund Completed': '#1b9254',
     'Schedule Tax 3': '#1b9254', 'Paid': '#1b9254',
-    'Yes - Confirmation email to client': '#1b9254', 'Yes - Confirmation email (date TBC)': '#1b9254', 'No - Declined email to client': '#e74c3c',
+    'Yes - Confirmation email to client': '#1b9254', [RAPID_CONFIRM_STATUS]: '#1b9254', 'Yes - Confirmation email (date TBC)': '#1b9254', 'No - Declined email to client': '#e74c3c',
     'Tim Gacsy': '#1b9254', 'Steven Cox': '#1b9254',
     'Yes — Risk 1 — Very Conservative Mindset': '#1b9254', 'Yes — Risk 2 - Moderately Conservative Mindset': '#1b9254',
     'Yes — Risk 3 — Average Risk Mindset': '#1b9254', 'Yes — Risk 4 — Moderately Aggressive Mindset': '#1b9254',
@@ -2746,6 +2829,14 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   //   meeting first   detailed meeting -> confirm it happened -> decision -> sign
   //                   -> pay, and Client decision 1 waits on the retainer too
   const roiSkipMeetingFirst = roiSkipped && livePlan?.roi_skip_mode === 'meeting_first'
+  // Rapid Route (2026-09-25): the TPOM is replaced by a customized video. Two
+  // steps print their Rapid names (RAPID_STEP_LABELS), "Send presentation link
+  // to member before meeting" and "ROI Presentation" are hidden and excluded
+  // from every count, and the decision step unlocks on the Tax 1 + Tax 2 chain.
+  // Mirrors `rapid` in utils/tax-plan-steps.ts (#339). A skip always wins: the
+  // server refuses to skip a Rapid plan, so the two never co-exist.
+  const rapidPlan = !!(livePlan || plan)?.rapid_route && !roiSkipped
+  const isRapidHidden = (t) => rapidPlan && (t?.status_options === 'tax_presentation_link' || t?.name === 'ROI Presentation')
 
   // A task counts as statused for display when its progress is recorded in
   // client_tax_progress — or, for the two steps that write to client_tax_plans
@@ -2925,6 +3016,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   const isStepExcluded = (t) => isSkippedAway(t) || isAmendNotApplicable(t)
     || (t?.status_options === 'tax_refund' && !redLightVisible)
     || (t?.status_options === 'tax_presentation_link' && directPlan)
+    || isRapidHidden(t)
 
   // "Has the amend step been answered?" for the steps that wait on it. An ABSENT
   // task row reads as answered — the program_client_tasks seed lands after this
@@ -2951,7 +3043,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   // submitted-form stamp, which is the only thing that completes this step.
   const assessDone = prereqDone('assess_form', 'Assess tax planning opportunities (and enter presentation details)')
   const deckGenerated = prereqDone('tax_generate_presentation', 'Generate and download presentation')
-  const sendLinkDone = directPlan || prereqDone('tax_presentation_link', null)
+  const sendLinkDone = directPlan || rapidPlan || prereqDone('tax_presentation_link', null)
   const roiPresentationDone = prereqDone(null, 'ROI Presentation')
   const hlmConfirmDone = prereqDone('tax_hlm_confirm', null)
   const detailedPresDone = prereqDone(null, 'Detailed tax plan presentation')
@@ -3100,13 +3192,18 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     if (so === 'assess_form' || nm === 'Assess tax planning opportunities (and enter presentation details)') {
       return { locked: !diagnosticChain, hint: 'Complete "Tax planner review complete" first' }
     }
-    // Chain-level gate only. Once the diagnostic chain holds this falls through to the
-    // bespoke renderer, whose own blockedHint owns the assess/taxes-field/risk states.
+    // Names the step directly above it (Jake, 2026-09-25): the deck is built from
+    // the Assess form, and the Assess step itself waits on the diagnostic chain,
+    // so the chain still holds. Backed by generate-presentation.ts's 400 ("Submit
+    // the Assess tax planning opportunities form first"). Once unlocked, the
+    // bespoke renderer's blockedHint owns the taxes-field/risk states.
     if (so === 'tax_generate_presentation' || nm === 'Generate and download presentation') {
-      return { locked: !diagnosticChain, hint: 'Complete "Tax planner review complete" first' }
+      return { locked: !assessDone, hint: 'Complete "Assess tax planning opportunities" first' }
     }
+    // The step directly above it only (Jake, 2026-09-25) — the TPOM booking is no
+    // longer part of this lock. Backed by presentation-schedule.ts's 400.
     if (so === 'tax_presentation_link') {
-      return { locked: !(roiBooked && deckGenerated), hint: 'Book the TPOM and generate the presentation first' }
+      return { locked: !deckGenerated, hint: 'Generate the TPOM presentation first' }
     }
     if (nm === 'ROI Presentation') {
       const ready = depositOk && returnsReceived && allocDone && addlInfoDone && reviewProceed
@@ -3118,6 +3215,21 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       // tax plan meeting is confirmed as held, which is what asks the PF for it.
       if (roiSkipMeetingFirst) {
         return { locked: !detailedPresDone, hint: 'Complete the "Detailed tax plan presentation" step first' }
+      }
+      // Rapid Route: no TPOM Presentation to wait on, so this step takes that
+      // step's own prerequisite chain (every Tax 1 and Tax 2 step still shown).
+      // The hint names the nearest outstanding step above it. Backed by the 400
+      // in actions/tax/decision.ts's Rapid branch.
+      if (rapidPlan) {
+        const ready = depositOk && returnsReceived && allocDone && addlInfoDone && reviewProceed
+          && roiBooked && assessDone && deckGenerated
+        return {
+          locked: !ready,
+          hint: !deckGenerated ? 'Complete the "Generate TPOM Presentation" step first'
+            : !assessDone ? 'Complete the "Assess tax planning opportunities" step first'
+              : !roiBooked ? `Complete the "${RAPID_STEP_LABELS.tax_3_decision}" step first`
+                : 'Complete every Tax 1 and Tax 2 step first',
+        }
       }
       // A skipped ROI meeting is the other way in: the presentation step it
       // waits on is one of the steps skip removes.
@@ -3271,9 +3383,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     return isDirectPlanView && isDirectEditable(task, phase) ? 'Member' : 'VFOS'
   }
   // Every step row on every surface prints its name through this.
+  const planTaskLabel = (task) => (rapidPlan && RAPID_STEP_LABELS[task?.status_options]) || taskLabel(task)
   const stepName = (task, phase) => {
     const owner = stepOwner(task, phase, isDirectPlanView)
-    return <>{taskLabel(task)}<OwnerChip owner={owner} label={ownerLabel(owner, task, phase)} /></>
+    return <>{planTaskLabel(task)}<OwnerChip owner={owner} label={ownerLabel(owner, task, phase)} /></>
   }
 
   // BOOK-ENDS (DIRECT unit 3b, 2026-09-25): "Generate detailed tax
@@ -3416,6 +3529,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     // on every surface.
     if (task?.status_options === 'tax_refund' && !redLightVisible) return null
     if (task?.status_options === 'tax_presentation_link' && directPlan) return null
+    if (isRapidHidden(task)) return null
     const key = taxSpecialistId ? `${task.id}_${taxSpecialistId}` : task.id
     // Already-actioned steps always render normally, so history stays visible and
     // editable even when a prerequisite is later un-set.
@@ -3749,8 +3863,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       const isInTax3 = enterPhase?.program_client_tasks?.some(pt => pt.id === task.id)
       if (isInTax3) {
         if (memberLocked && isDone) {
-          const decisionLabel = p.status.replace('Completed - ', '')
-          const decisionColor = decisionLabel === 'Yes' ? '#1b9254' : decisionLabel === 'No' ? '#e74c3c' : '#e06717'
+          const lockedRaw = p.status.replace('Completed - ', '')
+          const decisionLabel = lockedRaw === 'Rapid' ? 'Rapid Route email sent' : lockedRaw
+          const decisionColor = lockedRaw === 'Yes' || lockedRaw === 'Rapid' ? '#1b9254' : lockedRaw === 'No' ? '#e74c3c' : '#e06717'
           return (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: decisionColor, flexShrink: 0 }} />
@@ -3770,8 +3885,12 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
             </div>
           )
         }
-        const decisionLabel = isDone ? p.status.replace('Completed - ', '') : ''
-        const decisionColor = decisionLabel === 'Yes' ? '#1b9254' : decisionLabel === 'No' ? '#e74c3c' : decisionLabel === 'Undecided' ? '#e06717' : 'var(--vfo-muted)'
+        const decisionRaw = isDone ? p.status.replace('Completed - ', '') : ''
+        const decisionLabel = decisionRaw === 'Rapid' ? 'Rapid Route email sent' : decisionRaw
+        const decisionColor = decisionRaw === 'Yes' || decisionRaw === 'Rapid' ? '#1b9254' : decisionRaw === 'No' ? '#e74c3c' : decisionRaw === 'Undecided' ? '#e06717' : 'var(--vfo-muted)'
+        const decisionEmailTemplates = rapidPlan
+          ? [{ name: 'TAX_decision_rapid', when: 'The Rapid Route email — video, agreement PDF, Yes / I have questions / No' }, { name: 'TAX_rapid_question_reply', when: 'Your reply to the client\'s question — the buttons again' }, { name: 'TAX_decision_reminder|rapid', when: 'Automatic reminder if the client does not answer (2 business days, paused while a question is open)' }, { name: 'TAX_agreementsent|Yes|skipped', when: 'If the client clicks Yes — sent automatically' }]
+          : [{ name: 'TAX_agreementsent|Yes', when: 'If Yes — congratulations + agreement signing link' }, { name: 'TAX_decision_undecided', when: 'If Undecided — options email to the client' }, { name: 'TAX_decision_decline', when: 'If Decline' }, { name: 'TAX_decision_reminder', when: 'Automatic reminder if the Undecided email gets no response (2 business days)' }]
         let formData = null
         if (isDone) { try { formData = JSON.parse(p.notes || '{}') } catch(e) { formData = {} } }
         const formExpandKey = `taxform_${task.id}`
@@ -3780,7 +3899,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           <div key={key} style={{ borderBottom: '1px solid var(--vfo-border-soft)', padding: '7px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: isDone ? 'pointer' : 'default', flexWrap: 'wrap' }} onClick={() => isDone && setExpanded(prev => ({ ...prev, [formExpandKey]: !prev[formExpandKey] }))}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? decisionColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? decisionColor : 'var(--vfo-border-mid)'}` }} />
-              <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={taxDisplayName(task.name)} templates={[{ name: 'TAX_agreementsent|Yes', when: 'If Yes — congratulations + agreement signing link' }, { name: 'TAX_decision_undecided', when: 'If Undecided — options email to the client' }, { name: 'TAX_decision_decline', when: 'If Decline' }, { name: 'TAX_decision_reminder', when: 'Automatic reminder if the Undecided email gets no response (2 business days)' }]} context={emailCtx} /></span>}</span>
+              <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={planTaskLabel(task)} templates={decisionEmailTemplates} context={emailCtx} /></span>}</span>
               {isDone && <span style={chipStyle(decisionColor)}>{decisionLabel}</span>}
               {isDone && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
               {isDone && <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isFormShown ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
@@ -3797,6 +3916,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                 programType={plan.program_id === 4 ? 'tax' : 'holistic'}
                 memberNumber={client?.member_number}
                 act={act}
+                rapid={rapidPlan && !isDone}
                 onSubmitted={(status, data) => {
                   setLocalProgress(prev => ({ ...prev, [key]: { ...prev[key], task_id: task.id, status, completed_date: new Date().toISOString().split('T')[0], notes: JSON.stringify(data) } }))
                   refreshLivePlan()
@@ -3817,7 +3937,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <LockedIcon />
-            <span style={lockedHintStyle}>Starts automatically after the "Client tax planning decision" step</span>
+            <span style={lockedHintStyle}>Starts automatically after the "{rapidPlan ? RAPID_STEP_LABELS.enter_details : 'Client tax planning decision'}" step</span>
           </span>
           <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}></span>
         </div>
@@ -3907,6 +4027,108 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           </div>
           <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
             {decision === 'No' && autoStep('Decline email sent to client', true)}
+            {decision === 'Rapid' && (() => {
+              // Rapid Route (2026-09-25): the Rapid email is the Undecided email
+              // (tax_decision 'Undecided'), so the client's answer lands on
+              // tax_final_decision exactly as there — but the pricing was entered
+              // with the send, a Yes sends the agreement on its own, and "I have
+              // questions" is answered HERE (no email to the PF, Jake's call).
+              const finalDec = livePlan?.tax_final_decision
+              const questions = Array.isArray(livePlan?.rapid_questions) ? livePlan.rapid_questions : []
+              const openQ = livePlan?.rapid_question_open_at && questions.length ? questions[questions.length - 1] : null
+              const canAct = !memberLocked && !readOnly
+              const qaBox = { margin: '6px 0 8px 14px', padding: '10px 12px', borderRadius: '8px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-chip)' }
+              const qaLabel = { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--vfo-muted)', marginBottom: '4px' }
+              const sendReply = async () => {
+                const text = rapidReply.trim()
+                if (!text || rapidReplyBusy) return
+                if (!window.confirm('Send this reply?\n\nThe client (or the member, if the member is paying) receives your answer with the Yes / I have questions / No buttons again.')) return
+                setRapidReplyBusy(true)
+                try {
+                  await callApi('tax_rapid_question_reply', { tax_plan_id: plan.id, reply: text })
+                  setRapidReply('')
+                  await refreshLivePlan()
+                } catch (err) {
+                  alert('Reply failed: ' + (err?.message || 'unknown error'))
+                } finally { setRapidReplyBusy(false) }
+              }
+              const retryAgreement = async () => {
+                if (rapidAgreementBusy) return
+                setRapidAgreementBusy(true)
+                try {
+                  await callApi(act('automation_TAX_sendagreement'), { tax_plan_id: plan.id })
+                  await refreshLivePlan()
+                } catch (err) {
+                  alert('Send failed: ' + (err?.message || 'unknown error'))
+                } finally { setRapidAgreementBusy(false) }
+              }
+              return (
+                <>
+                  {autoStep('Rapid Route email sent (video + agreement PDF)', livePlan?.tax_decision_email_sent === 'Yes', null, livePlan?.tax_decision_email_sent_at)}
+                  {livePlan?.rapid_video_link && (
+                    <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '4px 0 4px 14px', wordBreak: 'break-all' }}>
+                      Video: <a href={livePlan.rapid_video_link} target="_blank" rel="noopener noreferrer" style={{ color: '#0095ff' }}>{livePlan.rapid_video_link}</a>
+                    </div>
+                  )}
+                  {stallRows('tax_decision')}
+                  {questions.map((q, i) => (
+                    <div key={i} style={qaBox}>
+                      <div style={qaLabel}>Client question{q.asked_at ? ` · ${fmtMMDD(q.asked_at)}` : ''}</div>
+                      <div style={{ fontSize: '12.5px', color: 'var(--vfo-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5, marginBottom: q.reply ? '8px' : 0 }}>{q.question}</div>
+                      {q.reply && (
+                        <>
+                          <div style={qaLabel}>Reply sent{q.replied_at ? ` · ${fmtMMDD(q.replied_at)}` : ''}</div>
+                          <div style={{ fontSize: '12.5px', color: 'var(--vfo-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{q.reply}</div>
+                        </>
+                      )}
+                      {openQ === q && !q.reply && (canAct ? (
+                        <div style={{ marginTop: '8px' }}>
+                          <textarea
+                            value={rapidReply}
+                            onChange={e => setRapidReply(e.target.value)}
+                            placeholder="Type your reply to the client…"
+                            disabled={rapidReplyBusy}
+                            style={{ width: '100%', minHeight: '90px', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', fontSize: '13px', lineHeight: '1.55', boxSizing: 'border-box', resize: 'vertical' }}
+                          />
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                            <button disabled={rapidReplyBusy || !rapidReply.trim()} onClick={sendReply}
+                              style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: (rapidReplyBusy || !rapidReply.trim()) ? 'not-allowed' : 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff' }}>
+                              {rapidReplyBusy ? 'Sending…' : 'Send reply'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '11.5px', color: '#e06717', marginTop: '6px' }}>Awaiting a reply from the tax planning team</div>
+                      ))}
+                    </div>
+                  ))}
+                  {!finalDec && !openQ && autoStep('Waiting for client to respond via email', false)}
+
+                  {finalDec === 'Yes' && (
+                    <>
+                      {autoStep('Client confirmed — Yes (agreement sent automatically)', true, null, livePlan?.tax_final_decision_at)}
+                      {!signingEmailSent && canAct && (
+                        <div style={{ padding: '8px 0', borderBottom: '1px solid var(--vfo-border-soft)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '12px', color: '#e06717' }}>The agreement did not go out automatically.</span>
+                          <button disabled={rapidAgreementBusy} onClick={retryAgreement}
+                            style={{ padding: '5px 12px', borderRadius: '5px', fontSize: '11px', fontWeight: 600, cursor: rapidAgreementBusy ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254' }}>
+                            {rapidAgreementBusy ? 'Sending…' : 'Send engagement agreement'}
+                          </button>
+                        </div>
+                      )}
+                      {autoStep('Signing link and next steps email sent', signingEmailSent, null, livePlan?.agreement_sent_at)}
+                      {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at, s.pending)}{s.stall && stallRows(s.stall)}</div>)}
+                    </>
+                  )}
+                  {finalDec === 'No' && (
+                    <>
+                      {autoStep('Client confirmed — Stop', true, null, livePlan?.tax_final_decision_at)}
+                      {autoStep('Decline email sent to client', true)}
+                    </>
+                  )}
+                </>
+              )
+            })()}
             {decision === 'Yes' && (
               <>
                 {autoStep('Signing link and next steps email sent', signingEmailSent, null, livePlan?.agreement_sent_at)}
@@ -3925,7 +4147,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
 
                   {finalDec === 'Yes' && !viaExtra && (
                     <>
-                      {autoStep('Client confirmed — Yes', true)}
+                      {autoStep('Client confirmed — Yes', true, null, livePlan?.tax_final_decision_at)}
                       {!hasPricing && !memberLocked && (
                         <TaxPricingForm
                           submitLabel="Submit Pricing & Send Agreement"
@@ -3948,14 +4170,14 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
 
                   {finalDec === 'No' && (
                     <>
-                      {autoStep(viaExtra ? 'PF confirmed — No after extra meeting' : 'Client confirmed — Stop', true)}
+                      {autoStep(viaExtra ? 'PF confirmed — No after extra meeting' : 'Client confirmed — Stop', true, null, viaExtra ? null : livePlan?.tax_final_decision_at)}
                       {autoStep('Decline email sent to client', true)}
                     </>
                   )}
 
                   {finalDec === 'ExtraMeeting' && (
                     <>
-                      {autoStep('Client requested extra meeting', true)}
+                      {autoStep('Client requested extra meeting', true, null, livePlan?.tax_final_decision_at)}
                       {autoStep('Extra meeting held', viaExtra)}
                       {!viaExtra && !extraMeetingPricingOpen && !memberLocked && (
                         <div style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
@@ -4660,7 +4882,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         <div key={key} style={{ borderBottom: '1px solid var(--vfo-border-soft)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-            <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={taxDisplayName(task.name)} templates={[{ name: 'TAX_readyfortax3|Yes', when: 'If the meeting is booked' }, { name: 'TAX_readyfortax3|No', when: 'If declined' }]} context={emailCtx} /></span>}</span>
+            <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={rapidPlan ? RAPID_STEP_LABELS.tax_3_decision : taxDisplayName(task.name)} templates={rapidPlan
+              ? [{ name: 'TAX_readyfortax3|Rapid', when: 'Rapid Route confirmed' }, { name: 'TAX_readyfortax3|No', when: 'If declined' }]
+              : [{ name: 'TAX_readyfortax3|Yes', when: 'If the meeting is booked' }, { name: 'TAX_readyfortax3|No', when: 'If declined' }]} context={emailCtx} /></span>}</span>
             {dateOpen && !memberLocked
               ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <input type="date" value={draft.date || ''} onChange={e => setDraft({ date: e.target.value })} style={tdInput} />
@@ -4690,15 +4914,21 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                     ? <span style={neutralChipStyle}>Not started</span>
                     : !declineOpen && (
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        <button disabled={sending} onClick={() => { if (!plannerAllocated) { alert('Allocate a Team Member / Tax Planner (Tax 1) before sending the confirmation email.'); return } openDateForm() }} style={tdGreen}>Send email (with date)</button>
+                        {rapidPlan
+                          ? <button disabled={sending} onClick={() => {
+                              if (!plannerAllocated) { alert('Allocate a Team Member / Tax Planner (Tax 1) before sending the confirmation email.'); return }
+                              if (!window.confirm('Send the Rapid Route confirmation email?\n\nThe client is told their initial calculations are being finalized and that a customized video will follow.')) return
+                              fireReadyForTax3(task.id, 'confirm_rapid', { existingDate: p.completed_date })
+                            }} style={tdGreen}>{sending ? 'Sending...' : 'Send confirmation email'}</button>
+                          : <button disabled={sending} onClick={() => { if (!plannerAllocated) { alert('Allocate a Team Member / Tax Planner (Tax 1) before sending the confirmation email.'); return } openDateForm() }} style={tdGreen}>Send email (with date)</button>}
                         {canDecline && <button disabled={sending} onClick={() => setDeclineDrafts(d => ({ ...d, [task.id]: { open: true, reason: '', sending: false } }))} style={tdRed}>No - Declined email to client</button>}
                         {/* Both programs, both routes. Irreversible, so the confirm
                             stays: a skipped plan can never book the ROI meeting
                             afterwards, and the ROUTE is equally one-way — the two
                             unlock different steps and raise different bells, so the
                             backend refuses a later click on the other button. */}
-                        {!directMode && <button disabled={sending} onClick={() => fireSkipRoi('retainer_first', 'Skip the TPOM, retainer first?\n\nThis is final. The client completes the tax planning decision, signs and pays BEFORE the detailed tax plan meeting is booked.')} style={tdSkip} title="No TPOM. The client decides, signs and pays first; the detailed tax plan meeting is booked after that.">Skip TPOM — retainer first</button>}
-                        {!directMode && <button disabled={sending} onClick={() => fireSkipRoi('meeting_first', 'Skip the TPOM, meeting first?\n\nThis is final. The detailed tax plan meeting is booked and held BEFORE the client decides, signs and pays.')} style={tdSkip} title="No TPOM. The detailed tax plan meeting is booked and held first; the decision, signing and payment follow it.">Skip TPOM — meeting first</button>}
+                        {!directMode && !rapidPlan && <button disabled={sending} onClick={() => fireSkipRoi('retainer_first', 'Skip the TPOM, retainer first?\n\nThis is final. The client completes the tax planning decision, signs and pays BEFORE the detailed tax plan meeting is booked.')} style={tdSkip} title="No TPOM. The client decides, signs and pays first; the detailed tax plan meeting is booked after that.">Skip TPOM — retainer first</button>}
+                        {!directMode && !rapidPlan && <button disabled={sending} onClick={() => fireSkipRoi('meeting_first', 'Skip the TPOM, meeting first?\n\nThis is final. The detailed tax plan meeting is booked and held BEFORE the client decides, signs and pays.')} style={tdSkip} title="No TPOM. The detailed tax plan meeting is booked and held first; the decision, signing and payment follow it.">Skip TPOM — meeting first</button>}
                       </div>
                     )
             }
@@ -5316,6 +5546,29 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
         )}
       />
 
+      {/* Order at the top of the plan (Jake, 2026-09-25): Tax Planning Form,
+          Tax Planning Route, Pricing & revenue split. */}
+      <TaxIntakeCard intake={taxIntake} questions={taxIntakeQuestions} />
+
+      <TaxRouteCard
+        rapid={!!(livePlan || plan)?.rapid_route}
+        canSwitch={(!readOnly || directMode) && !plannerMode && !roiSkipped && !(livePlan || plan)?.ready_for_tax3_decision && (livePlan || plan)?.status !== 'stopped'}
+        busy={routeBusy}
+        onChange={async (next) => {
+          if (routeBusy || next === !!(livePlan || plan)?.rapid_route) return
+          setRouteBusy(true)
+          try {
+            const res = await callApi(act('tax_set_rapid_route'), { tax_plan_id: plan.id, rapid_route: next })
+            if (res?.error) alert(`Error: ${res.error}`)
+            await refreshLivePlan()
+          } catch (err) {
+            alert(`Error: ${err?.message || err}`)
+          } finally {
+            setRouteBusy(false)
+          }
+        }}
+      />
+
       {/* ADMIN (VFOS/ERT) SURFACE ONLY — this exposes VFO's own cut, so it is not
           rendered at all in the member view (readOnly) or the tax-planner portal
           (plannerMode), rather than being shown to them read-only. Every admin may
@@ -5334,8 +5587,6 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
           onSaved={refreshLivePlan}
         />
       )}
-
-      <TaxIntakeCard intake={taxIntake} questions={taxIntakeQuestions} />
 
       {phasesBeforeSpec.map((phase, phaseIdx) => {
         const state = getPhaseState(phase)
@@ -5733,7 +5984,11 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
       && !(planReviewTask && prog[planReviewTask.id]?.status === 'Stop tax planning')
       && planRedLightStatus !== 'Proceed' && planRedLightStatus !== 'Stopped'
       && plan?.deposit_refund_status !== 'succeeded'
-    const allTasks = phases.filter(p => p.name !== 'Tax 5 - Education & DD (Specialist Allocation)' && p.name !== 'Tax 5 - Education & DD (Post Allocation)').flatMap(p => p.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !amendNotApplicable(t) && !(redLightHidden && t.status_options === 'tax_refund'))
+    // Rapid Route: the two TPOM steps it hides are never answered (same
+    // predicate as the track view's isRapidHidden and the backend's `rapid`).
+    const rapidHidden = (t) => !!plan?.rapid_route && !plan?.roi_meeting_skipped_at
+      && (t.status_options === 'tax_presentation_link' || t.name === 'ROI Presentation')
+    const allTasks = phases.filter(p => p.name !== 'Tax 5 - Education & DD (Specialist Allocation)' && p.name !== 'Tax 5 - Education & DD (Post Allocation)').flatMap(p => p.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !amendNotApplicable(t) && !(redLightHidden && t.status_options === 'tax_refund') && !rapidHidden(t))
     if (allTasks.length === 0) return 'not started'
     if (allTasks.every(t => prog[t.id]?.status)) return 'completed'
     if (allTasks.some(t => prog[t.id]?.status)) return 'in progress'

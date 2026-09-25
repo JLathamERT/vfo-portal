@@ -33,6 +33,12 @@ export const TAX_INTAKE_Q1_ADVISOR = "Advisor for Client";
 export const TAX_INTAKE_Q1_ACCOUNTANT = "Accountant for Client";
 export const TAX_INTAKE_Q1_CLIENT = "Client";
 
+// Q38 (2026-09-25, Rapid Route). The FIRST option is the default the form
+// pre-selects (TaxIntakeForm seeds it). Not required: a blank reads as
+// Traditional everywhere. The server stamps client_tax_plans.rapid_route from it.
+export const TAX_INTAKE_Q38_TRADITIONAL = "Traditional 6-Step Process";
+export const TAX_INTAKE_Q38_RAPID = "Rapid Route - Step 3: Orientation Meeting replaced with customized video";
+
 export const TAX_INTAKE_QUESTIONS = [
   { id: "q1", label: "Who is completing this form?", type: "derived", required: false, options: [TAX_INTAKE_Q1_ADVISOR, TAX_INTAKE_Q1_ACCOUNTANT, TAX_INTAKE_Q1_CLIENT] },
   { id: "q2", label: "Client First Name", type: "text", required: true },
@@ -77,6 +83,14 @@ export const TAX_INTAKE_QUESTIONS = [
     note: "Such as job change, large bonus, equity/RSU exercise, business windfall, property sale, inheritance, lawsuit/settlement, major charitable gift, move to a new state, marriage/divorce, new dependents.",
   },
   { id: "q37", label: "One time or large transaction details", type: "textarea", required: false, note: "If applicable, please include any details on a one time or large transaction in the current year, including what's being sold or monetized, the expected proceeds, the cost basis, and the timing." },
+  {
+    id: "q38",
+    label: "Client would prefer",
+    type: "radio",
+    required: false,
+    options: [TAX_INTAKE_Q38_TRADITIONAL, TAX_INTAKE_Q38_RAPID],
+    optionNotes: { [TAX_INTAKE_Q38_RAPID]: "Best for more sophisticated or time-limited clients" },
+  },
 ];
 
 export const TAX_INTAKE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

@@ -265,10 +265,10 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   }
 
   return (
-    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '10px', padding: '9px 14px', marginBottom: '14px', fontFamily: 'Inter, sans-serif' }}>
-      <div onClick={() => setExpanded(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: '9px', cursor: 'pointer', flexWrap: 'wrap' }}>
-        <span style={{ color: 'var(--vfo-muted)', fontSize: '9px', transform: expanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-heading)' }}>Pricing &amp; revenue split</span>
+    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', padding: '14px 18px', marginBottom: '10px', fontFamily: 'Inter, sans-serif' }}>
+      <div onClick={() => setExpanded(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Pricing &amp; revenue split</span>
+        <span style={{ flex: 1 }} />
         <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>
           {hasPricing ? `${fmt(totalFee)} · ${plan?.split_type || 'no split set'}` : 'No pricing entered yet'}
         </span>
@@ -284,10 +284,10 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
         {refunded && (
           <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', fontWeight: 600 }}>Refunded {fmt(money(plan?.refund_amount))}</span>
         )}
-        <span style={{ flex: 1 }} />
         {expanded && canEdit && !editing && (
           <button onClick={e => { e.stopPropagation(); setEditing(true) }} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600 }}>Edit split</button>
         )}
+        <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: expanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
       </div>
 
       {/* Outside the fold on purpose — a held share is money that has stopped moving. */}
