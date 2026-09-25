@@ -1,5 +1,5 @@
 <!-- CANONICAL COPY of the VFO session starter prompt. The owner pastes this file's
-     contents at the top of every AI chat. Edit here, then re-copy. Last updated: 2026-09-21. -->
+     contents at the top of every AI chat. Edit here, then re-copy. Last updated: 2026-09-25. -->
 
 # VFO SESSION STARTER
 
@@ -138,7 +138,7 @@ Never branch from local `main` without fetching first — local `main` is not au
 Branch name must be specific to this chat (e.g. `claude/<descriptor>` matching the chat's purpose). Both repos use the same branch name so they can be tracked together. Never reuse an existing worktree from a prior chat. If the chat opens inside a pre-existing worktree from a prior session, STOP and propose creating new ones — do not edit in the old worktree.
 git worktree add .claude/worktrees/<chat-branch> -b <chat-branch> main
 
-**EXCEPTION — a CONTINUING chat.** If my task text below starts with `CONTINUING` (a handoff from an earlier chat on the same piece of work), do the OPPOSITE: do **not** create anything. Reuse the exact branch and worktree paths the handoff names, confirm they exist via `git worktree list`, run the 2b freshness check on them, and say which paths you are continuing in. Creating a second branch for work that already has one splits the change across two PRs — that is the failure this exception exists to prevent. Everything else in this prompt applies unchanged. **Known tooling trap (2026-09-21):** the app auto-opens the chat inside a FRESH edge worktree on its own branch, and the Edit/Write tools then refuse any path in a DIFFERENT edge worktree ("belongs to a different worktree"). Do not edit the auto-created one — it is the wrong branch. For edge-repo edits in a CONTINUING chat use an exact-match replace script through Bash (refuse on ≠1 match, preserve CRLF/LF), or hand the edit to an Opus subagent; the react worktree is unaffected. Say so at startup so I can open the next chat from the right worktree.
+**EXCEPTION — a CONTINUING chat.** If my task text below starts with `CONTINUING` (a handoff from an earlier chat on the same piece of work), do the OPPOSITE: do **not** create anything. Reuse the exact branch and worktree paths the handoff names, confirm they exist via `git worktree list`, run the 2b freshness check on them, and say which paths you are continuing in. Creating a second branch for work that already has one splits the change across two PRs — that is the failure this exception exists to prevent. Everything else in this prompt applies unchanged. **Known tooling trap (2026-09-21):** the app auto-opens the chat inside a FRESH edge worktree on its own branch, and the Edit/Write tools then refuse any path in a DIFFERENT edge worktree ("belongs to a different worktree"). Do not edit the auto-created one — it is the wrong branch. For edge-repo edits in a CONTINUING chat use an exact-match replace script through Bash (refuse on ≠1 match, preserve CRLF/LF), or hand the edit to a subagent; the react worktree is unaffected. Say so at startup so I can open the next chat from the right worktree.
 
 ### 2b. Verify worktree freshness (auto-created worktrees especially)
 If the chat opened inside worktrees that already exist (the app sometimes creates them before the chat starts, cut from LOCAL main which may be stale), run in EACH worktree:
@@ -180,7 +180,6 @@ A chat ending and the work shipping are **not** the same event, and conflating t
 
 ## STANDING PREFERENCES — always apply, I should never have to repeat these
 
-- **Delegation:** Fable plans the work and delegates it; Opus executes; Fable reviews what Opus did and sends it back until it is right; Opus does the checking while I am testing; Opus runs the wrap-up prompt when I paste it in.
 - **Never deploy, merge, push a tag, or run the wrap-up on your own initiative.** Ask, every time, even if I approved something similar an hour ago.
 - **Offer a handoff, not a wrap-up,** when the chat is long or the next piece of work is a different shape.
 - **Ask before assuming scope.** If my task text is ambiguous in a way that changes what you would build, ask one question rather than guessing — but only for genuine forks, not for things you can settle by reading the code.
