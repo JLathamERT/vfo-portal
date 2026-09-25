@@ -1,5 +1,5 @@
 <!-- CANONICAL COPY of the VFO mid-session handoff prompt. Paste this at the END of a chat
-     that is getting long but is NOT ready to ship. Edit here, then re-copy. Last updated: 2026-08-17. -->
+     that is getting long but is NOT ready to ship. Edit here, then re-copy. Last updated: 2026-09-25. -->
 
 # MID-SESSION HANDOFF — close this chat without shipping
 
@@ -46,7 +46,7 @@ Rules for the block:
 
 ## 3. Tell me exactly what to paste next
 
-One line: paste `SESSION_STARTER.md`, then this block as the task text, and type what I want into the empty `WHAT I WANT NEXT:` line. The starter's CONTINUING exception makes the new chat reuse this branch and these worktrees instead of creating new ones, and its STANDING PREFERENCES section already carries the delegation model and the never-deploy-unasked rules — I do not retype those.
+One line: paste `SESSION_STARTER.md`, then this block as the task text, and type what I want into the empty `WHAT I WANT NEXT:` line. The starter's CONTINUING exception makes the new chat reuse this branch and these worktrees instead of creating new ones, and its STANDING PREFERENCES section already carries the never-deploy-unasked rules — I do not retype those.
 
 ---
 
