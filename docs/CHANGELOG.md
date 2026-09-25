@@ -38,6 +38,8 @@ Branch `claude/vfo-session-setup-f7d28b`, both repos, ONE chat. `vfo-admin-api` 
 
 Gotchas **#542** (Google Slides re-wraps text PowerPoint does not), **#543** (a server order guard deployed ahead of the UI that satisfies it), **#544** (a synthetic step must count as done when the next step is), **#545** (a whole-line delete on a CRLF file can fuse lines and under-count actions).
 
+**Shipped (2026-09-25, after the merge):** edge `c5fa034`, react `2f170a8`; frontend published as `live-209-direct-unit3b-detailed-presentation` (`index-Do5URXOk.js`, live site verified) — which closed the #543 window for plans 58/87/108; tags `backend-good-2026-09-25-v900` + `live-209-…` pushed; **smoke 5/5 vs v900** (Jake). The hub's "frontend publish" and "smoke vs v900" OWED items are discharged by this line.
+
 **Superseded in the hub by this entry:** `vfo-admin-api` v893 → **v900**; action count 544 → **545**; the unit 3 OWED item "unit 3b book-ends" (DISCHARGED — this entry); the DOC MAP line "3b book-ends + unit 4 not started" → unit 4 only.
 
 ---
