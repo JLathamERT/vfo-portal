@@ -170,6 +170,12 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
         const fd = new FormData(); fd.append('cacheControl', '3600'); fd.append('', file)
         const put = await fetch(d.signed_url, { method: 'PUT', headers: { 'x-upsert': 'true' }, body: fd })
         if (!put.ok) throw new Error('Upload failed')
+        // Member Sensitive uploads: tell the server the file ARRIVED, so a member
+        // dropping the returns greens "Request Tax Returns" exactly like the
+        // client's link does (2026-09-25). Best-effort — never fails the upload.
+        if (sec.actions.uploadNotify) {
+          callApi(sec.actions.uploadNotify, { ...paramsFor(sec), file_name: file.name }).catch(() => {})
+        }
       } catch (e) { setError(e.message || 'Upload failed') }
     }
     setBusy(''); load()
@@ -253,7 +259,7 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
       blurb: taxDenied
         ? 'Stored in a private vault. You do not have access to this client.'
         : 'Stored in a private vault. This is where tax returns and other confidential documents belong. You can view these documents and add new ones.',
-      actions: { download: 'member_client_vault_download', upload: 'member_client_vault_upload_url' },
+      actions: { download: 'member_client_vault_download', upload: 'member_client_vault_upload_url', uploadNotify: 'member_client_vault_upload_notify' },
     },
     {
       key: 'general', title: 'General Documentation', sub: '', files: general,

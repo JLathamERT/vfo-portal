@@ -10,6 +10,10 @@ export default function TaxDecidePage() {
   const [status, setStatus] = useState('confirm')
   const [error, setError] = useState('')
   const [decision, setDecision] = useState(() => searchParams.get('decision') || '')
+  // Rapid Route (2026-09-25): "I have questions" opens a question box instead
+  // of a confirm card. Posting it records NO decision — the Yes / No buttons in
+  // the email stay live — and the reply comes back by email.
+  const [question, setQuestion] = useState('')
 
   useEffect(() => {
     const token = searchParams.get('token')
@@ -22,8 +26,83 @@ export default function TaxDecidePage() {
     }
 
     setDecision(dec)
+    if (dec === 'Questions') {
+      // Each email's "I have questions" link asks ONE question: find out before
+      // the client types anything whether this link is already spent. `peek`
+      // writes nothing.
+      setStatus('processing')
+      postQuestion({ peek: true }).then(ok => { if (ok) setStatus('question') })
+      return
+    }
     setStatus('confirm')
   }, [])
+
+  // Posts to automation_TAX_rapidquestion; maps every refusal to its view and
+  // returns true only on success. `q` is the link's own question count.
+  async function postQuestion(extra) {
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'automation_TAX_rapidquestion', token: searchParams.get('token'), q: searchParams.get('q') || '0', ...extra }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        if (data.existing_decision) {
+          setDecision(data.existing_decision)
+          setStatus('already_submitted')
+        } else if (data.already_asked) {
+          setStatus('question_used')
+        } else if (data.pending) {
+          setStatus('question_pending')
+        } else {
+          setError(data.error || 'Something went wrong.')
+          setStatus('error')
+        }
+        return false
+      }
+      return true
+    } catch (err) {
+      setError('Unable to connect. Please try again later.')
+      setStatus('error')
+      return false
+    }
+  }
+
+  async function submitQuestion() {
+    const text = question.trim()
+    if (!text) return
+    setStatus('processing')
+    if (await postQuestion({ question: text })) setStatus('question_sent')
+  }
+
+  if (status === 'question') {
+    return (
+      <TokenShell maxWidth={520}>
+        <div style={{ padding: '12px 0' }}>
+          <h1 style={{ ...titleStyle, textAlign: 'center' }}>What would you like to ask?</h1>
+          <p style={{ ...messageStyle, textAlign: 'center', marginBottom: '20px' }}>
+            Type your question below and your tax planning team will reply by email. You can still choose Yes or No from the email at any time.
+          </p>
+          <textarea
+            value={question}
+            onChange={e => setQuestion(e.target.value.slice(0, 2000))}
+            placeholder="Your question…"
+            rows={6}
+            style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', fontSize: '14px', lineHeight: 1.55, boxSizing: 'border-box', resize: 'vertical' }}
+          />
+          <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', textAlign: 'right', marginTop: '4px' }}>{question.length}/2000</div>
+          <button
+            onClick={submitQuestion}
+            disabled={!question.trim()}
+            style={{ width: '100%', marginTop: '14px', padding: '12px', borderRadius: '10px', border: 'none', background: question.trim() ? '#2563eb' : '#93b4e8', color: '#fff', fontSize: '15px', fontWeight: 600, cursor: question.trim() ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif' }}
+          >
+            Send my question
+          </button>
+        </div>
+      </TokenShell>
+    )
+  }
 
   function handleConfirm() {
     setStatus('processing')
@@ -136,6 +215,30 @@ function getView(status, decision, error) {
       color: '#ef4444',
       title: 'Something Went Wrong',
       message: error || 'An unexpected error occurred.',
+    }
+  }
+  if (status === 'question_sent') {
+    return {
+      icon: '✓',
+      color: '#16a34a',
+      title: 'Question Received',
+      message: 'Thank you — your tax planning team will reply to your question by email. You can still choose Yes or No from the email at any time.',
+    }
+  }
+  if (status === 'question_used') {
+    return {
+      icon: '✓',
+      color: '#0095ff',
+      title: 'Question Already Sent',
+      message: 'You have already sent a question from this email. Your tax planning team will reply by email, and you can ask a further question from that reply. You can still choose Yes or No from the email at any time.',
+    }
+  }
+  if (status === 'question_pending') {
+    return {
+      icon: '…',
+      color: '#0095ff',
+      title: 'Answer On Its Way',
+      message: 'Your tax planning team is preparing an answer to your previous question. You will receive it by email.',
     }
   }
   if (decision === 'ExtraMeeting') {
