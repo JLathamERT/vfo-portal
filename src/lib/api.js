@@ -20,6 +20,9 @@ const LONG_TIMEOUT_ACTIONS = {
   // tax_direct_save_task carries none either — the tax_direct_ prefix below
   // already lands it in the slow-write tier.
   tax_direct_generate_presentation: 90000,
+  // The detailed tax plan presentation (unit 3b): the same fill + Drive upload
+  // on a ~11 MB master. Admins and the Tax Team; there is no member twin.
+  tax_generate_bookends: 90000,
   // The member tax-intake submit. On the WAIVED branch it creates the
   // enrollment, client, junction row and tax plan, then drafts the confirmation
   // Gmail (OAuth + drafts.create) before it answers — comfortably past a cold

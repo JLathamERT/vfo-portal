@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, cloneElement } from 'react'
+import { useState, useEffect, useRef, useMemo, cloneElement, Fragment } from 'react'
 import DirectPill from '../../shared/DirectPill'
 import { callApi, loadCachedAction, getSession } from '../../../lib/api'
 import { TaxPlanListSkeleton } from '../../shared/Skeleton'
@@ -511,7 +511,7 @@ const STEP_OWNER = {
   sentinels: {
     tax_deposit_pi: 'vfos', tax_returns_request: 'vfos', tax_planner_select: 'vfos', tax_refund: 'vfos',
     tax_3_decision: 'vfos', tax_generate_presentation: 'vfos', tax_presentation_link: 'vfos',
-    enter_details: 'vfos', tax_hlm_confirm: 'vfos', [AMEND_FEE_CODE]: 'vfos', [AMEND_FEE_TAX5_CODE]: 'vfos',
+    enter_details: 'vfos', tax_hlm_confirm: 'vfos', [AMEND_FEE_CODE]: 'team', [AMEND_FEE_TAX5_CODE]: 'team',
     tax_continue_stop: 'team', tax_implement_decision: 'team', specialist_select: 'team', tax_dd_implementation: 'team',
   },
   names: {
@@ -2975,7 +2975,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     if (client != null && DECISION1_CONTINUE_CLICKS.includes(client)) return { open: true, hint: '' }
     // No admin pick on the plan: not reached yet, or a legacy plan. The step row
     // is then the only evidence, exactly as before this gate existed.
-    if (admin == null) return { open: decision1Done, hint: 'Complete "Client decision 1" first' }
+    if (admin == null) return { open: decision1Done, hint: 'Complete the "Client decision 1" step first' }
     return { open: false, hint: 'Waiting for the client to answer Client decision 1' }
   })()
   const implDecisionDone = prereqDone('tax_implement_decision', 'Implementation decision') || !!livePlan?.implementation_decision
@@ -3027,7 +3027,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       // recorded (a row saved before this gate existed) does it name decision 1.
       if (!decision1Gate.open) {
         if (so === 'tax_implement_decision') {
-          return { locked: true, hint: amendTax5Blocks ? 'Complete the "Amend implementation fee" step first' : decision1Gate.hint }
+          return { locked: true, hint: amendTax5Blocks ? 'Complete the "Amend fee" step first' : decision1Gate.hint }
         }
         const decision2Done = prereqDone(null, 'Client decision 2')
         return { locked: true, hint: decision2Done ? decision1Gate.hint : 'Complete "Client decision 2" first' }
@@ -3044,7 +3044,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       // renderTask's `alreadyDone` treats a set implementation_decision as done
       // for this very step, so stepGate is never consulted there.
       if (so === 'tax_implement_decision' && amendTax5Blocks) {
-        return { locked: true, hint: 'Complete the "Amend implementation fee" step first' }
+        return { locked: true, hint: 'Complete the "Amend fee" step first' }
       }
       return { locked: false, hint: '' }
     }
@@ -3121,7 +3121,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       }
       // A skipped ROI meeting is the other way in: the presentation step it
       // waits on is one of the steps skip removes.
-      return { locked: !roiPresentationDone && !roiSkipped, hint: 'Complete the "ROI Presentation" step first' }
+      return { locked: !roiPresentationDone && !roiSkipped, hint: 'Complete the "TPOM Presentation" step first' }
     }
     if (so === 'tax_hlm_confirm') {
       // A decline closes the engagement, so there is no meeting to confirm. Must
@@ -3135,11 +3135,17 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       // Meeting first books this meeting BEFORE the client decides, signs or pays,
       // so there is nothing left to wait for — the skip itself is the unlock.
       if (roiSkipMeetingFirst) return null
-      return { locked: !tax3AipcDone, hint: 'Waiting for the Tax 3 Automated steps to complete' }
+      return { locked: !tax3AipcDone, hint: 'Complete the Tax 3 "Automated steps" first' }
     }
     if (nm === 'Detailed tax plan presentation') {
       // Same on both routes — this step confirms the meeting the step above booked.
-      return { locked: !hlmConfirmDone, hint: 'Send the detailed tax plan meeting confirmation email first' }
+      // Unit 3b (2026-09-25): the Tax Team's "Generate detailed tax
+      // plan presentation" row sits between them and is what unlocks this step
+      // (backed by save-task.ts's 400 on a first answer without it).
+      // Its lock names only the step directly above it (Jake, 2026-09-25): the
+      // Generate row is itself locked until the confirmation email has gone out,
+      // and generate-bookends.ts refuses before it, so the chain holds.
+      return { locked: !livePlan?.generated_bookends_at, hint: 'Complete the "Generate detailed tax plan presentation" step first' }
     }
     // The fee may be amended after the detailed tax plan meeting and before
     // Client decision 1 goes out — on every fee shape, legacy included. Same
@@ -3158,25 +3164,28 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       if (roiSkipMeetingFirst && hlmConfirmDone && detailedPresDone && !tax3AipcDone) {
         return { locked: true, hint: 'Waiting for the client to complete signing and payment' }
       }
-      if (!(hlmConfirmDone && detailedPresDone)) {
-        return { locked: true, hint: 'Complete the detailed tax plan presentation first' }
-      }
-      // ...and on a revised-process plan the amend step comes between the two:
-      // this email quotes the current total (and the final retainer on a
-      // 3-payment plan), so it must not go out while the fee is still open. The
-      // backend enforces the same order in actions/tax/postreview-decision.ts.
-      // LEGACY plans are in scope now too (they can amend onto the
-      // implementation fee) — amendTax4Blocks is false only while the step row
-      // has not been seeded or the step is already answered, so an un-seeded
-      // program never has this gate appear out of nowhere.
+      // Every lock names the step DIRECTLY above it (Jake, 2026-09-25), so the
+      // amend step is tested FIRST: it sits between the Detailed tax plan
+      // presentation and this step, and it is itself locked until the
+      // presentation is done. This email quotes the current total (and the final
+      // retainer on a 3-payment plan), so it must not go out while the fee is
+      // still open; the backend enforces the same order in
+      // actions/tax/postreview-decision.ts. LEGACY plans are in scope too (they
+      // can amend onto the implementation fee) — amendTax4Blocks is false only
+      // while the step row has not been seeded or the step is already answered,
+      // so an un-seeded program never has this gate appear out of nowhere.
       if (amendTax4Blocks) {
         return { locked: true, hint: 'Complete the "Amend fee" step first' }
+      }
+      // Where there is no amend step to answer, the presentation is the step above.
+      if (!(hlmConfirmDone && detailedPresDone)) {
+        return { locked: true, hint: 'Complete the "Detailed tax plan presentation" step first' }
       }
       return { locked: false, hint: '' }
     }
     if (nm === 'Client decision 2') {
       if (!(hlmConfirmDone && detailedPresDone)) {
-        return { locked: true, hint: 'Complete "Client decision 1" first' }
+        return { locked: true, hint: 'Complete the "Client decision 1" step first' }
       }
       return { locked: !decision1Gate.open, hint: decision1Gate.hint }
     }
@@ -3267,13 +3276,141 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     return <>{taskLabel(task)}<OwnerChip owner={owner} label={ownerLabel(owner, task, phase)} /></>
   }
 
+  // BOOK-ENDS (DIRECT unit 3b, 2026-09-25): "Generate detailed tax
+  // plan presentation" renders as a step row of its own directly ABOVE the Tax 4
+  // "Detailed tax plan presentation" step. It is NOT a program_client_tasks row;
+  // the backend mirrors it as a synthetic step in utils/tax-plan-steps.ts (#339),
+  // done when generated_bookends_at is set OR the step below is answered.
+  // A TAX TEAM step on both routes (Jake, 2026-09-25): admins and planners run it
+  // (tax_generate_bookends — planner-allowed, group-fenced in-handler); every
+  // member view shows it read-only. ORDER: locked until the detailed tax plan
+  // meeting confirmation email has gone out, and generating it is what unlocks
+  // "Detailed tax plan presentation" (stepGate below). Both locks are backed by a
+  // handler 400 (generate-bookends.ts / save-task.ts, #403).
+  function renderBookendsRow(task) {
+    if (!livePlan?.id) return null
+    const key = `bookends_${task.id}`
+    const green = '#1b9254'
+    const url = livePlan.generated_bookends_url || ''
+    const generatedAt = livePlan.generated_bookends_at
+    const generated = !!generatedAt
+    const canRun = !readOnly
+    const draft = declineDrafts[key] || {}
+    const generating = !!draft.generating
+    const genError = draft.genError || ''
+    const setDraft = (patch) => setDeclineDrafts(d => ({ ...d, [key]: { ...(d[key] || {}), ...patch } }))
+    const genBlue = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: generating ? 'not-allowed' : 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600 }
+    const genGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: green, fontWeight: 600 }
+    const genPlain = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: generating ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
+    // Zero basis (not the other rows' 'auto'): this name is long enough that an
+    // auto basis plus a lock hint overflows the row and flex-wrap drops the date
+    // cell onto a second line; a zero basis lets the name wrap inside its own box.
+    const label = (
+      <span style={{ fontSize: '13px', color: generated ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: '1 1 0%', minWidth: '140px' }}>
+        Generate detailed tax plan presentation
+        <OwnerChip owner="team" label="Tax Team" />
+      </span>
+    )
+    const dateCell = (
+      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{generatedAt ? formatStamp(generatedAt) : ''}</span>
+    )
+    const dot = (
+      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: generated ? green : 'transparent', flexShrink: 0, border: `1.5px solid ${generated ? green : 'var(--vfo-border-mid)'}` }} />
+    )
+
+    // The same prerequisite vocabulary every other row uses: the admin's and the
+    // planner's view, and the Direct member's (the classic member view is exempt,
+    // as in renderTaskBase).
+    if (!generated && !hlmConfirmDone && (!readOnly || directMode)) {
+      const hint = 'Complete the "Detailed tax plan meeting confirmation email" step first'
+      return (
+        <div key={key} title={hint} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
+          {dot}
+          {label}
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
+            <LockedIcon />
+            <span style={lockedHintStyle}>{hint}</span>
+          </span>
+          <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>—</span>
+        </div>
+      )
+    }
+
+    // Members (classic and Direct) see where it stands and nothing to click; the
+    // Direct member's row is inert with the owner's hint, like every Tax Team row.
+    if (!canRun) {
+      const row = (
+        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
+          {dot}
+          {label}
+          {generated
+            ? <span style={chipStyle(green)}>Generated</span>
+            : <span style={neutralChipStyle}>Not started</span>}
+          {dateCell}
+        </div>
+      )
+      return directMode
+        ? <div key={key} title={lockHintFor('team')} style={{ cursor: 'not-allowed' }}><div style={{ pointerEvents: 'none' }}>{row}</div></div>
+        : row
+    }
+
+    // Builds the presentation server-side and uploads it to Google Drive; api.js
+    // gives the action a 90s budget and never auto-retries it.
+    async function generateBookends() {
+      setDraft({ generating: true, genError: '' })
+      try {
+        const res = await callApi('tax_generate_bookends', { tax_plan_id: livePlan.id })
+        if (res?.error) { setDraft({ generating: false, genError: res.error }); return }
+        await refreshLivePlan()
+        setDeclineDrafts(d => { const n = { ...d }; delete n[key]; return n })
+      } catch (err) {
+        console.error(err)
+        setDraft({ generating: false, genError: err?.message || 'Generation failed' })
+      }
+    }
+
+    return (
+      <div key={key} style={{ borderBottom: '1px solid var(--vfo-border-soft)', padding: '7px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {dot}
+          {label}
+          {generated ? (
+            <>
+              <span style={chipStyle(green)}>Generated — {formatStamp(generatedAt)}</span>
+              {url && <button onClick={() => window.open(url, '_blank', 'noopener')} style={genGreen} title="Opens the detailed tax plan presentation in Google Slides.">Open</button>}
+              <button disabled={generating} onClick={generateBookends} style={genPlain} title="Builds a fresh detailed tax plan presentation and replaces the link above.">{generating ? 'Generating…' : 'Regenerate'}</button>
+            </>
+          ) : !riskProfileDone ? (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
+              <LockedIcon />
+              <span style={lockedHintStyle}>Set the Client risk profile step first</span>
+            </span>
+          ) : (
+            <button disabled={generating} onClick={generateBookends} style={genBlue} title="Builds the opening and closing slides for the detailed tax plan presentation in Google Slides. Takes up to a minute.">{generating ? 'Generating…' : 'Generate presentation'}</button>
+          )}
+          {dateCell}
+        </div>
+        {genError && (
+          <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '12px', marginTop: '6px', marginLeft: '18px' }}>{genError}</div>
+        )}
+      </div>
+    )
+  }
+
+  function renderTask(task, phase, taxSpecialistId = null) {
+    const node = renderTaskBase(task, phase, taxSpecialistId)
+    if (taxSpecialistId || !node || task?.name !== 'Detailed tax plan presentation') return node
+    const bookends = renderBookendsRow(task)
+    return bookends ? <Fragment key={`${task.id}_with_bookends`}>{bookends}{node}</Fragment> : node
+  }
+
   // Planner lock gate: in the tax-planner portal, every non-whitelisted step
   // renders its normal admin UI (readOnly stays false) but is made inert here —
   // pointer-events off on the body so no control fires, with the not-allowed
   // cursor on an outer wrapper (disabled controls don't reliably show the cursor
   // across browsers). Admin (no flags) and member (readOnly) pass straight
   // through unchanged.
-  function renderTask(task, phase, taxSpecialistId = null) {
+  function renderTaskBase(task, phase, taxSpecialistId = null) {
     // The Tax Plan Red Light step is hidden unless the review said Stop or the
     // step already carries history — not shown, not counted (isStepExcluded),
     // on every surface.
@@ -3543,7 +3680,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
       const genGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: green, fontWeight: 600 }
       const genPlain = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: generating ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
 
-      // The Download button is a plain window.open, so this call is the only
+      // The Open button (labelled "Download" until 2026-09-25, renamed to match
+      // the book-ends row; the bell title still says Download) is a plain
+      // window.open, so this call is the only
       // signal the backend gets that the PF actually took the deck — it retires
       // their action-required "Download the ROI presentation for <client>" bell.
       // Strictly fire-and-forget: the window.open runs FIRST and synchronously
@@ -3583,7 +3722,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                 <span style={chipStyle(green)}>Generated — {formatStamp(generatedAt)}</span>
                 {!locked && (
                   <>
-                    <button onClick={() => { window.open(deckUrl, '_blank', 'noopener'); markPresentationDownloaded() }} style={genGreen} title="Opens the generated deck in Google Slides.">Download</button>
+                    <button onClick={() => { window.open(deckUrl, '_blank', 'noopener'); markPresentationDownloaded() }} style={genGreen} title="Opens the generated deck in Google Slides.">Open</button>
                     <button disabled={generating} onClick={generatePresentation} style={genPlain} title="Builds a fresh deck from the current figures and replaces the link above.">{generating ? 'Generating…' : 'Regenerate'}</button>
                   </>
                 )}
