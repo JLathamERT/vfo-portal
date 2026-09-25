@@ -122,7 +122,7 @@ The predicate exists in **three** places that must move in lockstep: `constants/
 
 ```
 Tax 3 decision (total >= $31k)     -> fee_process_version stamped, initial + final written
-Agreement (row 23 / 24, 4 pages)   -> client signs; client_signed_at stamped
+Agreement (row 27 / 28, 4 pages)   -> client signs; client_signed_at stamped
 Initial retainer  $15k or custom   -> /tax-pay -> checkout.session.completed
                                       card fee derived from initial_retainer_amount (NOT retainer_amount)
                                       invoice (3 lines) + receipt, "initial retainer" wording
@@ -337,9 +337,9 @@ Jake's ask (2026-09-15): after a fee amendment the client must receive an **upda
 
 ## Documents
 
-**Agreements.** `agreement_templates` rows **8** and **20** gained the addendum paragraph; **NEW rows 23 (`Client Paying - 3 Payments`) and 24 (`Member Paying - 3 Payments`)** split the retainer line into `[INITIAL_RETAINER]` and `[FINAL_RETAINER]` lines. The addendum grows the document to 4 pages, so **all four rows' `field_map` signature fields moved from page 3 to page 4** — a body edit and its page fix are one statement, never two. Coordinates were sourced by placing fields visually in BoldSign and reading them back via the throwaway `boldsign-template-fields` edge function. See **#439** and [integrations/boldsign.md](../integrations/boldsign.md).
+**Agreements.** Four live `agreement_templates` rows: the 2-payment rows **25** (`Client Paying - 2 Payments`) and **26** (`Member Paying - 2 Payments`) carry the addendum paragraph; the 3-payment rows **27** (`Client Paying - 3 Payments`) and **28** (`Member Paying - 3 Payments`) also split the retainer line into `[INITIAL_RETAINER]` and `[FINAL_RETAINER]` lines. The addendum makes the document 4 pages, so **all four rows' `field_map` signature fields sit on page 4** — a body edit and its page fix are one statement, never two. *(Rows 25–28 replaced 8/20/23/24 on 2026-09-24 with the collaborating-team sentence and the Additional Benefits section added and `field_map` unchanged — see [flows/tax-planning.md → Step 4](tax-planning.md#step-4--send-agreement-to-boldsign).)* Coordinates were sourced by placing fields visually in BoldSign and reading them back via the throwaway `boldsign-template-fields` edge function. See **#439** and [integrations/boldsign.md](../integrations/boldsign.md).
 
-Four static review PDFs live in the public `tax-agreements` bucket: `tax-planning.pdf`, `tax-planning-member.pdf`, and the new `tax-planning-3pay.pdf` / `tax-planning-member-3pay.pdf`. The **Undecided quote email attaches the `-3pay` PDF on a quote of `$31,000` or more**, with a fallback chain to the 2-payment PDF. A buffer-band quote gets the **2-payment** PDF — `decision.ts` branches on `split.threePayment`, which the band makes false.
+Four static review PDFs live in the public `tax-agreements` bucket: `tax-planning.pdf`, `tax-planning-member.pdf`, `tax-planning-3pay.pdf` and `tax-planning-member-3pay.pdf` — re-rendered from rows 25–28 and re-uploaded on 2026-09-24, so the Undecided quote attaches the current layout. The **Undecided quote email attaches the `-3pay` PDF on a quote of `$31,000` or more**, with a fallback chain to the 2-payment PDF. A buffer-band quote gets the **2-payment** PDF — `decision.ts` branches on `split.threePayment`, which the band makes false.
 
 **`client_signed_at` now has writers.** `actions/tax/ceo-countersign.ts` (the client signature is what triggers that chain) and `actions/tax/stripe-customer.ts` as the belt for a BoldSign `Completed` that skipped the intermediate event. Both stamp once only, behind `.is("client_signed_at", null)`, because the amendment paragraphs quote that date back to the client. **`boldsign-webhook` is UNTOUCHED (still v40)** — which is why this needed no approval and why #384 stays parked for `ceo_signed_at` and the whole MAP 1 side.
 
