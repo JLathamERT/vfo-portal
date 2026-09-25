@@ -1,6 +1,6 @@
 # VFO Tax Diagnostic — the public form and its queue (added 2026-09-23)
 
-The public, no-login replacement for the Unbounce tax page. Anyone can open **`vfoportal.com/tax-diagnostic`**: a client for themselves, or a member (with or without a portal login) for their client. It asks the same 37 questions as the member-run [tax intake](tax-intake.md), plus three of its own. **A submission creates nothing.** It waits in the admin **Tax Diagnostics** tab until a person confirms which member the client belongs to, because that choice decides revenue share. Confirm then hands the case to the ordinary intake pipeline: the `/tax-deposit-pay` card-or-ACH choice page, the Stripe webhook and `finalizeTaxIntake` ([tax-intake.md](tax-intake.md)). Decisions 30–37 in [plans/direct-tax-planning/README.md](../plans/direct-tax-planning/README.md) are the plan of record.
+The public, no-login replacement for the Unbounce tax page. Anyone can open **`vfoportal.com/tax-diagnostic`**: a client for themselves, or a member (with or without a portal login) for their client. It asks the same 38 questions as the member-run [tax intake](tax-intake.md) (37 until q38, the Rapid Route preference, was added on 2026-09-25), plus three of its own. **A submission creates nothing.** It waits in the admin **Tax Diagnostics** tab until a person confirms which member the client belongs to, because that choice decides revenue share. Confirm then hands the case to the ordinary intake pipeline: the `/tax-deposit-pay` card-or-ACH choice page, the Stripe webhook and `finalizeTaxIntake` ([tax-intake.md](tax-intake.md)). Decisions 30–37 in [plans/direct-tax-planning/README.md](../plans/direct-tax-planning/README.md) are the plan of record.
 
 ## The release switch
 
@@ -23,7 +23,7 @@ The admin tab stays usable and shows an amber "public page is switched off" bann
 
    The search only appears once the answer calls for it (Jake, 09-23 click-through). Switching "Who is completing" clears the questions below it.
 
-The 37 intake questions follow. Q1 is derived and Q7–Q9 are hidden, exactly as elsewhere. On the diagnostic page q4 is typed freely, because there is no invitation to lock it to. The page:
+The 38 intake questions follow. Q1 is derived and Q7–Q9 are hidden, exactly as elsewhere. On the diagnostic page q4 is typed freely, because there is no invitation to lock it to. **Q38 "Client would prefer"** (Traditional 6-Step Process, pre-selected / Rapid Route) is optional and is stored with the other answers; it takes effect only when a confirmed diagnostic's deposit finalizes, where `finalizeTaxIntake` stamps `client_tax_plans.rapid_route` from it ([tax-intake.md](tax-intake.md)). The page:
 - takes no payment and quotes no deposit;
 - ends on "Thank you. Your VFO Tax Diagnostic has been received.";
 - carries a hidden **honeypot** input (`website`);

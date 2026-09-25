@@ -154,3 +154,17 @@ Three body/subject rules from those migrations, each a guarded `replace()` so a 
 | **292** | `TAX_deposit_processing\|ach_verify\|client` | `CLIENT` | `MEMBER`, Tracy, Tray | the same, client paid |
 
 Subjects: 289 / 290 `VFO Services - Tax Planning Deposit Processing - [Client Name]`; 291 / 292 `VFO Services - One more step to complete your Tax Planning Deposit - [Client Name]`. The ids are those of the seed order (the table has no id column in the migration); **no real (non-sandbox) send of any of 286–292 has happened yet.**
+
+**Rapid Route templates (2026-09-25, migrations `20260925210000_tax_readyfortax3_rapid_template.sql` + `20260925230000_tax_rapid_route_templates.sql`, DATA ONLY; copy approved by Jake; flow in [flows/tax-planning.md](../flows/tax-planning.md#rapid-route--the-tpom-replaced-by-a-customized-video-2026-09-25)):** seven `TAX` rows, all **Draft** (`send_mode=false`), recipients copied verbatim from the row each twins. Tokens are rendered by replacer functions (#438).
+
+| id | template_name | Recipients copied from | Drafted by | Tokens |
+|---|---|---|---|---|
+| **293** | `TAX_readyfortax3\|Rapid` | `TAX_readyfortax3\|Yes` (16) | `automation_TAX_readyfortax3` decision `confirm_rapid` | as the Yes row, no meeting date |
+| **294** | `TAX_decision_rapid` | `TAX_decision_undecided` (18) | `automation_TAX_decision` decision `Rapid` (agreement PDF attached) | `[VIDEO]` `[PRESENTATION_LINK]` `[BUTTONS]` |
+| **295** | `TAX_decision_rapid (member signing/paying on clients behalf)` | its member twin (126) | the same, member paying | the same |
+| **296** | `TAX_rapid_question_reply` | `TAX_decision_undecided` (18) | `tax_rapid_question_reply` | `[QUESTION]` `[ANSWER]` `[VIDEO_LINK]` `[BUTTONS]` |
+| **297** | `TAX_rapid_question_reply (member signing/paying on clients behalf)` | its member twin (126) | the same, member paying | the same |
+| **298** | `TAX_decision_reminder\|rapid` | `TAX_decision_reminder` (39) | the tax sweep's Rapid reminder pass | `[BUTTONS]` |
+| **299** | `TAX_decision_reminder\|rapid (member signing/paying on clients behalf)` | its member twin (128) | the same, member paying (`sendReminderEmailUnified` suffix) | the same |
+
+The ids are the seed order. **No real (non-sandbox) send of any of 293–299 has happened yet** — every run was on sandbox fixtures.
