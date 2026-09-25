@@ -8,6 +8,56 @@
 
 ---
 
+## 2026-09-24/25 — DIRECT to Tax Planning unit 3 (Branding + contract), shipped without the book-ends
+
+Branch `claude/vfo-session-setup-ed75ae`, both repos, one chat. `vfo-admin-api` **v886 → v887 → v888 → v889 → v890 → v891**. `boldsign-webhook` untouched at v46; helpers v7/v7. Action count **541 → 544**. Route pages unmoved at 37, crons unmoved at 18, `send_mode=true` unmoved at 50. No new table, no policy, no DB function; the security advisor was GREEN at the exact baseline after every DDL (a confirmation, not the STRONG check). Plan of record: [plans/direct-tax-planning/README.md](plans/direct-tax-planning/README.md) §8, decisions 42–46. **The book-ends generator (decision 13) was split off as unit 3b** by Jake's call; it was not started.
+
+**How it was built.** A Fable planner mapped the code and proposed the phases. Opus built the agreements, branding and profiles directly in the chat, and an Opus agent built deck v9. Every piece was click-tested by Jake on the dev server against the live function before moving on.
+
+**1. The tax agreement (v887, v888; rows 25–28).**
+- **Decision 14 audit.** Jake did not recognise two items the plan listed: "Steps 1–3 name the member as introducer/presenter" and "Step 4: Meeting with Advanced Tax Planner". The local transcripts showed both were a MODEL proposal from chat "VFO PORTAL - 9/16 #2" (2026-09-16 20:22Z), written for the then-separate Direct-only contract. They were removed (#539). What remains, per Paul's spreadsheet, is exactly two changes on all four rows:
+  - The collaborating-team sentence at the end of the opening paragraph.
+  - A new Additional Benefits section after the Double Guarantee: the slide wording, no check marks, no "$2600" line, plus the Q4 new-engagement sentence. The member-pays rows speak in the member's voice.
+- **The PDF tool was wrong.** Jake saw extra white space on the first PDF drafts. `agreement_pdf_draft` rendered without the senders' `{format:"Letter", margin:0}`, so html2pdf added its default margin on top of the body's own. v887 fixed it (#535).
+- **Staging.** The corrected PDFs showed the same 4 pages with the signature block still on page 4, so every `field_map` coordinate stayed valid. The unique index `(pipeline, service_level, payment_plan, payer_type)` ignores `active` (#536). So the edited copies went in under `service_level='Tax Planning (staged 2026-09-24)'`. v888 then deployed the token fill in `actions/tax/send-agreement.ts`, and one transaction swapped the rows: 8/20/23/24 retired, 25/26/27/28 live. Jake uploaded the four Undecided sample PDFs to `tax-agreements` at the same moment.
+- **Proof.** Four sandbox BoldSign sends on Test Client 62 (throwaway plans 225–228, since deleted) covered the four sentence shapes. Jake checked every one: fields, sentence and section all correct. The retired rows were then deleted.
+- Migrations `20260924150000` / `170000` / `180000` were applied by `execute_sql` (no ledger rows) and committed.
+
+**2. Branding and the member Edit Profile (v889, v890).**
+- **New columns:** `members.logo_image`, `logo_enabled` (default false), `contract_name_mode`, and `tax_planning_groups.logo_image`.
+- **The agreement-name switch changed shape.** A boolean `members.contract_name_enabled` shipped first. Jake then asked for a three-way choice (Company name / Real name / Neither, with **never chosen = Neither**), so `contract_name_mode` was added, v890 deployed, and the boolean was dropped (#498). Migrations `20260924160000` / `190000` / `200000`.
+- **Three new actions:**
+  - `member_branding_save`: member = own row, admin = any member.
+  - `member_self_profile_save`: member only — work email, company name, website, photo.
+  - `tax_planning_group_logo_save`: admin.
+  - All share `utils/logo-png.ts` (PNG, 1200x400, ≤ 1 MB, server-named files in `headshots`).
+- **The admin save no longer overwrites branding.** `member_profile_save` now deletes the branding columns from the profile it echoes back, so a stale admin form cannot revert what the member set (#537).
+- **Frontend:**
+  - The member portal's Profile tab became a dropdown (Profile / Edit Profile), with its own skeleton.
+  - One shared read-only layout, `shared/MemberProfileDetails.jsx`, now renders both the member Profile and the admin member Details, so the two mirror: Member Details + Certifications, Revenue Details + Tax Planning, Logo, a wide Network grid, Bio.
+  - The editable Branding card sits on both Edit Profile surfaces.
+  - Logos get a white rounded badge baked in by the browser, with no border, and PNG, JPG or WebP can be uploaded.
+  - Tax Planning Partners shows the payout account above a compact logo preview.
+- **Revenue Decision stays admin-only** (Jake reversed his own ask mid-build).
+
+**3. ROI deck v9 (v891).**
+- Built by an Opus agent with `scripts/roi-presentation/make_v9.py` and reviewed from PowerPoint renders:
+  - The group, member and VFO logos appear on every slide.
+  - The title slide has one even, larger top row.
+  - The new Additional Benefits slide is at position 29 (30 slides two-year, 28 single-year).
+  - Slides 2, 3, 4, 5, 6, 14 and 24 were nudged clear of the logo row.
+  - Slide 6 got Jake's cleaned-up Learned Hand image. It still reads "Second Circui", a typo inside the image itself.
+- **Slide-edit constants re-derived** (#480): `SHIFT_MIN_Y` 1773000 → 1625410 and `FEE_BELOW_MIN_Y` 4200000 → 3700000. The shape counts are unchanged.
+- **New safety checks:** a required-parts check and a logo-row clearance check, which make an old master under the v9 name fail (#538).
+- **Upload and deploy.** Jake uploaded v9 before the v891 deploy, and the bucket copy was verified byte-identical. A second, content-only build (slides 2, 3 and 6) replaced it under the same name and was re-verified.
+- **Proof.** Jake generated a real deck in Google Slides on Test Client 62 plan 216 and approved it. Jake asked why the badge is not blue on the blue title slide. It stays white, because arbitrary logo colours need a white ground.
+
+**Verification:** `deno check` 0 · action count 544 · build exit 0 · 37 route pages · advisor GREEN after each DDL. The smoke gate vs v891 was run at wrap-up (see the hub).
+
+**Superseded hub values:** `vfo-admin-api` v886 → **v891**; action count 541 → **544**; TAX agreement rows 8/20/23/24 → **25/26/27/28**; live ROI master `ROI-template-master-v8.pptx` → **`-v9.pptx`**.
+
+---
+
 ## 2026-09-23 (d) — The public VFO Tax Diagnostic (replaces Unbounce) + the $500 intake deposit becomes card-or-ACH on every route
 
 Branch `claude/vfo-session-setup-7d6992`, both repos, ONE chat. Its own shipping unit, separate from DIRECT unit 3. `vfo-admin-api` **v883 → v884 → v885 → v886**, `boldsign-webhook` untouched at v46. Action count **533 → 541**, route pages **35 → 37**, crons 18 unmoved, `send_mode=true` 50 unmoved (the team email was seeded Send and turned Draft the same day). Decisions **30–41** in `plans/direct-tax-planning/README.md`; flow of record [flows/tax-diagnostic.md](flows/tax-diagnostic.md) + [flows/tax-intake.md](flows/tax-intake.md); gotchas **#531–#534**.

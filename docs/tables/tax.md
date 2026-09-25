@@ -60,7 +60,7 @@ State machine for the tax-planning engagement. **161 columns as of 2026-08-16 �
 | `tax_final_decision` | text | `Yes` / `No` / `ExtraMeeting` — set by `automation_TAX_finaldecision` from the `/tax-decide` page. |
 | `tax_via_extra_meeting` | boolean | default false. True if Yes came through Extra Meeting outcome branch. |
 | `tax_decision_email_sent` | text | `Yes` once Undecided/decline Gmail draft succeeds. Idempotency guard. |
-| `member_paying_on_behalf` | boolean | default false. Set from the Yes/No "member signing & paying on the client's behalf?" question on the Tax 3 `TaxDecisionForm`; mirrors MAP 1 PIP-Follow-Up. Carries through Tax 3 → Tax 4 → Tax 5. When true, 14 tax handlers flip emails To member / Cc client, use the member `email_templates` variant (suffix ` (member signing/paying on clients behalf)`, ids 126–147), make the member the BoldSign signer 1 + Stripe payer, and set invoice/receipt "Bill To" = member with a "Client: <client name>" line under it (2026-09-23). `send-agreement.ts` loads `agreement_templates` id 20 (`payer_type='member'`). |
+| `member_paying_on_behalf` | boolean | default false. Set from the Yes/No "member signing & paying on the client's behalf?" question on the Tax 3 `TaxDecisionForm`; mirrors MAP 1 PIP-Follow-Up. Carries through Tax 3 → Tax 4 → Tax 5. When true, 14 tax handlers flip emails To member / Cc client, use the member `email_templates` variant (suffix ` (member signing/paying on clients behalf)`, ids 126–147), make the member the BoldSign signer 1 + Stripe payer, and set invoice/receipt "Bill To" = member with a "Client: <client name>" line under it (2026-09-23). `send-agreement.ts` loads the `payer_type='member'` `agreement_templates` row — id 26 (2 payments) or 28 (3 payments). |
 
 ### Agreement (BoldSign)
 | Column | Type | Notes |
@@ -391,10 +391,11 @@ The "companies" that receive the Tax Planner Share via a group-level Stripe Conn
 | `name` | text | not null. Case-insensitive UNIQUE (`tax_planning_groups_name_lower_key`) → friendly 23505 dup message. A group name is a `tax_planners.member_type` option; RENAME cascades planners' `member_type`; DELETE is guarded when any planner references it. |
 | `stripe_account_id` | text | The GROUP Connect account the planner share transfers to (resolved via `tax_planners.member_type` → this row). |
 | `contact_email` | text | Used by the group Stripe-Connect setup-email flow. |
+| `logo_image` | text | nullable. **Added 2026-09-24** (migration `20260924160000_branding_columns.sql`). The group's ROI-deck logo — the bare filename of a server-named `logo_group_<id>_<ts>.png` in the PUBLIC `headshots` bucket (1200×400 PNG, ≤ 1 MB, white badge baked in by the browser). Written ONLY by `tax_planning_group_logo_save` (admin; upload or `remove_logo`); read by `tax_planners_load` (group select) for the Tax Planning Partners logo preview and by `tax_generate_presentation`, which places it bottom-left on every slide for any plan whose `tax_planner_id ?? tax_team_member_id` belongs to the group. NULL = a blank group slot on the deck, not an error. |
 | `created_by` | text | |
 | `created_at` | timestamptz | not null, default `now()`. |
 
-**Touched by:** `save_tax_planning_group`, `delete_tax_planning_group`, `tax_planning_group_stripe_connect_request`, `utils/tax-planner-payout.ts` (destination resolution).
+**Touched by:** `save_tax_planning_group`, `delete_tax_planning_group`, `tax_planning_group_stripe_connect_request`, `tax_planning_group_logo_save` (`logo_image`), `tax_planners_load` (reads `logo_image`), `tax_generate_presentation` (reads `logo_image`), `utils/tax-planner-payout.ts` (destination resolution).
 
 ---
 

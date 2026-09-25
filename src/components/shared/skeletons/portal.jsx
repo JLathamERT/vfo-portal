@@ -91,6 +91,59 @@ export function SharedDocsSkeleton({ groups = 2, docsPerGroup = 2 }) {
   )
 }
 
+// The member's own Edit Profile page: Profile Picture, Contact & Company (two
+// rows of two inputs), the Save Changes bar, then the Branding card.
+export function MemberEditProfileSkeleton() {
+  const title = <Skeleton width={170} height={14} style={{ marginBottom: '22px' }} />
+  const field = (key) => (
+    <div key={key} style={{ flex: 1, minWidth: '240px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Skeleton width={150} height={11} />
+      <Skeleton width="100%" height={40} style={{ borderRadius: '8px' }} />
+    </div>
+  )
+  return (
+    <div style={{ maxWidth: '980px', margin: '0 auto', padding: '24px' }}>
+      <CardShell>
+        {title}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <Skeleton width={110} height={110} style={{ borderRadius: '50%', flexShrink: 0 }} />
+          <Skeleton width={120} height={34} style={{ borderRadius: '8px' }} />
+          <Skeleton width={120} height={34} style={{ borderRadius: '8px' }} />
+        </div>
+      </CardShell>
+      <CardShell>
+        {title}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>{[0, 1].map(field)}</div>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>{[2, 3].map(field)}</div>
+      </CardShell>
+      <div style={{ padding: '16px 0', marginBottom: '16px', borderTop: '1px solid var(--vfo-border)' }}>
+        <Skeleton width={150} height={40} style={{ borderRadius: '8px' }} />
+      </div>
+      <CardShell>
+        {title}
+        <SkeletonText lines={2} />
+        <div style={{ display: 'flex', gap: '12px', margin: '14px 0' }}>
+          <Skeleton width="50%" height={96} style={{ borderRadius: '10px' }} />
+          <Skeleton width="50%" height={96} style={{ borderRadius: '10px' }} />
+        </div>
+        <Skeleton width={120} height={34} style={{ borderRadius: '8px', marginBottom: '18px' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderTop: '1px solid var(--vfo-border-soft)' }}>
+          <Skeleton width={260} height={14} />
+          <Skeleton width={54} height={30} style={{ borderRadius: '999px' }} />
+        </div>
+        <div style={{ padding: '14px 0', borderTop: '1px solid var(--vfo-border-soft)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Skeleton width={280} height={14} />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Skeleton width={120} height={34} style={{ borderRadius: '6px' }} />
+            <Skeleton width={100} height={34} style={{ borderRadius: '6px' }} />
+            <Skeleton width={90} height={34} style={{ borderRadius: '6px' }} />
+          </div>
+        </div>
+      </CardShell>
+    </div>
+  )
+}
+
 // The member's own Profile tab (also the member-portal initial loading view):
 // header card with avatar, then the details grid and a certifications card.
 export function MemberProfileSkeleton() {

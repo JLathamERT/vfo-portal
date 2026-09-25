@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { callApi } from '../../lib/api'
+import { fileToLogoPng, logoUrl } from '../shared/logoPng'
 import { fileSizeError } from '../../lib/fileUpload'
 import VaultSections from '../shared/VaultSections'
 import ImageCropModal from './ImageCropModal'
@@ -849,6 +850,21 @@ function TaxPlanningPartnersPanel({ groups, loadError, onSaved }) {
   )
 }
 
+// The group logo as the slides show it (the stored PNG carries its own white
+// badge), on a small white strip and a small blue strip.
+function GroupLogoPreview({ src }) {
+  const strip = { width: '150px', height: '56px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
+  const img = (onBlue) => src
+    ? <img src={src} alt="Logo" style={{ width: '120px', height: '40px', objectFit: 'contain', display: 'block' }} />
+    : <span style={{ fontSize: '11px', color: onBlue ? 'rgba(255,255,255,0.75)' : '#9aa4b2' }}>No logo</span>
+  return (
+    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+      <div style={{ ...strip, background: '#fff', border: '1px solid var(--vfo-border-soft)' }}>{img(false)}</div>
+      <div style={{ ...strip, background: 'linear-gradient(135deg, #2f6fe0 0%, #1f47a8 100%)' }}>{img(true)}</div>
+    </div>
+  )
+}
+
 function TaxPartnerCard({ group, onSaved }) {
   const [requesting, setRequesting] = useState(false)
   const [msg, setMsg] = useState('')
@@ -857,7 +873,31 @@ function TaxPartnerCard({ group, onSaved }) {
   const [name, setName] = useState(group.name || '')
   const [contactEmail, setContactEmail] = useState(group.contact_email || '')
   const [busy, setBusy] = useState(false)
+  const [logoPending, setLogoPending] = useState(null)
+  const [logoBusy, setLogoBusy] = useState(false)
+  const logoFileRef = useRef(null)
   const connected = (group.stripe_account_id || '').trim()
+
+  // The group's logo, shown bottom-left on its clients' ROI presentations.
+  async function pickLogo(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setMsg('')
+    try { setLogoPending(await fileToLogoPng(file)) }
+    catch (err) { setMsgType('error'); setMsg(err.message) }
+  }
+
+  async function saveLogo(patch, okText) {
+    setLogoBusy(true); setMsg('')
+    try {
+      await callApi('tax_planning_group_logo_save', { group_id: group.id, ...patch })
+      setLogoPending(null)
+      setMsgType('success'); setMsg(okText)
+      await onSaved()
+    } catch (err) { setMsgType('error'); setMsg(err.message) }
+    finally { setLogoBusy(false) }
+  }
 
   async function setUp() {
     if (!contactEmail.trim()) { setMsgType('error'); setMsg('Enter a contact email first.'); return }
@@ -924,6 +964,24 @@ function TaxPartnerCard({ group, onSaved }) {
         </button>
         {!editing && <button onClick={() => setEditing(true)} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Edit Name</button>}
         <button onClick={remove} disabled={busy} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid rgba(231,76,60,0.4)', background: 'transparent', color: '#e74c3c', fontSize: '13px', fontWeight: 500, cursor: busy ? 'not-allowed' : 'pointer' }}>Delete</button>
+      </div>
+      <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>Logo</div>
+      <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '10px' }}>Shown on this group's clients' ROI presentations, on a small white badge. PNG, JPG or WebP; empty space around the logo is trimmed automatically.</div>
+      <GroupLogoPreview src={logoPending?.dataUrl || logoUrl(group.logo_image)} />
+      {logoPending && <div style={{ fontSize: '12.5px', color: '#b08d26', fontWeight: 500, marginTop: '8px' }}>Preview of the new logo. Save it to use it.</div>}
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', margin: '12px 0 0' }}>
+        <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={pickLogo} style={{ display: 'none' }} />
+        {logoPending ? (
+          <>
+            <button onClick={() => saveLogo({ logo_base64: logoPending.base64 }, 'Logo saved.')} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: logoBusy ? 'wait' : 'pointer' }}>{logoBusy ? 'Saving…' : 'Save logo'}</button>
+            <button onClick={() => setLogoPending(null)} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <button onClick={() => logoFileRef.current?.click()} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>{group.logo_image ? 'Replace logo' : 'Upload logo'}</button>
+            {group.logo_image && <button onClick={() => { if (window.confirm(`Remove the logo for "${group.name}"?`)) saveLogo({ remove_logo: true }, 'Logo removed.') }} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Remove logo</button>}
+          </>
+        )}
       </div>
       {msg && <p style={{ color: msgType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{msg}</p>}
     </div>
