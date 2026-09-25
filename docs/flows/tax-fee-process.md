@@ -49,7 +49,7 @@ Because [the predicate](#the-predicate--read-this-before-writing-any-3-payment-b
 
 **The Undecided quote follows automatically.** `actions/tax/decision.ts` is **unchanged** — it branches on `split.threePayment`, which is now false inside the band. So a band quote quotes the **`$15,000` as the whole retainer**, attaches the 2-payment review PDF (`tax-planning.pdf` / `tax-planning-member.pdf`, not the `-3pay` pair) and **omits the final-retainer sentence** entirely.
 
-**The ROI deck follows automatically too.** `generate-presentation.ts` now imports `splitFeeCents` instead of re-deriving from the two constants, so a band deck renders in **2-payment mode**: *Retainer `$15,000`* / *Implementation `fee − 15,000`*, row 3 deleted, chip 2 reading *"Retainer non-refundable"* like any other 2-payment deck. See [The ROI deck mirrors this process](#the-roi-deck-mirrors-this-process-2026-08-27-template-v6--v795).
+**The ROI deck follows automatically too.** `generate-presentation.ts` now imports `splitFeeCents` instead of re-deriving from the two constants, so a band deck renders in **2-payment mode**: *Retainer Payment `$15,000`* / *Implementation Fee `fee − 15,000`*, row 3 deleted, chip 2 reading *"Retainer Payment non-refundable"* like any other 2-payment deck. See [The ROI deck mirrors this process](#the-roi-deck-mirrors-this-process-2026-08-27-template-v6--v795).
 
 **Invoices print plain labels.** `utils/tax-invoice-html.ts` gained a **third** `plainLabels` trigger alongside the discount and amendment flags: the arithmetic itself. If `retainer × 2` does not equal the total in whole cents (**1c tolerance**, for the rounding a genuine odd-total even split produces), the invoice prints *"Retainer"* / *"Implementation Fee"* rather than *"Retainer (50%)"* / *"Implementation Fee (50%)"*. A band plan is unamended and undiscounted yet nowhere near half — `$15,000` / `$15,999` on a `$30,999` total — so no flag described it and the document would otherwise have contradicted itself.
 
@@ -396,7 +396,7 @@ The deck therefore renders all three bands off the assess fee alone:
 | `$30,000.01 – $30,999.99` (**buffer band**) | 2 payments | *Retainer* **`$15,000`** · *Implementation* `fee − 15,000` |
 | `≥ $31,000.00` | 3 payments | *Initial Retainer* `$15,000` · *Final Retainer* `round(fee/2) − 15,000` · *Implementation* the remainder |
 
-**STRICT at both edges:** exactly `$30,000` is a plain 2-payment split, and **exactly `$31,000` is 3 payments** (final retainer `$500`, the smallest that exists). A buffer-band deck is a 2-payment deck in every respect — row 3 is deleted and chip 2 reads *"Retainer non-refundable"* like any other.
+**STRICT at both edges:** exactly `$30,000` is a plain 2-payment split, and **exactly `$31,000` is 3 payments** (final retainer `$500`, the smallest that exists). A buffer-band deck is a 2-payment deck in every respect — row 3 is deleted and chip 2 reads *"Retainer Payment non-refundable"* like any other.
 
 Three things a future change to this process must know:
 
