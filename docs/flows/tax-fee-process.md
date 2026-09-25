@@ -221,11 +221,15 @@ Two steps, both driven by `automation_TAX_amend_fee` (AUTH, dual-listed in `ADMI
 | Step | `program_client_tasks.name` | `status_options` | Position |
 |---|---|---|---|
 | Tax 4 | `Amend fee` | `tax_amend_fee` | between *Detailed tax plan presentation* and *Client decision 1* |
-| Tax 5b | `Amend implementation fee` | `tax_amend_fee_tax5` | before *Implementation decision* |
+| Tax 5b | `Amend implementation fee` (**displayed "Amend fee"** since 2026-09-25) | `tax_amend_fee_tax5` | before *Implementation decision* |
+
+Both steps carry the **Tax Team** owner chip on both routes (FE `STEP_OWNER` `'team'`; `utils/tax-plan-steps.ts` owner `PLANNER`) since 2026-09-25. The Tax 5b display name comes from `src/components/shared/taxDisplayNames.js` only — the STORED names below are unchanged.
 
 The two names are **deliberately different**. A step row is resolved by NAME, so one shared name would make the Tax 5 gate pass the moment the Tax 4 step was answered. The strings live once, in `constants/tax-fee-process.ts` (`AMEND_FEE_TASK_NAME`, `AMEND_IMPLEMENTATION_FEE_TASK_NAME`); changing either silently disarms a gate.
 
 **Two request shapes.** `{ tax_plan_id, stage, keep: true }` writes **nothing** and short-circuits **before** the state guards — the step must stay answerable even on a plan where an actual change would now be refused. `{ tax_plan_id, stage, new_total }` re-derives everything.
+
+**Two order gates sit AHEAD of the `keep` short-circuit**, so neither answer can land early: stage `tax5` refuses while Client decision 1 is unanswered by the client (`decision1Blocker`, 2026-09-23), and stage `tax4` refuses **400 `Complete the "Detailed tax plan presentation" step first`** while that step has no plan-level answer (2026-09-25; resolved by name within the plan's program, and a program without the step is left ungated).
 
 ### Which plans get the steps *(the three-way rule, 2026-09-01 / v802)*
 

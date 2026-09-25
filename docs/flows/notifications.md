@@ -126,19 +126,37 @@ Beyond this MAP1 example, the TAX / Advisor / Accountant / PFT pipelines also in
 
 **Rule `TAX_tax4_decision_needed` — the three-recipient "Client decision 1 needed — \<client\>" bell — is DORMANT since 2026-08-11 (#170).** Its call site is gone; the rule row stays enabled for rollback + Editor visibility, and its clear stays in `actions/tax/postreview-decision.ts` (`.ilike("title","Client decision 1 needed%")`) because unread rows of that shape survive in production. Per gotcha #178, removing the call site — not deleting the rule — is what stopped the bell. The planner FYI `TAX_planner_post_meeting` went dormant in the same change.
 
-What fires now, on the same trigger: the `tax-revshare-sweep-daily` cron (02:30 UTC) raises **ONE persistent action-required in-app notification to the ALLOCATED PLANNER ALONE** — rule **`TAX_planner_tax4_steps_needed`** — when `tax4_meeting_date < today` and a planner is allocated:
+What fires now, on the same trigger: the `tax-revshare-sweep-daily` cron (02:30 UTC) raises **ONE persistent action-required in-app notification to the ALLOCATED PLANNER (and the allocated team member, via `notifyAllocatedPlanner`)** — rule **`TAX_planner_tax4_steps_needed`** — when `tax4_meeting_date < today` and a planner is allocated:
 
 ```
-recipient: <allocated planner email>          (one row)
+recipient: <allocated planner email> (+ allocated team member)   (one row each)
 pipeline:  'TAX'
 title:     "Complete the tax plan review steps for <client>"
 message:   asks for BOTH steps the meeting produces —
-           "Detailed tax plan presentation" AND "Client decision 1"
+           "Detailed tax plan presentation" AND "Client decision 1";
+           while generated_bookends_at is NULL it ends
+           ' Start with "Generate detailed tax plan presentation", which unlocks it.'
 link:      "/tax-planner/client/<id>?program=<program_id||1>"   (gotcha #292)
 dismissible: false
 ```
 
 Fired once per plan (same guard column, `client_tax_plans.tax4_meeting_reminder_last_sent_at`, which `automation_TAX_highlevelmeeting_confirm` nulls on every re-confirm), and **skipped outright when both steps are already done** — an already-satisfied action-required bell would be unretirable. **Cleared** when BOTH halves land, whichever is second: `save-task.ts` (the presentation dropdown) and `postreview-decision.ts` (Client decision 1, every branch) both call `clearTax4StepBellsWhenBothDone`.
+
+### Tax 4 — generate the detailed tax plan presentation (action-required, in-app, 2026-09-25)
+
+Rule **`TAX_planner_bookends_needed`** (area `Tax Planners`, sort 220, `action_required`, `default_recipients '["ALLOCATED_TAX_PLANNER"]'`; migrations `20260925180000_…` + `20260925190000_…`). Raised by `actions/tax/highlevel-meeting-confirm.ts` — and its Direct twin `tax_direct_highlevelmeeting_confirm`, which wraps the same handler — the moment the detailed tax plan meeting confirmation email is drafted, **unless `generated_bookends_at` is already set** (a re-send / reschedule is not asked again):
+
+```
+recipient: the allocated planner + the allocated team member   (notifyAllocatedPlanner; planner-portal link)
+pipeline:  'TAX'
+title:     "Generate the detailed tax plan presentation for <client>"
+message:   'The detailed tax plan meeting with <client> is confirmed for <date time tz>.
+            Please complete the "Generate detailed tax plan presentation" step before the meeting.'
+dedupe:    'unread'
+dismissible: false
+```
+
+**Cleared** only by `actions/tax/generate-bookends.ts` on a successful generate (`clearBookendsNeededBells`, prefix `BOOKENDS_NEEDED_BELL_TITLE_PREFIX` in `utils/tax-review-bell.ts`). `allocate-planner.ts` does **not** re-address it on a planner change (same as the Tax 4 steps bell above).
 
 ### TAX pipeline — no shared `admin` bell (rerouted 2026-06-09; recipients re-cut 2026-07-27)
 
