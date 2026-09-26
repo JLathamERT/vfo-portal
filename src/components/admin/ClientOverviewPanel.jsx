@@ -5,6 +5,7 @@ import ListFilterButton, { matchesFilter, SortSelect, useHeaderSort, sortByColum
 import { ClientOverviewSkeleton } from '../shared/skeletons/admin'
 import { MemberNameLink } from '../shared/personLinks'
 import { taxDisplayName } from '../shared/taxDisplayNames'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 
 // Client Overview — a mirror of Member Overview, but oriented around clients and
 // their program tracks. Four sub-tabs, each lazily loaded from the backend
@@ -74,8 +75,11 @@ function ProgramPill({ label, direct = false }) {
 
 
 // The active pill survives a trip into a client and back (Back re-mounts the
-// admin portal), so the admin lands on the list they left.
-const SECTION_KEY = 'clientOverviewSection'
+// admin portal), so the admin lands on the list they left. Opening Client
+// Overview from the nav is a fresh visit: AdminPortal.selectClientOverview
+// clears the key, so it starts on MAP 1.
+export const CLIENT_OVERVIEW_SECTION_KEY = 'clientOverviewSection'
+const SECTION_KEY = CLIENT_OVERVIEW_SECTION_KEY
 function readSection() {
   try {
     const v = sessionStorage.getItem(SECTION_KEY)
@@ -176,6 +180,12 @@ export default function ClientOverviewPanel() {
     navigate(url)
   }
 
+  // The client NAME opens the client's profile; the row itself opens the track.
+  function openProfile(client, t) {
+    const l = t.link || {}
+    navigate(`/admin/client/${client.id}?${l.program ? `program=${l.program}&` : ''}tab=home`)
+  }
+
   const wrap = { padding: '24px', maxWidth: '1500px', margin: '0 auto' }
   const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
 
@@ -229,13 +239,14 @@ export default function ClientOverviewPanel() {
                 : (t.next_action ? [{ label: t.next_action, owner: null }] : [])
               const done = t.state === 'complete' || t.state === 'closed'
               return (
-                <div key={`${c.id}:${t.id ?? activeSection}`} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+                <div key={`${c.id}:${t.id ?? activeSection}`} onClick={() => openTrack(c, t)} {...rowHoverProps}
+                  style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
                   <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                    <span onClick={() => openTrack(c, t)} style={{ fontWeight: 600, color: '#125ecc', cursor: 'pointer', alignSelf: 'flex-start' }}
+                    <span onClick={e => { e.stopPropagation(); openProfile(c, t) }} title="Open client profile" style={{ fontWeight: 600, color: '#125ecc', cursor: 'pointer', alignSelf: 'flex-start' }}
                       onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
                       onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{c.name || '—'}</span>
                     {c.member_name
-                      ? <MemberNameLink memberNumber={c.member_number} style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{c.member_name}</MemberNameLink>
+                      ? <MemberNameLink memberNumber={c.member_number} style={{ fontSize: '11px', color: 'var(--vfo-muted)', alignSelf: 'flex-start' }}>{c.member_name}</MemberNameLink>
                       : <span style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>No member</span>}
                   </span>
                   {activeSection === 'regular' && (
