@@ -85,7 +85,7 @@ On a **Direct** tax plan `clients.pf_member_number` names the MEMBER who runs th
 | `resolveTaxPf(sb, client)` | `pf_member_number` set → that member's `member_logins.email`; else `taxPfLoginEmail(assigned_pf)`. A Direct member with no portal login resolves to `null` → Tracy, **never** to `assigned_pf` (on a Direct plan that name is the member's own and no VFO login answers to it). |
 | `taxPfRecipientsFor(sb, client)` | the async twin of `taxPfRecipients` — `{ recipients, pfEmail, isMember, memberNumber }`, same Tracy fallback. |
 | `taxDecisionRecipientsFor(sb, client, plannerEmails)` | the async twin of `taxDecisionRecipients`. |
-| `taxMemberLinks(routing, clientId)` | the per-recipient `links` entry a member bell needs: `/member/client/<id>?tab=tax` (the member portal has no `/admin` route). Vault bells use `?tab=vault`. |
+| `taxMemberLinks(routing, clientId, programId?, tab?, planId?)` | the per-recipient `links` entry a member bell needs: `/member/client/<id>?tab=tax&program=<n>&plan=<id>` (the member portal has no `/admin` route; `plan` since 2026-09-26). Vault bells use `?tab=vault`. |
 
 Three rules that come with it:
 
