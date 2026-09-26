@@ -70,6 +70,9 @@ export default function ClientDetail() {
   // (the self-heal below preserves these params) can't retrigger auto-select.
   const [initialTrackId] = useState(() => { const v = new URLSearchParams(window.location.search).get('track'); return v ? parseInt(v) : null })
   const [initialPlanId] = useState(() => { const v = new URLSearchParams(window.location.search).get('plan'); return v ? parseInt(v) : null })
+  // Opened from a notification: bell links name the client + tab but no plan,
+  // so the tax tab opens the client's one open plan instead of the plan list.
+  const [fromBell] = useState(() => new URLSearchParams(window.location.search).get('_from') === 'bell')
   const [client, setClient] = useState(null)
   const [program, setProgram] = useState(null)
   const [contacts, setContacts] = useState([])
@@ -119,6 +122,12 @@ export default function ClientDetail() {
       sessionStorage.setItem('pftReturnEnrolledTab', 'clients')
       navigate('/admin')
     } else {
+      // Opened from a program's Clients list (the only callers that pass an
+      // enrollment_id): re-open that program view on Clients, not its default
+      // sub-tab. One-shot keys, consumed on the view's mount.
+      if (location.state?.enrollment_id) {
+        try { sessionStorage.setItem(isMember ? 'memberReturnEnrolledTab' : 'pftReturnEnrolledTab', 'clients') } catch { /* private mode */ }
+      }
       navigate(-1)
     }
   }
@@ -198,6 +207,7 @@ export default function ClientDetail() {
     const params = new URLSearchParams(window.location.search)
     params.set('program', String(program.id))
     params.set('tab', activeTab)
+    params.delete('_from')
     window.history.replaceState(null, '', window.location.pathname + '?' + params.toString())
   }, [program?.id, activeTab])
 
@@ -357,7 +367,7 @@ export default function ClientDetail() {
             {activeTab === 'map1' && program && !pfLocked && !isPlanner && <ClientTrackViewV2 clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} />}
             {activeTab === 'pft' && program && !pfLocked && !isPlanner && <PFTEngagementTrack clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} />}
             {activeTab === 'regular' && program && !pfLocked && !isPlanner && <RegularPrioritiesTab clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} initialTrackId={initialTrackId} />}
-            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} />}
+            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} openSinglePlan={fromBell} />}
             {activeTab === 'pip' && program && !pfLocked && !isPlanner && <PipMeetingsTab clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} />}
             {/* memberMode is its own flag, not a relaxed readOnly: a member gets
                 view on all three sections + add on the two client-owned ones,

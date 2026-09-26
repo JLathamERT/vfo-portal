@@ -52,7 +52,9 @@ useEffect(() => {
 }, [])
 ```
 
-The bell renders a count badge + dropdown of titles. Click an item → navigates to `notification.link` (typically `/admin/client/<id>?tab=map1`). "Mark all read" iterates over all visible notifications and calls `mark_notification_read` for each in parallel.
+The bell renders a count badge + dropdown of titles. Click an item → navigates to `notification.link` (typically `/admin/client/<id>?tab=map1`) plus `_n=<nonce>&_from=bell`.
+
+**Tax bells open the PLAN, not the plan list (2026-09-26).** Every tax bell link — admin `link`, the member-portal `links` from `taxMemberLinks(routing, clientId, programId, "tax", planId)` (5th arg new), and the planner-portal links (which also gained `tab=tax`) — carries `&plan=<client_tax_plans.id>`, written guarded (`${plan?.id ? `&plan=…` : ""}`) so a missing id degrades to the list. **A new tax bell must do the same.** ClientDetail reads `?plan=` at mount (`initialPlanId` → `TaxPrioritiesTab` auto-opens it). For bells written BEFORE the change (no `plan=`), `_from=bell` makes the tax tab open the client's one live plan (or only plan); several live plans → the list. `App.jsx` keys `ClientDetail` on `clientId|_n`, so a bell clicked while already on a client page remounts it and the deep link applies (it did not before). "Mark all read" iterates over all visible notifications and calls `mark_notification_read` for each in parallel.
 
 ## Step 1 — Load (filtered, server-side)
 
@@ -83,7 +85,7 @@ On a **Direct** tax plan `clients.pf_member_number` names the MEMBER who runs th
 | `resolveTaxPf(sb, client)` | `pf_member_number` set → that member's `member_logins.email`; else `taxPfLoginEmail(assigned_pf)`. A Direct member with no portal login resolves to `null` → Tracy, **never** to `assigned_pf` (on a Direct plan that name is the member's own and no VFO login answers to it). |
 | `taxPfRecipientsFor(sb, client)` | the async twin of `taxPfRecipients` — `{ recipients, pfEmail, isMember, memberNumber }`, same Tracy fallback. |
 | `taxDecisionRecipientsFor(sb, client, plannerEmails)` | the async twin of `taxDecisionRecipients`. |
-| `taxMemberLinks(routing, clientId)` | the per-recipient `links` entry a member bell needs: `/member/client/<id>?tab=tax` (the member portal has no `/admin` route). Vault bells use `?tab=vault`. |
+| `taxMemberLinks(routing, clientId, programId?, tab?, planId?)` | the per-recipient `links` entry a member bell needs: `/member/client/<id>?tab=tax&program=<n>&plan=<id>` (the member portal has no `/admin` route; `plan` since 2026-09-26). Vault bells use `?tab=vault`. |
 
 Three rules that come with it:
 
@@ -126,7 +128,7 @@ Beyond this MAP1 example, the TAX / Advisor / Accountant / PFT pipelines also in
 
 **Rule `TAX_tax4_decision_needed` — the three-recipient "Client decision 1 needed — \<client\>" bell — is DORMANT since 2026-08-11 (#170).** Its call site is gone; the rule row stays enabled for rollback + Editor visibility, and its clear stays in `actions/tax/postreview-decision.ts` (`.ilike("title","Client decision 1 needed%")`) because unread rows of that shape survive in production. Per gotcha #178, removing the call site — not deleting the rule — is what stopped the bell. The planner FYI `TAX_planner_post_meeting` went dormant in the same change.
 
-What fires now, on the same trigger: the `tax-revshare-sweep-daily` cron (02:30 UTC) raises **ONE persistent action-required in-app notification to the ALLOCATED PLANNER (and the allocated team member, via `notifyAllocatedPlanner`)** — rule **`TAX_planner_tax4_steps_needed`** — when `tax4_meeting_date < today` and a planner is allocated:
+What fires now, on the same trigger: the `tax-revshare-sweep-daily` cron (13:10 UTC) raises **ONE persistent action-required in-app notification to the ALLOCATED PLANNER (and the allocated team member, via `notifyAllocatedPlanner`)** — rule **`TAX_planner_tax4_steps_needed`** — when `tax4_meeting_date < today` and a planner is allocated:
 
 ```
 recipient: <allocated planner email> (+ allocated team member)   (one row each)

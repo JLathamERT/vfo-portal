@@ -356,7 +356,7 @@ For each payment cycle (P1 for one-time, P1+P2+P3+P4 for quarterly), the row sho
 
 ### Step 10⅔b — Daily check-reminder sweep
 
-**Trigger:** daily `pg_cron` job `check-reminder-sweep-daily` at 04:00 UTC (cron SQL: `vfo-edge-functions/supabase/cron/check-reminder-sweep.sql`).
+**Trigger:** daily `pg_cron` job `check-reminder-sweep-daily` at 13:40 UTC Mon–Fri (cron SQL: `vfo-edge-functions/supabase/cron/check-reminder-sweep.sql`).
 
 **Handler:** `automation_CONTRACT_checkreminder_sweep` ([actions/pipeline/contract-check-reminder-sweep.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/pipeline/contract-check-reminder-sweep.ts)) — PUBLIC, service-role-gated.
 
@@ -488,7 +488,7 @@ It stamps no send/status column, allocates no number and skips the tax-intake as
 
 **Trigger (two paths, both automatic):**
 1. **Push chain from Stripe webhook:** `router/webhooks.ts` chains `_revshare` immediately after `_invoicereceipt` in all three Stripe webhook chain sites (MAP1 first-card, quarterly N succeeded, ACH cleared). ~~First attempt usually returns `pending: true` because Tracy's Revenue Master sheet isn't updated yet~~ — as of 2026-07-01 it pays on clear (no pending).
-2. **Daily sweep via `automation_CONTRACT_revshare_sweep`:** `pg_cron` runs at 02:00 UTC (see `vfo-edge-functions/supabase/cron/revshare-sweep.sql`). The sweep enumerates every `pipeline_map1` row where any `rec1-4_number` is set but `rev_paid` is not yet `Yes`/`Money Mapping`/`N/A` — and re-invokes `_revshare` for each. Includes previously-`Failed` transfers, so misconfigured Stripe Connect accounts auto-recover once fixed. **The same sweep also drives the three-stall reminder ladder (PCADMIN Undecided, agreement signing, Pay1 link) — see "Reminder ladder" below.** No manual path.
+2. **Daily sweep via `automation_CONTRACT_revshare_sweep`:** `pg_cron` runs at 13:00 UTC (see `vfo-edge-functions/supabase/cron/revshare-sweep.sql`). The sweep enumerates every `pipeline_map1` row where any `rec1-4_number` is set but `rev_paid` is not yet `Yes`/`Money Mapping`/`N/A` — and re-invokes `_revshare` for each. Includes previously-`Failed` transfers, so misconfigured Stripe Connect accounts auto-recover once fixed. **The same sweep also drives the three-stall reminder ladder (PCADMIN Undecided, agreement signing, Pay1 link) — see "Reminder ladder" below.** No manual path.
 
 **Handler:** `automation_CONTRACT_revshare` ([actions/pipeline/contract-revshare.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/pipeline/contract-revshare.ts)).
 
@@ -532,7 +532,7 @@ It stamps no send/status column, allocates no number and skips the tax-intake as
 
 ## Reminder ladder (48h client reminder + 96h PF notification)
 
-The MAP 1 reminder ladder mirrors the tax-planning sweep's stall-handling pattern. It rides on the existing `automation_CONTRACT_revshare_sweep` daily job at 02:00 UTC — no separate cron. Three stalls, two tiers each (six independent checks total). All emails are **To-client-only** (matching `actions/tax/revshare-sweep.ts`'s `sendReminderEmailUnified`). All PF notifications are admin-bell rows with `pipeline='MAP 1'`, `link='/admin/client/<id>?tab=map1'`.
+The MAP 1 reminder ladder mirrors the tax-planning sweep's stall-handling pattern. It rides on the existing `automation_CONTRACT_revshare_sweep` daily job at 13:00 UTC — no separate cron. Three stalls, two tiers each (six independent checks total). All emails are **To-client-only** (matching `actions/tax/revshare-sweep.ts`'s `sendReminderEmailUnified`). All PF notifications are admin-bell rows with `pipeline='MAP 1'`, `link='/admin/client/<id>?tab=map1'`.
 
 > **All six tiers count BUSINESS DAYS as of 2026-08-14** — defaults **2 business days** (client reminder) and **4 business days** (PF bell), read from `notification_rules.delay_days` and resolved through `businessDelayCutoffIso()` in `utils/notify.ts` (Mon–Fri UTC, **no holiday calendar**). The stored numbers did not change; only the unit did, so a stall entered on a Friday is chased the following week rather than over the weekend. The bell bodies interpolate their own delay and read *"N business day(s) have passed"*. **The "48h / 96h" in this section's heading is legacy shorthand kept only so existing deep-links to the anchor keep working** — read it as the 2-/4-business-day ladder. The calendar helper `delayCutoffIso` still exists but has no callers.
 

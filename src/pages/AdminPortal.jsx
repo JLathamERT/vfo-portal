@@ -6,7 +6,7 @@ import SpecialistsPanel from '../components/admin/SpecialistsPanel'
 import TaxPlannersPanel from '../components/admin/TaxPlannersPanel'
 import MembersPanel, { MEMBER_PROFILE_ORIGIN_KEY } from '../components/admin/MembersPanel'
 import MemberOverviewPanel from '../components/admin/MemberOverviewPanel'
-import ClientOverviewPanel from '../components/admin/ClientOverviewPanel'
+import ClientOverviewPanel, { CLIENT_OVERVIEW_SECTION_KEY } from '../components/admin/ClientOverviewPanel'
 import FaqEditorPanel from '../components/admin/FaqEditorPanel'
 import TaxDiagnosticsPanel from '../components/admin/TaxDiagnosticsPanel'
 import AdminEditor from '../components/admin/AdminEditor'
@@ -50,6 +50,8 @@ import GrowthCreditsRedemptionsPage from '../components/admin/GrowthCreditsRedem
 import { DirectoryListSkeleton } from '../components/shared/Skeleton'
 
 // A dropdown row that, on hover, flies out a submenu of options to the right.
+// An option carrying its own `submenu` nests another flyout (More ▸ Accounting ▸
+// Members ▸ …).
 function SubmenuRow({ label, options, onSelect }) {
   const [open, setOpen] = useState(false)
   return (
@@ -59,9 +61,11 @@ function SubmenuRow({ label, options, onSelect }) {
       </button>
       {open && (
         <div style={{ position: 'absolute', top: '-4px', left: '100%', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '210px', zIndex: 210, paddingTop: '4px', paddingBottom: '4px', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
-          {options.map(opt => (
+          {options.map(opt => opt.submenu ? (
+            <SubmenuRow key={opt.key} label={opt.label} options={opt.submenu} onSelect={onSelect} />
+          ) : (
             <button key={opt.key} onClick={() => onSelect(opt.key)}
-              style={{ display: 'block', width: '100%', padding: '8px 20px', background: 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
+              style={{ display: 'block', width: '100%', padding: '8px 20px', background: 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               {opt.label}
@@ -135,6 +139,11 @@ function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
     </div>
   )
 }
+
+// Tabs a member profile's "Back to list" may return to when the profile was
+// opened from them (openMemberProfile's `origin`). Every other origin keeps the
+// ordinary Back: the member's own directory list.
+const PROFILE_ORIGIN_TABS = ['member_overview', 'client_overview']
 
 // Every accountingSection key the Accounting tab renders a block for. Used only by
 // the fallback card below, so a stale sessionStorage key can never blank the page.
@@ -235,7 +244,8 @@ export default function AdminPortal() {
         // to auto-open that client's newest questionnaire.
         const ciqClient = params.get('ciqclient')
         if (ciqClient) sessionStorage.setItem('ciqInitialClientId', ciqClient)
-        openMemberProfile(m, params.get('feature') || 'profile_details')
+        const origin = PROFILE_ORIGIN_TABS.includes(params.get('origin')) ? params.get('origin') : null
+        openMemberProfile(m, params.get('feature') || 'profile_details', origin)
         navigate('/admin', { replace: true }) // strip params so manual nav isn't re-hijacked
       }
       return
@@ -309,9 +319,9 @@ export default function AdminPortal() {
   // they jumped from. The profile's Back handler has already cleared the selection
   // keys, so the directory it leaves behind is collapsed to its list either way.
   function backToProfileOrigin(origin) {
-    if (origin !== 'member_overview') return
-    setActiveTab('member_overview')
-    sessionStorage.setItem('adminActiveTab', 'member_overview')
+    if (!PROFILE_ORIGIN_TABS.includes(origin)) return
+    setActiveTab(origin)
+    sessionStorage.setItem('adminActiveTab', origin)
     setNavClickCount(c => c + 1)
   }
 
@@ -418,6 +428,7 @@ export default function AdminPortal() {
   }
 
   function selectClientOverview() {
+    try { sessionStorage.removeItem(CLIENT_OVERVIEW_SECTION_KEY) } catch { /* private mode */ }
     setActiveTab('client_overview')
     sessionStorage.setItem('adminActiveTab', 'client_overview')
     setNavClickCount(c => c + 1)
@@ -482,17 +493,6 @@ export default function AdminPortal() {
     setShowEditor(false)
     setShowSettings(false)
   }
-
-  // Collapse the muted "other" tabs into a single More ▾ menu when the nav
-  // would otherwise overflow off-screen.
-  const [navNarrow, setNavNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1180px)').matches)
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1180px)')
-    const fn = () => setNavNarrow(mq.matches)
-    mq.addEventListener('change', fn)
-    window.addEventListener('resize', fn)
-    return () => { mq.removeEventListener('change', fn); window.removeEventListener('resize', fn) }
-  }, [])
 
   if (!session) return null
 
@@ -622,7 +622,8 @@ export default function AdminPortal() {
     },
   ]
 
-  // Narrow-nav variant: the three muted tabs folded into one More ▾ menu.
+  // The grantable "other" tabs always sit in one More ▾ menu (2026-09-26 — was a
+  // row of tabs on wide screens), whatever mix a given admin is granted.
   // Keys are prefixed so one onSelect can route back to the right section setter.
   const moreDropdownItems = [
     ...(canSeeTab('member_overview') ? [{ key: 'more_mo', options: [{ key: '__member_overview', label: 'Member Overview' }] }] : []),
@@ -630,15 +631,19 @@ export default function AdminPortal() {
     ...(canSeeTab('growth_credits') ? [{ key: 'more_gc', options: [{ key: '__growth_credits', label: 'Growth Credits' }] }] : []),
     ...(canSeeTab('faq_editor') ? [{ key: 'more_faq', options: [{ key: '__faq_editor', label: 'FAQ Editor' }] }] : []),
     ...(canSeeTab('tax_diagnostics') ? [{ key: 'more_diag', options: [{ key: '__tax_diagnostics', label: 'Tax Diagnostics' }] }] : []),
-    ...(canSeeTab('automation') ? [
-      { key: 'more_auto_h', header: 'Automation & Config' },
-      { key: 'more_auto', options: automationDropdownItems[0].options.map(o => ({ ...o, key: 'auto:' + o.key })) },
-    ] : []),
-    ...(canSeeTab('accounting') ? [
-      { key: 'more_acct_h', header: 'Accounting' },
-      { key: 'more_acct_pay', options: [{ key: 'acct:payments', label: 'Payments' }] },
-      ...accountingDropdownItems.slice(1).map(item => ({ ...item, key: 'more_' + item.key, submenu: item.submenu.map(o => ({ ...o, key: 'acct:' + o.key })) })),
-    ] : []),
+    // The two tabs with their own sub-options open sideways on hover instead of
+    // listing every option inline.
+    ...(canSeeTab('automation') ? [{
+      key: 'more_auto', submenuLabel: 'Automation & Config',
+      submenu: automationDropdownItems[0].options.map(o => ({ ...o, key: 'auto:' + o.key })),
+    }] : []),
+    ...(canSeeTab('accounting') ? [{
+      key: 'more_acct', submenuLabel: 'Accounting',
+      submenu: [
+        { key: 'acct:payments', label: 'Payments' },
+        ...accountingDropdownItems.slice(1).map(item => ({ key: 'more_' + item.key, label: item.submenuLabel, submenu: item.submenu.map(o => ({ ...o, key: 'acct:' + o.key })) })),
+      ],
+    }] : []),
   ]
   function selectMoreOption(key) {
     if (key === '__member_overview') return selectMemberOverview()
@@ -715,89 +720,14 @@ export default function AdminPortal() {
             {/* Secondary "other" tabs — beside the key tabs, muted, access-gated,
                 separated by a faint divider. On narrow screens they collapse
                 into a single More ▾ menu so nothing falls off-screen. */}
-            {(canSeeTab('member_overview') || canSeeTab('client_overview') || canSeeTab('growth_credits') || canSeeTab('faq_editor') || canSeeTab('automation') || canSeeTab('accounting')) && navNarrow && (
+            {moreDropdownItems.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', marginLeft: '10px', paddingLeft: '12px', borderLeft: '1px solid var(--vfo-tint)' }}>
                 <NavDropdown
                   label="More" muted
                   items={moreDropdownItems}
                   onSelect={selectMoreOption}
-                  isActive={['member_overview', 'client_overview', 'growth_credits', 'faq_editor', 'automation', 'accounting'].includes(activeTab)}
+                  isActive={['member_overview', 'client_overview', 'growth_credits', 'faq_editor', 'tax_diagnostics', 'automation', 'accounting'].includes(activeTab)}
                 />
-              </div>
-            )}
-            {(canSeeTab('member_overview') || canSeeTab('client_overview') || canSeeTab('growth_credits') || canSeeTab('faq_editor') || canSeeTab('automation') || canSeeTab('accounting')) && !navNarrow && (
-              <div style={{ display: 'flex', alignItems: 'center', marginLeft: '10px', paddingLeft: '12px', borderLeft: '1px solid var(--vfo-tint)' }}>
-                {canSeeTab('member_overview') && (
-                  <button onClick={selectMemberOverview} style={{
-                    padding: '14px 14px', background: 'transparent', border: 'none',
-                    borderBottom: activeTab === 'member_overview' ? '2px solid #125ecc' : '2px solid transparent',
-                    color: activeTab === 'member_overview' ? '#125ecc' : '#97a3ba', fontSize: '13px',
-                    fontWeight: activeTab === 'member_overview' ? '600' : '500', cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap'
-                  }}>
-                    Member Overview
-                  </button>
-                )}
-                {canSeeTab('client_overview') && (
-                  <button onClick={selectClientOverview} style={{
-                    padding: '14px 14px', background: 'transparent', border: 'none',
-                    borderBottom: activeTab === 'client_overview' ? '2px solid #125ecc' : '2px solid transparent',
-                    color: activeTab === 'client_overview' ? '#125ecc' : '#97a3ba', fontSize: '13px',
-                    fontWeight: activeTab === 'client_overview' ? '600' : '500', cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap'
-                  }}>
-                    Client Overview
-                  </button>
-                )}
-                {canSeeTab('growth_credits') && (
-                  <button onClick={selectGrowthCredits} style={{
-                    padding: '14px 14px', background: 'transparent', border: 'none',
-                    borderBottom: activeTab === 'growth_credits' ? '2px solid #125ecc' : '2px solid transparent',
-                    color: activeTab === 'growth_credits' ? '#125ecc' : '#97a3ba', fontSize: '13px',
-                    fontWeight: activeTab === 'growth_credits' ? '600' : '500', cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap'
-                  }}>
-                    Growth Credits
-                  </button>
-                )}
-                {canSeeTab('faq_editor') && (
-                  <button onClick={selectFaqEditor} style={{
-                    padding: '14px 14px', background: 'transparent', border: 'none',
-                    borderBottom: activeTab === 'faq_editor' ? '2px solid #125ecc' : '2px solid transparent',
-                    color: activeTab === 'faq_editor' ? '#125ecc' : '#97a3ba', fontSize: '13px',
-                    fontWeight: activeTab === 'faq_editor' ? '600' : '500', cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap'
-                  }}>
-                    FAQ Editor
-                  </button>
-                )}
-                {canSeeTab('tax_diagnostics') && (
-                  <button onClick={selectTaxDiagnostics} style={{
-                    padding: '14px 14px', background: 'transparent', border: 'none',
-                    borderBottom: activeTab === 'tax_diagnostics' ? '2px solid #125ecc' : '2px solid transparent',
-                    color: activeTab === 'tax_diagnostics' ? '#125ecc' : '#97a3ba', fontSize: '13px',
-                    fontWeight: activeTab === 'tax_diagnostics' ? '600' : '500', cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap'
-                  }}>
-                    Tax Diagnostics
-                  </button>
-                )}
-                {canSeeTab('automation') && (
-                  <NavDropdown
-                    label="Automation & Config" muted
-                    items={automationDropdownItems}
-                    onSelect={selectAutomationSection}
-                    isActive={activeTab === 'automation'}
-                  />
-                )}
-                {canSeeTab('accounting') && (
-                  <NavDropdown
-                    label="Accounting" muted
-                    items={accountingDropdownItems}
-                    onSelect={selectAccountingSection}
-                    isActive={activeTab === 'accounting'}
-                  />
-                )}
               </div>
             )}
           </div>
@@ -861,7 +791,7 @@ export default function AdminPortal() {
           )}
 
           {activeTab === 'client_overview' && !loading && (
-            <ClientOverviewPanel />
+            <ClientOverviewPanel key={navClickCount} />
           )}
 
           {activeTab === 'faq_editor' && !loading && (

@@ -14,7 +14,7 @@
 | Pay page (PUBLIC) | `/specialist-pay?kind=bgreq&token=` (`SpecialistPayPage.jsx`, same route as the onboarding + licence pages) → `automation_SPECIALIST_bgreqload`, `automation_SPECIALIST_bgreqcheckout` |
 | Chain targets (PUBLIC + service-role-or-admin gate) | `automation_SPECIALIST_bgreqconfirmation`, `automation_SPECIALIST_bgreqinvoicereceipt` — by hand only with an `admin_sessions` token whose `login_type` is `admin` (or legacy NULL); another portal's session is refused (#425) |
 | Webhook | `utils/specialist-bg-request-webhook.ts`, called from one block in `router/webhooks.ts` ahead of the customer cascade — [../architecture/07-server-chains.md](../architecture/07-server-chains.md) |
-| Reminder ladder | `automation_SPECIALIST_sweep` (07:00 UTC) tier 8 |
+| Reminder ladder | `automation_SPECIALIST_sweep` (14:20 UTC Mon–Fri) tier 8 |
 | Loader | `specialist_bg_payments_load` → `{ payments, requests }` |
 | UI | `SpecialistBgPanel.jsx` (pill 1 + the send form; exports `bgRowsFrom`) · `SpecialistBgReconciliationPanel.jsx` (pill 2) · `SpecialistBgOutstandingPanel.jsx` (pill 3) |
 | Test override | `constants/test-sandbox.ts` `TEST_SANDBOX_EXPERT_IDS = [6137]` (the production "Test Specialist") — a request to it is minted `sandbox` whatever the toggle says |

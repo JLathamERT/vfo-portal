@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { callApi } from '../../lib/api'
 import ListFilterButton, { matchesFilter, sortMembers, SortSelect, MEMBER_SORT_OPTIONS, useHeaderSort, sortByColumn, SortHeader } from './ListFilterButton'
 import { formatDate } from '../../lib/dates'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 
 // Member Overview — one unified list of every member (advisor / accountant /
 // strategic) with at-a-glance columns, an expandable client drill-down, a
@@ -55,6 +56,12 @@ const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
 export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onPatchMember }) {
   const navigate = useNavigate()
+  // A client row / name opens that client's Profile (first program, so ClientDetail
+  // resolves the right enrollment); the program chips keep their own targets.
+  const openClientProfile = (c) => {
+    const prog = (c.programs || [])[0]
+    navigate(`/admin/client/${c.id}?${prog ? `program=${prog.id}&` : ''}tab=home`)
+  }
   const [relations, setRelations] = useState({ programsByMember: {}, clientsByMember: {} })
   const [relLoading, setRelLoading] = useState(true)
   const [relError, setRelError] = useState('')
@@ -208,15 +215,16 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
             const eMeta = engMeta(engVal)
             return (
               <div key={mn}>
-                <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+                <div onClick={() => onOpenMember && onOpenMember(m)} {...rowHoverProps}
+                  style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: GRID, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
                   <button
-                    onClick={() => setExpanded(e => ({ ...e, [mn]: !e[mn] }))}
+                    onClick={ev => { ev.stopPropagation(); setExpanded(e => ({ ...e, [mn]: !e[mn] })) }}
                     title={isOpen ? 'Hide clients' : `Show clients (${clients.length})`}
                     style={{ width: '24px', height: '24px', border: '1px solid var(--vfo-border-strong)', background: isOpen ? 'var(--vfo-tint)' : 'var(--vfo-card)', borderRadius: '6px', cursor: 'pointer', color: 'var(--vfo-muted)', fontSize: '11px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {isOpen ? '▾' : '▸'}
                   </button>
                   <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--vfo-muted)' }}>{mn}</span>
-                  <span onClick={() => onOpenMember && onOpenMember(m)} style={{ fontWeight: 600, color: '#125ecc', cursor: 'pointer' }}
+                  <span onClick={ev => { ev.stopPropagation(); onOpenMember && onOpenMember(m) }} title="Open member profile" style={{ fontWeight: 600, color: '#125ecc', cursor: 'pointer', justifySelf: 'start' }}
                     onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
                     onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{m.name || '—'}</span>
                   <span>
@@ -239,7 +247,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
                       <span key={p} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: 'var(--vfo-tint)', color: '#3a5488', fontWeight: 600 }}>{p}</span>
                     ))}
                   </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span onClick={ev => ev.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'default' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: eMeta ? eMeta.color : '#d3dbe8' }} />
                     <select value={engVal} disabled={!!saving[mn]} onChange={e => saveEngagement(m, e.target.value)}
                       style={{ flex: 1, padding: '5px 6px', borderRadius: '7px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '12px', color: eMeta ? 'var(--vfo-ink)' : 'var(--vfo-faint)', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
@@ -266,10 +274,12 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
                           <span>Programs</span>
                         </div>
                         {clients.map(c => (
-                          <div key={c.id}
-                            style={{ display: 'grid', gridTemplateColumns: CLIENT_GRID, gap: '10px', padding: '9px 14px', borderTop: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '12.5px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
+                          <div key={c.id} onClick={() => openClientProfile(c)} {...rowHoverProps}
+                            style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: CLIENT_GRID, gap: '10px', padding: '9px 14px', borderTop: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '12.5px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
                             <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{c.ref || '—'}</span>
-                            <span style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{c.name}</span>
+                            <span onClick={ev => { ev.stopPropagation(); openClientProfile(c) }} title="Open client profile" style={{ fontWeight: 600, color: '#125ecc', cursor: 'pointer', justifySelf: 'start' }}
+                              onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                              onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{c.name}</span>
                             <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{c.joined ? formatDate(c.joined) : '—'}</span>
                             <span>
                               {c.status

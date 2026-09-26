@@ -102,7 +102,7 @@ These are the components where most of the per-feature logic and `callApi` calls
 Two auto-trigger paths, no manual surface:
 
 1. **Push chain from Stripe webhook** — `router/webhooks.ts` chains `_revshare` immediately after `_invoicereceipt` in all three Stripe chain sites (MAP1 card P1, quarterly N succeeded, ACH cleared). As of 2026-07-01 (gotcha #164) it **pays on clear** — the Tracy Revenue-Master cross-check was removed, so there is no more `pending` branch; amounts come from the PF input form on the row.
-2. **Daily sweep via `automation_CONTRACT_revshare_sweep`** — a `pg_cron` job (02:00 UTC) calls the sweep, which enumerates every `pipeline_map1` row where `rec{N}_number` is set but `rev_paid` is not yet `Yes`/`Money Mapping`/`N/A`, and re-invokes `_revshare` for each. Also retries previously-`Failed` transfers so misconfigured Connect accounts auto-recover. Cron SQL lives at `vfo-edge-functions/supabase/cron/revshare-sweep.sql` (manual-apply with real service-role key — placeholder in committed file).
+2. **Daily sweep via `automation_CONTRACT_revshare_sweep`** — a `pg_cron` job (13:00 UTC) calls the sweep, which enumerates every `pipeline_map1` row where `rec{N}_number` is set but `rev_paid` is not yet `Yes`/`Money Mapping`/`N/A`, and re-invokes `_revshare` for each. Also retries previously-`Failed` transfers so misconfigured Connect accounts auto-recover. Cron SQL lives at `vfo-edge-functions/supabase/cron/revshare-sweep.sql` (manual-apply with real service-role key — placeholder in committed file).
 
 See [flows/contract-and-payment.md](../flows/contract-and-payment.md#step-13--revenue-share) Step 13.
 

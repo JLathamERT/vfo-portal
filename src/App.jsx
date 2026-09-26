@@ -1,10 +1,19 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import RolePicker from './pages/RolePicker'
 import AdminLogin from './pages/AdminLogin'
 import MemberLogin from './pages/MemberLogin'
 import AdminPortal from './pages/AdminPortal'
 import MemberPortal from './pages/MemberPortal'
 import ClientDetail from './pages/ClientDetail'
+
+// ClientDetail captures its tab / plan deep link at mount, so a notification
+// opened while already on a client page (a different client, or the same one
+// with a new ?tab=) must remount it: key on the client id + the bell's _n nonce.
+function KeyedClientDetail() {
+  const { clientId } = useParams()
+  const { search } = useLocation()
+  return <ClientDetail key={`${clientId}|${new URLSearchParams(search).get('_n') || ''}`} />
+}
 import DecidePage from './pages/DecidePage'
 import TaxDecidePage from './pages/TaxDecidePage'
 import TaxImplementDecidePage from './pages/TaxImplementDecidePage'
@@ -59,9 +68,9 @@ export default function App() {
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/member/login" element={<MemberLogin />} />
       <Route path="/admin" element={<AdminPortal />} />
-      <Route path="/admin/client/:clientId" element={<ClientDetail />} />
+      <Route path="/admin/client/:clientId" element={<KeyedClientDetail />} />
       <Route path="/member" element={<MemberPortal />} />
-      <Route path="/member/client/:clientId" element={<ClientDetail />} />
+      <Route path="/member/client/:clientId" element={<KeyedClientDetail />} />
       <Route path="/decide" element={<DecidePage />} />
       <Route path="/tax-decide" element={<TaxDecidePage />} />
       <Route path="/tax-implement-decide" element={<TaxImplementDecidePage />} />
@@ -103,7 +112,7 @@ export default function App() {
       <Route path="/specialist" element={<SpecialistPortal />} />
       <Route path="/tax-planner/login" element={<TaxPlannerLogin />} />
       <Route path="/tax-planner" element={<TaxPlannerPortal />} />
-      <Route path="/tax-planner/client/:clientId" element={<ClientDetail />} />
+      <Route path="/tax-planner/client/:clientId" element={<KeyedClientDetail />} />
       <Route path="/tax-planner/member/:memberNumber" element={<PlannerMemberView />} />
       <Route path="/specialist-ddc-help" element={<SpecialistDdcHelpPage />} />
       <Route path="/specialist-revshare-final" element={<SpecialistRevShareFinalPage />} />

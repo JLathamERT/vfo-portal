@@ -128,7 +128,7 @@ function NotificationsView({ navigate }) {
   async function openRow(n) {
     if (n.link) {
       const sep = n.link.includes('?') ? '&' : '?'
-      navigate(`${n.link}${sep}_n=${Date.now()}`)
+      navigate(`${n.link}${sep}_n=${Date.now()}&_from=bell`)
     }
     if (n.dismissible !== false && !n.read) {
       try {
