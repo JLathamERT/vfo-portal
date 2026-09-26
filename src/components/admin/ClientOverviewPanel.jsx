@@ -73,10 +73,24 @@ function ProgramPill({ label, direct = false }) {
 }
 
 
+// The active pill survives a trip into a client and back (Back re-mounts the
+// admin portal), so the admin lands on the list they left.
+const SECTION_KEY = 'clientOverviewSection'
+function readSection() {
+  try {
+    const v = sessionStorage.getItem(SECTION_KEY)
+    return SECTIONS.some(s => s.key === v) ? v : 'map1'
+  } catch { return 'map1' }
+}
+
 export default function ClientOverviewPanel() {
   const navigate = useNavigate()
 
-  const [activeSection, setActiveSection] = useState('map1')
+  const [activeSection, setActiveSectionState] = useState(readSection)
+  function setActiveSection(key) {
+    setActiveSectionState(key)
+    try { sessionStorage.setItem(SECTION_KEY, key) } catch { /* private mode */ }
+  }
   const [dataBySection, setDataBySection] = useState({})   // section -> clients[] (success only)
   const [loadingSection, setLoadingSection] = useState(null)
   const [errorBySection, setErrorBySection] = useState({}) // section -> message

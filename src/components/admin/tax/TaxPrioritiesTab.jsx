@@ -5856,7 +5856,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   )
 }
 
-function TaxPrioritiesTab({ clientId, programId, programName, client, specialists, ecosystems = [], readOnly = false, notes = [], onNotesChange, initialPlanId = null, plannerMode = false, directMode = false }) {
+function TaxPrioritiesTab({ clientId, programId, programName, client, specialists, ecosystems = [], readOnly = false, notes = [], onNotesChange, initialPlanId = null, openSinglePlan = false, plannerMode = false, directMode = false }) {
   const [taxPlans, setTaxPlans] = useState([])
   const [phases, setPhases] = useState([])
   const [loading, setLoading] = useState(true)
@@ -5900,11 +5900,18 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
 
   // Deep-link from Client Overview: open the requested plan once, after the
   // list has loaded. The user can still navigate back to the list afterwards.
+  // From a notification (openSinglePlan) with no plan id: open the one live plan
+  // (or the only plan); with several live plans the list is the honest answer.
   useEffect(() => {
-    if (autoSelectedRef.current || loading || !initialPlanId) return
-    const match = taxPlans.find(p => p.id === initialPlanId)
+    if (autoSelectedRef.current || loading) return
+    let match = null
+    if (initialPlanId) match = taxPlans.find(p => p.id === initialPlanId)
+    else if (openSinglePlan) {
+      const live = taxPlans.filter(p => p.status !== 'stopped')
+      match = live.length === 1 ? live[0] : taxPlans.length === 1 ? taxPlans[0] : null
+    }
     if (match) { autoSelectedRef.current = true; setSelectedPlan(match) }
-  }, [loading, initialPlanId, taxPlans])
+  }, [loading, initialPlanId, openSinglePlan, taxPlans])
 
   async function loadData() {
     setLoading(true)

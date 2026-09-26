@@ -337,8 +337,16 @@ function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged 
   const isCoachingLike = isCoaching || isStandard
   const isPFT = program.name === 'Partnership Fast Track'
   const defaultTab = isCoachingLike ? 'home' : program.name === 'VFO Tax Planning' ? 'clients' : 'training'
-  const [activeTab, setActiveTab] = useState(defaultTab)
-  useEffect(() => { setActiveTab(defaultTab) }, [program.id])
+  // Back from a client (ClientDetail) asks for the Clients tab once.
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const ret = sessionStorage.getItem('memberReturnEnrolledTab')
+      if (ret) { sessionStorage.removeItem('memberReturnEnrolledTab'); return ret }
+    } catch { /* private mode */ }
+    return defaultTab
+  })
+  const didMountRef = useRef(false)
+  useEffect(() => { if (didMountRef.current) setActiveTab(defaultTab); else didMountRef.current = true }, [program.id])
   const tabStyle = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' })
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
   const statusColors = { 'On Fast Track': '#1b9254', 'Paused Fast Track': '#e06717', 'Lost/Removed': '#e74c3c', 'Revert to Legacy': 'var(--vfo-muted)', 'Active': '#1b9254' }

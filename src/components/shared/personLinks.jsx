@@ -17,9 +17,16 @@ export function MemberNameLink({ memberNumber, children, style }) {
   // _n cache-buster: AdminPortal reads ?member= off window.location.search, so the query
   // string has to change for a repeat click on the same member to register. Stamped
   // inside the handler so two clicks without a re-render still differ.
+  // On the admin shell the link also names the tab it was clicked on, so the
+  // profile's "Back to list" can return there (AdminPortal decides which tabs it
+  // honours) instead of the member's own directory.
+  const adminOrigin = () => {
+    if (location.pathname !== '/admin') return ''
+    try { const t = sessionStorage.getItem('adminActiveTab'); return t ? `&origin=${encodeURIComponent(t)}` : '' } catch { return '' }
+  }
   const go = () => isPlanner
     ? navigate(`/tax-planner/member/${encodeURIComponent(memberNumber)}`, { state: { from: location.pathname + location.search } })
-    : navigate(`/admin?member=${encodeURIComponent(memberNumber)}&_n=${Date.now()}`)
+    : navigate(`/admin?member=${encodeURIComponent(memberNumber)}${adminOrigin()}&_n=${Date.now()}`)
   return (
     <span
       title="Open member profile"

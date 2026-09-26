@@ -61,7 +61,8 @@ export default function NotificationBell() {
       // the destination's location.search-based deep-link effect every time
       // (without it, a second click on the same target is a no-op).
       const sep = notif.link.includes('?') ? '&' : '?'
-      navigate(`${notif.link}${sep}_n=${Date.now()}`)
+      // _from=bell lets a tax link with no plan id open the client's one open plan.
+      navigate(`${notif.link}${sep}_n=${Date.now()}&_from=bell`)
     }
   }
  

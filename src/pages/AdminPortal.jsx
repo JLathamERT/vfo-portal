@@ -136,6 +136,11 @@ function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
   )
 }
 
+// Tabs a member profile's "Back to list" may return to when the profile was
+// opened from them (openMemberProfile's `origin`). Every other origin keeps the
+// ordinary Back: the member's own directory list.
+const PROFILE_ORIGIN_TABS = ['member_overview', 'client_overview']
+
 // Every accountingSection key the Accounting tab renders a block for. Used only by
 // the fallback card below, so a stale sessionStorage key can never blank the page.
 const ACCOUNTING_SECTIONS = [
@@ -235,7 +240,8 @@ export default function AdminPortal() {
         // to auto-open that client's newest questionnaire.
         const ciqClient = params.get('ciqclient')
         if (ciqClient) sessionStorage.setItem('ciqInitialClientId', ciqClient)
-        openMemberProfile(m, params.get('feature') || 'profile_details')
+        const origin = PROFILE_ORIGIN_TABS.includes(params.get('origin')) ? params.get('origin') : null
+        openMemberProfile(m, params.get('feature') || 'profile_details', origin)
         navigate('/admin', { replace: true }) // strip params so manual nav isn't re-hijacked
       }
       return
@@ -309,9 +315,9 @@ export default function AdminPortal() {
   // they jumped from. The profile's Back handler has already cleared the selection
   // keys, so the directory it leaves behind is collapsed to its list either way.
   function backToProfileOrigin(origin) {
-    if (origin !== 'member_overview') return
-    setActiveTab('member_overview')
-    sessionStorage.setItem('adminActiveTab', 'member_overview')
+    if (!PROFILE_ORIGIN_TABS.includes(origin)) return
+    setActiveTab(origin)
+    sessionStorage.setItem('adminActiveTab', origin)
     setNavClickCount(c => c + 1)
   }
 

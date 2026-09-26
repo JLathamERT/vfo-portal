@@ -130,20 +130,22 @@ export default function MemberProfileDetails({
         </div>
         {hasCerts && (
           <div style={col('260px', '240px')}>
-            <div style={card}>
+            <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
               <div style={cardTitle}>Certifications</div>
-              {profile.vfo_certified_date && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: profile.vfo_accredited_date ? '14px' : 0 }}>
-                  <img src={vfoCertifiedSeal} alt="" style={{ width: '40px', height: '40px' }} />
-                  <div><div style={{ fontSize: '14px', color: '#b08d26', fontWeight: 600 }}>VFO Certified</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{formatDate(profile.vfo_certified_date)}</div></div>
-                </div>
-              )}
-              {profile.vfo_accredited_date && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <img src={vfoAccreditedSeal} alt="" style={{ width: '40px', height: '40px' }} />
-                  <div><div style={{ fontSize: '14px', color: 'var(--vfo-muted)', fontWeight: 600 }}>VFO Accredited</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{formatDate(profile.vfo_accredited_date)}</div></div>
-                </div>
-              )}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-evenly', gap: '18px' }}>
+                {profile.vfo_certified_date && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+                    <img src={vfoCertifiedSeal} alt="" style={{ width: '76px', height: '76px', flexShrink: 0 }} />
+                    <div><div style={{ fontSize: '19px', color: '#b08d26', fontWeight: 700 }}>VFO Certified</div><div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{formatDate(profile.vfo_certified_date)}</div></div>
+                  </div>
+                )}
+                {profile.vfo_accredited_date && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+                    <img src={vfoAccreditedSeal} alt="" style={{ width: '76px', height: '76px', flexShrink: 0 }} />
+                    <div><div style={{ fontSize: '19px', color: 'var(--vfo-muted)', fontWeight: 700 }}>VFO Accredited</div><div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{formatDate(profile.vfo_accredited_date)}</div></div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
