@@ -198,7 +198,7 @@ Backs the Tax 4 **"Generate detailed tax plan presentation"** row — an FE row,
 | `generated_bookends_by` | text | Session email of the admin or planner who generated it. |
 
 ### Tax 2 — Send presentation link to member (scheduled, BUILT)
-The **"Send presentation link to member before meeting"** step (`program_client_tasks` ids 168 prog 1 / 169 prog 4, `status_options='tax_presentation_link'`, in the **Tax 2 - Deeper Dive** phase, **`task_order=4` as of 2026-08-06** — it was 3 until the "Generate and download presentation" step was inserted at 2). Admin pastes a link + picks a send date (`automation_TAX_presentation_schedule`, AUTH); the `tax-presentation-sweep-daily` cron (09:00 UTC, `automation_TAX_presentation_sweep`, PUBLIC/service-role) drafts the `TAX_presentation_link` email (id 151; **To member, Cc assigned PF**; greeting `[Member First]`; `[PRESENTATION_LINK]` → "View the presentation" button) on the chosen date. **Drafts only — no auto-send.**
+The **"Send presentation link to member before meeting"** step (`program_client_tasks` ids 168 prog 1 / 169 prog 4, `status_options='tax_presentation_link'`, in the **Tax 2 - Deeper Dive** phase, **`task_order=4` as of 2026-08-06** — it was 3 until the "Generate and download presentation" step was inserted at 2). Admin pastes a link + picks a send date (`automation_TAX_presentation_schedule`, AUTH); the `tax-presentation-sweep-daily` cron (14:40 UTC Mon–Fri, `automation_TAX_presentation_sweep`, PUBLIC/service-role) drafts the `TAX_presentation_link` email (id 151; **To member, Cc assigned PF**; greeting `[Member First]`; `[PRESENTATION_LINK]` → "View the presentation" button) on the chosen date. **Drafts only — no auto-send.**
 
 | Column | Type | Notes |
 |---|---|---|

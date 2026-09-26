@@ -110,7 +110,7 @@ All three are `pipeline = 'SPECIALIST_LICENSE_CONTINUATION'`, `send_mode = false
 
 `license-confirmation-email.ts` **tolerates a missing template without stamping**, so a send skipped for a missing row fires once the row exists.
 
-## Sweep tier 7b (`onboarding/sweep.ts`, cron `specialist-sweep-daily` 07:00 UTC)
+## Sweep tier 7b (`onboarding/sweep.ts`, cron `specialist-sweep-daily` 14:20 UTC Mon–Fri)
 
 A new tier beside tier 7, running on exactly the rows tier 7 excludes. **Tier 7 is unchanged.**
 

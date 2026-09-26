@@ -311,7 +311,7 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
    itself was NOT changed: the `mode=setup` path already passes `payDateIso` null, and the
    first-signup confirmation email is gated on the `membership_first_payment` kind, so **a save-only
    completion cannot fire a confirmation email.**
-5. **Daily sweep** — `automation_MEMBERSHIP_sweep` (PUBLIC service-role, cron jobid 16 @12:00 UTC,
+5. **Daily sweep** — `automation_MEMBERSHIP_sweep` (PUBLIC service-role, cron jobid 16 @13:30 UTC,
    `supabase/cron/membership-sweep.sql`), **five** passes in order — **pass 0 = renewal notices,
    added 2026-08-04 / v700, runs FIRST so a plan is always warned before it is rolled over
    (see "Renewal notice + meeting" below)** — then: **renewals** (generate the next
@@ -355,7 +355,7 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
    "outstanding" pills are ever unified.
 7. **Setup-link reminder ladder (2026-09-15)** — until then a `setup_pending` plan got exactly
    one email and nothing chased it (24 plans were sitting idle, the oldest from 2026-08-18). The
-   12:00 sweep's LAST pass (`utils/membership-setup-reminder.ts`, try/catch-isolated so a Gmail
+   13:30 UTC sweep's LAST pass (`utils/membership-setup-reminder.ts`, try/catch-isolated so a Gmail
    hiccup can never fail the money passes) is the MAP 1 first-payment ladder's shape: **(a)** rule
    `MEMBERSHIP_setup_reminder_email` — 2 business days after `setup_email_sent_at`, ONE
    `MEMBERSHIP_setup_reminder` email (**Draft mode**, Jake's decision — a human sends it from
@@ -457,7 +457,7 @@ all Draft, all **To** member / **Cc** `tvaldes@elitert.com` / **Bcc** `platham@e
   off-session pull); `membership_termination_fee` is deliberately excluded.
 - **PDF renders retry (2026-09-10, gotcha #483).** Both renders go through
   `utils/html2pdf.ts renderHtmlToPdf` — **3 attempts, 1500 ms / 3000 ms with jitter**, because the
-  12:00Z sweep charges several plans in one second and html2pdf.app answers concurrent renders
+  13:30Z sweep charges several plans in one second and html2pdf.app answers concurrent renders
   with a **403**. A render that still fails after all three returns 500 **with the accounting
   numbers already reserved and nothing stamped on the ledger row** — repair by writing the
   reserved `invoice_number` / `receipt_number` onto the row FIRST (so the re-run reuses them

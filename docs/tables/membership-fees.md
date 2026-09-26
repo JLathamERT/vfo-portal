@@ -150,7 +150,7 @@ one. Gotcha **#332**.
   `kind='bell'`, FYI — `action_required=false`, `default_recipients` `["jlatham@elitert.com"]`;
   migration `20260923120000_membership_arrears_suspension_lifted_rule.sql`) — raised when an arrears
   clear switches a member's `suspended` flag off.
-- pg_cron jobid 16 `membership-sweep-daily` @12:00 UTC — **five passes as of 2026-08-04**
+- pg_cron jobid 16 `membership-sweep-daily` @13:30 UTC — **five passes as of 2026-08-04**
   (renewal notices → renewals → waive → charges → clear `members.membership_arrears`). **Pass 4 runs
   the shared `clearMembershipArrearsIfCaughtUp` once per member (all active plans counted), which also
   lifts a `suspended` flag (2026-09-23) and releases the member's held revenue-share payouts when the

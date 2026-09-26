@@ -191,7 +191,7 @@ On handoff into Accountant Onboarding (FT confirm / VFO-Associate pick, in both 
 Team-Member-Responsible notifications route to that PF from the start.
 
 ## Cron
-`pft-sweep-daily` 08:00 UTC → `automation_PFT_sweep` (PUBLIC, service-role): discovery 2-business-day reminder
+`pft-sweep-daily` 14:30 UTC Mon–Fri → `automation_PFT_sweep` (PUBLIC, service-role): discovery 2-business-day reminder
 email + 4-business-day PF notice; FT 2-business-day reminder email + 4-business-day PF notice;
 **undecided-decision 2-business-day reminder email
 (re-sends `PFT_decision_undecided`) + 4-business-day PF notice** (rules `PFT_undecided_reminder_email` /
