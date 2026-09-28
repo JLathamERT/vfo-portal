@@ -73,7 +73,7 @@ export const TEMPLATE_META = {
     ['TAX_tax3_assess_reminder_early', 'Assess form still missing 5 business days before the booked TPOM — the EARLIER of the two reminders drafted by the nightly sweep', 'To: Allocated Tax Planner + Team Member · Cc: PF'],
     ['TAX_tax3_assess_reminder_early|vault', 'Vault variant of the 5-business-day early reminder — asks the planner to upload the Tax Assessment PDF into the Sensitive Documents vault section', 'To: Allocated Tax Planner + Team Member · Cc: PF'],
     ['TAX_tax3_assess_reminder', 'Assess form still missing 2 business days before the booked TPOM — the LATER, last-call reminder drafted by the nightly sweep', 'To: Allocated Tax Planner + Team Member · Cc: PF'],
-    ['TAX_tax3_assess_reminder|vault', 'Vault variant for Innovation Consulting Group — asks the planner to upload the Tax Assessment PDF into the Sensitive Documents vault section', 'To: Allocated Tax Planner + Team Member · Cc: PF'],
+    ['TAX_tax3_assess_reminder|vault', 'Vault variant for groups set to deliver their own Tax Assessment PDF (Tax Planning Groups) — asks the planner to upload the Tax Assessment PDF into the Sensitive Documents vault section', 'To: Allocated Tax Planner + Team Member · Cc: PF'],
     ['TAX_agreementsent|Yes', 'Client said yes — tax agreement signing link', 'To: Client · Auto-Cc: Member + PF'],
     mv('TAX_agreementsent|Yes', 'Client said yes — tax agreement signing link', 'To: Member · Auto-Cc: Client + PF'),
     ['TAX_signing_reminder', '2-business-day reminder — the tax agreement is still unsigned', 'To: Client'],
