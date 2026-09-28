@@ -9,6 +9,11 @@ import AppearanceCard from '../components/shared/AppearanceCard'
 import { usePortalTheme } from '../lib/theme'
 import { ShowroomSkeleton } from '../components/shared/Skeleton'
 
+function fmtLicenceDate(iso) {
+  const [y, m, d] = String(iso).slice(0, 10).split('-')
+  return `${m}/${d}/${y}`
+}
+
 export default function ClientPortal() {
   const navigate = useNavigate()
   const session = getSession()
@@ -17,6 +22,9 @@ export default function ClientPortal() {
   const [showroom, setShowroom] = useState(null)
   const [showroomLoading, setShowroomLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
+  // Portal licence (portal_licensing, unit 4). Absent unless the switch is on for
+  // this client's member AND they have held a licence.
+  const [licence, setLicence] = useState(null)
 
   useEffect(() => {
     if (!session || session.role !== 'client') navigate('/client/login')
@@ -37,6 +45,7 @@ export default function ClientPortal() {
           eco[e.expert_id].push(e.name)
         })
         if (!cancelled) setShowroom({ experts: data.experts || [], exclusions: data.exclusions || [], ecoMap: eco })
+        if (!cancelled) setLicence(data.licence || null)
       } catch (err) {
         console.error('Showroom load error:', err)
         // Keep the empty substitute: the render below reads showroom.experts
@@ -69,6 +78,18 @@ export default function ClientPortal() {
           {[['showroom', 'Showroom'], ['vault', 'Vault']].map(([key, label]) => (
             <button key={key} onClick={() => setTab(key)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: tab === key ? '2px solid #125ecc' : '2px solid transparent', color: tab === key ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: tab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>{label}</button>
           ))}
+        </div>
+      )}
+
+      {licence && tab !== 'settings' && (
+        <div style={{ maxWidth: '880px', margin: '16px auto 0', padding: '0 24px' }}>
+          <div style={{ background: licence.status === 'active' ? 'rgba(18,94,204,0.08)' : 'rgba(100,116,139,0.10)', border: `1px solid ${licence.status === 'active' ? 'rgba(18,94,204,0.25)' : 'rgba(100,116,139,0.28)'}`, borderRadius: '12px', padding: '10px 16px', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+            {licence.status === 'active'
+              ? <>Your VFO client portal membership is active until <strong>{fmtLicenceDate(licence.ends_on)}</strong>.</>
+              : licence.status === 'expired'
+                ? <>Your VFO client portal membership ended on <strong>{fmtLicenceDate(licence.ends_on)}</strong>.</>
+                : <>Your VFO client portal membership has ended.</>}
+          </div>
         </div>
       )}
 
