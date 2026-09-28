@@ -133,7 +133,7 @@ export function validateTaxIntakeAnswers(answers) {
   return errors;
 }
 
-// The answers object as it is stored: only the 37 known keys, trimmed, money
+// The answers object as it is stored: only the known question keys, trimmed, money
 // fields stripped of `$`. Anything else a caller sends is dropped — the jsonb
 // column is never a free-form bag.
 export function normalizeTaxIntakeAnswers(answers) {

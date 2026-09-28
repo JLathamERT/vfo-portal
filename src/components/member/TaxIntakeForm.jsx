@@ -8,7 +8,7 @@ import {
   normalizeTaxIntakeAnswers,
 } from './taxIntakeQuestions'
 
-// The 37-question VFO Tax Planning intake form.
+// The VFO Tax Planning intake form (q1-q39).
 //
 // Four entry points, one component:
 //   CHOOSER      the member portal's "Add new tax client" button lands here
@@ -45,7 +45,7 @@ export default function TaxIntakeForm({
   publicIntake = null,
   onPublicSubmit = null,
   // Public VFO Tax Diagnostic page (TaxDiagnosticPage.jsx): its own questions
-  // render above the 37 (`prelude`, checked by `validatePrelude`), the numbering
+  // render above the intake questions (`prelude`, checked by `validatePrelude`), the numbering
   // continues after them, and the header/button copy is the page's.
   prelude = null,
   validatePrelude = null,
@@ -426,7 +426,7 @@ export default function TaxIntakeForm({
     )
   }
 
-  // ─── The 37 questions ─────────────────────────────────────────────────
+  // ─── The intake questions ─────────────────────────────────────────────────
   return (
     <div>
       <div style={{ marginBottom: '20px' }}>
