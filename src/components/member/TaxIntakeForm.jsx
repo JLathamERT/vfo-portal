@@ -54,6 +54,9 @@ export default function TaxIntakeForm({
   intro = null,
   submitLabel = null,
   allowTestFill = false,
+  // The CLIENT is the one filling it in (the /tax-intake link page, or the
+  // diagnostic's "I am the client"): a question's selfLabel replaces its label.
+  clientFilling = false,
 }) {
   const holistic = !!existingClient
   const [step, setStep] = useState(() => (holistic || publicMode ? 'form' : 'choose'))
@@ -457,7 +460,7 @@ export default function TaxIntakeForm({
           {visible.map((q, i) => (
             <div key={q.id} style={q.type === 'textarea' ? { gridColumn: '1 / -1' } : undefined}>
               <label style={labelStyle}>
-                {i + 1 + numberOffset}. {q.label}{q.required && <span style={{ color: '#d93025' }}> *</span>}
+                {i + 1 + numberOffset}. {clientFilling && q.selfLabel ? q.selfLabel : q.label}{q.required && <span style={{ color: '#d93025' }}> *</span>}
               </label>
               {q.note && <div style={noteStyle}>{q.note}</div>}
               {renderInput(q)}

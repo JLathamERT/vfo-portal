@@ -201,6 +201,7 @@ export default function TaxDiagnosticPage() {
         intro="Please answer the questions below about the client. There is nothing to pay on this form — the VFO Services team will review it and be in touch."
         submitLabel="Submit"
         allowTestFill={import.meta.env.DEV}
+        clientFilling={completedBy === 'client'}
       />
     </TokenShell>
   )

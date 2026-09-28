@@ -105,6 +105,7 @@ export default function TaxIntakePage() {
         publicIntake={intake}
         onPublicSubmit={submitAnswers}
         onDone={() => setStatus('thanks')}
+        clientFilling
       />
     </TokenShell>
   )
