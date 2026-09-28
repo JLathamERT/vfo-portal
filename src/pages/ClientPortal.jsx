@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getSession, clearSession, callApi } from '../lib/api'
 import ClientVault from '../components/client/ClientVault'
@@ -19,17 +19,24 @@ export default function ClientPortal() {
   const session = getSession()
   usePortalTheme()
   const [tab, setTab] = useState(sessionStorage.getItem('clientActiveTab') || 'showroom')
+  // A tab the client picked (this visit or earlier in the session) always wins
+  // over the Home landing — a ref, so the load below sees a click made while it ran.
+  const tabChosen = useRef(!!sessionStorage.getItem('clientActiveTab'))
   const [showroom, setShowroom] = useState(null)
   const [showroomLoading, setShowroomLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
-  // Portal licence (portal_licensing, unit 4). Absent unless the switch is on for
-  // this client's member AND they have held a licence.
+  // Portal licensing (unit 4). client_showroom_load carries a `licence` key only
+  // while the switch is on for this client's member (null = never held one). On:
+  // the portal gains a Home screen (the wordmark and the landing page) showing the
+  // licence. Off: exactly the old portal — lands on Showroom, no Home.
+  const [licensingOn, setLicensingOn] = useState(false)
   const [licence, setLicence] = useState(null)
 
   useEffect(() => {
     if (!session || session.role !== 'client') navigate('/client/login')
   }, [])
-  useEffect(() => { sessionStorage.setItem('clientActiveTab', tab) }, [tab])
+  useEffect(() => { if (tabChosen.current) sessionStorage.setItem('clientActiveTab', tab) }, [tab])
+  function chooseTab(t) { tabChosen.current = true; setTab(t) }
 
   // Showroom of the member this client is connected to (their enabled specialists).
   useEffect(() => {
@@ -45,7 +52,13 @@ export default function ClientPortal() {
           eco[e.expert_id].push(e.name)
         })
         if (!cancelled) setShowroom({ experts: data.experts || [], exclusions: data.exclusions || [], ecoMap: eco })
-        if (!cancelled) setLicence(data.licence || null)
+        if (!cancelled) {
+          const on = Object.prototype.hasOwnProperty.call(data, 'licence')
+          setLicensingOn(on)
+          setLicence(data.licence || null)
+          if (on && !tabChosen.current) setTab('home')
+          if (!on) setTab(t => (t === 'home' ? 'showroom' : t))
+        }
       } catch (err) {
         console.error('Showroom load error:', err)
         // Keep the empty substitute: the render below reads showroom.experts
@@ -65,10 +78,10 @@ export default function ClientPortal() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
-        <VfoWordmark size={17} light onClick={() => setTab('showroom')} />
+        <VfoWordmark size={17} light onClick={() => chooseTab(licensingOn ? 'home' : 'showroom')} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.88)', fontWeight: 500, whiteSpace: 'nowrap', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.name || session.email}</span>
-          <button onClick={() => setTab('settings')} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: tab === 'settings' ? 'rgba(255,255,255,0.18)' : 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Settings</button>
+          <button onClick={() => chooseTab('settings')} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: tab === 'settings' ? 'rgba(255,255,255,0.18)' : 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Settings</button>
           <button onClick={signOut} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Sign Out</button>
         </div>
       </div>
@@ -76,20 +89,25 @@ export default function ClientPortal() {
       {tab !== 'settings' && (
         <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', padding: '0 24px', background: 'var(--vfo-card)', position: 'relative', zIndex: 100 }}>
           {[['showroom', 'Showroom'], ['vault', 'Vault']].map(([key, label]) => (
-            <button key={key} onClick={() => setTab(key)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: tab === key ? '2px solid #125ecc' : '2px solid transparent', color: tab === key ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: tab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>{label}</button>
+            <button key={key} onClick={() => chooseTab(key)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: tab === key ? '2px solid #125ecc' : '2px solid transparent', color: tab === key ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: tab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>{label}</button>
           ))}
         </div>
       )}
 
-      {licence && tab !== 'settings' && (
-        <div style={{ maxWidth: '880px', margin: '16px auto 0', padding: '0 24px' }}>
-          <div style={{ background: licence.status === 'active' ? 'rgba(18,94,204,0.08)' : 'rgba(100,116,139,0.10)', border: `1px solid ${licence.status === 'active' ? 'rgba(18,94,204,0.25)' : 'rgba(100,116,139,0.28)'}`, borderRadius: '12px', padding: '10px 16px', fontSize: '13px', color: 'var(--vfo-ink)' }}>
-            {licence.status === 'active'
-              ? <>Your VFO client portal membership is active until <strong>{fmtLicenceDate(licence.ends_on)}</strong>.</>
-              : licence.status === 'expired'
-                ? <>Your VFO client portal membership ended on <strong>{fmtLicenceDate(licence.ends_on)}</strong>.</>
-                : <>Your VFO client portal membership has ended.</>}
-          </div>
+      {tab === 'home' && (
+        <div style={{ textAlign: 'center', padding: '60px 24px 0' }}>
+          <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2.5px', marginBottom: '10px' }}>Welcome back</p>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.02em', fontSize: '38px', color: 'var(--vfo-heading)', margin: 0 }}>{session.name || session.email}</p>
+          <div style={{ width: '46px', height: '4px', borderRadius: '99px', background: '#fb895a', margin: '18px auto 0' }} />
+          {licence && (
+            <p style={{ fontSize: '14px', color: 'var(--vfo-muted)', marginTop: '28px' }}>
+              {licence.status === 'active'
+                ? <>Your VFO client portal membership is active until <strong style={{ color: 'var(--vfo-ink)' }}>{fmtLicenceDate(licence.ends_on)}</strong>.</>
+                : licence.status === 'expired'
+                  ? <>Your VFO client portal membership ended on <strong style={{ color: 'var(--vfo-ink)' }}>{fmtLicenceDate(licence.ends_on)}</strong>.</>
+                  : <>Your VFO client portal membership has ended.</>}
+            </p>
+          )}
         </div>
       )}
 
