@@ -99,8 +99,8 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
 
   const retAmt = money(plan?.retainer_amount)
   // Client portal licence (unit 4): the retainer legs split retainer - disbursement and
-  // VFO Services keeps the disbursement (its residual below absorbs it) — the same rule
-  // as the payout engine, via the shared mirror in taxShared.jsx.
+  // the disbursement is its own payee, VFO Portal (a row below; NOT in VFO Services'
+  // residual) — the same rule as the payout engine, via the mirror in taxShared.jsx.
   const retLicence = licenceDisbursementFor(plan, 'retainer')
   const retShareBase = Math.max(retAmt - retLicence, 0)
   const implAmt = money(plan?.implementation_amount)
@@ -222,7 +222,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   // out — a dead (no-share-due) leg's portion stays with VFO, so the column still sums
   // to the payment. Identical to the configured vfos_share whenever all legs are live.
   const legAmt = (stored, status, payment) => (noShare(status) ? 0 : portion(stored, payment))
-  const retVfos = round2(retAmt - legAmt(storedMember, plan?.retainer_rev_paid, retShareBase) - legAmt(storedPlanner, plan?.retainer_planner_paid, retShareBase) - legAmt(storedStrat, plan?.retainer_strat_paid, retShareBase))
+  const retVfos = round2(retAmt - retLicence - legAmt(storedMember, plan?.retainer_rev_paid, retShareBase) - legAmt(storedPlanner, plan?.retainer_planner_paid, retShareBase) - legAmt(storedStrat, plan?.retainer_strat_paid, retShareBase))
   const implVfos = round2(implAmt - legAmt(storedMember, plan?.implementation_rev_paid, implAmt) - legAmt(storedPlanner, plan?.implementation_planner_paid, implAmt) - legAmt(storedStrat, plan?.implementation_strat_paid, implAmt))
 
   const rows = [
@@ -234,6 +234,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
     // payload does not carry, and split_type is the preset LABEL ("Strategic Partner"),
     // not the company. Same wording as Map1PricingSplitCard.
     ...(hasStrategic ? [{ key: 'strat', name: 'Strategic partner', stored: storedStrat, retStatus: plan?.retainer_strat_paid, implStatus: plan?.implementation_strat_paid }] : []),
+    ...(retLicence > 0 ? [{ key: 'portal', name: 'VFO Portal (client portal licence)', stored: 0, retStatus: null, implStatus: null }] : []),
     { key: 'vfos', name: 'VFO Services', stored: storedVfos, retStatus: null, implStatus: null },
   ]
 
@@ -354,16 +355,13 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
                           two-way policy that predates the tax planner share. Deriving a
                           figure from today's split would invent a payout that never
                           happened and never will — those legs are settled and locked. */}
-                      {retainerIsHistoric || noShare(r.retStatus) ? '—' : fmt(r.key === 'vfos' ? retVfos : portion(r.stored, retShareBase))}
-                      {r.key === 'vfos' && !retainerIsHistoric && retLicence > 0 && (
-                        <div style={{ fontSize: '10px', color: '#c2410c' }}>incl. {fmt(retLicence)} client portal licence</div>
-                      )}
+                      {retainerIsHistoric || noShare(r.retStatus) ? '—' : fmt(r.key === 'vfos' ? retVfos : r.key === 'portal' ? retLicence : portion(r.stored, retShareBase))}
                       <div style={{ fontSize: '10px', color: retainerIsHistoric ? 'var(--vfo-muted)' : noteColor(r.retStatus) }}>
                         {retainerIsHistoric ? 'settled on old system' : legNote(r.retStatus)}
                       </div>
                     </td>
                     <td style={{ padding: '7px 8px', textAlign: 'right', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                      {noShare(r.implStatus) ? '—' : fmt(r.key === 'vfos' ? implVfos : portion(r.stored, implAmt))}
+                      {noShare(r.implStatus) || r.key === 'portal' ? '—' : fmt(r.key === 'vfos' ? implVfos : portion(r.stored, implAmt))}
                       {legNote(r.implStatus) && <div style={{ fontSize: '10px', color: noteColor(r.implStatus) }}>{legNote(r.implStatus)}</div>}
                     </td>
                   </tr>

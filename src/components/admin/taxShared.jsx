@@ -65,8 +65,9 @@ function vfosStateFor(status) {
 // Client portal licence (portal licensing, unit 4) — the MIRROR of the payout
 // engine's utils/client-portal-licence.ts licenceDisbursementFor / revshareBaseFor
 // (keep them identical): the disbursement comes off the RETAINER before the split,
-// every retainer leg is prorated on retainer - disbursement, and VFO keeps it (the
-// VFO residual below absorbs it). 0 on every plan without a licence.
+// every retainer leg is prorated on retainer - disbursement, and the disbursement is
+// VFO PORTAL's own payee (row.licence) — NOT part of the VFOS residual. 0 on every
+// plan without a licence.
 export function licenceDisbursementFor(plan, paymentKind) {
   if (paymentKind !== 'retainer') return 0
   const d = parseNum(plan?.licence_disbursement)
@@ -166,7 +167,7 @@ export function clearedTaxPayments(rows) {
         out.push({
           id: `${r.id}-fret`, licence: retLicence, kind: 'Final Retainer', clearedAt, amount: parseNum(r.final_retainer_amount),
           member: mp, strategic: sp, planner: pp,
-          vfos: Math.max(ret - mp - sp - pp, 0), status: r.final_retainer_status,
+          vfos: Math.max(ret - retLicence - mp - sp - pp, 0), status: r.final_retainer_status,
           retainerBlock,
           memberState: legState(r.retainer_rev_paid, { revShare: r.retainer_rev_share, paymentStatus: r.final_retainer_status, context: 'tax_retainer' }),
           plannerState: plannerStateFor(pp, r.retainer_planner_paid, r.final_retainer_status, 'tax_retainer'),
@@ -186,7 +187,7 @@ export function clearedTaxPayments(rows) {
         const pp = retainerIsHistoric ? 0 : plannerPortion(retShareBase)
         out.push({
           id: `${r.id}-ret`, licence: retLicence, kind: 'Retainer', clearedAt, amount: ret, member: mp, strategic: sp, planner: pp,
-          vfos: Math.max(ret - mp - sp - pp, 0), status: r.retainer_status,
+          vfos: Math.max(ret - retLicence - mp - sp - pp, 0), status: r.retainer_status,
           // The retainer's revenue share fires on the client's decision after the
           // review, not on the charge — hence its own context. ALL THREE legs fire on
           // that one trigger, so all three carry it: without it a blank strategic leg
