@@ -54,7 +54,7 @@ An annual licence is a **disbursement**: the $300 comes off the fee before it is
 
 | # | Unit | Price | Switch (proposed key) | Status |
 |---|---|---|---|---|
-| **L1** | **Tax licence** (= DIRECT unit 4) | $300/yr disbursement | `portal_licensing` (EXISTS — it also carries the new tax agreement) | NEXT — pre-work in the DIRECT plan §9 |
+| **L1** | **Tax licence** (= DIRECT unit 4) | $300/yr disbursement | `portal_licensing` (EXISTS — it also carries the new tax agreement) | **SHIPPED 2026-09-28** (backend v921, dark behind the switch, Test member only; flow [flows/tax-planning.md](../../flows/tax-planning.md#client-portal-licence-direct-unit-4--portal-licensing-l1-2026-09-28)); still owed: the $300 TRANSFER to a VFO Portal Stripe account (display only today) |
 | L2 | Basic client portal: member sends the portal link + Showroom introduction button | $0 | `client_basic_portal` | planned |
 | L3 | Holistic licence | $300/yr disbursement | `holistic_licence` | planned |
 | L4 | CIQ licence (Basic vs Standard for a CIQ client; member self-drive) | $0 or $25/month | `ciq_licence` | planned |
