@@ -64,7 +64,7 @@ Members may run a tax client themselves ("Direct"): the member is the PF, the ta
 | 52 | **Feature Switches (branch `claude/vfo-portal-licensing-01a128`, v914).** A superadmin-only admin tab flips `portal_feature_flags`; three positions per switch: **Off for all / Test member only (59524) / On for all**; the public Tax Diagnostic has only Off / On. Each card says plainly what switching it on adds and what stays while it is off. `tax_intake`, `tax_direct` and `tax_diagnostic` are on the tab too. | 09-28 |
 | 53 | **ONE switch, `portal_licensing`, covers the new tax agreement AND every unit 4 licensing feature** (the agreement promises the free portal membership, so it must never go out without the licence behind it). **Off = the pre-benefits agreement EXACTLY** (option A: rows 29-32, the retired 8/20/23/24 rebuilt; no collaborating-team sentence, no Additional Benefits section) and the `-pre-benefits` sample PDFs. The member's Company / Real / Neither agreement-name choice stays visible either way. | 09-28 |
 | 54 | **The TPOM deck's Additional Benefits slide has its OWN switch** (`tpom_additional_benefits`); off = slide30 dropped, every other slide still the latest master. | 09-28 |
-| 55 | **The licence goes to plans whose retainer is paid AFTER `portal_licensing` is switched on** (not after the code ships); supersedes the section 3 sequencing note. Jake expects to change his mind case by case, so unit 4 must include **admin manual licence controls** (grant / extend / revoke per client). | 09-28 |
+| 55 | **The licence goes to plans whose retainer is paid AFTER `portal_licensing` is switched on** (not after the code ships); supersedes the section 3 sequencing note. **No manual (by-hand) licence controls** — the licence is automatic only (an earlier version of this row asked for admin grant / extend / revoke controls; Jake, 2026-09-28: a misunderstanding, removed). | 09-28 |
 
 Ride-along, not a decision: the three member-reachable tax loaders (`tax_load_plans`, `tax_load_progress`, `tax_load_specialists`) gained a **member ownership guard** — `denyIfNotOwnClient` / new `denyIfNotOwnPlan` in `utils/client-ownership.ts` (plan → client → `member_number` vs the session, never the body). They carried only the planner-group guard, which passes every non-planner caller through (the #455 class). Admins and planners are unaffected.
 
@@ -218,13 +218,26 @@ What shipped:
 - **CIQ is gated per MEMBER only** (`members.ciq_enabled`, all members on), so "CIQ on that client" is a no-op until the $25/month CIQ licence exists.
 - Invoice/receipt email to extend with the login paragraph: `actions/tax/invoice-receipt.ts` (`TAX_invoicereceipt_email|retainer`, chained from the webhook for card/ACH and from `checkcleared.ts` for check).
 
-**Open questions for Jake (asked 2026-09-28, UNANSWERED; recommendation in brackets):**
-1. Licence + login created at retainer PAYMENT, 12 months from that date; $300 deducted when the retainer revenue share pays out; a refund at Client decision 1 revokes. *(yes)*
-2. The $300 shows on the three revenue-share emails + internal split screens, never on the client's invoice (Paul: the client is unaware of the cost). *(yes)*
-3. A strategic partner also bears its pro-rata part of the $300. *(yes; automatic under the pro-rata math)*
-4. Which plans: ANSWERED, decision 55.
-5. Tax case progress "in summary" in the client portal (sheet rows 111-112): unit 4 or later? *(later, with CIQ 3.0's case view)*
-6. After 12 months: nothing billed; the login keeps working and the card reads Expired? *(yes, until Basic/Standard exists)*
-7. A second tax year for the same client extends by days, pro-rata amount rounded to the dollar (the Tax -> Holistic rule)? *(yes)*
-8. Reminder specs: who, how long after what, repeat, what stops it; copy approved before seeding. *(planner review: planner + team member, 2 business days after allocation, repeat every 2 bd until the review is saved; additional-info: client with PF Cc, 2 bd after the request, stop on upload)*
-9. CIQ "allowed on that client" = no change now. *(yes)*
+**Jake's answers (2026-09-28, the unit 4 chat) — these replace the nine open questions:**
+1. **Yes.** Licence + login at retainer PAYMENT (card at checkout, ACH at settle, check at clear), 12 months from the payment date; the $300 comes off when the retainer revenue share pays out; a refund at Client decision 1 revokes. **Any** refund revokes, including a partial one (`refund_override_amount`).
+2. **Yes.** The $300 shows on the three revenue-share emails + the internal split screens, never on the client's invoice or receipt.
+3. **A — every leg bears its pro-rata part, the strategic partner included** (Jake may revisit). E.g. $10,000 retainer at 50/20/10/20 → split $9,700: member $4,850, planner $1,940, partner $970, VFO $1,940 + the $300.
+4. Decision 55: plans whose retainer is paid AFTER the switch is on for that client's member.
+5. **Later.** Case progress in the client portal is not in unit 4 (built once, later, for tax + Holistic + CIQ).
+6. **Expired = the Basic portal.** The Basic / Standard gate itself is built in the Basic portal unit (L2, "next 2 weeks"), NOT here; unit 4 only records the licence and shows the expiry date. When a licence expires or is revoked the Vault is HIDDEN from the client (files never deleted).
+7. **A — extend by the extra days only.** Licence to 1 Oct 2027, second retainer paid 1 Aug 2027 → new end 1 Aug 2028, 305 extra days, $300 × 305 / 366 = **$250** on the second plan. A second payment after the first licence has expired is a fresh $300.
+8. **Both reminders IN unit 4.** Planner review: to the planner + allocated team member, 2 business days after the planner slot is filled, repeating every 2 business days until the review step is answered. Additional info: to the client with the PF in Cc, 2 business days after the request, **repeating every 2 business days** until the client uploads or replies. Business-hours window only (#552). Copy approved before seeding.
+9. **Yes** — no CIQ change now.
+10. **Login = a SEPARATE email, Draft mode**, drafted at the same moment as the invoice/receipt email, to the CLIENT on every plan (member-pays included). The client's login row is created at payment with an unusable random password; the email carries a 30-day `/set-password` link; after that the client uses Forgot password. A client who already has a login gets the same email saying "log in as usual". No real client has a login today (only Test Client 62).
+11. **3-payment:** the licence + login start at the INITIAL retainer payment; the $300 comes off at the retainer revenue share (the final-retainer settle).
+12. Every client has an email (242/242; `clients.email` is nullable but empty nowhere) — a missing email just skips the login and bells the team. `client_logins.email` is UNIQUE, so a second client sharing an email gets no login and the team is belled.
+13. **NO manual licence controls** (decision 55 corrected) — automatic only.
+
+**Unit 4 build plan (2026-09-28).** Every behaviour behind `portal_licensing`, keyed on `clients.member_number` like the agreement; off = today exactly.
+| Phase | What | Checkpoint |
+|---|---|---|
+| 1 DB | `client_portal_licenses` (deny-all, anon probe, advisor STRONG) + `client_tax_plans.licence_disbursement` / `portal_login_email_sent_at` / `tax_planner_allocated_at` / `planner_review_reminder_sent_at` / `additional_info_reminder_sent_at` — migration `20260928160000` | advisor GREEN |
+| 2 Licence | grant inside `automation_TAX_invoicereceipt` (the one point card / ACH settle / check clear all reach; latched, idempotent on the unique `tax_plan_id` index); extension maths; revoke in `refund.ts`; client login + the separate Draft login email; the client portal expiry line | Jake click-test (Test Client 62, sandbox) |
+| 3 Money | payout legs on `retainer - licence_disbursement` in `revshare.ts`, `tax-planner-payout.ts`, `revshare-sweep.ts` strategic retry (+ the two explicit selects), a disbursement line on the 3 revshare emails ("received" keeps the full figure); display in `normalize.ts buildTaxRows` (VFO leg + the $300), `taxShared.jsx`, `PricingSplitCard.jsx`, `update-split.ts`; `holistic/tax-load.ts` + `tax-planners/payments-load.ts` selects | Jake click-test |
+| 4 Reminders | `tax_planner_allocated_at` stamped in `allocate-planner.ts`; two passes in `revshare-sweep.ts` after the `reminderWindowOpen` gate; two Draft templates + rules after copy approval | copy approval, then click-test |
+| 5 Ship | FeatureSwitchesPanel card copy, docs, gates, deploy backend then frontend (explicit approval each) | Jake says deploy |
