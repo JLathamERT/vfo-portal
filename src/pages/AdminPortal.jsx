@@ -8,6 +8,7 @@ import MembersPanel, { MEMBER_PROFILE_ORIGIN_KEY } from '../components/admin/Mem
 import MemberOverviewPanel from '../components/admin/MemberOverviewPanel'
 import ClientOverviewPanel, { CLIENT_OVERVIEW_SECTION_KEY } from '../components/admin/ClientOverviewPanel'
 import FaqEditorPanel from '../components/admin/FaqEditorPanel'
+import FeatureSwitchesPanel from '../components/admin/FeatureSwitchesPanel'
 import TaxDiagnosticsPanel from '../components/admin/TaxDiagnosticsPanel'
 import AdminEditor from '../components/admin/AdminEditor'
 import AdminSettings from '../components/admin/AdminSettings'
@@ -177,6 +178,7 @@ export default function AdminPortal() {
     if (t === 'growth_credits' && !canSeeTab('growth_credits')) return null
     if (t === 'faq_editor' && !canSeeTab('faq_editor')) return null
     if (t === 'tax_diagnostics' && !canSeeTab('tax_diagnostics')) return null
+    if (t === 'feature_switches' && !session?.is_superadmin) return null
     if (t === 'members') return 'advisors'
     // Legacy: the standalone Payments tab is now a sub-tab of Accounting.
     if (t === 'payments') return 'accounting'
@@ -260,6 +262,7 @@ export default function AdminPortal() {
     if (tab === 'client_overview' && !canSeeTab('client_overview')) return
     if (tab === 'growth_credits' && !canSeeTab('growth_credits')) return
     if (tab === 'tax_diagnostics' && !canSeeTab('tax_diagnostics')) return
+    if (tab === 'feature_switches' && !session?.is_superadmin) return
     // The diagnostic bell carries its row id so the queue can open that card.
     if (tab === 'tax_diagnostics' && params.get('diag')) setInitialDiagnosticId(Number(params.get('diag')))
     setActiveTab(tab)
@@ -452,6 +455,14 @@ export default function AdminPortal() {
     setShowSettings(false)
   }
 
+  function selectFeatureSwitches() {
+    setActiveTab('feature_switches')
+    sessionStorage.setItem('adminActiveTab', 'feature_switches')
+    setNavClickCount(c => c + 1)
+    setShowEditor(false)
+    setShowSettings(false)
+  }
+
   function selectTaxDiagnostics() {
     setActiveTab('tax_diagnostics')
     sessionStorage.setItem('adminActiveTab', 'tax_diagnostics')
@@ -631,6 +642,8 @@ export default function AdminPortal() {
     ...(canSeeTab('growth_credits') ? [{ key: 'more_gc', options: [{ key: '__growth_credits', label: 'Growth Credits' }] }] : []),
     ...(canSeeTab('faq_editor') ? [{ key: 'more_faq', options: [{ key: '__faq_editor', label: 'FAQ Editor' }] }] : []),
     ...(canSeeTab('tax_diagnostics') ? [{ key: 'more_diag', options: [{ key: '__tax_diagnostics', label: 'Tax Diagnostics' }] }] : []),
+    // Superadmin only, never grantable (feature_switches_* are SUPERADMIN_ONLY_ACTIONS).
+    ...(session?.is_superadmin ? [{ key: 'more_switches', options: [{ key: '__feature_switches', label: 'Feature Switches' }] }] : []),
     // The two tabs with their own sub-options open sideways on hover instead of
     // listing every option inline.
     ...(canSeeTab('automation') ? [{
@@ -651,6 +664,7 @@ export default function AdminPortal() {
     if (key === '__growth_credits') return selectGrowthCredits()
     if (key === '__faq_editor') return selectFaqEditor()
     if (key === '__tax_diagnostics') return selectTaxDiagnostics()
+    if (key === '__feature_switches') return selectFeatureSwitches()
     if (key.startsWith('auto:')) return selectAutomationSection(key.slice(5))
     if (key.startsWith('acct:')) return selectAccountingSection(key.slice(5))
   }
@@ -726,7 +740,7 @@ export default function AdminPortal() {
                   label="More" muted
                   items={moreDropdownItems}
                   onSelect={selectMoreOption}
-                  isActive={['member_overview', 'client_overview', 'growth_credits', 'faq_editor', 'tax_diagnostics', 'automation', 'accounting'].includes(activeTab)}
+                  isActive={['member_overview', 'client_overview', 'growth_credits', 'faq_editor', 'tax_diagnostics', 'feature_switches', 'automation', 'accounting'].includes(activeTab)}
                 />
               </div>
             )}
@@ -796,6 +810,10 @@ export default function AdminPortal() {
 
           {activeTab === 'faq_editor' && !loading && (
             <FaqEditorPanel />
+          )}
+
+          {activeTab === 'feature_switches' && !loading && session?.is_superadmin && (
+            <FeatureSwitchesPanel />
           )}
 
           {activeTab === 'tax_diagnostics' && !loading && canSeeTab('tax_diagnostics') && (
