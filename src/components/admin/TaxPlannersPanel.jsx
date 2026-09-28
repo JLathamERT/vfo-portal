@@ -816,7 +816,7 @@ function AddTaxPlanningGroupForm({ onGroupsChange }) {
     <div style={sectionStyle}>
       <div style={{ marginBottom: '16px', maxWidth: '420px' }}>
         <label style={labelStyle}>Tax Planning Group Name *</label>
-        <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="e.g. Innovation Consulting Group" style={inputStyle} onKeyDown={e => { if (e.key === 'Enter') submit() }} />
+        <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="e.g. Innovation Advisory Group" style={inputStyle} onKeyDown={e => { if (e.key === 'Enter') submit() }} />
       </div>
       <button onClick={submit} disabled={loading} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
         {loading ? 'Creating...' : 'Create Group'}
@@ -873,6 +873,8 @@ function TaxPartnerCard({ group, onSaved }) {
   const [name, setName] = useState(group.name || '')
   const [contactEmail, setContactEmail] = useState(group.contact_email || '')
   const [busy, setBusy] = useState(false)
+  const [deliversPdf, setDeliversPdf] = useState(!!group.delivers_assessment_pdf)
+  const [pdfMsg, setPdfMsg] = useState({ text: '', ok: true })
   const [logoPending, setLogoPending] = useState(null)
   const [logoBusy, setLogoBusy] = useState(false)
   const logoFileRef = useRef(null)
@@ -923,6 +925,20 @@ function TaxPartnerCard({ group, onSaved }) {
     finally { setBusy(false) }
   }
 
+  // The vault-assess setting (#400): this group's planners hand over their own
+  // Tax Assessment PDF through the client's vault instead of the assess form.
+  // Updates this card only — a full onSaved() reload re-draws the list and would
+  // wipe the confirmation message before it can be read.
+  async function saveDeliversPdf(on) {
+    setBusy(true); setPdfMsg({ text: '', ok: true })
+    try {
+      await callApi('save_tax_planning_group', { group: { name: group.name, delivers_assessment_pdf: on }, editing_id: group.id })
+      setDeliversPdf(on)
+      setPdfMsg({ ok: true, text: on ? 'Saved — planners in this group now hand over a Tax Assessment PDF.' : 'Saved — planners in this group now complete the assess form.' })
+    } catch (err) { setPdfMsg({ ok: false, text: err.message }) }
+    finally { setBusy(false) }
+  }
+
   async function remove() {
     if (!window.confirm(`Delete group "${group.name}"? This cannot be undone.`)) return
     setBusy(true); setMsg('')
@@ -965,6 +981,17 @@ function TaxPartnerCard({ group, onSaved }) {
         {!editing && <button onClick={() => setEditing(true)} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Edit Name</button>}
         <button onClick={remove} disabled={busy} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid rgba(231,76,60,0.4)', background: 'transparent', color: '#e74c3c', fontSize: '13px', fontWeight: 500, cursor: busy ? 'not-allowed' : 'pointer' }}>Delete</button>
       </div>
+      <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>Assessment</div>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: busy ? 'not-allowed' : 'pointer', maxWidth: '640px' }}>
+        <input type="checkbox" checked={deliversPdf} disabled={busy} onChange={e => saveDeliversPdf(e.target.checked)} style={{ marginTop: '3px', width: '16px', height: '16px', cursor: 'inherit' }} />
+        <span>
+          <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--vfo-ink)' }}>Delivers its own Tax Assessment PDF</span>
+          <span style={{ display: 'block', fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '3px', lineHeight: 1.5 }}>
+            When on, this group's planners are asked to upload their Tax Assessment PDF into the client's vault instead of completing the assess form. Their first upload hands the step to the client's PF, who enters its numbers.
+          </span>
+        </span>
+      </label>
+      {pdfMsg.text && <p style={{ color: pdfMsg.ok ? '#1b9254' : '#d93025', fontSize: '13px', margin: '8px 0 0 26px' }}>{pdfMsg.text}</p>}
       <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>Logo</div>
       <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '10px' }}>Shown on this group's clients' ROI presentations, on a small white badge. PNG, JPG or WebP; empty space around the logo is trimmed automatically.</div>
       <GroupLogoPreview src={logoPending?.dataUrl || logoUrl(group.logo_image)} />
