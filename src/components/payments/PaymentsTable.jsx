@@ -297,6 +297,9 @@ export default function PaymentsTable({
                       the server already netted it off — it just hid a payee, which
                       made VFO's number look like the whole remainder (#465). */}
                   {r.revShare.strategic != null && <>{' · Strategic partner '}{fmtMoney(r.revShare.strategic)}</>}
+                  {/* Client portal licence (unit 4): its own payee, VFO Portal — it
+                      comes off the retainer before the split. */}
+                  {r.revShare.licence > 0 && <>{' · VFO Portal '}{fmtMoney(r.revShare.licence)}</>}
                   {' · VFO '}
                   {r.revShare.vfo == null ? '—' : fmtMoney(r.revShare.vfo)}
                 </>

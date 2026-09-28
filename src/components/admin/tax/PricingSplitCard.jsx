@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../../lib/api'
 import { HELD_SUSPENDED_NOTE, HELD_PAUSED_NOTE, HELD_ARREARS_NOTE } from '../shareLegState'
+import { licenceDisbursementFor } from '../taxShared'
 
 // Pricing + revenue-split summary for a tax plan, sitting directly under the Tax Plan
 // hero. ADMIN (VFOS/ERT) SURFACE ONLY — the caller gates it out of the member and
@@ -97,6 +98,11 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   const [refundOk, setRefundOk] = useState('')
 
   const retAmt = money(plan?.retainer_amount)
+  // Client portal licence (unit 4): the retainer legs split retainer - disbursement and
+  // the disbursement is its own payee, VFO Portal (a row below; NOT in VFO Services'
+  // residual) — the same rule as the payout engine, via the mirror in taxShared.jsx.
+  const retLicence = licenceDisbursementFor(plan, 'retainer')
+  const retShareBase = Math.max(retAmt - retLicence, 0)
   const implAmt = money(plan?.implementation_amount)
   const totalFee = money(plan?.total_fee) > 0 ? money(plan?.total_fee) : retAmt + implAmt
   const hasPricing = totalFee > 0
@@ -216,19 +222,21 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   // out — a dead (no-share-due) leg's portion stays with VFO, so the column still sums
   // to the payment. Identical to the configured vfos_share whenever all legs are live.
   const legAmt = (stored, status, payment) => (noShare(status) ? 0 : portion(stored, payment))
-  const retVfos = round2(retAmt - legAmt(storedMember, plan?.retainer_rev_paid, retAmt) - legAmt(storedPlanner, plan?.retainer_planner_paid, retAmt) - legAmt(storedStrat, plan?.retainer_strat_paid, retAmt))
+  const retVfos = round2(retAmt - retLicence - legAmt(storedMember, plan?.retainer_rev_paid, retShareBase) - legAmt(storedPlanner, plan?.retainer_planner_paid, retShareBase) - legAmt(storedStrat, plan?.retainer_strat_paid, retShareBase))
   const implVfos = round2(implAmt - legAmt(storedMember, plan?.implementation_rev_paid, implAmt) - legAmt(storedPlanner, plan?.implementation_planner_paid, implAmt) - legAmt(storedStrat, plan?.implementation_strat_paid, implAmt))
 
+  // Display order (Jake, 2026-09-28, every plan): VFO Services, Member, Tax planner,
+  // Strategic partner, VFO Portal. Order is display-only — VFO Services is still the
+  // RESIDUAL (retVfos / implVfos), computed after every other payee.
+  // The strategic partner is unnamed on purpose: the partner company is
+  // members.member_type, which this payload does not carry, and split_type is the
+  // preset LABEL ("Strategic Partner"), not the company. Same wording as Map1PricingSplitCard.
   const rows = [
+    { key: 'vfos', name: 'VFO Services', stored: storedVfos, retStatus: null, implStatus: null },
     { key: 'member', name: 'Member', stored: storedMember, retStatus: plan?.retainer_rev_paid, implStatus: plan?.implementation_rev_paid },
     { key: 'planner', name: plannerName ? `Tax planner — ${plannerName}` : 'Tax planner', stored: storedPlanner, retStatus: plan?.retainer_planner_paid, implStatus: plan?.implementation_planner_paid },
-    // Sits above VFO Services so the residual stays the last line, the way it reads on
-    // MAP 1 and the way the arithmetic runs.
-    // Unnamed on purpose: the partner company is members.member_type, which this
-    // payload does not carry, and split_type is the preset LABEL ("Strategic Partner"),
-    // not the company. Same wording as Map1PricingSplitCard.
     ...(hasStrategic ? [{ key: 'strat', name: 'Strategic partner', stored: storedStrat, retStatus: plan?.retainer_strat_paid, implStatus: plan?.implementation_strat_paid }] : []),
-    { key: 'vfos', name: 'VFO Services', stored: storedVfos, retStatus: null, implStatus: null },
+    ...(retLicence > 0 ? [{ key: 'portal', name: 'VFO Portal (client portal licence)', stored: 0, retStatus: null, implStatus: null }] : []),
   ]
 
   const plannerUnallocated = storedPlanner > 0 && plan?.tax_planner_id == null
@@ -348,13 +356,13 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
                           two-way policy that predates the tax planner share. Deriving a
                           figure from today's split would invent a payout that never
                           happened and never will — those legs are settled and locked. */}
-                      {retainerIsHistoric || noShare(r.retStatus) ? '—' : fmt(r.key === 'vfos' ? retVfos : portion(r.stored, retAmt))}
+                      {retainerIsHistoric || noShare(r.retStatus) ? '—' : fmt(r.key === 'vfos' ? retVfos : r.key === 'portal' ? retLicence : portion(r.stored, retShareBase))}
                       <div style={{ fontSize: '10px', color: retainerIsHistoric ? 'var(--vfo-muted)' : noteColor(r.retStatus) }}>
                         {retainerIsHistoric ? 'settled on old system' : legNote(r.retStatus)}
                       </div>
                     </td>
                     <td style={{ padding: '7px 8px', textAlign: 'right', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                      {noShare(r.implStatus) ? '—' : fmt(r.key === 'vfos' ? implVfos : portion(r.stored, implAmt))}
+                      {noShare(r.implStatus) || r.key === 'portal' ? '—' : fmt(r.key === 'vfos' ? implVfos : portion(r.stored, implAmt))}
                       {legNote(r.implStatus) && <div style={{ fontSize: '10px', color: noteColor(r.implStatus) }}>{legNote(r.implStatus)}</div>}
                     </td>
                   </tr>

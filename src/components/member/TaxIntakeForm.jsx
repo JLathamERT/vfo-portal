@@ -8,7 +8,7 @@ import {
   normalizeTaxIntakeAnswers,
 } from './taxIntakeQuestions'
 
-// The 37-question VFO Tax Planning intake form.
+// The VFO Tax Planning intake form (q1-q39).
 //
 // Four entry points, one component:
 //   CHOOSER      the member portal's "Add new tax client" button lands here
@@ -45,7 +45,7 @@ export default function TaxIntakeForm({
   publicIntake = null,
   onPublicSubmit = null,
   // Public VFO Tax Diagnostic page (TaxDiagnosticPage.jsx): its own questions
-  // render above the 37 (`prelude`, checked by `validatePrelude`), the numbering
+  // render above the intake questions (`prelude`, checked by `validatePrelude`), the numbering
   // continues after them, and the header/button copy is the page's.
   prelude = null,
   validatePrelude = null,
@@ -54,6 +54,9 @@ export default function TaxIntakeForm({
   intro = null,
   submitLabel = null,
   allowTestFill = false,
+  // The CLIENT is the one filling it in (the /tax-intake link page, or the
+  // diagnostic's "I am the client"): a question's selfLabel replaces its label.
+  clientFilling = false,
 }) {
   const holistic = !!existingClient
   const [step, setStep] = useState(() => (holistic || publicMode ? 'form' : 'choose'))
@@ -423,7 +426,7 @@ export default function TaxIntakeForm({
     )
   }
 
-  // ─── The 37 questions ─────────────────────────────────────────────────
+  // ─── The intake questions ─────────────────────────────────────────────────
   return (
     <div>
       <div style={{ marginBottom: '20px' }}>
@@ -457,7 +460,7 @@ export default function TaxIntakeForm({
           {visible.map((q, i) => (
             <div key={q.id} style={q.type === 'textarea' ? { gridColumn: '1 / -1' } : undefined}>
               <label style={labelStyle}>
-                {i + 1 + numberOffset}. {q.label}{q.required && <span style={{ color: '#d93025' }}> *</span>}
+                {i + 1 + numberOffset}. {clientFilling && q.selfLabel ? q.selfLabel : q.label}{q.required && <span style={{ color: '#d93025' }}> *</span>}
               </label>
               {q.note && <div style={noteStyle}>{q.note}</div>}
               {renderInput(q)}

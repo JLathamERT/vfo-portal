@@ -62,6 +62,18 @@ function vfosStateFor(status) {
 // That is DELETED, not ported: revshare.ts states "There is no percent interpretation",
 // and 0 of 58 live plans store a share small enough to reach it — it was unreachable
 // code describing a convention the engine does not implement.
+// Client portal licence (portal licensing, unit 4) — the MIRROR of the payout
+// engine's utils/client-portal-licence.ts licenceDisbursementFor / revshareBaseFor
+// (keep them identical): the disbursement comes off the RETAINER before the split,
+// every retainer leg is prorated on retainer - disbursement, and the disbursement is
+// VFO PORTAL's own payee (row.licence) — NOT part of the VFOS residual. 0 on every
+// plan without a licence.
+export function licenceDisbursementFor(plan, paymentKind) {
+  if (paymentKind !== 'retainer') return 0
+  const d = parseNum(plan?.licence_disbursement)
+  return d > 0 ? d : 0
+}
+
 function sharePortion(shareRaw, total, amount) {
   if (!(shareRaw > 0)) return 0
   const p = total > 0 ? (shareRaw / total) * amount : shareRaw / 2
@@ -89,6 +101,8 @@ export function clearedTaxPayments(rows) {
     const stratPer = (amt) => sharePortion(stratRaw, total, amt)
     const plannerPortion = (amt) => sharePortion(plannerRaw, total, amt)
     const retainerIsHistoric = !!r.legacy_source && r.retainer_rev_paid === 'N/A — No Share Due'
+    const retLicence = licenceDisbursementFor(r, 'retainer')
+    const retShareBase = Math.max(ret - retLicence, 0)
     const base = {
       clientName: r.client_name || `Client #${r.client_id}`,
       clientId: r.client_id,
@@ -147,13 +161,13 @@ export function clearedTaxPayments(rows) {
     if (threePayment && PAID.has(r.final_retainer_status) && parseNum(r.final_retainer_amount) > 0) {
       const clearedAt = r.final_retainer_charge_date || r.final_retainer_receipt_email_sent_at
       if (clearedAt) {
-        const mp = memberPortion(ret)
-        const sp = stratPer(ret)
-        const pp = plannerPortion(ret)
+        const mp = memberPortion(retShareBase)
+        const sp = stratPer(retShareBase)
+        const pp = plannerPortion(retShareBase)
         out.push({
-          id: `${r.id}-fret`, kind: 'Final Retainer', clearedAt, amount: parseNum(r.final_retainer_amount),
+          id: `${r.id}-fret`, licence: retLicence, kind: 'Final Retainer', clearedAt, amount: parseNum(r.final_retainer_amount),
           member: mp, strategic: sp, planner: pp,
-          vfos: Math.max(ret - mp - sp - pp, 0), status: r.final_retainer_status,
+          vfos: Math.max(ret - retLicence - mp - sp - pp, 0), status: r.final_retainer_status,
           retainerBlock,
           memberState: legState(r.retainer_rev_paid, { revShare: r.retainer_rev_share, paymentStatus: r.final_retainer_status, context: 'tax_retainer' }),
           plannerState: plannerStateFor(pp, r.retainer_planner_paid, r.final_retainer_status, 'tax_retainer'),
@@ -168,12 +182,12 @@ export function clearedTaxPayments(rows) {
     if (PAID.has(r.retainer_status) && !threePayment && ret > 0) {
       const clearedAt = r.retainer_invoice_email_sent_at || r.retainer_date
       if (clearedAt) {
-        const mp = memberPortion(ret)
-        const sp = stratPer(ret)
-        const pp = retainerIsHistoric ? 0 : plannerPortion(ret)
+        const mp = memberPortion(retShareBase)
+        const sp = stratPer(retShareBase)
+        const pp = retainerIsHistoric ? 0 : plannerPortion(retShareBase)
         out.push({
-          id: `${r.id}-ret`, kind: 'Retainer', clearedAt, amount: ret, member: mp, strategic: sp, planner: pp,
-          vfos: Math.max(ret - mp - sp - pp, 0), status: r.retainer_status,
+          id: `${r.id}-ret`, licence: retLicence, kind: 'Retainer', clearedAt, amount: ret, member: mp, strategic: sp, planner: pp,
+          vfos: Math.max(ret - retLicence - mp - sp - pp, 0), status: r.retainer_status,
           // The retainer's revenue share fires on the client's decision after the
           // review, not on the charge — hence its own context. ALL THREE legs fire on
           // that one trigger, so all three carry it: without it a blank strategic leg

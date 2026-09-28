@@ -91,6 +91,13 @@ export const TAX_INTAKE_QUESTIONS = [
     options: [TAX_INTAKE_Q38_TRADITIONAL, TAX_INTAKE_Q38_RAPID],
     optionNotes: { [TAX_INTAKE_Q38_RAPID]: "Best for more sophisticated or time-limited clients" },
   },
+  {
+    id: "q39",
+    label: "On a personal level, is there anything else important that isn't captured in the sections above that would help us know the client better?",
+    selfLabel: "On a personal level, is there anything else important that isn't captured in the sections above that would help us know you better?",
+    type: "textarea",
+    required: false,
+  },
 ];
 
 export const TAX_INTAKE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -126,7 +133,7 @@ export function validateTaxIntakeAnswers(answers) {
   return errors;
 }
 
-// The answers object as it is stored: only the 37 known keys, trimmed, money
+// The answers object as it is stored: only the known question keys, trimmed, money
 // fields stripped of `$`. Anything else a caller sends is dropped — the jsonb
 // column is never a free-form bag.
 export function normalizeTaxIntakeAnswers(answers) {

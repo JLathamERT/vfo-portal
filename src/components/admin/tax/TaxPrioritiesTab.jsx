@@ -4962,9 +4962,17 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     }
 
     if (task.status_options === 'tax_continue_stop') {
-      const adminDecision = livePlan?.post_review_decision
       const emailSentAt = livePlan?.post_review_decision_email_sent_at
       const clientDecision = livePlan?.post_review_client_decision
+      // A CLIENT refund click stamps post_review_decision='Stop - Refund' over the
+      // admin's Continue / Undecided pick (actions/tax/refund.ts), which dropped the
+      // whole email history from view. The step row still holds the admin's pick,
+      // so render that branch — its "Client clicked Refund" arm is the history.
+      const storedDecision = livePlan?.post_review_decision
+      const adminDecision = storedDecision === 'Stop - Refund' && clientDecision === 'Refund'
+        && (p.status === 'Continue - Revenue Share' || p.status === 'Undecided')
+        ? p.status : storedDecision
+      const refundDate = livePlan?.refund_date
       const reminderSentAt = livePlan?.post_review_reminder_sent_at
       const refundStatus = livePlan?.refund_status
       const revPaid = livePlan?.retainer_rev_paid
@@ -5060,7 +5068,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
             <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)', marginBottom: '8px' }}>
               {adminDecision === 'Stop - Refund' && (
                 <>
-                  {autoStep('Refund processed and confirmation email drafted', refundStatus === 'succeeded', { chip: refundChip })}
+                  {autoStep('Refund processed and confirmation email drafted', refundStatus === 'succeeded', { chip: refundChip, at: refundDate })}
                 </>
               )}
               {adminDecision === 'Continue - Revenue Share' && (
@@ -5071,7 +5079,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                   {clientDecision === 'Refund' && (
                     <>
                       {autoStep('Client clicked Refund', true, { at: livePlan?.post_review_client_decision_at })}
-                      {autoStep('Refund issued', refundStatus === 'succeeded', { chip: refundChip })}
+                      {autoStep('Refund processed and confirmation email drafted', refundStatus === 'succeeded', { chip: refundChip, at: refundDate })}
                     </>
                   )}
                   {clientDecision === 'Auto-Locked' && (
@@ -5116,7 +5124,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
                   {clientDecision === 'Refund' && (
                     <>
                       {autoStep('Client clicked Refund', true, { at: livePlan?.post_review_client_decision_at })}
-                      {autoStep('Refund issued', refundStatus === 'succeeded', { chip: refundChip })}
+                      {autoStep('Refund processed and confirmation email drafted', refundStatus === 'succeeded', { chip: refundChip, at: refundDate })}
                     </>
                   )}
                 </>

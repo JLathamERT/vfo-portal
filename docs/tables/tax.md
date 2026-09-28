@@ -322,6 +322,18 @@ Tax 5b "Implementation decision" mirrors Tax 4's 3-option pattern: Proceed and U
 | `fee_amended_at_tax4` | timestamptz | Set by `automation_TAX_amend_fee` stage `tax4`, on **every** fee shape including legacy (2026-09-01). Drives the `[AMENDMENT_PARAGRAPH]` in the Client decision 1 email (gated on THIS column alone as of 2026-09-01 — no `isNewFeeProcess` test), the fresh invoice at the final retainer, and — as an independent proof beside the `client_tax_progress` row — the "Amend fee" step's done state, which is also one of the three terms deciding whether a legacy plan HAS the step at all. |
 | `fee_amended_at_tax5` | timestamptz | Same, stage `tax5`: drives the paragraph in the Client decision 2 email and the fresh invoice at implementation, and additionally **short-circuits the Tax 5 amend gate** in `implement-decision.ts`. The Tax 4 / Tax 5 split is deliberate — a Tax 4 amendment does not re-announce itself at decision 2. |
 
+### Client portal licence + reminder chases (added 2026-09-28, DIRECT unit 4)
+
+Migration `20260928160000_client_portal_licenses.sql`. All nullable, no backfill; NULL = the behaviour before unit 4. Written only while `portal_licensing` (the first two) or `tax_reminders` (the last three stamps) is on for the client's member. Flow: [tax-planning.md → Client portal licence](../flows/tax-planning.md#client-portal-licence-direct-unit-4--portal-licensing-l1-2026-09-28).
+
+| Column | Type | Meaning |
+|---|---|---|
+| `licence_disbursement` | numeric(10,2) | Dollars taken off the RETAINER before the revenue share is split — `300`, a pro-rata extension figure, or `0` when a running licence already covers the purchase. Stamped once at the licence grant (`automation_TAX_invoicereceipt`), BEFORE any payout, so every payout attempt and retry uses the same figure; also the grant's first idempotency latch. Read by `revshareBaseFor` in every retainer payout site and every split surface. NULL = no licence = the old maths exactly. |
+| `portal_login_email_sent_at` | timestamptz | When the separate `TAX_client_portal_login` email was drafted. Once set, a replayed invoice/receipt chain drafts no second one. |
+| `tax_planner_allocated_at` | timestamptz | When the PLANNER slot was last filled (`allocate-planner.ts`; `tax_team_member_allocated_at` covers the team slot only). Anchors the planner review chase. Stamped from 2026-09-28 only, so older allocations are never chased. |
+| `planner_review_reminder_sent_at` | timestamptz | Last planner review chase drafted; cleared when a new planner is allocated. |
+| `additional_info_reminder_sent_at` | timestamptz | Last additional-info chase drafted. A stamp older than the current `additional_info_requested_at` belongs to an earlier request, which is how a new request re-arms the ladder. |
+
 ### Indexes
 - `idx_client_tax_plans_tax_token` ON `tax_token`
 - `idx_client_tax_plans_checkout_token` ON `checkout_token`
@@ -468,7 +480,7 @@ One row per fee amendment, written by `automation_TAX_amend_fee`. **Revised-proc
 
 ## `tax_intake_requests` (added 2026-09-17)
 
-The member-run VFO Tax Planning intake — unit 1 of [DIRECT to Tax Planning](../plans/direct-tax-planning/README.md); flow in [flows/tax-intake.md](../flows/tax-intake.md). **One row per submission of the 38-question form**, and the row that survives the Stripe round trip: a member (route A) or the client via an emailed tokened link (route B) fills the form, pays the **$500 deposit** by card or ACH on the public `/tax-deposit-pay` choice page's Checkout (2026-09-23; or has it **waived** once the member holds two qualifying tax clients), and `utils/tax-intake-finalize.ts` then creates the `clients` row + `client_enrollments` junction + program-4 `member_enrollments` (first intake only) + the `client_tax_plans` row, completes Deposit Paid, files the deposit invoice + receipt pair and drafts the confirmation email. On the **Holistic** route (an existing program-1 client after their first MAP 1 payment) the answers are stored against the existing client — no deposit, no client creation. A confirmed public VFO Tax Diagnostic mints a row too (`diagnostic_id`, below). Migrations `20260917120000_tax_intake.sql` (table + RLS), `20260917200000_tax_intake_client_route.sql` (route B columns), `20260917210000_tax_intake_deposit_docs.sql` (document stamps), `20260918220000_tax_intake_direct_route.sql` (`tax_route`), `20260923180000_tax_diagnostics.sql` (`diagnostic_id`), `20260923220000_tax_intake_deposit_ach.sql` (the seven `deposit_*` side-columns). **RLS enabled + `"Deny all access"` policy in the creating migration** (#141; anon probe `*/0`, advisor GREEN) — every access is service-role through the edge function. **0 rows live as of 2026-09-18** — the six test intakes were wiped with their fixtures.
+The member-run VFO Tax Planning intake — unit 1 of [DIRECT to Tax Planning](../plans/direct-tax-planning/README.md); flow in [flows/tax-intake.md](../flows/tax-intake.md). **One row per submission of the 39-question form**, and the row that survives the Stripe round trip: a member (route A) or the client via an emailed tokened link (route B) fills the form, pays the **$500 deposit** by card or ACH on the public `/tax-deposit-pay` choice page's Checkout (2026-09-23; or has it **waived** once the member holds two qualifying tax clients), and `utils/tax-intake-finalize.ts` then creates the `clients` row + `client_enrollments` junction + program-4 `member_enrollments` (first intake only) + the `client_tax_plans` row, completes Deposit Paid, files the deposit invoice + receipt pair and drafts the confirmation email. On the **Holistic** route (an existing program-1 client after their first MAP 1 payment) the answers are stored against the existing client — no deposit, no client creation. A confirmed public VFO Tax Diagnostic mints a row too (`diagnostic_id`, below). Migrations `20260917120000_tax_intake.sql` (table + RLS), `20260917200000_tax_intake_client_route.sql` (route B columns), `20260917210000_tax_intake_deposit_docs.sql` (document stamps), `20260918220000_tax_intake_direct_route.sql` (`tax_route`), `20260923180000_tax_diagnostics.sql` (`diagnostic_id`), `20260923220000_tax_intake_deposit_ach.sql` (the seven `deposit_*` side-columns). **RLS enabled + `"Deny all access"` policy in the creating migration** (#141; anon probe `*/0`, advisor GREEN) — every access is service-role through the edge function. **0 rows live as of 2026-09-18** — the six test intakes were wiped with their fixtures.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -477,7 +489,7 @@ The member-run VFO Tax Planning intake — unit 1 of [DIRECT to Tax Planning](..
 | `client_id` | integer | fk → `clients.id` **ON DELETE SET NULL**. NULL until finalize creates the client — **stamped the INSTANT the client row exists (2026-09-18), before the plan**, so a run that dies afterwards resumes on this id instead of minting a second client; `tax_plan_id` is stamped the same way the instant the plan exists (or, on Holistic, the existing client from the start — and `tax_intake_holistic_submit` **409s a second submit** for a `client_id` that already has any row, so the Holistic form is one-per-client). Indexed (`tax_intake_requests_client_idx`). |
 | `tax_plan_id` | integer | fk → `client_tax_plans.id` **ON DELETE SET NULL**. Written by finalize; NULL on Holistic. Both FKs are SET NULL on purpose: deleting a fixture client must not delete the audit of what was submitted and paid. |
 | `program_id` | integer | not null, default **4**. **Every writer stamps 4, the Holistic route included** (`tax_intake_holistic_submit` inserts `TAX_PROGRAM_ID`) — the column names the form, not the client's program; the client's own plan keeps its program-1 row. |
-| `answers` | jsonb | not null. `{ q1 … q38 }` — the 38 questions of `utils/tax-intake-questions.ts` (mirrored byte-for-byte in `src/components/member/taxIntakeQuestions.js`). **`q1` (advisor / accountant / client) is NOT asked** — the server writes it (`TAX_INTAKE_Q1_ADVISOR` / `_ACCOUNTANT` from the member's category, or Client on route B), and q7–q9 (the introducer) are prefilled and hidden. **Read-only afterwards** — nothing pre-fills any tax step from it (plan decision 8); the admin Tax Priorities tab renders it as a form card. |
+| `answers` | jsonb | not null. `{ q1 … q39 }` — the 39 questions of `utils/tax-intake-questions.ts` (mirrored byte-for-byte in `src/components/member/taxIntakeQuestions.js`). **`q1` (advisor / accountant / client) is NOT asked** — the server writes it (`TAX_INTAKE_Q1_ADVISOR` / `_ACCOUNTANT` from the member's category, or Client on route B), and q7–q9 (the introducer) are prefilled and hidden. **Read-only afterwards** — nothing pre-fills any tax step from it (plan decision 8); the admin Tax Priorities tab renders it as a form card. |
 | `client_first_name` / `client_last_name` / `client_email` / `client_phone` | text | Copied out of `answers` (q2–q5) at insert so the row is searchable and the confirmation email can be addressed before a `clients` row exists. |
 | `deposit_required` | boolean | not null. `false` = the waiver applied at submit time (`utils/tax-direct-eligibility.ts qualifyingTaxClients` count ≥ 2, or Holistic). |
 | `deposit_amount_cents` | integer | `50000`, or `0` when waived. |
@@ -527,7 +539,7 @@ The queue behind the public, no-login **VFO Tax Diagnostic** (`/tax-diagnostic`)
 | `created_at` | timestamptz | not null, default `now()`. |
 | `status` | text | not null, default `'new'`, **CHECK** `new` / `confirmed` / `dismissed`. Three writers: `tax_diagnostic_submit` (`new`), `tax_diagnostic_confirm` (conditional `new → confirmed` latch before any side effect; undone on an intake-insert failure), `tax_diagnostic_dismiss` (conditional `new → dismissed`). |
 | `completed_by` | text | not null, CHECK `client` / `member`. Self-declared on a public page — it only PRE-SETS the payer at Confirm. |
-| `answers` | jsonb | not null. The 37 intake answers (Q1 / Q7–Q9 blanked; Confirm fills them from the confirmed member). |
+| `answers` | jsonb | not null. The intake answers (`q1`–`q39`) (Q1 / Q7–Q9 blanked; Confirm fills them from the confirmed member). |
 | `client_first_name` / `client_last_name` / `client_email` / `client_phone` | text | Copied out of the answers. |
 | `referrer_name` | text | The member NAME as picked on the form (names only ever leave the server). |
 | `referrer_none` | boolean | not null, default false. "No one / I heard about VFO elsewhere". |
@@ -542,3 +554,26 @@ The queue behind the public, no-login **VFO Tax Diagnostic** (`/tax-diagnostic`)
 **Indexes:** `tax_diagnostics_pkey`, `tax_diagnostics_status_idx` (`status, created_at desc`).
 
 **Touched by:** `tax_diagnostic_submit` (PUBLIC; insert, and a read-only count for the 60-per-hour global cap), `tax_diagnostic_list` / `tax_diagnostic_confirm` / `tax_diagnostic_dismiss` (AUTH, `ADMIN_ONLY_ACTIONS` + `TAB_ACTIONS.tax_diagnostics`). Frontend: `src/pages/TaxDiagnosticPage.jsx`, `src/components/admin/TaxDiagnosticsPanel.jsx`.
+
+---
+
+## `client_portal_licenses` (added 2026-09-28, DIRECT unit 4 = portal licensing L1)
+
+**One row per licence PERIOD per client** — the shared licence record every later licensing unit adds a `source` to rather than rebuilding (plan: [../plans/portal-licensing/README.md](../plans/portal-licensing/README.md) §2.4). Migration `20260928160000_client_portal_licenses.sql`. **RLS enabled + `"Deny all access"` in the creating migration** (#141; anon probe `*/0`, re-probed 2026-09-28). Flow: [tax-planning.md → Client portal licence](../flows/tax-planning.md#client-portal-licence-direct-unit-4--portal-licensing-l1-2026-09-28). **Written only by the automatic grant — there are no manual grant / extend / revoke controls.**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigserial | pk. |
+| `created_at` | timestamptz | not null, default `now()`. |
+| `client_id` | integer | not null, fk → `clients.id` **ON DELETE CASCADE**. |
+| `member_number` | text | The member the licence was paid through (`clients.member_number` at grant time). |
+| `source` | text | not null, **CHECK `('tax')`**. Later units widen the CHECK (`holistic`, `ciq`). |
+| `tier` | text | not null, default `'standard'`, CHECK `basic` / `standard`. L1 writes `standard` only. |
+| `amount` | numeric(10,2) | not null, default 0. Dollars taken for THIS period: `300` for a fresh year, the pro-rata extra-days figure for an extension. Mirrors the plan's `licence_disbursement`. |
+| `starts_on` / `ends_on` | date | not null, CHECK `ends_on > starts_on`. 12 months (`addMonthsIso`, month-end clamped). An extension starts where the running period ends, so one client's live rows never overlap. |
+| `tax_plan_id` | integer | fk → `client_tax_plans.id` **ON DELETE SET NULL**. The plan whose retainer paid for it. |
+| `revoked_at` / `revoked_reason` | timestamptz / text | Stamped by `revokeTaxLicence` on ANY retainer refund (`actions/tax/refund.ts`): *"Tax retainer refunded"* / *"Tax retainer partially refunded"*. |
+
+**Indexes:** pkey; `client_portal_licenses_tax_plan_uidx` UNIQUE on `(tax_plan_id) where source='tax' and tax_plan_id is not null` — one tax grant per plan, the grant's second idempotency latch (a racing replay adopts the winner's row); `client_portal_licenses_client_idx` (`client_id, ends_on desc`).
+
+**Touched by:** `automation_TAX_invoicereceipt` (`grantTaxLicence` — insert), `automation_TAX_refund` (`revokeTaxLicence` — revoke), `client_showroom_load` (`clientLicenceStatus` — read, only while `portal_licensing` is on). Frontend: `src/pages/ClientPortal.jsx` (the Home screen's expiry line, from the load payload).

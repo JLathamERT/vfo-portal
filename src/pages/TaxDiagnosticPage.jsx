@@ -9,7 +9,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.su
 // client. It takes no payment and creates nothing — every submission waits in the
 // admin Tax Diagnostics queue until a person confirms the member.
 //
-// The 37 questions are the member intake's own (TaxIntakeForm in public mode);
+// The intake questions are the member intake's own (TaxIntakeForm in public mode);
 // this page adds the three questions above them. The member question searches
 // NAMES only (tax_diagnostic_member_search) and never sees a member number.
 //
@@ -201,6 +201,7 @@ export default function TaxDiagnosticPage() {
         intro="Please answer the questions below about the client. There is nothing to pay on this form — the VFO Services team will review it and be in touch."
         submitLabel="Submit"
         allowTestFill={import.meta.env.DEV}
+        clientFilling={completedBy === 'client'}
       />
     </TokenShell>
   )
