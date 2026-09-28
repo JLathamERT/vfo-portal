@@ -184,7 +184,7 @@ export default function TaxRevenuePanel({ embedded = false }) {
               <span style={{ fontWeight: 600 }}><ClientNameLink clientId={p.clientId} tab="tax">{p.clientName}</ClientNameLink><span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · {p.kind}</span></span>
               <span>{p.memberName ? <MemberNameLink memberNumber={p.memberNumber}>{p.memberName}</MemberNameLink> : '—'}{p.memberNumber && <span style={{ color: 'var(--vfo-faint)' }}> · {p.memberNumber}</span>}</span>
               <span><ProgramTag label={p.tier} /></span>
-              <span style={{ textAlign: 'right', fontWeight: 700, borderRight: '1px solid var(--vfo-tint)', paddingRight: '12px' }}>{money(p.amount)}<SubNote text={p.paymentNote} /></span>
+              <span style={{ textAlign: 'right', fontWeight: 700, borderRight: '1px solid var(--vfo-tint)', paddingRight: '12px' }}>{money(p.amount)}<SubNote text={p.paymentNote} /><SubNote text={p.licence > 0 ? `${money(p.licence)} client portal licence kept by VFO before the split` : null} /></span>
               {/* A 3-payment plan's INITIAL retainer moves no share at all — every leg
                   fires later, on the full retainer, when the final payment settles. Its
                   slices are zero, so the cells keep their dashes and carry the leg note

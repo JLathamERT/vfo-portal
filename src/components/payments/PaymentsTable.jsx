@@ -299,6 +299,9 @@ export default function PaymentsTable({
                   {r.revShare.strategic != null && <>{' · Strategic partner '}{fmtMoney(r.revShare.strategic)}</>}
                   {' · VFO '}
                   {r.revShare.vfo == null ? '—' : fmtMoney(r.revShare.vfo)}
+                  {/* Client portal licence (unit 4): already INSIDE the VFO figure —
+                      it came off the retainer before the split and VFO kept it. */}
+                  {r.revShare.licence > 0 && <>{' (incl. '}{fmtMoney(r.revShare.licence)}{' client portal licence)'}</>}
                 </>
               )}
               {r.revShare.status ? <> — <strong>{r.revShare.status}</strong></> : ''}

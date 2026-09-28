@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../../lib/api'
 import { HELD_SUSPENDED_NOTE, HELD_PAUSED_NOTE, HELD_ARREARS_NOTE } from '../shareLegState'
+import { licenceDisbursementFor } from '../taxShared'
 
 // Pricing + revenue-split summary for a tax plan, sitting directly under the Tax Plan
 // hero. ADMIN (VFOS/ERT) SURFACE ONLY — the caller gates it out of the member and
@@ -97,6 +98,11 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   const [refundOk, setRefundOk] = useState('')
 
   const retAmt = money(plan?.retainer_amount)
+  // Client portal licence (unit 4): the retainer legs split retainer - disbursement and
+  // VFO Services keeps the disbursement (its residual below absorbs it) — the same rule
+  // as the payout engine, via the shared mirror in taxShared.jsx.
+  const retLicence = licenceDisbursementFor(plan, 'retainer')
+  const retShareBase = Math.max(retAmt - retLicence, 0)
   const implAmt = money(plan?.implementation_amount)
   const totalFee = money(plan?.total_fee) > 0 ? money(plan?.total_fee) : retAmt + implAmt
   const hasPricing = totalFee > 0
@@ -216,7 +222,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   // out — a dead (no-share-due) leg's portion stays with VFO, so the column still sums
   // to the payment. Identical to the configured vfos_share whenever all legs are live.
   const legAmt = (stored, status, payment) => (noShare(status) ? 0 : portion(stored, payment))
-  const retVfos = round2(retAmt - legAmt(storedMember, plan?.retainer_rev_paid, retAmt) - legAmt(storedPlanner, plan?.retainer_planner_paid, retAmt) - legAmt(storedStrat, plan?.retainer_strat_paid, retAmt))
+  const retVfos = round2(retAmt - legAmt(storedMember, plan?.retainer_rev_paid, retShareBase) - legAmt(storedPlanner, plan?.retainer_planner_paid, retShareBase) - legAmt(storedStrat, plan?.retainer_strat_paid, retShareBase))
   const implVfos = round2(implAmt - legAmt(storedMember, plan?.implementation_rev_paid, implAmt) - legAmt(storedPlanner, plan?.implementation_planner_paid, implAmt) - legAmt(storedStrat, plan?.implementation_strat_paid, implAmt))
 
   const rows = [
@@ -348,7 +354,10 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
                           two-way policy that predates the tax planner share. Deriving a
                           figure from today's split would invent a payout that never
                           happened and never will — those legs are settled and locked. */}
-                      {retainerIsHistoric || noShare(r.retStatus) ? '—' : fmt(r.key === 'vfos' ? retVfos : portion(r.stored, retAmt))}
+                      {retainerIsHistoric || noShare(r.retStatus) ? '—' : fmt(r.key === 'vfos' ? retVfos : portion(r.stored, retShareBase))}
+                      {r.key === 'vfos' && !retainerIsHistoric && retLicence > 0 && (
+                        <div style={{ fontSize: '10px', color: '#c2410c' }}>incl. {fmt(retLicence)} client portal licence</div>
+                      )}
                       <div style={{ fontSize: '10px', color: retainerIsHistoric ? 'var(--vfo-muted)' : noteColor(r.retStatus) }}>
                         {retainerIsHistoric ? 'settled on old system' : legNote(r.retStatus)}
                       </div>
