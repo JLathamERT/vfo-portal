@@ -205,6 +205,8 @@ What shipped:
 
 ## 9. Unit 4: pre-work from 2026-09-28 (the Feature Switches chat)
 
+**Unit 4 is also L1 of the whole portal licensing system** — the plan of record for everything after it (Basic client portal + introductions, Holistic licence, CIQ licence, mirrored clients, VFO-A / FC, suspension) and for the shared licence rules this unit must build to is [../portal-licensing/README.md](../portal-licensing/README.md). Build the licence record and the extension rule to that plan's §2, so the later units add a SOURCE instead of rebuilding it.
+
 **Shipped first, on its own:** the Feature Switches tab (decisions 52-55). Unit 4 is built BEHIND `portal_licensing`: every new unit 4 behaviour must check `featureEnabledForMember(sb, FEATURE_PORTAL_LICENSING, memberNumber)` and fall back to today's behaviour while it is off, and its card copy in `src/components/admin/FeatureSwitchesPanel.jsx` (the "Also rides on this switch once built" list) must move into "What switching it on adds" as each piece lands. Paul's rules: `licensing-structure-sheet-dump.txt` in this folder (fixed 2026-09-28; it had held a Python traceback) + his Q4 deck (summarised at the top of that file).
 
 **What the code says (read-only audit, 2026-09-28; corrects the handoff's assumptions):**
