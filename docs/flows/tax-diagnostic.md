@@ -9,7 +9,7 @@ The public, no-login replacement for the Unbounce tax page. Anyone can open **`v
 - the page shows "This form is not available";
 - the deposit link of an already-confirmed diagnostic 404s as well (the choice page's `tax_intake_deposit_load` / `_checkout` and the old `/tax-intake` link actions alike), because such an intake row rides this flag (decision 34).
 
-The admin tab stays usable and shows an amber "public page is switched off" banner. **Switch = `update portal_feature_flags set enabled_for_all=<true|false> where key='tax_diagnostic'`, no deploy.**
+The admin tab stays usable and shows an amber "public page is switched off" banner. **Switch = the superadmin Feature Switches tab (More ▾ → Feature Switches, 2026-09-28) — this card has Off for all / On for all only, no test-member position — or `update portal_feature_flags set enabled_for_all=<true|false>, updated_at=now() where key='tax_diagnostic'`; no deploy either way.** See [tax-planning.md → Feature Switches](tax-planning.md#feature-switches-2026-09-28).
 
 ## The public page
 

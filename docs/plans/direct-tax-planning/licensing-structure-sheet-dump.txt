@@ -1,17 +1,243 @@
-Traceback (most recent call last):
-  File "C:\Users\jakel_fjetgbx\AppData\Local\Temp\claude\C--vfo-edge-functions--claude-worktrees-vfo-session-setup-96fda1\b7b7fd0e-89c3-4f98-96ed-a15625a1ff4e\scratchpad\dump_xlsx.py", line 3, in <module>
-    wb = openpyxl.load_workbook(p, data_only=True)
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\jakel_fjetgbx\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\reader\excel.py", line 346, in load_workbook
-    reader = ExcelReader(filename, read_only, keep_vba,
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\jakel_fjetgbx\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\reader\excel.py", line 123, in __init__
-    self.archive = _validate_archive(fn)
-                   ^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\jakel_fjetgbx\AppData\Local\Programs\Python\Python312\Lib\site-packages\openpyxl\reader\excel.py", line 95, in _validate_archive
-    archive = ZipFile(filename, 'r')
-              ^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\jakel_fjetgbx\AppData\Local\Programs\Python\Python312\Lib\zipfile\__init__.py", line 1336, in __init__
-    self.fp = io.open(file, filemode)
-              ^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: 'C:SERSJAKEL_FJETGBXDOWNLOADSicensing strucure for portal & amends to fc and vfo-a members .xlsx'
+Paul's licensing spreadsheet, cell dump (non-empty cells, row by row).
+Source: "Licensing Strucure for Portal & Amends to FC and VFO-A + Full Members .xlsx", dumped 2026-09-28
+(the earlier copy of this file held only a Python traceback). A FUTURE whole-system plan - only the tax
+licence is in scope for DIRECT unit 4; VFO-A, FC, Catalyst v Fusion and Accredited are later work.
+Companion: Paul's deck "PL - Q4 Update_ VFO Portal .pptx" (slides 41-82 cover the same licence rules;
+slide 60: the tax licence is a disbursement in the revenue-share ratio - 1/3 each on VFOS tax planning,
+45:45:10 on Direct; slides 76-78: first licence has priority, $300/year to the exact anniversary, a later
+purchase extends pro-rata; slides 79-82: portal suspension rules by member tier).
+
+=== SHEET Portal License
+B3: The basic structure is around where a Member is using the Portal to work with a CLIENT - there are several scenarios:
+A5: MEMBER PORTAL
+B6: CLIENT ACCESS TO BASIC VFO PORTAL | K6: LICENSE FEE
+C8: We want MEMBER to load their clients on the Portal - this will NOT GENERATE A LICENSE in first instance
+D10: CLIENT  | E10: >  | F10: BASIC VFO CLIENT PORTAL | H10: > VFO SHOWROOM  | K10: 0.0
+D12: MEMBER | E12: Note it will be the Member who decides to send the client the Portal link (with training video)
+F13: Needs a buton for Member to send this - when they are ready
+D15: CLIENT | E15: Note - we need a button the CLIENT VFO SHOWROOM - request an introduction to Specialist
+F16: The Member will receive this request directly via email - it is their job to make introduction
+F17: Tracy Miller ideally gets a NOTIFICATION of above (or bcc email?)
+B20: CLIENT CIQ
+C21: LEGACY MEMBER
+C22: CHOICE | D22: Will not be charged for doing a CIQ with their clients (as they used to have access to PPP to do CIQ) | K22: 0.0 | L22: Basic Portal | N22: VFO Showroom only
+C23: BUTTON | D23: - OR  | E23: They can choose to pay the $25 Licence to upgrade their client to Standard Portal | K23: 25.0 | L23: Standard Portal | N23: VFO SHOWROOM
+C25: NEW MEMBER IImplementation)
+D26: In the first instance they will do VFO FT via 90 Day Plan  | K26: 0.0 | N26: CLIENT VAULTS
+E27: VFOS team will drive the CIQ process as applicable - via HOLISTIC process
+F28: VFOS will get standard revenue share | N28: CIQ CASE PROGRESS (and any other case activity as applicable)
+O29: See the One Page Plan - created from CIQ
+D30: Where a Member requests to do own CIQ | O30: See the History of completed items
+E31: MSM toggles the button to allow Member to drive - this INITIATES LICENSE FEE | K31: 0.0 | L31: Basic Portal | N31: VFO Showroom only
+H32: SAME CHOICE | K32: 25.0 | L32: Standard Portal | N32: VFO SHOWROOM
+E33: The BENEFIT to the Member is they dont revenue share with VFOS
+E34: The COST to the Member is the monthly license
+F35: The Member can switch off License (HOW?) | N35: CLIENT VAULTS
+F36: This stops the CIQ at the end of the latest calendar month
+N37: CIQ CASE PROGRESS (and any other case activity as applicable)
+G38: Client access is halted   | I38: Basic Portal
+I39: Standard Portal
+B42: HOLISTIC via VFOS
+D43: As above -In the first instance the New Member will do VFO FT via 90 Day Plan
+E44: VFOS team will drive the CIQ process as applicable - via HOLISTIC process
+D46: Where the Client Purchases HOLISTIC LITE (or above) the standard fee paid is $2600
+E48: This will mean that client gets IMMEDIATE ACCESS to STANDARD VFO PORTAL | K48: 300.0 | L48: per year
+F49: They will have 12 months access to:
+G50: VFO SHOWROOM
+H51: as above they can ask Member for Introductions
+I52: Tracy Miller gets notification
+G53: CLIENT VAULTS
+G55: HOLISTIC CASE PROGRESS (and tax as applicable)
+H56: See the One Page Plan
+H57: See case progress on any priorities
+I58: In summary not detail
+E60: Revenue share will treat the above as a DISBURSEMENT
+F62: Holistic Fee $2600 (assumes Lite)
+G63: License | I63: 300.0 | L63: This is the payment for the license above - paid to VFO Portal Bank A/C
+G65: Member Revenue Share  | I65: 1150.0
+G66: VFOS Revenue  | I66: 1150.0
+I67: 2600.0
+E70: Upon client payment of fee they get automatic link to VFO Portal with instructions
+F71: Very similar to email I did for Direct Tax Planning
+B74: HOLISTIC - MEMBER DIRECT
+D75: This is FUSION ONLY Members - trained by IW
+E76: Once IW presses BUTTON to say training complete - Member can drive process
+D78: Basically drives the same process as VFOS Holistic (with some tweaks to accomodate in terrms of wording in emails and contracts and so on)
+E80: Holistic Presenation
+E81: CIQ - Priorities - One Page Plan
+E82: Agree fee
+E83: Portal Admin
+F84: Engagement Agreement
+F85: Payment
+G86: License as a Disbursement | K86: 300.0 | L86: per year
+G87: CC charges incurred as a dfisbursement
+G88: Revenue Share - 100% to Member after disbursement | L88: See presentation for notes about switching to $25/month
+D90: Member will be flexible as to how many meetings / what they charge
+E92: This will mean that client gets IMMEDIATE ACCESS to STANDARD VFO PORTAL
+F93: Exactly as above  for via VFOS
+B96: TAX PLANNING via VFOS | D96: As above -In the first instance the New Member will do VFO FT via 90 Day Plan
+E97: VFOS team will drive the Tax Planning process
+B99: TAX PLANNING - DIRECT | D99: Alternatively Member will work direct with Tax Planning Team
+D101: Where the Client Purchases Tax Planning - this means:
+E102: Pay ROI Retainer step 3
+E104: This will mean that client gets IMMEDIATE ACCESS to STANDARD VFO PORTAL | K104: 300.0 | L104: per year
+F105: They will have 12 months access to:
+G106: VFO SHOWROOM
+C107: If the tax fees are refunded then license is revoked | H107: as above they can ask Member for Introductions
+I108: Tracy Miller gets notification
+G109: CLIENT VAULTS
+G111: TAX CASE PROGRESS (and Holistic as applicable)
+H112: In summary as pass through stages
+B115: RULES
+C116: Whichever comes first - HOLISTIC or TAX license - will take priority and last 12 months
+D117: After that point the Member / Client can use the Standard Portal and the CIQ licenses (where applied) will cease
+E118: No refund for prior months CIQ license obviously as the 12 month license is from moment of purchase
+C120: Where a Member does BOTH HOLISTIC and TAX we will do it like this:
+D121: Say does TAX first in October 2026
+E122: Disburse $300 for license - 12 months to Oct 27
+D123: Say does HOLISTIC next in January 2027
+E124: We are already covered to Oct 27 | H124: 2026-10-28 00:00:00
+F125: Extend license for 3 months to Jan 28
+G126: Disburse extra $75 (actually do a precise calculation based on days - rounded to dollar)
+B128: PFT - ERT | D128: As above -In the first instance the New Member will do PFT via 90 Day Plan  | K128: 0.0
+E129: ERT team will drive the PFT  process
+B130: PFT - MEMBER - FUSION ONLY
+D131: Where the Accountant purchases Membership (VFO FT)
+E133: This will mean that Accountant gets MMEDIATE ACCESS to STANDARD VFO PORTAL
+E135: Connected Accountant & Advisor get "mirrored" client tracking (JOINT clients only)
+D137: Where the Accountant wants VFO Associate - see tab
+E139: The Accountant gets BASIC PORTAL
+G140: VFO Showroom  | K140: $25/month
+G141: Connect Client Feature (with another member)
+E143: The Associate can UPGRADE to STANDARD PORTAL
+G144: All features  | J144: Further  | K144: $25/month
+L145: TOTAL = $50
+
+=== SHEET VFO ASSOCIATE
+E2: MEMBERSHIP
+B3: VFO ASSOCIATE
+C4: Connected to Advisor Member | E4: 25.0 | F4: Per Month | G4: BASIC PORTAL  | I4: ADD $25/month  | J4: STANDARD PORTAL
+C5: Direct (no connection) | E5: 145.0 | F5: Per Month | G5: BASIC PORTAL  | I5: ADD $25/month  | J5: STANDARD PORTAL
+D7: These DO have a contract - but it is only paid on a MONTH to MONTH basis
+E8: We need to review this contract in light of access to VFO Portal
+D10: In future these will be charged via Portal once onboarded
+E11: We will need to make sure that LIVE VFO-A Members showing in the Portal are cleaned up
+C13: MEMBER ACCESS TO BASIC VFO PORTAL | L13: LICENSE FEE
+D15: They can do 3 things (potentially - 2 if not connected)
+C17: 1.0 | E17: ASSOCIATE | F17: >  | G17: BASIC VFO PORTAL | I17: > VFO SHOWROOM  | L17: 0.0
+F19: They can click the Specialist Button to request introduction
+F20: Tracy Miller gets notification
+C22: 2.0 | E22: Connected Accountant & Advisor get "mirrored" client tracking (JOINT clients only)
+F23: This is a general change to ALL connected Advisors and Accountants
+F24: We need to have a CONNECTED JOINT CLIENT BUTTON
+C26: 3.0 | D26: We want MEMBER to load their clients on the Portal - this will NOT GENERATE A LICENSE in first instance
+E28: CLIENT  | F28: >  | G28: BASIC VFO CLIENT PORTAL | I28: > VFO SHOWROOM  | L28: 0.0
+E30: MEMBER | F30: Note it will be the Member who decides ro send the client the Portal link (with training video)
+G31: Needs a buton for Member to send this - when they are ready
+E33: CLIENT | F33: Note - we need a button the CLIENT VFO SHOWROOM - request an introduction to Specialist
+G34: The Member will receive this request directly via email - it is their job to make introduction
+G35: Tracy Miller ideally gets a NOTIFICATION of above (or bcc email?)
+D38: We want the Member to be able to see further capabilities of Portal and what we can do
+E39: Video link to basically everything shown in the License Structure
+E41: Request an Upgrade Meeting  | G41: Introduction to Vanessa
+F43: Become a VFO Fast Track Accountant
+G44: Connected to Advisor Member | I44: 2000.0 | J44: Implementation Fee
+G45: Direct (no connection) | I45: 4000.0 | J45: Implementation Fee
+E48: Request an Upgrade to Standard Portal | L48: 25.0 | M48: per month
+F50: Adds  | G50: CIQ  | H50: video training  | L50: 25.0 | M50: per month
+G51: Member Vault  | H51: video training
+
+=== SHEET FINANCIAL COLLABORATOR
+E2: MEMBERSHIP
+B3: FINANCIAL COLLABORATOR
+C5: Direct (no connection) | E5: 99.0 | F5: Per Month | H5: ADD $25/month  | I5: STANDARD PORTAL
+D7: These DO have a contract - but it is only paid on a MONTH to MONTH basis
+E8: We need to review this contract in light of access to VFO Portal
+D10: In future these will be charged via Portal once onboarded
+E11: We will need to make sure that LIVE FC Members showing in the Portal are cleaned up
+C13: MEMBER ACCESS TO BASIC VFO PORTAL | L13: LICENSE FEE
+D15: They can do same 3 things as Associate
+C17: 1.0 | E17: FC | F17: >  | G17: BASIC VFO PORTAL | I17: > VFO SHOWROOM  | L17: 0.0
+F19: They can click the Specialist Button to request introduction
+F20: Tracy Miller gets notification
+C22: 2.0 | E22: Connected Member feature get "mirrored" client tracking (JOINT clients only)
+F23: This is a general change to ALL connected MEMBERS
+F24: We need to have a CONNECTED JOINT CLIENT BUTTON
+C26: 2.0 | D26: We want MEMBER to load their clients on the Portal - this will NOT GENERATE A LICENSE in first instance
+E28: CLIENT  | F28: >  | G28: BASIC VFO CLIENT PORTAL | I28: > VFO SHOWROOM  | L28: 0.0
+E30: FC MEMBER | F30: Note it will be the Member who decides ro send the client the Portal link (with training video)
+G31: Needs a buton for Member to send this - when they are ready
+E33: CLIENT | F33: Note - we need a button the CLIENT VFO SHOWROOM - request an introduction to Specialist
+G34: The Member will receive this request directly via email - it is their job to make introduction
+G35: Tracy Miller ideally gets a NOTIFICATION of above (or bcc email?)
+D38: We want the FC Member to be able to see further capabilities of Portal and what we can do
+E39: Video link to basically everything shown in the License Structure
+E41: Request an Upgrade Meeting  | G41: Introduction to Vanessa
+F43: Become a Catalyst Advisor
+G45: Implementation | I45: 4000.0 | J45: Implementation Fee
+E48: Request an Upgrade to Standard Portal | L48: 25.0 | M48: per month
+F50: Adds  | G50: CIQ  | H50: video training  | L50: 25.0 | M50: per month
+G51: Member Vault  | H51: video training
+
+=== SHEET CATALYST V FUSION VALUE PROPOSI
+F2: 4000.0 | G2: 7500.0 | H2: 8000.0 | J2: 18000.0 | K2: 18500.0
+F3: Implementation | H3: Catalyst | K3: Fusion | L3: Must be VFO Certified as a minimum requirement
+L4: Must be linked to Portal for Membership payment
+B5: This is Value Proposition for Catalyst Community | P5: $
+K6: Extra cost of Fusion v Catalyst (shown on ANNUAL BASIS for comparison) | P6: 10000.0
+C7: VFO FT
+D8: 90 Day Plan | J8: Value Proposition | K8: Access to Fusion Community
+D9: Track Client Meetings (Holistic or Tax Planning) | K9: Fusion Skool & Collaboration Calls
+K10: Includes VFO Collective (1 + 4) tickets at no additional cost
+C11: PFT  | K11: Access to Virtual Fusion Event (for non Accredited) | Q11: The below split of the additional $10k is not transparent - but it is the FACTUAL SPLIT of the $10k extra
+D12: 90 Day Plan | K12: Advanced Coaching IW (Ian is your MSM - 12 monthly meetings) | P12: 4000.0
+D13: Track Accountant Meetings | L13: Use GC with IW any extra coaching required beyond 1 hour/month | Q13: We will phase out the tailored options for VFO FT / PFT
+Q14: In future only either STANDARD way or Ian teaches them to DIY - using GC
+C15: VFO Portal | J15: Extra GC | K15: Plus 75 GC - Discounted by 20% | P15: 6000.0
+D16: Standard Portal - upgrade from Basic Portal for FC
+J17: Access to DIY Holistic Planning
+C18: Add Clients to Portal  | K18: Client License  | L18: $25/client or is it just $300?
+D19: Provide Access to VFO Showroom
+D20: Member Drives when clients get access to VFO Showroom | K20: Email Invites to PIP 1 meeting
+K21: Standard PIP Presentation - Branded to Fusion Member
+C22: CIQ 3.0 | D22: Much improved version compared to previous CIQ | K22: CIQ 3.0
+D23: Must have completed VFO FT training (signed off by MSM) | K23: Prioriization Tool - Creation of One Page Plan
+D24: Request to self drive - exchange VFOS revenue share for client license  | K24: Ability to create own Holistic Fee & Meeting Structure
+D25: Client License $25/month (can switch on / off) | L25: Generates standard contracts / collects payments / enhanced client experience (email communication etc)
+E26: Legacy Member CIQ is FOC
+K27: TAX PLANNING | L27: Ability to link for tax planning priorities identified via Holistic Planning to Tax Planning Teams via Portal - either VFOS or Direct
+C28: Tax Planning  | K28: OTHER PRIORITIES | L28: Ability to link to VFO Specialists (SHOWROOM) - to address needs for specific items (including specific tax strategies like LEOS)
+D29: Ability to connect client from CIQ 3.0 to tax planning
+E30: VFOS or Direct Tax Planning (after established criteria) | J30: Access to DIY Partnership FT
+C31: Other Priorities
+D32: Ability to connect to VFO Specialists (via Showroom) | K32: Member can drive PFT process themselves (if they prefer not having to rely on ERT team to assist)
+E33: Where know exact strategy wanted etc (eg LEOS) | K33: Follow exact same process - use same presentations - connect Accountants - either VFO Associate or VFO FT
+C34: Growth Plan  | L34: If they connect VFO FT Accountant - we discount Accountant by $4k per year - STANDARD Portal connection is FOC to Member
+D35: Working with MSM (accountability) | M35: The VFO FT Accountant gets a STANDARD VFO Portal (all the same benefits as Advisor Member)
+N36: Joint clients connection (mirrored off main connection)
+C37: Growth Credit Marketplace
+D38: Access wider services within ERT | L38: If they connect VFO Associate Accountant - we create BASIC VFO Portal for Accountant - (they pay us $145 )/ month (same as now) - FOC to Member
+M39: The VFO Associate Accountant - gets a BASIC Portal  | Q39: Member can choose to pay to upgrade to STANDARD Portal $25/month (with a CIQ built in for Associate Accountant - where Member does training)
+C40: Member Vault | N40: Where BASIC PORTAL only have access to VFO Showroom. Can see activity on their clients via Member Portal (but can't do more than see - no CIQ or Vault etc etc)
+D41: Transfer data and documents securely | N41: Exactly as previously (with PPP) they get NO TRAINING / NO CIQ access (other than ability to see joint clients - as above)
+
+=== SHEET ACCREDITED VALUE PROPOSITION
+B3: Once any Member has achieved Accreditation (whether Catalyst or Fusion)
+C5: Advisor must be VFO Certified and achieved minimum financial targets
+C6: Financial Target
+D7: Generate $50,000  in a calendar year
+E8: Either directly through ERT VFO - or confirmed 3rd party transactions
+C10: Accredited Status
+D11: Once earned in a calendar year - Accredited status is permanent
+E12: Achieved financial target but not yet VFO Certified - "Pending Accredited" status
+C14: Accredited Rebates, Credit Notes & Other Benefits
+D15: Rebates only apply to VFO Revenues earned for ERT in any calendar year
+E16: See table to illustrate how ERT Accreditation Rebates build as Member success builds
+C18: ERT Community Recognition
+D19: Website / Skool / Events
+E20: Opportunity to become Accredited Introducer or Accredited Mentor (see level 4)
+C22: Accredited Community
+D24: Regular meetings with Anton??
+D25: Annual event - rather than Fusion Lab ??
+C27: Portal Benefits
+D28: Tailored license (similar to Carson)?

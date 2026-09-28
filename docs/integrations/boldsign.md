@@ -51,6 +51,8 @@ Auth header: `X-API-KEY: <BOLDSIGN_API_KEY>`.
 
 > **Rows 25–28 replaced 8/20/23/24 on 2026-09-24, and `field_map` + `boldsign_template_id` were copied UNCHANGED.** The re-seed added the collaborating-team sentence to the opening paragraph and an **Additional Benefits** section before Term & Termination; the new text fits within pages 1–3, so the document stays **4 pages** with addr/phone on page 1 and every signature field on page 4 — no coordinate moved. Proven by four sandbox sends (client/member × 2/3 payments) checked in BoldSign before the old rows were deleted. **Staging a body change** has to go through a `service_level` swap, because the unique index `(pipeline, service_level, payment_plan, payer_type)` ignores `active` — see [tables/documents.md](../tables/documents.md#agreement_templates).
 >
+> **Rows 29–32 (`'Tax Planning (pre-benefits)'`, 2026-09-28) bring the pre-benefits wording back beside 25–28**, with `field_map` / `boldsign_template_id` / titles copied UNCHANGED from 25–28 (so the same 4-page coordinates). `send-agreement.ts` sends 29–32 while the `portal_licensing` feature switch is off for the client's member — the production default from v914 — and 25–28 while it is on. Proven 2026-09-28 by a sandbox send on plan 245 (old wording, fields placed correctly).
+>
 > **Checking a layout with `agreement_pdf_draft`:** since v887 the tool renders with `{ format: "Letter", margin: 0 }` — the same options every real agreement sender passes to `renderHtmlToPdf`. Before that html2pdf added its default margin on top of the body's `@page` margin, so a tool-made PDF was NOT the PDF clients receive and was the wrong basis for mapping fields.
 
 ### Signer field structure
