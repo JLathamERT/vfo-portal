@@ -225,17 +225,18 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   const retVfos = round2(retAmt - retLicence - legAmt(storedMember, plan?.retainer_rev_paid, retShareBase) - legAmt(storedPlanner, plan?.retainer_planner_paid, retShareBase) - legAmt(storedStrat, plan?.retainer_strat_paid, retShareBase))
   const implVfos = round2(implAmt - legAmt(storedMember, plan?.implementation_rev_paid, implAmt) - legAmt(storedPlanner, plan?.implementation_planner_paid, implAmt) - legAmt(storedStrat, plan?.implementation_strat_paid, implAmt))
 
+  // Display order (Jake, 2026-09-28, every plan): VFO Services, Member, Tax planner,
+  // Strategic partner, VFO Portal. Order is display-only — VFO Services is still the
+  // RESIDUAL (retVfos / implVfos), computed after every other payee.
+  // The strategic partner is unnamed on purpose: the partner company is
+  // members.member_type, which this payload does not carry, and split_type is the
+  // preset LABEL ("Strategic Partner"), not the company. Same wording as Map1PricingSplitCard.
   const rows = [
+    { key: 'vfos', name: 'VFO Services', stored: storedVfos, retStatus: null, implStatus: null },
     { key: 'member', name: 'Member', stored: storedMember, retStatus: plan?.retainer_rev_paid, implStatus: plan?.implementation_rev_paid },
     { key: 'planner', name: plannerName ? `Tax planner — ${plannerName}` : 'Tax planner', stored: storedPlanner, retStatus: plan?.retainer_planner_paid, implStatus: plan?.implementation_planner_paid },
-    // Sits above VFO Services so the residual stays the last line, the way it reads on
-    // MAP 1 and the way the arithmetic runs.
-    // Unnamed on purpose: the partner company is members.member_type, which this
-    // payload does not carry, and split_type is the preset LABEL ("Strategic Partner"),
-    // not the company. Same wording as Map1PricingSplitCard.
     ...(hasStrategic ? [{ key: 'strat', name: 'Strategic partner', stored: storedStrat, retStatus: plan?.retainer_strat_paid, implStatus: plan?.implementation_strat_paid }] : []),
     ...(retLicence > 0 ? [{ key: 'portal', name: 'VFO Portal (client portal licence)', stored: 0, retStatus: null, implStatus: null }] : []),
-    { key: 'vfos', name: 'VFO Services', stored: storedVfos, retStatus: null, implStatus: null },
   ]
 
   const plannerUnallocated = storedPlanner > 0 && plan?.tax_planner_id == null
