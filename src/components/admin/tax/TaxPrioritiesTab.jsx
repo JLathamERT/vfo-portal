@@ -5871,6 +5871,9 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
   const [selectedPlan, setSelectedPlan] = useState(null)
   const [taxEnabled, setTaxEnabled] = useState(false)
   const [allProgress, setAllProgress] = useState({})
+  // Each plan's allocated specialists, for the list's per-specialist Tax 5a / Tax 6
+  // counts (the same set the plan view's hero counts over).
+  const [allSpecialists, setAllSpecialists] = useState({})
   const [plannerExperts, setPlannerExperts] = useState([])
   const autoSelectedRef = useRef(false)
   // Planners never receive load_data, so the Tax 5 "+ Add Specialist" picker
@@ -5941,15 +5944,21 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
       const enabled = programName === 'VFO Tax Planning' || (map1Progress.progress || []).some(p => p.status === 'Tax priorities tab enabled')
       setTaxEnabled(enabled)
       const progressMap = {}
+      const specialistMap = {}
       await Promise.all(scopedPlans.map(async plan => {
-        const pd = await callApi('tax_load_progress', { tax_plan_id: plan.id })
+        const [pd, sd] = await Promise.all([
+          callApi('tax_load_progress', { tax_plan_id: plan.id }),
+          callApi('tax_load_specialists', { tax_plan_id: plan.id }).catch(() => ({ specialists: [] })),
+        ])
         progressMap[plan.id] = {}
         ;(pd.progress || []).forEach(p => {
           const key = p.tax_specialist_id ? `${p.task_id}_${p.tax_specialist_id}` : p.task_id
           progressMap[plan.id][key] = p
         })
+        specialistMap[plan.id] = sd?.specialists || []
       }))
       setAllProgress(progressMap)
+      setAllSpecialists(specialistMap)
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -6003,10 +6012,61 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
     // predicate as the track view's isRapidHidden and the backend's `rapid`).
     const rapidHidden = (t) => !!plan?.rapid_route && !plan?.roi_meeting_skipped_at
       && (t.status_options === 'tax_presentation_link' || t.name === 'ROI Presentation')
-    const allTasks = phases.filter(p => p.name !== 'Tax 5 - Education & DD (Specialist Allocation)' && p.name !== 'Tax 5 - Education & DD (Post Allocation)').flatMap(p => p.program_client_tasks || []).filter(t => t.status_options !== 'auto' && !amendNotApplicable(t) && !(redLightHidden && t.status_options === 'tax_refund') && !rapidHidden(t))
-    if (allTasks.length === 0) return 'not started'
-    if (allTasks.every(t => prog[t.id]?.status)) return 'completed'
-    if (allTasks.some(t => prog[t.id]?.status)) return 'in progress'
+    // The label is the SAME count as the plan view's hero ("N% completed") —
+    // it used to require a saved status on every step, which no plan could meet:
+    // four steps are proven by a plan stamp instead, the Tax 1 info sub-steps are
+    // not counted, and Tax 6 is saved per SPECIALIST, never plan-wide (2026-09-29).
+    // Keep in step with TaxPlanTrackView's isTaskStatused / isStepExcluded /
+    // heroCountedTasks.
+    const roiSkipped = !!plan?.roi_meeting_skipped_at
+    const done = (t) => {
+      if (t.status_options === 'tax_hlm_confirm') return !!plan?.tax4_meeting_date
+      if (t.status_options === 'tax_presentation_link') return !!plan?.presentation_send_date
+      if (t.status_options === 'tax_returns_request') return !!plan?.tax_returns_received_at
+      if (t.status_options === 'tax_generate_presentation') return !!plan?.generated_presentation_at
+      if (t.status_options === 'assess_form' || t.name === 'Assess tax planning opportunities (and enter presentation details)') {
+        return !!prog[t.id]?.status || !!plan?.assess_form_submitted_at
+      }
+      if (t.status_options === 'tax_refund') {
+        const st = prog[t.id]?.status
+        return st === 'Proceed' || st === 'Stopped' || plan?.deposit_refund_status === 'succeeded'
+      }
+      if (t.status_options === 'tax_planner_select' || t.name === 'Allocate to Advanced Tax Planner' || t.name === 'Allocate Team Member / Tax Planner') {
+        return plan?.tax_planner_id != null
+      }
+      if (t.name === 'Additional information required') {
+        const st = prog[t.id]?.status
+        return !!st && (st !== 'Additional info required' || !!plan?.additional_info_received_at)
+      }
+      if (t.status_options === 'tax_3_decision') return !!prog[t.id]?.status || roiSkipped
+      if (t.status_options === AMEND_FEE_CODE) return !!prog[t.id]?.status || !!plan?.fee_amended_at_tax4
+      if (t.status_options === AMEND_FEE_TAX5_CODE) return !!prog[t.id]?.status || !!plan?.fee_amended_at_tax5
+      if (t.status_options === 'tax_implement_decision') return !!plan?.implementation_decision
+      return !!prog[t.id]?.status
+    }
+    const roiSkipSet = (t) => ['tax_3_decision', 'assess_form', 'tax_generate_presentation', 'tax_presentation_link'].includes(t.status_options)
+      || t.name === 'Assess tax planning opportunities (and enter presentation details)'
+      || t.name === 'Generate and download presentation'
+      || t.name === 'ROI Presentation'
+    const excluded = (t) => (roiSkipped && roiSkipSet(t) && t.status_options !== 'tax_3_decision' && !done(t))
+      || amendNotApplicable(t)
+      || (redLightHidden && t.status_options === 'tax_refund')
+      || (t.status_options === 'tax_presentation_link' && plan?.tax_route === 'direct')
+      || rapidHidden(t)
+    const specs = allSpecialists[plan.id] || []
+    const byName = (n) => phases.find(p => p.name === n)
+    const nonAuto = (ph) => (ph?.program_client_tasks || []).filter(t => t.status_options !== 'auto')
+    const before = phases.filter(p => ['Set Up', 'Tax 1 - Diagnostic', 'Tax 2 - Deeper Dive', 'Tax 3 - ROI Meeting', 'Tax 4 - Tax Plan Review'].includes(p.name))
+      .flatMap(ph => nonAuto(ph).filter(t => !(ph.name === 'Tax 1 - Diagnostic' && ['Email to obtain information required sent', 'Information received', 'Information passed to VFO-L'].includes(t.name))))
+      .filter(t => !excluded(t))
+    const tax5a = nonAuto(byName('Tax 5 - Education & DD (Specialist Allocation)')).filter(t => t.status_options !== 'specialist_select')
+    const tax5b = nonAuto(byName('Tax 5 - Education & DD (Post Allocation)')).filter(t => !excluded(t))
+    const tax6 = nonAuto(byName('Tax 6 - Implementation'))
+    const perSpec = (tasks) => specs.flatMap(s => tasks.map(t => !!prog[`${t.id}_${s.id}`]?.status))
+    const flags = [...before.map(done), ...perSpec(tax5a), ...tax5b.map(done), ...perSpec(tax6)]
+    if (flags.length === 0) return 'not started'
+    if (flags.every(Boolean)) return 'completed'
+    if (flags.some(Boolean)) return 'in progress'
     return 'not started'
   }
 
