@@ -149,6 +149,8 @@ Identical to the legacy chain: the retainer is fully collected at the retainer s
 
 On a 3-payment plan the retainer is only **half** collected at the green click, so the retainer revshare is **deferred** to the webhook that confirms the final retainer. It then fires **once, on the FULL `retainer_amount`** (initial + final) with `payment_kind='retainer'`, and `actions/tax/revshare.ts` needed **no change** — it already takes its payment amount from `retainer_amount`.
 
+**How the admin surfaces show it.** The Accounting Payments rows (`clearedTaxPayments`) book the initial retainer with every share leg waiting and the whole retainer split on the Final Retainer row; since 2026-09-30 the plan's **Pricing & revenue split card** (`tax/PricingSplitCard.jsx`) says the same — on a 3-payment plan (the shared `isThreePaymentPlan`) it shows Initial / Final / Implementation tiles and columns, the Initial column dashed (*paid with final retainer*) and the Final column carrying the split on the FULL `retainer_amount`. 2-payment and legacy plans keep the single Retainer column.
+
 **What holds it until then is one gate, and it is not the obvious one.** The sweep's *candidate* precondition is `retainer_receipt_number`, and that is stamped at the **INITIAL** payment — so the sweep sees the plan as a candidate the entire time it is waiting. The only thing preventing an early partial payout is that the legs stay **NULL** and the sweep is retry-only (it acts on `"Pending"`, not on NULL). **Never pre-stamp those legs.** See **#441** and **#377**.
 
 ### Idempotency and races
