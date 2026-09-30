@@ -8,6 +8,47 @@
 
 ---
 
+## 2026-09-30 (c) — The VFO Tax Diagnostic becomes PAY-FIRST; Deny refunds; Tracy + Tray belled on every new tax case; copy-link button
+
+Branch `claude/vfo-session-setup-2cb860`, both repos, ONE chat (which first shipped DIRECT unit 4 on another branch, see the 2026-09-28 entry). `vfo-admin-api` **v924 → v925**, both deployed from the branch (v925 = v924 + the team email's `[NEXT_STEP]`); `boldsign-webhook` untouched at v46. Action count **553 → 554** (AUTH `tax_diagnostic_deny`, `ADMIN_ONLY_ACTIONS` + `TAB_ACTIONS.tax_diagnostics`). Migrations `20260930120000_tax_diagnostic_pay_first.sql` (`tax_intake_requests.member_number` NOT NULL dropped; `deposit_refund_id` / `_amount` / `deposit_refunded_at`; `tax_diagnostics` status CHECK + `denied`, `denied_by` / `denied_at`; rule `TAX_new_case_created`; `TAX_diagnostic_submitted` rule text) and `20260930130000_tax_diagnostic_team_email_next_step.sql` (template 286: Tray in Cc, `[NEXT_STEP]`), both applied via MCP and committed. No new table (advisor GREEN at the baseline, a confirmation). Crons, `send_mode` 55 and route pages 37 unmoved. Flow of record [flows/tax-diagnostic.md](flows/tax-diagnostic.md); gotchas **#564–#566**.
+
+**Why.** Jake asked (in answer to the question "does the diagnostic go to the portal, get approved, then get a $500 request?") for the final button to take people straight to payment, for a form linked to a member to need no approval, and for the team to be able to deny a payment with an automatic refund. Asked on the same day: Tracy and Tray belled whenever a client is added through the portal or pays through the public form, and a copy button for the public link.
+
+**Answered, not built.** (1) The member's revenue-share confirmation email ALREADY shows the $300 portal licence: an orange box under *Your revenue share* on the member and planner emails, above the schedule on the strategic partner's (rendered in words for Jake). (2) Portal access starts at retainer PAYMENT, before Client decision 1; a retainer refund revokes it. Jake first asked for an implementation-stage stop to revoke it too, then **reversed**: "the member already paid the fee, leave as is". (6) The deposit waiver and Direct eligibility open at the SAME moment: 2+ distinct clients past Client decision 1 with the client's Proceed/Confirm, not refunded (`TAX_DIRECT_MIN_CLIENTS` is an alias of the waiver threshold). It is not the planner-review Proceed, which releases the $250 team share.
+
+**Built.**
+- **Pay-first submit** (`tax_diagnostic_submit`, only when the page sends `pay_first: true`, #564). **One member named:** auto-approved (`confirmed`, `confirmed_by='Tax Diagnostic form (auto)'`). The intake row is minted and the payer goes straight to `/tax-deposit-pay`: the client if *I am the client*, else the member. The case is created at settle, or **at once when that member already qualifies for the waiver**. Jake accepted trusting a public pick of such a member's name; the pick is server-resolved to exactly one member. **"No one":** an intake with NO member, payer client; it waits `new` after payment. **Two-member name, or a member payer with no email:** queued as before. Page: **Proceed** button, new intro, waived/queued thank-you messages.
+- **Confirm on a paid lead** (`confirmPaidLead`): pick the member, and `finalizeTaxIntake` creates the case. A sandbox lead links to a Test Member only, and a live lead never to one.
+- **Deny** (`tax_diagnostic_deny`): latched, refunds **$500, never the card fee** (Jake: "same as everywhere else"), intake → `refunded`, no email.
+- **Dismiss** closes an unpaid pay-first intake: any open Checkout is expired first, the intake moves to `dismissed`, and the choice page reads `closed` (*"This payment link is no longer active."*). It refuses a paid deposit.
+- **Nullable member** (#565): finalize returns `awaiting_member`. The webhook raises the queue bell (plus Tray) instead of a Jake failure bell. The sweep retry pass skips the row. The checkout mints on the row's stamped sandbox/account.
+- **Bells:** `TAX_new_case_created` (FYI, Tracy + Tray) comes from `finalizeTaxIntake` on every route: portal, client link, and diagnostic paid or waived. The queue bell `TAX_diagnostic_submitted` now fires only when the team must act.
+- **Team email 286:** Tray in Cc (Jake noticed she was never on it). Its "Nothing has been created yet" line is replaced by `[NEXT_STEP]`, one of four sentences per outcome. Copy approved before the edit.
+- **Dev-server testing** (#566): a localhost Origin may pick the Test Member and mints leads in sandbox.
+- **Tax Diagnostics tab:** a one-click **copy button** for the public link; the lead box (Confirm / Deny and refund / Dismiss); a Denied filter; auto-approved rows; a pay-first first step in the deposit track.
+
+**LIVE-PROVEN** (Jake, dev server vs v924/v925, sandbox on 59524):
+- auto-approve by card → case (client 357 / plan 253) + the Tracy/Tray *Tax Diagnostic paid* bells
+- a lead paid → the queue bell to five people incl. Tray → Confirm to 59524 → case (358/254)
+- a lead paid → **Deny** → `re_…` $500.00 refunded, $15.24 card fee kept, no case
+- an unpaid lead → **Dismiss** → intake `dismissed`; load answered `closed` and checkout refused (probed by curl)
+- a member-portal intake → *New tax client added by Test Member: …* to Tracy + Tray
+- the team email with Tray in Cc
+- the copy button
+
+All fixtures were DELETED (3 clients, 3 plans, 5 intakes, 4 diagnostics, test bells); client 62 is again the only 59524 client. Gates: `deno check` 0; action count 554; build exit 0 (37 pages); advisor GREEN; **smoke 5/5 vs v925** (Jake).
+
+**OWED.**
+- The **waived-member path** (a member with 2+ qualifying clients: no payment, case at submit) is code-only.
+- **Dismiss with an open Checkout** (the expire arm) is code-only.
+- A lead paying by **ACH**, and Deny's refusal while it clears, are code-only.
+- The two-member-name queue with `pay_first` is code-only.
+- A card-paying lead hears nothing from VFO until the team picks the member.
+- The frontend publish is part of this ship.
+- User-side: sandbox Stripe payments + one refund; Drive deposit invoices/receipts for the three test clients; Gmail drafts (team emails, confirmations).
+
+---
+
 ## 2026-09-30 (b) — Tax planner list: "10 plans · 9 clients"
 
 Branch `claude/tax-planner-client-count`, both repos, same chat as the entry below. **Why:** Tax Planners → Search showed Carson Grover at **10** while his Clients tab listed **9** — the badge counted PLANS (`allocation_count`) and the tab lists one row per CLIENT; Henry Mennig holds two of his plans (92 stopped, 130 live). Jake chose to show both. **Built:** `tax_planners_load` returns `client_count` (distinct `client_id` over the same `tax_planner_id` rows, so it agrees with the Clients tab); `TaxPlannersPanel.jsx` `allocationLabel()` renders *"N plans · M clients"* on the list badge and the profile's Allocations field, falling back to the plan count alone when the field is absent. The count still includes stopped and sandbox plans (unchanged). `vfo-admin-api` **v923** (deployed from the branch before the click-test, #464), action count 553 unmoved, no migration. `deno check` 0, build exit 0 (37 pages); smoke not run — an isolated single-handler change. Jake click-tested on the dev server against v923 (Carson 10 plans · 9 clients).
