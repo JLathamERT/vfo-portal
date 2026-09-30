@@ -8,6 +8,10 @@
 
 ---
 
+## 2026-09-30 (b) — Tax planner list: "10 plans · 9 clients"
+
+Branch `claude/tax-planner-client-count`, both repos, same chat as the entry below. **Why:** Tax Planners → Search showed Carson Grover at **10** while his Clients tab listed **9** — the badge counted PLANS (`allocation_count`) and the tab lists one row per CLIENT; Henry Mennig holds two of his plans (92 stopped, 130 live). Jake chose to show both. **Built:** `tax_planners_load` returns `client_count` (distinct `client_id` over the same `tax_planner_id` rows, so it agrees with the Clients tab); `TaxPlannersPanel.jsx` `allocationLabel()` renders *"N plans · M clients"* on the list badge and the profile's Allocations field, falling back to the plan count alone when the field is absent. The count still includes stopped and sandbox plans (unchanged). `vfo-admin-api` **v923** (deployed from the branch before the click-test, #464), action count 553 unmoved, no migration. `deno check` 0, build exit 0 (37 pages); smoke not run — an isolated single-handler change. Jake click-tested on the dev server against v923 (Carson 10 plans · 9 clients).
+
 ## 2026-09-30 — 3-payment Pricing card, Tax Planning links open the right program, clickable Accounting rows, specialist name links
 
 Branch `claude/vfo-session-setup-862005`, react only, ONE chat. **Frontend-only** — `vfo-admin-api` untouched at v922, `boldsign-webhook` at v46, no migration, no action (553 unmoved), route pages 37 unmoved. A one-line backend change (an `expertId` on the global Payments loader's specialist rows) was written and REVERTED in the same chat: that loader's only specialist source (`specialist_onboarding` background checks) holds 0 payments, so it would have made nothing clickable.
