@@ -23,6 +23,7 @@ function LinkCard({ row }) {
   return (
     <OutstandingCard
       name={row.name}
+      expertId={row.expertId}
       subtitle={row.sentAt ? `Link sent ${shortDate(row.sentAt)}` : 'Link not sent yet'}
       badge={badge}
       amount={row.amount}

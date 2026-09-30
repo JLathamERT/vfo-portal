@@ -5,7 +5,9 @@ import { inPeriod } from './holisticShared'
 import { clearedPipPurchases } from './pipShared'
 import { PendingNote, HeldNote, heldReason, isMoneyMappingLeg } from './shareLegState'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
-import { ClientNameLink } from '../shared/personLinks'
+import { ClientNameLink, MemberNameLink, clientPagePath } from '../shared/personLinks'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import { useNavigate } from 'react-router-dom'
 
 // Accounting > VFO Services > Additional PIP Reconciliation. Pick a year → grouped BY
 // CLIENT: each client with additional-PIP activity that year and the revenue split from
@@ -21,6 +23,7 @@ import { ClientNameLink } from '../shared/personLinks'
 // stays an attribution view of the configured shares (#363).
 
 export default function PipReconciliationPanel({ embedded = false }) {
+  const navigate = useNavigate()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -56,7 +59,7 @@ export default function PipReconciliationPanel({ embedded = false }) {
     for (const p of payments) {
       if (!inPeriod(p.clearedAt, year, -1)) continue
       const k = p.clientId
-      const t = map[k] || (map[k] = { clientId: k, clientName: p.clientName, memberName: p.memberName || '—', member: 0, mm: 0, vfos: 0, memberPending: 0, mmPending: 0, vfosPending: 0, memberHeldSus: 0, memberHeldPau: 0, memberHeldArr: 0, mmHeldSus: 0, mmHeldPau: 0, mmHeldArr: 0 })
+      const t = map[k] || (map[k] = { clientId: k, clientName: p.clientName, memberNumber: p.memberNumber || null, memberName: p.memberName || '—', member: 0, mm: 0, vfos: 0, memberPending: 0, mmPending: 0, vfosPending: 0, memberHeldSus: 0, memberHeldPau: 0, memberHeldArr: 0, mmHeldSus: 0, mmHeldPau: 0, mmHeldArr: 0 })
       if (!t.memberName && p.memberName) t.memberName = p.memberName
       const pending = p.memberState?.tone === 'pending'
       // The share figures stay exactly as they were — this view attributes configured
@@ -68,13 +71,13 @@ export default function PipReconciliationPanel({ embedded = false }) {
       if (isMoneyMappingLeg(p.memberState, p.decision)) {
         t.mm += p.member
         if (held === 'suspended') t.mmHeldSus += p.member
-        else if (held === 'paused') t.mmHeldPau += p
+        else if (held === 'paused') t.mmHeldPau += p.member
         else if (held === 'arrears') t.mmHeldArr += p.member
         else if (pending) t.mmPending += p.member
       } else {
         t.member += p.member
         if (held === 'suspended') t.memberHeldSus += p.member
-        else if (held === 'paused') t.memberHeldPau += p
+        else if (held === 'paused') t.memberHeldPau += p.member
         else if (held === 'arrears') t.memberHeldArr += p.member
         else if (pending) t.memberPending += p.member
       }
@@ -126,9 +129,10 @@ export default function PipReconciliationPanel({ embedded = false }) {
             <span style={{ textAlign: 'right' }}>{money(tot.vfos)}<PendingNote amount={tot.vfosPending} money={money} /></span>
           </div>
           {clients.map(c => (
-            <div key={c.clientId} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
-              <span><ClientNameLink clientId={c.clientId} tab="pip" style={{ fontWeight: 600 }}>{c.clientName}</ClientNameLink></span>
-              <span style={{ color: 'var(--vfo-muted)' }}>{c.memberName}</span>
+            <div key={c.clientId} onClick={c.clientId ? () => navigate(clientPagePath(c.clientId, { program: 1, tab: 'pip' })) : undefined} {...(c.clientId ? rowHoverProps : {})}
+              style={{ ...(c.clientId ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
+              <span><ClientNameLink clientId={c.clientId} program={1} tab="home" style={{ fontWeight: 600 }}>{c.clientName}</ClientNameLink></span>
+              <span style={{ color: 'var(--vfo-muted)' }}><MemberNameLink memberNumber={c.memberNumber}>{c.memberName}</MemberNameLink></span>
               <span style={{ textAlign: 'right', fontWeight: c.member ? 700 : 400, color: c.member ? '#16a34a' : 'var(--vfo-faint)' }}>{c.member ? money(c.member) : '—'}{c.member ? <><PendingNote amount={c.memberPending} money={money} /><HeldNote suspended={c.memberHeldSus} paused={c.memberHeldPau} arrears={c.memberHeldArr} money={money} /></> : null}</span>
               <span style={{ textAlign: 'right', fontWeight: c.mm ? 700 : 400, color: c.mm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.mm ? money(c.mm) : '—'}{c.mm ? <><PendingNote amount={c.mmPending} money={money} /><HeldNote suspended={c.mmHeldSus} paused={c.mmHeldPau} arrears={c.mmHeldArr} money={money} /></> : null}</span>
               <span style={{ textAlign: 'right', fontWeight: c.vfos ? 700 : 400, color: c.vfos ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{money(c.vfos)}{c.vfos ? <PendingNote amount={c.vfosPending} money={money} /> : null}</span>

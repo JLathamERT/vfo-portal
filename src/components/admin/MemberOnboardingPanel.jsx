@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { callApi } from '../../lib/api'
 import { NAVY, money } from './specialistRevenueShared'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
-import { MemberNameLink } from '../shared/personLinks'
+import { MemberNameLink, useOpenMember } from '../shared/personLinks'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 
 // Accounting > Members > Advisor/Accountant Onboarding. The one-time onboarding fee each
 // member paid when they went through onboarding. kind = 'advisor' | 'accountant'.
@@ -29,6 +30,7 @@ function StatusTag({ status, method }) {
 }
 
 export default function MemberOnboardingPanel({ kind = 'advisor', title }) {
+  const openMember = useOpenMember()
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -110,7 +112,7 @@ export default function MemberOnboardingPanel({ kind = 'advisor', title }) {
           {filtered.map(p => {
             const fullName = `${p.first_name || ''} ${p.last_name || ''}`.trim()
             return (
-              <div key={p.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '13px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+              <div key={p.id} onClick={p.member_number ? () => openMember(p.member_number) : undefined} {...(p.member_number ? rowHoverProps : {})} style={{ ...(p.member_number ? clickableRowStyle : null), background: 'var(--vfo-card)', display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '13px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
                 <span style={{ fontWeight: 600 }}>{fullName ? <MemberNameLink memberNumber={p.member_number}>{fullName}</MemberNameLink> : '—'}{p.acct_last4 && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · ••••{p.acct_last4}</span>}</span>
                 <span style={{ color: 'var(--vfo-muted)' }}>{p.member_number || '—'}</span>
                 <StatusTag status={p.payment_status} method={p.payment_method_type} />

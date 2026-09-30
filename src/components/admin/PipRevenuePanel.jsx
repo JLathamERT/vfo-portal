@@ -5,7 +5,9 @@ import { inPeriod } from './holisticShared'
 import { clearedPipPurchases } from './pipShared'
 import { ShareCell, PendingNote, SubNote, HeldNote, heldReason, isMoneyMappingLeg } from './shareLegState'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
-import { ClientNameLink, MemberNameLink } from '../shared/personLinks'
+import { ClientNameLink, MemberNameLink, clientPagePath } from '../shared/personLinks'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import { useNavigate } from 'react-router-dom'
 
 // Accounting > VFO Services > Additional PIP Revenue. Each additional-PIP purchase
 // (additional PIP meetings or Tax Planning) that cleared in the chosen month/year, with
@@ -42,6 +44,7 @@ const creditedNote = st => (st?.note === 'money mapping' ? { ...st, note: 'credi
 const dashCell = { textAlign: 'right', color: '#c7d0de' }
 
 export default function PipRevenuePanel({ embedded = false }) {
+  const navigate = useNavigate()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -137,9 +140,10 @@ export default function PipRevenuePanel({ embedded = false }) {
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No additional-PIP purchases cleared in this period.</div>
           )}
           {filtered.map(p => (
-            <div key={p.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+            <div key={p.id} onClick={p.clientId ? () => navigate(clientPagePath(p.clientId, { program: 1, tab: 'pip' })) : undefined} {...(p.clientId ? rowHoverProps : {})}
+              style={{ ...(p.clientId ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
               <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(p.clearedAt)}</span>
-              <span style={{ fontWeight: 600 }}><ClientNameLink clientId={p.clientId} tab="pip">{p.clientName}</ClientNameLink></span>
+              <span style={{ fontWeight: 600 }}><ClientNameLink clientId={p.clientId} program={1} tab="home">{p.clientName}</ClientNameLink></span>
               <span>{p.memberName ? <MemberNameLink memberNumber={p.memberNumber}>{p.memberName}</MemberNameLink> : '—'}{p.memberNumber && <span style={{ color: 'var(--vfo-faint)' }}> · {p.memberNumber}</span>}</span>
               <span style={{ color: 'var(--vfo-muted)' }}>{p.kindLabel}</span>
               <span style={{ textAlign: 'right', fontWeight: 700, borderRight: '1px solid var(--vfo-tint)', paddingRight: '12px' }}>{money(p.amount)}<SubNote text={p.paymentNote} /></span>

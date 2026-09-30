@@ -1,5 +1,23 @@
 import { useState, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { clientPagePath, useOpenMember, specialistProfilePath } from '../shared/personLinks'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+
+// Global admin page only (rows carry person/clientId): where a client row's payment
+// lives on the client page, read off the row key the loader builds (normalize.ts).
+// MAP 1 and PIP sit under Holistic (program 1); a tax plan needs its own program —
+// 'Tax Planning' is program 4 — or the client page hides it (see clientPagePath).
+function clientProgramOf(r) {
+  return /^tax-/.test(r.key || '') && r.category === 'Tax Planning' ? 4 : 1
+}
+function clientPlanPath(r) {
+  const k = r.key || ''
+  if (/^map1-/.test(k)) return clientPagePath(r.clientId, { program: 1, tab: 'map1' })
+  const m = /^tax-(\d+)-/.exec(k)
+  if (m) return clientPagePath(r.clientId, { program: clientProgramOf(r), tab: 'tax', plan: m[1] })
+  if (/^pip-/.test(k)) return clientPagePath(r.clientId, { program: 1, tab: 'pip' })
+  return clientPagePath(r.clientId, { tab: 'home' })
+}
 
 // Shared read-only renderer for the per-person Payments tabs (client / member /
 // specialist). Takes a list of normalized rows from the *_payments_load actions,
@@ -21,9 +39,10 @@ const STATUS = {
 }
 
 // Person-type tag colours for the global (admin) Payments page — shown in the Person
-// column + the "Who" filter chips. Absent on the per-person tabs (rows carry no person).
+// column. Absent on the per-person tabs (rows carry no person). No Client tag (Jake,
+// 2026-09-30): a client row already reads as one by its "Member: …" line, and the
+// tag only cost height.
 const PTYPE_TAG = {
-  Client:     { fg: '#1d4ed8', bg: 'var(--vfo-tint)' },
   Member:     { fg: '#7839ee', bg: '#f0e9fe' },
   Specialist: { fg: '#0e7490', bg: '#cffafe' },
 }
@@ -148,6 +167,7 @@ export default function PaymentsTable({
   const [bucketKey, setBucketKey] = useState(buckets ? buckets[0].key : null)  // 2-way money-in/out filter (global page)
   const [expanded, setExpanded] = useState({})   // group key -> true once its installments are shown
   const navigate = useNavigate()                 // global-page person links (client detail / member deep link)
+  const openMember = useOpenMember()
 
   if (!rows.length) {
     return (
@@ -223,12 +243,17 @@ export default function PaymentsTable({
   function personName(p) {
     if (p.personType === 'Client' && p.clientId) {
       return (
-        <div onClick={e => { e.stopPropagation(); navigate(`/admin/client/${p.clientId}`) }} style={{ fontWeight: 600, ...linkStyle }} {...linkHover}>{p.person}</div>
+        <div onClick={e => { e.stopPropagation(); navigate(clientPagePath(p.clientId, { program: clientProgramOf(p), tab: 'home' })) }} style={{ fontWeight: 600, ...linkStyle }} {...linkHover}>{p.person}</div>
       )
     }
     if (p.personType === 'Member' && p.memberNumber) {
       return (
-        <div onClick={e => { e.stopPropagation(); navigate(`/admin?member=${p.memberNumber}`) }} style={{ fontWeight: 600, ...linkStyle }} {...linkHover}>{p.person}</div>
+        <div onClick={e => { e.stopPropagation(); openMember(p.memberNumber) }} style={{ fontWeight: 600, ...linkStyle }} {...linkHover}>{p.person}</div>
+      )
+    }
+    if (p.personType === 'Specialist' && p.expertId) {
+      return (
+        <div onClick={e => { e.stopPropagation(); navigate(specialistProfilePath(p.expertId)) }} style={{ fontWeight: 600, ...linkStyle }} {...linkHover}>{p.person}</div>
       )
     }
     return <div style={{ fontWeight: 600 }}>{p.person}</div>
@@ -239,9 +264,21 @@ export default function PaymentsTable({
     if (p.personType !== 'Client' || !p.memberNumber) return null
     return (
       <div style={{ fontSize: '11px', color: 'var(--vfo-faint)', marginTop: '3px' }}>
-        Member: <span onClick={e => { e.stopPropagation(); navigate(`/admin?member=${p.memberNumber}`) }} style={linkStyle} {...linkHover}>{p.memberName || p.memberNumber}</span>
+        Member: <span onClick={e => { e.stopPropagation(); openMember(p.memberNumber) }} style={linkStyle} {...linkHover}>{p.memberName || p.memberNumber}</span>
       </div>
     )
+  }
+  // Whole-row click (global page only, like Client Overview): a client's payment
+  // opens that plan, a member's opens the member. Group parents keep their
+  // expand-on-click; their installment rows are clickable once expanded.
+  function rowClick(r) {
+    if (!hasPerson) return null
+    if (r.personType === 'Client' && r.clientId) return () => navigate(clientPlanPath(r))
+    if (r.personType === 'Member' && r.memberNumber) return () => openMember(r.memberNumber)
+    // No specialist row carries expertId yet (the loader's only specialist source,
+    // the onboarding background check, holds no payments) — ready for when one does.
+    if (r.personType === 'Specialist' && r.expertId) return () => navigate(specialistProfilePath(r.expertId))
+    return null
   }
 
   // One data row. Used for standalone rows AND, with child=true, the installment rows
@@ -253,8 +290,9 @@ export default function PaymentsTable({
     // deeper indent, a tie bar down their left edge and a slightly deeper tint than the
     // other children. Rows without subGroup (everything else) render exactly as before.
     const sub = child && !!r.subGroup
+    const onRow = rowClick(r)
     return (
-      <tr key={r.key} style={{ ...(onBehalf ? { background: '#fffaf2' } : null), ...(child ? { background: '#fbfcfe' } : null), ...(sub && !onBehalf ? { background: '#f3f7fe' } : null) }}>
+      <tr key={r.key} onClick={onRow || undefined} {...(onRow ? rowHoverProps : {})} style={{ ...(onRow ? clickableRowStyle : null), ...(onBehalf ? { background: '#fffaf2' } : null), ...(child ? { background: '#fbfcfe' } : null), ...(sub && !onBehalf ? { background: '#f3f7fe' } : null) }}>
         <td style={td} />
         <td style={{ ...td, whiteSpace: 'nowrap', color: 'var(--vfo-muted)', ...(child ? { paddingLeft: '14px' } : null), ...(sub ? { paddingLeft: '24px', borderLeft: '3px solid var(--vfo-border-chip)' } : null) }}>{fmtDate(r.date)}</td>
         {hasPerson && (

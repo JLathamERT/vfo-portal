@@ -4,7 +4,9 @@ import { NAVY, money } from './specialistRevenueShared'
 import { clearedPayments, inPeriod } from './holisticShared'
 import { ShareCell, PendingNote, SubNote, HeldNote, heldReason, isMoneyMappingLeg } from './shareLegState'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
-import { ClientNameLink, MemberNameLink } from '../shared/personLinks'
+import { ClientNameLink, MemberNameLink, clientPagePath } from '../shared/personLinks'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import { useNavigate } from 'react-router-dom'
 
 // Accounting > VFO Services > Holistic Planning Revenue. Each payment that actually
 // cleared (hit the bank) in the chosen month/year — connected member, Lite/Core/Max,
@@ -47,6 +49,7 @@ function TierTag({ tier }) {
 }
 
 export default function HolisticRevenuePanel({ embedded = false }) {
+  const navigate = useNavigate()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -145,9 +148,11 @@ export default function HolisticRevenuePanel({ embedded = false }) {
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No Holistic payments cleared in this period.</div>
           )}
           {filtered.map(p => (
-            <div key={p.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+            // Holistic (MAP 1) lives under program 1, as on Client Overview.
+            <div key={p.id} onClick={p.clientId ? () => navigate(clientPagePath(p.clientId, { program: 1, tab: 'map1' })) : undefined} {...(p.clientId ? rowHoverProps : {})}
+              style={{ ...(p.clientId ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
               <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(p.clearedAt)}</span>
-              <span style={{ fontWeight: 600 }}><ClientNameLink clientId={p.clientId} tab="map1">{p.clientName}</ClientNameLink>{p.plan === 'Quarterly' && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · Q{p.installment}</span>}</span>
+              <span style={{ fontWeight: 600 }}><ClientNameLink clientId={p.clientId} program={1} tab="home">{p.clientName}</ClientNameLink>{p.plan === 'Quarterly' && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · Q{p.installment}</span>}</span>
               <span>{p.memberName ? <MemberNameLink memberNumber={p.memberNumber}>{p.memberName}</MemberNameLink> : '—'}{p.memberNumber && <span style={{ color: 'var(--vfo-faint)' }}> · {p.memberNumber}</span>}</span>
               <span><TierTag tier={p.tier} /></span>
               <span style={{ textAlign: 'right', fontWeight: 700, borderRight: '1px solid var(--vfo-tint)', paddingRight: '12px' }}>{money(p.amount)}<SubNote text={p.paymentNote} /></span>

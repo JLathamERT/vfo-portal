@@ -30,6 +30,7 @@ function LicenseLinkCard({ item }) {
   return (
     <OutstandingCard
       name={item.specialist_name}
+      expertId={item.expert_id}
       subtitle={parts.join(' · ')}
       badge={badge}
       amount={99}

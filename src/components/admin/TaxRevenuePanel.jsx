@@ -5,7 +5,9 @@ import { inPeriod } from './holisticShared'
 import { clearedTaxPayments } from './taxShared'
 import { ShareCell, PendingNote, SubNote, HeldNote, heldReason, isMoneyMappingLeg } from './shareLegState'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
-import { ClientNameLink, MemberNameLink } from '../shared/personLinks'
+import { ClientNameLink, MemberNameLink, clientPagePath } from '../shared/personLinks'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import { useNavigate } from 'react-router-dom'
 
 // Accounting > VFO Services > Tax Planning Revenue. Each tax payment (retainer or
 // implementation) that cleared in the chosen month/year — connected member, program
@@ -61,6 +63,7 @@ function ProgramTag({ label }) {
 }
 
 export default function TaxRevenuePanel({ embedded = false }) {
+  const navigate = useNavigate()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -179,9 +182,10 @@ export default function TaxRevenuePanel({ embedded = false }) {
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No Tax payments cleared in this period.</div>
           )}
           {filtered.map(p => (
-            <div key={p.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', ...(p.band ? bandRow(p.band) : null) }}>
+            <div key={p.id} onClick={p.clientId ? () => navigate(clientPagePath(p.clientId, { program: p.programId, tab: 'tax', plan: p.planId })) : undefined} {...(p.clientId ? rowHoverProps : {})}
+              style={{ ...(p.clientId ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', ...(p.band ? bandRow(p.band) : null) }}>
               <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(p.clearedAt)}</span>
-              <span style={{ fontWeight: 600 }}><ClientNameLink clientId={p.clientId} tab="tax">{p.clientName}</ClientNameLink><span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · {p.kind}</span></span>
+              <span style={{ fontWeight: 600 }}><ClientNameLink clientId={p.clientId} program={p.programId} tab="home">{p.clientName}</ClientNameLink><span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · {p.kind}</span></span>
               <span>{p.memberName ? <MemberNameLink memberNumber={p.memberNumber}>{p.memberName}</MemberNameLink> : '—'}{p.memberNumber && <span style={{ color: 'var(--vfo-faint)' }}> · {p.memberNumber}</span>}</span>
               <span><ProgramTag label={p.tier} /></span>
               <span style={{ textAlign: 'right', fontWeight: 700, borderRight: '1px solid var(--vfo-tint)', paddingRight: '12px' }}>{money(p.amount)}<SubNote text={p.paymentNote} /><SubNote text={p.licence > 0 ? `${money(p.licence)} to VFO Portal (client portal licence)` : null} /></span>

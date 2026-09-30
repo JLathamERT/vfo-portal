@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../../lib/api'
 import { HELD_SUSPENDED_NOTE, HELD_PAUSED_NOTE, HELD_ARREARS_NOTE } from '../shareLegState'
-import { licenceDisbursementFor } from '../taxShared'
+import { licenceDisbursementFor, isThreePaymentPlan } from '../taxShared'
 
 // Pricing + revenue-split summary for a tax plan, sitting directly under the Tax Plan
 // hero. ADMIN (VFOS/ERT) SURFACE ONLY — the caller gates it out of the member and
@@ -105,6 +105,22 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   const retShareBase = Math.max(retAmt - retLicence, 0)
   const implAmt = money(plan?.implementation_amount)
   const totalFee = money(plan?.total_fee) > 0 ? money(plan?.total_fee) : retAmt + implAmt
+
+  // 3-payment shape (revised fee process, >= $31,000): the retainer is COLLECTED as an
+  // initial + a final payment, but its revenue share pays out ONCE, when the final
+  // retainer settles, on the FULL retainer_amount (flows/tax-fee-process.md "The
+  // deferred retainer revenue share"). So the initial column pays nobody and the final
+  // column carries the whole retainer's split — the same reading as the Accounting
+  // Payments rows (clearedTaxPayments). Every other plan keeps the one Retainer column.
+  const threePayment = isThreePaymentPlan(plan)
+  const initAmt = money(plan?.initial_retainer_amount)
+  const finalAmt = money(plan?.final_retainer_amount)
+  const finalCancelled = plan?.final_retainer_status === 'cancelled' || !!plan?.final_retainer_cancelled_at
+  const finalNote = finalCancelled ? 'Cancelled'
+    : plan?.final_retainer_status === 'succeeded' ? `Paid ${plan?.final_retainer_charge_date || ''}`
+      : plan?.final_retainer_status === 'processing' ? 'Payment in progress'
+        : plan?.final_retainer_status === 'declined' ? 'Charge declined — pay link sent'
+          : 'Not yet charged'
   const hasPricing = totalFee > 0
 
   const storedMember = money(plan?.member_share)
@@ -315,12 +331,19 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
         <div style={{ marginTop: '12px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 20px', marginBottom: '14px' }}>
             <div>
-              <div style={label}>Retainer</div>
-              <div style={value}>{fmt(retAmt)}</div>
+              <div style={label}>{threePayment ? 'Initial retainer' : 'Retainer'}</div>
+              <div style={value}>{fmt(threePayment ? initAmt : retAmt)}</div>
               <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>
                 {plan?.legacy_source ? `Paid ${plan?.retainer_date || ''} (old system)` : plan?.retainer_status === 'succeeded' ? `Paid ${plan?.retainer_date || ''}` : 'Not yet paid'}
               </div>
             </div>
+            {threePayment && (
+              <div>
+                <div style={label}>Final retainer</div>
+                <div style={value}>{fmt(finalAmt)}</div>
+                <div style={{ fontSize: '10px', color: finalCancelled ? '#b9451d' : 'var(--vfo-muted)' }}>{finalNote}</div>
+              </div>
+            )}
             <div>
               <div style={label}>Implementation</div>
               <div style={value}>{fmt(implAmt)}</div>
@@ -334,7 +357,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
             <div>
               <div style={label}>Total fee</div>
               <div style={value}>{fmt(totalFee)}</div>
-              <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>{plan?.split_type || 'No split type set'}</div>
+              <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>{plan?.split_type || 'No split type set'}{threePayment ? ' · 3 payments' : ''}</div>
             </div>
           </div>
 
@@ -343,7 +366,17 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
               <thead>
                 <tr>
                   <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }}>Pays out to</th>
-                  <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }}>Retainer {fmt(retAmt)}</th>
+                  {threePayment ? (
+                    <>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }}>Initial retainer {fmt(initAmt)}</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+                        Final retainer {fmt(finalAmt)}
+                        <div style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>pays the split on the full {fmt(retAmt)} retainer</div>
+                      </th>
+                    </>
+                  ) : (
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }}>Retainer {fmt(retAmt)}</th>
+                  )}
                   <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }}>Implementation {fmt(implAmt)}</th>
                 </tr>
               </thead>
@@ -351,6 +384,12 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
                 {rows.map(r => (
                   <tr key={r.key}>
                     <td style={{ padding: '7px 8px', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-border-soft)' }}>{r.name}</td>
+                    {threePayment && (
+                      <td style={{ padding: '7px 8px', textAlign: 'right', color: 'var(--vfo-muted)', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+                        —
+                        <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>{r.key === 'vfos' ? 'held until final retainer' : 'paid with final retainer'}</div>
+                      </td>
+                    )}
                     <td style={{ padding: '7px 8px', textAlign: 'right', color: retainerIsHistoric ? 'var(--vfo-muted)' : 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                       {/* A migrated retainer was collected on the old system, under the
                           two-way policy that predates the tax planner share. Deriving a

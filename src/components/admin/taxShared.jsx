@@ -28,7 +28,7 @@ const KNOWN_FEE_PROCESS_VERSIONS = ['2026-08-25']
 // nulling final only, and a buffer-band plan ($30,000.01-$30,999.99) is written that
 // way from the outset — with initial kept as the reversibility marker in both cases.
 // Final is the one truthful discriminator.
-function isThreePaymentPlan(r) {
+export function isThreePaymentPlan(r) {
   return KNOWN_FEE_PROCESS_VERSIONS.includes(r?.fee_process_version) && r?.final_retainer_amount != null
 }
 
@@ -106,6 +106,10 @@ export function clearedTaxPayments(rows) {
     const base = {
       clientName: r.client_name || `Client #${r.client_id}`,
       clientId: r.client_id,
+      // Row click → this plan on the client page. The program must ride along (see
+      // clientPagePath) or a Tax Planning plan opens on the Holistic tab and is hidden.
+      programId: Number(r.program_id) || 1,
+      planId: r.id,
       memberNumber: r.member_number || null,
       memberName: r.member_name || '',
       decision: r.member_revenue_decision || null,

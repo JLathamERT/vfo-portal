@@ -3,6 +3,8 @@ import { callApi } from '../../lib/api'
 import { NAVY, money, requestDate } from './specialistRevenueShared'
 import { PendingNote, HeldNote } from './shareLegState'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
+import { MemberNameLink, useOpenMember } from '../shared/personLinks'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 
 // Accounting > Specialists > VFO Specialist Member Reconciliation. Pick a year → every
 // member with their yearly totals from specialist revenue: member share (revenue share
@@ -27,7 +29,7 @@ import { AccountingTableSkeleton } from '../shared/Skeleton'
 // it contributes $0 to the member / money-mapping totals anyway — those are bucketed off
 // line.revenue_decision, not payout_status, so nothing about this year's figures moves.
 const PENDING_PAYOUT = new Set(['pending', 'awaiting_connect', 'failed'])
-const HELD_REASON = { held_member_suspended: 'suspended', held_member_paused: 'paused', held_member_arrears: 'in arrears' }
+const HELD_REASON = { held_member_suspended: 'suspended', held_member_paused: 'paused', held_member_arrears: 'arrears' }
 
 function memberName(m) {
   return m.name || `${m.first_name || ''} ${m.last_name || ''}`.trim() || '—'
@@ -49,6 +51,7 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
   const [error, setError] = useState('')
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
+  const openMember = useOpenMember()
 
   useEffect(() => { load() }, [])
 
@@ -186,9 +189,9 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
           </div>
           <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
             {rows.map(({ mn, m, t, cn }) => (
-              <div key={mn} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+              <div key={mn} onClick={mn ? () => openMember(mn) : undefined} {...(mn ? rowHoverProps : {})} style={{ ...(mn ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
                 <span style={{ color: 'var(--vfo-muted)' }}>{mn || '—'}</span>
-                <span style={{ fontWeight: 600 }}>{m ? memberName(m) : '—'}</span>
+                <span style={{ fontWeight: 600 }}>{m ? <MemberNameLink memberNumber={mn}>{memberName(m)}</MemberNameLink> : '—'}</span>
                 <span style={{ textAlign: 'right', fontWeight: t.member ? 700 : 400, color: t.member ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.member ? money(t.member) : '—'}{t.member ? <><PendingNote amount={t.memberPending} money={money} /><HeldNote suspended={t.memberHeldSus} paused={t.memberHeldPau} arrears={t.memberHeldArr} money={money} /></> : null}</span>
                 <span style={{ textAlign: 'right', fontWeight: t.mm ? 700 : 400, color: t.mm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.mm ? money(t.mm) : '—'}{t.mm ? <><PendingNote amount={t.mmPending} money={money} /><HeldNote suspended={t.mmHeldSus} paused={t.mmHeldPau} arrears={t.mmHeldArr} money={money} /></> : null}</span>
                 <span style={{ textAlign: 'right', fontWeight: t.vfos ? 700 : 400, color: t.vfos ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{money(t.vfos)}</span>

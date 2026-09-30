@@ -120,7 +120,7 @@ function entryLabel(entries, idx) {
   return `${eco} #${n}`
 }
 
-export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, section }) {
+export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, section, onBackToOrigin }) {
   if (section === 'specialist_onboarding') return <SpecialistOnboarding />
   if (section === 'specialist_kpis') return <SpecialistKpiPanel experts={allExperts} ecoMap={ecoMap} />
   if (section === 'specialist_showroom') return (
@@ -156,6 +156,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
   const [specialistTab, setSpecialistTab] = useState('profile')
   const [profileDropOpen, setProfileDropOpen] = useState(false)
   const [searchParams] = useSearchParams()
+  const [profileOrigin, setProfileOrigin] = useState(null)
 
   // Filter the specialist list by status and by ecosystem. Ecosystems are
   // multi-valued per specialist (sourced from ecoMap), so `get` returns the
@@ -165,15 +166,36 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
     { key: 'ecosystem', label: 'Ecosystem', options: ECOSYSTEMS, get: e => ecoMap[e.id] || [] },
   ]
 
-  // Deep-link from the Stage 5 onboarding links: /admin?...&expert=<id> opens
-  // that specialist's detail in the Search Specialists view.
+  // Deep-link: /admin?...&expert=<id> opens that specialist's detail in the Search
+  // Specialists view — on Edit for the Stage 5 onboarding links, on the read-only
+  // Profile when the link says view=profile (SpecialistNameLink, Accounting).
+  // Consumed ONCE per link (keyed on its _n stamp): AdminPortal strips the URL with
+  // replaceState, but react-router's searchParams keeps the old value, so without this
+  // every later visit to this tab would re-open the same specialist.
   useEffect(() => {
     const eid = searchParams.get('expert')
     if (eid && allExperts) {
       const exp = allExperts.find(x => String(x.id) === String(eid))
-      if (exp) { handleEditSelect(exp); setSpecialistTab('edit') }
+      const stamp = `${eid}:${searchParams.get('_n') || ''}`
+      let consumed = false
+      try { consumed = sessionStorage.getItem('specialistDeepLinkConsumed') === stamp } catch { /* private mode */ }
+      if (exp && !consumed) {
+        try { sessionStorage.setItem('specialistDeepLinkConsumed', stamp) } catch { /* private mode */ }
+        handleEditSelect(exp)
+        setSpecialistTab(searchParams.get('view') === 'profile' ? 'profile' : 'edit')
+        setProfileOrigin(searchParams.get('origin') || null)
+      }
     }
   }, [searchParams, allExperts])
+
+  // "Back to list" returns to the tab the deep link came from (AdminPortal decides
+  // which tabs it honours); a specialist picked from this list has no origin.
+  function backToList() {
+    setSelectedExpert(null); setEditingId(null); setSpecialistTab('profile')
+    const origin = profileOrigin
+    setProfileOrigin(null)
+    if (origin && onBackToOrigin) onBackToOrigin(origin)
+  }
 
   function showStatus(which, type, msg) {
     if (which === 'add') { setAddStatusType(type); setAddStatus(msg); setTimeout(() => setAddStatus(''), 4000) }
@@ -636,7 +658,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
           <div>
             {sortByJoin((editSearch ? allExperts.filter(e => e.name.toLowerCase().includes(editSearch)) : allExperts).filter(e => matchesFilter(e, specFilterGroups, specFilter)), specSort).map(expert => (
               <div key={expert.id}
-                onClick={() => handleEditSelect(expert)}
+                onClick={() => { setProfileOrigin(null); handleEditSelect(expert) }}
                 style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 14px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', cursor: 'pointer' }}>
                 <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', background: 'var(--vfo-border)', flexShrink: 0 }}>
                   {expert.headshot_image && <img src={HEADSHOT_SUPABASE + encodeURIComponent(expert.headshot_image)} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
@@ -661,7 +683,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
 
       {activeTab === 'edit' && selectedExpert && (
         <div>
-          <button onClick={() => { setSelectedExpert(null); setEditingId(null); setSpecialistTab('profile') }} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to list</button>
+          <button onClick={backToList} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to list</button>
 
           <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '1px solid var(--vfo-border)', position: 'relative', zIndex: 50 }}>
             <div style={{ position: 'relative' }} onMouseEnter={() => setProfileDropOpen(true)} onMouseLeave={() => setProfileDropOpen(false)}>

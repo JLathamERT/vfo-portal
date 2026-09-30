@@ -1,8 +1,19 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { callApi, redraftInstallmentEmail, resendContinuationSetupLink, resendFirstPaymentLink } from '../../lib/api'
 import { money, StatusPill } from './specialistRevenueShared'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
-import { MemberNameLink, ClientNameLink } from '../shared/personLinks'
+import { MemberNameLink, ClientNameLink, SpecialistNameLink, clientPagePath } from '../shared/personLinks'
+
+// Where a map1 / tax card's "Open plan" goes. MAP 1 lives under Holistic (program 1).
+// A tax card needs the plan's program_id or the client page opens the wrong program
+// and hides the plan — the continuation items do not carry it, so they get no button.
+function planPathFor(kind, item) {
+  if (!item?.client_id) return null
+  if (kind === 'map1') return clientPagePath(item.client_id, { program: 1, tab: 'map1' })
+  if (kind === 'tax' && item.program_id) return clientPagePath(item.client_id, { program: item.program_id, tab: 'tax', plan: item.row_id })
+  return null
+}
 
 const BADGE_FIRST = { label: 'First payment', color: '#125ecc' }
 const BADGE_CONTINUATION = { label: 'Payment continuation', color: '#e06717' }
@@ -134,17 +145,25 @@ function ResendButton({ send, onDone }) {
 }
 
 // One expandable person card. Per-row open state lives here because hooks cannot
-// be used inside the .map calls below. clientId is optional — specialist cards
-// have no client, so their name stays plain text. `action` is an optional
-// right-edge control (the Resend button) — it must not toggle the card.
-export function OutstandingCard({ name, clientId, subtitle, badge, amount, caption, action, children }) {
+// be used inside the .map calls below. The name links to the client profile
+// (clientId, with `program` when known) or, on specialist cards, to the specialist
+// profile (expertId); with neither it stays plain text. The header click still
+// expands the card (Jake, 2026-09-30) — the plan is reached from the expanded body
+// via `planPath`. `action` is an optional right-edge control (the Resend button) —
+// it must not toggle the card.
+export function OutstandingCard({ name, clientId, program, planPath, expertId, subtitle, badge, amount, caption, action, children }) {
   const [open, setOpen] = useState(false)
+  const navigate = useNavigate()
+  const nameEl = !name ? '-'
+    : clientId ? <ClientNameLink clientId={clientId} program={program} tab="home">{name}</ClientNameLink>
+      : expertId ? <SpecialistNameLink expertId={expertId}>{name}</SpecialistNameLink>
+        : name
   return (
     <div style={cardStyle}>
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', cursor: 'pointer' }}>
         <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px' }}>{open ? '▾' : '▸'}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{name ? <ClientNameLink clientId={clientId}>{name}</ClientNameLink> : '-'}</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{nameEl}</div>
           <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{subtitle}</div>
         </div>
         <StatusPill label={badge.label} color={badge.color} />
@@ -157,6 +176,9 @@ export function OutstandingCard({ name, clientId, subtitle, badge, amount, capti
       {open && (
         <div style={{ background: 'var(--vfo-input)', borderTop: '1px solid var(--vfo-border-soft)', padding: '14px 18px' }}>
           {children}
+          {planPath && (
+            <button type="button" onClick={() => navigate(planPath)} style={{ ...ghostBtn, marginTop: '12px' }}>Open plan →</button>
+          )}
         </div>
       )}
     </div>
@@ -172,6 +194,8 @@ function FirstLinkCard({ item, kind, showProgram, onDone }) {
     <OutstandingCard
       name={item.client_name}
       clientId={item.client_id}
+      program={kind === 'map1' ? 1 : item.program_id}
+      planPath={planPathFor(kind, item)}
       subtitle={<><MemberPrefix memberNumber={item.member_number} />{parts.join(' · ')}</>}
       badge={BADGE_FIRST}
       amount={item.amount_due}
@@ -246,6 +270,8 @@ function ContinuationCard({ item, kind, onDone }) {
     <OutstandingCard
       name={item.client_name}
       clientId={item.client_id}
+      program={kind === 'map1' ? 1 : item.program_id}
+      planPath={planPathFor(kind, item)}
       subtitle={subtitle}
       badge={BADGE_CONTINUATION}
       amount={item.total_remaining}
@@ -300,6 +326,8 @@ function ImplementationCard({ item }) {
     <OutstandingCard
       name={item.client_name}
       clientId={item.client_id}
+      program={item.program_id}
+      planPath={planPathFor('tax', item)}
       subtitle={<><MemberPrefix memberNumber={item.member_number} />{parts.join(' · ')}</>}
       badge={BADGE_IMPLEMENTATION}
       amount={item.amount_due}
@@ -333,6 +361,8 @@ function InstallmentCard({ item, onDone }) {
     <OutstandingCard
       name={item.client_name}
       clientId={item.client_id}
+      program={1}
+      planPath={planPathFor('map1', item)}
       subtitle={<><MemberPrefix memberNumber={item.member_number} />{parts.join(' · ')}</>}
       badge={BADGE_INSTALLMENT}
       amount={item.amount_due}
@@ -365,6 +395,7 @@ function RecurringCard({ item }) {
   return (
     <OutstandingCard
       name={item.specialist_name}
+      expertId={item.expert_id}
       subtitle={parts.join(' · ')}
       badge={BADGE_RECURRING}
       amount={item.monthly_amount}
@@ -386,6 +417,7 @@ function RequestCard({ item }) {
   return (
     <OutstandingCard
       name={item.specialist_name}
+      expertId={item.expert_id}
       subtitle={parts.join(' · ')}
       badge={BADGE_ONEOFF}
       amount={item.gross_amount}
