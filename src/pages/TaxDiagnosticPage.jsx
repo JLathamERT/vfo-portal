@@ -32,6 +32,9 @@ async function post(body) {
 
 export default function TaxDiagnosticPage() {
   const [status, setStatus] = useState('loading')
+  // What the submit decided (pay-first, 2026-09-30): 'waived' = the named member
+  // qualifies, no payment; 'queued' = the team links the member and sends the link.
+  const [outcome, setOutcome] = useState('')
   const [error, setError] = useState('')
 
   const [completedBy, setCompletedBy] = useState('')
@@ -88,6 +91,8 @@ export default function TaxDiagnosticPage() {
   async function submitAnswers(answers) {
     const { ok, data } = await post({
       action: 'tax_diagnostic_submit',
+      // This page follows the pay step (2026-09-30); an older page never sends it.
+      pay_first: true,
       completed_by: completedBy,
       referrer_name: referrerNone ? '' : referrerName,
       referrer_none: referrerNone,
@@ -97,6 +102,9 @@ export default function TaxDiagnosticPage() {
       answers,
     })
     if (!ok) throw new Error(data?.error || 'Something went wrong — please try again.')
+    // A deposit is due: straight to the card-or-ACH choice page (TaxIntakeForm
+    // follows a returned url).
+    if (data?.pay_token) return { url: `/tax-deposit-pay?token=${encodeURIComponent(data.pay_token)}` }
     return data
   }
 
@@ -107,7 +115,12 @@ export default function TaxDiagnosticPage() {
     return <TokenShell maxWidth={520}><Message icon="!" color="#d93025" title="This form is not available" message={error} /></TokenShell>
   }
   if (status === 'thanks') {
-    return <TokenShell maxWidth={520}><Message icon="✓" color="#16a34a" title="Thank you." message="Your VFO Tax Diagnostic has been received. The VFO Services team will be in touch shortly." /></TokenShell>
+    const msg = outcome === 'waived'
+      ? 'Your VFO Tax Diagnostic has been received and no payment is needed. The VFO Services team will be in touch shortly.'
+      : outcome === 'queued'
+        ? 'Your VFO Tax Diagnostic has been received. The VFO Services team will be in touch shortly with the next step.'
+        : 'Your VFO Tax Diagnostic has been received. The VFO Services team will be in touch shortly.'
+    return <TokenShell maxWidth={520}><Message icon="✓" color="#16a34a" title="Thank you." message={msg} /></TokenShell>
   }
 
   const labelStyle = { fontSize: '12.5px', fontWeight: 600, color: 'var(--vfo-ink)', display: 'block', marginBottom: '6px', lineHeight: 1.45 }
@@ -193,13 +206,13 @@ export default function TaxDiagnosticPage() {
         publicMode
         publicIntake={null}
         onPublicSubmit={submitAnswers}
-        onDone={() => setStatus('thanks')}
+        onDone={(res) => { setOutcome(res?.waived ? 'waived' : res?.queued ? 'queued' : ''); setStatus('thanks') }}
         prelude={prelude}
         validatePrelude={validatePrelude}
         numberOffset={!completedBy ? 1 : completedBy === 'member' ? 2 : referred ? 3 : 2}
         title="VFO Tax Diagnostic"
-        intro="Please answer the questions below about the client. There is nothing to pay on this form — the VFO Services team will review it and be in touch."
-        submitLabel="Submit"
+        intro="Please answer the questions below about the client. When you press Proceed you will be taken to pay the $500 Tax Planning Deposit by card or bank transfer, unless no deposit is due."
+        submitLabel="Proceed"
         allowTestFill={import.meta.env.DEV}
         clientFilling={completedBy === 'client'}
       />

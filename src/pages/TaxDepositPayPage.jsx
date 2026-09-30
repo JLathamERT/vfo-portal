@@ -97,6 +97,13 @@ export default function TaxDepositPayPage() {
     </TokenShell>
   )
 
+  // A diagnostic the team dismissed (unpaid) or denied (paid, then refunded).
+  if (state === 'closed') return (
+    <TokenShell maxWidth={520}>
+      <Message tone="muted" title="This payment link is no longer active." message="Please contact your VFO Services team if you have any questions." />
+    </TokenShell>
+  )
+
   // A bank transfer in flight (the row says so, or the payer just came back from
   // Stripe having chosen ACH): nothing left to choose.
   if (state === 'processing' || (returnedPaid && returnedAch && state !== 'paid' && state !== 'completed')) return (

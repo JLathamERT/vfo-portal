@@ -7,24 +7,62 @@ import { TAX_INTAKE_QUESTIONS } from '../member/taxIntakeQuestions'
 // Tax Diagnostics — the queue of public /tax-diagnostic submissions (grantable
 // tab `tax_diagnostics`, backend TAB_ACTIONS.tax_diagnostics).
 //
-// Nothing is created by a submission. A person CONFIRMS the member (pre-selected
-// when the form named exactly one; a choice when the name matches several; a
-// free pick for a lead) and who pays the deposit (pre-set from "Who is
-// completing this form?", which a public page cannot verify). Confirm then runs
-// the ordinary intake pipeline: a waived member gets the case straight away,
-// otherwise the payer is emailed the review-and-pay link.
+// PAY-FIRST (2026-09-30). A form naming ONE member is approved by the form itself
+// (Confirmed, "Tax Diagnostic form (auto)"): the payer went straight to the
+// deposit page and the case is created when it clears — or at once when that
+// member's deposit is waived. A "No one" lead pays first and waits here (New) for
+// the team to choose the member (Confirm creates the case) or Deny (refunds the
+// $500). A name matching two members is queued as before: choose the member and
+// the payer, Confirm, and the deposit link email follows.
 
 const PUBLIC_URL = 'https://vfoportal.com/tax-diagnostic'
+const AUTO_CONFIRMED_BY = 'Tax Diagnostic form (auto)'
 const FILTERS = [
   { key: 'new', label: 'New' },
   { key: 'confirmed', label: 'Confirmed' },
   { key: 'dismissed', label: 'Dismissed' },
+  { key: 'denied', label: 'Denied' },
   { key: 'all', label: 'All' },
 ]
 const STATUS_CHIP = {
   new: { label: 'New', color: '#e06717' },
   confirmed: { label: 'Confirmed', color: '#1b9254' },
   dismissed: { label: 'Dismissed', color: '#64748b' },
+  denied: { label: 'Denied — refunded', color: '#d93025' },
+}
+
+// The public form's address with a one-click copy (hover shows "Copy link").
+function CopyLink({ url }) {
+  const [copied, setCopied] = useState(false)
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = url
+      document.body.appendChild(ta)
+      ta.select()
+      try { document.execCommand('copy') } finally { document.body.removeChild(ta) }
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1600)
+  }
+  return (
+    <button type="button" onClick={copy} title={copied ? 'Copied' : 'Copy link'}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', margin: '0 2px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+        border: `1px solid ${copied ? 'rgba(27,146,84,0.45)' : 'var(--vfo-border-strong)'}`, background: copied ? 'rgba(27,146,84,0.10)' : 'var(--vfo-card)',
+        color: copied ? '#1b9254' : 'var(--vfo-ink)', fontSize: '12.5px', fontWeight: 600 }}>
+      {url}
+      {copied
+        ? <span style={{ fontSize: '11.5px' }}>Copied</span>
+        : (
+          <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true" style={{ color: 'var(--vfo-muted)' }}>
+            <rect x="5" y="5" width="9" height="9" rx="1.8" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M11 5V3.8A1.8 1.8 0 0 0 9.2 2H3.8A1.8 1.8 0 0 0 2 3.8v5.4A1.8 1.8 0 0 0 3.8 11H5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+        )}
+    </button>
+  )
 }
 // The intake row a Confirm produced, in plain words.
 function intakeLabel(intake) {
@@ -45,9 +83,11 @@ function intakeLabel(intake) {
     case 'expired': return intake.deposit_failed_at
       ? 'Bank payment failed — link works again'
       : 'Payment page abandoned — the link still works'
-    case 'paid': return 'Deposit paid — creating the case'
+    case 'paid': return intake.member_number ? 'Deposit paid — creating the case' : 'Deposit paid — choose the member'
     case 'waived': return 'Deposit waived — case not created yet (press Retry)'
     case 'completed': return 'Case created'
+    case 'refunded': return 'Deposit refunded'
+    case 'dismissed': return 'Payment link closed'
     default: return intake.status
   }
 }
@@ -90,7 +130,7 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
     return filter === 'all' ? all : all.filter(d => d.status === filter)
   }, [data, filter])
   const counts = useMemo(() => {
-    const c = { new: 0, confirmed: 0, dismissed: 0, all: 0 }
+    const c = { new: 0, confirmed: 0, dismissed: 0, denied: 0, all: 0 }
     for (const d of data?.diagnostics || []) { c[d.status] = (c[d.status] || 0) + 1; c.all++ }
     return c
   }, [data])
@@ -102,7 +142,7 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
     <div style={{ maxWidth: '980px', margin: '0 auto', padding: '32px 24px' }}>
       <h2 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '0 0 6px' }}>Tax Diagnostics</h2>
       <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 24px', lineHeight: 1.6 }}>
-        Submissions from the public form at <span style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{PUBLIC_URL}</span>. Nothing is created until you confirm the member.
+        Submissions from the public form at <CopyLink url={PUBLIC_URL} />. A form naming one member is approved automatically; a paid lead waits under New for you to choose the member or Deny.
       </p>
 
       {data && data.public_page_enabled === false && (
@@ -183,7 +223,8 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
 
       {open && (
         <div style={{ marginTop: '18px', borderTop: '1px solid var(--vfo-border-soft)', paddingTop: '18px' }}>
-          {d.status === 'new' && <ConfirmBox d={d} members={members} onChanged={onChanged} />}
+          {d.status === 'new' && d.intake && <LeadBox d={d} members={members} onChanged={onChanged} />}
+          {d.status === 'new' && !d.intake && <ConfirmBox d={d} members={members} onChanged={onChanged} />}
 
           {d.status === 'confirmed' && (
             <ConfirmedSummary d={d} onChanged={onChanged} />
@@ -192,6 +233,16 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
           {d.status === 'dismissed' && (
             <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', marginBottom: '16px', lineHeight: 1.6 }}>
               Dismissed by {d.dismissed_by} on {formatDate(d.dismissed_at)}{d.dismiss_reason ? ` — ${d.dismiss_reason}` : ''}.
+              {d.intake && ' The payment link was closed.'}
+            </div>
+          )}
+
+          {d.status === 'denied' && (
+            <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', marginBottom: '16px', lineHeight: 1.6 }}>
+              Denied by {d.denied_by} on {formatDate(d.denied_at)}{d.dismiss_reason ? ` — ${d.dismiss_reason}` : ''}.
+              {d.intake?.deposit_refund_id
+                ? ` $${Number(d.intake.deposit_refund_amount || 0).toFixed(2)} refunded to the client (${d.intake.deposit_refund_id}${d.intake.sandbox ? ', sandbox' : ''}).`
+                : ' The refund was issued in Stripe.'}
             </div>
           )}
 
@@ -329,12 +380,120 @@ function ConfirmBox({ d, members, onChanged }) {
   )
 }
 
+// A PAY-FIRST lead ("No one", 2026-09-30): the intake row exists from the
+// submit. Unpaid → wait (Dismiss closes the pay link). Bank transfer clearing →
+// wait. Paid → choose the member (Confirm creates the case; the client paid, so
+// there is no payer choice) or Deny (refunds the $500, card fee kept).
+function LeadBox({ d, members, onChanged }) {
+  const intake = d.intake
+  const [memberNumber, setMemberNumber] = useState('')
+  const [search, setSearch] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const paid = intake.status === 'paid' && !intake.member_number
+  const clearing = !!intake.deposit_processing_at && intake.status !== 'paid'
+  const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim()
+
+  const picked = members.find(m => m.member_number === memberNumber) || null
+  const filtered = useMemo(() => {
+    const t = search.trim().toLowerCase()
+    if (!t) return []
+    return members.filter(m => m.name.toLowerCase().includes(t) || m.member_number.includes(t)).slice(0, 25)
+  }, [search, members])
+
+  async function run(action, payload, okText) {
+    setBusy(true); setErr('')
+    try {
+      const res = await callApi(action, { id: d.id, ...payload })
+      if (okText) window.alert(okText(res))
+      onChanged()
+    } catch (e) {
+      setErr(e?.message || 'Something went wrong')
+      setBusy(false)
+    }
+  }
+  function confirm() {
+    if (!picked) { setErr('Choose the member this client belongs to.'); return }
+    if (!window.confirm(`Create ${clientName} under ${picked.name} (${picked.member_number})? The client has already paid the $500 deposit.`)) return
+    run('tax_diagnostic_confirm', { member_number: picked.member_number },
+      () => 'Confirmed. The case has been created and the confirmation email with the deposit invoice and receipt drafted to the client.')
+  }
+  function deny() {
+    const reason = window.prompt(`Deny ${clientName}? The $500 deposit is refunded to the client straight away (any card fee is not refunded). Optional reason:`, '')
+    if (reason === null) return
+    run('tax_diagnostic_deny', { reason }, res => `Denied. $${Number(res?.refund_amount || 0).toFixed(2)} refunded (${res?.refund_id}).`)
+  }
+  function dismiss() {
+    const reason = window.prompt('Dismiss this diagnostic? The client has not paid; their payment link will stop working. Optional reason:', '')
+    if (reason === null) return
+    run('tax_diagnostic_dismiss', { reason })
+  }
+
+  const btn = (color, disabled) => ({ padding: '9px 20px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif',
+    border: 'none', background: disabled ? 'var(--vfo-faint)' : color, color: '#fff' })
+  const inputStyle = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', width: '100%', maxWidth: '420px', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+
+  return (
+    <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: 'rgba(18,94,204,0.05)', border: '1px solid rgba(18,94,204,0.18)' }}>
+      <div style={{ fontSize: '12.5px', color: '#e06717', marginBottom: '4px' }}>
+        A lead — no member was named. The client pays the deposit first; then you choose the member or Deny.
+      </div>
+      <DepositTrack intake={intake} payer="client" payFirst createdAt={d.created_at} />
+
+      {paid && (
+        <>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '14px 0 8px' }}>Choose the member</div>
+          {picked ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+              <span style={{ padding: '7px 14px', borderRadius: '999px', background: 'rgba(18,94,204,0.10)', color: '#125ecc', fontSize: '13px', fontWeight: 600 }}>
+                {picked.name} ({picked.member_number}){picked.member_type ? ` - ${picked.member_type}` : ''}
+              </span>
+              <button type="button" onClick={() => { setMemberNumber(''); setSearch('') }}
+                style={{ padding: '6px 14px', borderRadius: '999px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>Change</button>
+            </div>
+          ) : (
+            <div style={{ marginBottom: '6px' }}>
+              <input type="text" value={search} placeholder="Search members by name or number" onChange={e => setSearch(e.target.value)} style={inputStyle} />
+              {filtered.length > 0 && (
+                <div style={{ marginTop: '6px', maxWidth: '420px', border: '1px solid var(--vfo-border-soft)', borderRadius: '8px', overflow: 'hidden', background: 'var(--vfo-card)' }}>
+                  {filtered.map(m => (
+                    <button key={m.member_number} type="button" onClick={() => setMemberNumber(m.member_number)}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', border: 'none', borderBottom: '1px solid var(--vfo-border-soft)', background: 'transparent', fontSize: '12.5px', color: 'var(--vfo-ink)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                      {m.name} ({m.member_number}){m.member_type ? ` - ${m.member_type}` : ''}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {intake.sandbox && (
+            <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '4px' }}>Test (sandbox) payment — it can only be linked to the Test Member.</div>
+          )}
+        </>
+      )}
+
+      {clearing && (
+        <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '10px' }}>The bank transfer is still clearing. Choose the member or Deny once it has settled.</div>
+      )}
+
+      {err && <div style={{ marginTop: '12px', fontSize: '12.5px', color: '#d93025' }}>{err}</div>}
+      <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
+        {paid && <button type="button" onClick={confirm} disabled={busy || !picked} style={btn('#1b9254', busy || !picked)}>{busy ? 'Working...' : 'Confirm'}</button>}
+        {paid && <button type="button" onClick={deny} disabled={busy} style={btn('#d93025', busy)}>Deny and refund</button>}
+        {!paid && !clearing && <button type="button" onClick={dismiss} disabled={busy} style={btn('#d93025', busy)}>Dismiss</button>}
+      </div>
+    </div>
+  )
+}
+
 // The confirmed diagnostic's deposit as a step track (the Automated-steps look):
 // link sent → payment made → payment cleared → client created. Chip wording is
 // the portal's own ("Pending — ACH clearing" / "Pending — bank verification",
 // TaxPrioritiesTab + the onboarding/PIP tracks). Read from the intake row the
 // Confirm produced; nothing here writes.
-function DepositTrack({ intake, payer }) {
+// payFirst (2026-09-30): the payer went straight from the form to the deposit
+// page, so there is no link email — the first step is the form itself.
+function DepositTrack({ intake, payer, payFirst = false, createdAt = null }) {
   const navigate = useNavigate()
   const who = payer === 'member' ? 'the member' : 'the client'
   const isAch = intake.deposit_payment_method_type === 'us_bank_account'
@@ -352,13 +511,19 @@ function DepositTrack({ intake, payer }) {
         { label: 'Deposit', done: true, right: chip('Waived — member has 2+ qualifying clients', '#1b9254') },
       ]
     : [
-        {
-          label: `Payment link sent to ${who}`,
-          done: !!intake.link_sent_at,
-          right: intake.link_sent_at
-            ? <span>{formatDate(intake.link_sent_at)}{intake.link_opened_at ? ` · opened ${formatDate(intake.link_opened_at)}` : ''}</span>
-            : chip('Not sent yet', orange),
-        },
+        payFirst
+          ? {
+            label: `Sent to the payment page from the form (${who} pays)`,
+            done: true,
+            right: <span>{formatDate(createdAt)}</span>,
+          }
+          : {
+            label: `Payment link sent to ${who}`,
+            done: !!intake.link_sent_at,
+            right: intake.link_sent_at
+              ? <span>{formatDate(intake.link_sent_at)}{intake.link_opened_at ? ` · opened ${formatDate(intake.link_opened_at)}` : ''}</span>
+              : chip('Not sent yet', orange),
+          },
         {
           label: 'Payment made',
           done: finished || !!intake.deposit_processing_at,
@@ -393,7 +558,9 @@ function DepositTrack({ intake, payer }) {
           Open client profile
         </button>
       )
-      : intake.status === 'paid' ? chip('Creating the case…', orange) : null,
+      : intake.status === 'paid'
+        ? chip(intake.member_number ? 'Creating the case…' : 'Choose the member', orange)
+        : null,
   })
 
   return (
@@ -422,6 +589,24 @@ function ConfirmedSummary({ d, onChanged }) {
   const [err, setErr] = useState('')
   const m = d.confirmed_member
   const stage = intakeLabel(d.intake)
+  const auto = d.confirmed_by === AUTO_CONFIRMED_BY
+  const payFirst = auto && !d.intake?.link_sent_at
+  // An auto-approved diagnostic whose payer never paid may be closed (the pay
+  // link stops working); one that has paid or has a case may not.
+  const unpaid = d.intake && ['pending', 'expired', 'invited'].includes(d.intake.status) && !d.intake.deposit_processing_at
+
+  async function dismiss() {
+    const reason = window.prompt('Dismiss this diagnostic? Nothing has been paid; the payment link will stop working. Optional reason:', '')
+    if (reason === null) return
+    setBusy(true); setErr('')
+    try {
+      await callApi('tax_diagnostic_dismiss', { id: d.id, reason })
+      onChanged()
+    } catch (e) {
+      setErr(e?.message || 'Could not dismiss')
+      setBusy(false)
+    }
+  }
 
   async function retry() {
     setBusy(true); setErr('')
@@ -439,13 +624,19 @@ function ConfirmedSummary({ d, onChanged }) {
     <div style={{ marginBottom: '18px', fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.7 }}>
       <div><strong>Member:</strong> {m ? `${m.name} (${m.member_number})` : d.confirmed_member_number}</div>
       <div><strong>Deposit paid by:</strong> {d.deposit_payer === 'member' ? 'The member' : 'The client'}</div>
-      <div><strong>Confirmed by:</strong> {d.confirmed_by} on {formatDate(d.confirmed_at)}</div>
-      {d.intake && <DepositTrack intake={d.intake} payer={d.deposit_payer} />}
+      <div><strong>Confirmed by:</strong> {auto ? 'Approved automatically by the form (one member named)' : d.confirmed_by} on {formatDate(d.confirmed_at)}</div>
+      {d.intake && <DepositTrack intake={d.intake} payer={d.deposit_payer} payFirst={payFirst} createdAt={d.created_at} />}
       {!d.intake && stage && <div><strong>Status:</strong> {stage}</div>}
-      {(d.intake?.status === 'waived' || (d.intake?.status === 'invited' && !d.intake?.link_sent_at) || !d.intake) && (
+      {(d.intake?.status === 'waived' || (d.intake?.status === 'invited' && !d.intake?.link_sent_at) || (d.intake?.status === 'paid' && d.intake?.member_number) || !d.intake) && (
         <button type="button" onClick={retry} disabled={busy}
           style={{ marginTop: '8px', padding: '7px 16px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', border: 'none', background: '#e06717', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
-          {busy ? 'Retrying...' : d.intake?.status === 'waived' ? 'Retry creating the case' : d.intake ? 'Retry the deposit link email' : 'Retry'}
+          {busy ? 'Retrying...' : (d.intake?.status === 'waived' || d.intake?.status === 'paid') ? 'Retry creating the case' : d.intake ? 'Retry the deposit link email' : 'Retry'}
+        </button>
+      )}
+      {auto && unpaid && (
+        <button type="button" onClick={dismiss} disabled={busy}
+          style={{ marginTop: '8px', marginLeft: '8px', padding: '7px 16px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', border: 'none', background: '#d93025', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
+          Dismiss (never paid)
         </button>
       )}
       {err && <div style={{ color: '#d93025', marginTop: '6px' }}>{err}</div>}
