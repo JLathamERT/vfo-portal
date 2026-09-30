@@ -22,6 +22,17 @@ const fullName = (p) => `${p.first_name || ''} ${p.last_name || ''}`.trim() || '
 const PLANNER_ROLES = ['Tax Planner', 'Team Member']
 const roleOf = (p) => p?.planner_role || 'Tax Planner'
 
+// "10 plans · 9 clients": the plan count alone read as a client count and never
+// matched the Clients tab, which lists one row per client (a client with two plans
+// is 2 plans, 1 client). client_count comes from tax_planners_load; until that
+// field exists the label stays the plan count alone.
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
+function allocationLabel(p) {
+  const plans = Number(p?.allocation_count) || 0
+  if (p?.client_count == null) return plural(plans, 'plan')
+  return `${plural(plans, 'plan')} · ${plural(Number(p.client_count) || 0, 'client')}`
+}
+
 // Certifications (professional designations, e.g. "EA", "CPA") stored as a jsonb
 // array on the planner. Defined at module scope so every nested component can use
 // the display helper without prop threading (gotcha #193).
@@ -409,7 +420,6 @@ export default function TaxPlannersPanel({ section }) {
           </div>
           <div>
             {filteredPlanners.map(planner => {
-              const plans = Number(planner.allocation_count) || 0
               return (
               <div key={planner.id}
                 onClick={() => handleSelect(planner)}
@@ -422,7 +432,7 @@ export default function TaxPlannersPanel({ section }) {
                   {planner.status || '—'}
                 </span>
                 <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', width: '160px', flexShrink: 0 }}>{planner.member_type || '—'}</span>
-                <span style={{ marginLeft: 'auto', flexShrink: 0, fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{roleOf(planner) === 'Team Member' ? 'Team Member' : `${plans} plan${plans === 1 ? '' : 's'}`}</span>
+                <span style={{ marginLeft: 'auto', flexShrink: 0, fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{roleOf(planner) === 'Team Member' ? 'Team Member' : allocationLabel(planner)}</span>
               </div>
               )
             })}
@@ -531,7 +541,6 @@ function TaxPlannerProfileView({ planner }) {
   const fieldLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-faint)', textTransform: 'uppercase' }
   const fieldValue = { fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: 600, marginTop: '5px' }
 
-  const allocations = Number(planner.allocation_count) || 0
   const hasLeaveDate = planner.status === 'Lost' || planner.status === 'Removed' || !!planner.leave_date
 
   return (
@@ -547,7 +556,7 @@ function TaxPlannerProfileView({ planner }) {
               {hasLeaveDate && <div><div style={fieldLabel}>Leave Date</div><div style={fieldValue}>{planner.leave_date ? formatDate(planner.leave_date) : '—'}</div></div>}
               <div><div style={fieldLabel}>Member Type</div><div style={fieldValue}>{roleOf(planner)}</div></div>
               <div><div style={fieldLabel}>Partnership</div><div style={fieldValue}>{planner.member_type || '—'}</div></div>
-              <div><div style={fieldLabel}>Allocations</div><div style={fieldValue}>{allocations} tax plan{allocations === 1 ? '' : 's'}</div></div>
+              <div><div style={fieldLabel}>Allocations</div><div style={fieldValue}>{allocationLabel(planner)}</div></div>
             </div>
           </div>
         </div>
