@@ -4,7 +4,8 @@ import { NAVY, money } from './specialistRevenueShared'
 import { clearedPayments, inPeriod } from './holisticShared'
 import { PendingNote, HeldNote, heldReason, isMoneyMappingLeg } from './shareLegState'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
-import { MemberNameLink } from '../shared/personLinks'
+import { MemberNameLink, useOpenMember } from '../shared/personLinks'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 
 // Accounting > VFO Services > Holistic Planning Reconciliation. Pick a year → each
 // member with Holistic activity that year and their revenue split from payments that
@@ -20,6 +21,7 @@ import { MemberNameLink } from '../shared/personLinks'
 // unchanged — this stays an attribution view of the configured shares (#363).
 
 export default function HolisticReconciliationPanel({ embedded = false }) {
+  const openMember = useOpenMember()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -69,13 +71,13 @@ export default function HolisticReconciliationPanel({ embedded = false }) {
       if (isMoneyMappingLeg(p.memberState, p.decision)) {
         t.mm += p.member
         if (held === 'suspended') t.mmHeldSus += p.member
-        else if (held === 'paused') t.mmHeldPau += p
+        else if (held === 'paused') t.mmHeldPau += p.member
         else if (held === 'arrears') t.mmHeldArr += p.member
         else if (pend(p.memberState)) t.mmPending += p.member
       } else {
         t.member += p.member
         if (held === 'suspended') t.memberHeldSus += p.member
-        else if (held === 'paused') t.memberHeldPau += p
+        else if (held === 'paused') t.memberHeldPau += p.member
         else if (held === 'arrears') t.memberHeldArr += p.member
         else if (pend(p.memberState)) t.memberPending += p.member
       }
@@ -130,7 +132,8 @@ export default function HolisticReconciliationPanel({ embedded = false }) {
             <span style={{ textAlign: 'right', ...(tot.strategic ? {} : muted) }}>{tot.strategic ? money(tot.strategic) : '—'}<PendingNote amount={tot.strategicPending} money={money} /></span>
           </div>
           {members.map(m => (
-            <div key={m.memberNumber} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+            // One row per MEMBER (no single plan), so the row opens the member's profile.
+            <div key={m.memberNumber} onClick={() => openMember(m.memberNumber)} {...rowHoverProps} style={{ ...clickableRowStyle, background: 'var(--vfo-card)', display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
               <span style={{ color: 'var(--vfo-muted)' }}>{m.memberNumber}</span>
               <span><MemberNameLink memberNumber={m.memberNumber} style={{ fontWeight: 600 }}>{m.name}</MemberNameLink></span>
               <span style={{ textAlign: 'right', fontWeight: m.member ? 700 : 400, color: m.member ? '#16a34a' : 'var(--vfo-faint)' }}>{m.member ? money(m.member) : '—'}{m.member ? <><PendingNote amount={m.memberPending} money={money} /><HeldNote suspended={m.memberHeldSus} paused={m.memberHeldPau} arrears={m.memberHeldArr} money={money} /></> : null}</span>

@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { callApi } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
+import { SpecialistNameLink, specialistProfilePath } from '../shared/personLinks'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 
 // Accounting > Specialists > VFO Specialist License Fees > License Reconciliation.
 // One row per specialist who has ever paid a $99/mo license invoice: what they have
@@ -18,6 +21,7 @@ export default function SpecialistLicenseReconciliationPanel({ embedded = false 
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const navigate = useNavigate()
 
   useEffect(() => { load() }, [])
 
@@ -40,7 +44,8 @@ export default function SpecialistLicenseReconciliationPanel({ embedded = false 
     for (const p of payments) {
       if (!p.paid_at) continue
       const key = String(p.expert_id || p.onboarding_id || p.specialist_name || 'unknown')
-      const t = map[key] || (map[key] = { key, name: p.specialist_name || `Specialist #${p.expert_id || p.onboarding_id}`, total: 0, count: 0, last: null })
+      const t = map[key] || (map[key] = { key, expertId: null, name: p.specialist_name || `Specialist #${p.expert_id || p.onboarding_id}`, total: 0, count: 0, last: null })
+      if (!t.expertId && p.expert_id) t.expertId = p.expert_id
       t.total += Number(p.amount) || 0
       t.count += 1
       if (!t.last || new Date(p.paid_at) > new Date(t.last)) t.last = p.paid_at
@@ -85,8 +90,8 @@ export default function SpecialistLicenseReconciliationPanel({ embedded = false 
           </div>
           <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
             {rows.map(r => (
-              <div key={r.key} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
-                <span style={{ fontWeight: 600 }}>{r.name}</span>
+              <div key={r.key} onClick={r.expertId ? () => navigate(specialistProfilePath(r.expertId)) : undefined} {...(r.expertId ? rowHoverProps : {})} style={{ ...(r.expertId ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+                <span style={{ fontWeight: 600 }}><SpecialistNameLink expertId={r.expertId}>{r.name}</SpecialistNameLink></span>
                 <span style={{ textAlign: 'right', color: 'var(--vfo-muted)' }}>{r.count}</span>
                 <span style={{ textAlign: 'right', fontWeight: r.total ? 700 : 400, color: r.total ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{r.total ? money(r.total) : '—'}</span>
                 <span style={{ textAlign: 'right', ...(r.last ? { color: 'var(--vfo-muted)' } : muted) }}>{fmtDate(r.last)}</span>

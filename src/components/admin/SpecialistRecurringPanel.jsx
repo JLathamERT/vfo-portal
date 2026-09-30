@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
-import { NAVY, BLUE, money, StatusPill } from './specialistRevenueShared'
+import { NAVY, BLUE, money, StatusPill, RecipientName } from './specialistRevenueShared'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
+import { SpecialistNameLink } from '../shared/personLinks'
 
 // Accounting → VFO Specialist Recurring Revenue Payments. Lists every recurring
 // plan (setup_pending / active / canceled) built from the Payment Input form's
@@ -100,7 +101,7 @@ function PlanRow({ plan, onChanged }) {
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', cursor: 'pointer' }}>
         <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px' }}>{open ? '▾' : '▸'}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{plan.specialist_name || '—'}{plan.sandbox ? ' (sandbox)' : ''}</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}><SpecialistNameLink expertId={plan.expert_id}>{plan.specialist_name || '—'}</SpecialistNameLink>{plan.sandbox ? ' (sandbox)' : ''}</div>
           <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
             {lines.length} recipient{lines.length === 1 ? '' : 's'} · Bills on the {ordinal(plan.charge_day)}
             {plan.status === 'active' && plan.next_billing_date ? ` · Next ${fmtDate(plan.next_billing_date)}` : ''}
@@ -125,7 +126,7 @@ function PlanRow({ plan, onChanged }) {
           {lines.map((line, i) => (
             <div key={line.id || i} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 0', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
               <div>
-                <div style={{ fontWeight: 600 }}>{line.recipient_name || '—'}</div>
+                <div style={{ fontWeight: 600 }}><RecipientName line={line} /></div>
                 <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{line.recipient_type === 'specialist' ? 'Specialist' : (line.member_number || 'Member')} · {line.revenue_decision || 'Revenue Share'}</div>
               </div>
               <div>{money(line.ert_share)}</div>

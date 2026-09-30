@@ -41,7 +41,7 @@ import PipRevenuePanel from '../components/admin/PipRevenuePanel'
 import PipReconciliationPanel from '../components/admin/PipReconciliationPanel'
 import MemberOnboardingPanel from '../components/admin/MemberOnboardingPanel'
 import MembershipFeesPanel from '../components/admin/MembershipFeesPanel'
-import AccountingCombinedPanel from '../components/admin/AccountingCombinedPanel'
+import AccountingCombinedPanel, { PILL_KEY as ACCOUNTING_PILL_KEY } from '../components/admin/AccountingCombinedPanel'
 import OutstandingLinksPanel from '../components/admin/OutstandingLinksPanel'
 import SpecialistRevenueAutomationPanel from '../components/admin/SpecialistRevenueAutomationPanel'
 import GrowthCreditsPanel from '../components/admin/GrowthCreditsPanel'
@@ -143,8 +143,9 @@ function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
 
 // Tabs a member profile's "Back to list" may return to when the profile was
 // opened from them (openMemberProfile's `origin`). Every other origin keeps the
-// ordinary Back: the member's own directory list.
-const PROFILE_ORIGIN_TABS = ['member_overview', 'client_overview']
+// ordinary Back: the member's own directory list. Accounting returns to the section
+// held in adminAccountingSection, and its combined panels restore their own pill.
+const PROFILE_ORIGIN_TABS = ['member_overview', 'client_overview', 'accounting']
 
 // Every accountingSection key the Accounting tab renders a block for. Used only by
 // the fallback card below, so a stale sessionStorage key can never blank the page.
@@ -279,6 +280,7 @@ export default function AdminPortal() {
       }
       const entry = sectionSetters[tab]
       if (entry) { entry[0](section); sessionStorage.setItem(entry[1], section) }
+      if (tab === 'accounting') sessionStorage.removeItem(ACCOUNTING_PILL_KEY)
     }
     // Membership-fees bell: the member number rides along so the panel can open
     // and scroll to that member's plan card. Held in state (not sessionStorage)
@@ -415,6 +417,7 @@ export default function AdminPortal() {
     sessionStorage.setItem('adminActiveTab', 'accounting')
     setAccountingSection(key)
     sessionStorage.setItem('adminAccountingSection', key)
+    sessionStorage.removeItem(ACCOUNTING_PILL_KEY)
     sessionStorage.removeItem('adminSelectedMember')
     sessionStorage.removeItem('adminMemberFeatureTab')
     setNavClickCount(c => c + 1)
@@ -793,7 +796,7 @@ export default function AdminPortal() {
             // returns <SpecialistOnboarding/> before its hooks, so changing section
             // in place would trip React's hooks-count check and the navigation
             // (e.g. the Stage-5 "Open specialist →" link) could silently fail.
-            <SpecialistsPanel key={specialistsSection} allExperts={allExperts} ecoMap={ecoMap} onDataChange={loadAllData} section={specialistsSection} />
+            <SpecialistsPanel key={specialistsSection} allExperts={allExperts} ecoMap={ecoMap} onDataChange={loadAllData} section={specialistsSection} onBackToOrigin={backToProfileOrigin} />
           )}
 
           {activeTab === 'taxplanners' && !loading && (

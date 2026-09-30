@@ -4,6 +4,7 @@ import { NAVY, money, requestDate, RequestRow, MarkReceivedButton, DeleteRequest
 import { PENDING_COLOR } from './shareLegState'
 import SpecialistPaymentInput from './SpecialistPaymentInput'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
+import { MemberNameLink, SpecialistNameLink } from '../shared/personLinks'
 
 // Accounting → VFO Specialist Revenue. Pick year + month to see the specialist
 // payment requests for that period, expand each to see recipients and statuses.
@@ -71,14 +72,14 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
       const d = requestDate(r)
       for (const l of (r.lines || [])) {
         const key = l.member_number || (l.recipient_type === 'specialist' ? `spec:${l.expert_id}` : l.recipient_name) || 'unknown'
-        const g = map[key] || (map[key] = { key, name: l.recipient_name || '—', sub: l.member_number || (l.recipient_type === 'specialist' ? 'Specialist' : 'Member'), decision: l.revenue_decision || 'Revenue Share', member: 0, ert: 0, vfos: 0, deals: 0, items: [] })
+        const g = map[key] || (map[key] = { key, memberNumber: l.member_number || null, expertId: !l.member_number && l.recipient_type === 'specialist' ? l.expert_id || null : null, name: l.recipient_name || '—', sub:l.member_number || (l.recipient_type === 'specialist' ? 'Specialist' : 'Member'), decision: l.revenue_decision || 'Revenue Share', member: 0, ert: 0, vfos: 0, deals: 0, items: [] })
         g.member += Number(l.member_share) || 0
         g.ert += Number(l.ert_share) || 0
         g.vfos += Number(l.vfos_share) || 0
         g.deals += Number(l.deals) || 0
         // payout_status rides along so the deal rows below can annotate their Member $
         // the same way the By-specialist recipient rows do.
-        g.items.push({ specialist: r.specialist_name || '—', date: d, member_share: l.member_share, ert_share: l.ert_share, vfos_share: l.vfos_share, deals: l.deals, payout_status: l.payout_status })
+        g.items.push({ specialist: r.specialist_name || '—', specialistId: r.expert_id || null, date: d, member_share: l.member_share, ert_share: l.ert_share, vfos_share: l.vfos_share, deals: l.deals, payout_status: l.payout_status })
       }
     }
     return Object.values(map).sort((a, b) => b.member - a.member)
@@ -320,7 +321,11 @@ function MemberGroupRow({ group }) {
         <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
           <span style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{open ? '▾' : '▸'}</span>
           <span style={{ minWidth: 0 }}>
-            <span style={{ display: 'block', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.name}</span>
+            <span style={{ display: 'block', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {group.expertId
+                ? <SpecialistNameLink expertId={group.expertId}>{group.name}</SpecialistNameLink>
+                : <MemberNameLink memberNumber={group.memberNumber}>{group.name}</MemberNameLink>}
+            </span>
             <span style={{ display: 'block', fontSize: '11px', color: 'var(--vfo-faint)' }}>{group.sub} · {group.items.length} deal{group.items.length === 1 ? '' : 's'} across specialists</span>
           </span>
         </span>
@@ -343,7 +348,7 @@ function MemberGroupRow({ group }) {
             const note = memberShareNote(it, true)
             return (
               <div key={i} style={{ display: 'grid', gridTemplateColumns: DEAL_GRID, gap: '10px', alignItems: 'center', padding: '9px 0', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
-                <div style={{ fontWeight: 600 }}>{it.specialist}</div>
+                <div style={{ fontWeight: 600 }}><SpecialistNameLink expertId={it.specialistId}>{it.specialist}</SpecialistNameLink></div>
                 <div style={{ color: 'var(--vfo-muted)' }}>{it.date ? new Date(it.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</div>
                 <div>{money(it.ert_share)}</div>
                 <div>{money(it.vfos_share)}</div>

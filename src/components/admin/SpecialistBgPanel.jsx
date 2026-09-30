@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { callApi } from '../../lib/api'
 import { money, StatusPill } from './specialistRevenueShared'
 import { tableStyle, headerRowStyle, totalsRowStyle, totalsLabelStyle, totalsSubStyle } from './SpecialistRevenuePanel'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
+import { SpecialistNameLink, specialistProfilePath } from '../shared/personLinks'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 
 // Accounting > Specialists > VFO Specialist Background Checks > the first pill.
 // The License Fees ledger shape: background check payments RECEIVED, filtered by
@@ -49,6 +52,7 @@ export function bgRowsFrom(res) {
       key: `ob-${p.id}`,
       source: 'onboarding',
       id: p.id,
+      expertId: p.expert_id || null,
       name: p.specialist_name || `Specialist #${p.expert_id || p.id}`,
       type: tier ? `Onboarding – ${tier}` : 'Onboarding – Core/Max not chosen',
       amount: tier ? (tier === 'Max' ? 950 : 350) : null,
@@ -64,6 +68,7 @@ export function bgRowsFrom(res) {
     key: `rq-${r.id}`,
     source: 'request',
     id: r.id,
+    expertId: r.expert_id || null,
     name: r.specialist_name || `Specialist #${r.expert_id || ''}`,
     email: r.specialist_email || '',
     type: 'Request',
@@ -86,6 +91,7 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const navigate = useNavigate()
 
   useEffect(() => { load() }, [])
 
@@ -180,9 +186,9 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
           {filtered.map(r => {
             const pill = STATE_PILL[r.state] || { label: r.state || '—', color: 'var(--vfo-muted)' }
             return (
-              <div key={r.key} style={{ display: 'grid', gridTemplateColumns: LEDGER_GRID, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+              <div key={r.key} onClick={r.expertId ? () => navigate(specialistProfilePath(r.expertId)) : undefined} {...(r.expertId ? rowHoverProps : {})} style={{ ...(r.expertId ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: LEDGER_GRID, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
                 <span style={{ fontWeight: 600 }}>
-                  {r.name}
+                  <SpecialistNameLink expertId={r.expertId}>{r.name}</SpecialistNameLink>
                   {r.last4 && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · ••••{r.last4}</span>}
                 </span>
                 <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(r.paidAt)}</span>

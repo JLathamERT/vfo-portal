@@ -1,9 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { callApi } from '../../lib/api'
 import { ordinal } from '../../lib/ordinal'
 import { NAVY, money, StatusPill } from './specialistRevenueShared'
 import { tableStyle, headerRowStyle, totalsRowStyle, totalsLabelStyle, totalsSubStyle } from './SpecialistRevenuePanel'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
+import { SpecialistNameLink, specialistProfilePath } from '../shared/personLinks'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 
 // Accounting > Specialists > VFO Specialist License Fees. Pick year + month to see the
 // $99/mo specialist license payments that cleared that period (read from the
@@ -44,6 +47,7 @@ export default function SpecialistLicensePanel({ allExperts = [], embedded = fal
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth()) // 0-11, or -1 for All
+  const navigate = useNavigate()
 
   useEffect(() => { load() }, [])
 
@@ -130,9 +134,9 @@ export default function SpecialistLicensePanel({ allExperts = [], embedded = fal
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No license payments for this period.</div>
           )}
           {filtered.map(p => (
-            <div key={p.id} style={{ display: 'grid', gridTemplateColumns: LEDGER_GRID, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+            <div key={p.id} onClick={p.expert_id ? () => navigate(specialistProfilePath(p.expert_id)) : undefined} {...(p.expert_id ? rowHoverProps : {})} style={{ ...(p.expert_id ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: LEDGER_GRID, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
               <span style={{ fontWeight: 600 }}>
-                {p.specialist_name || `Specialist #${p.expert_id || p.onboarding_id}`}
+                <SpecialistNameLink expertId={p.expert_id}>{p.specialist_name || `Specialist #${p.expert_id || p.onboarding_id}`}</SpecialistNameLink>
                 {p.last4 && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · ••••{p.last4}</span>}
               </span>
               <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(p.paid_at)}</span>

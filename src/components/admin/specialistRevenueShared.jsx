@@ -6,6 +6,7 @@ import { callApi } from '../../lib/api'
 // because neither module touches the other's bindings at module scope, only inside
 // functions that run at render.
 import { HELD_SUSPENDED_NOTE, HELD_PAUSED_NOTE, HELD_ARREARS_NOTE, PENDING_COLOR } from './shareLegState'
+import { MemberNameLink, SpecialistNameLink } from '../shared/personLinks'
 
 export const NAVY = '#002973'
 export const BLUE = '#125ecc'
@@ -278,7 +279,7 @@ export function RequestRow({ request, actions, grid }) {
         <div onClick={() => setOpen(o => !o)} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', cursor: 'pointer' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, fontWeight: 600 }}>
             <span style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{open ? '▾' : '▸'}</span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{request.specialist_name || '—'}</span>
+            <SpecialistNameLink expertId={request.expert_id} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{request.specialist_name || '—'}</SpecialistNameLink>
           </span>
           <span style={{ color: 'var(--vfo-muted)' }}>{dateStr}</span>
           <span style={{ textAlign: 'right', color: 'var(--vfo-muted)' }}>{lines.length}</span>
@@ -302,7 +303,7 @@ export function RequestRow({ request, actions, grid }) {
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', cursor: 'pointer' }}>
         <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px' }}>{open ? '▾' : '▸'}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{request.specialist_name || '—'}</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}><SpecialistNameLink expertId={request.expert_id}>{request.specialist_name || '—'}</SpecialistNameLink></div>
           <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{dateStr} · {lines.length} recipient{lines.length === 1 ? '' : 's'} · {request.total_deals || 0} deals</div>
         </div>
         <div style={{ display: 'flex', gap: '18px', textAlign: 'right' }}>
@@ -334,6 +335,14 @@ export function RequestRow({ request, actions, grid }) {
   )
 }
 
+// A recipient line's name as a profile link: the specialist's own line goes to the
+// specialist profile, a member line to the member profile. Plain text when the id is missing.
+export function RecipientName({ line }) {
+  const name = line.recipient_name || '—'
+  if (line.recipient_type === 'specialist') return <SpecialistNameLink expertId={line.expert_id}>{name}</SpecialistNameLink>
+  return <MemberNameLink memberNumber={line.member_number}>{name}</MemberNameLink>
+}
+
 // The expanded half of a request row — recipient lines, their totals, the house-account
 // details and any caller-supplied actions. Shared by the card and table layouts above.
 function RequestDetail({ request, actions, received, heldMemberTotal }) {
@@ -351,7 +360,7 @@ function RequestDetail({ request, actions, received, heldMemberTotal }) {
             return (
               <div key={line.id} style={{ display: 'grid', gridTemplateColumns: detailGrid, gap: '10px', alignItems: 'center', padding: '9px 0', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
                 <div>
-                  <div style={{ fontWeight: 600 }}>{line.recipient_name || '—'}</div>
+                  <div style={{ fontWeight: 600 }}><RecipientName line={line} /></div>
                   <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{line.recipient_type === 'specialist' ? 'Specialist' : (line.member_number || 'Member')} · {line.revenue_decision || 'Revenue Share'}</div>
                 </div>
                 <div>

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { Skeleton, TableSkeleton } from '../shared/Skeleton'
-import { MemberNameLink } from '../shared/personLinks'
+import { MemberNameLink, useOpenMember } from '../shared/personLinks'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 
 // Accounting > Members > Growth Credits. Program-wide totals plus the full
 // transaction ledger and every member's current balance. Read-only.
@@ -30,6 +31,10 @@ function TypeTag({ type, sessionId }) {
 }
 
 export default function GrowthCreditsAccountingPanel() {
+  const openMember = useOpenMember()
+  // Every row here is one member's, so a row click opens that member.
+  const memberRow = mn => (mn ? { onClick: () => openMember(mn), ...rowHoverProps } : {})
+  const memberRowStyle = mn => (mn ? { ...clickableRowStyle, background: 'var(--vfo-card)' } : null)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -111,7 +116,7 @@ export default function GrowthCreditsAccountingPanel() {
               <div style={{ textAlign: 'center', padding: '36px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No transactions yet.</div>
             )}
             {(data.transactions || []).map(t => (
-              <div key={t.id} style={{ display: 'grid', gridTemplateColumns: txCols, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+              <div key={t.id} {...memberRow(t.member_number)} style={{ ...memberRowStyle(t.member_number), display: 'grid', gridTemplateColumns: txCols, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
                 <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(t.created_at)}</span>
                 <span><MemberNameLink memberNumber={t.member_number} style={{ fontWeight: 600 }}>{t.member_name}</MemberNameLink></span>
                 <span><TypeTag type={t.type} sessionId={t.stripe_session_id} /></span>
@@ -131,7 +136,7 @@ export default function GrowthCreditsAccountingPanel() {
               <div style={{ textAlign: 'center', padding: '36px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No balances yet.</div>
             )}
             {(data.balances || []).map(b => (
-              <div key={b.member_number} style={{ display: 'grid', gridTemplateColumns: balCols, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+              <div key={b.member_number} {...memberRow(b.member_number)} style={{ ...memberRowStyle(b.member_number), display: 'grid', gridTemplateColumns: balCols, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
                 <span><MemberNameLink memberNumber={b.member_number} style={{ fontWeight: 600 }}>{b.member_name}</MemberNameLink></span>
                 <span style={{ textAlign: 'right', fontWeight: 700 }}>{b.balance}</span>
               </div>
