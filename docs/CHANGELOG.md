@@ -8,6 +8,23 @@
 
 ---
 
+## 2026-10-01 (b) — Tax Planners → Clients: Live / Completed / Stopped column, links, Team Members' clients; the step machine learns legacy rows
+
+Branch `claude/planner-clients-status`, both repos, ONE chat (the same chat that shipped the SpecRev branch below). `vfo-admin-api` **v928 → v929 → v930 → v931**, all deployed from the branch; `boldsign-webhook` untouched at v46. Action count **555 unmoved**; no migration, no DDL, no template, no cron; route pages 37 unmoved. Gotcha **#569**.
+
+**Why.** Jake wanted a status column on a planner's Clients list, measured "the same way as elsewhere in the portal"; then name → profile, chip → plan, Back returning to that planner's Clients, the *Tax Planner Search* menu item working from an open planner, and Team Members' Clients tabs (always empty) and *Allocations* (always 0) showing their plans.
+
+**Built.**
+- **Status column** (Tax Planners → planner → Clients): one chip per plan, **Live** / **Completed** / **Stopped**, no program prefix (Jake). Stopped outranks completion (the planner portal's precedence). `tax_planner_clients_load` returns `plan_status` + `is_complete`, from a NEW shared helper `loadTaxPlansComplete` in `utils/tax-plan-steps.ts` — the planner portal's batched completion loop moved verbatim, so the portal and this tab (and Client Overview, same step machine) cannot disagree. The loader now selects `*` (#448).
+- **The step machine learns legacy rows (#569).** Marc Ehrhardt plan 89 (migrated) read Completed on its page but Live everywhere the backend measured, found by running `buildTaxPlanSteps` locally on the plan's exported data: four done-tests now also accept a saved progress row (*ROI Meeting booked*, *Client tax planning decision*), a paid retainer (*Payment link sent*) and `additional_info_received_at` (the three info sub-steps). Census before the deploy: **45 of 82 plans** had at least one step flip to done (27 / 20 / 5 / 20 per rule), mostly mid-flow — Client Overview's next action stops pointing at already-done steps on migrated plans. Jake chose this over leaving the measure as-is.
+- **Links + Back.** Client name → profile (`tab=home`); each chip → its plan (`tab=tax&plan=`); both carry `state.from` + a one-shot `adminTaxPlannerReturn` key so Back reopens that planner on Clients. `ClientNameLink` gained optional `navState` / `onOpen`.
+- **Menu reset.** Re-picking a Tax Planners menu item bumps `navClickCount` (in the panel key), as Advisors already did.
+- **Team Members.** `tax_planner_clients_load` and `tax_planners_load` match EITHER slot (`tax_planner_id` OR `tax_team_member_id`), a plan counted once per person; the search card still shows the "Team Member" chip and the KPI leaderboard still excludes them (Jake: don't count them on the search). No person holds both slots today, so every planner's list and counts are unchanged.
+
+**LIVE-PROVEN** (Jake, dev server vs v928–v931): Jack Olson's six stopped clients red; Marc Ehrhardt plan 89 Completed (after v929) with his second plan 249 Live, each chip opening its own plan; name → profile; Back → that planner's Clients; *Tax Planner Search* from an open planner → the list; Noah Thompson (Team Member) — Clients tab lists his 18 plans and Allocations reads them, his search card still "Team Member". **Smoke 5/5 vs v929** (the shared-util deploy). v930 / v931 touched only `tax-planners/clients-load.ts` and `tax-planners/load.ts` (isolated single handlers, exempt by the gate table).
+
+**NOT exercised:** the planner PORTAL's sections after the helper move (code-identical, verbatim; not clicked); Client Overview's changed next actions on the 45 affected plans were spot-checked by intent only, not plan by plan; the one-hour expiry of the return key.
+
 ## 2026-10-01 — SpecRev: card + ACH on the link and recurring setup, bank-details email, "Already paid" 5th method; payout setup can no longer claim false success
 
 Branch `claude/vfo-session-setup-fa9f4c`, both repos, ONE chat. `vfo-admin-api` **v925 → v926** (SpecRev) **→ v927** (payout-setup status), both deployed from the branch; `boldsign-webhook` untouched at v46. Action count **554 → 555** (PUBLIC `connect_setup_status`). Migration `20261001120000_specrev_card_bank_details_templates.sql` (DATA ONLY: new template **303** `SPECREV_bank_transfer_instructions` Draft + wording edits to 164 / 170 / 188 / 189 / 208), applied after v926 so the live handler could fill `[PAYMENT_METHOD_TEXT]`; advisor GREEN at baseline (confirmation, no DDL). `send_mode=true` count unmoved (55). Route pages 37 unmoved. Gotchas **#567–#568**.
