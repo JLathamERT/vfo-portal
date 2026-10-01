@@ -3,6 +3,7 @@ import { callApi, getSession } from '../../lib/api'
 import { fileSizeError } from '../../lib/fileUpload'
 import { VaultRowsSkeleton } from '../shared/Skeleton'
 import RequestDocsButton from '../shared/RequestDocsButton'
+import VaultDropLink from '../shared/VaultDropLink'
 
 // Deliberately duplicated from TaxPrioritiesTab's LockedIcon rather than shared:
 // that file is under active end-to-end test and must not be touched, and a nine
@@ -336,6 +337,8 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
 
   return (
     <>
+      {/* Admin view only: the planner (readOnly) and member views never see the drop link. */}
+      {!readOnly && !memberMode && <VaultDropLink entityType="client" entityKey={clientId} />}
       {error && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '13px', marginBottom: '12px' }}>{error}</div>}
       {moving && <div style={{ color: '#0095ff', fontWeight: 500, fontSize: '13px', marginBottom: '12px' }}>Moving document…</div>}
       {canMove && !loading && (

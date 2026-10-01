@@ -4,6 +4,7 @@ import { makeTaxPlanRules, taxPlanProgressSummary } from './tax/taxPlanRules'
 import { fileToLogoPng, logoUrl } from '../shared/logoPng'
 import { fileSizeError } from '../../lib/fileUpload'
 import VaultSections from '../shared/VaultSections'
+import VaultDropLink from '../shared/VaultDropLink'
 import ImageCropModal from './ImageCropModal'
 import ListFilterButton, { matchesFilter, sortByJoin, SortSelect } from './ListFilterButton'
 import TaxPlannerKpiPanel from './TaxPlannerKpiPanel'
@@ -593,7 +594,12 @@ const TAX_PLANNER_VAULT_SECTIONS = [
 ]
 function TaxPlannerAdminVault({ plannerId }) {
   if (!plannerId) return null
-  return <VaultSections actions={TAX_PLANNER_VAULT_ACTIONS} params={{ planner_id: plannerId }} sections={TAX_PLANNER_VAULT_SECTIONS} />
+  return (
+    <>
+      <VaultDropLink entityType="tax_planner" entityKey={plannerId} />
+      <VaultSections actions={TAX_PLANNER_VAULT_ACTIONS} params={{ planner_id: plannerId }} sections={TAX_PLANNER_VAULT_SECTIONS} />
+    </>
+  )
 }
 
 // Read-only Payments tab: the planner's share of each tax plan they are allocated
