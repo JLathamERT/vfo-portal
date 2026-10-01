@@ -235,7 +235,7 @@ The two names are **deliberately different**. A step row is resolved by NAME, so
 
 ### Which plans get the steps *(the three-way rule, 2026-09-01 / v802)*
 
-Both amend steps are **applicable** when **any one** of three things holds — `utils/tax-plan-steps.ts` server-side, and `TaxPrioritiesTab.jsx` (`isAmendNotApplicable` + `getPlanState`'s local mirror) on the frontend. The two repos are the same cross-repo coupling class as the step machine itself (#339) and must be changed together:
+Both amend steps are **applicable** when **any one** of three things holds — `utils/tax-plan-steps.ts` server-side, and on the frontend `isAmendNotApplicable` in `src/components/admin/tax/taxPlanRules.js` + `getPlanState`'s local mirror in `TaxPrioritiesTab.jsx`. The two repos are the same cross-repo coupling class as the step machine itself (#339) and must be changed together:
 
 1. the plan is on the **REVISED** fee process (`isNewFeeProcess`) — it always has both steps, unconditionally; **or**
 2. the step is **ANSWERED** — the same two-source test the done state uses (its own `client_tax_progress` row **or** the `fee_amended_at_*` stamp); **or**

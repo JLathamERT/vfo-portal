@@ -23,7 +23,7 @@ The admin tab stays usable and shows an amber "public page is switched off" bann
 
 ## The public page
 
-[src/pages/TaxDiagnosticPage.jsx](../../src/pages/TaxDiagnosticPage.jsx) renders `TaxIntakeForm` in public mode with a `prelude` of three questions and the numbering continued after them. It is not a token page, but it uses raw `fetch` like the token pages do.
+[src/pages/TaxDiagnosticPage.jsx](../../src/pages/TaxDiagnosticPage.jsx) renders `TaxIntakeForm` in public mode with a `prelude` of three questions and the numbering continued after them (`numberOffset` 1–3 depending on the prelude answers; q20's follow-ups q21–q23 show only on a Yes and are lettered, e.g. 17a–17c — see [tax-intake.md](tax-intake.md#the-form--one-definition-mirrored)). It is not a token page, but it uses raw `fetch` like the token pages do.
 
 1. **Who is completing this form?** *I am the client* / *I am a VFO member completing this for my client*. Nobody can verify this answer on a public page. It only PRE-SETS the payer at Confirm.
 2. **A client** is asked **Were you referred by a VFO member?**: *Yes* / *No one / I heard about VFO elsewhere*. **A member** skips this and goes straight to **Your name (VFO member)**.
