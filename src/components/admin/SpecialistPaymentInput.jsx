@@ -105,6 +105,14 @@ function RevenueBadge({ decision }) {
 
 let lineSeq = 1
 
+const PAYMENT_METHODS = [
+  { key: 'link', title: 'Payment link', tag: 'Card or ACH', desc: 'Specialist gets an email with a secure Stripe link and pays by ACH (no fee) or card (2.9% + $0.30).' },
+  { key: 'pending', title: 'Bank transfer', tag: 'Email our account details', desc: 'Specialist is emailed our fixed VFO account and routing numbers to push the payment to. You mark it received once the money lands.' },
+  { key: 'recurring', title: 'Recurring monthly', tag: 'Send setup link', desc: 'Emails the specialist a setup link to authorize an automatic monthly payment by ACH or card on a day you choose.' },
+  { key: 'external', title: 'Already paid', tag: 'Send revenue shares only', desc: 'We already have the money (paid another way). Nothing is requested and the specialist gets no email; the shares are paid out now from the VFO Services Stripe balance.' },
+  { key: 'none', title: 'Record deals', tag: 'No payment', desc: 'Records deals where no money changed hands. All money columns are $0. Nothing is charged and no email is sent.' },
+]
+
 export default function SpecialistPaymentInput({ allExperts = [], allMembers = [], onSent }) {
   const [expertKey, setExpertKey] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('link')
@@ -186,7 +194,9 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
     && (String(l.ert_share).trim() !== '' || String(l.vfos_share).trim() !== '')
     && !(amount(l.ert_share) > 0 && amount(l.vfos_share) > 0)
   const allLinesComplete = lines.length > 0 && lines.every(lineComplete)
-  const canSend = !!selectedExpert && !!selectedExpert.email && allLinesComplete && (noMoney ? totals.deals > 0 : totals.gross > 0) && !sending
+  // Already-paid emails nobody, so it is the one method that does not need the specialist's email.
+  const alreadyPaid = paymentMethod === 'external'
+  const canSend = !!selectedExpert && (alreadyPaid || !!selectedExpert.email) && allLinesComplete && (noMoney ? totals.deals > 0 : totals.gross > 0) && !sending
 
   async function send() {
     if (!canSend) return
@@ -241,7 +251,12 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
       {result && result.pending && (
         <div style={{ ...card, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: '#166534', marginBottom: '4px' }}>Expected payment recorded{result.sandbox ? ' (sandbox)' : ''}</div>
-          <div style={{ fontSize: '13px', color: '#166534', marginBottom: '14px' }}>No email was sent. Give the specialist the VFO account details below so they can push the {money(result.gross_amount)} transfer from their own bank. Once the transfer lands, mark it received in Accounting → VFO Specialist Revenue (Automation).</div>
+          <div style={{ fontSize: '13px', color: '#166534', marginBottom: '14px' }}>
+            {result.email_drafted
+              ? <>An email with the VFO account details below was drafted to <strong>{result.to_email}</strong> so they can push the {money(result.gross_amount)} transfer from their own bank. Review &amp; send it from the Gmail drafts folder. </>
+              : <>The bank details email could not be drafted{result.email_error ? ` (${result.email_error})` : ''} — give the specialist the VFO account details below so they can push the {money(result.gross_amount)} transfer from their own bank. </>}
+            Once the transfer lands, mark it received in Accounting → VFO Specialist Revenue (Automation).
+          </div>
           {result.account && (
             <div style={{ padding: '14px 16px', background: 'var(--vfo-card)', border: '1px solid #bbf7d0', borderRadius: '10px' }}>
               <div style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '12px' }}>VFO house account — give these to the specialist</div>
@@ -258,7 +273,7 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
       {result && result.recurring && (
         <div style={{ ...card, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: '#166534', marginBottom: '4px' }}>Recurring payment plan created{result.sandbox ? ' (sandbox)' : ''}</div>
-          <div style={{ fontSize: '13px', color: '#166534' }}>A setup email was drafted to <strong>{result.to_email}</strong>. The first charge of {money(result.monthly_amount)} lands on the {ordinal(result.charge_day)} after the specialist completes ACH setup, then monthly on that day. Track it in Accounting → VFO Specialist Recurring Revenue Payments.</div>
+          <div style={{ fontSize: '13px', color: '#166534' }}>A setup email was drafted to <strong>{result.to_email}</strong>. The first charge of {money(result.monthly_amount)} lands on the {ordinal(result.charge_day)} after the specialist completes setup (ACH or card), then monthly on that day. Track it in Accounting → VFO Specialist Recurring Revenue Payments.</div>
           {result.email_skipped && (
             <div style={{ fontSize: '12.5px', color: '#b45309', marginTop: '10px', padding: '8px 12px', borderRadius: '8px', border: '1px solid #fde68a', background: '#fffbeb' }}>The recurring setup email template is not seeded yet, so no email was drafted. Seed <strong>SPECREV_recurring_setup</strong> in Email Templates, then re-send the link.</div>
           )}
@@ -270,7 +285,13 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
           <div style={{ fontSize: '13px', color: '#166534' }}>{result.total_deals} deal{result.total_deals === 1 ? '' : 's'} recorded with no payment. Nothing was charged and no email was sent. It shows in Accounting → VFO Specialist Revenue as "Deals Recorded".</div>
         </div>
       )}
-      {result && !result.pending && !result.recurring && !result.recorded && (
+      {result && result.external && (
+        <div style={{ ...card, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#166534', marginBottom: '4px' }}>Revenue shares sent{result.sandbox ? ' (sandbox)' : ''}</div>
+          <div style={{ fontSize: '13px', color: '#166534' }}>The {money(result.gross_amount)} was recorded as already paid. Nothing was requested and the specialist was not emailed. The revenue share payouts are running now — check each recipient's status in Accounting → VFO Specialist Revenue (Automation) in a minute.</div>
+        </div>
+      )}
+      {result && !result.pending && !result.recurring && !result.recorded && !result.external && (
         <div style={{ ...card, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: '#166534', marginBottom: '4px' }}>Payment request created{result.sandbox ? ' (sandbox)' : ''}</div>
           <div style={{ fontSize: '13px', color: '#166534' }}>A {money(result.gross_amount)} payment request was drafted to <strong>{result.to_email}</strong>. Review &amp; send it from the Gmail drafts folder. Track its status in Accounting → VFO Specialist Revenue.</div>
@@ -286,7 +307,7 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
         <div style={{ maxWidth: '420px' }}>
           <SearchSelect options={specialistOptions} value={expertKey} onChange={setExpertKey} placeholder="Select a specialist…" />
         </div>
-        {selectedExpert && !selectedExpert.email && (
+        {selectedExpert && !selectedExpert.email && !alreadyPaid && (
           <div style={{ marginTop: '10px', fontSize: '12px', color: '#b45309' }}>This specialist has no email on file — add one in their profile before sending a request.</div>
         )}
       </div>
@@ -294,25 +315,23 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
       {/* Payment method */}
       <div style={card}>
         <div style={{ ...colLabel, marginBottom: '10px' }}>Payment method</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-          {[
-            { key: 'link', title: 'ACH debit — send payment link', desc: 'Specialist gets an email with a secure Stripe link and authorizes the debit.' },
-            { key: 'pending', title: 'Bank transfer — record expected payment', desc: 'Specialist pushes to our fixed VFO account. No email is sent; you mark it received once the money lands.' },
-            { key: 'recurring', title: 'Recurring monthly — send ACH setup link', desc: 'Emails the specialist a setup link to authorize an automatic monthly ACH payment on a day you choose.' },
-            { key: 'none', title: 'Record deals — no payment', desc: 'Records deals where no money changed hands. All money columns are $0. Nothing is charged and no email is sent.' },
-          ].map(opt => {
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '10px' }}>
+          {PAYMENT_METHODS.map(opt => {
             const active = paymentMethod === opt.key
             return (
-              <button key={opt.key} type="button" onClick={() => { setPaymentMethod(opt.key); if (opt.key === 'none') setLines(ls => ls.map(l => ({ ...l, ert_share: '', vfos_share: '', member_share: '' }))) }}
-                style={{ textAlign: 'left', padding: '14px 16px', borderRadius: '10px', border: active ? `2px solid ${BLUE}` : '1px solid var(--vfo-border-strong)', background: active ? 'var(--vfo-tint)' : 'var(--vfo-card)', cursor: 'pointer', fontFamily: 'Inter, sans-serif', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <span style={{ marginTop: '2px', width: '16px', height: '16px', borderRadius: '50%', border: active ? `5px solid ${BLUE}` : '2px solid var(--vfo-border-strong)', boxSizing: 'border-box', flexShrink: 0 }} />
-                <span>
+              <button key={opt.key} type="button" title={opt.desc} onClick={() => { setPaymentMethod(opt.key); if (opt.key === 'none') setLines(ls => ls.map(l => ({ ...l, ert_share: '', vfos_share: '', member_share: '' }))) }}
+                style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '10px', border: active ? `2px solid ${BLUE}` : '1px solid var(--vfo-border-strong)', background: active ? 'var(--vfo-tint)' : 'var(--vfo-card)', cursor: 'pointer', fontFamily: 'Inter, sans-serif', display: 'flex', gap: '8px', alignItems: 'flex-start', minWidth: 0 }}>
+                <span style={{ marginTop: '2px', width: '14px', height: '14px', borderRadius: '50%', border: active ? `4px solid ${BLUE}` : '2px solid var(--vfo-border-strong)', boxSizing: 'border-box', flexShrink: 0 }} />
+                <span style={{ minWidth: 0 }}>
                   <span style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{opt.title}</span>
-                  <span style={{ display: 'block', fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px', lineHeight: 1.4 }}>{opt.desc}</span>
+                  <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{opt.tag}</span>
                 </span>
               </button>
             )
           })}
+        </div>
+        <div style={{ marginTop: '10px', fontSize: '12.5px', color: 'var(--vfo-muted)', lineHeight: 1.45 }}>
+          {PAYMENT_METHODS.find(o => o.key === paymentMethod)?.desc}
         </div>
         {paymentMethod === 'recurring' && (
           <div style={{ marginTop: '16px', maxWidth: '260px' }}>
@@ -392,13 +411,13 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
       {/* Gross + send */}
       <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <div style={colLabel}>{noMoney ? 'Total gross (nothing is charged)' : 'Total gross (charged to specialist)'}</div>
+          <div style={colLabel}>{noMoney ? 'Total gross (nothing is charged)' : alreadyPaid ? 'Total gross (already received — nothing is charged)' : 'Total gross (charged to specialist)'}</div>
           <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--vfo-heading)', marginTop: '4px' }}>{money(totals.gross)}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
           <button type="button" disabled={!canSend} onClick={send}
             style={{ padding: '14px 28px', borderRadius: '10px', border: 'none', background: canSend ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : '#c7d2e4', color: '#fff', fontWeight: 700, fontSize: '15px', cursor: canSend ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif' }}>
-            {sending ? 'Sending…' : noMoney ? `Record ${totals.deals} deal${totals.deals === 1 ? '' : 's'} — no payment` : (paymentMethod === 'pending' ? `Record expected payment — ${money(totals.gross)}` : paymentMethod === 'recurring' ? `Send recurring payment link — ${money(totals.gross)}/mo` : `Send Payment Request — ${money(totals.gross)}`)}
+            {sending ? 'Sending…' : noMoney ? `Record ${totals.deals} deal${totals.deals === 1 ? '' : 's'} — no payment` : (paymentMethod === 'pending' ? `Email bank details — ${money(totals.gross)}` : alreadyPaid ? `Send revenue shares — ${money(totals.gross)}` : paymentMethod === 'recurring' ? `Send recurring payment link — ${money(totals.gross)}/mo` : `Send Payment Request — ${money(totals.gross)}`)}
           </button>
           {lines.length > 0 && !allLinesComplete && (
             <div style={{ fontSize: '12px', color: '#b45309' }}>{noMoney ? 'Pick a recipient and enter at least 1 deal on every line before recording.' : 'Fill in a recipient, an ERT $ or VFOS $ (not both), Member $, and Deals for every line before sending.'}</div>

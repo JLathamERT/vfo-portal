@@ -386,7 +386,7 @@ function RequestDetail({ request, actions, received, heldMemberTotal }) {
               {heldMemberTotal > 0 && <span style={{ ...shareNoteStyle, color: PENDING_COLOR }}>{money(heldMemberTotal)} held</span>}
             </div>
             <div>{request.total_deals || 0}</div>
-            <div style={{ textAlign: 'right', color: 'var(--vfo-muted)', fontWeight: 600 }}>{request.payment_method_type ? `${request.payment_method_type === 'bank_transfer' ? 'bank transfer' : request.payment_method_type === 'none' ? 'no payment' : request.payment_method_type}${request.acct_last4 ? ` ••${request.acct_last4}` : ''}` : ''}</div>
+            <div style={{ textAlign: 'right', color: 'var(--vfo-muted)', fontWeight: 600 }}>{request.payment_method_type ? `${request.payment_method_type === 'bank_transfer' ? 'bank transfer' : request.payment_method_type === 'none' ? 'no payment' : request.payment_method_type === 'external' ? 'already paid' : request.payment_method_type}${request.acct_last4 ? ` ••${request.acct_last4}` : ''}` : ''}</div>
           </div>
           {request.payment_status === 'pending' && request.account && (
             <div style={{ marginTop: '14px', padding: '14px 16px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px' }}>

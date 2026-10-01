@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import TokenShell from '../components/shared/TokenShell'
+import { ordinal } from '../lib/ordinal'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
-// Public, no-login page reached from the specialist's "Payment request" email.
-// ACH-only: there is no method choice — once the request loads (and isn't already
-// paid), the page goes straight to the Stripe ACH checkout.
+// Public, no-login page reached from the specialist's "Payment request" email
+// (one-time) or "Recurring payment setup" email (kind=recurring). Card OR ACH on
+// both since 2026-10-01 — the same two option cards as /specialist-pay. ACH is at
+// par; card carries the house 2.9% + $0.30 fee (the backend grosses up the same way).
 export default function SpecialistRevenuePayPage() {
   const [searchParams] = useSearchParams()
   const kind = searchParams.get('kind')
@@ -14,6 +16,7 @@ export default function SpecialistRevenuePayPage() {
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
+  const [hoveredOption, setHoveredOption] = useState(null)
 
   useEffect(() => {
     const token = searchParams.get('token')
@@ -38,8 +41,6 @@ export default function SpecialistRevenuePayPage() {
         return
       }
       if (d.already_paid) { setStatus('done'); return }
-      // ACH-only, but land on a review screen instead of auto-redirecting —
-      // Stripe's back button returns here, and an auto-redirect would loop.
       setStatus('ready')
     } catch {
       setError('Failed to load payment details.')
@@ -53,9 +54,11 @@ export default function SpecialistRevenuePayPage() {
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isRecurring
-          ? { action: 'specialist_revenue_recurring_checkout', token: searchParams.get('token') }
-          : { action: 'specialist_revenue_checkout', token: searchParams.get('token'), method }),
+        body: JSON.stringify({
+          action: isRecurring ? 'specialist_revenue_recurring_checkout' : 'specialist_revenue_checkout',
+          token: searchParams.get('token'),
+          method,
+        }),
       })
       const d = await res.json()
       if (d.url) { window.location.href = d.url; return }
@@ -127,50 +130,107 @@ export default function SpecialistRevenuePayPage() {
     </TokenShell>
   )
 
-  if (isRecurring) {
-    const monthlyFmt = `$${(Number(data?.monthly_amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    const dayOrd = ordinal(data?.charge_day)
-    return (
-      <TokenShell maxWidth={520}>
-        <div style={messageCardStyle}>
-          <h1 style={titleStyle}>Recurring Specialist Payment</h1>
-          <p style={subtitleStyle}>Recurring payment authorization for VFO Services (working with ERT){data?.specialist_name ? ` for ${data.specialist_name}` : ''}.</p>
-          <div style={{ fontSize: '34px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '18px 0 6px' }}>{monthlyFmt}<span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--vfo-muted)' }}> / mo</span></div>
-          <p style={{ ...subtitleStyle, marginBottom: '24px' }}>Billed automatically by ACH on the {dayOrd} of each month. First charge on the next {dayOrd} after setup.</p>
-          <button type="button" onClick={() => handleChoice('ach')}
-            style={{ padding: '14px 32px', borderRadius: '10px', border: 'none', background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', color: '#fff', fontWeight: 700, fontSize: '15px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            Set up recurring ACH payment
-          </button>
-        </div>
-      </TokenShell>
-    )
-  }
+  const baseAmount = isRecurring ? (Number(data?.monthly_amount) || 0) : (Number(data?.gross_amount) || 0)
+  const cardFee = Math.round(((baseAmount + 0.30) / (1 - 0.029) - baseAmount) * 100) / 100
+  const cardTotal = Math.round((baseAmount + cardFee) * 100) / 100
+  const lineLabel = isRecurring ? 'VFO Specialist Payment (monthly)' : 'VFO Specialist Payment'
+  const amtSuffix = isRecurring ? '/mo' : ''
+  const chargeDay = Number(data?.charge_day) || 0
+  const dayText = chargeDay ? `${ordinal(chargeDay)} of the month` : 'charge day'
+  const name = data?.specialist_name || ''
+  const notice = !isRecurring && data?.payment_status === 'failed'
+    ? 'Your previous payment did not go through. Please choose a payment method to try again.'
+    : ''
 
-  const amountFmt = `$${(Number(data?.gross_amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   return (
-    <TokenShell maxWidth={520}>
-      <div style={messageCardStyle}>
-        <h1 style={titleStyle}>Specialist Payment</h1>
-        <p style={subtitleStyle}>Payment request from VFO Services (working with ERT){data?.specialist_name ? ` for ${data.specialist_name}` : ''}.</p>
-        <div style={{ fontSize: '34px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '18px 0 6px' }}>{amountFmt}</div>
-        <p style={{ ...subtitleStyle, marginBottom: '24px' }}>Paid by ACH bank transfer — no processing fee. You will be taken to Stripe's secure page to link your bank account and authorize the payment.</p>
-        <button type="button" onClick={() => handleChoice('ach')}
-          style={{ padding: '14px 32px', borderRadius: '10px', border: 'none', background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', color: '#fff', fontWeight: 700, fontSize: '15px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-          Continue to secure payment
-        </button>
+    <TokenShell>
+      <div style={pageContainerStyle}>
+        <div style={{ ...iconCircleStyle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
+          <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
+        </div>
+        <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>{isRecurring ? 'Recurring Specialist Payment' : 'Specialist Payment'}</h1>
+        <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: '12px' }}>{isRecurring ? 'Set up your monthly payment method' : 'Choose your preferred payment method'}</p>
+        <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: notice ? '16px' : '32px', fontSize: '13px', color: 'var(--vfo-muted)' }}>
+          {isRecurring ? `$${formatMoney(baseAmount)}/month recurring` : 'One-time payment'} · VFO Services (working with ERT){name ? ` · ${name}` : ''}
+        </p>
+        {notice && (
+          <p style={{ fontSize: '13px', color: '#b7791f', background: 'rgba(214,158,46,0.10)', padding: '10px 14px', borderRadius: '10px', margin: '0 0 24px', textAlign: 'center' }}>{notice}</p>
+        )}
+
+        <OptionCard
+          isHovered={hoveredOption === 'ach'} onHover={() => setHoveredOption('ach')} onLeave={() => setHoveredOption(null)}
+          onClick={() => handleChoice('ach')} title="ACH Bank Transfer" badgeText="No Fee" badgeClass="green" amount={baseAmount} suffix={amtSuffix}
+          breakdown={[
+            { label: lineLabel, value: `$${formatMoney(baseAmount)}`, valueColor: 'var(--vfo-ink-2)' },
+            { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
+          ]}
+          footer={isRecurring
+            ? `Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. Nothing is charged today — your first payment collects on the ${dayText} (next month's if this month's has already passed) and monthly on that day after that.`
+            : 'Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. Takes 2-4 business days to process.'}
+        />
+
+        <div style={dividerStyle}>— or —</div>
+
+        <OptionCard
+          isHovered={hoveredOption === 'card'} onHover={() => setHoveredOption('card')} onLeave={() => setHoveredOption(null)}
+          onClick={() => handleChoice('card')} title="Credit / Debit Card" badgeText="2.9% + $0.30 Fee" badgeClass="blue" amount={cardTotal} suffix={amtSuffix}
+          breakdown={[
+            { label: lineLabel, value: `$${formatMoney(baseAmount)}`, valueColor: 'var(--vfo-ink-2)' },
+            { label: 'Card Processing Fee (2.9% + $0.30)', value: `$${formatMoney(cardFee)}`, valueColor: 'var(--vfo-ink-2)' },
+          ]}
+          footer={isRecurring
+            ? `Your card is saved securely through Stripe. Nothing is charged today — your first payment collects on the ${dayText} (next month's if this month's has already passed) and monthly on that day after that.`
+            : 'Processes immediately. The processing fee covers card transaction costs.'}
+        />
+
+        <p style={securityNoteStyle}>
+          {isRecurring ? `The payment method you choose will be charged on the ${dayText} each month until cancelled. To change it, contact us.` : ''}{isRecurring ? <br /> : null}
+          Your payment details are handled securely by Stripe.<br />
+          VFO Services never sees or stores your payment information.
+        </p>
       </div>
     </TokenShell>
   )
 }
 
-function ordinal(n) {
-  const v = Number(n) || 0
-  const s = ['th', 'st', 'nd', 'rd']
-  const m = v % 100
-  return `${v}${s[(m - 20) % 10] || s[m] || s[0]}`
+function OptionCard({ isHovered, onHover, onLeave, onClick, title, badgeText, badgeClass, amount, breakdown, footer, suffix = '' }) {
+  return (
+    <div onClick={onClick} onMouseEnter={onHover} onMouseLeave={onLeave}
+      style={{ ...optionCardStyle, borderColor: isHovered ? '#0095ff' : 'var(--vfo-border)', background: isHovered ? 'rgba(0,149,255,0.05)' : 'transparent' }}>
+      <div style={optionHeaderStyle}>
+        <span style={optionTitleStyle}>{title}</span>
+        <span style={{ ...optionBadgeBaseStyle, ...badgeStyles[badgeClass] }}>{badgeText}</span>
+      </div>
+      <div style={optionAmountStyle}>${formatMoney(amount)}{suffix}</div>
+      <div style={{ marginBottom: '16px' }}>
+        {breakdown.map((row, i) => (
+          <div key={i} style={optionDetailRowStyle}>
+            <span style={{ color: 'var(--vfo-muted)' }}>{row.label}</span>
+            <span style={{ color: row.valueColor, fontWeight: 600 }}>{row.value}</span>
+          </div>
+        ))}
+      </div>
+      <div style={optionFooterStyle}>{footer}</div>
+    </div>
+  )
 }
 
+function formatMoney(n) {
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const pageContainerStyle = { width: '100%' }
 const messageCardStyle = { textAlign: 'center', padding: '12px 0' }
 const iconCircleStyle = { width: '72px', height: '72px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }
 const titleStyle = { fontSize: '24px', fontWeight: 700, color: 'var(--vfo-ink)', marginBottom: '12px' }
 const subtitleStyle = { fontSize: '14px', color: 'var(--vfo-muted)' }
+const optionCardStyle = { border: '2px solid var(--vfo-border)', borderRadius: '16px', padding: '28px', marginBottom: '16px', cursor: 'pointer', transition: 'all 0.2s' }
+const optionHeaderStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }
+const optionTitleStyle = { fontSize: '16px', fontWeight: 700, color: 'var(--vfo-ink)' }
+const optionBadgeBaseStyle = { fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '0.5px' }
+const badgeStyles = { green: { background: 'rgba(34,197,94,0.15)', color: '#16a34a' }, blue: { background: 'rgba(0,149,255,0.15)', color: '#0095ff' } }
+const optionAmountStyle = { fontSize: '28px', fontWeight: 700, color: 'var(--vfo-ink)', marginBottom: '16px' }
+const optionDetailRowStyle = { display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '13px' }
+const optionFooterStyle = { fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--vfo-border-soft)' }
+const dividerStyle = { textAlign: 'center', color: 'var(--vfo-muted)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', margin: '8px 0' }
+const securityNoteStyle = { textAlign: 'center', color: 'var(--vfo-muted)', fontSize: '12px', marginTop: '24px', lineHeight: 1.6 }
