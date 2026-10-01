@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi } from '../../lib/api'
 import { formatDate, formatDateTime } from '../../lib/dates'
-import { TAX_INTAKE_QUESTIONS } from '../member/taxIntakeQuestions'
+import { TAX_INTAKE_QUESTIONS, numberTaxIntakeQuestions } from '../member/taxIntakeQuestions'
 
 // Tax Diagnostics — the queue of public /tax-diagnostic submissions (grantable
 // tab `tax_diagnostics`, backend TAB_ACTIONS.tax_diagnostics).
@@ -249,9 +249,9 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
           <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '8px 0 4px' }}>Answers</div>
           {/* One question per row — a list to scroll, not a grid. */}
           <div>
-            {visibleQuestions.map((q, i) => (
-              <div key={q.id} style={{ padding: '10px 0', borderBottom: i === visibleQuestions.length - 1 ? 'none' : '1px solid var(--vfo-tint)' }}>
-                <div style={label}>{i + 1}. {q.label}</div>
+            {numberTaxIntakeQuestions(visibleQuestions, answers, 0, true).map(({ q, num }, i, all) => (
+              <div key={q.id} style={{ padding: '10px 0', borderBottom: i === all.length - 1 ? 'none' : '1px solid var(--vfo-tint)' }}>
+                <div style={label}>{num}. {q.label}</div>
                 <div style={value}>{answers[q.id] || '—'}</div>
               </div>
             ))}

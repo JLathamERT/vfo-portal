@@ -60,9 +60,9 @@ export const TAX_INTAKE_QUESTIONS = [
   { id: "q18", label: "Federal income taxes paid last year", type: "radio", required: true, options: [TAX_INTAKE_Q18_POOR_FIT, "Combined $100K across previous three years", "$100k - $250k", "$250k - $500k", "$500k+"] },
   { id: "q19", label: "Potential events or sales creating a tax liability of $100k+ in the next three years?", type: "text", required: false },
   { id: "q20", label: "Does client own a business?", type: "radio", required: true, options: ["Yes", "No"] },
-  { id: "q21", label: "Entity type", type: "radio", required: false, options: ["Sole Proprietorship (Schedule C) or Single Member LLC", "S-corp", "C-corp", "Partnership", "Multiple Entity Types", "Other"] },
-  { id: "q22", label: "Estimated annual gross business revenue (all operating businesses combined)", type: "money", required: false },
-  { id: "q23", label: "Estimated annual net business profit (all operating businesses combined)", type: "money", required: false },
+  { id: "q21", label: "Entity type", type: "radio", required: false, parentId: "q20", parentValue: "Yes", options: ["Sole Proprietorship (Schedule C) or Single Member LLC", "S-corp", "C-corp", "Partnership", "Multiple Entity Types", "Other"] },
+  { id: "q22", label: "Estimated annual gross business revenue (all operating businesses combined)", type: "money", required: false, parentId: "q20", parentValue: "Yes" },
+  { id: "q23", label: "Estimated annual net business profit (all operating businesses combined)", type: "money", required: false, parentId: "q20", parentValue: "Yes" },
   { id: "q24", label: "Roth conversion planning included if appropriate?", type: "radio", required: true, options: ["Yes", "No", "Unsure"] },
   { id: "q25", label: "Pre-tax retirement account balances (optional)", type: "money", required: false },
   { id: "q26", label: "Real estate values not including primary residence (optional)", type: "money", required: false },
@@ -89,7 +89,7 @@ export const TAX_INTAKE_QUESTIONS = [
     type: "radio",
     required: false,
     options: [TAX_INTAKE_Q38_TRADITIONAL, TAX_INTAKE_Q38_RAPID],
-    optionNotes: { [TAX_INTAKE_Q38_RAPID]: "Best for more sophisticated or time-limited clients" },
+    optionNotes: { [TAX_INTAKE_Q38_RAPID]: "Appropriate for more sophisticated or time-limited clients" },
   },
   {
     id: "q39",
@@ -99,6 +99,39 @@ export const TAX_INTAKE_QUESTIONS = [
     required: false,
   },
 ];
+
+// A follow-up question (parentId) is asked only while its parent holds
+// parentValue — q21-q23 exist only for a client who owns a business (q20 Yes).
+// A hidden follow-up is never required and is stored blank.
+export function taxIntakeQuestionShown(q, answers) {
+  if (!q.parentId) return true
+  return String(answers?.[q.parentId] ?? "").trim() === q.parentValue
+}
+
+// Display numbers for a rendered list: a follow-up takes its parent's number
+// plus a letter (17a, 17b, 17c) and does not advance the count, so every
+// question after it keeps counting from the parent. `keepAnswered` also keeps a
+// hidden follow-up that still holds a stored answer (read-only views).
+export function numberTaxIntakeQuestions(questions, answers, offset = 0, keepAnswered = false) {
+  const byId = Object.fromEntries(TAX_INTAKE_QUESTIONS.map(q => [q.id, q]))
+  const out = []
+  let n = offset
+  let letter = 0
+  for (const listed of questions) {
+    const def = byId[listed.id] || listed
+    if (def.parentId) {
+      const kept = taxIntakeQuestionShown(def, answers) || (keepAnswered && String(answers?.[def.id] ?? "").trim() !== "")
+      if (!kept) continue
+      letter += 1
+      out.push({ q: listed, num: `${n}${String.fromCharCode(96 + letter)}` })
+      continue
+    }
+    n += 1
+    letter = 0
+    out.push({ q: listed, num: String(n) })
+  }
+  return out
+}
 
 export const TAX_INTAKE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -122,6 +155,7 @@ export function validateTaxIntakeAnswers(answers) {
     const raw = a[q.id];
     const val = String(raw ?? "").trim();
     if (q.type === "derived") continue;
+    if (!taxIntakeQuestionShown(q, a)) continue;
     if (q.required && !q.hidden && !val) {
       errors.push(taxIntakeRequiredMessage(q.label));
       continue;
@@ -142,6 +176,7 @@ export function normalizeTaxIntakeAnswers(answers) {
   for (const q of TAX_INTAKE_QUESTIONS) {
     // A derived answer is never taken from the caller — the server assigns it.
     if (q.type === "derived") { out[q.id] = ""; continue; }
+    if (!taxIntakeQuestionShown(q, a)) { out[q.id] = ""; continue; }
     const raw = a[q.id];
     out[q.id] = q.type === "money" ? normalizeTaxIntakeMoney(raw) : String(raw ?? "").trim();
   }

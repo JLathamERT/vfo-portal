@@ -10,6 +10,7 @@ import PricingSplitCard from './PricingSplitCard'
 import { CONFIRMATION_CARD_SKIP } from '../../../lib/confirmationStatus'
 import { formatDate as formatFullDate } from '../../../lib/dates'
 import { TAX_DISPLAY_NAMES, taxDisplayName } from '../../shared/taxDisplayNames'
+import { numberTaxIntakeQuestions } from '../../member/taxIntakeQuestions'
 
 // The automated cascade card. The STORED program_client_tasks.name is a lookup
 // key on both sides of the wire — the two cards below switch on it, MAP 1 keys
@@ -2292,11 +2293,11 @@ function TaxIntakeCard({ intake, questions }) {
       </div>
       {open && (
         <div style={{ borderTop: '1px solid var(--vfo-border)', padding: '14px 18px' }}>
-          {(questions || []).map((q, i) => {
+          {numberTaxIntakeQuestions(questions || [], intake.answers || {}, 0, true).map(({ q, num }, i, all) => {
             const val = intake.answers?.[q.id]
             return (
-              <div key={q.id} style={{ display: 'flex', gap: '12px', padding: '6px 0', borderBottom: i === questions.length - 1 ? 'none' : '1px solid var(--vfo-border-soft)', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flex: '1 1 300px', lineHeight: 1.5 }}>{i + 1}. {q.label}</span>
+              <div key={q.id} style={{ display: 'flex', gap: '12px', padding: '6px 0', borderBottom: i === all.length - 1 ? 'none' : '1px solid var(--vfo-border-soft)', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flex: '1 1 300px', lineHeight: 1.5 }}>{num}. {q.label}</span>
                 <span style={{ fontSize: '12px', color: val ? 'var(--vfo-ink)' : 'var(--vfo-muted)', flex: '1 1 240px', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '—'}</span>
               </div>
             )
