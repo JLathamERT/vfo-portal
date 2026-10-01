@@ -59,7 +59,10 @@ export function MemberNameLink({ memberNumber, children, style }) {
   )
 }
 
-export function ClientNameLink({ clientId, program, tab, children, style }) {
+// navState (optional) rides on the navigation — ClientDetail's Back reads
+// location.state.from — and onOpen runs just before it, for a caller that must
+// remember where to return to (Tax Planners → Clients).
+export function ClientNameLink({ clientId, program, tab, children, style, navState, onOpen }) {
   const navigate = useNavigate()
   if (!clientId) return <span style={style}>{children}</span>
   const target = clientPagePath(clientId, { program, tab })
@@ -67,7 +70,7 @@ export function ClientNameLink({ clientId, program, tab, children, style }) {
     <span
       title="Open client profile"
       style={{ ...style, ...baseStyle }}
-      onClick={e => { e.stopPropagation(); navigate(target) }}
+      onClick={e => { e.stopPropagation(); onOpen?.(); navigate(target, navState ? { state: navState } : undefined) }}
       {...hoverProps}>
       {children}
     </span>
