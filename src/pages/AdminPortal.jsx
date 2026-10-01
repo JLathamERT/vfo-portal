@@ -395,6 +395,9 @@ export default function AdminPortal() {
     sessionStorage.setItem('adminActiveTab', 'taxplanners')
     setTaxPlannersSection(key)
     sessionStorage.setItem('adminTaxPlannersSection', key)
+    // Re-picking the section you are already on must still reset the panel (back to
+    // the planner list from an open planner) — the counter is part of its key.
+    setNavClickCount(c => c + 1)
     sessionStorage.removeItem('adminSelectedMember')
     sessionStorage.removeItem('adminMemberFeatureTab')
     setShowEditor(false)
@@ -800,7 +803,7 @@ export default function AdminPortal() {
           )}
 
           {activeTab === 'taxplanners' && !loading && (
-            <TaxPlannersPanel key={taxPlannersSection} section={taxPlannersSection} />
+            <TaxPlannersPanel key={`${taxPlannersSection}-${navClickCount}`} section={taxPlannersSection} />
           )}
 
           {activeTab === 'member_overview' && !loading && (

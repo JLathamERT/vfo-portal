@@ -10,7 +10,8 @@ import { DirectoryListSkeleton } from '../shared/Skeleton'
 import { TrackHero, HeroAvatar, ListHeader } from '../shared/TrackKit'
 import { FeatureTabDropdown } from './MembersPanel'
 import SendSetupEmailButton from './SendSetupEmailButton'
-import { ClientNameLink } from '../shared/personLinks'
+import { useNavigate } from 'react-router-dom'
+import { ClientNameLink, clientPagePath } from '../shared/personLinks'
 import { formatDate } from '../../lib/dates'
 
 const STATUS_COLORS = { Active: '#1b9254', Lost: '#e74c3c', Removed: 'var(--vfo-muted)' }
@@ -104,7 +105,13 @@ export default function TaxPlannersPanel({ section }) {
     }
   }
   const groupNames = groups.map(g => g.name)
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load().then(list => {
+      const ret = takePlannerReturn()
+      const planner = ret && (list || []).find(p => String(p.id) === String(ret.plannerId))
+      if (planner) { handleSelect(planner); setPlannerTab(ret.tab) }
+    })
+  }, [])
 
   function showStatus(which, type, msg) {
     if (which === 'add') { setAddStatusType(type); setAddStatus(msg); setTimeout(() => setAddStatus(''), 4000) }
@@ -688,7 +695,34 @@ function TaxPlannerPaymentsTab({ plannerId }) {
 // even when they hold plans under more than one program.
 const PROGRAM_LABELS = { 1: 'Holistic', 4: 'VFO Tax Planning' }
 const programLabel = (id) => PROGRAM_LABELS[Number(id) || 1] || 'Holistic'
+// Same precedence as the planner portal's client list (PlannerClientsList): a
+// stopped plan is Stopped even if every step was ticked first; otherwise the
+// backend's is_complete — the shared step machine Client Overview runs — decides.
+const planState = (r) => (r.plan_status === 'stopped' ? 'Stopped' : r.is_complete ? 'Completed' : 'Live')
+// Back from a client opened off a planner's Clients tab: the client page's Back
+// goes to location.state.from (the Tax Planners search), and this key tells the
+// panel which planner + tab to reopen. Consumed once on the next mount; a stale
+// key (over an hour old) is ignored.
+const PLANNER_RETURN_KEY = 'adminTaxPlannerReturn'
+const PLANNER_RETURN_FROM = '/admin?tab=taxplanners&section=tax_planner_search'
+function rememberPlannerReturn(plannerId) {
+  try { sessionStorage.setItem(PLANNER_RETURN_KEY, JSON.stringify({ plannerId, tab: 'clients', at: Date.now() })) } catch { /* private mode */ }
+}
+function takePlannerReturn() {
+  try {
+    const raw = sessionStorage.getItem(PLANNER_RETURN_KEY)
+    sessionStorage.removeItem(PLANNER_RETURN_KEY)
+    const r = raw ? JSON.parse(raw) : null
+    return r && Date.now() - Number(r.at || 0) < 3600 * 1000 ? r : null
+  } catch { return null }
+}
+const PLAN_STATE_STYLES = {
+  Live: { bg: 'rgba(0,149,255,0.12)', color: '#0095ff', border: 'rgba(0,149,255,0.3)' },
+  Completed: { bg: 'rgba(27,146,84,0.15)', color: '#1b9254', border: 'rgba(27,146,84,0.3)' },
+  Stopped: { bg: 'rgba(231,76,60,0.15)', color: '#e74c3c', border: 'rgba(231,76,60,0.3)' },
+}
 function TaxPlannerClientsTab({ plannerId }) {
+  const navigate = useNavigate()
   const [rows, setRows] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -727,6 +761,7 @@ function TaxPlannerClientsTab({ plannerId }) {
     }
     const label = programLabel(r.program_id)
     if (!entry.programs.includes(label)) entry.programs.push(label)
+    entry.planStates = [...(entry.planStates || []), { id: r.tax_plan_id, programId: r.program_id || 1, program: label, state: planState(r) }]
   }
 
   return (
@@ -743,17 +778,33 @@ function TaxPlannerClientsTab({ plannerId }) {
                 <th style={th}>Client Ref</th>
                 <th style={th}>Member</th>
                 <th style={th}>Program</th>
+                <th style={th}>Status</th>
               </tr>
             </thead>
             <tbody>
               {byClient.map(c => (
                 <tr key={c.client_id}>
                   <td style={td}>
-                    <ClientNameLink clientId={c.client_id} program={c.program_id || 1} tab="tax" style={{ fontWeight: 600 }}>{c.client_name || `Client ${c.client_id}`}</ClientNameLink>
+                    <ClientNameLink clientId={c.client_id} program={c.program_id || 1} tab="home" style={{ fontWeight: 600 }}
+                      onOpen={() => rememberPlannerReturn(plannerId)} navState={{ from: PLANNER_RETURN_FROM }}>{c.client_name || `Client ${c.client_id}`}</ClientNameLink>
                   </td>
                   <td style={{ ...td, fontFamily: 'ui-monospace, monospace', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{c.client_ref || '—'}</td>
                   <td style={td}>{c.member_name || '—'}</td>
                   <td style={{ ...td, color: 'var(--vfo-muted)' }}>{c.programs.join(', ')}</td>
+                  <td style={td}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {(c.planStates || []).map(p => {
+                        const s = PLAN_STATE_STYLES[p.state]
+                        return (
+                          <button key={p.id} type="button" title={`Open ${p.program} plan`}
+                            onClick={() => { rememberPlannerReturn(plannerId); navigate(clientPagePath(c.client_id, { program: p.programId, tab: 'tax', plan: p.id }), { state: { from: PLANNER_RETURN_FROM } }) }}
+                            style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', whiteSpace: 'nowrap', background: s.bg, color: s.color, border: `1px solid ${s.border}`, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                            {p.state}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
