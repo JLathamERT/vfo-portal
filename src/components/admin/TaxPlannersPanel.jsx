@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { callApi } from '../../lib/api'
+import { callApi, loadCachedAction } from '../../lib/api'
+import { makeTaxPlanRules, taxPlanProgressSummary } from './tax/taxPlanRules'
 import { fileToLogoPng, logoUrl } from '../shared/logoPng'
 import { fileSizeError } from '../../lib/fileUpload'
 import VaultSections from '../shared/VaultSections'
@@ -739,7 +740,26 @@ function TaxPlannerClientsTab({ plannerId }) {
     let alive = true
     setLoading(true); setError('')
     callApi('tax_planner_clients_load', { planner_id: plannerId })
-      .then(d => { if (alive) setRows(d.clients || []) })
+      .then(async d => {
+        const clients = d.clients || []
+        // Each plan's "<n>/6 - <pct>%" runs the plan page's own rules over the
+        // inputs the load returns, with the same template the plan page loads.
+        const phasesByProgram = {}
+        await Promise.all([...new Set(clients.map(r => r.program_id || 1))].map(async pid => {
+          try {
+            const t = await loadCachedAction('msm_load_client_track', { program_id: pid, track_type: 'tax' })
+            const phases = (t?.phases || []).map(p => ({ ...p, program_client_tasks: [...(p.program_client_tasks || [])].sort((a, b) => a.task_order - b.task_order) }))
+            phasesByProgram[pid] = phases
+          } catch { phasesByProgram[pid] = null }
+        }))
+        for (const r of clients) {
+          const phases = phasesByProgram[r.program_id || 1]
+          r.progressSummary = (r.plan && phases)
+            ? taxPlanProgressSummary(makeTaxPlanRules({ plan: r.plan, livePlan: r.plan, phases, localProgress: r.progress || {}, taxSpecialists: r.specialists || [] }))
+            : null
+        }
+        if (alive) setRows(clients)
+      })
       .catch(e => { if (alive) setError(e?.message || 'Failed to load clients') })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
@@ -769,7 +789,7 @@ function TaxPlannerClientsTab({ plannerId }) {
     }
     const label = programLabel(r.program_id)
     if (!entry.programs.includes(label)) entry.programs.push(label)
-    entry.planStates = [...(entry.planStates || []), { id: r.tax_plan_id, programId: r.program_id || 1, program: label, state: planState(r) }]
+    entry.planStates = [...(entry.planStates || []), { id: r.tax_plan_id, programId: r.program_id || 1, program: label, state: planState(r), summary: r.progressSummary }]
   }
 
   return (
@@ -787,6 +807,7 @@ function TaxPlannerClientsTab({ plannerId }) {
                 <th style={th}>Member</th>
                 <th style={th}>Program</th>
                 <th style={th}>Status</th>
+                <th style={th} title="Phases completed in a row (Tax 1-6) and the plan's task percentage, as on the plan page">Progress</th>
               </tr>
             </thead>
             <tbody>
@@ -800,17 +821,27 @@ function TaxPlannerClientsTab({ plannerId }) {
                   <td style={td}>{c.member_name || '—'}</td>
                   <td style={{ ...td, color: 'var(--vfo-muted)' }}>{c.programs.join(', ')}</td>
                   <td style={td}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
                       {(c.planStates || []).map(p => {
                         const s = PLAN_STATE_STYLES[p.state]
                         return (
                           <button key={p.id} type="button" title={`Open ${p.program} plan`}
                             onClick={() => { rememberPlannerReturn(plannerId); navigate(clientPagePath(c.client_id, { program: p.programId, tab: 'tax', plan: p.id }), { state: { from: PLANNER_RETURN_FROM } }) }}
-                            style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', whiteSpace: 'nowrap', background: s.bg, color: s.color, border: `1px solid ${s.border}`, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                            style={{ fontSize: '12px', lineHeight: '14px', height: '22px', boxSizing: 'border-box', padding: '3px 10px', borderRadius: '4px', whiteSpace: 'nowrap', background: s.bg, color: s.color, border: `1px solid ${s.border}`, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
                             {p.state}
                           </button>
                         )
                       })}
+                    </div>
+                  </td>
+                  <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {(c.planStates || []).map(p => (
+                        <span key={p.id} title={p.summary ? `${p.summary.done} / ${p.summary.total} tasks completed` : 'Progress unavailable'}
+                          style={{ fontSize: '12.5px', lineHeight: '22px', fontWeight: 600, color: p.summary ? 'var(--vfo-ink)' : 'var(--vfo-muted)' }}>
+                          {p.summary ? p.summary.label : '—'}
+                        </span>
+                      ))}
                     </div>
                   </td>
                 </tr>
