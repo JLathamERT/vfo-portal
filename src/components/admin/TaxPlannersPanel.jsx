@@ -13,10 +13,18 @@ import SendSetupEmailButton from './SendSetupEmailButton'
 import { useNavigate } from 'react-router-dom'
 import { ClientNameLink, clientPagePath } from '../shared/personLinks'
 import { formatDate } from '../../lib/dates'
+import ExportButton from '../shared/ExportButton'
 
 const STATUS_COLORS = { Active: '#1b9254', Lost: '#e74c3c', Removed: 'var(--vfo-muted)' }
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
 
+const PLANNER_EXPORT_COLUMNS = [
+  { header: 'First Name', value: p => p.first_name || '' },
+  { header: 'Last Name', value: p => p.last_name || '' },
+  { header: 'Status', value: p => p.status || 'Active' },
+  { header: 'Email', value: p => p.email || '' },
+  { header: 'Partnership', value: p => p.member_type || '' },
+]
 const fullName = (p) => `${p.first_name || ''} ${p.last_name || ''}`.trim() || '(unnamed)'
 
 // Rows predating the Team Member role carry no planner_role — they are planners.
@@ -419,7 +427,7 @@ export default function TaxPlannersPanel({ section }) {
           {editStatus && (
             <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: editStatusType === 'success' ? 'rgba(27,146,84,0.1)' : 'rgba(231,76,60,0.1)', color: editStatusType === 'success' ? '#1b9254' : '#e74c3c', border: `1px solid ${editStatusType === 'success' ? 'rgba(27,146,84,0.3)' : 'rgba(231,76,60,0.3)'}` }}>{editStatus}</div>
           )}
-          <ListHeader title="Tax Planners" count={filteredPlanners.length} />
+          <ListHeader title="Tax Planners" count={filteredPlanners.length} action={<ExportButton title="Tax Planners" columns={PLANNER_EXPORT_COLUMNS} rows={filteredPlanners} />} />
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
             <input type="search" name="search" autoComplete="off" placeholder="Search by name or type..." style={inputStyle} onChange={e => setSearch(e.target.value.toLowerCase())} value={search} />
             <ListFilterButton groups={listFilterGroups} value={listFilter} onChange={setListFilter} />
