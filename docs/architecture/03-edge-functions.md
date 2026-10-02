@@ -13,6 +13,8 @@ Two Supabase edge functions deployed to project `ejpsprsmhpufwogbmxjv`. Both are
 
 > **`verify_jwt` note.** v195 of `vfo-admin-api` regressed when deploying with the default `verify_jwt = true` from config.toml — Kong gateway 401'd public-token endpoints (`/decide`, `/pay`) before requests reached the function. Fixed in v196 by changing config.toml to `verify_jwt = false`, matching the historical deploy practice. The standalone `boldsign-webhook` config still says `true` (untouched per safety rules) but its deployed registry value is `false`. If you ever redeploy `boldsign-webhook`, mirror the fix or pass `--no-verify-jwt`.
 
+> **Deploy size (2026-10-02, gotcha #574).** `vfo-admin-api`'s raw source (~684 files, ~4.57 MB) is over Supabase's 5 MB server-side upload limit, so the default deploy and `--use-api` both return `413`. Every deploy is now: Docker Desktop running → delete any `supabase/functions/vfo-admin-api/deno.lock` (#74) → `supabase functions deploy vfo-admin-api --project-ref ejpsprsmhpufwogbmxjv --use-docker` (local bundle, 20 MB cap, ~2.04 MB). Command block: [../integrations/supabase.md](../integrations/supabase.md#deploy-command).
+
 ---
 
 ## `vfo-admin-api` — overall shape

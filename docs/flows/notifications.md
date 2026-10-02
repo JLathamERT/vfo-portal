@@ -122,7 +122,7 @@ The original MAP 1 insertion example, `automation_PCADMIN_finaldecision` ([admin
   link:      "/admin/client/<id>?tab=map1"
   ```
 
-Beyond this MAP1 example, the TAX / Advisor / Accountant / PFT pipelines also insert notifications. Recipient routing varies: TAX routes per-person via `utils/tax-notify.ts`; **Advisor/Accountant onboarding route to the chosen Team Member** (see subsection below); the rest use `recipient='admin'` (plus, for the Tax 4 reminder below, specific staff emails). Status changes elsewhere in the system (CIQ, MSM, contracts) do **not** generate notifications.
+Beyond this MAP1 example, the TAX / Advisor / Accountant / PFT pipelines also insert notifications. Recipient routing varies: TAX routes per-person via `utils/tax-notify.ts`; **Advisor/Accountant onboarding route to the chosen Team Member** (see subsection below); the rest use `recipient='admin'` (plus, for the Tax 4 reminder below, specific staff emails). Status changes elsewhere in the system (CIQ, MSM, contracts) do **not** generate notifications — **except the 90 Day Plan (MSM) training bells** (subsection below).
 
 ### Tax 4 meeting-passed reminder (action-required, in-app)
 
@@ -245,6 +245,24 @@ One family, three pipelines, one shape: an ACH payer who **typed their account a
 **The licence arm is the one with an outcome ladder**, because a $0-today subscription resolves through `setup_intent.*` rather than the PaymentIntent lifecycle: `setup_intent.succeeded` clears the stamp and releases the held confirmation email; `setup_intent.setup_failed` / `.canceled` cancels the subscription and raises **`SPECIALIST_lic_bank_verification_failed`**; and in between, sweep tier 7c raises **`SPECIALIST_lic_bank_verification_stalled`** at 3 business days. MAP 1 and Tax deliberately have **no stall sweep** — the checkout-time bell plus Stripe's own reminder emails are their whole coverage. All three licence bells default to Tracy and are wrapped in try/catch, so a bell failure never fails the money write (**#176**).
 
 **The Tax + MAP 1 held bell is now GATED on `connect_setup_email_sent_at`, and it CLEARS the FAILED bell (2026-09-09, v820)** *(v: 2026-09-09)*. `tax/revshare.ts` and `contract-revshare.ts` no longer branch on a bare `!member.stripe_account_id`: they probe `capabilities.transfers === 'active'` (`utils/connect-payout-readiness.ts`), and a half-built account now parks the leg at **`AWAITING_CONNECT`** exactly like an absent one instead of failing it (**#159/#479**). The bell follows the ASK, not the money. If **no** setup link has been sent (`members.connect_setup_email_sent_at` is null) the action-required `TAX_member_share_held` / `MAP1_member_share_held` bell is raised as before, with its MESSAGE branching on which case it is (*"has not finished onboarding"* vs *"no Stripe payout account"*) and its **TITLE untouched**, because the title is the clear contract (#365/#411). If a link **has** been sent there is nothing an admin can do, so the engine raises nothing and instead **`clearJakeFailure()`s BOTH** the held title and the older `Revenue share transfer FAILED — <client>` title, retiring bells an earlier run had minted — which is what silenced bells 1729 and 1784 on plan 91. The money is unaffected either way: the leg stays non-terminal and both nightly sweeps keep retrying it. **PIP is deliberately unchanged** (its `Pending` is not swept — see [architecture/07-server-chains.md](../architecture/07-server-chains.md)).
+
+### 90 Day Plan (MSM) — training bells to the assigned MSM
+
+Area **`90 Day Plan`** in the Notification Editor, pipeline `MSM`, every bell routed to the member's **assigned MSM** (`resolveAssignedMsmEmail` + the `ASSIGNED_MSM` dynamic token) with **`MSM_TEAM_EMAILS`** as the call-site fallback when the member has none, link `/admin?member=<n>&feature=msm_program_holistic|msm_program_partnership&sub=training`. The member-driven FYIs (`TRAINING_tracker_*`, `TRAINING_member_phase_completed`) are listed in [msm-tracking.md](msm-tracking.md).
+
+**`TRAINING_roleplay_outcome_needed` (2026-10-02, v935) — the one ACTION-REQUIRED training bell.** The day after a confirmed Proactive Facilitator roleplay with no outcome recorded, the MSM is asked to mark it Completed or No-show:
+
+```
+recipient:   <assigned MSM> (MSM_TEAM_EMAILS fallback)
+pipeline:    'MSM'
+title:       "Record the roleplay outcome for <Member Name>"
+message:     "The Proactive Facilitator roleplay was scheduled for MM/DD/YYYY. Mark it Completed or No-show on the 90 Day Plan."
+link:        /admin?member=<n>&feature=msm_program_holistic|msm_program_partnership&sub=training
+dedupe:      'unread'
+dismissible: false
+```
+
+Raised by `runRoleplayOutcomePass`, a pass of the weekday growth overdue sweep (cron jobid 12, 10:00 UTC — see [07-server-chains.md](../architecture/07-server-chains.md)); once per attempt via `training_roleplay_attempts.outcome_bell_sent_at`; skipped when the MSM set the step `Stopped` / `N/A`. **Cleared by title + the plan's own link** (a member in both programs clears per plan) by `training_roleplay_set_outcome`, and by `training_roleplay_confirm` on a reschedule, which also resets the latch so a new date can bell again. The title is load-bearing (#365).
 
 ## Step 3 — Mark read (single)
 

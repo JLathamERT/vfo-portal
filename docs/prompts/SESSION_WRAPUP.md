@@ -87,7 +87,7 @@ DO NOT create/push any tag here — the tag is stamped LAST in Part 4.
 ### 4B. Post-push report: commit SHA(s) · PR-creation URL(s) · production untouched · "merge with Squash and merge (one chat = one commit on main)" · then the MANDATORY deploy question:
   > DEPLOY NEEDED — merged/pushed ≠ live. To ship:
   > - Frontend changed? → npm run deploy in vfo-react
-  > - Backend changed?  → supabase functions deploy vfo-admin-api
+  > - Backend changed?  → supabase functions deploy vfo-admin-api --project-ref ejpsprsmhpufwogbmxjv --use-docker  (Docker Desktop running, deno.lock deleted first — gotcha #574)
   > Want me to run [the relevant one(s)] now? (yes / no)
   (If a repo needs no deploy — e.g. already deployed this session, or doc-only — say so explicitly.)
 
