@@ -6,6 +6,7 @@ import { Skeleton, ClientsListSkeleton, TrainingTrackSkeleton, CoachingMeetingsS
 import { TrackHero, PhaseBadge } from '../shared/TrackKit'
 import { countedTasks, countedDone, phaseState, isPositiveStatus, isTrackStopped, planStatusLabel, STATUS_STOPPED, STATUS_NOT_APPLICABLE } from '../shared/trainingStatus'
 import { isTrackerTask } from '../shared/trackerSteps'
+import RoleplayStep, { isRoleplayTask } from '../shared/RoleplayStep'
 import TaxIntakeForm from './TaxIntakeForm'
 import { formatDate as formatFullDate } from '../../lib/dates'
 
@@ -507,6 +508,9 @@ function MemberTrainingView({ enrollment, program }) {
           {isExpanded && (() => {
             const renderMemberTask = (task, inGroup) => {
               const p = progress[task.id] || {}
+              if (isRoleplayTask(task)) return (
+                <RoleplayStep key={task.id} task={task} enrollmentId={enrollment.id} programId={program.id} inGroup={inGroup} readOnly />
+              )
               const trackerMeta = isTrackerTask(task)
               if (trackerMeta) return (
                 <MemberTrackerTask key={task.id} task={task} meta={trackerMeta} enrollmentId={enrollment.id} progress={p} inGroup={inGroup} onStatusChange={handleTaskComplete} />
