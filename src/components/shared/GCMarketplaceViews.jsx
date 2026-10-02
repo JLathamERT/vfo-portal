@@ -71,6 +71,16 @@ function fmtDate(v) {
   return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+const TX_GRID = { display: 'grid', gridTemplateColumns: 'minmax(140px, 1fr) 90px 150px 90px 56px 50px', gap: '12px', alignItems: 'center' }
+
+// The "By" column (gc_transactions.actor_name / actor_role, 2026-10-02). Rows
+// written before the column existed, and Stripe purchases, carry none.
+function gcActorLabel(tx) {
+  if (tx.actor_role === 'system') return 'System (renewal)'
+  if (!tx.actor_name) return '—'
+  return tx.actor_role === 'admin' ? `${tx.actor_name} (admin)` : tx.actor_name
+}
+
 export function GCTransactionHistory({ transactions }) {
   return (
     <div style={sectionStyle}>
@@ -87,13 +97,21 @@ export function GCTransactionHistory({ transactions }) {
         ))
         : transactions.length === 0
         ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No transactions yet.</p>
-        : transactions.map(tx => (
-          <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-            <div style={{ flex: 1, textAlign: 'left' }}>
-              <div style={{ color: 'var(--vfo-ink)', fontSize: '14px' }}>{tx.description || tx.type}</div>
-              <div style={{ color: 'var(--vfo-muted)', fontSize: '12px', marginTop: '2px' }}>{new Date(tx.created_at).toLocaleDateString()}</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        : <>
+          <div style={{ ...TX_GRID, padding: '0 0 8px', borderBottom: '1px solid var(--vfo-tint)', fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <span>Description</span>
+            <span>Date</span>
+            <span>By</span>
+            <span style={{ justifySelf: 'end' }}>Type</span>
+            <span style={{ textAlign: 'right' }}>Credits</span>
+            <span style={{ textAlign: 'right' }}>Balance</span>
+          </div>
+          {transactions.map(tx => (
+          <div key={tx.id} style={{ ...TX_GRID, padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
+            <span style={{ color: 'var(--vfo-ink)', fontSize: '14px', textAlign: 'left' }}>{tx.description || tx.type}</span>
+            <span style={{ color: 'var(--vfo-muted)', fontSize: '12px' }}>{new Date(tx.created_at).toLocaleDateString()}</span>
+            <span style={{ color: 'var(--vfo-muted)', fontSize: '12px' }}>{gcActorLabel(tx)}</span>
+            <span style={{ justifySelf: 'end' }}>
               {/* A grant is stored as type "purchased" too (gc_add_credits), so the flag
                   alone would tell a member they bought credits they were given — which is
                   exactly what happened to 27 members before this. The Stripe session id is
@@ -106,11 +124,12 @@ export function GCTransactionHistory({ transactions }) {
                 ? <span style={{ background: 'rgba(0,149,255,0.2)', color: '#0095ff', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600' }}>refunded</span>
                 : <span style={{ background: 'rgba(231,76,60,0.2)', color: '#d93025', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600' }}>redeemed</span>
               }
-              <span style={{ color: tx.amount > 0 ? '#1b9254' : '#d93025', fontWeight: '600', minWidth: '50px', textAlign: 'right' }}>{tx.amount > 0 ? '+' : ''}{tx.amount}</span>
-              <span style={{ color: 'var(--vfo-muted)', fontSize: '12px', minWidth: '40px', textAlign: 'right' }}>{tx.balance_after}</span>
-            </div>
+            </span>
+              <span style={{ color: tx.amount > 0 ? '#1b9254' : '#d93025', fontWeight: '600', textAlign: 'right' }}>{tx.amount > 0 ? '+' : ''}{tx.amount}</span>
+              <span style={{ color: 'var(--vfo-muted)', fontSize: '12px', textAlign: 'right' }}>{tx.balance_after}</span>
           </div>
-        ))
+        ))}
+        </>
       }
     </div>
   )
