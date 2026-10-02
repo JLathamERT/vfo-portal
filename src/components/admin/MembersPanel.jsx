@@ -15,6 +15,8 @@ import SendSetupEmailButton from './SendSetupEmailButton'
 import ListFilterButton, { matchesFilter, sortMembers, SortSelect, MEMBER_SORT_OPTIONS } from './ListFilterButton'
 import { MemberProfileDetailsSkeleton, Skeleton, SkeletonText } from '../shared/Skeleton'
 import { TrackHero, HeroAvatar, ListHeader } from '../shared/TrackKit'
+import ExportButton from '../shared/ExportButton'
+import { splitName } from '../../lib/exportXlsx'
 import { VisibilityBadge, noteTint } from '../shared/NoteVisibility'
 import ImageCropModal from './ImageCropModal'
 import { MemberNameLink } from '../shared/personLinks'
@@ -294,6 +296,19 @@ export function FeatureTabDropdown({ label, isActive, options, onSelect }) {
 //   - featureTabKey  : sessionStorage key for the active feature sub-tab
 //   - hiddenFields   : list of profile field strings to suppress in the
 //                      profile view (e.g. ['revenue_decision'] for accountants)
+// Export columns for the three member search pages. A member with no profile
+// first/last name falls back to splitting the display name. Status reads blank
+// as Active, exactly as the Status filter does.
+const memberFirstLast = (m) => (m.first_name || m.last_name) ? [m.first_name || '', m.last_name || ''] : splitName(m.name)
+const MEMBER_EXPORT_COLUMNS = [
+  { header: '#', value: m => m.plugin_member_number },
+  { header: 'First Name', value: m => memberFirstLast(m)[0] },
+  { header: 'Last Name', value: m => memberFirstLast(m)[1] },
+  { header: 'Status', value: m => m.elite_status || 'Active' },
+  { header: 'Email', value: m => m.email || '' },
+  { header: 'Member Type', value: m => m.member_type || '' },
+]
+
 function MemberDirectoryView({
   displayMembers,
   allMembers,
@@ -411,7 +426,7 @@ function MemberDirectoryView({
 
       {activeTab === 'search' && !selectedMember && (
         <>
-          <ListHeader title={listTitle} count={filteredMembers.length} />
+          <ListHeader title={listTitle} count={filteredMembers.length} action={<ExportButton title={listTitle} columns={MEMBER_EXPORT_COLUMNS} rows={sortMembers(filteredMembers, listSort)} />} />
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
             <input type="search" name="search" autoComplete="off" placeholder="Search by name or number..." style={inputStyle} onChange={e => setMemberSearch(e.target.value.toLowerCase())} value={memberSearch} />
             <ListFilterButton groups={filterGroups} value={listFilter} onChange={setListFilter} />

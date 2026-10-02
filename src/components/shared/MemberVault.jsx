@@ -1,6 +1,7 @@
 import VaultSections, { DEFAULT_VAULT_SECTIONS } from './VaultSections'
 import { ertReadOnlySection, ertAdminSection } from './ertVaultSection'
 import { getSession } from '../../lib/api'
+import VaultDropLink from './VaultDropLink'
 
 // The member vault now mirrors the client vault: Tax Documents + General
 // sections, signed-URL uploads. `memberNumber` scopes every request (the member
@@ -22,5 +23,10 @@ export default function MemberVault({ memberNumber, admin = false, recipientName
     admin ? ertAdminSection('member', memberNumber, 'member', !!getSession()?.is_ert_manager) : ertReadOnlySection(),
   ]
   // moveContext only on the ADMIN view — the member portal never gets drag.
-  return <VaultSections actions={MEMBER_VAULT_ACTIONS} params={{ member_number: memberNumber }} sections={sections} moveContext={admin ? { entity: 'member', key: memberNumber } : null} />
+  return (
+    <>
+      {admin && <VaultDropLink entityType="member" entityKey={memberNumber} />}
+      <VaultSections actions={MEMBER_VAULT_ACTIONS} params={{ member_number: memberNumber }} sections={sections} moveContext={admin ? { entity: 'member', key: memberNumber } : null} />
+    </>
+  )
 }

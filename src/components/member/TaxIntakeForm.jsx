@@ -6,6 +6,7 @@ import {
   TAX_INTAKE_Q38_TRADITIONAL,
   validateTaxIntakeAnswers,
   normalizeTaxIntakeAnswers,
+  numberTaxIntakeQuestions,
 } from './taxIntakeQuestions'
 
 // The VFO Tax Planning intake form (q1-q39).
@@ -457,10 +458,10 @@ export default function TaxIntakeForm({
 
       <div style={sectionStyle}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px 28px' }}>
-          {visible.map((q, i) => (
+          {numberTaxIntakeQuestions(visible, answers, numberOffset).map(({ q, num }) => (
             <div key={q.id} style={q.type === 'textarea' ? { gridColumn: '1 / -1' } : undefined}>
               <label style={labelStyle}>
-                {i + 1 + numberOffset}. {clientFilling && q.selfLabel ? q.selfLabel : q.label}{q.required && <span style={{ color: '#d93025' }}> *</span>}
+                {num}. {clientFilling && q.selfLabel ? q.selfLabel : q.label}{q.required && <span style={{ color: '#d93025' }}> *</span>}
               </label>
               {q.note && <div style={noteStyle}>{q.note}</div>}
               {renderInput(q)}

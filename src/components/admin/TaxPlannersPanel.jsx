@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { callApi } from '../../lib/api'
+import { callApi, loadCachedAction } from '../../lib/api'
+import { makeTaxPlanRules, taxPlanProgressSummary } from './tax/taxPlanRules'
 import { fileToLogoPng, logoUrl } from '../shared/logoPng'
 import { fileSizeError } from '../../lib/fileUpload'
 import VaultSections from '../shared/VaultSections'
+import VaultDropLink from '../shared/VaultDropLink'
 import ImageCropModal from './ImageCropModal'
 import ListFilterButton, { matchesFilter, sortByJoin, SortSelect } from './ListFilterButton'
 import TaxPlannerKpiPanel from './TaxPlannerKpiPanel'
@@ -13,10 +15,18 @@ import SendSetupEmailButton from './SendSetupEmailButton'
 import { useNavigate } from 'react-router-dom'
 import { ClientNameLink, clientPagePath } from '../shared/personLinks'
 import { formatDate } from '../../lib/dates'
+import ExportButton from '../shared/ExportButton'
 
 const STATUS_COLORS = { Active: '#1b9254', Lost: '#e74c3c', Removed: 'var(--vfo-muted)' }
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
 
+const PLANNER_EXPORT_COLUMNS = [
+  { header: 'First Name', value: p => p.first_name || '' },
+  { header: 'Last Name', value: p => p.last_name || '' },
+  { header: 'Status', value: p => p.status || 'Active' },
+  { header: 'Email', value: p => p.email || '' },
+  { header: 'Partnership', value: p => p.member_type || '' },
+]
 const fullName = (p) => `${p.first_name || ''} ${p.last_name || ''}`.trim() || '(unnamed)'
 
 // Rows predating the Team Member role carry no planner_role — they are planners.
@@ -419,7 +429,7 @@ export default function TaxPlannersPanel({ section }) {
           {editStatus && (
             <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: editStatusType === 'success' ? 'rgba(27,146,84,0.1)' : 'rgba(231,76,60,0.1)', color: editStatusType === 'success' ? '#1b9254' : '#e74c3c', border: `1px solid ${editStatusType === 'success' ? 'rgba(27,146,84,0.3)' : 'rgba(231,76,60,0.3)'}` }}>{editStatus}</div>
           )}
-          <ListHeader title="Tax Planners" count={filteredPlanners.length} />
+          <ListHeader title="Tax Planners" count={filteredPlanners.length} action={<ExportButton title="Tax Planners" columns={PLANNER_EXPORT_COLUMNS} rows={filteredPlanners} />} />
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
             <input type="search" name="search" autoComplete="off" placeholder="Search by name or type..." style={inputStyle} onChange={e => setSearch(e.target.value.toLowerCase())} value={search} />
             <ListFilterButton groups={listFilterGroups} value={listFilter} onChange={setListFilter} />
@@ -584,7 +594,12 @@ const TAX_PLANNER_VAULT_SECTIONS = [
 ]
 function TaxPlannerAdminVault({ plannerId }) {
   if (!plannerId) return null
-  return <VaultSections actions={TAX_PLANNER_VAULT_ACTIONS} params={{ planner_id: plannerId }} sections={TAX_PLANNER_VAULT_SECTIONS} />
+  return (
+    <>
+      <VaultDropLink entityType="tax_planner" entityKey={plannerId} />
+      <VaultSections actions={TAX_PLANNER_VAULT_ACTIONS} params={{ planner_id: plannerId }} sections={TAX_PLANNER_VAULT_SECTIONS} />
+    </>
+  )
 }
 
 // Read-only Payments tab: the planner's share of each tax plan they are allocated
@@ -731,7 +746,26 @@ function TaxPlannerClientsTab({ plannerId }) {
     let alive = true
     setLoading(true); setError('')
     callApi('tax_planner_clients_load', { planner_id: plannerId })
-      .then(d => { if (alive) setRows(d.clients || []) })
+      .then(async d => {
+        const clients = d.clients || []
+        // Each plan's "<n>/6 - <pct>%" runs the plan page's own rules over the
+        // inputs the load returns, with the same template the plan page loads.
+        const phasesByProgram = {}
+        await Promise.all([...new Set(clients.map(r => r.program_id || 1))].map(async pid => {
+          try {
+            const t = await loadCachedAction('msm_load_client_track', { program_id: pid, track_type: 'tax' })
+            const phases = (t?.phases || []).map(p => ({ ...p, program_client_tasks: [...(p.program_client_tasks || [])].sort((a, b) => a.task_order - b.task_order) }))
+            phasesByProgram[pid] = phases
+          } catch { phasesByProgram[pid] = null }
+        }))
+        for (const r of clients) {
+          const phases = phasesByProgram[r.program_id || 1]
+          r.progressSummary = (r.plan && phases)
+            ? taxPlanProgressSummary(makeTaxPlanRules({ plan: r.plan, livePlan: r.plan, phases, localProgress: r.progress || {}, taxSpecialists: r.specialists || [] }))
+            : null
+        }
+        if (alive) setRows(clients)
+      })
       .catch(e => { if (alive) setError(e?.message || 'Failed to load clients') })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
@@ -761,7 +795,7 @@ function TaxPlannerClientsTab({ plannerId }) {
     }
     const label = programLabel(r.program_id)
     if (!entry.programs.includes(label)) entry.programs.push(label)
-    entry.planStates = [...(entry.planStates || []), { id: r.tax_plan_id, programId: r.program_id || 1, program: label, state: planState(r) }]
+    entry.planStates = [...(entry.planStates || []), { id: r.tax_plan_id, programId: r.program_id || 1, program: label, state: planState(r), summary: r.progressSummary }]
   }
 
   return (
@@ -779,6 +813,7 @@ function TaxPlannerClientsTab({ plannerId }) {
                 <th style={th}>Member</th>
                 <th style={th}>Program</th>
                 <th style={th}>Status</th>
+                <th style={th} title="Phases completed in a row (Tax 1-6) and the plan's task percentage, as on the plan page">Progress</th>
               </tr>
             </thead>
             <tbody>
@@ -792,17 +827,27 @@ function TaxPlannerClientsTab({ plannerId }) {
                   <td style={td}>{c.member_name || '—'}</td>
                   <td style={{ ...td, color: 'var(--vfo-muted)' }}>{c.programs.join(', ')}</td>
                   <td style={td}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
                       {(c.planStates || []).map(p => {
                         const s = PLAN_STATE_STYLES[p.state]
                         return (
                           <button key={p.id} type="button" title={`Open ${p.program} plan`}
                             onClick={() => { rememberPlannerReturn(plannerId); navigate(clientPagePath(c.client_id, { program: p.programId, tab: 'tax', plan: p.id }), { state: { from: PLANNER_RETURN_FROM } }) }}
-                            style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', whiteSpace: 'nowrap', background: s.bg, color: s.color, border: `1px solid ${s.border}`, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                            style={{ fontSize: '12px', lineHeight: '14px', height: '22px', boxSizing: 'border-box', padding: '3px 10px', borderRadius: '4px', whiteSpace: 'nowrap', background: s.bg, color: s.color, border: `1px solid ${s.border}`, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
                             {p.state}
                           </button>
                         )
                       })}
+                    </div>
+                  </td>
+                  <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {(c.planStates || []).map(p => (
+                        <span key={p.id} title={p.summary ? `${p.summary.done} / ${p.summary.total} tasks completed` : 'Progress unavailable'}
+                          style={{ fontSize: '12.5px', lineHeight: '22px', fontWeight: 600, color: p.summary ? 'var(--vfo-ink)' : 'var(--vfo-muted)' }}>
+                          {p.summary ? p.summary.label : '—'}
+                        </span>
+                      ))}
                     </div>
                   </td>
                 </tr>
