@@ -1,5 +1,5 @@
 <!-- CANONICAL COPY of the VFO session starter prompt. The owner pastes this file's
-     contents at the top of every AI chat. Edit here, then re-copy. Last updated: 2026-09-25. -->
+     contents at the top of every AI chat. Edit here, then re-copy. Last updated: 2026-10-02 (vfo-admin-api deploys use --use-docker, #574). -->
 
 # VFO SESSION STARTER
 
@@ -97,7 +97,7 @@ If you violate this rule, you must:
 - **No half checks.** When verifying a multi-branch handler (happy path / failure path / pending path / idempotency), exercise every branch before declaring complete.
 - Pipeline smoke gate. After any vfo-admin-api deploy, or after editing shared routing/dispatch/webhook/auth code (router/dispatch.ts, router/webhooks.ts, index.ts, middleware/auth.ts, shared utils/), run scripts/smoke-pipelines.ps1 and confirm all 5 pipelines (MAP 1, Tax, Advisor, Accountant, PIP) return PASS. Set $env:VFO_SMOKE_TOKEN (or VFO_SMOKE_EMAIL/VFO_SMOKE_PASSCODE) first. Skip for frontend-only, doc-only, or isolated single-handler changes. This is a wiring check only — it does not replace deno check or manual click-through of the specific change.
 - **Execute SQL for the user via Supabase MCP.** Don't paste SQL with "run this for me" — call `mcp__...__execute_sql` or `apply_migration` directly.
-- **Every approved change must end at deployed, not merged.** A merged PR is NOT a deployed change. Before declaring a task complete, confirm the right deploy ran for every item touched: backend code → `supabase functions deploy vfo-admin-api` (or `boldsign-webhook --no-verify-jwt`); frontend code → `npm run deploy` in `vfo-react`; DB schema → migration applied via MCP; Storage → file uploaded; cron → job re-installed. If work spans both repos, BOTH need their deploy or you must flag the un-deployed half EXPLICITLY in your final summary.
+- **Every approved change must end at deployed, not merged.** A merged PR is NOT a deployed change. Before declaring a task complete, confirm the right deploy ran for every item touched: backend code → `supabase functions deploy vfo-admin-api --project-ref ejpsprsmhpufwogbmxjv --use-docker` (Docker Desktop running, `deno.lock` deleted first — gotcha #574) (or `boldsign-webhook --no-verify-jwt`); frontend code → `npm run deploy` in `vfo-react`; DB schema → migration applied via MCP; Storage → file uploaded; cron → job re-installed. If work spans both repos, BOTH need their deploy or you must flag the un-deployed half EXPLICITLY in your final summary.
 - **`npm run deploy` requires explicit approval each time**, same protocol as backend deploys. Don't infer approval from "merged" or "tested" or "ready to ship" — wait for the user to say "deploy".
 
 ---

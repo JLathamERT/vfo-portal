@@ -434,7 +434,15 @@ const PLANNER_EDITABLE_TASK_NAMES = new Set([
 // PLANNER_EDITABLE_TASK_NAMES) and constants/role-gates.ts (the four Direct-only
 // planner actions). The name set above stays unconditional: on a classic plan
 // both surfaces 403.
-const isPlannerEditable = (task, phase = null, direct = false) => (
+// Tax 6 ownership by specialist (2026-10-02). Steps 3-4 of every specialist
+// block belong to VFOS (the member on Direct) unless that specialist is the plan
+// group's linked specialist (Tax Planning Partners -> Linked specialist), when
+// all four are the Tax Team's. `group_linked` comes from tax_load_specialists.
+// CROSS-REPO CONTRACT with utils/tax6-ownership.ts (the save-task.ts /
+// direct-save-task.ts boundary and the step machine's owner).
+const TAX6_VFOS_STEP_NAMES = new Set(['Specialist confirms VFOS Gross Rev', 'PC confirms receipt of VFOS Gross Rev'])
+const isTax6VfosStep = (task, spec) => TAX6_VFOS_STEP_NAMES.has(task?.name) && !!spec && !spec.group_linked
+const isPlannerEditable = (task, phase = null, direct = false, spec = null) => !isTax6VfosStep(task, spec) && (
   PLANNER_EDITABLE_TASK_NAMES.has(task?.name)
   || (direct && (
     (task?.status_options === 'enter_details' && task?.name === 'Client tax planning decision')
@@ -481,7 +489,8 @@ const RAPID_STEP_LABELS = {
 }
 const RAPID_CONFIRM_STATUS = 'Yes - Rapid Route confirmation email to client'
 
-const isDirectEditable = (task) => {
+const isDirectEditable = (task, _phase = null, spec = null) => {
+  if (isTax6VfosStep(task, spec)) return true
   const so = task?.status_options
   if (Object.prototype.hasOwnProperty.call(DIRECT_EDITABLE_TASKS.sentinels, so)) {
     const nm = DIRECT_EDITABLE_TASKS.sentinels[so]
@@ -541,9 +550,10 @@ const STEP_OWNER = {
 // actions/tax/save-task.ts DIRECT_MEMBER_EDITABLE the same day, so the member has
 // no path to any of them. On a classic plan all three stay VFOS.
 const DIRECT_TEAM_SENTINELS = new Set(['enter_details', AMEND_FEE_CODE, AMEND_FEE_TAX5_CODE])
-const stepOwner = (task, phase = null, direct = false) => {
+const stepOwner = (task, phase = null, direct = false, spec = null) => {
   const so = task?.status_options
   if (task?.name === AUTO_STEP_NAME) return 'auto'
+  if (isTax6VfosStep(task, spec)) return 'vfos'
   if (so === 'auto') return null
   if (direct && DIRECT_TEAM_SENTINELS.has(so)) return 'team'
   if (Object.prototype.hasOwnProperty.call(STEP_OWNER.sentinels, so)) return STEP_OWNER.sentinels[so]
@@ -2595,11 +2605,18 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   // second call after this one, so a refresh here would run tax_load_plans twice
   // (3-5s each), and clearing the row's busy flag here would release the row
   // while their own refresh is still in flight.
+  // A Direct member's per-specialist write exists only for the Tax 6 VFOS steps
+  // under a non-linked specialist (isTax6VfosStep); the twin refuses the rest too.
+  function directMayWrite(taskId, taxSpecialistId) {
+    const task = allTasks.find(t => t.id === taskId)
+    return taxSpecialistId ? isTax6VfosStep(task, specOf(taxSpecialistId)) : isDirectEditable(task)
+  }
+
   async function saveTask(taskId, status, existingDate, taxSpecialistId = null, { skipRefresh = false, skipBusy = false } = {}) {
     // A Direct member writes step rows only on the editable steps and never a
     // per-specialist row — the locked wrapper already makes every other row
     // inert, so this is the belt to that brace (the twin refuses too).
-    if (directMode && (taxSpecialistId || !isDirectEditable(allTasks.find(t => t.id === taskId)))) return
+    if (directMode && !directMayWrite(taskId, taxSpecialistId)) return
     const today = new Date().toISOString().split('T')[0]
     const date = existingDate || (status ? today : null)
     const key = taxSpecialistId ? `${taskId}_${taxSpecialistId}` : taskId
@@ -2687,7 +2704,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   }
 
   async function saveDate(taskId, date, taxSpecialistId = null) {
-    if (directMode && (taxSpecialistId || !isDirectEditable(allTasks.find(t => t.id === taskId)))) return
+    if (directMode && !directMayWrite(taskId, taxSpecialistId)) return
     const key = taxSpecialistId ? `${taskId}_${taxSpecialistId}` : taskId
     const p = localProgress[key] || {}
     setSaving(prev => ({ ...prev, [key]: true }))
@@ -3094,18 +3111,19 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   // SAME words on every surface (admin, planner, member), by decision
   // 2026-09-21: no viewer-relative "You".
   const isDirectPlanView = directMode || (livePlan || plan)?.tax_route === 'direct'
-  const ownerLabel = (owner, task, phase) => {
+  const specOf = (id) => (id ? taxSpecialists.find(s => s.id === id) || null : null)
+  const ownerLabel = (owner, task, phase, spec = null) => {
     if (owner === 'client') return 'Client'
     if (owner === 'team') return 'Tax Team'
     if (owner === 'auto') return 'Automated'
     if (owner !== 'vfos') return null
-    return isDirectPlanView && isDirectEditable(task, phase) ? 'Member' : 'VFOS'
+    return isDirectPlanView && isDirectEditable(task, phase, spec) ? 'Member' : 'VFOS'
   }
   // Every step row on every surface prints its name through this.
   const planTaskLabel = (task) => (rapidPlan && RAPID_STEP_LABELS[task?.status_options]) || taskLabel(task)
-  const stepName = (task, phase) => {
-    const owner = stepOwner(task, phase, isDirectPlanView)
-    return <>{planTaskLabel(task)}<OwnerChip owner={owner} label={ownerLabel(owner, task, phase)} /></>
+  const stepName = (task, phase, spec = null) => {
+    const owner = stepOwner(task, phase, isDirectPlanView, spec)
+    return <>{planTaskLabel(task)}<OwnerChip owner={owner} label={ownerLabel(owner, task, phase, spec)} /></>
   }
 
   // BOOK-ENDS (DIRECT unit 3b, 2026-09-25): "Generate detailed tax
@@ -3315,14 +3333,15 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     // beside gated rows saying why they cannot run yet. A team step whose
     // prerequisites are met still falls through to its inert lock wrapper below.
     // The classic member view (readOnly without directMode) stays exempt.
-    const directEditable = directMode && isDirectEditable(task, phase)
+    const spec = specOf(taxSpecialistId)
+    const directEditable = directMode && isDirectEditable(task, phase, spec)
     if ((!readOnly || directMode) && !alreadyDone) {
       const gate = stepGate(task, phase)
       if (gate?.locked) {
         return (
           <div key={key} title={gate.hint} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
-            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: '1 1 auto', minWidth: '140px' }}>{stepName(task, phase)}</span>
+            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: '1 1 auto', minWidth: '140px' }}>{stepName(task, phase, spec)}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
               <LockedIcon />
               <span style={lockedHintStyle}>{gate.hint}</span>
@@ -3341,14 +3360,14 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     // planner wrapper: the two modes never overlap.
     if (directMode && !directEditable) {
       return (
-        <div key={key} title={lockHintFor(stepOwner(task, phase, isDirectPlanView))} style={{ cursor: 'not-allowed' }}>
+        <div key={key} title={lockHintFor(stepOwner(task, phase, isDirectPlanView, spec))} style={{ cursor: 'not-allowed' }}>
           <div style={{ pointerEvents: 'none' }}>{node}</div>
         </div>
       )
     }
-    if (!plannerMode || isPlannerEditable(task, phase, isDirectPlanView)) return node
+    if (!plannerMode || isPlannerEditable(task, phase, isDirectPlanView, spec)) return node
     return (
-      <div key={key} title={lockHintFor(stepOwner(task, phase, isDirectPlanView))} style={{ cursor: 'not-allowed' }}>
+      <div key={key} title={lockHintFor(stepOwner(task, phase, isDirectPlanView, spec))} style={{ cursor: 'not-allowed' }}>
         <div style={{ pointerEvents: 'none' }}>{node}</div>
       </div>
     )
@@ -3363,7 +3382,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     // Direct plan the member's own steps are not locked. `readOnly` itself is
     // left on every chip / card / notes gate below, which stay member-hidden
     // (the brief's item 7), and on the catch-all rows of the team steps.
-    const memberLocked = readOnly && !(directMode && isDirectEditable(task, phase))
+    const spec = specOf(taxSpecialistId)
+    const memberLocked = readOnly && !(directMode && isDirectEditable(task, phase, spec))
 
     if (isAmendStepTask(task)) {
       return (
@@ -5188,7 +5208,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
     return (
       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap', opacity: isGreyedOut ? 0.3 : 1, pointerEvents: isGreyedOut ? 'none' : undefined }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-        <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{greyNote && <span style={{ fontSize: '11px', color: '#e06717', fontWeight: 600, marginLeft: '8px' }}>({greyNote})</span>}</span>
+        <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase, spec)}{greyNote && <span style={{ fontSize: '11px', color: '#e06717', fontWeight: 600, marginLeft: '8px' }}>({greyNote})</span>}</span>
         {showTeamShareChip && depositTeamChip(livePlan?.deposit_team_share_status)}
         <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)' }}>
           <option value="">-- Select --</option>

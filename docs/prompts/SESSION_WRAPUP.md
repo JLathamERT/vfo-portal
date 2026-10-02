@@ -1,5 +1,5 @@
 <!-- CANONICAL COPY of the VFO session wrap-up prompt. The owner pastes this file's
-     contents once when the work is SHIPPING (not at the end of every chat). Edit here, then re-copy. Last updated: 2026-08-17 (c). -->
+     contents once when the work is SHIPPING (not at the end of every chat). Edit here, then re-copy. Last updated: 2026-10-02 (vfo-admin-api deploys use --use-docker, #574). -->
 
 # SESSION WRAP-UP — HUB UPDATE + STALENESS AUDIT + COMMIT (run once at session end)
 
@@ -87,7 +87,7 @@ DO NOT create/push any tag here — the tag is stamped LAST in Part 4.
 ### 4B. Post-push report: commit SHA(s) · PR-creation URL(s) · production untouched · "merge with Squash and merge (one chat = one commit on main)" · then the MANDATORY deploy question:
   > DEPLOY NEEDED — merged/pushed ≠ live. To ship:
   > - Frontend changed? → npm run deploy in vfo-react
-  > - Backend changed?  → supabase functions deploy vfo-admin-api
+  > - Backend changed?  → supabase functions deploy vfo-admin-api --project-ref ejpsprsmhpufwogbmxjv --use-docker  (Docker Desktop running, deno.lock deleted first — gotcha #574)
   > Want me to run [the relevant one(s)] now? (yes / no)
   (If a repo needs no deploy — e.g. already deployed this session, or doc-only — say so explicitly.)
 

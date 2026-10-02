@@ -30,11 +30,17 @@ The `vfo-admin-api` config was changed from `verify_jwt = true` to `false` in co
 From `vfo-edge-functions` (or any worktree):
 
 ```powershell
-cd C:\vfo-edge-functions   # or the worktree at .claude\worktrees\refactor-modularize\
-supabase functions deploy vfo-admin-api
+cd C:\vfo-edge-functions   # or the session's worktree
+# 1. Docker Desktop must be running.
+# 2. Delete any local lockfile `deno check` left behind (gotcha #74/#112):
+Remove-Item supabase\functions\vfo-admin-api\deno.lock -ErrorAction SilentlyContinue
+# 3. Bundle locally:
+supabase functions deploy vfo-admin-api --project-ref ejpsprsmhpufwogbmxjv --use-docker
 ```
 
-The deploy bundles every `.ts` and `.json` under `supabase/functions/vfo-admin-api/` (~150 files, ~173kB compressed) and uploads to project `ejpsprsmhpufwogbmxjv`. Function secrets (Stripe live + sandbox, BoldSign live + sandbox, Gmail OAuth, Drive folder, html2pdf) live on the Supabase project — they're NOT included in the bundle and they survive redeploys. Rollback via Supabase Dashboard → Edge Functions → `vfo-admin-api` → version history → revert.
+**Since 2026-10-02 `--use-docker` is mandatory for `vfo-admin-api` (gotcha #574).** A plain deploy and `--use-api` both upload the raw source graph to Supabase's server-side bundler, which caps it at **5 MB** — the function crossed that on 2026-10-02 (~684 files, ~4.57 MB) and both fail with `413 Function source code exceeds the maximum deployment size (5 MB)`. Local bundling has a 20 MB cap on the bundled output (~2.04 MB). Splitting the function would remove the dependency on Docker but is medium-to-high risk (the frontend, the Stripe webhook endpoint, pg_cron jobs and HTTP chains all call `vfo-admin-api` by name) and has not been done. `boldsign-webhook` is unaffected.
+
+The deploy bundles every `.ts` and `.json` under `supabase/functions/vfo-admin-api/` and uploads to project `ejpsprsmhpufwogbmxjv`. Function secrets (Stripe live + sandbox, BoldSign live + sandbox, Gmail OAuth, Drive folder, html2pdf) live on the Supabase project — they're NOT included in the bundle and they survive redeploys. Rollback via Supabase Dashboard → Edge Functions → `vfo-admin-api` → version history → revert.
 
 Function URLs:
 - `https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api`

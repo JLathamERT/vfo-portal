@@ -6,6 +6,7 @@ import { ClientsListSkeleton, TrainingTrackSkeleton, CoachingMeetingsSkeleton, C
 import { TrackHero, PhaseBadge } from '../shared/TrackKit'
 import { countedTasks, countedDone, phaseState, isPositiveStatus, planStatusLabel } from '../shared/trainingStatus'
 import { isTrackerTask } from '../shared/trackerSteps'
+import RoleplayStep, { isRoleplayTask } from '../shared/RoleplayStep'
 import { VisibilityBadge, noteTint, SaveVisibilityButtons } from '../shared/NoteVisibility'
 import StepDate from '../shared/StepDate'
 import { formatDate as formatFullDate } from '../../lib/dates'
@@ -687,6 +688,18 @@ function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
     setProgress(p => ({ ...p, [taskId]: { ...p[taskId], task_id: taskId, status } }))
   }
 
+  // The roleplay step's writers re-derive its status server-side and the intro
+  // email also ticks "Introduction to Proactive Facilitator", so re-read progress
+  // quietly (no skeleton) to keep the phase pills and header live.
+  async function refreshProgress() {
+    try {
+      const data = await callApi('msm_load_training_progress', { enrollment_id: enrollment.id })
+      const prog = {}
+      ;(data.progress || []).forEach(p => { prog[p.task_id] = p })
+      setProgress(prog)
+    } catch (err) { console.error(err) }
+  }
+
   function formatDate(d) {
     if (!d) return ''
     const parts = d.split('-')
@@ -747,6 +760,9 @@ function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
                 {(() => {
                   const renderRow = (task, inGroup) => {
                     const p = progress[task.id] || {}
+                    if (isRoleplayTask(task)) {
+                      return <RoleplayStep key={task.id} task={task} enrollmentId={enrollment.id} programId={program.id} inGroup={inGroup} onProgressChange={refreshProgress} />
+                    }
                     const trackerMeta = isTrackerTask(task)
                     if (trackerMeta) {
                       return <AdminTrackerRow key={task.id} task={task} meta={trackerMeta} inGroup={inGroup} enrollmentId={enrollment.id} progress={p} onStatusChange={patchTrackerStatus} />

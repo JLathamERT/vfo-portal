@@ -215,6 +215,12 @@ export const TEMPLATE_META = {
     ['SPECIALIST_bgcheck_confirmation|ach', 'Background Check payment started by bank transfer (ACH) — confirmation (card gets the invoice/receipt instead)', 'To: Specialist'],
     ['SPECIALIST_bgcheck_invoicereceipt', 'Background Check payment cleared — invoice and receipt PDFs attached', 'To: Specialist'],
   ],
+  'TRAINING': [
+    ['TRAINING_roleplay_intro|holistic', '90 Day Plan roleplay — intro email to the member + Evan with the booking link (VFO Holistic Planning)', 'To: Member, Proactive Facilitator'],
+    ['TRAINING_roleplay_intro|pft', '90 Day Plan roleplay — intro email to the member + Ian with the booking link (Partnership Fast Track)', 'To: Member, Proactive Facilitator'],
+    ['TRAINING_roleplay_confirm', '90 Day Plan roleplay — date / time confirmation', 'To: Member'],
+    ['TRAINING_roleplay_confirm|rescheduled', '90 Day Plan roleplay — rescheduled after a No-show or a date change', 'To: Member'],
+  ],
   'CLIENT_PAYMENT_CONTINUATION': [
     ['setup_link', 'Migrated client — link to add their card or bank account so payments can continue', 'To: Client'],
     ['setup_link_reminder', 'Nudges a migrated client who was sent the payment-method setup link but never saved a card or bank', 'To: Client'],
@@ -298,6 +304,8 @@ export const ROLE_LABELS = {
   TEAM_MEMBER: 'Team member responsible',
   TEAM: 'Team (all admins)',
   RECIPIENT: 'Default recipient',
+  FACILITATOR: 'Proactive Facilitator (Evan / Ian)',
+  ASSIGNED_MSM: 'Assigned MSM',
 }
 
 // Bracket-token -> short plain-English label for the per-step email previews.
@@ -308,6 +316,11 @@ export const TOKEN_LEGEND = {
   'Client Ref': "client reference number",
   'Member Name': "member's full name",
   'Member First': "member's first name",
+  'Facilitator First': "Proactive Facilitator's first name (Evan / Ian)",
+  'Program': 'the plan\'s program (VFO Holistic Planning / Partnership Fast Track)',
+  'Roleplay Date': 'roleplay date (MM/DD/YYYY)',
+  'Roleplay Time': 'roleplay time',
+  'Roleplay Timezone': 'roleplay timezone (ET, CT, ...)',
   'MEMBER_NAME': "member's full name",
   'FULL_NAME': 'full name',
   'FIRST_NAME': 'first name',
