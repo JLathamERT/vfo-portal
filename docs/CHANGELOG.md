@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-10-02 (b) — Phase notes stay in the Regular Priority / tax plan they were written in
+
+Branch `fix/notes-per-plan` (both repos, ONE chat). `vfo-admin-api` v933 -> **v934** (deployed from the branch); action count 557 unmoved; migration `20261002130000_client_notes_per_plan.sql` applied + committed (advisor GREEN at the exact baseline — a confirmation, no new table).
+
+**The bug (Jake, Steve Manseau 59481-001):** a client with two Regular Priorities saw every phase note in BOTH — Jason Bright's and Stuart Kruse's MAP 5 notes appeared in each — because `client_notes` keyed a phase note only by `(client_id, phase_name, tab_name)`. Census: 7 Regular notes on 4 multi-priority clients; the same leak on Tax Priorities for clients holding two tax plans (11 notes, Marc Ehrhardt + Henry Mennig). Jake asked for both fixed, with the client profile's notes list unchanged.
+
+**The fix:** two nullable columns `client_notes.priority_track_id` (-> `client_priority_tracks`) and `tax_plan_id` (-> `client_tax_plans`), both ON DELETE SET NULL. `add_client_note` accepts either and 400s an id whose row belongs to another client. `PhaseNotesPanel` gained `scope` + the exported `noteInScope` (in scope = same id, or no id); `PriorityTrackView` passes `{ priority_track_id: track.id }` to its panel and count, `TaxPlanTrackView` passes `{ tax_plan_id: plan.id }` to all 5 panels and all 5 counts (phase, merged Tax 5, per-specialist on Tax 5 and Tax 6). Decisions (Jake): a note with NO scope (written before this) keeps showing in every priority / plan; the 18 existing notes were assigned by hand in the migration — Regular 296->98, 297->99, 239->116, 240->118, 287->119, 288->119, 110->88; Tax 46/126/130/214/261/281->89, 77->92, 201/207/210/255->130 (Henry's newer plan) — each guarded by a client match and an exact row count. Gotcha #573.
+
+**Live-proven** (Jake, dev server vs v934): the existing split on Steve / Henry / Marc, a new note on a priority and on a tax plan staying where it was written, the profile showing everything. **Not changed:** PIP Meetings — a client's three meetings share the same three phase names (5 notes), so their notes still show in all three; MAP 1 and PFT have one track per client and are unaffected. The Direct member's note (`tax_direct_note_add`) is a General note and was never phase-scoped.
+
 ## 2026-10-02 — The attached example agreement is called a "sample" (10 email templates)
 
 Data only, no code, no deploy. Migration `20261002120000_sample_agreement_wording.sql` (edge #265, applied via MCP before the merge; each row had to hold its old sentence exactly once or the migration aborted; all 10 rows read back; advisor GREEN, a confirmation). Jake's wording, approved per email with a before/after:

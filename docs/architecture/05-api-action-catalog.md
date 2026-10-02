@@ -622,7 +622,7 @@ The member's own tax actions on a **Direct** plan (`client_tax_plans.tax_route='
 |---|---|---|---|---|
 | `load_client_notes` | `actions/client-notes/load.ts` | `client_notes` | — | Admin — returns all rows incl. `visibility`. Also planner-callable (allowlisted, UNFILTERED — planners read ALL notes incl. internal, per #273). |
 | `client_notes_load_shared` | `actions/client-notes/load-shared.ts` | `client_notes` (`visibility='shared'` only) | — | Member-facing; `denyIfNotOwnClient` ownership gate. Powers the member ClientDetail "Notes from your team" card. |
-| `add_client_note` | `actions/client-notes/add.ts` | — | `client_notes` | `denyIfNotPlannerClient(client_id)` when the caller is a planner (#273). |
+| `add_client_note` | `actions/client-notes/add.ts` | `client_priority_tracks` / `client_tax_plans` (owner check) | `client_notes` | `denyIfNotPlannerClient(client_id)` when the caller is a planner (#273). Optional `priority_track_id` / `tax_plan_id` (2026-10-02, v934) scope a phase note to one Regular Priority / tax plan — each must be a positive integer whose row has the SAME `client_id`, else 400. |
 | `update_client_note` | `actions/client-notes/update.ts` | — | `client_notes` | `denyIfNotPlannerNote(note_id)` when the caller is a planner (#273). |
 | `delete_client_note` | `actions/client-notes/delete.ts` | — | `client_notes` (delete) | `denyIfNotPlannerNote(note_id)` when the caller is a planner (#273). |
 
