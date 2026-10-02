@@ -62,7 +62,11 @@ Phase/tab-scoped notes on a client. Used by the program-tracking UI to attach no
 | `note_text` | text | not null |
 | `created_by` | text | not null. **A Direct member's note (`tax_direct_note_add`, 2026-09-18) is signed with the member's own name from `members`, never a body value.** |
 | `visibility` | text | `'internal'` (default) / `'shared'` (migration `20260710190000_notes_visibility.sql`). `client_notes_load_shared` returns shared rows only — the member view. **`tax_direct_note_add` forces `'shared'`**, so a Direct member's note is always visible to the team on the client profile and readable back by the member. |
+| `priority_track_id` | integer | nullable, fk → `client_priority_tracks.id` **ON DELETE SET NULL** (2026-10-02, migration `20261002130000`). The ONE Regular Priority a phase note was written in. |
+| `tax_plan_id` | integer | nullable, fk → `client_tax_plans.id` **ON DELETE SET NULL** (same migration). The ONE tax plan a phase note was written in. |
 | `created_at` / `updated_at` | timestamptz | default `now()` |
+
+**Scope (2026-10-02):** a phase note written inside a Regular Priority or a tax plan carries that track's / plan's id, so a client with two of either sees each note only where it was written — `PhaseNotesPanel`'s `scope` prop + the exported `noteInScope` (the panel AND every Notes-button count). **NULL = written before the change, shown in every priority / plan** (Jake's call); 18 such notes on multi-track clients were assigned by hand in the migration. The client profile's notes list ignores both columns. `add_client_note` refuses (400) an id belonging to another client. **Not scoped: PIP Meetings** — a client's three meetings share the same three phase names, so their notes still show in all three (open decision).
 
 **Touched by:** `load_client_notes`, `add_client_note`, `update_client_note`, `delete_client_note` (all four are admin-only AND — as of 2026-07-23 — planner-callable from the Tax Planner portal per-phase Notes, with in-handler group-scope guards on the writes; gotcha #273). Frontend: [PhaseNotes.jsx](src/components/shared/PhaseNotes.jsx), [AddGeneralNote.jsx](src/components/shared/AddGeneralNote.jsx).
 
