@@ -86,7 +86,7 @@ External to this codebase. Stripe redirects back to `success_url` after payment 
 The helper is **idempotent against Stripe retries** via a `stripe_session_id` guard: it looks for an existing `gc_transactions` row for that session id before crediting. Then:
 1. Reads existing `gc_balances.balance` (or 0).
 2. UPSERTs `gc_balances` with `balance = current + credits`.
-3. INSERTs `gc_transactions` row: `type='purchased'`, `amount=<credits>`, `balance_after=<new>`, `description="<credits> credits purchased via Stripe"`.
+3. INSERTs `gc_transactions` row: `type='purchased'`, `amount=<credits>`, `balance_after=<new>`, `description="<credits> credits purchased via Stripe"`. **No `actor_name` / `actor_role`** — the webhook has no caller session, so a purchase reads *"—"* in the History tab's **By** column (see [Who did it](#who-did-it--the-actor-stamp-2026-10-02-v937)).
 
 See [stripe-webhook.md](stripe-webhook.md#sub-branch-a1--gc-credit-purchase) for full handler detail.
 
@@ -110,7 +110,7 @@ Roughly:
 2. Reads `gc_balances` for current balance. Returns error if insufficient.
 3. INSERTs `gc_redemptions` row with `status='pending'`, `credits=<credit_cost>`.
 4. UPDATEs `gc_balances.balance` -= credit_cost.
-5. INSERTs `gc_transactions` row: `type='redeemed'`, `amount=-credits`, `balance_after=<new>`.
+5. INSERTs `gc_transactions` row: `type='redeemed'`, `amount=-credits`, `balance_after=<new>`, **stamped with the caller as actor** (2026-10-02) — the member's name when they redeem for themselves, the admin's name + `actor_role='admin'` when an admin redeems on their behalf from MembersPanel (dispatch passes `c.auth` for exactly this).
 
 **Tables read:** `gc_services`, `gc_balances`.
 **Tables written:** `gc_redemptions`, `gc_balances`, `gc_transactions`.
@@ -126,7 +126,7 @@ Then two best-effort side effects, each in its own `try/catch` — neither may f
 
 **Handler:** `gc_update_redemption({redemption_id, status})` ([actions/gc/update-redemption.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/gc/update-redemption.ts)). `status` must be `fulfilled` or `rejected` (400 otherwise); the stored `gc_redemptions.status` column itself is not DB-constrained.
 
-**Rejecting** a still-`pending` redemption refunds the credits — `gc_balances` is put back and a `gc_transactions` row of `type='refunded'` is filed (*"Redemption rejected — credits refunded"*). Since 2026-08-27 it **also cancels the member+service `gc_subscriptions` row** (`status='cancelled'` + `cancelled_at`, matched on `active`/`on_hold`), or the sweep would keep charging for something VFO has just declined to deliver. Renewals never file a redemption row, so a *rejectable pending* redemption is always the INITIAL one — there is no ambiguity about which subscription is meant.
+**Rejecting** a still-`pending` redemption refunds the credits — `gc_balances` is put back and a `gc_transactions` row of `type='refunded'` is filed (*"Redemption rejected — credits refunded"*), stamped with the rejecting admin as actor since 2026-10-02. **Fulfilling** writes no ledger row and records no actor anywhere (`gc_redemptions` has no actor column). Since 2026-08-27 it **also cancels the member+service `gc_subscriptions` row** (`status='cancelled'` + `cancelled_at`, matched on `active`/`on_hold`), or the sweep would keep charging for something VFO has just declined to deliver. Renewals never file a redemption row, so a *rejectable pending* redemption is always the INITIAL one — there is no ambiguity about which subscription is meant.
 
 ## Flow C — Admin manual credit adjustment
 
@@ -134,7 +134,7 @@ Then two best-effort side effects, each in its own `try/catch` — neither may f
 
 Updates `gc_balances` and inserts a `gc_transactions` row of **`type='purchased'`** with `description` defaulting to *"Credits added"*. It is **not** `'added'`, as this line claimed until 2026-09-03 — the handler reuses the SALE's type for a comp, so a granted credit is indistinguishable from a bought one by type, and `amount_usd` / `stripe_session_id` are left NULL because no money is taken. Used to manually credit (or, with negative `amount`, debit) a member's balance.
 
-**This conflation reached members.** Both credit histories keyed their label on `type` and so told 27 members across 31 rows that they had *purchased* credits they were given — one of them reported buying credits that appear nowhere in Stripe, correctly, because the portal said so. Since 2026-09-03 every reader derives the word from `stripe_session_id` instead (absent ⇒ *"added"*), and `load-accounting.ts` splits the totals the same way: `credits_purchased` counted 3,257 when 2 credits had ever been sold. **The row is still written as `purchased`** — the fix is at the readers, so anything new reading this table must apply the same test (#466). There is no `created_by` on `gc_transactions`, so **who granted a credit is not recorded anywhere**.
+**This conflation reached members.** Both credit histories keyed their label on `type` and so told 27 members across 31 rows that they had *purchased* credits they were given — one of them reported buying credits that appear nowhere in Stripe, correctly, because the portal said so. Since 2026-09-03 every reader derives the word from `stripe_session_id` instead (absent ⇒ *"added"*), and `load-accounting.ts` splits the totals the same way: `credits_purchased` counted 3,257 when 2 credits had ever been sold. **The row is still written as `purchased`** — the fix is at the readers, so anything new reading this table must apply the same test (#466). **Who granted a credit is recorded only from 2026-10-02:** `gc_add_credits` now stamps the calling admin's name on the row (`actor_name` / `actor_role='admin'`, see [Who did it](#who-did-it--the-actor-stamp-2026-10-02-v937)). Every grant before that date carries no actor and stays unanswerable (#466e) — the stamp is not backfillable.
 
 In `ADMIN_ONLY_ACTIONS`. Member callers cannot.
 
@@ -171,7 +171,7 @@ Candidates: `status in ('active','on_hold') AND next_charge_date <= today`. Per 
 3. **Claim the period optimistically, BEFORE spending anything.** The UPDATE advances `next_charge_date`, stamps `last_charged_at`, sets `status='active'` and clears `on_hold_notified_at`, filtered with `.eq("next_charge_date", <the value this run read>)`, then `.select()`s. Zero rows = another run already claimed this period → skip, balance untouched. Only after the claim lands is `gc_balances` decremented and the `gc_transactions` row filed.
 4. **Re-anchor from TODAY, never from the stored due date** (gotcha **#456**). A row funded weeks after going on hold is charged **once** and lands a full period in the future; anchoring on the due date would have it charged every night until it "caught up".
 5. **Insufficient balance** → `status='on_hold'` + `on_hold_notified_at` stamped (behind `.is("on_hold_notified_at", null)`, so exactly **one** out-of-credits email per hold episode; later ticks just count as `skipped`). **`next_charge_date` is deliberately NOT advanced** — the member is charged for the period they are actually starting, whenever they fund it.
-6. **Renewals write `gc_transactions` ONLY** — `type='redeemed'`, description `"<Service Name> (renewal)"` — and **never** a `gc_redemptions` row. Charge 2..n is not a new request for the fulfilment queue to work, so from the second charge on the ledger is the entire audit trail.
+6. **Renewals write `gc_transactions` ONLY** — `type='redeemed'`, description `"<Service Name> (renewal)"`, actor `GC_SYSTEM_ACTOR` (`"System"` / `system`, since 2026-10-02) — and **never** a `gc_redemptions` row. Charge 2..n is not a new request for the fulfilment queue to work, so from the second charge on the ledger is the entire audit trail.
 
 **No weekend skip**, deliberately — unlike the growth-overdue sweep it was cloned from. These are date-anchored charges and member-facing emails, not admin bells landing on a Saturday.
 
@@ -209,6 +209,25 @@ An admin can move a live subscription's schedule from the *"Subscribed - renews 
 ### E6 — What the member and the admin see
 
 Both surfaces render the **same component**, [GCMarketplaceViews.jsx](src/components/shared/GCMarketplaceViews.jsx) (`GCServicesView` + `GCTransactionHistory`), so they cannot drift; `adminMode` only changes copy and hides Buy-credits. A recurring row reads `N credits / month|year`; a live subscription replaces Redeem with a **Subscribed — renews \<date\>** pill (or **On hold — add credits to resume**) plus a Cancel behind a confirm modal, and the recurring redeem modal spells the repeat charge out before anything is spent.
+
+## Who did it — the actor stamp (2026-10-02, v937)
+
+`gc_transactions` gained **`actor_name`** + **`actor_role`** (`member` | `admin` | `system`, nullable) in `20261002190000_gc_transactions_actor.sql`. Resolved by [utils/gc-actor.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/utils/gc-actor.ts) `gcActorFor(supabase, auth)`, which never throws (an unresolvable caller stamps NULL). **The actor is stored as a NAME, never an email**, because `gc_load_transactions` is `select("*")` and member-callable — whatever is in the row reaches the member's own portal (#577).
+
+| Writer | Row | `actor_name` | `actor_role` |
+|---|---|---|---|
+| `gc_redeem` — member self-redeem | `redeemed` | `members.first_name + last_name` | `member` |
+| `gc_redeem` — admin on the member's behalf | `redeemed` | `allowed_admins.name` (session email if the admin row has no name) | `admin` |
+| `gc_add_credits` | `purchased` (a comp) | `allowed_admins.name` | `admin` |
+| `gc_update_redemption` reject → refund | `refunded` | `allowed_admins.name` | `admin` |
+| `automation_GC_recurring_sweep` renewal | `redeemed` | `"System"` (`GC_SYSTEM_ACTOR`) | `system` |
+| `fulfillGrowthCredits` (Stripe webhook) | `purchased` (a sale) | — not stamped | — |
+
+**Rows written before 2026-10-02 carry no actor and cannot be backfilled.** The gap this partly closes is #466e: a grant, redemption, refund or renewal from 2026-10-02 records who; nothing earlier does, `gc_redemptions` itself still records no actor, and the fulfil path of `gc_update_redemption` writes nothing at all.
+
+**The History sub-tab** (`GCTransactionHistory` in [GCMarketplaceViews.jsx](src/components/shared/GCMarketplaceViews.jsx) — the same component on the member portal and on admin Members → member → GC Marketplace) is a grid with a header row **Description | Date | By | Type | Credits | Balance**. **By** reads the member's name, *"«Name» (admin)"*, *"System (renewal)"*, or *"—"* when the row has no actor. **Type** is a capitalised pill — **Redeemed / Added / Purchased / Refunded** — with Added vs Purchased still derived from `stripe_session_id`, not from `type` (#466). Credits and Balance share one 13px semibold style.
+
+**Live status.** Proven 2026-10-02 on Test Member 59524: an admin redemption read *"Jake Latham (admin)"* and its reject → refund row likewise. **Not yet exercised:** a member self-redeem stamp, a `gc_add_credits` stamp, and a renewal *"System"* stamp (no sweep has charged since deploy).
 
 ## Tables touched (composite)
 
