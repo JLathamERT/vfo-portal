@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { callApi, loadCachedAction } from '../../lib/api'
+import { callApi, loadCachedAction, loadCachedData } from '../../lib/api'
 import { makeTaxPlanRules, taxPlanProgressSummary } from './tax/taxPlanRules'
 import { fileToLogoPng, logoUrl } from '../shared/logoPng'
 import { fileSizeError } from '../../lib/fileUpload'
@@ -936,6 +936,13 @@ function AddTaxPlanningGroupForm({ onGroupsChange }) {
 // to it). Cloned from StrategicPartnersPanel's list + PartnerCard idiom, with group
 // name edit + delete added (backend save_tax_planning_group / delete_tax_planning_group).
 function TaxPlanningPartnersPanel({ groups, loadError, onSaved }) {
+  // The specialist directory for the "Linked specialist" picker (Tax 6 ownership).
+  const [experts, setExperts] = useState([])
+  useEffect(() => {
+    loadCachedData()
+      .then(d => setExperts((d?.experts || []).filter(e => e?.id && e?.name).map(e => ({ id: e.id, name: e.name })).sort((a, b) => a.name.localeCompare(b.name))))
+      .catch(err => console.error(err))
+  }, [])
   if (loadError) return <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}><p style={{ color: '#d93025', fontSize: '13px' }}>{loadError}</p></div>
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
@@ -950,7 +957,7 @@ function TaxPlanningPartnersPanel({ groups, loadError, onSaved }) {
           No Tax Planning Groups yet. Add one under Add Tax Planner → Add Tax Planning Group.
         </div>
       )}
-      {groups.map(g => <TaxPartnerCard key={g.id} group={g} onSaved={onSaved} />)}
+      {groups.map(g => <TaxPartnerCard key={g.id} group={g} onSaved={onSaved} experts={experts} />)}
     </div>
   )
 }
@@ -970,7 +977,7 @@ function GroupLogoPreview({ src }) {
   )
 }
 
-function TaxPartnerCard({ group, onSaved }) {
+function TaxPartnerCard({ group, onSaved, experts = [] }) {
   const [requesting, setRequesting] = useState(false)
   const [msg, setMsg] = useState('')
   const [msgType, setMsgType] = useState('success')
@@ -980,6 +987,8 @@ function TaxPartnerCard({ group, onSaved }) {
   const [busy, setBusy] = useState(false)
   const [deliversPdf, setDeliversPdf] = useState(!!group.delivers_assessment_pdf)
   const [pdfMsg, setPdfMsg] = useState({ text: '', ok: true })
+  const [linkedId, setLinkedId] = useState(group.linked_expert_id ?? '')
+  const [linkMsg, setLinkMsg] = useState({ text: '', ok: true })
   const [logoPending, setLogoPending] = useState(null)
   const [logoBusy, setLogoBusy] = useState(false)
   const logoFileRef = useRef(null)
@@ -1044,6 +1053,20 @@ function TaxPartnerCard({ group, onSaved }) {
     finally { setBusy(false) }
   }
 
+  // Tax 6 ownership (2026-10-02): on this group's plans the four Tax 6 steps under
+  // the linked specialist are all the Tax Team's; under any other specialist steps
+  // 3-4 are VFOS's (the member's on Direct). Card-local update, as saveDeliversPdf.
+  async function saveLinked(value) {
+    setBusy(true); setLinkMsg({ text: '', ok: true })
+    try {
+      await callApi('save_tax_planning_group', { group: { name: group.name, linked_expert_id: value === '' ? null : Number(value) }, editing_id: group.id })
+      setLinkedId(value)
+      const nm = experts.find(e => String(e.id) === String(value))?.name
+      setLinkMsg({ ok: true, text: nm ? `Saved — all four Tax 6 steps under ${nm} are Tax Team steps.` : 'Saved — no linked specialist; Tax 6 steps 3-4 are VFOS steps under every specialist.' })
+    } catch (err) { setLinkMsg({ ok: false, text: err.message }) }
+    finally { setBusy(false) }
+  }
+
   async function remove() {
     if (!window.confirm(`Delete group "${group.name}"? This cannot be undone.`)) return
     setBusy(true); setMsg('')
@@ -1097,6 +1120,16 @@ function TaxPartnerCard({ group, onSaved }) {
         </span>
       </label>
       {pdfMsg.text && <p style={{ color: pdfMsg.ok ? '#1b9254' : '#d93025', fontSize: '13px', margin: '8px 0 0 26px' }}>{pdfMsg.text}</p>}
+      <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>Linked specialist</div>
+      <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '10px', lineHeight: 1.5, maxWidth: '640px' }}>
+        The VFO specialist who is part of this group. On this group's plans, all four Tax 6 steps under this specialist are Tax Team steps. Under any other specialist, "Specialist confirms VFOS Gross Rev" and "PC confirms receipt of VFOS Gross Rev" are VFOS steps (the member's on a Direct plan).
+      </div>
+      <select value={linkedId === null ? '' : String(linkedId)} disabled={busy} onChange={e => saveLinked(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', minWidth: '260px', cursor: busy ? 'not-allowed' : 'pointer' }}>
+        <option value="">None</option>
+        {linkedId !== '' && linkedId != null && !experts.some(e => String(e.id) === String(linkedId)) && <option value={String(linkedId)}>Specialist #{linkedId}</option>}
+        {experts.map(e => <option key={e.id} value={String(e.id)}>{e.name}</option>)}
+      </select>
+      {linkMsg.text && <p style={{ color: linkMsg.ok ? '#1b9254' : '#d93025', fontSize: '13px', margin: '8px 0 0' }}>{linkMsg.text}</p>}
       <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>Logo</div>
       <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '10px' }}>Shown on this group's clients' ROI presentations, on a small white badge. PNG, JPG or WebP; empty space around the logo is trimmed automatically.</div>
       <GroupLogoPreview src={logoPending?.dataUrl || logoUrl(group.logo_image)} />
