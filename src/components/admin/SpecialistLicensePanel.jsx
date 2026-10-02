@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { ordinal } from '../../lib/ordinal'
@@ -50,7 +50,7 @@ export default function SpecialistLicensePanel({ allExperts = [], embedded = fal
   const navigate = useNavigate()
 
   // Re-open draws the last payments at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('specialistlicense:')
     if (snap) { setPayments(snap.payments || []); setLoading(false) }
     load(!!snap)

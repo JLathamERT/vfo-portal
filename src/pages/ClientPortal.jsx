@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getSession, clearSession, callApi, getLastSeen, setLastSeen } from '../lib/api'
 import ClientVault from '../components/client/ClientVault'
@@ -39,7 +39,7 @@ export default function ClientPortal() {
   function chooseTab(t) { tabChosen.current = true; setTab(t) }
 
   // Showroom of the member this client is connected to (their enabled specialists).
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!session || session.role !== 'client') return
     let cancelled = false
     function apply(data) {

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtDate, PanelHero, EmptyState, TableCard } from './automation/StepKit'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
@@ -363,7 +363,7 @@ export default function TaxAutomationPanel({ programScope = 'holistic' }) {
   }
 
   // Re-open draws the last plans at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(`taxautomation:${programScope}`)
     if (snap) { apply(snap); setLoading(false) }
     load(!!snap)

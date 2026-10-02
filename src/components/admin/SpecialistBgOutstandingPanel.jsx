@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { cardStyle, Detail, SectionHeader, EmptyLine, OutstandingCard, fmtDate, shortDate } from './OutstandingLinksPanel'
@@ -42,7 +42,7 @@ export default function SpecialistBgOutstandingPanel({ embedded = false }) {
   const [error, setError] = useState('')
 
   // Re-open draws the last lists at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('specialistbgoutstanding:')
     if (snap) { apply(snap); setLoading(false) }
     load(!!snap)

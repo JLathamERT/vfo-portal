@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton } from '../shared/Skeleton'
 import PaymentsTable from './PaymentsTable'
@@ -19,7 +19,7 @@ export default function AllPaymentsTab() {
   const [error, setError] = useState(null)
 
   // Re-open draws the last list at once, refreshes behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('allpayments:')
     if (snap) { setData(snap); setLoading(false) }
     load(!!snap)

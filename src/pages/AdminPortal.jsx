@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useLayoutEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { getSession, clearSession, loadCachedData, hasCachedData } from '../lib/api'
+import { getSession, clearSession, loadCachedData, hasCachedData, getLastSeen, setLastSeen } from '../lib/api'
 import { usePortalTheme } from '../lib/theme'
 import SpecialistsPanel from '../components/admin/SpecialistsPanel'
 import TaxPlannersPanel from '../components/admin/TaxPlannersPanel'
@@ -206,7 +206,8 @@ export default function AdminPortal() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
 
-  useEffect(() => {
+  // Layout effect so a remembered copy is on screen before the first paint.
+  useLayoutEffect(() => {
     if (!session || session.role !== 'admin') { navigate('/admin/login?next=' + encodeURIComponent(location.pathname + location.search)); return }
     initialLoad()
     // Deep-link from the ClientDetail header's Settings / Admin Editor buttons
@@ -296,7 +297,11 @@ export default function AdminPortal() {
   // client page), render from it at once and refresh in the background instead
   // of blocking the portal on a fresh fetch.
   async function initialLoad() {
-    if (hasCachedData()) {
+    const snap = getLastSeen('adminportal:loaddata')
+    if (snap) {
+      applyLoadData(snap)
+      setLoading(false)
+    } else if (hasCachedData()) {
       try {
         applyLoadData(await loadCachedData())
         setLoading(false)
@@ -310,7 +315,9 @@ export default function AdminPortal() {
       // loadAllData re-runs as panels' onDataChange — clear any prior banner first.
       setLoadError(null)
       // refresh: true also updates the shared cache ClientDetail reads.
-      applyLoadData(await loadCachedData({ refresh: true }))
+      const data = await loadCachedData({ refresh: true })
+      applyLoadData(data)
+      setLastSeen('adminportal:loaddata', data)
     } catch (err) {
       console.error('Load error:', err)
       setLoadError(err.message || 'Something went wrong')

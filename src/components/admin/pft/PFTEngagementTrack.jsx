@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, loadCachedAction, getLastSeen, setLastSeen } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel } from '../../shared/PhaseNotes'
@@ -629,7 +629,7 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, not
   const snapKey = `pfttrack:${clientId}:${programId ?? ''}`
 
   // Re-opened in the same session: draw the last track at once, refresh behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(snapKey)
     if (snap) {
       applyTrack(snap.trackData, snap.progressData, snap.engData)

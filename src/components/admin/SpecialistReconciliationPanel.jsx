@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, money, requestDate } from './specialistRevenueShared'
 import { PendingNote, HeldNote } from './shareLegState'
@@ -54,7 +54,7 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
   const openMember = useOpenMember()
 
   // Re-open draws the last requests at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('specialistrecon:')
     if (snap) { setRequests(snap.requests || []); setLoading(false) }
     load(!!snap)

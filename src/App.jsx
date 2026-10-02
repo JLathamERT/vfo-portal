@@ -1,10 +1,45 @@
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
+import { CardShell, SkeletonText } from './components/shared/Skeleton'
+
+// Each portal and each emailed-link page is its own chunk, so a client or a
+// specialist no longer downloads the whole admin app. A deploy deletes the old
+// chunk files, so a tab still running the previous build reloads once to pick
+// up the new one instead of failing on a page it has not opened yet.
+const CHUNK_RELOAD_KEY = 'vfo_chunk_reload'
+function lazyPage(load) {
+  return lazy(() => load().then(
+    mod => { try { sessionStorage.removeItem(CHUNK_RELOAD_KEY) } catch { /* private mode */ } return mod },
+    err => {
+      let reloaded = false
+      try { reloaded = sessionStorage.getItem(CHUNK_RELOAD_KEY) === '1' } catch { /* private mode */ }
+      if (!reloaded) {
+        try { sessionStorage.setItem(CHUNK_RELOAD_KEY, '1') } catch { /* private mode */ }
+        window.location.reload()
+        return new Promise(() => {})
+      }
+      throw err
+    },
+  ))
+}
+
+// Shown only if a page's chunk takes longer than a moment to arrive.
+function RouteFallback() {
+  const [show, setShow] = useState(false)
+  useEffect(() => { const t = setTimeout(() => setShow(true), 300); return () => clearTimeout(t) }, [])
+  if (!show) return null
+  return (
+    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px 24px' }}>
+      <CardShell><SkeletonText lines={4} /></CardShell>
+    </div>
+  )
+}
 import RolePicker from './pages/RolePicker'
 import AdminLogin from './pages/AdminLogin'
 import MemberLogin from './pages/MemberLogin'
-import AdminPortal from './pages/AdminPortal'
-import MemberPortal from './pages/MemberPortal'
-import ClientDetail from './pages/ClientDetail'
+const AdminPortal = lazyPage(() => import('./pages/AdminPortal'))
+const MemberPortal = lazyPage(() => import('./pages/MemberPortal'))
+const ClientDetail = lazyPage(() => import('./pages/ClientDetail'))
 
 // ClientDetail captures its tab / plan deep link at mount, so a notification
 // opened while already on a client page (a different client, or the same one
@@ -14,55 +49,56 @@ function KeyedClientDetail() {
   const { search } = useLocation()
   return <ClientDetail key={`${clientId}|${new URLSearchParams(search).get('_n') || ''}`} />
 }
-import DecidePage from './pages/DecidePage'
-import TaxDecidePage from './pages/TaxDecidePage'
-import TaxImplementDecidePage from './pages/TaxImplementDecidePage'
-import TaxPostReviewDecidePage from './pages/TaxPostReviewDecidePage'
-import AdvisorDecidePage from './pages/AdvisorDecidePage'
-import AccountantDecidePage from './pages/AccountantDecidePage'
-import PftFtDecidePage from './pages/PftFtDecidePage'
-import PftDecidePage from './pages/PftDecidePage'
-import PftDiscoveryPage from './pages/PftDiscoveryPage'
-import PayPage from './pages/PayPage'
-import TaxPayPage from './pages/TaxPayPage'
-import AdvisorPayPage from './pages/AdvisorPayPage'
-import AccountantPayPage from './pages/AccountantPayPage'
-import PipPayPage from './pages/PipPayPage'
-import MemberSetupPage from './pages/MemberSetupPage'
-import SetPasswordPage from './pages/SetPasswordPage'
-import ForgotPasswordPage from './pages/ForgotPasswordPage'
-import SpecialistSifPage from './pages/SpecialistSifPage'
-import SpecialistPayPage from './pages/SpecialistPayPage'
-import SpecialistQuestionsPage from './pages/SpecialistQuestionsPage'
-import SpecialistDdcPage from './pages/SpecialistDdcPage'
-import TaxUploadPage from './pages/TaxUploadPage'
-import TaxIntakePage from './pages/TaxIntakePage'
-import TaxDepositPayPage from './pages/TaxDepositPayPage'
-import TaxDiagnosticPage from './pages/TaxDiagnosticPage'
-import VaultUploadPage from './pages/VaultUploadPage'
+const DecidePage = lazyPage(() => import('./pages/DecidePage'))
+const TaxDecidePage = lazyPage(() => import('./pages/TaxDecidePage'))
+const TaxImplementDecidePage = lazyPage(() => import('./pages/TaxImplementDecidePage'))
+const TaxPostReviewDecidePage = lazyPage(() => import('./pages/TaxPostReviewDecidePage'))
+const AdvisorDecidePage = lazyPage(() => import('./pages/AdvisorDecidePage'))
+const AccountantDecidePage = lazyPage(() => import('./pages/AccountantDecidePage'))
+const PftFtDecidePage = lazyPage(() => import('./pages/PftFtDecidePage'))
+const PftDecidePage = lazyPage(() => import('./pages/PftDecidePage'))
+const PftDiscoveryPage = lazyPage(() => import('./pages/PftDiscoveryPage'))
+const PayPage = lazyPage(() => import('./pages/PayPage'))
+const TaxPayPage = lazyPage(() => import('./pages/TaxPayPage'))
+const AdvisorPayPage = lazyPage(() => import('./pages/AdvisorPayPage'))
+const AccountantPayPage = lazyPage(() => import('./pages/AccountantPayPage'))
+const PipPayPage = lazyPage(() => import('./pages/PipPayPage'))
+const MemberSetupPage = lazyPage(() => import('./pages/MemberSetupPage'))
+const SetPasswordPage = lazyPage(() => import('./pages/SetPasswordPage'))
+const ForgotPasswordPage = lazyPage(() => import('./pages/ForgotPasswordPage'))
+const SpecialistSifPage = lazyPage(() => import('./pages/SpecialistSifPage'))
+const SpecialistPayPage = lazyPage(() => import('./pages/SpecialistPayPage'))
+const SpecialistQuestionsPage = lazyPage(() => import('./pages/SpecialistQuestionsPage'))
+const SpecialistDdcPage = lazyPage(() => import('./pages/SpecialistDdcPage'))
+const TaxUploadPage = lazyPage(() => import('./pages/TaxUploadPage'))
+const TaxIntakePage = lazyPage(() => import('./pages/TaxIntakePage'))
+const TaxDepositPayPage = lazyPage(() => import('./pages/TaxDepositPayPage'))
+const TaxDiagnosticPage = lazyPage(() => import('./pages/TaxDiagnosticPage'))
+const VaultUploadPage = lazyPage(() => import('./pages/VaultUploadPage'))
 import ClientLogin from './pages/ClientLogin'
-import ClientSetupPage from './pages/ClientSetupPage'
-import ClientPortal from './pages/ClientPortal'
+const ClientSetupPage = lazyPage(() => import('./pages/ClientSetupPage'))
+const ClientPortal = lazyPage(() => import('./pages/ClientPortal'))
 import SpecialistLogin from './pages/SpecialistLogin'
-import SpecialistPortal from './pages/SpecialistPortal'
+const SpecialistPortal = lazyPage(() => import('./pages/SpecialistPortal'))
 import TaxPlannerLogin from './pages/TaxPlannerLogin'
-import TaxPlannerPortal from './pages/TaxPlannerPortal'
-import PlannerMemberView from './pages/PlannerMemberView'
-import SpecialistDdcHelpPage from './pages/SpecialistDdcHelpPage'
-import SpecialistRevShareFinalPage from './pages/SpecialistRevShareFinalPage'
-import Map4FormPage from './pages/Map4FormPage'
-import UpdateCardPage from './pages/UpdateCardPage'
-import ConnectCardPage from './pages/ConnectCardPage'
-import PayoutSetupPage from './pages/PayoutSetupPage'
-import SpecialistRevenuePayPage from './pages/SpecialistRevenuePayPage'
-import MembershipPayPage from './pages/MembershipPayPage'
-import MembershipMeetingPage from './pages/MembershipMeetingPage'
-import OnboardingMeetingPage from './pages/OnboardingMeetingPage'
+const TaxPlannerPortal = lazyPage(() => import('./pages/TaxPlannerPortal'))
+const PlannerMemberView = lazyPage(() => import('./pages/PlannerMemberView'))
+const SpecialistDdcHelpPage = lazyPage(() => import('./pages/SpecialistDdcHelpPage'))
+const SpecialistRevShareFinalPage = lazyPage(() => import('./pages/SpecialistRevShareFinalPage'))
+const Map4FormPage = lazyPage(() => import('./pages/Map4FormPage'))
+const UpdateCardPage = lazyPage(() => import('./pages/UpdateCardPage'))
+const ConnectCardPage = lazyPage(() => import('./pages/ConnectCardPage'))
+const PayoutSetupPage = lazyPage(() => import('./pages/PayoutSetupPage'))
+const SpecialistRevenuePayPage = lazyPage(() => import('./pages/SpecialistRevenuePayPage'))
+const MembershipPayPage = lazyPage(() => import('./pages/MembershipPayPage'))
+const MembershipMeetingPage = lazyPage(() => import('./pages/MembershipMeetingPage'))
+const OnboardingMeetingPage = lazyPage(() => import('./pages/OnboardingMeetingPage'))
 import { MemberHelpMount } from './components/member/MemberHelpButton'
 
 export default function App() {
   return (
     <>
+    <Suspense fallback={<RouteFallback />}>
     <Routes>
       <Route path="/" element={<RolePicker />} />
       <Route path="/admin/login" element={<AdminLogin />} />
@@ -118,6 +154,7 @@ export default function App() {
       <Route path="/specialist-revshare-final" element={<SpecialistRevShareFinalPage />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
+    </Suspense>
     <MemberHelpMount />
     </>
   )

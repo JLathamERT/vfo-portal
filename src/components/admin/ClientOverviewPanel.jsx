@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import ListFilterButton, { matchesFilter, SortSelect, useHeaderSort, sortByColumn, SortHeader } from './ListFilterButton'
@@ -112,7 +112,7 @@ export default function ClientOverviewPanel() {
   // failed one retries when the admin returns to it.
   // Re-opened in the same session (nav click or Back re-mounts this panel): draw
   // the section's last list at once from the snapshot, refresh behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (freshSections.current[activeSection]) return
     const snapKey = `clientoverview:${activeSection}`
     let quiet = !!dataBySection[activeSection]

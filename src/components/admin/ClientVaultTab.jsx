@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getSession, getLastSeen, setLastSeen } from '../../lib/api'
 import { fileSizeError } from '../../lib/fileUpload'
 import { VaultRowsSkeleton } from '../shared/Skeleton'
@@ -161,7 +161,7 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
   }
 
   // Re-opened vault: draw the last file lists at once, refresh behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(snapKey)
     if (snap) {
       if (snap.member) applyMember(snap.member)

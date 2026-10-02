@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { VaultRowsSkeleton, SharedDocsSkeleton } from '../shared/Skeleton'
 
@@ -28,7 +28,7 @@ export default function SpecialistShared({ onUnreadChange }) {
     }
     setLoading(false)
   }
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('specialistshared:clients')
     if (snap) { setClients(snap.clients || []); setLoading(false) }
     loadClients(!!snap)

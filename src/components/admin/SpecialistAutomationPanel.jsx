@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
 import SandboxModeToggle from './SandboxModeToggle'
@@ -204,7 +204,7 @@ export default function SpecialistAutomationPanel() {
   const [expandedRow, setExpandedRow] = useState(null)
 
   // Re-open draws the last pipeline at once, refreshes behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('specialistautomation:')
     if (snap) { apply(snap); setLoading(false) }
     loadData(!!snap)

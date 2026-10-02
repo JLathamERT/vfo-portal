@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { callApi, getSession, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, money, requestDate, RequestRow, MarkReceivedButton, DeleteRequestButton, canDeleteSpecrevRequest, memberShareNote, shareNoteStyle, isHeldLine } from './specialistRevenueShared'
 import { PENDING_COLOR } from './shareLegState'
@@ -29,7 +29,7 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
   const [month, setMonth] = useState(now.getMonth()) // 0-11, or -1 for All
 
   // Re-open draws the last requests at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('specialistrevenue:')
     if (snap) { setRequests(snap.requests || []); setLoading(false) }
     load(!!snap)

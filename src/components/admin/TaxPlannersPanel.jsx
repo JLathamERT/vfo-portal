@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { callApi, loadCachedAction, loadCachedData, getLastSeen, setLastSeen } from '../../lib/api'
 import { makeTaxPlanRules, taxPlanProgressSummary } from './tax/taxPlanRules'
 import { fileToLogoPng, logoUrl } from '../shared/logoPng'
@@ -121,7 +121,7 @@ export default function TaxPlannersPanel({ section }) {
     }
   }
   const groupNames = groups.map(g => g.name)
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Re-opened panel: draw the last list (and reopen the planner) at once, refresh behind it.
     const snap = getLastSeen('taxplanners:list')
     const ret = takePlannerReturn()
@@ -651,7 +651,7 @@ function TaxPlannerPaymentsTab({ plannerId }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let alive = true
     // Re-opened tab: draw the last rows at once, refresh behind them.
     const key = `taxplannerpayments:${plannerId}`
@@ -778,7 +778,7 @@ function TaxPlannerClientsTab({ plannerId }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let alive = true
     let fresh = false
     // Re-opened tab: draw the last rows at once, refresh behind them.

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, money } from './specialistRevenueShared'
 import { inPeriod } from './holisticShared'
@@ -31,7 +31,7 @@ export default function PipReconciliationPanel({ embedded = false }) {
   const [year, setYear] = useState(now.getFullYear())
 
   // Re-open draws the last rows at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('piprecon:')
     if (snap) { setRows(snap.rows || []); setLoading(false) }
     load(!!snap)

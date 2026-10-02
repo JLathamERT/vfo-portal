@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { Skeleton, TableSkeleton } from '../shared/Skeleton'
@@ -40,7 +40,7 @@ export default function GrowthCreditsAccountingPanel() {
   const [error, setError] = useState('')
 
   // Re-open draws the last figures at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('gcaccounting:')
     if (snap) { setData(snap); setLoading(false) }
     load(!!snap)

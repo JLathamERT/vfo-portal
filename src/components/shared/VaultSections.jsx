@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getSession, getLastSeen, setLastSeen } from '../../lib/api'
 import { fileSizeError } from '../../lib/fileUpload'
 import { VaultRowsSkeleton } from './Skeleton'
@@ -88,7 +88,7 @@ export default function VaultSections({ actions, params = {}, sections = DEFAULT
     setLoading(false)
   }
   // Re-opened vault: draw the last file lists at once, refresh behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(snapKey)
     if (snap) {
       setData(Object.fromEntries(sections.map(s => [s.key, snap[s.key] || []])))

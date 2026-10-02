@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, cloneElement, Fragment } from 'react'
+import { useState, useEffect, useRef, useMemo, cloneElement, Fragment, useLayoutEffect } from 'react'
 import DirectPill from '../../shared/DirectPill'
 import { callApi, loadCachedAction, getSession, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
 import { TaxPlanListSkeleton, PhaseListSkeleton } from '../../shared/Skeleton'
@@ -5604,7 +5604,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
   const snapKey = `taxpriorities:${clientId}:${programId ?? ''}:${programName ?? ''}`
 
   // Re-opened in the same session: draw the last plan list at once, refresh behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(snapKey)
     if (snap) {
       applyLoaded(snap)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money, StatusPill } from './specialistRevenueShared'
@@ -94,7 +94,7 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
   const navigate = useNavigate()
 
   // Re-open draws the last rows at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('specialistbg:')
     if (snap) { apply(snap); setLoading(false) }
     load(!!snap)

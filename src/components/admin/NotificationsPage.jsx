@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton } from '../shared/Skeleton'
@@ -86,7 +86,7 @@ function NotificationsView({ navigate }) {
   const [error, setError] = useState('')
 
   // A page/filter seen before this session draws at once, refreshes behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(`adminnotifs:${scope}:${kind}:${sort}:${page}`)
     if (snap) { setError(''); setSelected(new Set()); apply(snap) }
     load(!!snap)
@@ -256,7 +256,7 @@ function RemindersView() {
   const [status, setStatus] = useState('')
 
   // Re-open draws the last reminder lists at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('adminreminders:')
     if (snap) apply(snap)
     load(!!snap)

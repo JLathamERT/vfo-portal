@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton } from '../shared/Skeleton'
 import { GCServicesView, GCTransactionHistory } from '../shared/GCMarketplaceViews'
@@ -26,7 +26,7 @@ export default function MemberGCMarketplace({ memberNumber }) {
   const [banner, setBanner] = useState('')
 
   // Re-opened tab: draw the last balance and history at once, refresh behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(`membergcmarket:${memberNumber}`)
     if (snap) applyDashboard(snap.balData, snap.transData)
     loadDashboard()

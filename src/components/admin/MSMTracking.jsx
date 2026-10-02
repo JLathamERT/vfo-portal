@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import DirectPill from '../shared/DirectPill'
 import { useNavigate } from 'react-router-dom'
-import { callApi, getSession, loadCachedAction, getLastSeen, setLastSeen } from '../../lib/api'
+import { callApi, getSession, loadCachedAction, getLastSeen, setLastSeen, getWriteCount } from '../../lib/api'
 import { ClientsListSkeleton, TrainingTrackSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, AdminMsmHomeSkeleton, ProgramNotesSkeleton, AdminProgramViewSkeleton, SkeletonText, PhaseListSkeleton } from '../shared/Skeleton'
 import { TrackHero, PhaseBadge } from '../shared/TrackKit'
 import { countedTasks, countedDone, phaseState, isPositiveStatus, planStatusLabel } from '../shared/trainingStatus'
@@ -75,7 +75,7 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
 
   // Re-opening a member seen earlier this session (e.g. Back from a client page)
   // draws the last snapshot at once and refreshes it in the background.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(`msm:${member.plugin_member_number}`)
     if (snap) {
       setPrograms(snap.programs)
@@ -390,13 +390,25 @@ function ProgramNotes({ memberNumber, programName }) {
   const session = getSession()
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
-  useEffect(() => { loadNotes() }, [memberNumber, programName])
+  // Re-opening Home draws the last notes before the first paint when nothing has
+  // been saved since (notes are added / edited here), then refreshes them.
+  const notesSnapKey = `adminprogramnotes:${memberNumber}:${programName}`
+  useLayoutEffect(() => {
+    const snap = getLastSeen(notesSnapKey)
+    if (snap && snap.writes === getWriteCount()) {
+      setNotes(snap.notes)
+      setLoading(false)
+      loadNotes(true)
+    } else loadNotes()
+  }, [memberNumber, programName])
 
-  async function loadNotes() {
-    setLoading(true)
+  async function loadNotes(quiet = false) {
+    if (quiet !== true) setLoading(true)
+    const startWrites = getWriteCount()
     try {
       const data = await callApi('load_member_program_notes', { member_number: memberNumber, program_name: programName })
       setNotes(data.notes || [])
+      setLastSeen(notesSnapKey, { notes: data.notes || [], writes: startWrites })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -653,7 +665,17 @@ function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
   const [expanded, setExpanded] = useState({})
   const [phaseCompletedBy, setPhaseCompletedBy] = useState({})
 
-  useEffect(() => { loadTrack() }, [enrollment.id])
+  // Re-opening the 90 Day Plan draws the last copy at once when nothing has been
+  // saved since it was loaded (the rows carry status dropdowns), then refreshes.
+  const trackSnapKey = `admintrack:${enrollment.id}:${program.id}`
+  useLayoutEffect(() => {
+    const snap = getLastSeen(trackSnapKey)
+    if (snap && snap.writes === getWriteCount()) {
+      applyTrack(snap.trackData, snap.progressData, true)
+      setLoading(false)
+      loadTrack(true)
+    } else loadTrack()
+  }, [enrollment.id])
 
   // Feed the header's "90 Day Plan:" badge live as statuses change — computed from the same
   // phases+progress the track renders, so the heading tracks each click without a reload.
@@ -662,31 +684,40 @@ function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
     onPlanStatusChange(planStatusLabel(phases, progress))
   }, [phases, progress, loading])
 
-  async function loadTrack() {
-    setLoading(true)
+  // full: also reset the per-phase "completed by" fields and which phases are
+  // expanded (a quiet refresh keeps what the admin has touched).
+  function applyTrack(trackData, progressData, full) {
+    const loadedPhases = trackData.phases || []
+    setPhases(loadedPhases)
+    const prog = {}
+    ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
+    setProgress(prog)
+    if (!full) return
+    const byPhase = {}
+    loadedPhases.forEach(phase => {
+      const firstWithBy = (phase.program_training_tasks || []).find(t => prog[t.id]?.completed_by)
+      if (firstWithBy) byPhase[phase.id] = prog[firstWithBy.id].completed_by
+      else byPhase[phase.id] = ''
+    })
+    setPhaseCompletedBy(byPhase)
+
+    const expandState = {}
+    loadedPhases.forEach(phase => {
+      expandState[phase.id] = phaseState(phase.program_training_tasks, prog) !== 'done'
+    })
+    setExpanded(expandState)
+  }
+
+  async function loadTrack(quiet = false) {
+    if (quiet !== true) setLoading(true)
+    const startWrites = getWriteCount()
     try {
       const [trackData, progressData] = await Promise.all([
         loadCachedAction('msm_load_training_track', { program_id: program.id }),
         callApi('msm_load_training_progress', { enrollment_id: enrollment.id }),
       ])
-      const loadedPhases = trackData.phases || []
-      setPhases(loadedPhases)
-      const prog = {}
-      const byPhase = {}
-      ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
-      loadedPhases.forEach(phase => {
-        const firstWithBy = (phase.program_training_tasks || []).find(t => prog[t.id]?.completed_by)
-        if (firstWithBy) byPhase[phase.id] = prog[firstWithBy.id].completed_by
-        else byPhase[phase.id] = ''
-      })
-      setProgress(prog)
-      setPhaseCompletedBy(byPhase)
-
-      const expandState = {}
-      loadedPhases.forEach(phase => {
-        expandState[phase.id] = phaseState(phase.program_training_tasks, prog) !== 'done'
-      })
-      setExpanded(expandState)
+      applyTrack(trackData, progressData, quiet !== true)
+      setLastSeen(trackSnapKey, { trackData, progressData, writes: startWrites })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -962,7 +993,7 @@ function ClientsPanel({ enrollment, member, program }) {
   const isPFT = program?.name?.includes('Partnership')
 
   // Back from a client page lands here: draw the last list at once, refresh behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(`msmclients:${enrollment.id}`)
     if (snap) {
       setClients(snap.clients)

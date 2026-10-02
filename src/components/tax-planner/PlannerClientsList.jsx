@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession } from '../../lib/api'
 import { ListHeader } from '../shared/TrackKit'
@@ -77,7 +77,7 @@ export default function PlannerClientsList() {
 
   // Coming back from a client shows the last list at once (same session only),
   // then refreshes it behind the scenes.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const cached = lastList && lastList.token && lastList.token === getSession()?.token ? lastList.data : null
     if (cached) {
       apply(cached)

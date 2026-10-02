@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, SubBlock, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
@@ -171,7 +171,7 @@ export default function PFTAutomationPanel() {
   const [expandedRow, setExpandedRow] = useState(null)
 
   // Re-open draws the last pipeline at once, refreshes behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('pftautomation:')
     if (snap) { apply(snap); setLoading(false) }
     loadData(!!snap)

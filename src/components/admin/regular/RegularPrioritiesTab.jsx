@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel, noteInScope } from '../../shared/PhaseNotes'
 import { TaxPlanListSkeleton, PhaseListSkeleton } from '../../shared/Skeleton'
@@ -637,7 +637,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
   const snapKey = `regularpriorities:${clientId}:${programId ?? ''}`
 
   // Re-opened in the same session: draw the last priority list at once, refresh behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(snapKey)
     if (snap) {
       applyLoaded(snap)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel } from '../../shared/PhaseNotes'
 import { PipMeetingsListSkeleton, PipMeetingDetailSkeleton } from '../../shared/Skeleton'
@@ -463,7 +463,7 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
   const snapKey = `pipmeetings:${clientId}:${programId ?? ''}`
 
   // Re-opened in the same session: draw the last meeting list at once, refresh behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(snapKey)
     if (snap) {
       applyLoaded(snap)

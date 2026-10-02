@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect } from 'react'
+import { Fragment, useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { TableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
@@ -36,7 +36,7 @@ export default function GrowthCreditsRedemptionsPage() {
   const [confirmReject, setConfirmReject] = useState(null)
 
   // Re-open draws the last queue + menu at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('gcredemptions:list')
     if (snap) setRedemptions(snap.redemptions || [])
     const menuSnap = getLastSeen('gcredemptions:menu')

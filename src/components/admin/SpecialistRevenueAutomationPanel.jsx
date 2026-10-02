@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import SandboxModeToggle from './SandboxModeToggle'
 import { NAVY, BLUE, money, RequestRow, MarkReceivedButton, isErtLegOpen } from './specialistRevenueShared'
@@ -33,7 +33,7 @@ export default function SpecialistRevenueAutomationPanel() {
   const [retryMsg, setRetryMsg] = useState('')
 
   // Re-open draws the last requests at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('specialistrevenueautomation:')
     if (snap) { apply(snap); setLoading(false) }
     load(!!snap)

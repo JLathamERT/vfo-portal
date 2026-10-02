@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { getSession, callApi, loadCachedData, getLastSeen, setLastSeen } from '../lib/api'
 import { usePortalTheme } from '../lib/theme'
@@ -132,7 +132,7 @@ export default function ClientDetail() {
     }
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isPlanner) {
       if (!session || session.role !== 'tax_planner') { navigate('/tax-planner/login'); return }
     } else if (!session) {

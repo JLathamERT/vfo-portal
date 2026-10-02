@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen, redraftInstallmentEmail, resendContinuationSetupLink, resendFirstPaymentLink } from '../../lib/api'
 import { money, StatusPill } from './specialistRevenueShared'
@@ -441,7 +441,7 @@ export default function OutstandingLinksPanel({ kind, embedded = false }) {
   const [error, setError] = useState('')
 
   // Re-open draws the last lists at once (snapshot), refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('outstandinglinks:')
     if (snap) { setData(snap); setLoading(false) }
     load(snap ? { quiet: true, keepOnError: true } : undefined)

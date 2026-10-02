@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton } from './Skeleton'
 
@@ -167,7 +167,7 @@ export function GCServicesView({
   // A remount (leaving the Growth Credits tab and coming back) draws the last
   // catalogue at once from the snapshot; the refresh below then replaces it.
   const snapKey = `gcservices:${adminMode ? 'admin' : 'member'}:${memberNumber}`
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!active) return
     if (!servicesLoaded) {
       const snap = getLastSeen(snapKey)

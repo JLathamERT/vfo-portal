@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState, TableCard } from './automation/StepKit'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
@@ -446,7 +446,7 @@ export default function AutomationPanel({ section }) {
   const [savingMode, setSavingMode] = useState(false)
 
   // Re-open draws the last pipeline list + rows at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('automation:pipelines')
     if (snap) {
       setPipelines(snap.pipelines || [])
@@ -455,7 +455,7 @@ export default function AutomationPanel({ section }) {
     }
     loadPipelines(!!snap)
   }, [])
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!selectedPipeline) return
     const snap = getLastSeen(`automation:data:${selectedPipeline.table_name}`)
     if (snap) applyPipelineData(snap)

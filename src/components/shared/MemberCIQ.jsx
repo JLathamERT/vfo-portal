@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { CiqListSkeleton, SkeletonText } from './Skeleton'
 import { HubGrid, HubCard, HubBanner } from './HubKit'
@@ -37,7 +37,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   const [ciqSettingsStatus, setCiqSettingsStatus] = useState('')
   const [settingsLoaded, setSettingsLoaded] = useState(false)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Re-opened tab: use the last settings at once, refresh behind them.
     const snap = getLastSeen(`ciqsettings:${memberNumber}`)
     if (snap) {
@@ -68,7 +68,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
 
   // Re-opened tab: draw the last CIQ list at once, refresh behind it. The admin
   // deep link below only ever acts on the fresh list.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(`ciqlist:${memberNumber}`)
     if (snap) {
       setCiqs(snap.data.ciqs || [])

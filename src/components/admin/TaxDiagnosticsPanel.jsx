@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { formatDate, formatDateTime } from '../../lib/dates'
@@ -81,7 +81,7 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
     }
   }
   // Re-opened panel: draw the last queue at once, refresh behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('taxdiagnostics:list')
     if (snap) setData(snap)
     load(!!snap)

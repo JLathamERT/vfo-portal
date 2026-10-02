@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import DirectPill from '../shared/DirectPill'
 import { useNavigate } from 'react-router-dom'
-import { callApi, loadCachedAction, getLastSeen, setLastSeen } from '../../lib/api'
+import { callApi, loadCachedAction, getLastSeen, setLastSeen, getWriteCount } from '../../lib/api'
 import { Skeleton, ClientsListSkeleton, TrainingTrackSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, MsmHomeSkeleton } from '../shared/Skeleton'
 import { TrackHero, PhaseBadge } from '../shared/TrackKit'
 import { countedTasks, countedDone, phaseState, isPositiveStatus, isTrackStopped, planStatusLabel, STATUS_STOPPED, STATUS_NOT_APPLICABLE } from '../shared/trainingStatus'
@@ -53,11 +53,16 @@ function MemberProgramNotes({ memberNumber, sectionStyle, programName = null, ti
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  // Read-only for the member: a re-visit draws the last notes before the first
+  // paint, then refreshes them.
+  useLayoutEffect(() => {
     let live = true
-    setLoading(true)
+    const key = `memberprogramnotes:${memberNumber}:${programName || ''}`
+    const snap = getLastSeen(key)
+    if (snap) { setNotes(snap.notes || []); setLoading(false) }
+    else setLoading(true)
     callApi('load_member_program_notes', { member_number: memberNumber, ...(programName ? { program_name: programName } : {}) })
-      .then(d => { if (live) setNotes(d.notes || []) })
+      .then(d => { if (live) { setNotes(d.notes || []); setLastSeen(key, d) } })
       .catch(err => console.error(err))
       .finally(() => { if (live) setLoading(false) })
     return () => { live = false }
@@ -112,7 +117,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 
   // Coming back to this tab in the same session draws the last snapshot at once
   // and refreshes it in the background.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(`membermsm:${member.member_number}`)
     if (snap) {
       setPrograms(snap.programs)
@@ -464,26 +469,45 @@ function MemberTrainingView({ enrollment, program }) {
     } finally { setSaving(s => ({ ...s, [taskId]: false })) }
   }
 
-  useEffect(() => { loadTrack() }, [enrollment.id])
+  // Re-opening the 90 Day Plan draws the last copy at once when nothing has been
+  // saved since it was loaded (the rows carry status dropdowns), then refreshes.
+  const trackSnapKey = `membertrack:${enrollment.id}:${program.id}`
+  useLayoutEffect(() => {
+    const snap = getLastSeen(trackSnapKey)
+    if (snap && snap.writes === getWriteCount()) {
+      applyTrack(snap.trackData, snap.progressData, true)
+      setLoading(false)
+      loadTrack(true)
+    } else loadTrack()
+  }, [enrollment.id])
 
-  async function loadTrack() {
-    setLoading(true)
+  // full: also reset which phases are expanded (a quiet refresh keeps the
+  // member's own toggles).
+  function applyTrack(trackData, progressData, full) {
+    const loadedPhases = trackData.phases || []
+    setPhases(loadedPhases)
+    const prog = {}
+    ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
+    setProgress(prog)
+    if (!full) return
+    // A fully-done phase defaults collapsed on load; manual toggles win after.
+    const expandState = {}
+    loadedPhases.forEach(phase => {
+      expandState[phase.id] = phaseState(phase.program_training_tasks, prog) !== 'done'
+    })
+    setExpanded(expandState)
+  }
+
+  async function loadTrack(quiet = false) {
+    if (quiet !== true) setLoading(true)
+    const startWrites = getWriteCount()
     try {
       const [trackData, progressData] = await Promise.all([
         loadCachedAction('msm_load_training_track', { program_id: program.id }),
         callApi('msm_load_training_progress', { enrollment_id: enrollment.id }),
       ])
-      const loadedPhases = trackData.phases || []
-      setPhases(loadedPhases)
-      const prog = {}
-      ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
-      setProgress(prog)
-      // A fully-done phase defaults collapsed on load; manual toggles win after.
-      const expandState = {}
-      loadedPhases.forEach(phase => {
-        expandState[phase.id] = phaseState(phase.program_training_tasks, prog) !== 'done'
-      })
-      setExpanded(expandState)
+      applyTrack(trackData, progressData, quiet !== true)
+      setLastSeen(trackSnapKey, { trackData, progressData, writes: startWrites })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -781,7 +805,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
   const [doneMessage, setDoneMessage] = useState('')
 
   // Back from a client page lands here: draw the last list at once, refresh behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(`memberclients:${enrollment?.id || 'none'}`)
     if (snap) {
       setClients(snap.clients)

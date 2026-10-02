@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, money } from './specialistRevenueShared'
 import { inPeriod } from './holisticShared'
@@ -72,7 +72,7 @@ export default function TaxRevenuePanel({ embedded = false }) {
   const [month, setMonth] = useState(now.getMonth())
 
   // Re-open draws the last rows at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('taxrevenue:')
     if (snap) { setRows(snap.rows || []); setLoading(false) }
     load(!!snap)

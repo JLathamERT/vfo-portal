@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, money } from './specialistRevenueShared'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
@@ -39,7 +39,7 @@ export default function MemberOnboardingPanel({ kind = 'advisor', title }) {
   const [month, setMonth] = useState(now.getMonth())
 
   // Re-open draws the last payments for this kind at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(`memberonboarding:${kind}`)
     if (snap) { setPayments(snap.payments || []); setError(''); setLoading(false) }
     load(!!snap)

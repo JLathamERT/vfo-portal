@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { ordinal } from '../../lib/ordinal'
 import { money } from './specialistRevenueShared'
@@ -51,7 +51,7 @@ export default function SpecialistLicenseOutstandingPanel({ embedded = false }) 
   const [error, setError] = useState('')
 
   // Re-open draws the last list at once, refreshes behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('specialistlicenseoutstanding:')
     if (snap) { setPending(snap.pending || []); setLoading(false) }
     load(!!snap)

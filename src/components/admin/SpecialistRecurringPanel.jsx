@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, BLUE, money, StatusPill, RecipientName } from './specialistRevenueShared'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
@@ -36,7 +36,7 @@ export default function SpecialistRecurringPanel({ embedded = false }) {
   const [error, setError] = useState('')
 
   // Re-open draws the last plans at once, refreshes behind them.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen('specialistrecurring:')
     if (snap) { setPlans(snap.plans || []); setLoading(false) }
     load(!!snap)

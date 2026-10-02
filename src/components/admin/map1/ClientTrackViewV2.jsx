@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, loadCachedAction, getLastSeen, setLastSeen } from '../../../lib/api'
 import { Map1TrackSkeleton } from '../../shared/Skeleton'
@@ -170,7 +170,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
   const snapKey = `map1track:${clientId}:${programId ?? ''}:${readOnly ? 'member' : 'admin'}`
 
   // Re-opened in the same session: draw the last track at once, refresh behind it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const snap = getLastSeen(snapKey)
     if (snap) {
       applyTrack(snap.trackData, snap.progressData)

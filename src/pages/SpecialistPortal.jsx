@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession, clearSession, getLastSeen, setLastSeen } from '../lib/api'
 import SpecialistVault from '../components/specialist/SpecialistVault'
@@ -21,7 +21,7 @@ export default function SpecialistPortal() {
   const [showroom, setShowroom] = useState(null)
   const [loadError, setLoadError] = useState(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!session || session.role !== 'specialist') { navigate('/specialist/login'); return }
     // Re-mount: draw the last showroom + badge at once, refresh behind them.
     const unreadSnap = getLastSeen(`specialistportal:unread:${session.email}`)

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getSession, clearSession, callApi, loadCachedData, loadCachedAction, clearCachedData, getLastSeen, setLastSeen } from '../lib/api'
 import MemberWebsitePlugin from '../components/shared/MemberWebsitePlugin'
@@ -54,7 +54,7 @@ export default function MemberPortal() {
   const [features, setFeatures] = useState({})
   const [allPrograms, setAllPrograms] = useState([])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!session || session.role !== 'member') { navigate('/member/login'); return }
     if (sessionStorage.getItem('memberOpenView') === 'settings') {
       sessionStorage.removeItem('memberOpenView')
@@ -511,7 +511,7 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
   // The member's own Stripe Connect setup state — a tag, never the account id
   // (member_my_connect_status is session-scoped and strips it).
   const [connectStatus, setConnectStatus] = useState(null)
-  useEffect(() => {
+  useLayoutEffect(() => {
     let alive = true
     // Re-opened tab: show the last status at once, refresh behind it.
     const key = `memberportalconnect:${member?.member_number}`
@@ -528,7 +528,7 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
   const [profileRow, setProfileRow] = useState(null)
   const [directEligibility, setDirectEligibility] = useState(null)
   const [profileLoadError, setProfileLoadError] = useState('')
-  useEffect(() => {
+  useLayoutEffect(() => {
     let alive = true
     // Re-opened tab: show the last row at once, refresh behind it.
     const key = `memberportalprofile:${member.member_number}`
