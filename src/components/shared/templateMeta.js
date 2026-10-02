@@ -216,8 +216,7 @@ export const TEMPLATE_META = {
     ['SPECIALIST_bgcheck_invoicereceipt', 'Background Check payment cleared — invoice and receipt PDFs attached', 'To: Specialist'],
   ],
   'TRAINING': [
-    ['TRAINING_roleplay_intro|holistic', '90 Day Plan roleplay — intro email to the member + Evan with the booking link (Holistic wording)', 'To: Member, Proactive Facilitator'],
-    ['TRAINING_roleplay_intro|tax', '90 Day Plan roleplay — intro email to the member + Evan with the booking link (Tax Planning wording)', 'To: Member, Proactive Facilitator'],
+    ['TRAINING_roleplay_intro|holistic', '90 Day Plan roleplay — intro email to the member + Evan with the booking link (VFO Holistic Planning)', 'To: Member, Proactive Facilitator'],
     ['TRAINING_roleplay_intro|pft', '90 Day Plan roleplay — intro email to the member + Ian with the booking link (Partnership Fast Track)', 'To: Member, Proactive Facilitator'],
     ['TRAINING_roleplay_confirm', '90 Day Plan roleplay — date / time confirmation', 'To: Member'],
     ['TRAINING_roleplay_confirm|rescheduled', '90 Day Plan roleplay — rescheduled after a No-show or a date change', 'To: Member'],
@@ -318,7 +317,7 @@ export const TOKEN_LEGEND = {
   'Member Name': "member's full name",
   'Member First': "member's first name",
   'Facilitator First': "Proactive Facilitator's first name (Evan / Ian)",
-  'Program': 'program from the intro wording sent (VFO Holistic Planning / VFO Tax Planning / Partnership Fast Track)',
+  'Program': 'the plan\'s program (VFO Holistic Planning / Partnership Fast Track)',
   'Roleplay Date': 'roleplay date (MM/DD/YYYY)',
   'Roleplay Time': 'roleplay time',
   'Roleplay Timezone': 'roleplay timezone (ET, CT, ...)',

@@ -15,11 +15,11 @@ export const ROLEPLAY_SENTINEL = 'roleplay_booking'
 export const isRoleplayTask = (task) => task?.status_options === ROLEPLAY_SENTINEL
 
 const INTRO_BUTTONS = {
-  1: [{ variant: 'holistic', label: 'Send intro email (Holistic)' }, { variant: 'tax', label: 'Send intro email (Tax Planning)' }],
+  1: [{ variant: 'holistic', label: 'Send intro email' }],
   2: [{ variant: 'pft', label: 'Send intro email' }],
 }
 const FACILITATOR_FIRST = { 1: 'Evan', 2: 'Ian' }
-const VARIANT_LABEL = { holistic: 'Holistic wording', tax: 'Tax Planning wording', pft: 'Partnership Fast Track' }
+const VARIANT_LABEL = { holistic: 'VFO Holistic Planning', pft: 'Partnership Fast Track' }
 const TIMEZONES = [['ET', 'Eastern (ET)'], ['CT', 'Central (CT)'], ['MT', 'Mountain (MT)'], ['PT', 'Pacific (PT)'], ['AKT', 'Alaska (AKT)'], ['HT', 'Hawaii (HT)']]
 
 const GREEN = '#1b9254'
