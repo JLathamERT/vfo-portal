@@ -73,6 +73,21 @@ function fmtDate(v) {
 
 const TX_GRID = { display: 'grid', gridTemplateColumns: 'minmax(140px, 1fr) 90px 150px 90px 56px 50px', gap: '12px', alignItems: 'center' }
 
+const TX_NUM = { fontSize: '13px', fontWeight: 600, textAlign: 'right' }
+
+// Type pill in the house chip style. A grant is stored as type "purchased" too
+// (gc_add_credits), so the flag alone would tell a member they bought credits
+// they were given — which is exactly what happened to 27 members before this.
+// The Stripe session id is what a real payment leaves behind, so derive the
+// word from that (#465).
+function gcTypeChip(tx) {
+  const [label, rgb, hex] = tx.type === 'purchased' && !tx.stripe_session_id ? ['Added', '0,149,255', '#0095ff']
+    : tx.type === 'purchased' ? ['Purchased', '27,146,84', '#1b9254']
+      : tx.type === 'refunded' ? ['Refunded', '0,149,255', '#0095ff']
+        : ['Redeemed', '231,76,60', '#d93025']
+  return <span style={{ fontSize: '11px', padding: '2px 10px', borderRadius: '999px', background: `rgba(${rgb},0.15)`, color: hex, fontWeight: 600, border: `1px solid rgba(${rgb},0.3)`, whiteSpace: 'nowrap' }}>{label}</span>
+}
+
 // The "By" column (gc_transactions.actor_name / actor_role, 2026-10-02). Rows
 // written before the column existed, and Stripe purchases, carry none.
 function gcActorLabel(tx) {
@@ -109,24 +124,11 @@ export function GCTransactionHistory({ transactions }) {
           {transactions.map(tx => (
           <div key={tx.id} style={{ ...TX_GRID, padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
             <span style={{ color: 'var(--vfo-ink)', fontSize: '14px', textAlign: 'left' }}>{tx.description || tx.type}</span>
-            <span style={{ color: 'var(--vfo-muted)', fontSize: '12px' }}>{new Date(tx.created_at).toLocaleDateString()}</span>
-            <span style={{ color: 'var(--vfo-muted)', fontSize: '12px' }}>{gcActorLabel(tx)}</span>
-            <span style={{ justifySelf: 'end' }}>
-              {/* A grant is stored as type "purchased" too (gc_add_credits), so the flag
-                  alone would tell a member they bought credits they were given — which is
-                  exactly what happened to 27 members before this. The Stripe session id is
-                  what a real payment leaves behind, so derive the word from that (#465). */}
-              {tx.type === 'purchased' && !tx.stripe_session_id
-                ? <span style={{ background: 'rgba(0,149,255,0.2)', color: '#0095ff', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600' }}>added</span>
-                : tx.type === 'purchased'
-                ? <span style={{ background: 'rgba(27,146,84,0.2)', color: '#1b9254', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600' }}>purchased</span>
-                : tx.type === 'refunded'
-                ? <span style={{ background: 'rgba(0,149,255,0.2)', color: '#0095ff', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600' }}>refunded</span>
-                : <span style={{ background: 'rgba(231,76,60,0.2)', color: '#d93025', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600' }}>redeemed</span>
-              }
-            </span>
-              <span style={{ color: tx.amount > 0 ? '#1b9254' : '#d93025', fontWeight: '600', textAlign: 'right' }}>{tx.amount > 0 ? '+' : ''}{tx.amount}</span>
-              <span style={{ color: 'var(--vfo-muted)', fontSize: '12px', textAlign: 'right' }}>{tx.balance_after}</span>
+            <span style={{ color: 'var(--vfo-muted)', fontSize: '13px' }}>{new Date(tx.created_at).toLocaleDateString()}</span>
+            <span style={{ color: 'var(--vfo-muted)', fontSize: '13px' }}>{gcActorLabel(tx)}</span>
+            <span style={{ justifySelf: 'end' }}>{gcTypeChip(tx)}</span>
+            <span style={{ ...TX_NUM, color: tx.amount > 0 ? '#1b9254' : '#d93025' }}>{tx.amount > 0 ? '+' : ''}{tx.amount}</span>
+            <span style={{ ...TX_NUM, color: 'var(--vfo-ink)' }}>{tx.balance_after}</span>
           </div>
         ))}
         </>
