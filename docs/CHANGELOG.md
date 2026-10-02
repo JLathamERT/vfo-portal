@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-10-02 — The attached example agreement is called a "sample" (10 email templates)
+
+Data only, no code, no deploy. Migration `20261002120000_sample_agreement_wording.sql` (edge #265, applied via MCP before the merge; each row had to hold its old sentence exactly once or the migration aborted; all 10 rows read back; advisor GREEN, a confirmation). Jake's wording, approved per email with a before/after:
+
+- Tax Undecided `TAX_decision_undecided` (18), member twin (126), `|skipped` (220) + its member twin (221): *"attached the relevant Tax Planning Engagement Agreement"* -> *"attached a sample Tax Planning Engagement Agreement"*.
+- Tax Rapid Route `TAX_decision_rapid` (294) + member twin (295): *"attached the Tax Planning Engagement Agreement … so you can see exactly what is involved."* -> *"attached a sample … involved before making your decision."* (aligned with the Undecided wording).
+- MAP 1 Holistic `PCADMIN_followup|Undecided` (4) + member twin (118): *"attached the relevant Membership Agreements"* -> *"attached sample Membership Agreements"*.
+- `ADVISOR_undecided` (46) + `ACCOUNTANT_undecided` (64): *"attached the Implementation Agreement"* -> *"attached a sample Implementation Agreement"* — both `send_mode=true`, so the next real Undecided send carries it; the other eight are Draft.
+
+The Undecided REMINDER templates (43/121, 54/71) attach nothing and were not touched. Tax Planning (program 4) and Tax Priorities Holistic (program 1) share the Tax rows.
+
 ## 2026-10-01 (c) — Four misc edits: intake business follow-ups, Excel export on search pages, Tax Planners → Clients Progress column, permanent vault upload links
 
 Branch `claude/vfo-session-setup-b5d83f` (both repos, ONE chat). `vfo-admin-api` v931 → **v932** (Progress inputs + intake blanking) → **v933** (vault links), both deployed from the branch; `boldsign-webhook` untouched at v46. Action count **555 → 557**. Migration `20261001130000_vault_drop_links.sql` (applied + committed; advisor GREEN at the exact baseline — a confirmation, no new table). Route pages 37, crons 18, `send_mode` 55 and the sandbox posture all unmoved. Smoke 5/5 vs v932 AND vs v933 (Jake).
