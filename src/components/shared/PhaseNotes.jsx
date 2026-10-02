@@ -12,11 +12,21 @@ export function PhaseNotesButton({ count, isOpen, onClick }) {
   )
 }
 
+// A note written inside ONE Regular Priority / ONE tax plan carries its id
+// (client_notes.priority_track_id / tax_plan_id, 2026-10-02); `scope` is
+// { priority_track_id: id } or { tax_plan_id: id }. In scope = that same id, or
+// NO id at all (a note from before the change shows everywhere, by decision).
+// Counts and panels must both use this, so the badge matches the list.
+export function noteInScope(note, scope) {
+  if (!scope) return true
+  return Object.entries(scope).every(([key, id]) => note[key] == null || String(note[key]) === String(id))
+}
+
 // `phaseName` is the phase notes are WRITTEN under. `phaseNames` optionally
 // widens what's READ back, for a card that merges several stored phases into
 // one thread (the tax track's Tax 5) — new notes still land on `phaseName`, but
 // notes filed under the merged-away phase stay visible.
-export function PhaseNotesPanel({ clientId, phaseName, phaseNames, tabName, programName, notes, onNotesChange }) {
+export function PhaseNotesPanel({ clientId, phaseName, phaseNames, tabName, programName, notes, onNotesChange, scope = null }) {
   const [newNote, setNewNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -24,13 +34,13 @@ export function PhaseNotesPanel({ clientId, phaseName, phaseNames, tabName, prog
   const session = getSession()
 
   const readPhases = (phaseNames && phaseNames.length) ? phaseNames : [phaseName]
-  const phaseNotes = (notes || []).filter(n => readPhases.includes(n.phase_name) && n.tab_name === tabName)
+  const phaseNotes = (notes || []).filter(n => readPhases.includes(n.phase_name) && n.tab_name === tabName && noteInScope(n, scope))
 
   async function addNote(visibility) {
     if (!newNote.trim()) return
     setSaving(true)
     try {
-      const result = await callApi('add_client_note', { client_id: clientId, phase_name: phaseName, tab_name: tabName, program_name: programName || null, note_text: newNote.trim(), created_by: session?.name || 'Admin', visibility })
+      const result = await callApi('add_client_note', { client_id: clientId, phase_name: phaseName, tab_name: tabName, program_name: programName || null, note_text: newNote.trim(), created_by: session?.name || 'Admin', visibility, ...(scope || {}) })
       onNotesChange([result.note, ...notes])
       setNewNote('')
     } catch (err) { console.error(err) }

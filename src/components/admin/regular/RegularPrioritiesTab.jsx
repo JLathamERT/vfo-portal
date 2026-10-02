@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { callApi } from '../../../lib/api'
-import { PhaseNotesButton, PhaseNotesPanel } from '../../shared/PhaseNotes'
+import { PhaseNotesButton, PhaseNotesPanel, noteInScope } from '../../shared/PhaseNotes'
 import { TaxPlanListSkeleton } from '../../shared/Skeleton'
 import { TrackHero, PhaseBadge, ListHeader } from '../../shared/TrackKit'
 import StepDate from '../../shared/StepDate'
@@ -318,6 +318,9 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
 }
 
 function PriorityTrackView({ track, phases, progress, specialists, onBack, onProgressChange, readOnly = false, onTrackUpdate, notes = [], onNotesChange, clientId, emailCtx }) {
+  // Phase notes belong to THIS priority (plus untagged older notes) — a client
+  // with two priorities never sees one's notes inside the other.
+  const noteScope = { priority_track_id: track.id }
   const [localProgress, setLocalProgress] = useState(progress)
   const [saving, setSaving] = useState({})
   const [expanded, setExpanded] = useState({})
@@ -462,7 +465,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                     {phaseCompleteState === 'saving' ? 'Saving...' : '✓ Auto complete — all completed and confirmed'}
                   </button>
                 )}
-                {!readOnly && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'Regular Priorities').length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
+                {!readOnly && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'Regular Priorities' && noteInScope(n, noteScope)).length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
                 {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{nonAutoTasks.length}</span>}
                 {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
@@ -470,7 +473,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
               </div>
             </div>
 
-            {!readOnly && expanded[`notes_${phase.id}`] && <PhaseNotesPanel clientId={clientId} phaseName={phase.name} tabName="Regular Priorities" programName="VFO Holistic Planning" notes={notes} onNotesChange={onNotesChange} />}
+            {!readOnly && expanded[`notes_${phase.id}`] && <PhaseNotesPanel clientId={clientId} phaseName={phase.name} tabName="Regular Priorities" programName="VFO Holistic Planning" notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
 
             {isExpanded && (
               <div style={{ borderTop: `1px solid ${borderColor}`, padding: '12px 18px' }}>
