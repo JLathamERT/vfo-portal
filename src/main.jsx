@@ -7,6 +7,13 @@ import ErrorBoundary from './components/ErrorBoundary'
 import './index.css'
 import { applyThemeForCurrentRoute } from './lib/theme'
 
+// GitHub Pages serves an emitted route page (scripts/emit-route-pages.mjs) at
+// /admin/ with a trailing slash; several checks compare the path exactly
+// (=== '/admin', !== '/member/login'), so drop the slash before anything reads it.
+if (window.location.pathname.length > 1 && window.location.pathname.endsWith('/')) {
+  window.history.replaceState(null, '', window.location.pathname.replace(/\/+$/, '') + window.location.search + window.location.hash)
+}
+
 // Apply the saved light/dark preference before first paint — portal routes
 // only; login and public token pages always render light.
 applyThemeForCurrentRoute()

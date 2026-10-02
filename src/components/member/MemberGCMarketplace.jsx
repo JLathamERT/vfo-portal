@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton } from '../shared/Skeleton'
 import { GCServicesView, GCTransactionHistory } from '../shared/GCMarketplaceViews'
 
@@ -25,7 +25,12 @@ export default function MemberGCMarketplace({ memberNumber }) {
   const [hoverPkg, setHoverPkg] = useState(null)
   const [banner, setBanner] = useState('')
 
-  useEffect(() => { loadDashboard() }, [memberNumber])
+  // Re-opened tab: draw the last balance and history at once, refresh behind them.
+  useEffect(() => {
+    const snap = getLastSeen(`membergcmarket:${memberNumber}`)
+    if (snap) applyDashboard(snap.balData, snap.transData)
+    loadDashboard()
+  }, [memberNumber])
 
   // Stripe returns the buyer to /member?gc_success=1&m=<method>. Card payments
   // settle immediately (webhook credits within seconds) so we poll the balance
@@ -72,16 +77,21 @@ export default function MemberGCMarketplace({ memberNumber }) {
     return () => { cancelled = true }
   }, [])
 
+  function applyDashboard(balData, transData) {
+    setBalance(balData.balance || 0)
+    setTransactions(transData.transactions || [])
+    const spent = (transData.transactions || []).filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
+    setTotalRedeemed(spent)
+  }
+
   async function loadDashboard() {
     try {
       const [balData, transData] = await Promise.all([
         callApi('gc_load_balance', { member_number: memberNumber }),
         callApi('gc_load_transactions', { member_number: memberNumber }),
       ])
-      setBalance(balData.balance || 0)
-      setTransactions(transData.transactions || [])
-      const spent = (transData.transactions || []).filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
-      setTotalRedeemed(spent)
+      applyDashboard(balData, transData)
+      setLastSeen(`membergcmarket:${memberNumber}`, { balData, transData })
     } catch (err) { console.error(err) }
   }
 

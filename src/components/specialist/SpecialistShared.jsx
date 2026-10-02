@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { VaultRowsSkeleton, SharedDocsSkeleton } from '../shared/Skeleton'
 
 // Specialist "Shared with Me": the clients who have >=1 document shared to THIS
@@ -14,22 +14,44 @@ export default function SpecialistShared({ onUnreadChange }) {
   const [docsLoading, setDocsLoading] = useState(false)
   const [opening, setOpening] = useState(null)     // share_id currently opening
 
-  async function loadClients() {
-    setLoading(true); setError('')
-    try { const d = await callApi('specialist_shared_clients', {}); setClients(d.clients || []) }
-    catch (e) { setError(e.message || 'Could not load shared documents') }
+  // View-only lists, so a re-visit draws the last copy at once (no skeleton) and
+  // refreshes behind it; a background refresh failure keeps what is on screen.
+  async function loadClients(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
+    try {
+      const d = await callApi('specialist_shared_clients', {})
+      setClients(d.clients || [])
+      setLastSeen('specialistshared:clients', d)
+    } catch (e) {
+      if (quiet === true) console.error(e)
+      else setError(e.message || 'Could not load shared documents')
+    }
     setLoading(false)
   }
-  useEffect(() => { loadClients() }, [])
+  useEffect(() => {
+    const snap = getLastSeen('specialistshared:clients')
+    if (snap) { setClients(snap.clients || []); setLoading(false) }
+    loadClients(!!snap)
+  }, [])
 
   async function openClient(c) {
-    setActive(c); setDocs([]); setDocsLoading(true); setError('')
-    try { const d = await callApi('specialist_shared_docs', { client_id: c.client_id }); setDocs(d.docs || []) }
-    catch (e) { setError(e.message || 'Could not load documents') }
+    const key = `specialistshared:docs:${c.client_id}`
+    const snap = getLastSeen(key)
+    setActive(c); setError('')
+    if (snap) { setDocs(snap.docs || []); setDocsLoading(false) }
+    else { setDocs([]); setDocsLoading(true) }
+    try {
+      const d = await callApi('specialist_shared_docs', { client_id: c.client_id })
+      setDocs(d.docs || [])
+      setLastSeen(key, d)
+    } catch (e) {
+      if (snap) console.error(e)
+      else setError(e.message || 'Could not load documents')
+    }
     setDocsLoading(false)
   }
 
-  function backToClients() { setActive(null); loadClients() }
+  function backToClients() { setActive(null); loadClients(clients.length > 0) }
 
   async function openDoc(doc) {
     setOpening(doc.share_id); setError('')
@@ -37,7 +59,12 @@ export default function SpecialistShared({ onUnreadChange }) {
       const d = await callApi('specialist_shared_download', { share_id: doc.share_id })
       if (d.url) window.open(d.url, '_blank', 'noopener')
       // Mark viewed locally + refresh the tab badge.
-      setDocs(prev => prev.map(x => x.share_id === doc.share_id ? { ...x, viewed: true } : x))
+      setDocs(prev => {
+        const next = prev.map(x => x.share_id === doc.share_id ? { ...x, viewed: true } : x)
+        // Keep the remembered copy in step, so a re-visit does not flash "New".
+        if (active) setLastSeen(`specialistshared:docs:${active.client_id}`, { docs: next })
+        return next
+      })
       if (onUnreadChange) onUnreadChange()
     } catch (e) { setError(e.message || 'Could not open document') }
     setOpening(null)

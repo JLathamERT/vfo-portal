@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import SandboxModeToggle from './SandboxModeToggle'
 import { NAVY, BLUE, money, RequestRow, MarkReceivedButton, isErtLegOpen } from './specialistRevenueShared'
 import { TableSkeleton } from '../shared/Skeleton'
@@ -32,17 +32,28 @@ export default function SpecialistRevenueAutomationPanel() {
   const [retrying, setRetrying] = useState(null)
   const [retryMsg, setRetryMsg] = useState('')
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last requests at once, refreshes behind them.
+  useEffect(() => {
+    const snap = getLastSeen('specialistrevenueautomation:')
+    if (snap) { apply(snap); setLoading(false) }
+    load(!!snap)
+  }, [])
 
-  async function load() {
-    setLoading(true); setError('')
+  function apply(res) {
+    setRequests(res.requests || [])
+    setSandboxConfig(res.sandbox_config || { sandbox_mode: false })
+  }
+
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('specialist_revenue_load')
-      if (res?.error) { setError(res.error); return }
-      setRequests(res.requests || [])
-      setSandboxConfig(res.sandbox_config || { sandbox_mode: false })
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
+      apply(res)
+      setLastSeen('specialistrevenueautomation:', res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

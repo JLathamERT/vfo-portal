@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
 import SandboxModeToggle from './SandboxModeToggle'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
@@ -147,15 +147,25 @@ export default function PipAutomationPanel() {
   const [error, setError] = useState('')
   const [expandedRow, setExpandedRow] = useState(null)
 
-  useEffect(() => { loadData() }, [])
+  // Re-open draws the last pipeline at once, refreshes behind it.
+  useEffect(() => {
+    const snap = getLastSeen('pipautomation:')
+    if (snap) { apply(snap); setLoading(false) }
+    loadData(!!snap)
+  }, [])
 
-  async function loadData() {
-    setLoading(true)
+  function apply(data) {
+    setRows(data.rows || [])
+    setSandboxConfig(data.sandbox_config || null)
+  }
+
+  async function loadData(quiet = false) {
+    if (quiet !== true) setLoading(true)
     try {
       const data = await callApi('automation_load_pip_pipelines')
-      setRows(data.rows || [])
-      setSandboxConfig(data.sandbox_config || null)
-    } catch (err) { setError(err.message) }
+      apply(data)
+      setLastSeen('pipautomation:', data)
+    } catch (err) { if (quiet === true) console.error(err); else setError(err.message) }
     finally { setLoading(false) }
   }
 

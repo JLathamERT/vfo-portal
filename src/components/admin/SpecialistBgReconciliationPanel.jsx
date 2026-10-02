@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink, specialistProfilePath } from '../shared/personLinks'
@@ -25,16 +25,25 @@ export default function SpecialistBgReconciliationPanel({ embedded = false }) {
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last rows at once, refreshes behind them.
+  useEffect(() => {
+    const snap = getLastSeen('specialistbgrecon:')
+    if (snap) { apply(snap); setLoading(false) }
+    load(!!snap)
+  }, [])
 
-  async function load() {
-    setLoading(true); setError('')
+  function apply(res) { setPaid(bgRowsFrom(res).filter(r => r.state === 'paid' && r.paidAt)) }
+
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('specialist_bg_payments_load')
-      if (res?.error) { setError(res.error); return }
-      setPaid(bgRowsFrom(res).filter(r => r.state === 'paid' && r.paidAt))
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
+      apply(res)
+      setLastSeen('specialistbgrecon:', res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

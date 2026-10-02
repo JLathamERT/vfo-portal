@@ -45,6 +45,20 @@ const ROUTES = [
   'tax-upload',
   'update-card',
   'vault-upload',
+  // The five portals and their sign-in pages. Without these a bookmark, refresh
+  // or first open of a portal was an HTTP 404 that bounced through 404.html and
+  // loaded the site twice. GitHub Pages serves them as /admin/ etc.; main.jsx
+  // strips the trailing slash before anything reads the path.
+  'admin',
+  'admin/login',
+  'member',
+  'member/login',
+  'client',
+  'client/login',
+  'specialist',
+  'specialist/login',
+  'tax-planner',
+  'tax-planner/login',
 ]
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')

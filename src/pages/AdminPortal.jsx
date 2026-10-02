@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { getSession, clearSession, callApi } from '../lib/api'
+import { getSession, clearSession, loadCachedData, hasCachedData } from '../lib/api'
 import { usePortalTheme } from '../lib/theme'
 import SpecialistsPanel from '../components/admin/SpecialistsPanel'
 import TaxPlannersPanel from '../components/admin/TaxPlannersPanel'
@@ -208,7 +208,7 @@ export default function AdminPortal() {
 
   useEffect(() => {
     if (!session || session.role !== 'admin') { navigate('/admin/login?next=' + encodeURIComponent(location.pathname + location.search)); return }
-    loadAllData()
+    initialLoad()
     // Deep-link from the ClientDetail header's Settings / Admin Editor buttons
     // (that route can't reach this component's view state directly).
     const view = sessionStorage.getItem('adminOpenView')
@@ -292,26 +292,25 @@ export default function AdminPortal() {
     window.history.replaceState({}, '', '/admin')
   }, [location.search, allMembers])
 
+  // On mount: when this session already holds load_data (e.g. coming back from a
+  // client page), render from it at once and refresh in the background instead
+  // of blocking the portal on a fresh fetch.
+  async function initialLoad() {
+    if (hasCachedData()) {
+      try {
+        applyLoadData(await loadCachedData())
+        setLoading(false)
+      } catch { /* the refresh below reports the error */ }
+    }
+    loadAllData()
+  }
+
   async function loadAllData() {
     try {
       // loadAllData re-runs as panels' onDataChange — clear any prior banner first.
       setLoadError(null)
-      const data = await callApi('load_data')
-      setAllExperts(data.experts || [])
-      setAllMembers(data.members || [])
-      setMemberConnections(data.member_connections || [])
-      const excMap = {}
-      ;(data.exclusions || []).forEach(e => {
-        if (!excMap[e.member_number]) excMap[e.member_number] = []
-        excMap[e.member_number].push(e.expert_id)
-      })
-      setAllExclusionMap(excMap)
-      const eco = {}
-      ;(data.ecosystems || []).forEach(e => {
-        if (!eco[e.expert_id]) eco[e.expert_id] = []
-        eco[e.expert_id].push(e.name)
-      })
-      setEcoMap(eco)
+      // refresh: true also updates the shared cache ClientDetail reads.
+      applyLoadData(await loadCachedData({ refresh: true }))
     } catch (err) {
       console.error('Load error:', err)
       setLoadError(err.message || 'Something went wrong')
@@ -319,6 +318,30 @@ export default function AdminPortal() {
       setLoading(false)
     }
   }
+
+  function applyLoadData(data) {
+    setAllExperts(data.experts || [])
+    setAllMembers(data.members || [])
+    setMemberConnections(data.member_connections || [])
+    const excMap = {}
+    ;(data.exclusions || []).forEach(e => {
+      if (!excMap[e.member_number]) excMap[e.member_number] = []
+      excMap[e.member_number].push(e.expert_id)
+    })
+    setAllExclusionMap(excMap)
+    const eco = {}
+    ;(data.ecosystems || []).forEach(e => {
+      if (!eco[e.expert_id]) eco[e.expert_id] = []
+      eco[e.expert_id].push(e.name)
+    })
+    setEcoMap(eco)
+  }
+
+  // Only these views read load_data (experts / members / exclusions / ecosystems);
+  // every other panel loads its own data and mounts without waiting for it.
+  const viewNeedsLoadData = ['specialists', 'member_overview', 'advisors', 'accountants', 'strategic'].includes(activeTab) ||
+    (activeTab === 'accounting' && ['specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_reconciliation',
+      'specialist_license', 'specialist_bg', 'advisor_membership_fees', 'accountant_membership_fees'].includes(accountingSection))
 
   // The return leg of openMemberProfile's `origin`: put the admin back on the tab
   // they jumped from. The profile's Back handler has already cleared the selection
@@ -802,7 +825,7 @@ export default function AdminPortal() {
             <SpecialistsPanel key={specialistsSection} allExperts={allExperts} ecoMap={ecoMap} onDataChange={loadAllData} section={specialistsSection} onBackToOrigin={backToProfileOrigin} />
           )}
 
-          {activeTab === 'taxplanners' && !loading && (
+          {activeTab === 'taxplanners' && (
             <TaxPlannersPanel key={`${taxPlannersSection}-${navClickCount}`} section={taxPlannersSection} />
           )}
 
@@ -810,19 +833,19 @@ export default function AdminPortal() {
             <MemberOverviewPanel allMembers={allMembers} onOpenMember={(m, feature) => openMemberProfile(m, feature, 'member_overview')} onPatchMember={patchMember} />
           )}
 
-          {activeTab === 'client_overview' && !loading && (
+          {activeTab === 'client_overview' && (
             <ClientOverviewPanel key={navClickCount} />
           )}
 
-          {activeTab === 'faq_editor' && !loading && (
+          {activeTab === 'faq_editor' && (
             <FaqEditorPanel />
           )}
 
-          {activeTab === 'feature_switches' && !loading && session?.is_superadmin && (
+          {activeTab === 'feature_switches' && session?.is_superadmin && (
             <FeatureSwitchesPanel />
           )}
 
-          {activeTab === 'tax_diagnostics' && !loading && canSeeTab('tax_diagnostics') && (
+          {activeTab === 'tax_diagnostics' && canSeeTab('tax_diagnostics') && (
             <TaxDiagnosticsPanel initialDiagnosticId={initialDiagnosticId} />
           )}
 
@@ -853,50 +876,50 @@ export default function AdminPortal() {
             />
           )}
 
-          {activeTab === 'automation' && !loading && automationSection === 'map1_pipeline' && (
+          {activeTab === 'automation' && automationSection === 'map1_pipeline' && (
             <AutomationPanel section={automationSection} />
           )}
-          {activeTab === 'automation' && !loading && automationSection === 'tax_pipeline' && (
+          {activeTab === 'automation' && automationSection === 'tax_pipeline' && (
             <TaxAutomationPanel programScope="holistic" />
           )}
-          {activeTab === 'automation' && !loading && automationSection === 'pip_pipeline' && (
+          {activeTab === 'automation' && automationSection === 'pip_pipeline' && (
             <PipAutomationPanel />
           )}
-          {activeTab === 'automation' && !loading && automationSection === 'standalone_tax_pipeline' && (
+          {activeTab === 'automation' && automationSection === 'standalone_tax_pipeline' && (
             <TaxAutomationPanel programScope="standalone" />
           )}
-          {activeTab === 'automation' && !loading && automationSection === 'advisor_pipeline' && (
+          {activeTab === 'automation' && automationSection === 'advisor_pipeline' && (
             <AdvisorAutomationPanel />
           )}
-          {activeTab === 'automation' && !loading && automationSection === 'accountant_pipeline' && (
+          {activeTab === 'automation' && automationSection === 'accountant_pipeline' && (
             <AccountantAutomationPanel />
           )}
-          {activeTab === 'automation' && !loading && automationSection === 'pft_pipeline' && (
+          {activeTab === 'automation' && automationSection === 'pft_pipeline' && (
             <PFTAutomationPanel />
           )}
-          {activeTab === 'automation' && !loading && automationSection === 'specialist_pipeline' && (
+          {activeTab === 'automation' && automationSection === 'specialist_pipeline' && (
             <SpecialistAutomationPanel />
           )}
-          {activeTab === 'automation' && !loading && automationSection === 'specialist_revenue_pipeline' && (
+          {activeTab === 'automation' && automationSection === 'specialist_revenue_pipeline' && (
             <SpecialistRevenueAutomationPanel />
           )}
-          {activeTab === 'automation' && !loading && automationSection === 'growth_credits' && (
+          {activeTab === 'automation' && automationSection === 'growth_credits' && (
             <GrowthCreditsPanel />
           )}
-          {activeTab === 'notifications' && !loading && (
+          {activeTab === 'notifications' && (
             <NotificationsPage />
           )}
-          {activeTab === 'growth_credits' && !loading && canSeeTab('growth_credits') && (
+          {activeTab === 'growth_credits' && canSeeTab('growth_credits') && (
             <GrowthCreditsRedemptionsPage />
           )}
-          {activeTab === 'automation' && !loading && automationSection === 'email_templates' && (
+          {activeTab === 'automation' && automationSection === 'email_templates' && (
             <EmailTemplatesPanel />
           )}
-          {activeTab === 'automation' && !loading && automationSection === 'notification_editor' && (
+          {activeTab === 'automation' && automationSection === 'notification_editor' && (
             <NotificationEditorPanel />
           )}
 
-          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && accountingSection === 'payments' && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'payments' && (
             <AllPaymentsTab />
           )}
           {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'specialist_revenue' || accountingSection === 'specialist_payment_input' || accountingSection === 'specialist_recurring' || accountingSection === 'specialist_reconciliation') && (
@@ -933,7 +956,7 @@ export default function AdminPortal() {
               ]}
             />
           )}
-          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'holistic_revenue' || accountingSection === 'holistic_reconciliation') && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'holistic_revenue' || accountingSection === 'holistic_reconciliation') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · VFO Services" title="Holistic Planning"
               maxWidth="1150px" initialKey={accountingSection}
@@ -944,7 +967,7 @@ export default function AdminPortal() {
               ]}
             />
           )}
-          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'tax_revenue' || accountingSection === 'tax_reconciliation') && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'tax_revenue' || accountingSection === 'tax_reconciliation') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · VFO Services" title="Tax Planning"
               maxWidth="1150px" initialKey={accountingSection}
@@ -955,7 +978,7 @@ export default function AdminPortal() {
               ]}
             />
           )}
-          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'pip_revenue' || accountingSection === 'pip_reconciliation') && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'pip_revenue' || accountingSection === 'pip_reconciliation') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · VFO Services" title="Additional PIP"
               maxWidth="1150px" initialKey={accountingSection}
@@ -965,30 +988,30 @@ export default function AdminPortal() {
               ]}
             />
           )}
-          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && accountingSection === 'advisor_onboarding_fees' && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'advisor_onboarding_fees' && (
             <MemberOnboardingPanel kind="advisor" title="Advisor Onboarding" />
           )}
           {activeTab === 'accounting' && !loading && canSeeTab('accounting') && accountingSection === 'advisor_membership_fees' && (
             <MembershipFeesPanel title="Advisor Membership Fees" category="advisor" allMembers={allMembers}
               isSuperadmin={canSeeTab('accounting')} initialMemberNumber={initialMemberNumber} />
           )}
-          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && accountingSection === 'accountant_onboarding_fees' && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'accountant_onboarding_fees' && (
             <MemberOnboardingPanel kind="accountant" title="Accountant Onboarding" />
           )}
           {activeTab === 'accounting' && !loading && canSeeTab('accounting') && accountingSection === 'accountant_membership_fees' && (
             <MembershipFeesPanel title="Accountant Membership Fees" category="accountant" allMembers={allMembers}
               isSuperadmin={canSeeTab('accounting')} initialMemberNumber={initialMemberNumber} />
           )}
-          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && accountingSection === 'gc_accounting' && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'gc_accounting' && (
             <GrowthCreditsAccountingPanel />
           )}
-          {activeTab === 'accounting' && !loading && (!canSeeTab('accounting') || !ACCOUNTING_SECTIONS.includes(accountingSection)) && (
+          {activeTab === 'accounting' && (!canSeeTab('accounting') || !ACCOUNTING_SECTIONS.includes(accountingSection)) && (
             <div style={{ maxWidth: '620px', margin: '40px auto', padding: '22px 24px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', color: 'var(--vfo-muted)', fontSize: '13.5px', fontFamily: 'Inter, sans-serif' }}>
               You don't have access to this section.
             </div>
           )}
 
-          {loading && activeTab && <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px' }}><DirectoryListSkeleton /></div>}
+          {loading && viewNeedsLoadData && <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px' }}><DirectoryListSkeleton /></div>}
           </div>
         </>
       )}

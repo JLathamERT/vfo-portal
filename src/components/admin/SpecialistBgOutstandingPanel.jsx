@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { cardStyle, Detail, SectionHeader, EmptyLine, OutstandingCard, fmtDate, shortDate } from './OutstandingLinksPanel'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
@@ -41,21 +41,32 @@ export default function SpecialistBgOutstandingPanel({ embedded = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last lists at once, refreshes behind them.
+  useEffect(() => {
+    const snap = getLastSeen('specialistbgoutstanding:')
+    if (snap) { apply(snap); setLoading(false) }
+    load(!!snap)
+  }, [])
 
-  async function load() {
-    setLoading(true); setError('')
+  function apply(res) {
+    const rows = bgRowsFrom(res)
+    setRequests(rows.filter(r => r.source === 'request' && (r.state === 'awaiting' || r.state === 'failed')))
+    // Only live onboardings — a stopped / denied one is not an outstanding link.
+    setOnboarding(rows.filter(r => r.source === 'onboarding' && r.sentAt
+      && (!r.onboardingStatus || r.onboardingStatus === 'active')
+      && (r.state === 'awaiting' || r.state === 'failed')))
+  }
+
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('specialist_bg_payments_load')
-      if (res?.error) { setError(res.error); return }
-      const rows = bgRowsFrom(res)
-      setRequests(rows.filter(r => r.source === 'request' && (r.state === 'awaiting' || r.state === 'failed')))
-      // Only live onboardings — a stopped / denied one is not an outstanding link.
-      setOnboarding(rows.filter(r => r.source === 'onboarding' && r.sentAt
-        && (!r.onboardingStatus || r.onboardingStatus === 'active')
-        && (r.state === 'awaiting' || r.state === 'failed')))
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
+      apply(res)
+      setLastSeen('specialistbgoutstanding:', res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

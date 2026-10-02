@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { callApi } from '../../lib/api'
+import { callApi, getSession } from '../../lib/api'
 import { ListHeader } from '../shared/TrackKit'
 import { DirectoryListSkeleton } from '../shared/Skeleton'
 
 const STORAGE_KEY = 'taxPlannerListIncluded'
 const ROSTER_KEY = 'taxPlannerListRoster'
+
+// The last list this tab loaded, keyed to the session token so a different
+// login in the same tab never sees it.
+let lastList = null
 
 function readIds(key) {
   try {
@@ -32,19 +36,28 @@ export default function PlannerClientsList() {
   // filter in memory. The roster is only known from a response, so it is cached:
   // the very first mount may need a second call to widen to the full group, every
   // later mount is a single request.
-  async function load(rosterIds, allowWiden) {
-    setLoading(true)
-    setLoadError('')
+  function apply(data) {
+    setRows(data.clients || [])
+    setGroup(data.group || [])
+    setSelfId(data.self_id ?? null)
+    setSelfRole(data.self_role || 'Tax Planner')
+  }
+
+  // quiet: a background refresh behind a list already on screen (from the
+  // in-memory copy), so no skeleton and no error banner over good rows.
+  async function load(rosterIds, allowWiden, quiet = false) {
+    if (!quiet) {
+      setLoading(true)
+      setLoadError('')
+    }
     let widenTo = null
     try {
       const payload = rosterIds.length > 0 ? { planner_ids: rosterIds } : {}
       const data = await callApi('tax_planner_portal_clients', payload)
       const roster = (data.group || []).map(g => g.id)
       const role = data.self_role || 'Tax Planner'
-      setRows(data.clients || [])
-      setGroup(data.group || [])
-      setSelfId(data.self_id ?? null)
-      setSelfRole(role)
+      apply(data)
+      lastList = { token: getSession()?.token, data }
       sessionStorage.setItem(ROSTER_KEY, JSON.stringify(roster))
       // An empty request means "self only" for a planner but "whole partnership"
       // for a team member, so only the planner case can come back short.
@@ -52,17 +65,25 @@ export default function PlannerClientsList() {
         roster.every(id => id === data.self_id || rosterIds.includes(id))
       if (!covered && allowWiden) widenTo = roster
     } catch (err) {
-      setLoadError(err.message || 'Failed to load clients.')
+      if (quiet) console.error(err)
+      else setLoadError(err.message || 'Failed to load clients.')
     } finally {
       // Stay in the loading state across the widening call so the list never
       // settles on a half-populated view.
-      if (widenTo) load(widenTo, false)
-      else setLoading(false)
+      if (widenTo) load(widenTo, false, quiet)
+      else if (!quiet) setLoading(false)
     }
   }
 
+  // Coming back from a client shows the last list at once (same session only),
+  // then refreshes it behind the scenes.
   useEffect(() => {
-    load(readIds(ROSTER_KEY), true)
+    const cached = lastList && lastList.token && lastList.token === getSession()?.token ? lastList.data : null
+    if (cached) {
+      apply(cached)
+      setLoading(false)
+    }
+    load(readIds(ROSTER_KEY), true, !!cached)
   }, [])
 
   const isTeamMember = selfRole === 'Team Member'

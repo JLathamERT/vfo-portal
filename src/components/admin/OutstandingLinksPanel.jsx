@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { callApi, redraftInstallmentEmail, resendContinuationSetupLink, resendFirstPaymentLink } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen, redraftInstallmentEmail, resendContinuationSetupLink, resendFirstPaymentLink } from '../../lib/api'
 import { money, StatusPill } from './specialistRevenueShared'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
 import { MemberNameLink, ClientNameLink, SpecialistNameLink, clientPagePath } from '../shared/personLinks'
@@ -440,20 +440,27 @@ export default function OutstandingLinksPanel({ kind, embedded = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last lists at once (snapshot), refreshes behind them.
+  useEffect(() => {
+    const snap = getLastSeen('outstandinglinks:')
+    if (snap) { setData(snap); setLoading(false) }
+    load(snap ? { quiet: true, keepOnError: true } : undefined)
+  }, [])
 
   // quiet = refresh the data WITHOUT swapping the list for the skeleton. A resend
   // refreshes through this path so the row's "Email drafted" confirmation survives
   // (a remount would wipe the button's state the moment it appeared).
-  async function load({ quiet = false } = {}) {
+  async function load({ quiet = false, keepOnError = false } = {}) {
     if (!quiet) setLoading(true)
-    setError('')
+    if (!keepOnError) setError('')
     try {
       const res = await callApi('accounting_outstanding_links_load')
-      if (res?.error) { setError(res.error); return }
+      if (res?.error) { if (keepOnError) console.error(res.error); else setError(res.error); return }
       setData(res || {})
+      setLastSeen('outstandinglinks:', res || {})
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (keepOnError) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, money, requestDate } from './specialistRevenueShared'
 import { PendingNote, HeldNote } from './shareLegState'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
@@ -53,16 +53,23 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
   const [year, setYear] = useState(now.getFullYear())
   const openMember = useOpenMember()
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last requests at once, refreshes behind them.
+  useEffect(() => {
+    const snap = getLastSeen('specialistrecon:')
+    if (snap) { setRequests(snap.requests || []); setLoading(false) }
+    load(!!snap)
+  }, [])
 
-  async function load() {
-    setLoading(true); setError('')
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('specialist_revenue_load')
-      if (res?.error) { setError(res.error); return }
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
       setRequests(res.requests || [])
+      setLastSeen('specialistrecon:', res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

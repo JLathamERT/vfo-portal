@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { callApi, loadCachedAction } from '../../../lib/api'
+import { callApi, loadCachedAction, getLastSeen, setLastSeen } from '../../../lib/api'
 import { Map1TrackSkeleton } from '../../shared/Skeleton'
 import PFPricingForm from './PFPricingForm'
 import PFExtraMeetingForm from './PFExtraMeetingForm'
@@ -167,37 +167,32 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
   const [togglingStatus, setTogglingStatus] = useState(false)
   const navigate = useNavigate()
 
-  useEffect(() => { loadTrack() }, [clientId])
+  const snapKey = `map1track:${clientId}:${programId ?? ''}:${readOnly ? 'member' : 'admin'}`
 
-  async function loadTrack() {
-    setLoading(true)
+  // Re-opened in the same session: draw the last track at once, refresh behind it.
+  useEffect(() => {
+    const snap = getLastSeen(snapKey)
+    if (snap) {
+      applyTrack(snap.trackData, snap.progressData)
+      if (snap.pipelineLoaded) applyPipeline(snap.clientRow)
+      setLoading(false)
+    }
+    loadTrack(!!snap)
+  }, [clientId])
+
+  async function loadTrack(quiet = false) {
+    if (quiet !== true) setLoading(true)
     try {
       const [trackData, progressData] = await Promise.all([
         loadCachedAction('msm_load_client_track', { program_id: programId }),
         callApi('msm_load_client_progress', { client_id: clientId }),
       ])
-      const loadedPhases = trackData.phases || []
-      setPhases(loadedPhases)
-      const prog = {}
-      ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
-      setProgress(prog)
-
-      // Auto-expand: first incomplete phase, collapse completed ones
-      const expandState = {}
-      loadedPhases.forEach(phase => {
-        let tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
-        // Initial Contact: when the tracking-owner step isn't "Member", only it
-        // counts — so a "VFOS" pick completes (and collapses) the phase.
-        const owner = tasks.find(isTrackingOwnerTask)
-        if (owner && prog[owner.id]?.status !== 'Member') tasks = [owner]
-        const allDone = tasks.length === 0 || tasks.every(t => prog[t.id]?.status)
-        expandState[phase.id] = !allDone
-      })
-      setExpanded(expandState)
+      applyTrack(trackData, progressData)
 
       // Load pipeline data
+      let clientRow = null
+      let pipelineLoaded = false
       try {
-        let clientRow = null
         if (readOnly) {
           const pData = await callApi('member_load_pipeline', { client_id: clientId })
           clientRow = pData.row || null
@@ -205,11 +200,38 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
           const pData = await callApi('automation_load_pipeline_data', { table_name: 'pipeline_map1' })
           clientRow = (pData.rows || []).find(r => r.client_id === clientId) || null
         }
-        setPipelineData(clientRow || null)
-        setTrackStatus(clientRow?.status || 'live')
+        applyPipeline(clientRow)
+        pipelineLoaded = true
       } catch (e) { console.error('Pipeline load error:', e) }
+      setLastSeen(snapKey, { trackData, progressData, clientRow, pipelineLoaded })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
+  }
+
+  function applyPipeline(clientRow) {
+    setPipelineData(clientRow || null)
+    setTrackStatus(clientRow?.status || 'live')
+  }
+
+  function applyTrack(trackData, progressData) {
+    const loadedPhases = trackData.phases || []
+    setPhases(loadedPhases)
+    const prog = {}
+    ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
+    setProgress(prog)
+
+    // Auto-expand: first incomplete phase, collapse completed ones
+    const expandState = {}
+    loadedPhases.forEach(phase => {
+      let tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
+      // Initial Contact: when the tracking-owner step isn't "Member", only it
+      // counts — so a "VFOS" pick completes (and collapses) the phase.
+      const owner = tasks.find(isTrackingOwnerTask)
+      if (owner && prog[owner.id]?.status !== 'Member') tasks = [owner]
+      const allDone = tasks.length === 0 || tasks.every(t => prog[t.id]?.status)
+      expandState[phase.id] = !allDone
+    })
+    setExpanded(expandState)
   }
 
   async function toggleTrackStatus() {

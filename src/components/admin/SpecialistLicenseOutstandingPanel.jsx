@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { ordinal } from '../../lib/ordinal'
 import { money } from './specialistRevenueShared'
 import { cardStyle, Detail, SectionHeader, EmptyLine, OutstandingCard, fmtDate, shortDate } from './OutstandingLinksPanel'
@@ -50,16 +50,23 @@ export default function SpecialistLicenseOutstandingPanel({ embedded = false }) 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last list at once, refreshes behind it.
+  useEffect(() => {
+    const snap = getLastSeen('specialistlicenseoutstanding:')
+    if (snap) { setPending(snap.pending || []); setLoading(false) }
+    load(!!snap)
+  }, [])
 
-  async function load() {
-    setLoading(true); setError('')
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('specialist_license_payments_load')
-      if (res?.error) { setError(res.error); return }
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
       setPending(res.pending || [])
+      setLastSeen('specialistlicenseoutstanding:', res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

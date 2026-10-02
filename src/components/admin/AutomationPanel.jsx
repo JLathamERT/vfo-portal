@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState, TableCard } from './automation/StepKit'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import { CONFIRMATION_CARD_SKIP } from '../../lib/confirmationStatus'
@@ -445,24 +445,45 @@ export default function AutomationPanel({ section }) {
   const [showModeModal, setShowModeModal] = useState(false)
   const [savingMode, setSavingMode] = useState(false)
 
-  useEffect(() => { loadPipelines() }, [])
-  useEffect(() => { if (selectedPipeline) loadPipelineData(selectedPipeline) }, [selectedPipeline])
+  // Re-open draws the last pipeline list + rows at once, refreshes behind them.
+  useEffect(() => {
+    const snap = getLastSeen('automation:pipelines')
+    if (snap) {
+      setPipelines(snap.pipelines || [])
+      if (snap.pipelines?.length > 0) setSelectedPipeline(snap.pipelines[0])
+      setLoading(false)
+    }
+    loadPipelines(!!snap)
+  }, [])
+  useEffect(() => {
+    if (!selectedPipeline) return
+    const snap = getLastSeen(`automation:data:${selectedPipeline.table_name}`)
+    if (snap) applyPipelineData(snap)
+    loadPipelineData(selectedPipeline, !!snap)
+  }, [selectedPipeline])
 
-  async function loadPipelines() {
+  async function loadPipelines(quiet = false) {
     try {
       const data = await callApi('automation_load_pipelines')
       setPipelines(data.pipelines || [])
-      if (data.pipelines?.length > 0) setSelectedPipeline(data.pipelines[0])
-    } catch (err) { setError(err.message) }
+      // A background refresh keeps the pipeline already selected on screen.
+      if (quiet !== true && data.pipelines?.length > 0) setSelectedPipeline(data.pipelines[0])
+      setLastSeen('automation:pipelines', data)
+    } catch (err) { if (quiet === true) console.error(err); else setError(err.message) }
     finally { setLoading(false) }
   }
 
-  async function loadPipelineData(pipeline) {
+  function applyPipelineData(data) {
+    setPipelineData(data.rows || [])
+    setSandboxConfig(data.sandbox_config || null)
+  }
+
+  async function loadPipelineData(pipeline, quiet = false) {
     try {
       const data = await callApi('automation_load_pipeline_data', { table_name: pipeline.table_name })
-      setPipelineData(data.rows || [])
-      setSandboxConfig(data.sandbox_config || null)
-    } catch (err) { setError(err.message) }
+      applyPipelineData(data)
+      setLastSeen(`automation:data:${pipeline.table_name}`, data)
+    } catch (err) { if (quiet === true) console.error(err); else setError(err.message) }
   }
 
   async function toggleSandboxMode() {

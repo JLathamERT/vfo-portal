@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, cloneElement, Fragment } from 'react'
 import DirectPill from '../../shared/DirectPill'
-import { callApi, loadCachedAction, getSession } from '../../../lib/api'
-import { TaxPlanListSkeleton } from '../../shared/Skeleton'
+import { callApi, loadCachedAction, getSession, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
+import { TaxPlanListSkeleton, PhaseListSkeleton } from '../../shared/Skeleton'
 import { PhaseNotesButton, PhaseNotesPanel, noteInScope } from '../../shared/PhaseNotes'
 import { TrackHero, PhaseBadge, ListHeader } from '../../shared/TrackKit'
 import { hasStrategicSplit, computeStrategicShares } from '../../../lib/strategicSplits'
@@ -5593,7 +5593,35 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
     return map
   }, [plannerMode, plannerExperts, specialists])
 
-  useEffect(() => { loadData() }, [clientId])
+  // True while the list on screen is the last-seen snapshot and the quiet refresh
+  // has not landed yet: nothing may open a plan off snapshot data, because the
+  // plan view seeds its editable progress from what it is handed at mount.
+  const [snapPending, setSnapPending] = useState(false)
+  const [pendingOpenId, setPendingOpenId] = useState(null)
+  // The save/send count when the list on screen was loaded: Back or a re-open
+  // only holds a click for fresh data if something was written since.
+  const writesAtLoadRef = useRef(-1)
+  const snapKey = `taxpriorities:${clientId}:${programId ?? ''}:${programName ?? ''}`
+
+  // Re-opened in the same session: draw the last plan list at once, refresh behind it.
+  useEffect(() => {
+    const snap = getLastSeen(snapKey)
+    if (snap) {
+      applyLoaded(snap)
+      writesAtLoadRef.current = snap.writes ?? -1
+      setSnapPending(snap.writes !== getWriteCount())
+      setLoading(false)
+    }
+    loadData(!!snap)
+  }, [clientId])
+
+  // A plan clicked while the snapshot was showing opens from the fresh list.
+  useEffect(() => {
+    if (snapPending || pendingOpenId == null) return
+    const fresh = taxPlans.find(p => p.id === pendingOpenId)
+    setPendingOpenId(null)
+    if (fresh) setSelectedPlan(fresh)
+  }, [snapPending, pendingOpenId, taxPlans])
 
   useEffect(() => {
     if (!plannerMode) return
@@ -5607,7 +5635,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
   // From a notification (openSinglePlan) with no plan id: open the one live plan
   // (or the only plan); with several live plans the list is the honest answer.
   useEffect(() => {
-    if (autoSelectedRef.current || loading) return
+    if (autoSelectedRef.current || loading || snapPending) return
     let match = null
     if (initialPlanId) match = taxPlans.find(p => p.id === initialPlanId)
     else if (openSinglePlan) {
@@ -5615,45 +5643,69 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
       match = live.length === 1 ? live[0] : taxPlans.length === 1 ? taxPlans[0] : null
     }
     if (match) { autoSelectedRef.current = true; setSelectedPlan(match) }
-  }, [loading, initialPlanId, openSinglePlan, taxPlans])
+  }, [loading, initialPlanId, openSinglePlan, taxPlans, snapPending])
 
-  async function loadData() {
-    setLoading(true)
+  // Applies the raw responses — fresh from loadData, or the last-seen snapshot.
+  function applyLoaded({ plansData, phasesData, map1Progress, perPlan }) {
+    // Scope to the current program view before anything downstream sees the
+    // list: plan cards, livePlan selection, TrackHero counts, MSM status, the
+    // per-plan track view, the Start button, and deep-link resolution all read
+    // from taxPlans, so the filter belongs at this single entry point.
+    const scopedPlans = plansForProgram(plansData.plans, programId)
+    setTaxPlans(scopedPlans)
+    const loadedPhases = phasesData.phases || []
+    loadedPhases.forEach(p => p.program_client_tasks?.sort((a, b) => a.task_order - b.task_order))
+    setPhases(loadedPhases)
+    const enabled = programName === 'VFO Tax Planning' || (map1Progress.progress || []).some(p => p.status === 'Tax priorities tab enabled')
+    setTaxEnabled(enabled)
+    if (!perPlan) return
+    const progressMap = {}
+    const specialistMap = {}
+    scopedPlans.forEach(plan => {
+      const { pd, sd } = perPlan[plan.id] || {}
+      progressMap[plan.id] = {}
+      ;(pd?.progress || []).forEach(p => {
+        const key = p.tax_specialist_id ? `${p.task_id}_${p.tax_specialist_id}` : p.task_id
+        progressMap[plan.id][key] = p
+      })
+      specialistMap[plan.id] = sd?.specialists || []
+    })
+    setAllProgress(progressMap)
+    setAllSpecialists(specialistMap)
+  }
+
+  async function loadData(quiet = false) {
+    if (quiet !== true) setLoading(true)
+    const startWrites = getWriteCount()
+    let base = null
     try {
       const [plansData, phasesData, map1Progress] = await Promise.all([
         callApi('tax_load_plans', { client_id: clientId }),
         loadCachedAction('msm_load_client_track', { program_id: programId, track_type: 'tax' }),
         callApi('msm_load_client_progress', { client_id: clientId }),
       ])
-      // Scope to the current program view before anything downstream sees the
-      // list: plan cards, livePlan selection, TrackHero counts, MSM status, the
-      // per-plan track view, the Start button, and deep-link resolution all read
-      // from taxPlans, so the filter belongs at this single entry point.
+      base = { plansData, phasesData, map1Progress }
       const scopedPlans = plansForProgram(plansData.plans, programId)
-      setTaxPlans(scopedPlans)
-      const loadedPhases = phasesData.phases || []
-      loadedPhases.forEach(p => p.program_client_tasks?.sort((a, b) => a.task_order - b.task_order))
-      setPhases(loadedPhases)
-      const enabled = programName === 'VFO Tax Planning' || (map1Progress.progress || []).some(p => p.status === 'Tax priorities tab enabled')
-      setTaxEnabled(enabled)
-      const progressMap = {}
-      const specialistMap = {}
+      const perPlan = {}
       await Promise.all(scopedPlans.map(async plan => {
         const [pd, sd] = await Promise.all([
           callApi('tax_load_progress', { tax_plan_id: plan.id }),
           callApi('tax_load_specialists', { tax_plan_id: plan.id }).catch(() => ({ specialists: [] })),
         ])
-        progressMap[plan.id] = {}
-        ;(pd.progress || []).forEach(p => {
-          const key = p.tax_specialist_id ? `${p.task_id}_${p.tax_specialist_id}` : p.task_id
-          progressMap[plan.id][key] = p
-        })
-        specialistMap[plan.id] = sd?.specialists || []
+        perPlan[plan.id] = { pd, sd }
       }))
-      setAllProgress(progressMap)
-      setAllSpecialists(specialistMap)
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
+      const raw = { plansData, phasesData, map1Progress, perPlan }
+      applyLoaded(raw)
+      setLastSeen(snapKey, { ...raw, writes: startWrites })
+      writesAtLoadRef.current = startWrites
+    } catch (err) {
+      console.error(err)
+      // A failed quiet refresh keeps the snapshot on screen but never auto-opens
+      // a deep-linked plan from it. A normal load keeps the list it got, as before.
+      if (quiet === true) autoSelectedRef.current = true
+      else if (base) applyLoaded({ ...base, perPlan: null })
+    }
+    finally { setLoading(false); setSnapPending(false) }
   }
 
   async function startPlan() {
@@ -5768,6 +5820,17 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
 
   if (loading) return <TaxPlanListSkeleton />
 
+  // Clicked while the list was still refreshing: go to the page at once and show
+  // its skeleton; it opens with the fresh data the moment that lands.
+  if (pendingOpenId != null) {
+    return (
+      <div>
+        <button onClick={() => setPendingOpenId(null)} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Tax Plans</button>
+        <PhaseListSkeleton phases={6} rowsPerPhase={2} />
+      </div>
+    )
+  }
+
   if (selectedPlan) {
     return (
       <TaxPlanTrackView
@@ -5776,7 +5839,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
         progress={allProgress[selectedPlan.id] || {}}
         specialists={effectiveSpecialists}
         expertBios={expertBios}
-        onBack={() => { setSelectedPlan(null); loadData() }}
+        onBack={() => { setSelectedPlan(null); setSnapPending(getWriteCount() !== writesAtLoadRef.current); loadData(true) }}
         readOnly={readOnly}
         plannerMode={plannerMode}
         directMode={directMode}
@@ -5812,7 +5875,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
             const state = getPlanState(plan)
             const stateColor = stateColors[state]
             return (
-              <div key={plan.id} onClick={() => setSelectedPlan(plan)}
+              <div key={plan.id} onClick={() => snapPending ? setPendingOpenId(plan.id) : setSelectedPlan(plan)}
                 style={{ ...sectionStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>

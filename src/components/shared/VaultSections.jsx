@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { callApi, getSession } from '../../lib/api'
+import { callApi, getSession, getLastSeen, setLastSeen } from '../../lib/api'
 import { fileSizeError } from '../../lib/fileUpload'
 import { VaultRowsSkeleton } from './Skeleton'
 import RequestDocsButton from './RequestDocsButton'
@@ -73,15 +73,29 @@ export default function VaultSections({ actions, params = {}, sections = DEFAULT
   const actionFor = (sec, op) => (sec.actions && sec.actions[op]) || actions[op]
   const paramsFor = (sec) => sec.params || params
 
-  async function load() {
-    setLoading(true); setError('')
+  const snapKey = `vault:${actions.list}:${paramsKey}`
+
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const d = await callApi(actions.list, { ...params })
       setData(Object.fromEntries(sections.map(s => [s.key, d[s.key] || []])))
-    } catch (e) { setError(e.message || 'Could not load the vault') }
+      setLastSeen(snapKey, d)
+    } catch (e) {
+      if (quiet === true) console.error(e)
+      else setError(e.message || 'Could not load the vault')
+    }
     setLoading(false)
   }
-  useEffect(() => { load() }, [actions.list, paramsKey])
+  // Re-opened vault: draw the last file lists at once, refresh behind them.
+  useEffect(() => {
+    const snap = getLastSeen(snapKey)
+    if (snap) {
+      setData(Object.fromEntries(sections.map(s => [s.key, snap[s.key] || []])))
+      setLoading(false)
+    }
+    load(!!snap)
+  }, [actions.list, paramsKey])
 
   async function handleFiles(sec, fileList) {
     const files = Array.from(fileList || [])

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, BLUE, money, StatusPill } from './specialistRevenueShared'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
 import SandboxModeToggle from './SandboxModeToggle'
@@ -294,21 +294,32 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
   const [focusMember, setFocusMember] = useState(initialMemberNumber || null)
   const focusConsumed = useRef(false)
 
-  useEffect(() => { load() }, [category])
+  // Re-open draws the last plans for this category at once, refreshes behind them.
+  useEffect(() => {
+    const snap = getLastSeen(`membershipfees:${category}`)
+    if (snap) { apply(snap); setError(''); setLoading(false) }
+    load(!!snap)
+  }, [category])
 
   useEffect(() => {
     if (initialMemberNumber && !focusConsumed.current) setFocusMember(initialMemberNumber)
   }, [initialMemberNumber])
 
-  async function load() {
-    setLoading(true); setError('')
+  function apply(res) {
+    setPlans(res.plans || [])
+    setSandboxConfig(res.sandbox_config || null)
+  }
+
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('membership_plans_load', { category })
-      if (res?.error) { setError(res.error); return }
-      setPlans(res.plans || [])
-      setSandboxConfig(res.sandbox_config || null)
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
+      apply(res)
+      setLastSeen(`membershipfees:${category}`, res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

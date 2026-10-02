@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton } from './Skeleton'
 
 // The member-facing Growth Credits Services and History views, shared verbatim
@@ -164,7 +164,27 @@ export function GCServicesView({
   // The host keeps this component mounted and flips `active`, so the catalogue
   // refreshes on every visit to the tab while what is already loaded stays on
   // screen instead of re-skeletoning.
-  useEffect(() => { if (active) loadServices() }, [active, memberNumber])
+  // A remount (leaving the Growth Credits tab and coming back) draws the last
+  // catalogue at once from the snapshot; the refresh below then replaces it.
+  const snapKey = `gcservices:${adminMode ? 'admin' : 'member'}:${memberNumber}`
+  useEffect(() => {
+    if (!active) return
+    if (!servicesLoaded) {
+      const snap = getLastSeen(snapKey)
+      if (snap) applyServices(snap.svcRes, snap.subRes)
+    }
+    loadServices()
+  }, [active, memberNumber])
+
+  function applyServices(svcRes, subRes) {
+    if (svcRes) {
+      // An admin session can be served the full catalogue; the member-facing
+      // list never shows a retired service, so pin it to the active ones.
+      setServices((svcRes.services || []).filter(s => s.active !== false))
+    }
+    if (subRes) setSubscriptions(subRes.subscriptions || [])
+    setServicesLoaded(true)
+  }
 
   async function loadServices() {
     // Subscriptions are additive decoration on the same rows: they are fetched
@@ -173,13 +193,8 @@ export function GCServicesView({
       callApi('gc_load_services', adminMode ? { member_number: memberNumber } : {}).catch(err => { console.error(err); return null }),
       callApi('gc_load_subscriptions', { member_number: memberNumber }).catch(err => { console.error(err); return null }),
     ])
-    if (svcRes) {
-      // An admin session can be served the full catalogue; the member-facing
-      // list never shows a retired service, so pin it to the active ones.
-      setServices((svcRes.services || []).filter(s => s.active !== false))
-    }
-    if (subRes) setSubscriptions(subRes.subscriptions || [])
-    setServicesLoaded(true)
+    applyServices(svcRes, subRes)
+    if (svcRes && subRes) setLastSeen(snapKey, { svcRes, subRes })
   }
 
   async function redeemService(svc) {
