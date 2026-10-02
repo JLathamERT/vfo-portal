@@ -1,5 +1,5 @@
 <!-- CANONICAL COPY of the VFO session wrap-up prompt. The owner pastes this file's
-     contents once when the work is SHIPPING (not at the end of every chat). Edit here, then re-copy. Last updated: 2026-08-17 (c). -->
+     contents once when the work is SHIPPING (not at the end of every chat). Edit here, then re-copy. Last updated: 2026-10-02 (vfo-admin-api deploys use --use-docker, #574). -->
 
 # SESSION WRAP-UP — HUB UPDATE + STALENESS AUDIT + COMMIT (run once at session end)
 

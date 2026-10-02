@@ -1,5 +1,5 @@
 <!-- CANONICAL COPY of the VFO session starter prompt. The owner pastes this file's
-     contents at the top of every AI chat. Edit here, then re-copy. Last updated: 2026-09-25. -->
+     contents at the top of every AI chat. Edit here, then re-copy. Last updated: 2026-10-02 (vfo-admin-api deploys use --use-docker, #574). -->
 
 # VFO SESSION STARTER
 
