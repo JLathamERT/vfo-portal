@@ -24,6 +24,8 @@ Branch `claude/vfo-session-setup-b6eaa8` (both repos, ONE chat). Jake: *"things 
 
 **Found, not fixed (separate task raised):** `msm_load_priority_tracks` / `msm_load_priority_progress` have no ownership check and sit in no gate list — any member session can read any client's Regular / PIP priorities (pre-existing; Regular / PIP were deliberately left out of the batched-load change).
 
+**Shipped:** merged (edge `3e47df1` #268, react `c7f203b` #418); frontend published as `live-224-portal-speed` (`index-BiqrGC-R.js`); tags `live-224-portal-speed` + `backend-good-2026-10-02-v938`. **Discharged after the deploy:** the portal routes return 200 live (curl on six portal / sign-in URLs) and a browser on `/admin/login` lands on the slash-stripped path loading only the entry + vendor chunks; `/admin/client/:id` still rides `404.html` by design.
+
 **Superseded values:** live `vfo-admin-api` v937 → v938; route pages 37 → 47; bell poll 30 s (always) → 60 s (visible tabs only); entry bundle `index-*.js` 2.5 MB single file → entry + vendor + per-page chunks.
 
 ## 2026-10-02 (c) — 90 Day Plan Proactive Facilitator Roleplay step; vfo-admin-api deploys need --use-docker (5 MB); 23 emails at Gmail Normal size; Growth Credits History "By" column; Tax 6 steps 3-4 owned by VFOS unless the specialist is the group's linked one
