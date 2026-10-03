@@ -48,7 +48,9 @@ Single table: [`notifications`](../tables/notifications.md). Key columns:
 ```
 useEffect(() => {
   loadNotifications()
-  setInterval(loadNotifications, 30000)   // poll every 30s
+  // every 60s, only while the tab is visible; returning to the tab refreshes at once (2026-10-02)
+  setInterval(() => { if (!document.hidden) loadNotifications() }, 60000)
+  document.addEventListener('visibilitychange', onVisible)
 }, [])
 ```
 
@@ -303,7 +305,7 @@ This avoids leaving the "client chose Yes" notification in the bell after the ad
 
 ## Failure modes
 
-1. **Polling load on expired session** — every 30s the bell calls `load_notifications`. If the admin's session expired since the page loaded, the next poll returns 401 → triggers global redirect → admin gets bumped to login mid-session. Documented in [04-auth-and-sessions.md](../architecture/04-auth-and-sessions.md).
+1. **Polling load on expired session** — every 60s (visible tabs only, since 2026-10-02; it was 30s and ran in hidden tabs, ~40% of all API calls) the bell calls `load_notifications`. If the admin's session expired since the page loaded, the next poll returns 401 → triggers global redirect → admin gets bumped to login mid-session. Documented in [04-auth-and-sessions.md](../architecture/04-auth-and-sessions.md).
 2. **Mark all read race** — the "Mark all read" UI iterates with `Promise.all(notifications.map(n => callApi('mark_notification_read', ...)))`. With 20 items that's 20 parallel HTTP requests. If any one fails, the bell still clears in UI but the row stays unread server-side. Refresh would re-surface it.
 3. **No dedup** — multiple `Yes` decisions for the same client (e.g., admin re-runs the flow, or test data) insert duplicate notifications. The bell shows them all.
 4. **Hardcoded LIMIT 20** — if more than 20 unread notifications accumulate (which would imply admin neglect), the oldest are silently dropped from view. They still exist in the table; admin must mark some read to surface the rest.
