@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { formatDate, formatDateTime } from '../../lib/dates'
 import { TAX_INTAKE_QUESTIONS, numberTaxIntakeQuestions } from '../member/taxIntakeQuestions'
 import CopyLink from '../shared/CopyLink'
@@ -69,16 +69,23 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
   const [openId, setOpenId] = useState(initialDiagnosticId)
   const scrolled = useRef(false)
 
-  async function load() {
+  async function load(quiet) {
     try {
       const res = await callApi('tax_diagnostic_list')
       setData(res)
       setError('')
+      setLastSeen('taxdiagnostics:list', res)
     } catch (err) {
+      if (quiet === true) { console.error(err); return }
       setError(err?.message || 'Could not load diagnostics')
     }
   }
-  useEffect(() => { load() }, [])
+  // Re-opened panel: draw the last queue at once, refresh behind it.
+  useLayoutEffect(() => {
+    const snap = getLastSeen('taxdiagnostics:list')
+    if (snap) setData(snap)
+    load(!!snap)
+  }, [])
 
   // A bell deep link opens that card whatever its status.
   useEffect(() => {

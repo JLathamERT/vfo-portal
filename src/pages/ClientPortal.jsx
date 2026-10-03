@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getSession, clearSession, callApi } from '../lib/api'
+import { getSession, clearSession, callApi, getLastSeen, setLastSeen } from '../lib/api'
 import ClientVault from '../components/client/ClientVault'
 import MemberShowroom from '../components/member/MemberShowroom'
 import VfoWordmark from '../components/shared/VfoWordmark'
@@ -39,31 +39,36 @@ export default function ClientPortal() {
   function chooseTab(t) { tabChosen.current = true; setTab(t) }
 
   // Showroom of the member this client is connected to (their enabled specialists).
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!session || session.role !== 'client') return
     let cancelled = false
+    function apply(data) {
+      const eco = {}
+      ;(data.ecosystems || []).forEach(e => {
+        if (!eco[e.expert_id]) eco[e.expert_id] = []
+        eco[e.expert_id].push(e.name)
+      })
+      setShowroom({ experts: data.experts || [], exclusions: data.exclusions || [], ecoMap: eco })
+      const on = Object.prototype.hasOwnProperty.call(data, 'licence')
+      setLicensingOn(on)
+      setLicence(data.licence || null)
+      if (on && !tabChosen.current) setTab('home')
+      if (!on) setTab(t => (t === 'home' ? 'showroom' : t))
+    }
+    // Re-mount: draw the last showroom at once, refresh behind it.
+    const key = `clientportal:showroom:${session.email}`
+    const snap = getLastSeen(key)
+    if (snap) { apply(snap); setShowroomLoading(false) }
     ;(async () => {
       try {
         setLoadError(null)
         const data = await callApi('client_showroom_load', {})
-        const eco = {}
-        ;(data.ecosystems || []).forEach(e => {
-          if (!eco[e.expert_id]) eco[e.expert_id] = []
-          eco[e.expert_id].push(e.name)
-        })
-        if (!cancelled) setShowroom({ experts: data.experts || [], exclusions: data.exclusions || [], ecoMap: eco })
-        if (!cancelled) {
-          const on = Object.prototype.hasOwnProperty.call(data, 'licence')
-          setLicensingOn(on)
-          setLicence(data.licence || null)
-          if (on && !tabChosen.current) setTab('home')
-          if (!on) setTab(t => (t === 'home' ? 'showroom' : t))
-        }
+        if (!cancelled) { apply(data); setLastSeen(key, data) }
       } catch (err) {
         console.error('Showroom load error:', err)
         // Keep the empty substitute: the render below reads showroom.experts
         // unguarded once loading flips false. The banner above says WHY it's empty.
-        if (!cancelled) { setLoadError(err.message || 'Something went wrong'); setShowroom({ experts: [], exclusions: [], ecoMap: {} }) }
+        if (!cancelled && !snap) { setLoadError(err.message || 'Something went wrong'); setShowroom({ experts: [], exclusions: [], ecoMap: {} }) }
       } finally {
         if (!cancelled) setShowroomLoading(false)
       }

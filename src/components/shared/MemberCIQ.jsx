@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { callApi } from '../../lib/api'
+import { useState, useEffect, useLayoutEffect } from 'react'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { CiqListSkeleton, SkeletonText } from './Skeleton'
 import { HubGrid, HubCard, HubBanner } from './HubKit'
 import { formatDate } from '../../lib/dates'
@@ -37,12 +37,20 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   const [ciqSettingsStatus, setCiqSettingsStatus] = useState('')
   const [settingsLoaded, setSettingsLoaded] = useState(false)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Re-opened tab: use the last settings at once, refresh behind them.
+    const snap = getLastSeen(`ciqsettings:${memberNumber}`)
+    if (snap) {
+      setLocalCiqEnabled(snap.ciq_enabled)
+      setLocalCiqVfosManaged(snap.ciq_vfos_managed)
+      setSettingsLoaded(true)
+    }
     async function loadCiqSettings() {
       try {
         const data = await callApi('ciq_load_settings', { member_number: memberNumber })
         setLocalCiqEnabled(data.ciq_enabled)
         setLocalCiqVfosManaged(data.ciq_vfos_managed)
+        setLastSeen(`ciqsettings:${memberNumber}`, data)
       } catch (err) { console.error(err) }
       finally { setSettingsLoaded(true) }
     }
@@ -58,10 +66,20 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
     } catch (err) { setCiqSettingsStatus(err.message) }
   }
 
-  useEffect(() => { loadCiqs() }, [memberNumber])
+  // Re-opened tab: draw the last CIQ list at once, refresh behind it. The admin
+  // deep link below only ever acts on the fresh list.
+  useLayoutEffect(() => {
+    const snap = getLastSeen(`ciqlist:${memberNumber}`)
+    if (snap) {
+      setCiqs(snap.data.ciqs || [])
+      setContactsMap(snap.contactData.contacts || {})
+      setLoading(false)
+    }
+    loadCiqs(!!snap)
+  }, [memberNumber])
 
-  async function loadCiqs() {
-    setLoading(true)
+  async function loadCiqs(quiet = false) {
+    if (quiet !== true) setLoading(true)
     try {
       const [data, contactData] = await Promise.all([
         callApi('ciq_load_list', { member_number: memberNumber }),
@@ -70,6 +88,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
       const list = data.ciqs || []
       setCiqs(list)
       setContactsMap(contactData.contacts || {})
+      setLastSeen(`ciqlist:${memberNumber}`, { data, contactData })
       // Deep-link from a client profile / MAP 1 step: open that client's newest
       // CIQ straight away. Consume the key even when nothing matches so a later
       // visit to this tab doesn't re-hijack the list.

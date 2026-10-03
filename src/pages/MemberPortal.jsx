@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getSession, clearSession, callApi, loadCachedData, loadCachedAction, clearCachedData } from '../lib/api'
+import { getSession, clearSession, callApi, loadCachedData, loadCachedAction, clearCachedData, getLastSeen, setLastSeen } from '../lib/api'
 import MemberWebsitePlugin from '../components/shared/MemberWebsitePlugin'
 import MemberVault from '../components/shared/MemberVault'
 import MemberCIQ from '../components/shared/MemberCIQ'
@@ -54,13 +54,16 @@ export default function MemberPortal() {
   const [features, setFeatures] = useState({})
   const [allPrograms, setAllPrograms] = useState([])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!session || session.role !== 'member') { navigate('/member/login'); return }
     if (sessionStorage.getItem('memberOpenView') === 'settings') {
       sessionStorage.removeItem('memberOpenView')
       setShowSettings(true); setActiveTab(null)
     }
-    loadData()
+    // Re-mount (e.g. Back from a client page): draw the last portal at once, refresh behind it.
+    const snap = getLastSeen(`memberportal:${session.member_number}`)
+    if (snap) { applyData(snap.data, snap.progData, snap.enabledData); setLoading(false) }
+    loadData(!!snap)
   }, [])
 
   useEffect(() => {
@@ -68,7 +71,7 @@ export default function MemberPortal() {
     else sessionStorage.removeItem('memberActiveTab')
   }, [activeTab])
 
-  async function loadData() {
+  async function loadData(quiet) {
     try {
       // loadData re-runs after saves (onDataChange) — clear any prior banner first.
       setLoadError(null)
@@ -77,31 +80,36 @@ export default function MemberPortal() {
         loadCachedAction('msm_load_programs'),
         callApi('msm_load_enabled_programs', { member_number: session.member_number }),
       ])
-      const me = (data.members || []).find(m => m.member_number === session.member_number)
-      setMemberData(me || null)
-      // Full roster is kept only to name a corporate member's lead member.
-      setAllMembers(data.members || [])
-      setMemberConnections(data.member_connections || [])
-      setAllExperts(data.experts || [])
-      const myExclusions = (data.exclusions || [])
-        .filter(e => e.member_number === session.member_number)
-        .map(e => e.expert_id)
-      setExclusions(myExclusions)
-      const eco = {}
-      ;(data.ecosystems || []).forEach(e => {
-        if (!eco[e.expert_id]) eco[e.expert_id] = []
-        eco[e.expert_id].push(e.name)
-      })
-      setEcoMap(eco)
-      setAllPrograms(progData.programs || [])
-      setEnabledPrograms(enabledData.enabled || [])
-      setFeatures(enabledData.features || {})
+      applyData(data, progData, enabledData)
+      setLastSeen(`memberportal:${session.member_number}`, { data, progData, enabledData })
     } catch (err) {
       console.error('Load error:', err)
-      setLoadError(err.message || 'Something went wrong')
+      if (quiet !== true) setLoadError(err.message || 'Something went wrong')
     } finally {
       setLoading(false)
     }
+  }
+
+  function applyData(data, progData, enabledData) {
+    const me = (data.members || []).find(m => m.member_number === session.member_number)
+    setMemberData(me || null)
+    // Full roster is kept only to name a corporate member's lead member.
+    setAllMembers(data.members || [])
+    setMemberConnections(data.member_connections || [])
+    setAllExperts(data.experts || [])
+    const myExclusions = (data.exclusions || [])
+      .filter(e => e.member_number === session.member_number)
+      .map(e => e.expert_id)
+    setExclusions(myExclusions)
+    const eco = {}
+    ;(data.ecosystems || []).forEach(e => {
+      if (!eco[e.expert_id]) eco[e.expert_id] = []
+      eco[e.expert_id].push(e.name)
+    })
+    setEcoMap(eco)
+    setAllPrograms(progData.programs || [])
+    setEnabledPrograms(enabledData.enabled || [])
+    setFeatures(enabledData.features || {})
   }
 
   function signOut() { clearSession(); navigate('/') }
@@ -503,11 +511,15 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
   // The member's own Stripe Connect setup state — a tag, never the account id
   // (member_my_connect_status is session-scoped and strips it).
   const [connectStatus, setConnectStatus] = useState(null)
-  useEffect(() => {
+  useLayoutEffect(() => {
     let alive = true
+    // Re-opened tab: show the last status at once, refresh behind it.
+    const key = `memberportalconnect:${member?.member_number}`
+    const snap = getLastSeen(key)
+    if (snap) setConnectStatus(snap.status || 'unavailable')
     callApi('member_my_connect_status', {})
-      .then(r => { if (alive) setConnectStatus(r?.status || 'unavailable') })
-      .catch(() => { if (alive) setConnectStatus('unavailable') })
+      .then(r => { if (alive) { setConnectStatus(r?.status || 'unavailable'); setLastSeen(key, r || {}) } })
+      .catch(() => { if (alive && !snap) setConnectStatus('unavailable') })
     return () => { alive = false }
   }, [member?.member_number])
 
@@ -516,11 +528,16 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
   const [profileRow, setProfileRow] = useState(null)
   const [directEligibility, setDirectEligibility] = useState(null)
   const [profileLoadError, setProfileLoadError] = useState('')
-  useEffect(() => {
+  useLayoutEffect(() => {
     let alive = true
+    // Re-opened tab: show the last row at once, refresh behind it.
+    const key = `memberportalprofile:${member.member_number}`
+    const snap = getLastSeen(key)
+    const apply = d => { setProfileRow({ ...member, ...(d?.profile || {}) }); setDirectEligibility(d?.direct_eligibility || null) }
+    if (snap) apply(snap)
     callApi('member_profile_load', { member_number: member.member_number })
-      .then(d => { if (alive) { setProfileRow({ ...member, ...(d?.profile || {}) }); setDirectEligibility(d?.direct_eligibility || null) } })
-      .catch(err => { if (alive) setProfileLoadError(err?.message || 'Your profile details could not be loaded') })
+      .then(d => { if (alive) { apply(d); setLastSeen(key, d) } })
+      .catch(err => { if (!alive) return; if (snap) console.error(err); else setProfileLoadError(err?.message || 'Your profile details could not be loaded') })
     return () => { alive = false }
   }, [member?.member_number])
 

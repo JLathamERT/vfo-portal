@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, Fragment } from 'react'
-import { callApi, getSession } from '../../lib/api'
+import { useState, useEffect, useRef, Fragment, useLayoutEffect } from 'react'
+import { callApi, getSession, getLastSeen, setLastSeen } from '../../lib/api'
 import MemberWebsitePlugin from '../shared/MemberWebsitePlugin'
 import MemberVault from '../shared/MemberVault'
 import MemberCIQ from '../shared/MemberCIQ'
@@ -1597,7 +1597,18 @@ function MemberGC({ member }) {
   const [statusType, setStatusType] = useState('success')
   const [banner, setBanner] = useState('')
 
-  useEffect(() => { loadGC() }, [member.plugin_member_number])
+  // Re-opened tab: draw the last balance/history at once, refresh behind it.
+  useLayoutEffect(() => {
+    const snap = getLastSeen(`membergc:${member.plugin_member_number}`)
+    if (snap) applyGC(snap.bal, snap.trans, snap.red)
+    loadGC()
+  }, [member.plugin_member_number])
+
+  function applyGC(bal, trans, red) {
+    setBalance(bal.balance || 0)
+    setTransactions(trans.transactions || [])
+    setRedemptions(red.redemptions || [])
+  }
 
   async function loadGC() {
     try {
@@ -1606,9 +1617,8 @@ function MemberGC({ member }) {
         callApi('gc_load_transactions', { member_number: member.plugin_member_number }),
         callApi('gc_load_redemptions', { member_number: member.plugin_member_number }),
       ])
-      setBalance(bal.balance || 0)
-      setTransactions(trans.transactions || [])
-      setRedemptions(red.redemptions || [])
+      applyGC(bal, trans, red)
+      setLastSeen(`membergc:${member.plugin_member_number}`, { bal, trans, red })
     } catch (err) { console.error(err) }
   }
 

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { callApi, getSession } from '../../lib/api'
+import { useEffect, useState, useLayoutEffect } from 'react'
+import { callApi, getSession, getLastSeen, setLastSeen } from '../../lib/api'
 import { fileSizeError } from '../../lib/fileUpload'
 import { VaultRowsSkeleton } from '../shared/Skeleton'
 import RequestDocsButton from '../shared/RequestDocsButton'
@@ -100,17 +100,27 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
   // offering "+ Add document" on a client the caller has no access to — the
   // button then failed server-side, reading as a broken app rather than a
   // permission boundary (#386, one section short).
-  async function load() {
-    setLoading(true); setError('')
+  const snapKey = `clientvault:${memberMode ? 'member' : 'staff'}:${clientId}`
+
+  function applyMember(d) {
+    setSensitive(d.sensitive || []); setGeneral(d.general || []); setErt(d.ert || [])
+    setTaxDenied(false); setGenDenied(false); setErtDenied(false)
+  }
+
+  // quiet: refresh behind lists already drawn from the last-seen snapshot. Only
+  // a fully successful load is snapshotted, so a snapshot never carries a refusal.
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     // Member mode fans ONE call into the same three pieces of state the three
     // admin calls populate below — deliberately not three round trips, because
     // the portal already suffers from sequential-call stacking.
     if (memberMode) {
       try {
         const d = await callApi('member_client_vault_list', { client_id: clientId })
-        setSensitive(d.sensitive || []); setGeneral(d.general || []); setErt(d.ert || [])
-        setTaxDenied(false); setGenDenied(false); setErtDenied(false)
+        applyMember(d)
+        setLastSeen(snapKey, { member: d })
       } catch (e) {
+        if (quiet === true) { console.error(e); setLoading(false); return }
         // One call, so a refusal denies all three sections together.
         setSensitive([]); setGeneral([]); setErt([])
         setTaxDenied(true); setGenDenied(true); setErtDenied(true)
@@ -124,6 +134,18 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
       callApi('vault_gen_list', { client_id: clientId }),
       callApi('admin_ert_list', { entity: 'client', key: clientId }),
     ])
+    if ([tax, gen, ertRes].every(r => r.status === 'fulfilled')) {
+      setLastSeen(snapKey, { tax: tax.value, gen: gen.value, ert: ertRes.value })
+    } else if (quiet === true) {
+      console.error('vault refresh failed', [tax, gen, ertRes].filter(r => r.status === 'rejected').map(r => r.reason))
+      setLoading(false)
+      return
+    }
+    applyStaff(tax, gen, ertRes)
+    setLoading(false)
+  }
+
+  function applyStaff(tax, gen, ertRes) {
     setSensitive(tax.status === 'fulfilled' ? (tax.value.files || []) : [])
     setCanView(tax.status === 'fulfilled' && !!tax.value.can_view)
     // Fails CLOSED on a pre-deploy backend that returns no can_manage: the flag
@@ -136,9 +158,21 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
     setErtDenied(ertRes.status === 'rejected')
     const failed = [tax, gen, ertRes].find(r => r.status === 'rejected')
     setError(failed ? (failed.reason?.message || 'Could not load vault') : '')
-    setLoading(false)
   }
-  useEffect(() => { load() }, [clientId])
+
+  // Re-opened vault: draw the last file lists at once, refresh behind them.
+  useLayoutEffect(() => {
+    const snap = getLastSeen(snapKey)
+    if (snap) {
+      if (snap.member) applyMember(snap.member)
+      else {
+        const ok = value => ({ status: 'fulfilled', value })
+        applyStaff(ok(snap.tax), ok(snap.gen), ok(snap.ert))
+      }
+      setLoading(false)
+    }
+    load(!!snap)
+  }, [clientId])
 
   // The ERT/VFOS section is routed through the unified admin_ert_* actions
   // ({ entity, key }); the sensitive/general sections use their { client_id }

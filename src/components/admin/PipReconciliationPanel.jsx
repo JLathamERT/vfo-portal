@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
-import { callApi } from '../../lib/api'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, money } from './specialistRevenueShared'
 import { inPeriod } from './holisticShared'
 import { clearedPipPurchases } from './pipShared'
@@ -30,16 +30,23 @@ export default function PipReconciliationPanel({ embedded = false }) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last rows at once, refreshes behind them.
+  useLayoutEffect(() => {
+    const snap = getLastSeen('piprecon:')
+    if (snap) { setRows(snap.rows || []); setLoading(false) }
+    load(!!snap)
+  }, [])
 
-  async function load() {
-    setLoading(true); setError('')
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('pip_additional_load')
-      if (res?.error) { setError(res.error); return }
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
       setRows(res.rows || [])
+      setLastSeen('piprecon:', res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

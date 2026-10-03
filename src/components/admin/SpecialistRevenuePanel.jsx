@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
-import { callApi, getSession } from '../../lib/api'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
+import { callApi, getSession, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, money, requestDate, RequestRow, MarkReceivedButton, DeleteRequestButton, canDeleteSpecrevRequest, memberShareNote, shareNoteStyle, isHeldLine } from './specialistRevenueShared'
 import { PENDING_COLOR } from './shareLegState'
 import SpecialistPaymentInput from './SpecialistPaymentInput'
@@ -28,16 +28,23 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth()) // 0-11, or -1 for All
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last requests at once, refreshes behind them.
+  useLayoutEffect(() => {
+    const snap = getLastSeen('specialistrevenue:')
+    if (snap) { setRequests(snap.requests || []); setLoading(false) }
+    load(!!snap)
+  }, [])
 
-  async function load() {
-    setLoading(true); setError('')
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('specialist_revenue_load')
-      if (res?.error) { setError(res.error); return }
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
       setRequests(res.requests || [])
+      setLastSeen('specialistrevenue:', res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

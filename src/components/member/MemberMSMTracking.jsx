@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import DirectPill from '../shared/DirectPill'
 import { useNavigate } from 'react-router-dom'
-import { callApi, loadCachedAction } from '../../lib/api'
+import { callApi, loadCachedAction, getLastSeen, setLastSeen, getWriteCount } from '../../lib/api'
 import { Skeleton, ClientsListSkeleton, TrainingTrackSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, MsmHomeSkeleton } from '../shared/Skeleton'
 import { TrackHero, PhaseBadge } from '../shared/TrackKit'
 import { countedTasks, countedDone, phaseState, isPositiveStatus, isTrackStopped, planStatusLabel, STATUS_STOPPED, STATUS_NOT_APPLICABLE } from '../shared/trainingStatus'
@@ -53,11 +53,16 @@ function MemberProgramNotes({ memberNumber, sectionStyle, programName = null, ti
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  // Read-only for the member: a re-visit draws the last notes before the first
+  // paint, then refreshes them.
+  useLayoutEffect(() => {
     let live = true
-    setLoading(true)
+    const key = `memberprogramnotes:${memberNumber}:${programName || ''}`
+    const snap = getLastSeen(key)
+    if (snap) { setNotes(snap.notes || []); setLoading(false) }
+    else setLoading(true)
     callApi('load_member_program_notes', { member_number: memberNumber, ...(programName ? { program_name: programName } : {}) })
-      .then(d => { if (live) setNotes(d.notes || []) })
+      .then(d => { if (live) { setNotes(d.notes || []); setLastSeen(key, d) } })
       .catch(err => console.error(err))
       .finally(() => { if (live) setLoading(false) })
     return () => { live = false }
@@ -110,7 +115,22 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
   // coaching_meetings (per enrollment), not member_meetings.
   const [coachingCounts, setCoachingCounts] = useState({})
 
-  useEffect(() => { loadData() }, [member.member_number])
+  // Coming back to this tab in the same session draws the last snapshot at once
+  // and refreshes it in the background.
+  useLayoutEffect(() => {
+    const snap = getLastSeen(`membermsm:${member.member_number}`)
+    if (snap) {
+      setPrograms(snap.programs)
+      setEnrollments(snap.enrollments)
+      setEnabledPrograms(snap.enabled)
+      setFeatures(snap.features)
+      setMeetings(snap.meetings)
+      setCoachingCounts(snap.coachingCounts)
+      setVfo90Count(snap.vfo90Count)
+      setLoading(false)
+    }
+    loadData(!!snap)
+  }, [member.member_number])
 
   // Refresh the coaching counts whenever the member returns to MSM Home (no reload).
   useEffect(() => {
@@ -128,10 +148,12 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
       } catch { counts[name] = 0 }
     }))
     setCoachingCounts(counts)
+    return counts
   }
 
-  async function loadData() {
-    setLoading(true)
+  // quiet: refresh behind a view already drawn from the last-seen snapshot.
+  async function loadData(quiet = false) {
+    if (!quiet) setLoading(true)
     try {
       const [progData, enrollData, enabledData, meetData] = await Promise.all([
         loadCachedAction('msm_load_programs'),
@@ -145,26 +167,36 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
       setFeatures(enabledData.features || {})
       setMeetings(meetData.meetings || [])
 
-      // Count completed coaching meetings for the two coaching programs.
-      await loadCoachingCounts(enrollData.enrollments || [])
-
-      // Calculate VFO 90 Day Plan count from completed phases
+      // The coaching counts and the 90 Day Plan count both need only the first
+      // wave, so they load side by side rather than one after the other.
       const holisticProg = (progData.programs || []).find(p => p.name === 'VFO Holistic Planning')
       const holisticEnroll = (enrollData.enrollments || []).find(e => e.programs?.name === 'VFO Holistic Planning')
-      if (holisticProg && holisticEnroll) {
-        const [trackData, progressData] = await Promise.all([
-          loadCachedAction('msm_load_training_track', { program_id: holisticProg.id }),
-          callApi('msm_load_training_progress', { enrollment_id: holisticEnroll.id }),
-        ])
-        const phases = trackData.phases || []
-        const prog = {}
-        ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
-        const completedPhases = phases.filter(phase => {
-          if (phase.name.includes('Review')) return false
-          return phaseState(phase.program_training_tasks, prog) === 'done'
-        }).length
-        setVfo90Count(completedPhases)
-      }
+      let completedPhases = 0
+      const [counts] = await Promise.all([
+        // Count completed coaching meetings for the two coaching programs.
+        loadCoachingCounts(enrollData.enrollments || []),
+        // Calculate VFO 90 Day Plan count from completed phases
+        (async () => {
+          if (!holisticProg || !holisticEnroll) return
+          const [trackData, progressData] = await Promise.all([
+            loadCachedAction('msm_load_training_track', { program_id: holisticProg.id }),
+            callApi('msm_load_training_progress', { enrollment_id: holisticEnroll.id }),
+          ])
+          const phases = trackData.phases || []
+          const prog = {}
+          ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
+          completedPhases = phases.filter(phase => {
+            if (phase.name.includes('Review')) return false
+            return phaseState(phase.program_training_tasks, prog) === 'done'
+          }).length
+          setVfo90Count(completedPhases)
+        })(),
+      ])
+      setLastSeen(`membermsm:${member.member_number}`, {
+        programs: progData.programs || [], enrollments: enrollData.enrollments || [],
+        enabled: enabledData.enabled || [], features: enabledData.features || {},
+        meetings: meetData.meetings || [], coachingCounts: counts, vfo90Count: completedPhases,
+      })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -437,26 +469,45 @@ function MemberTrainingView({ enrollment, program }) {
     } finally { setSaving(s => ({ ...s, [taskId]: false })) }
   }
 
-  useEffect(() => { loadTrack() }, [enrollment.id])
+  // Re-opening the 90 Day Plan draws the last copy at once when nothing has been
+  // saved since it was loaded (the rows carry status dropdowns), then refreshes.
+  const trackSnapKey = `membertrack:${enrollment.id}:${program.id}`
+  useLayoutEffect(() => {
+    const snap = getLastSeen(trackSnapKey)
+    if (snap && snap.writes === getWriteCount()) {
+      applyTrack(snap.trackData, snap.progressData, true)
+      setLoading(false)
+      loadTrack(true)
+    } else loadTrack()
+  }, [enrollment.id])
 
-  async function loadTrack() {
-    setLoading(true)
+  // full: also reset which phases are expanded (a quiet refresh keeps the
+  // member's own toggles).
+  function applyTrack(trackData, progressData, full) {
+    const loadedPhases = trackData.phases || []
+    setPhases(loadedPhases)
+    const prog = {}
+    ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
+    setProgress(prog)
+    if (!full) return
+    // A fully-done phase defaults collapsed on load; manual toggles win after.
+    const expandState = {}
+    loadedPhases.forEach(phase => {
+      expandState[phase.id] = phaseState(phase.program_training_tasks, prog) !== 'done'
+    })
+    setExpanded(expandState)
+  }
+
+  async function loadTrack(quiet = false) {
+    if (quiet !== true) setLoading(true)
+    const startWrites = getWriteCount()
     try {
       const [trackData, progressData] = await Promise.all([
         loadCachedAction('msm_load_training_track', { program_id: program.id }),
         callApi('msm_load_training_progress', { enrollment_id: enrollment.id }),
       ])
-      const loadedPhases = trackData.phases || []
-      setPhases(loadedPhases)
-      const prog = {}
-      ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
-      setProgress(prog)
-      // A fully-done phase defaults collapsed on load; manual toggles win after.
-      const expandState = {}
-      loadedPhases.forEach(phase => {
-        expandState[phase.id] = phaseState(phase.program_training_tasks, prog) !== 'done'
-      })
-      setExpanded(expandState)
+      applyTrack(trackData, progressData, quiet !== true)
+      setLastSeen(trackSnapKey, { trackData, progressData, writes: startWrites })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -753,7 +804,16 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
   const [intakeClient, setIntakeClient] = useState(null)
   const [doneMessage, setDoneMessage] = useState('')
 
-  useEffect(() => { loadClients() }, [enrollment?.id])
+  // Back from a client page lands here: draw the last list at once, refresh behind it.
+  useLayoutEffect(() => {
+    const snap = getLastSeen(`memberclients:${enrollment?.id || 'none'}`)
+    if (snap) {
+      setClients(snap.clients)
+      setContactsMap(snap.contacts)
+      setLoading(false)
+    }
+    loadClients(!!snap)
+  }, [enrollment?.id])
 
   // Returning from the deposit Checkout (?intake=<id>&paid=1) or arriving from
   // the Holistic "complete the form" email (?intake_client=<id>). Read once,
@@ -791,8 +851,8 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     window.history.replaceState({}, '', url.toString())
   }, [intakeOn])
 
-  async function loadClients() {
-    setLoading(true)
+  async function loadClients(quiet = false) {
+    if (!quiet) setLoading(true)
     try {
       // A member with no program-4 enrollment yet has no clients to list — the
       // Add button below is what creates both.
@@ -802,6 +862,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
       ])
       setClients(data.clients || [])
       setContactsMap(contactData.contacts || {})
+      setLastSeen(`memberclients:${enrollment?.id || 'none'}`, { clients: data.clients || [], contacts: contactData.contacts || {} })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }

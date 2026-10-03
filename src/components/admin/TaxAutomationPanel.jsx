@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useState } from 'react'
-import { callApi } from '../../lib/api'
+import { Fragment, useEffect, useState, useLayoutEffect } from 'react'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtDate, PanelHero, EmptyState, TableCard } from './automation/StepKit'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import { CONFIRMATION_CARD_SKIP } from '../../lib/confirmationStatus'
@@ -347,17 +347,27 @@ export default function TaxAutomationPanel({ programScope = 'holistic' }) {
       : p.program_id == null || p.program_id === 1
   }
 
-  async function load() {
-    setLoading(true); setError('')
+  function apply(data) {
+    setRows((data.rows || []).filter(inScope))
+    setSandboxConfig(data.sandbox_config || null)
+  }
+
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const data = await callApi('automation_load_tax_plans')
-      setRows((data.rows || []).filter(inScope))
-      setSandboxConfig(data.sandbox_config || null)
-    } catch (err) { setError(err.message || String(err)) }
+      apply(data)
+      setLastSeen(`taxautomation:${programScope}`, data)
+    } catch (err) { if (quiet === true) console.error(err); else setError(err.message || String(err)) }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last plans at once, refreshes behind them.
+  useLayoutEffect(() => {
+    const snap = getLastSeen(`taxautomation:${programScope}`)
+    if (snap) { apply(snap); setLoading(false) }
+    load(!!snap)
+  }, [])
 
   async function toggleSandboxMode() {
     if (!sandboxConfig) return

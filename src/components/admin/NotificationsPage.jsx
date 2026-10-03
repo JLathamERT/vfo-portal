@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton } from '../shared/Skeleton'
 
 // Admin Notifications page (bell "View all"). Two sub-views:
@@ -85,16 +85,27 @@ function NotificationsView({ navigate }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => { load() }, [scope, kind, sort, page])
+  // A page/filter seen before this session draws at once, refreshes behind it.
+  useLayoutEffect(() => {
+    const snap = getLastSeen(`adminnotifs:${scope}:${kind}:${sort}:${page}`)
+    if (snap) { setError(''); setSelected(new Set()); apply(snap) }
+    load(!!snap)
+  }, [scope, kind, sort, page])
 
-  async function load() {
-    setRows(null); setError(''); setSelected(new Set())
+  function apply(res) {
+    setRows(res.notifications || [])
+    setTotal(res.total || 0)
+  }
+
+  async function load(quiet = false) {
+    if (quiet !== true) { setRows(null); setError(''); setSelected(new Set()) }
+    const key = `adminnotifs:${scope}:${kind}:${sort}:${page}`
     try {
       const res = await callApi('load_notifications_page', { offset: page * PAGE_SIZE, limit: PAGE_SIZE, scope, kind, sort })
-      if (res?.error) { setError(res.error); return }
-      setRows(res.notifications || [])
-      setTotal(res.total || 0)
-    } catch (e) { setError(e?.message || 'Failed to load') }
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
+      apply(res)
+      setLastSeen(key, res)
+    } catch (e) { if (quiet === true) console.error(e); else setError(e?.message || 'Failed to load') }
   }
 
   function pickScope(s) { setScope(s); setKind('all'); setPage(0) }
@@ -244,15 +255,25 @@ function RemindersView() {
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last reminder lists at once, refreshes behind them.
+  useLayoutEffect(() => {
+    const snap = getLastSeen('adminreminders:')
+    if (snap) apply(snap)
+    load(!!snap)
+  }, [])
 
-  async function load() {
+  function apply(res) {
+    setUpcoming(res.upcoming || [])
+    setFired(res.fired || [])
+  }
+
+  async function load(quiet = false) {
     try {
       const res = await callApi('reminder_load')
-      if (res?.error) { setError(res.error); return }
-      setUpcoming(res.upcoming || [])
-      setFired(res.fired || [])
-    } catch (e) { setError(e?.message || 'Failed to load') }
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
+      apply(res)
+      setLastSeen('adminreminders:', res)
+    } catch (e) { if (quiet === true) console.error(e); else setError(e?.message || 'Failed to load') }
   }
 
   function flash(msg) { setStatus(msg); setTimeout(() => setStatus(''), 4000) }

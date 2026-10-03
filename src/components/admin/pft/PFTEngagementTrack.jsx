@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { callApi, loadCachedAction } from '../../../lib/api'
+import { callApi, loadCachedAction, getLastSeen, setLastSeen } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel } from '../../shared/PhaseNotes'
 import { PFTTrackSkeleton } from '../../shared/Skeleton'
 import { TrackHero, PhaseBadge } from '../../shared/TrackKit'
@@ -626,47 +626,62 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, not
   const [saving, setSaving] = useState({})
   const [expanded, setExpanded] = useState({})
 
-  useEffect(() => { loadTrack() }, [clientId])
+  const snapKey = `pfttrack:${clientId}:${programId ?? ''}`
 
-  async function loadTrack() {
-    setLoading(true)
+  // Re-opened in the same session: draw the last track at once, refresh behind it.
+  useLayoutEffect(() => {
+    const snap = getLastSeen(snapKey)
+    if (snap) {
+      applyTrack(snap.trackData, snap.progressData, snap.engData)
+      setLoading(false)
+    }
+    loadTrack(!!snap)
+  }, [clientId])
+
+  async function loadTrack(quiet = false) {
+    if (quiet !== true) setLoading(true)
     try {
       const [trackData, progressData, engData] = await Promise.all([
         loadCachedAction('msm_load_client_track', { program_id: programId, track_type: 'partnership_fast_track' }),
         callApi('msm_load_client_progress', { client_id: clientId }),
         callApi('pft_load_engagement', { client_id: clientId }),
       ])
-      const loadedPhases = trackData.phases || []
-      setPhases(loadedPhases)
-      const prog = {}
-      ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
-      setProgress(prog)
-      setEngagement(engData || null)
-
-      const allTasks = loadedPhases.flatMap(ph => ph.program_client_tasks || [])
-      const decStatus = allTasks.filter(t => t.name === 'Accountant decision confirmation email').map(t => prog[t.id]?.status).find(s => s) || null
-      const gateStatus = computeGateStatus(loadedPhases, prog)
-
-      const expandState = {}
-      loadedPhases.forEach(phase => {
-        const isAssoc = phase.name.includes('VFO-Associate')
-        const isFT = phase.name.includes('VFO-FT Accountant')
-        if (isAssoc || isFT) {
-          // Open the confirmed branch, but collapse it once its visible tasks
-          // are all done.
-          const branchConfirmed = (isAssoc && decStatus === 'VFO Associate confirmed') || (isFT && decStatus === 'VFO FT confirmed')
-          const tasks = visiblePhaseTasks(phase, gateStatus, prog)
-          const allDone = tasks.length === 0 || tasks.every(t => prog[t.id]?.status)
-          expandState[phase.id] = branchConfirmed && !allDone
-          return
-        }
-        const tasks = visiblePhaseTasks(phase, gateStatus, prog)
-        const allDone = tasks.length === 0 || tasks.every(t => prog[t.id]?.status)
-        expandState[phase.id] = !allDone
-      })
-      setExpanded(expandState)
+      applyTrack(trackData, progressData, engData)
+      setLastSeen(snapKey, { trackData, progressData, engData })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
+  }
+
+  function applyTrack(trackData, progressData, engData) {
+    const loadedPhases = trackData.phases || []
+    setPhases(loadedPhases)
+    const prog = {}
+    ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
+    setProgress(prog)
+    setEngagement(engData || null)
+
+    const allTasks = loadedPhases.flatMap(ph => ph.program_client_tasks || [])
+    const decStatus = allTasks.filter(t => t.name === 'Accountant decision confirmation email').map(t => prog[t.id]?.status).find(s => s) || null
+    const gateStatus = computeGateStatus(loadedPhases, prog)
+
+    const expandState = {}
+    loadedPhases.forEach(phase => {
+      const isAssoc = phase.name.includes('VFO-Associate')
+      const isFT = phase.name.includes('VFO-FT Accountant')
+      if (isAssoc || isFT) {
+        // Open the confirmed branch, but collapse it once its visible tasks
+        // are all done.
+        const branchConfirmed = (isAssoc && decStatus === 'VFO Associate confirmed') || (isFT && decStatus === 'VFO FT confirmed')
+        const tasks = visiblePhaseTasks(phase, gateStatus, prog)
+        const allDone = tasks.length === 0 || tasks.every(t => prog[t.id]?.status)
+        expandState[phase.id] = branchConfirmed && !allDone
+        return
+      }
+      const tasks = visiblePhaseTasks(phase, gateStatus, prog)
+      const allDone = tasks.length === 0 || tasks.every(t => prog[t.id]?.status)
+      expandState[phase.id] = !allDone
+    })
+    setExpanded(expandState)
   }
 
   async function saveTask(taskId, status, existingDate) {

@@ -14,10 +14,19 @@ export default function NotificationBell() {
   const ref = useRef(null)
   const navigate = useNavigate()
  
+  // Poll every 60s, but only while the tab is visible: a hidden tab polling every
+  // 30s was ~40% of all API traffic. Coming back to the tab refreshes at once.
   useEffect(() => {
     loadNotifications()
-    const interval = setInterval(loadNotifications, 30000)
-    return () => clearInterval(interval)
+    const interval = setInterval(() => {
+      if (!document.hidden) loadNotifications()
+    }, 60000)
+    function onVisible() { if (!document.hidden) loadNotifications() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
  
   useEffect(() => {
@@ -30,7 +39,7 @@ export default function NotificationBell() {
 
   // Let an admin action that changes notifications (e.g. saving reviewer notes,
   // which clears a non-dismissible request) refresh the bell immediately rather
-  // than waiting for the next 30s poll.
+  // than waiting for the next 60s poll.
   useEffect(() => {
     function onChanged() { loadNotifications() }
     window.addEventListener('vfo:notifications-changed', onChanged)

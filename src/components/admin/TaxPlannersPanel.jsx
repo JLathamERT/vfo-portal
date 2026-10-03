@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { callApi, loadCachedAction, loadCachedData } from '../../lib/api'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { callApi, loadCachedAction, loadCachedData, getLastSeen, setLastSeen } from '../../lib/api'
 import { makeTaxPlanRules, taxPlanProgressSummary } from './tax/taxPlanRules'
 import { fileToLogoPng, logoUrl } from '../shared/logoPng'
 import { fileSizeError } from '../../lib/fileUpload'
@@ -98,16 +98,22 @@ export default function TaxPlannersPanel({ section }) {
   const [cropState, setCropState] = useState(null) // { which, src }
   const [deleteMsg, setDeleteMsg] = useState('')
 
-  async function load() {
-    setLoading(true)
+  function applyLoad(d) {
+    const list = d.tax_planners || []
+    setPlanners(list)
+    setGroups(d.tax_planning_groups || [])
+    setLoadError('')
+    return list
+  }
+  async function load(quiet) {
+    if (quiet !== true) setLoading(true)
     try {
       const d = await callApi('tax_planners_load')
-      const list = d.tax_planners || []
-      setPlanners(list)
-      setGroups(d.tax_planning_groups || [])
-      setLoadError('')
+      const list = applyLoad(d)
+      setLastSeen('taxplanners:list', d)
       return list
     } catch (e) {
+      if (quiet === true) { console.error(e); return null }
       setLoadError(e.message || 'Could not load tax planners.')
       return null
     } finally {
@@ -115,12 +121,18 @@ export default function TaxPlannersPanel({ section }) {
     }
   }
   const groupNames = groups.map(g => g.name)
-  useEffect(() => {
-    load().then(list => {
-      const ret = takePlannerReturn()
+  useLayoutEffect(() => {
+    // Re-opened panel: draw the last list (and reopen the planner) at once, refresh behind it.
+    const snap = getLastSeen('taxplanners:list')
+    const ret = takePlannerReturn()
+    const reopen = list => {
       const planner = ret && (list || []).find(p => String(p.id) === String(ret.plannerId))
       if (planner) { handleSelect(planner); setPlannerTab(ret.tab) }
-    })
+      return !!planner
+    }
+    let reopened = false
+    if (snap) { reopened = reopen(applyLoad(snap)); setLoading(false) }
+    load(!!snap).then(list => { if (!reopened) reopen(list) })
   }, [])
 
   function showStatus(which, type, msg) {
@@ -639,12 +651,16 @@ function TaxPlannerPaymentsTab({ plannerId }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let alive = true
-    setLoading(true); setError('')
+    // Re-opened tab: draw the last rows at once, refresh behind them.
+    const key = `taxplannerpayments:${plannerId}`
+    const snap = getLastSeen(key)
+    setError('')
+    if (snap) { setRows(snap.rows || []); setLoading(false) } else setLoading(true)
     callApi('tax_planner_payments_load', { planner_id: plannerId })
-      .then(d => { if (alive) setRows(d.rows || []) })
-      .catch(e => { if (alive) setError(e?.message || 'Failed to load payments') })
+      .then(d => { if (alive) { setRows(d.rows || []); setLastSeen(key, d) } })
+      .catch(e => { if (!alive) return; if (snap) console.error(e); else setError(e?.message || 'Failed to load payments') })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [plannerId])
@@ -736,37 +752,47 @@ const PLAN_STATE_STYLES = {
   Completed: { bg: 'rgba(27,146,84,0.15)', color: '#1b9254', border: 'rgba(27,146,84,0.3)' },
   Stopped: { bg: 'rgba(231,76,60,0.15)', color: '#e74c3c', border: 'rgba(231,76,60,0.3)' },
 }
+async function withPlanProgress(d) {
+  const clients = d.clients || []
+  // Each plan's "<n>/6 - <pct>%" runs the plan page's own rules over the
+  // inputs the load returns, with the same template the plan page loads.
+  const phasesByProgram = {}
+  await Promise.all([...new Set(clients.map(r => r.program_id || 1))].map(async pid => {
+    try {
+      const t = await loadCachedAction('msm_load_client_track', { program_id: pid, track_type: 'tax' })
+      const phases = (t?.phases || []).map(p => ({ ...p, program_client_tasks: [...(p.program_client_tasks || [])].sort((a, b) => a.task_order - b.task_order) }))
+      phasesByProgram[pid] = phases
+    } catch { phasesByProgram[pid] = null }
+  }))
+  for (const r of clients) {
+    const phases = phasesByProgram[r.program_id || 1]
+    r.progressSummary = (r.plan && phases)
+      ? taxPlanProgressSummary(makeTaxPlanRules({ plan: r.plan, livePlan: r.plan, phases, localProgress: r.progress || {}, taxSpecialists: r.specialists || [] }))
+      : null
+  }
+  return clients
+}
 function TaxPlannerClientsTab({ plannerId }) {
   const navigate = useNavigate()
   const [rows, setRows] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let alive = true
+    let fresh = false
+    // Re-opened tab: draw the last rows at once, refresh behind them.
+    const key = `taxplannerclients:${plannerId}`
+    const snap = getLastSeen(key)
     setLoading(true); setError('')
+    if (snap) withPlanProgress(snap).then(clients => { if (alive && !fresh) { setRows(clients); setLoading(false) } }).catch(e => console.error(e))
     callApi('tax_planner_clients_load', { planner_id: plannerId })
       .then(async d => {
-        const clients = d.clients || []
-        // Each plan's "<n>/6 - <pct>%" runs the plan page's own rules over the
-        // inputs the load returns, with the same template the plan page loads.
-        const phasesByProgram = {}
-        await Promise.all([...new Set(clients.map(r => r.program_id || 1))].map(async pid => {
-          try {
-            const t = await loadCachedAction('msm_load_client_track', { program_id: pid, track_type: 'tax' })
-            const phases = (t?.phases || []).map(p => ({ ...p, program_client_tasks: [...(p.program_client_tasks || [])].sort((a, b) => a.task_order - b.task_order) }))
-            phasesByProgram[pid] = phases
-          } catch { phasesByProgram[pid] = null }
-        }))
-        for (const r of clients) {
-          const phases = phasesByProgram[r.program_id || 1]
-          r.progressSummary = (r.plan && phases)
-            ? taxPlanProgressSummary(makeTaxPlanRules({ plan: r.plan, livePlan: r.plan, phases, localProgress: r.progress || {}, taxSpecialists: r.specialists || [] }))
-            : null
-        }
-        if (alive) setRows(clients)
+        const clients = await withPlanProgress(d)
+        fresh = true
+        if (alive) { setRows(clients); setLastSeen(key, d) }
       })
-      .catch(e => { if (alive) setError(e?.message || 'Failed to load clients') })
+      .catch(e => { if (!alive) return; if (snap) console.error(e); else setError(e?.message || 'Failed to load clients') })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [plannerId])

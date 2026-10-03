@@ -61,7 +61,16 @@ function isReadAction(action) {
 // redirecting to the portal-selection page.
 const LOGIN_ACTIONS = ['admin_login', 'member_login', 'client_login', 'specialist_login', 'tax_planner_login', 'login']
 
+// Counts every non-read call this tab has made. A screen that remembers the
+// count when it loaded can tell whether anything was saved or sent since.
+// Actions fetched through loadCachedAction are reads by definition (that cache
+// is for idempotent reads), even when their name misses isReadAction's pattern.
+let writeCount = 0
+const cachedReadActions = new Set()
+export function getWriteCount() { return writeCount }
+
 export async function callApi(action, payload = {}, retries = 3) {
+  if (!isReadAction(action) && !cachedReadActions.has(action)) writeCount++
   const session = JSON.parse(sessionStorage.getItem('vfo_session') || 'null')
   for (let attempt = 1; attempt <= retries; attempt++) {
     let res = null
@@ -154,6 +163,7 @@ export function clearSession() {
   sessionStorage.removeItem('vfo_session')
   cachedDataPromise = null
   keyedCaches.clear()
+  lastSeen.clear()
 }
 
 let cachedDataPromise = null
@@ -172,9 +182,28 @@ export function clearCachedData() {
   cachedDataPromise = null
 }
 
+export function hasCachedData() {
+  return !!cachedDataPromise
+}
+
+// Last-seen snapshots: a screen re-opened in the same session (e.g. Back from a
+// client page) renders what it showed last time at once, then refreshes in the
+// background. Keyed to the session token so another login never sees them.
+const lastSeen = new Map()
+
+export function getLastSeen(key) {
+  const entry = lastSeen.get(key)
+  return entry && entry.token && entry.token === getSession()?.token ? entry.value : null
+}
+
+export function setLastSeen(key, value) {
+  lastSeen.set(key, { token: getSession()?.token, value })
+}
+
 const keyedCaches = new Map()
 
 export function loadCachedAction(action, payload = {}, { refresh = false } = {}) {
+  cachedReadActions.add(action)
   let bucket = keyedCaches.get(action)
   if (!bucket) { bucket = new Map(); keyedCaches.set(action, bucket) }
   const key = JSON.stringify(payload)

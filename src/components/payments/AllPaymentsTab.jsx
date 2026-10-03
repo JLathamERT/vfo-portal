@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { callApi } from '../../lib/api'
+import { useState, useEffect, useLayoutEffect } from 'react'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton } from '../shared/Skeleton'
 import PaymentsTable from './PaymentsTable'
 
@@ -18,15 +18,22 @@ export default function AllPaymentsTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last list at once, refreshes behind it.
+  useLayoutEffect(() => {
+    const snap = getLastSeen('allpayments:')
+    if (snap) { setData(snap); setLoading(false) }
+    load(!!snap)
+  }, [])
 
-  async function load() {
-    setLoading(true); setError(null)
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError(null) }
     try {
       const d = await callApi('all_payments_load', {})
       setData(d)
+      setLastSeen('allpayments:', d)
     } catch (e) {
-      setError(e?.message || 'Failed to load payments')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load payments')
     } finally {
       setLoading(false)
     }

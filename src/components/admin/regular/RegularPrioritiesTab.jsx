@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
-import { callApi } from '../../../lib/api'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { callApi, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel, noteInScope } from '../../shared/PhaseNotes'
-import { TaxPlanListSkeleton } from '../../shared/Skeleton'
+import { TaxPlanListSkeleton, PhaseListSkeleton } from '../../shared/Skeleton'
 import { TrackHero, PhaseBadge, ListHeader } from '../../shared/TrackKit'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
@@ -626,41 +626,91 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
   const [regularEnabled, setRegularEnabled] = useState(false)
   const autoSelectedRef = useRef(false)
 
-  useEffect(() => { loadData() }, [clientId])
+  // True while the list on screen is the last-seen snapshot and the quiet refresh
+  // has not landed yet: nothing may open a track off snapshot data, because the
+  // track view seeds its editable progress from what it is handed at mount.
+  const [snapPending, setSnapPending] = useState(false)
+  const [pendingOpenId, setPendingOpenId] = useState(null)
+  // The save/send count when the list on screen was loaded: Back or a re-open
+  // only holds a click for fresh data if something was written since.
+  const writesAtLoadRef = useRef(-1)
+  const snapKey = `regularpriorities:${clientId}:${programId ?? ''}`
+
+  // Re-opened in the same session: draw the last priority list at once, refresh behind it.
+  useLayoutEffect(() => {
+    const snap = getLastSeen(snapKey)
+    if (snap) {
+      applyLoaded(snap)
+      writesAtLoadRef.current = snap.writes ?? -1
+      setSnapPending(snap.writes !== getWriteCount())
+      setLoading(false)
+    }
+    loadData(!!snap)
+  }, [clientId])
 
   // Deep-link from Client Overview: open the requested track once, after the
   // list has loaded. The user can still navigate back to the list afterwards.
   useEffect(() => {
-    if (autoSelectedRef.current || loading || !initialTrackId) return
+    if (autoSelectedRef.current || loading || snapPending || !initialTrackId) return
     const match = priorityTracks.find(t => t.id === initialTrackId)
     if (match) { autoSelectedRef.current = true; setSelectedTrack(match) }
-  }, [loading, initialTrackId, priorityTracks])
+  }, [loading, initialTrackId, priorityTracks, snapPending])
 
-  async function loadData() {
-    setLoading(true)
+  // A track clicked while the snapshot was showing opens from the fresh list.
+  useEffect(() => {
+    if (snapPending || pendingOpenId == null) return
+    const fresh = priorityTracks.find(t => t.id === pendingOpenId)
+    setPendingOpenId(null)
+    if (fresh) setSelectedTrack(fresh)
+  }, [snapPending, pendingOpenId, priorityTracks])
+
+  // Applies the raw responses — fresh from loadData, or the last-seen snapshot.
+  function applyLoaded({ tracksData, phasesData, map1Progress, perTrack }) {
+    setPriorityTracks((tracksData.tracks || []).filter(t => t.track_type !== 'pip'))
+    setPhases(phasesData.phases || [])
+
+    // Check if C25 is enabled
+    const enabled = (map1Progress.progress || []).some(p => p.status === 'Regular priorities tab enabled')
+    setRegularEnabled(enabled)
+
+    if (!perTrack) return
+    const progressMap = {}
+    ;(tracksData.tracks || []).forEach(track => {
+      progressMap[track.id] = {}
+      ;(perTrack[track.id]?.progress || []).forEach(p => { progressMap[track.id][p.task_id] = p })
+    })
+    setAllProgress(progressMap)
+  }
+
+  async function loadData(quiet = false) {
+    if (quiet !== true) setLoading(true)
+    const startWrites = getWriteCount()
+    let base = null
     try {
       const [tracksData, phasesData, map1Progress] = await Promise.all([
         callApi('msm_load_priority_tracks', { client_id: clientId }),
         callApi('msm_load_regular_phases', { program_id: programId }),
         callApi('msm_load_client_progress', { client_id: clientId }),
       ])
-      setPriorityTracks((tracksData.tracks || []).filter(t => t.track_type !== 'pip'))
-      setPhases(phasesData.phases || [])
-
-      // Check if C25 is enabled
-      const enabled = (map1Progress.progress || []).some(p => p.status === 'Regular priorities tab enabled')
-      setRegularEnabled(enabled)
+      base = { tracksData, phasesData, map1Progress }
 
       // Load progress for all priority tracks
-      const progressMap = {}
+      const perTrack = {}
       await Promise.all((tracksData.tracks || []).map(async track => {
-        const pd = await callApi('msm_load_priority_progress', { priority_track_id: track.id })
-        progressMap[track.id] = {}
-        ;(pd.progress || []).forEach(p => { progressMap[track.id][p.task_id] = p })
+        perTrack[track.id] = await callApi('msm_load_priority_progress', { priority_track_id: track.id })
       }))
-      setAllProgress(progressMap)
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
+      const raw = { ...base, perTrack }
+      applyLoaded(raw)
+      setLastSeen(snapKey, { ...raw, writes: startWrites })
+      writesAtLoadRef.current = startWrites
+    } catch (err) {
+      console.error(err)
+      // A failed quiet refresh keeps the snapshot on screen but never auto-opens
+      // a deep-linked track from it. A normal load keeps the list it got, as before.
+      if (quiet === true) autoSelectedRef.current = true
+      else if (base) applyLoaded({ ...base, perTrack: null })
+    }
+    finally { setLoading(false); setSnapPending(false) }
   }
 
   async function addPriority() {
@@ -711,6 +761,17 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
   if (loading) return <TaxPlanListSkeleton />
 
 
+  // Clicked while the list was still refreshing: go to the page at once and show
+  // its skeleton; it opens with the fresh data the moment that lands.
+  if (pendingOpenId != null) {
+    return (
+      <div>
+        <button onClick={() => setPendingOpenId(null)} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Priorities</button>
+        <PhaseListSkeleton phases={5} rowsPerPhase={2} />
+      </div>
+    )
+  }
+
   if (selectedTrack) {
     return (
       <PriorityTrackView
@@ -718,7 +779,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
         phases={phases}
         progress={allProgress[selectedTrack.id] || {}}
         specialists={specialists}
-        onBack={() => { setSelectedTrack(null); loadData() }}
+        onBack={() => { setSelectedTrack(null); setSnapPending(getWriteCount() !== writesAtLoadRef.current); loadData(true) }}
         onProgressChange={(taskId, p) => setAllProgress(prev => ({ ...prev, [selectedTrack.id]: { ...prev[selectedTrack.id], [taskId]: p } }))}
         readOnly={readOnly}
         onTrackUpdate={loadData}
@@ -779,7 +840,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
             const state = getTrackState(track)
             const stateColor = stateColors[state]
             return (
-              <div key={track.id} onClick={() => setSelectedTrack(track)}
+              <div key={track.id} onClick={() => snapPending ? setPendingOpenId(track.id) : setSelectedTrack(track)}
                 style={{ ...sectionStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>

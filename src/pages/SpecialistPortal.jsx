@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { callApi, getSession, clearSession } from '../lib/api'
+import { callApi, getSession, clearSession, getLastSeen, setLastSeen } from '../lib/api'
 import SpecialistVault from '../components/specialist/SpecialistVault'
 import SpecialistShared from '../components/specialist/SpecialistShared'
 import ChangePasswordCard from '../components/shared/ChangePasswordCard'
@@ -21,28 +21,42 @@ export default function SpecialistPortal() {
   const [showroom, setShowroom] = useState(null)
   const [loadError, setLoadError] = useState(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!session || session.role !== 'specialist') { navigate('/specialist/login'); return }
+    // Re-mount: draw the last showroom + badge at once, refresh behind them.
+    const unreadSnap = getLastSeen(`specialistportal:unread:${session.email}`)
+    if (unreadSnap) setUnread(unreadSnap.unread || 0)
+    const snap = getLastSeen(`specialistportal:showroom:${session.email}`)
+    if (snap) applyShowroom(snap)
     refreshUnread()
-    loadShowroom()
+    loadShowroom(!!snap)
   }, [])
 
   useEffect(() => { sessionStorage.setItem('specialistActiveTab', tab) }, [tab])
 
   async function refreshUnread() {
-    try { const d = await callApi('specialist_shared_unread_count', {}); setUnread(d.unread || 0) }
+    try {
+      const d = await callApi('specialist_shared_unread_count', {}); setUnread(d.unread || 0)
+      setLastSeen(`specialistportal:unread:${session.email}`, d)
+    }
     catch { /* badge is best-effort */ }
   }
 
-  async function loadShowroom() {
+  function applyShowroom(d) {
+    const eco = {}
+    ;(d.ecosystems || []).forEach(e => { if (!eco[e.expert_id]) eco[e.expert_id] = []; eco[e.expert_id].push(e.name) })
+    setShowroom({ experts: d.experts || [], ecoMap: eco })
+  }
+
+  async function loadShowroom(quiet) {
     try {
       setLoadError(null)
       const d = await callApi('specialist_showroom_load', {})
-      const eco = {}
-      ;(d.ecosystems || []).forEach(e => { if (!eco[e.expert_id]) eco[e.expert_id] = []; eco[e.expert_id].push(e.name) })
-      setShowroom({ experts: d.experts || [], ecoMap: eco })
+      applyShowroom(d)
+      setLastSeen(`specialistportal:showroom:${session.email}`, d)
     } catch (err) {
       console.error('Showroom load error:', err)
+      if (quiet === true) return
       setLoadError(err.message || 'Something went wrong')
       setShowroom({ experts: [], ecoMap: {} })
     }

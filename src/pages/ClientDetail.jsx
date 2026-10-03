@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { getSession, callApi, loadCachedData } from '../lib/api'
+import { getSession, callApi, loadCachedData, getLastSeen, setLastSeen } from '../lib/api'
 import { usePortalTheme } from '../lib/theme'
 import ClientTrackViewV2 from '../components/admin/map1/ClientTrackViewV2'
 import RegularPrioritiesTab from '../components/admin/regular/RegularPrioritiesTab'
@@ -132,40 +132,55 @@ export default function ClientDetail() {
     }
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isPlanner) {
       if (!session || session.role !== 'tax_planner') { navigate('/tax-planner/login'); return }
     } else if (!session) {
       navigate('/admin/login?next=' + encodeURIComponent(location.pathname + location.search)); return
     }
-    loadData()
+    // Re-opened in the same session: draw the last client page at once, refresh behind it.
+    const snap = getLastSeen(loadInputs().snapKey)
+    if (snap) {
+      applyLoaded(snap.data, snap.expertsData, snap.notesData)
+      setLoading(false)
+    }
+    loadData(!!snap)
   }, [clientId])
+
+  function loadInputs() {
+    const qp = new URLSearchParams(window.location.search)
+    const passedEnrollmentId = location.state?.enrollment_id || null
+    const passedProgramId = location.state?.program_id || (qp.get('program') ? parseInt(qp.get('program')) : null)
+    // Members only ever see notes the team explicitly shared.
+    const notesAction = isMember ? 'client_notes_load_shared' : 'load_client_notes'
+    const snapKey = `clientdetail:${isMember ? 'member' : isPlanner ? 'planner' : 'admin'}:${clientId}:${passedEnrollmentId ?? ''}:${passedProgramId ?? ''}`
+    return { passedEnrollmentId, passedProgramId, notesAction, snapKey }
+  }
+
+  function applyLoaded(data, expertsData, notesData) {
+    setClient(data.client)
+    setProgram(data.program)
+    setContacts(data.contacts || [])
+    setSpecialists(expertsData.experts || [])
+    setEcosystems(expertsData.ecosystems || [])
+    if (notesData) setClientNotes(notesData.notes || [])
+  }
 
   async function loadData(silent = false) {
     if (!silent) setLoading(true)
     try {
-      const qp = new URLSearchParams(window.location.search)
-      const passedEnrollmentId = location.state?.enrollment_id || null
-      const passedProgramId = location.state?.program_id || (qp.get('program') ? parseInt(qp.get('program')) : null)
+      const { passedEnrollmentId, passedProgramId, notesAction, snapKey } = loadInputs()
       // Planners never call load_data (admin-wide dataset, denied for their role);
       // the specialists list it feeds is only used by admin-only surfaces.
-      const [data, expertsData] = await Promise.all([
+      // Notes load alongside the client instead of after it. A notes failure is
+      // caught on its own so it never blanks the client, as before.
+      const [data, expertsData, notesData] = await Promise.all([
         callApi('msm_load_client_home', { client_id: parseInt(clientId), enrollment_id: passedEnrollmentId, program_id: passedProgramId }),
         isPlanner ? Promise.resolve({ experts: [], ecosystems: [] }) : loadCachedData(),
+        callApi(notesAction, { client_id: parseInt(clientId) }).catch(err => { console.error(err); return null }),
       ])
-      setClient(data.client)
-      setProgram(data.program)
-      setContacts(data.contacts || [])
-      setSpecialists(expertsData.experts || [])
-      setEcosystems(expertsData.ecosystems || [])
-      if (!isMember) {
-        const notesData = await callApi('load_client_notes', { client_id: parseInt(clientId) })
-        setClientNotes(notesData.notes || [])
-      } else {
-        // Members only ever see notes the team explicitly shared.
-        const sharedData = await callApi('client_notes_load_shared', { client_id: parseInt(clientId) })
-        setClientNotes(sharedData.notes || [])
-      }
+      applyLoaded(data, expertsData, notesData)
+      setLastSeen(snapKey, { data, expertsData, notesData })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }

@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money, StatusPill } from './specialistRevenueShared'
 import { tableStyle, headerRowStyle, totalsRowStyle, totalsLabelStyle, totalsSubStyle } from './SpecialistRevenuePanel'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
@@ -93,18 +93,27 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last rows at once, refreshes behind them.
+  useLayoutEffect(() => {
+    const snap = getLastSeen('specialistbg:')
+    if (snap) { apply(snap); setLoading(false) }
+    load(!!snap)
+  }, [])
 
-  async function load() {
-    setLoading(true); setError('')
+  // Like the License Fees ledger: only payments RECEIVED. Unpaid links live on
+  // the Outstanding Payment Links pill.
+  function apply(res) { setRows(bgRowsFrom(res).filter(r => r.state === 'paid')) }
+
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('specialist_bg_payments_load')
-      if (res?.error) { setError(res.error); return }
-      // Like the License Fees ledger: only payments RECEIVED. Unpaid links live on
-      // the Outstanding Payment Links pill.
-      setRows(bgRowsFrom(res).filter(r => r.state === 'paid'))
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
+      apply(res)
+      setLastSeen('specialistbg:', res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,5 @@
-import { Fragment, useState, useEffect } from 'react'
-import { callApi } from '../../lib/api'
+import { Fragment, useState, useEffect, useLayoutEffect } from 'react'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { TableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
 
@@ -35,24 +35,34 @@ export default function GrowthCreditsRedemptionsPage() {
   const [section, setSection] = useState('redemptions')
   const [confirmReject, setConfirmReject] = useState(null)
 
-  useEffect(() => { load(); loadMenu() }, [])
+  // Re-open draws the last queue + menu at once, refreshes behind them.
+  useLayoutEffect(() => {
+    const snap = getLastSeen('gcredemptions:list')
+    if (snap) setRedemptions(snap.redemptions || [])
+    const menuSnap = getLastSeen('gcredemptions:menu')
+    if (menuSnap) setServices(menuSnap.services || [])
+    load(!!snap); loadMenu(!!menuSnap)
+  }, [])
 
-  async function load() {
-    setError('')
+  async function load(quiet = false) {
+    if (quiet !== true) setError('')
     try {
       const res = await callApi('gc_load_all_redemptions')
-      if (res?.error) { setError(res.error); return }
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
       setRedemptions(res.redemptions || [])
-    } catch (e) { setError(e?.message || 'Failed to load') }
+      setLastSeen('gcredemptions:list', res)
+    } catch (e) { if (quiet === true) console.error(e); else setError(e?.message || 'Failed to load') }
   }
 
   // Read-only reference copy of the live marketplace. Its own loader so a
   // failure here never blanks the fulfillment queue above it.
-  async function loadMenu() {
+  async function loadMenu(quiet = false) {
     try {
       const res = await callApi('gc_load_services')
-      setServices(res?.error ? [] : (res.services || []))
-    } catch { setServices([]) }
+      if (res?.error) { if (quiet === true) console.error(res.error); else setServices([]); return }
+      setServices(res.services || [])
+      setLastSeen('gcredemptions:menu', res)
+    } catch (e) { if (quiet === true) console.error(e); else setServices([]) }
   }
 
   function flash(msg) { setStatus(msg); setTimeout(() => setStatus(''), 4000) }

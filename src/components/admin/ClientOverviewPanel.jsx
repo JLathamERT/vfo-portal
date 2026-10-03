@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import ListFilterButton, { matchesFilter, SortSelect, useHeaderSort, sortByColumn, SortHeader } from './ListFilterButton'
 import { ClientOverviewSkeleton } from '../shared/skeletons/admin'
 import { MemberNameLink } from '../shared/personLinks'
@@ -105,16 +105,35 @@ export default function ClientOverviewPanel() {
   // (the client columns are identical in every section).
   const { sort: colSort, onSort, reset: resetColSort } = useHeaderSort()
 
+  // Sections fetched fresh during this mount (a snapshot alone does not count).
+  const freshSections = useRef({})
+
   // Lazily load each section on first visit; a cached section never refetches, a
   // failed one retries when the admin returns to it.
-  useEffect(() => {
-    if (dataBySection[activeSection]) return
+  // Re-opened in the same session (nav click or Back re-mounts this panel): draw
+  // the section's last list at once from the snapshot, refresh behind it.
+  useLayoutEffect(() => {
+    if (freshSections.current[activeSection]) return
+    const snapKey = `clientoverview:${activeSection}`
+    let quiet = !!dataBySection[activeSection]
+    if (!quiet) {
+      const snap = getLastSeen(snapKey)
+      if (snap) { setDataBySection(d => ({ ...d, [activeSection]: snap.clients || [] })); quiet = true }
+    }
     let alive = true
     setLoadingSection(activeSection)
     setErrorBySection(e => ({ ...e, [activeSection]: '' }))
     callApi('client_overview_load', { section: activeSection })
-      .then(res => { if (alive) setDataBySection(d => ({ ...d, [activeSection]: res.clients || [] })) })
-      .catch(err => { if (alive) setErrorBySection(e => ({ ...e, [activeSection]: err.message })) })
+      .then(res => {
+        setLastSeen(snapKey, res)
+        if (!alive) return
+        freshSections.current[activeSection] = true
+        setDataBySection(d => ({ ...d, [activeSection]: res.clients || [] }))
+      })
+      .catch(err => {
+        if (quiet) { console.error(err); return }
+        if (alive) setErrorBySection(e => ({ ...e, [activeSection]: err.message }))
+      })
       .finally(() => { if (alive) setLoadingSection(ls => (ls === activeSection ? null : ls)) })
     return () => { alive = false }
   }, [activeSection])

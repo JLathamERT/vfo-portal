@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { callApi } from '../../lib/api'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink, specialistProfilePath } from '../shared/personLinks'
@@ -23,16 +23,23 @@ export default function SpecialistLicenseReconciliationPanel({ embedded = false 
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last payments at once, refreshes behind them.
+  useLayoutEffect(() => {
+    const snap = getLastSeen('specialistlicenserecon:')
+    if (snap) { setPayments(snap.payments || []); setLoading(false) }
+    load(!!snap)
+  }, [])
 
-  async function load() {
-    setLoading(true); setError('')
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('specialist_license_payments_load')
-      if (res?.error) { setError(res.error); return }
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
       setPayments(res.payments || [])
+      setLastSeen('specialistlicenserecon:', res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

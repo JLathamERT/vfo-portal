@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { callApi } from '../../lib/api'
+import { useState, useEffect, useLayoutEffect } from 'react'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, BLUE, money, StatusPill, RecipientName } from './specialistRevenueShared'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink } from '../shared/personLinks'
@@ -35,16 +35,23 @@ export default function SpecialistRecurringPanel({ embedded = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last plans at once, refreshes behind them.
+  useLayoutEffect(() => {
+    const snap = getLastSeen('specialistrecurring:')
+    if (snap) { setPlans(snap.plans || []); setLoading(false) }
+    load(!!snap)
+  }, [])
 
-  async function load() {
-    setLoading(true); setError('')
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('specialist_revenue_recurring_load')
-      if (res?.error) { setError(res.error); return }
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
       setPlans(res.plans || [])
+      setLastSeen('specialistrecurring:', res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

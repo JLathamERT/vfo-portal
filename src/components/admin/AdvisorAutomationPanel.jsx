@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { callApi } from '../../lib/api'
+import { useEffect, useState, useLayoutEffect } from 'react'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
 import SandboxModeToggle from './SandboxModeToggle'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
@@ -197,15 +197,25 @@ export default function AdvisorAutomationPanel() {
   const [error, setError] = useState('')
   const [expandedRow, setExpandedRow] = useState(null)
 
-  useEffect(() => { loadData() }, [])
+  // Re-open draws the last pipeline at once, refreshes behind it.
+  useLayoutEffect(() => {
+    const snap = getLastSeen('advisorautomation:')
+    if (snap) { apply(snap); setLoading(false) }
+    loadData(!!snap)
+  }, [])
 
-  async function loadData() {
-    setLoading(true)
+  function apply(data) {
+    setRows(data.rows || [])
+    setSandboxConfig(data.sandbox_config || null)
+  }
+
+  async function loadData(quiet = false) {
+    if (quiet !== true) setLoading(true)
     try {
       const data = await callApi('automation_load_advisor_pipelines')
-      setRows(data.rows || [])
-      setSandboxConfig(data.sandbox_config || null)
-    } catch (err) { setError(err.message) }
+      apply(data)
+      setLastSeen('advisorautomation:', data)
+    } catch (err) { if (quiet === true) console.error(err); else setError(err.message) }
     finally { setLoading(false) }
   }
 

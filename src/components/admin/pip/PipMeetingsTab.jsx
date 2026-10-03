@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { callApi } from '../../../lib/api'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { callApi, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel } from '../../shared/PhaseNotes'
 import { PipMeetingsListSkeleton, PipMeetingDetailSkeleton } from '../../shared/Skeleton'
 import { TrackHero, PhaseBadge, ListHeader } from '../../shared/TrackKit'
@@ -452,27 +452,78 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
   const [adding, setAdding] = useState(false)
   const [collapsedYears, setCollapsedYears] = useState({})
 
-  useEffect(() => { loadData() }, [clientId])
+  // True while the list on screen is the last-seen snapshot and the quiet refresh
+  // has not landed yet: nothing may open a meeting off snapshot data, because the
+  // detail view seeds its editable progress and dates from what it is handed at mount.
+  const [snapPending, setSnapPending] = useState(false)
+  const [pendingOpenId, setPendingOpenId] = useState(null)
+  // The save/send count when the list on screen was loaded: Back or a re-open
+  // only holds a click for fresh data if something was written since.
+  const writesAtLoadRef = useRef(-1)
+  const snapKey = `pipmeetings:${clientId}:${programId ?? ''}`
 
-  async function loadData() {
-    setLoading(true)
+  // Re-opened in the same session: draw the last meeting list at once, refresh behind it.
+  useLayoutEffect(() => {
+    const snap = getLastSeen(snapKey)
+    if (snap) {
+      applyLoaded(snap)
+      writesAtLoadRef.current = snap.writes ?? -1
+      setSnapPending(snap.writes !== getWriteCount())
+      setLoading(false)
+    }
+    loadData(!!snap)
+  }, [clientId])
+
+  // A meeting clicked while the snapshot was showing opens from the fresh list.
+  useEffect(() => {
+    if (snapPending || pendingOpenId == null) return
+    const fresh = tracks.find(t => t.id === pendingOpenId)
+    setPendingOpenId(null)
+    if (fresh) setSelectedTrack(fresh)
+  }, [snapPending, pendingOpenId, tracks])
+
+  function pipTracksOf(tracksData) {
+    return (tracksData.tracks || []).filter(t => t.track_type === 'pip').sort((a, b) => a.id - b.id)
+  }
+
+  // Applies the raw responses — fresh from loadData, or the last-seen snapshot.
+  function applyLoaded({ tracksData, phasesData, perTrack }) {
+    const pipTracks = pipTracksOf(tracksData)
+    setTracks(pipTracks)
+    setPhases(phasesData.phases || [])
+    if (!perTrack) return
+    const progressMap = {}
+    pipTracks.forEach(track => {
+      progressMap[track.id] = {}
+      ;(perTrack[track.id]?.progress || []).forEach(p => { progressMap[track.id][p.task_id] = p })
+    })
+    setAllProgress(progressMap)
+  }
+
+  async function loadData(quiet = false) {
+    if (quiet !== true) setLoading(true)
+    const startWrites = getWriteCount()
+    let base = null
     try {
       const [tracksData, phasesData] = await Promise.all([
         callApi('msm_load_priority_tracks', { client_id: clientId }),
         callApi('msm_load_pip_phases', { program_id: programId }),
       ])
-      const pipTracks = (tracksData.tracks || []).filter(t => t.track_type === 'pip').sort((a, b) => a.id - b.id)
-      setTracks(pipTracks)
-      setPhases(phasesData.phases || [])
-      const progressMap = {}
-      await Promise.all(pipTracks.map(async track => {
-        const pd = await callApi('msm_load_priority_progress', { priority_track_id: track.id })
-        progressMap[track.id] = {}
-        ;(pd.progress || []).forEach(p => { progressMap[track.id][p.task_id] = p })
+      base = { tracksData, phasesData }
+      const perTrack = {}
+      await Promise.all(pipTracksOf(tracksData).map(async track => {
+        perTrack[track.id] = await callApi('msm_load_priority_progress', { priority_track_id: track.id })
       }))
-      setAllProgress(progressMap)
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
+      const raw = { ...base, perTrack }
+      applyLoaded(raw)
+      setLastSeen(snapKey, { ...raw, writes: startWrites })
+      writesAtLoadRef.current = startWrites
+    } catch (err) {
+      console.error(err)
+      // A normal load keeps the list it got, as before; a quiet one keeps the snapshot.
+      if (quiet !== true && base) applyLoaded({ ...base, perTrack: null })
+    }
+    finally { setLoading(false); setSnapPending(false) }
   }
 
   function nextYearDefault() {
@@ -506,13 +557,24 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
   if (loading && selectedTrack) return <PipMeetingDetailSkeleton />
   if (loading) return <PipMeetingsListSkeleton />
 
+  // Clicked while the list was still refreshing: go to the page at once and show
+  // its skeleton; it opens with the fresh data the moment that lands.
+  if (pendingOpenId != null) {
+    return (
+      <div>
+        <button onClick={() => setPendingOpenId(null)} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to PIP Meetings</button>
+        <PipMeetingDetailSkeleton />
+      </div>
+    )
+  }
+
   if (selectedTrack) {
     return (
       <PipMeetingDetailView
         track={selectedTrack}
         phases={phases}
         progress={allProgress[selectedTrack.id] || {}}
-        onBack={() => { setSelectedTrack(null); loadData() }}
+        onBack={() => { setSelectedTrack(null); setSnapPending(getWriteCount() !== writesAtLoadRef.current); loadData(true) }}
         onProgressChange={(taskId, p) => setAllProgress(prev => ({ ...prev, [selectedTrack.id]: { ...prev[selectedTrack.id], [taskId]: p } }))}
         onTrackUpdate={loadData}
         readOnly={readOnly}
@@ -591,7 +653,7 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
                 )
               }
               return (
-                <div key={track.id} onClick={() => setSelectedTrack(track)}
+                <div key={track.id} onClick={() => snapPending ? setPendingOpenId(track.id) : setSelectedTrack(track)}
                   style={{ ...rowStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginLeft: '18px' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>

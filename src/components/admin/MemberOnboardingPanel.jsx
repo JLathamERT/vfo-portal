@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
-import { callApi } from '../../lib/api'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, money } from './specialistRevenueShared'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink, useOpenMember } from '../shared/personLinks'
@@ -38,16 +38,23 @@ export default function MemberOnboardingPanel({ kind = 'advisor', title }) {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
 
-  useEffect(() => { load() }, [kind])
+  // Re-open draws the last payments for this kind at once, refreshes behind them.
+  useLayoutEffect(() => {
+    const snap = getLastSeen(`memberonboarding:${kind}`)
+    if (snap) { setPayments(snap.payments || []); setError(''); setLoading(false) }
+    load(!!snap)
+  }, [kind])
 
-  async function load() {
-    setLoading(true); setError('')
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('member_onboarding_payments_load', { kind })
-      if (res?.error) { setError(res.error); return }
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
       setPayments(res.payments || [])
+      setLastSeen(`memberonboarding:${kind}`, res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }

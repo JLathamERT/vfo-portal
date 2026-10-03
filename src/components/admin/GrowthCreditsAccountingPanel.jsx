@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { callApi } from '../../lib/api'
+import { useState, useEffect, useLayoutEffect } from 'react'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { Skeleton, TableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink, useOpenMember } from '../shared/personLinks'
@@ -39,16 +39,23 @@ export default function GrowthCreditsAccountingPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => { load() }, [])
+  // Re-open draws the last figures at once, refreshes behind them.
+  useLayoutEffect(() => {
+    const snap = getLastSeen('gcaccounting:')
+    if (snap) { setData(snap); setLoading(false) }
+    load(!!snap)
+  }, [])
 
-  async function load() {
-    setLoading(true); setError('')
+  async function load(quiet = false) {
+    if (quiet !== true) { setLoading(true); setError('') }
     try {
       const res = await callApi('gc_load_accounting')
-      if (res?.error) { setError(res.error); return }
+      if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
       setData(res)
+      setLastSeen('gcaccounting:', res)
     } catch (e) {
-      setError(e?.message || 'Failed to load')
+      if (quiet === true) console.error(e)
+      else setError(e?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }
