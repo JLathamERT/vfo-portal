@@ -2303,7 +2303,7 @@ function TaxIntakeCard({ intake, questions }) {
   )
 }
 
-function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists, expertBios = {}, onBack, readOnly = false, plannerMode = false, directMode = false, notes = [], onNotesChange, clientId, programName, client }) {
+function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxSpecialists = null, specialists, expertBios = {}, onBack, readOnly = false, plannerMode = false, directMode = false, notes = [], onNotesChange, clientId, programName, client }) {
   // Phase notes belong to THIS plan (plus untagged older notes) — a client with
   // two tax plans never sees one plan's notes inside the other.
   const noteScope = { tax_plan_id: plan.id }
@@ -2332,7 +2332,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, specialists
   const [localProgress, setLocalProgress] = useState(initialProgress)
   const [saving, setSaving] = useState({})
   const [expanded, setExpanded] = useState({})
-  const [taxSpecialists, setTaxSpecialists] = useState([])
+  // Seeded from the list's load so specialist rows draw at once; loadSpecialists
+  // below still refreshes them.
+  const [taxSpecialists, setTaxSpecialists] = useState(initialTaxSpecialists || [])
   const [showAddSpec, setShowAddSpec] = useState(false)
   const [newSpecId, setNewSpecId] = useState('')
   const [newCustomName, setNewCustomName] = useState('')
@@ -5680,20 +5682,31 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
     let base = null
     try {
       const [plansData, phasesData, map1Progress] = await Promise.all([
-        callApi('tax_load_plans', { client_id: clientId }),
+        callApi('tax_load_plans', { client_id: clientId, include_details: true }),
         loadCachedAction('msm_load_client_track', { program_id: programId, track_type: 'tax' }),
         callApi('msm_load_client_progress', { client_id: clientId }),
       ])
       base = { plansData, phasesData, map1Progress }
       const scopedPlans = plansForProgram(plansData.plans, programId)
       const perPlan = {}
-      await Promise.all(scopedPlans.map(async plan => {
-        const [pd, sd] = await Promise.all([
-          callApi('tax_load_progress', { tax_plan_id: plan.id }),
-          callApi('tax_load_specialists', { tax_plan_id: plan.id }).catch(() => ({ specialists: [] })),
-        ])
-        perPlan[plan.id] = { pd, sd }
-      }))
+      // tax_load_plans now returns every plan's progress + specialists in the
+      // same response (`details`, only plans this caller may open). A backend
+      // without it, or a failed details read, falls back to two calls per plan.
+      const details = plansData.details
+      if (details) {
+        scopedPlans.forEach(plan => {
+          const d = details[String(plan.id)]
+          perPlan[plan.id] = { pd: { progress: d?.progress || [] }, sd: { specialists: d?.specialists || [] } }
+        })
+      } else {
+        await Promise.all(scopedPlans.map(async plan => {
+          const [pd, sd] = await Promise.all([
+            callApi('tax_load_progress', { tax_plan_id: plan.id }),
+            callApi('tax_load_specialists', { tax_plan_id: plan.id }).catch(() => ({ specialists: [] })),
+          ])
+          perPlan[plan.id] = { pd, sd }
+        }))
+      }
       const raw = { plansData, phasesData, map1Progress, perPlan }
       applyLoaded(raw)
       setLastSeen(snapKey, { ...raw, writes: startWrites })
@@ -5837,6 +5850,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
         plan={selectedPlan}
         phases={phases}
         progress={allProgress[selectedPlan.id] || {}}
+        initialTaxSpecialists={allSpecialists[selectedPlan.id] || null}
         specialists={effectiveSpecialists}
         expertBios={expertBios}
         onBack={() => { setSelectedPlan(null); setSnapPending(getWriteCount() !== writesAtLoadRef.current); loadData(true) }}
