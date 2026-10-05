@@ -149,7 +149,7 @@ The webhook router uses these fields to pick the right DB table on `checkout.ses
 | **`ERT_STRIPE_SECRET_KEY_SANDBOX`** | `ert` | Test-mode secret key | `getStripeKeyFor('ert', true)` |
 | **`ERT_STRIPE_WEBHOOK_SECRET`** | `ert` | HMAC secret verifying **live** ERT webhook signatures | same four-candidate verifier |
 | **`ERT_STRIPE_WEBHOOK_SECRET_SANDBOX`** | `ert` | HMAC secret verifying **sandbox** ERT webhook signatures | same |
-| **`ERT_CONNECT_ACCOUNT_ID`** | *(platform `vfos`)* | **NEW 2026-09-11.** ERT's **connected-account id** (`acct_…`) on the VFO Services platform — the `destination` of the SpecRev ERT-share transfer and of the manual catch-up transfer. **Not a key, and not an ERT-billing secret** | `ertConnectAccountEnvName(false)` |
+| **`ERT_CONNECT_ACCOUNT_ID`** | *(platform `vfos`)* | **NEW 2026-09-11.** ERT's **connected-account id** (`acct_…`) on the VFO Services platform — the `destination` of the SpecRev ERT-share transfer (the manual catch-up transfer was removed 2026-10-05). **Not a key, and not an ERT-billing secret** | `ertConnectAccountEnvName(false)` |
 | **`ERT_CONNECT_ACCOUNT_ID_SANDBOX`** | *(platform `vfos`)* | **NEW 2026-09-11.** Same, for sandbox — a **test connected account in the VFO Services sandbox stands in for ERT** | `ertConnectAccountEnvName(true)` |
 
 Nothing reads these names inline any more where two accounts are possible: **`stripeKeyEnvName(account, isSandbox)`** and **`stripeWebhookSecretEnvName(account, isSandbox)`** in `constants/stripe-accounts.ts` return the NAME, and the caller reads the value.
@@ -166,7 +166,6 @@ Sandbox switching is per-pipeline and per-action: handlers read `pipeline_sandbo
 | `GET /v1/payment_intents/{id}?expand[]=payment_method` | Read card last4 + payment method type after webhook | lines 317, 1190 (Stripe webhook handler + dead `_stripewebhook` action) |
 | `POST /v1/transfers` | Revenue share payout to member's connected account | line 1463 (`automation_CONTRACT_revshare`) |
 | `POST /v1/transfers` | **SpecRev ERT share** — forwards a line's `ert_share` from the VFO Services balance to ERT's connected account (2026-09-11) | `utils/specialist-revenue-payout.ts` (the ERT loop, after the member loop) |
-| `POST /v1/transfers` | **Manual ERT catch-up** — superadmin-only free-hand transfer for money collected before the ERT share existed (2026-09-11) | `actions/specialist-revenue/ert-transfer.ts` (`specialist_revenue_ert_transfer`) |
 | `POST /v1/checkout/sessions` | **Tax intake deposit** — $500 by ACH or $515.24 by card, NO customer (2026-09-17; card-or-ACH 2026-09-23) | `actions/tax/intake-deposit-checkout.ts` (the `/tax-deposit-pay` choice page — every route) |
 | `POST /v1/transfers` | **Tax intake deposit team share** — $250 of the $500 forwarded to the planner's group when "Tax planner review complete" is saved `Proceed with tax planning` (2026-09-17; trigger moved off the Green/Red Proceed 2026-09-21, decision 27) | `utils/tax-deposit-team-share.ts` (from `save-task.ts`, `allocate-planner.ts`, `revshare-sweep.ts`) |
 | `GET /v1/accounts/{id}` | **Transfers-capability probe** before any Connect transfer — true only when `capabilities.transfers === 'active'`; never throws. Probed once per request on the ERT leg, and by the manual action | `utils/connect-payout-readiness.ts` `connectTransfersActive` (shared with `automation_CONTRACT_revshare` + `automation_TAX_revshare`) |
@@ -507,21 +506,9 @@ Note the memo names **the member the share came from**, not ERT — the same rec
 
 **Stripe does NOT copy the memo to ERT's side — so the portal stamps it (2026-09-11).** A transfer's `description` and `metadata` live on the **platform's** transfer object; the `py_…` charge Stripe creates on the connected account is born bare. On ERT's own dashboard — the one Jake actually reads — the $4,119.77 catch-up showed Description **"-"** and **"No metadata"** (`py_1UEbptA6agMWAt8dMnI7a5IP`). So after every successful ERT transfer, engine and manual action alike, `utils/ert-destination-memo.ts` **`stampErtDestinationPayment`** POSTs `/v1/charges/<transfer.destination_payment>` with the header **`Stripe-Account: <ERT acct>`**, setting the same description and metadata. Acting as ERT is permitted because ERT granted `read_write` when it connected by OAuth. **Best-effort by contract:** the money has already moved by the time it runs, so a failure is cosmetic — it logs one line, returns `false`, and must never change a payout status, raise a bell or abort a run. Live-proven on the $978.68 catch-up (`tr_1UEc2xRwdhysCa6FgnfQHEQ4`).
 
-### Manual "Send funds to ERT" catch-up transfer (2026-09-11)
+### Manual "Send funds to ERT" catch-up transfer — REMOVED 2026-10-05
 
-`specialist_revenue_ert_transfer` (`actions/specialist-revenue/ert-transfer.ts`) is a **superadmin-only**, hand-typed transfer on the same rails, for money that landed on VFO Services **before** the ERT share column existed — gross amounts collected whole, with no line, no request and no `ert_payout_status` for the nightly engine to retry.
-
-```
-POST /v1/transfers
-amount: <round(amount * 100)>        # amount > 0 and <= 50000 (typo guard)
-currency: usd
-destination: <ERT_CONNECT_ACCOUNT_ID[_SANDBOX]>        # same secret as the automated leg
-description: "Manual transfer to ERT - <memo> - by <email>"
-metadata: pipeline=VFO_SPECIALIST_REVENUE, kind=manual_ert_catch_up, memo, created_by
-Idempotency-Key: specrev-ert-manual-<client_ref>
-```
-
-It is deliberately **DB-free** — no row, no email, no bell — so **Stripe's own transfer list is the ledger** for these corrections rather than a second, diverging record of money Stripe already tracks. Double-click safety without a DB comes from the idempotency key: the frontend mints one `client_ref` per form and re-mints it **only after a success**, so retries of one submission collapse onto a single transfer while a second deliberate send is genuinely a second transfer. Mode follows the shared `pipeline_sandbox_config` "MAP 1" toggle, and the destination comes from the same secret as the automated leg, so the tool can never send somewhere the engine would not. **It probes first too (2026-09-11):** `connectTransfersActive` runs before the transfer and a not-active destination returns **502** without calling Stripe — otherwise a refusal would burn that submission's `client_ref` for the rest of the day (gotcha #489). Its idempotency key is **not** rotated, and does not need to be: the operator gets a fresh `client_ref` on the next successful send, and the probe removes the refusal that would have poisoned the current one. **After a success it stamps the destination payment** via `stampErtDestinationPayment` and returns **`stamped: boolean`** to the operator alongside `transfer_id` — purely informational, since the money has already moved.
+`specialist_revenue_ert_transfer` was a superadmin-only, hand-typed transfer to ERT's connected account for money collected before the ERT share column existed (fired live twice, $4,119.77 and $978.68). Removed with its Specialist Revenue section on Jake's instruction; the automatic ERT-share leg above is unaffected. Its shape (probe first, per-form `client_ref` idempotency key, destination memo stamp) lives on in the Accounting **Manually sent Stripe Connect Payment** page — see CHANGELOG 2026-10-05.
 
 ### Tax Planner Share → the GROUP account (2026-07-21)
 
