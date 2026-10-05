@@ -8,6 +8,12 @@
 
 ---
 
+## 2026-10-05 (b) — The showroom "Vault" is members-only
+
+Branch `claude/showroom-vault-members-only` (both repos, same chat as the entry below, after it shipped). Jake: *"make it so just members can see these not clients and specialists."* `vfo-admin-api` **v942** (deployed from the branch, `--use-docker`). `showroom_vault_list` / `_download` were taken OUT of `CLIENT_ALLOWED_ACTIONS` and `SPECIALIST_ALLOWED_ACTIONS` (both deny-by-default, so those sessions now 403); members still reach them by sitting in no list (#495) and admins are unchanged. Frontend: `MemberShowroom` renders the dropdown only with the new `showVault` prop, passed by the admin Specialists showroom, the admin member preview and the member portal — never the client or specialist portals. The vault banner, the specialist-side hint and the server's `acknowledge_public` error now say *members*. A specialist still sees and manages their OWN Showroom Documents in their portal Vault (`specialist_vault_*`, unchanged). No migration, action count 565 unmoved.
+
+---
+
 ## 2026-10-05 — Five misc: "Send funds to ERT" removed, Accounting manual Stripe Connect payment, member-pays signing-reminder button, receipt-only payments after a fee amendment, showroom "Vault"
 
 Branch `claude/vfo-session-setup-2687a3` (both repos, ONE chat). `vfo-admin-api` **v938 → v939 → v940 → v941**, each deployed from the branch with `--use-docker` after Jake's "deploy"; **smoke 5/5 vs v939, vs v940 and vs v941** (Jake, the last at wrap-up after the showroom deploy changed `dispatch.ts` / `role-gates.ts` again). Action count **561 → 560 → 563 → 565**. Migrations `20261005120000` (**NEW public table `manual_connect_payments`**, deny-all in the same migration, anon probe `*/0`, advisor GREEN — STRONG), `20261005130000` (template 309), `20261005140000` (**NEW private bucket `specialist-showroom-docs`**, advisor GREEN) applied + committed. `boldsign-webhook` untouched at v46, crons unmoved, `send_mode=true` unmoved at 55 (template 309 was seeded Send and switched to Draft the same minute — Jake: *"DRAFT NOT SEND MODE"*).
