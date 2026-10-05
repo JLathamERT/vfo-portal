@@ -46,6 +46,7 @@ import OutstandingLinksPanel from '../components/admin/OutstandingLinksPanel'
 import SpecialistRevenueAutomationPanel from '../components/admin/SpecialistRevenueAutomationPanel'
 import GrowthCreditsPanel from '../components/admin/GrowthCreditsPanel'
 import GrowthCreditsAccountingPanel from '../components/admin/GrowthCreditsAccountingPanel'
+import ManualConnectPaymentPanel from '../components/admin/ManualConnectPaymentPanel'
 import NotificationsPage from '../components/admin/NotificationsPage'
 import GrowthCreditsRedemptionsPage from '../components/admin/GrowthCreditsRedemptionsPage'
 import { DirectoryListSkeleton } from '../components/shared/Skeleton'
@@ -150,7 +151,7 @@ const PROFILE_ORIGIN_TABS = ['member_overview', 'client_overview', 'accounting']
 // Every accountingSection key the Accounting tab renders a block for. Used only by
 // the fallback card below, so a stale sessionStorage key can never blank the page.
 const ACCOUNTING_SECTIONS = [
-  'payments',
+  'payments', 'manual_connect_payment',
   'specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_reconciliation',
   'specialist_license', 'specialist_bg',
   'holistic_revenue', 'holistic_reconciliation',
@@ -636,6 +637,7 @@ export default function AdminPortal() {
       key: 'accounting', header: null,
       options: [
         { key: 'payments', label: 'Payments' },
+        { key: 'manual_connect_payment', label: 'Manually sent Stripe Connect Payment' },
       ]
     },
     {
@@ -690,6 +692,7 @@ export default function AdminPortal() {
       key: 'more_acct', submenuLabel: 'Accounting',
       submenu: [
         { key: 'acct:payments', label: 'Payments' },
+        { key: 'acct:manual_connect_payment', label: 'Manually sent Stripe Connect Payment' },
         ...accountingDropdownItems.slice(1).map(item => ({ key: 'more_' + item.key, label: item.submenuLabel, submenu: item.submenu.map(o => ({ ...o, key: 'acct:' + o.key })) })),
       ],
     }] : []),
@@ -928,6 +931,9 @@ export default function AdminPortal() {
 
           {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'payments' && (
             <AllPaymentsTab />
+          )}
+          {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'manual_connect_payment' && (
+            <ManualConnectPaymentPanel />
           )}
           {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'specialist_revenue' || accountingSection === 'specialist_payment_input' || accountingSection === 'specialist_recurring' || accountingSection === 'specialist_reconciliation') && (
             <AccountingCombinedPanel

@@ -110,8 +110,8 @@ export const TEMPLATE_META = {
     ['TAX_postreview_confirmed|3pay', 'Client clicked the green Client decision 1 button — confirms the engagement and that the final retainer is being collected', 'To: Client · Auto-Cc: Member'],
     mv('TAX_postreview_confirmed|3pay', 'Client clicked the green Client decision 1 button — confirms the engagement and that the final retainer is being collected', 'To: Member · Auto-Cc: Client'),
     ['TAX_final_retainer_charge_failed', 'The final retainer charge failed (common after an ACH initial retainer) — fresh payment link'],
-    ['TAX_invoicereceipt_email|final_retainer', 'Final retainer receipt PDF attached (plus a re-issued invoice when the fee was amended at Tax 4)', 'To: Client · Auto-Cc: Member + PF'],
-    mv('TAX_invoicereceipt_email|final_retainer', 'Final retainer receipt PDF attached (plus a re-issued invoice when the fee was amended at Tax 4)', 'To: Member · Auto-Cc: Client + PF'),
+    ['TAX_invoicereceipt_email|final_retainer', 'Final retainer receipt PDF attached (receipt only — an amended fee gets its revised invoice in the original invoice thread)', 'To: Client · Auto-Cc: Member + PF'],
+    mv('TAX_invoicereceipt_email|final_retainer', 'Final retainer receipt PDF attached (receipt only — an amended fee gets its revised invoice in the original invoice thread)', 'To: Member · Auto-Cc: Client + PF'),
     ['TAX_refund_email|Yes', 'Retainer refunded — confirmation', 'To: Client · Auto-Cc: Member'],
     mv('TAX_refund_email|Yes', 'Retainer refunded — confirmation', 'To: Member · Auto-Cc: Client'),
     ['TAX_implementdecision|Proceed', 'Implementation going ahead — green "Proceed now" and red "Decline implementation" buttons (nothing is charged until the client clicks Proceed now)', 'To: Client · Auto-Cc: Member'],
@@ -272,6 +272,9 @@ export const TEMPLATE_META = {
   ],
   'MEMBER_PAYOUT': [
     ['member_connect_setup', 'Member payout setup — Stripe Connect onboarding link so they can receive revenue share', 'To: Member'],
+  ],
+  'CONNECT_PAYOUT': [
+    ['manual_connect_payment', 'Accounting > Manually sent Stripe Connect Payment — confirms the amount and memo to whoever was paid (member, specialist, tax planning group or strategic partner)', 'To: Recipient'],
   ],
   'SPECIALIST_PAYOUT': [
     ['specialist_connect_setup', 'Specialist payout setup — Stripe Connect onboarding link so they can receive revenue share'],

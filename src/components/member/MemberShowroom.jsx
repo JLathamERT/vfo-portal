@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
 import { detailEntries, entryLabel, DB_FIELDS, REVENUE_SHARE_KEY } from '../shared/specialistDetails'
+import { callApi } from '../../lib/api'
 
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
 const HEADSHOT_FALLBACK = 'https://biz-diagnostic.com/img/expert/'
@@ -127,6 +128,59 @@ function DetailsAndBenefits({ entries, showRevenueShare }) {
   )
 }
 
+// The "Vault" dropdown under Details & Benefits (2026-10-05): the specialist's
+// Showroom Documents — the ONE vault section meant for every viewer. The server
+// action reads only that bucket, Active specialists only; files open through a
+// short-lived signed link. Loaded on first open.
+function ShowroomVault({ expertId }) {
+  const [open, setOpen] = useState(false)
+  const [files, setFiles] = useState(null)
+  const [error, setError] = useState('')
+
+  async function toggle() {
+    const next = !open
+    setOpen(next)
+    if (next && files === null) {
+      try {
+        const d = await callApi('showroom_vault_list', { expert_id: expertId })
+        if (d?.error) setError(d.error)
+        else setFiles(d?.files || [])
+      } catch (e) { setError(e?.message || 'Could not load documents') }
+    }
+  }
+
+  async function openFile(path) {
+    setError('')
+    try {
+      const d = await callApi('showroom_vault_download', { expert_id: expertId, path })
+      if (d?.url) window.open(d.url, '_blank', 'noopener')
+      else setError(d?.error || 'Could not open the document')
+    } catch (e) { setError(e?.message || 'Could not open the document') }
+  }
+
+  return (
+    <div className="vfo-sr-db-wrap">
+      <button className={'vfo-sr-db-toggle' + (open ? ' is-open' : '')} onClick={toggle} aria-expanded={open}>
+        Vault
+        <span className="vfo-sr-db-caret">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="vfo-sr-db">
+          {error && <div className="vfo-sr-db-value" style={{ marginBottom: '14px' }}>{error}</div>}
+          {!error && files === null && <div className="vfo-sr-db-value" style={{ marginBottom: '14px' }}>Loading…</div>}
+          {!error && files && files.length === 0 && <div className="vfo-sr-db-value" style={{ marginBottom: '14px' }}>No documents yet.</div>}
+          {!error && files && files.map(f => (
+            <button key={f.path} className="vfo-sr-vault-file" onClick={() => openFile(f.path)} title={f.name}>
+              <span className="vfo-sr-vault-name">{f.name}</span>
+              <span className="vfo-sr-vault-open">Open</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ShowroomModal({ expert, onClose, showRevenueShare = false }) {
   const [showDetails, setShowDetails] = useState(false)
   // useLayoutEffect (not useEffect) so the scroll lock applies BEFORE the browser
@@ -174,7 +228,7 @@ function ShowroomModal({ expert, onClose, showRevenueShare = false }) {
           </div>
         )}
         {entries.length > 0 && (
-          <div className="vfo-sr-db-wrap">
+          <div className="vfo-sr-db-wrap" style={{ marginBottom: '12px' }}>
             <button className={'vfo-sr-db-toggle' + (showDetails ? ' is-open' : '')} onClick={() => setShowDetails(o => !o)}
               aria-expanded={showDetails}>
               Details &amp; Benefits
@@ -183,6 +237,7 @@ function ShowroomModal({ expert, onClose, showRevenueShare = false }) {
             {showDetails && <DetailsAndBenefits entries={entries} showRevenueShare={showRevenueShare} />}
           </div>
         )}
+        <ShowroomVault expertId={expert.id} />
         <div className="vfo-sr-modal-divider" />
         <div className="vfo-sr-modal-bio">{bio}</div>
       </div>
@@ -314,6 +369,10 @@ function showroomCss(s, scale) {
     .vfo-sr-db-field { margin-bottom: 18px; }
     .vfo-sr-db-revshare { margin-bottom: 18px; padding-top: 16px; border-top: 1px solid ${s.card_text_color}26; }
     .vfo-sr-db-label { font-family: 'DM Sans', sans-serif; font-size: ${r(10.5)}px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: ${s.primary_color}; margin-bottom: 6px; }
+    .vfo-sr-vault-file { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-bottom: 10px; padding: 10px 14px; border-radius: 8px; border: 1px solid ${s.card_text_color}26; background: transparent; color: ${s.card_text_color}d9; cursor: pointer; font-family: inherit; text-align: left; }
+    .vfo-sr-vault-file:hover { border-color: ${s.primary_color}; background: ${s.card_text_color}0f; }
+    .vfo-sr-vault-name { font-size: ${r(13.5)}px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .vfo-sr-vault-open { font-family: 'DM Sans', sans-serif; font-size: ${r(10.5)}px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: ${s.primary_color}; flex-shrink: 0; }
     .vfo-sr-db-value { font-size: ${r(13.5)}px; line-height: 1.75; font-weight: 300; white-space: pre-wrap; color: ${s.card_text_color}d9; }
     .vfo-sr-modal-divider { height: 1px; margin-bottom: 24px; background: linear-gradient(90deg, transparent, ${s.primary_color}59, transparent); }
     .vfo-sr-modal-bio { font-size: ${r(15)}px; line-height: 1.8; white-space: pre-wrap; font-weight: 300; color: ${s.card_text_color}d9; }

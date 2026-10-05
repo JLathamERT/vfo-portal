@@ -32,6 +32,10 @@ export const DEFAULT_VAULT_SECTIONS = [
 //   • requestDocs: { entityType, entityKey, recipientName, recipientFirst } →
 //     renders the admin-only "Request documentation" compose card in the section
 //     header. Only the admin surfaces pass it; portals leave it undefined.
+//   • publicNotice: '…' → the section is visible to people OUTSIDE this vault
+//     (the specialist Showroom Documents, 2026-10-05): a red banner under the
+//     title, a confirm before every upload or move into it, and
+//     acknowledge_public:true on those calls — the server refuses them without it.
 //   • moveContext: { entity, key } → enables drag-to-move between sections for
 //     ERT-manager admins (Jake / Tray). ONLY the admin surfaces pass it; the
 //     member / client / specialist portals leave it undefined, and the session
@@ -47,9 +51,11 @@ export default function VaultSections({ actions, params = {}, sections = DEFAULT
   const paramsKey = JSON.stringify(params)
   const canMove = !!moveContext && !!getSession()?.is_ert_manager
 
-  const SECTION_LABELS = { sensitive: 'Tax Documents', general: 'General Documentation', ert: 'ERT/VFOS Documentation' }
+  const SECTION_LABELS = { sensitive: 'Tax Documents', general: 'General Documentation', ert: 'ERT/VFOS Documentation', showroom: 'Showroom Documents' }
 
   function moveWarning(from, to) {
+    const dest = sections.find(s => s.key === to)
+    if (dest?.publicNotice) return `"%s" will move into ${SECTION_LABELS[to] || to}. ${dest.publicNotice}`
     if (from === 'sensitive') return `"%s" will move out of Tax Documents into ${SECTION_LABELS[to] || to}.`
     if (to === 'ert') return `"%s" will move into ERT/VFOS Documentation, which this person can see in their own portal.`
     return null
@@ -64,6 +70,7 @@ export default function VaultSections({ actions, params = {}, sections = DEFAULT
       const d = await callApi('vault_move_document', {
         entity: moveContext.entity, key: moveContext.key,
         from_section: fromKey, to_section: toKey, path: file.path,
+        ...(sections.find(s => s.key === toKey)?.publicNotice ? { acknowledge_public: true } : {}),
       })
       if (d.warning) setError(d.warning)
     } catch (e) { setError(e.message || 'Could not move document') }
@@ -100,12 +107,15 @@ export default function VaultSections({ actions, params = {}, sections = DEFAULT
   async function handleFiles(sec, fileList) {
     const files = Array.from(fileList || [])
     if (!files.length) return
+    if (sec.publicNotice && !window.confirm(`${sec.publicNotice}
+
+Add ${files.length === 1 ? `"${files[0].name}"` : `these ${files.length} files`} here?`)) return
     setBusy(sec.key); setError('')
     for (const file of files) {
       const tooBig = fileSizeError(file)
       if (tooBig) { setError(tooBig); continue }
       try {
-        const d = await callApi(actionFor(sec, 'uploadUrl'), { ...paramsFor(sec), section: sec.key, filename: file.name })
+        const d = await callApi(actionFor(sec, 'uploadUrl'), { ...paramsFor(sec), section: sec.key, filename: file.name, ...(sec.publicNotice ? { acknowledge_public: true } : {}) })
         if (!d.signed_url) throw new Error(d.error || 'Could not start upload')
         const fd = new FormData(); fd.append('cacheControl', '3600'); fd.append('', file)
         const put = await fetch(d.signed_url, { method: 'PUT', headers: { 'x-upsert': 'true' }, body: fd })
@@ -158,6 +168,11 @@ export default function VaultSections({ actions, params = {}, sections = DEFAULT
         >
           <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '4px' }}>{sec.title}</div>
           <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '16px' }}>{sec.hint}</p>
+          {sec.publicNotice && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '8px', padding: '10px 12px', fontSize: '12.5px', fontWeight: 600, marginBottom: '16px' }}>
+              {sec.publicNotice}
+            </div>
+          )}
 
           {sec.requestDocs && (
             <RequestDocsButton
