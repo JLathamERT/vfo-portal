@@ -129,8 +129,9 @@ function DetailsAndBenefits({ entries, showRevenueShare }) {
 }
 
 // The "Vault" dropdown under Details & Benefits (2026-10-05): the specialist's
-// Showroom Documents — the ONE vault section meant for every viewer. The server
-// action reads only that bucket, Active specialists only; files open through a
+// Showroom Documents, for MEMBERS (and admins) only — `showVault` is passed by the
+// member + admin surfaces, never the client or specialist portals, whose sessions
+// the server also refuses. Active specialists only; files open through a
 // short-lived signed link. Loaded on first open.
 function ShowroomVault({ expertId }) {
   const [open, setOpen] = useState(false)
@@ -181,7 +182,7 @@ function ShowroomVault({ expertId }) {
   )
 }
 
-function ShowroomModal({ expert, onClose, showRevenueShare = false }) {
+function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = false }) {
   const [showDetails, setShowDetails] = useState(false)
   // useLayoutEffect (not useEffect) so the scroll lock applies BEFORE the browser
   // paints the modal — otherwise the background reflow lands a frame late and the
@@ -237,7 +238,7 @@ function ShowroomModal({ expert, onClose, showRevenueShare = false }) {
             {showDetails && <DetailsAndBenefits entries={entries} showRevenueShare={showRevenueShare} />}
           </div>
         )}
-        <ShowroomVault expertId={expert.id} />
+        {showVault && <ShowroomVault expertId={expert.id} />}
         <div className="vfo-sr-modal-divider" />
         <div className="vfo-sr-modal-bio">{bio}</div>
       </div>
@@ -245,7 +246,7 @@ function ShowroomModal({ expert, onClose, showRevenueShare = false }) {
   )
 }
 
-export default function MemberShowroom({ experts = [], exclusions = [], ecoMap = {}, showMemberServices = false, showRevenueShare = false }) {
+export default function MemberShowroom({ experts = [], exclusions = [], ecoMap = {}, showMemberServices = false, showRevenueShare = false, showVault = false }) {
   const [activeFilter, setActiveFilter] = useState('All')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
@@ -314,7 +315,7 @@ export default function MemberShowroom({ experts = [], exclusions = [], ecoMap =
         )}
       </div>
 
-      {selected && <ShowroomModal expert={selected} onClose={() => setSelected(null)} showRevenueShare={showRevenueShare} />}
+      {selected && <ShowroomModal expert={selected} onClose={() => setSelected(null)} showRevenueShare={showRevenueShare} showVault={showVault} />}
     </div>
   )
 }
