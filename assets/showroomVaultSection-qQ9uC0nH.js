@@ -1,0 +1,1 @@
+const o="Everything in this section is visible to every member who views this specialist in the showroom.";function s(e){return{key:"showroom",title:"Showroom Documents",hint:e||'Documents shown on the showroom card under "Vault" — e.g. licenses, case studies, sample materials.',publicNotice:o}}export{s};

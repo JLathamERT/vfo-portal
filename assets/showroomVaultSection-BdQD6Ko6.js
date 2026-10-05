@@ -1,1 +1,0 @@
-const e="Everything in this section is visible to anyone who views this specialist in the showroom (members, clients and other specialists).";function o(s){return{key:"showroom",title:"Showroom Documents",hint:s||'Documents shown on the showroom card under "Vault" — e.g. licenses, case studies, sample materials.',publicNotice:e}}export{o as s};
