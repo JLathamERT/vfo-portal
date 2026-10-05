@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
-import { callApi, getSession, getLastSeen, setLastSeen } from '../../lib/api'
-import { NAVY, money, requestDate, RequestRow, MarkReceivedButton, DeleteRequestButton, canDeleteSpecrevRequest, memberShareNote, shareNoteStyle, isHeldLine } from './specialistRevenueShared'
+import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
+import { money, requestDate, RequestRow, MarkReceivedButton, DeleteRequestButton, canDeleteSpecrevRequest, memberShareNote, shareNoteStyle, isHeldLine } from './specialistRevenueShared'
 import { PENDING_COLOR } from './shareLegState'
 import SpecialistPaymentInput from './SpecialistPaymentInput'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
@@ -197,109 +197,6 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
         </div>
       )}
 
-      {/* Jake-only catch-up tool. Gated on the session's superadmin flag, NOT on the
-          accounting tab grant this panel is mounted behind. */}
-      {!!getSession()?.is_superadmin && <ErtCatchUpTransferSection />}
-    </div>
-  )
-}
-
-// ── Send funds to ERT (superadmin) ───────────────────────────────────────────
-//
-// A hand-run transfer out of the VFO Services Stripe balance into ERT's connected
-// account, for revenue that landed on VFO Services BEFORE the ERT share column existed.
-// Every request raised since routes its own ERT share, so this is a one-off catch-up
-// path and nothing on the page feeds it.
-
-const ERT_TRANSFER_MAX = 50000
-
-function newClientRef() {
-  return crypto.randomUUID().replace(/-/g, '')
-}
-
-function ErtCatchUpTransferSection() {
-  const [open, setOpen] = useState(false)
-  const [amount, setAmount] = useState('')
-  const [memo, setMemo] = useState('')
-  const [sending, setSending] = useState(false)
-  const [error, setError] = useState('')
-  const [done, setDone] = useState(null)
-  // Idempotency key for the transfer. Minted once per card and re-minted only after a
-  // transfer actually lands, so a double-click replays the same key (the backend collapses
-  // it) while a second deliberate send is a genuinely new transfer.
-  const [clientRef, setClientRef] = useState(newClientRef)
-
-  const amt = parseFloat(String(amount).replace(/[,$]/g, '')) || 0
-  const memoText = memo.trim()
-  const canSend = amt > 0 && amt <= ERT_TRANSFER_MAX && memoText !== '' && !sending
-
-  async function send() {
-    if (!canSend) return
-    if (!window.confirm(`Send ${money(amt)} from the VFO Services Stripe balance to ERT?\n\nMemo: ${memoText}`)) return
-    setSending(true); setError(''); setDone(null)
-    try {
-      const res = await callApi('specialist_revenue_ert_transfer', { amount: amt, memo: memoText, client_ref: clientRef })
-      if (res?.error) { setError(res.error); return }
-      setDone({ transfer_id: res?.transfer_id, amount: amt, sandbox: !!res?.sandbox })
-      setAmount(''); setMemo(''); setClientRef(newClientRef())
-    } catch (e) {
-      setError(e?.message || 'Could not send the transfer.')
-    } finally {
-      setSending(false)
-    }
-  }
-
-  const label = { fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '6px' }
-  const input = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none' }
-
-  return (
-    <div style={{ marginTop: '28px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', boxShadow: 'var(--vfo-shadow-card)' }}>
-      <div onClick={() => setOpen(o => !o)}
-        style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 18px', cursor: 'pointer' }}>
-        <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px' }}>{open ? '▾' : '▸'}</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>Send funds to ERT</div>
-          <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>Superadmin only · one-off catch-up transfer</div>
-        </div>
-      </div>
-
-      {open && (
-        <div style={{ padding: '0 18px 18px', borderTop: '1px solid var(--vfo-border-soft)' }}>
-          <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.6, margin: '14px 0' }}>
-            Transfers from the VFO Services Stripe balance to ERT's connected Stripe account. Use for catch-up amounts only; new requests route their ERT share automatically.
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '14px', alignItems: 'start' }}>
-            <div>
-              <div style={label}>Amount $</div>
-              <input style={input} inputMode="decimal" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
-            </div>
-            <div>
-              <div style={label}>Memo</div>
-              <input style={input} maxLength={200} placeholder="What this catch-up covers" value={memo} onChange={e => setMemo(e.target.value)} />
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '14px' }}>
-            <button type="button" disabled={!canSend} onClick={send}
-              style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: canSend ? `linear-gradient(90deg, ${NAVY} 0%, #125ecc 100%)` : '#c7d2e4', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: canSend ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif' }}>
-              {sending ? 'Sending…' : 'Send to ERT'}
-            </button>
-            {amt > ERT_TRANSFER_MAX && (
-              <span style={{ fontSize: '12px', color: '#b45309' }}>Maximum {money(ERT_TRANSFER_MAX)} per transfer.</span>
-            )}
-          </div>
-
-          {error && (
-            <div style={{ marginTop: '14px', background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>
-          )}
-          {done && (
-            <div style={{ marginTop: '14px', background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>
-              {money(done.amount)} sent to ERT{done.sandbox ? ' (sandbox)' : ''} · transfer {done.transfer_id || '—'}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }

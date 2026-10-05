@@ -34,6 +34,7 @@ const SECTIONS = [
     ['SPECIALIST_PAYOUT', 'specialist_connect_setup'],
     ['STRATEGIC', 'strategic_group_connect_setup'],
     ['STRATEGIC', 'strategic_partner_revshare'],
+    ['CONNECT_PAYOUT', 'manual_connect_payment'],
     ['VAULT', 'VAULT_request_documentation'],
     ['MEMBERS', 'MEMBER_revshare_held'],
     ['MEMBERS', 'MEMBER_revshare_held_arrears'],
