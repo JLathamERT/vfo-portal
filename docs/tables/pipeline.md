@@ -257,6 +257,38 @@ A person-keyed one-time token backing the admin-initiated payment-method-change 
 
 ---
 
+## `manual_connect_payments` (Accounting manual Connect payment, added 2026-10-05)
+
+One row per submission of Accounting → **Manually sent Stripe Connect Payment** — a hand-typed Stripe Connect transfer from the VFO Services platform balance to any member / specialist / tax planning group / strategic partner. Cross-domain like `card_update_tokens`: `entity_type` says which table `entity_key` names. Created by migration `20261005120000_manual_connect_payments.sql`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigserial | pk |
+| `created_at` | timestamptz | not null, default `now()` |
+| `client_ref` | text | not null, **UNIQUE**. The form's per-submission key. The row is inserted **before** Stripe is called, so a double-click's second insert collides and never produces a second transfer; the Stripe `Idempotency-Key` is `manual-connect-<client_ref>`. |
+| `entity_type` | text | not null, **CHECK IN (`'member'`, `'specialist'`, `'tax_planning_group'`, `'strategic_group'`)** |
+| `entity_key` | text | not null. `members.member_number`, or the `experts` / `tax_planning_groups` / `strategic_member_groups` id. |
+| `recipient_name` | text | Snapshot at send time. |
+| `recipient_email` | text | Snapshot (a group's `contact_email`). Null when none on file. |
+| `destination` | text | not null. The Connect `acct_` id resolved **server-side** at send time (never from the browser). |
+| `amount` | numeric(12,2) | not null, CHECK `> 0`. The handler caps it at $50,000. |
+| `memo` | text | not null (≤ 200 chars in the handler). Lands in the transfer description + metadata and on the recipient-side payment. |
+| `sandbox` | boolean | not null, default `false`. The shared "MAP 1" sandbox toggle OR the test-member force (59524). |
+| `status` | text | not null, default `'pending'`, **CHECK IN (`'pending'`, `'sent'`, `'failed'`)**. `pending` = inserted, Stripe not yet answered — **or a network drop left the outcome unknown: check Stripe before resending**; `sent` = transfer created; `failed` = refused (account not transfer-ready, or Stripe error). |
+| `stripe_transfer_id` | text | `tr_…` once `sent`. |
+| `error` | text | The refusal message (or the network-drop note on a `pending` row). |
+| `email_status` | text | The confirmation email's outcome: `sent` / `drafted` / `skipped: …` / `failed: …`. Never gates the money. |
+| `created_by` | text | Admin email from the session. |
+| `sent_at` | timestamptz | Stamped with `status='sent'`. |
+
+**Index:** `manual_connect_payments_created_idx` ON `created_at desc`. **RLS: deny-all** (`"Deny all access" … USING (false)`) in the same migration; service-role only.
+
+**Touched by:** written ONLY by `manual_connect_payment_send`; read by `manual_connect_payment_history` (newest 200) — both in `actions/payouts/manual-connect-payment.ts`, gated by `TAB_ACTIONS.accounting`.
+
+**Email:** `CONNECT_PAYOUT` / `manual_connect_payment` (`email_templates` id 309; `to ["RECIPIENT"]`, `cc` `tnmiller@` + `tvaldes@vfo-services.com`, no bcc, **`send_mode=false` — lands in Gmail Drafts**; placeholders `[First Name]` (a group's name for a group recipient) / `[Amount]` / `[Memo]`). The handler carries the same copy as its fallback if the row is missing.
+
+---
+
 ## `vault_upload_tokens` (vault "Request documentation" + vault drop links, added 2026-07-30)
 
 A **durable** per-`(entity_type, entity_key, section)` token backing the public `/vault-upload?token=` page. Two kinds of row:
@@ -269,7 +301,7 @@ A **durable** per-`(entity_type, entity_key, section)` token backing the public 
 | `token` | text | not null, **UNIQUE**. Minted with `token32()`. Embedded in the `/vault-upload?token=…` link. **This row is the entire credential** for the three PUBLIC actions — there is no session, no gate and no body-supplied bucket or path (gotcha #310); the only body input that can steer an upload is an `'any'` row's section pick, confined to that entity's own sections. |
 | `entity_type` | text | not null, **CHECK IN (`'client'`, `'member'`, `'specialist'`, `'tax_planner'`)** (`tax_planner` since 2026-10-01). Selects the person lookup (`clients.id` / `members.member_number` / `experts.id` / `tax_planners.id`) via the exported `resolveVaultPerson`, and the bucket family. `tax_planner` rows are drop links only — `vault_request_docs` still accepts `client` / `member` / `specialist`. |
 | `entity_key` | text | not null. The person identifier, interpreted per `entity_type` — and **also the storage path prefix** (`<entity_key>/<rand16>_<filename>`), which is what confines one person's uploads away from another's. |
-| `section` | text | not null, **CHECK IN (`'sensitive'`, `'general'`, `'any'`)** (`'any'` since 2026-10-01). Selects the bucket within the family via `VAULT_REQUEST_BUCKETS`: client → `client-tax-returns` / `client-documents`, member → `member-tax-returns` / `member-vault`, specialist → `specialist-tax-returns` / `specialist-documents`, tax_planner → `tax-planner-documents` (General only). **`'any'` = the drop link**: `resolveTokenSection(row, body.section)` (in `actions/vault/request-upload-url.ts`) takes the uploader's pick ONLY if it is one of that entity's own sections, and a single-section vault (tax planner) needs no pick; on a request row the body section is ignored. The ERT/VFOS third vault section is deliberately NOT addressable (#204). |
+| `section` | text | not null, **CHECK IN (`'sensitive'`, `'general'`, `'any'`)** (`'any'` since 2026-10-01). Selects the bucket within the family via `VAULT_REQUEST_BUCKETS`: client → `client-tax-returns` / `client-documents`, member → `member-tax-returns` / `member-vault`, specialist → `specialist-tax-returns` / `specialist-documents`, tax_planner → `tax-planner-documents` (General only). **`'any'` = the drop link**: `resolveTokenSection(row, body.section)` (in `actions/vault/request-upload-url.ts`) takes the uploader's pick ONLY if it is one of that entity's own sections, and a single-section vault (tax planner) needs no pick; on a request row the body section is ignored. The ERT/VFOS vault section is deliberately NOT addressable (#204), and neither is the specialist **Showroom Documents** section (`specialist-showroom-docs`, 2026-10-05 — visible to every showroom viewer, so `VAULT_REQUEST_BUCKETS` omits it: no drop link or Request-documentation link can ever target it). |
 | `created_at` | timestamptz | not null, default `now()` |
 | `last_requested_at` | timestamptz | nullable. Stamped every time the request email is drafted — including resends against the reused token. Never set on an `'any'` row. |
 | `last_upload_at` | timestamptz | nullable. Stamped best-effort by `vault_request_upload_notify` after a successful upload; a failure here is logged, never fatal. |
