@@ -134,7 +134,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
   if (section === 'specialist_kpis') return <SpecialistKpiPanel experts={allExperts} ecoMap={ecoMap} />
   if (section === 'specialist_showroom') return (
     <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', overflow: 'hidden' }}>
-      <MemberShowroom experts={allExperts} exclusions={[]} ecoMap={ecoMap} showMemberServices showRevenueShare />
+      <MemberShowroom experts={allExperts} exclusions={[]} ecoMap={ecoMap} showMemberServices showRevenueShare showVault />
     </div>
   )
   const activeTab = section === 'add_specialist' ? 'add' : 'edit'

@@ -6,7 +6,7 @@ import { showroomVaultSection } from '../shared/showroomVaultSection'
 // also holds the Due Diligence files copied in on go-live) plus a Tax Documents
 // section the specialist can add to after logging in, and a read-only ERT/VFOS
 // Documentation section their VFO team manages. Showroom Documents (2026-10-05)
-// is the one section other people can see — from this specialist's showroom card.
+// is the one section members can see — from this specialist's showroom card.
 const SPECIALIST_VAULT_ACTIONS = {
   list: 'specialist_vault_list',
   uploadUrl: 'specialist_vault_upload_url',
@@ -15,5 +15,5 @@ const SPECIALIST_VAULT_ACTIONS = {
 }
 
 export default function SpecialistVault() {
-  return <VaultSections actions={SPECIALIST_VAULT_ACTIONS} sections={[...DEFAULT_VAULT_SECTIONS, showroomVaultSection('Documents anyone can open from your showroom card under "Vault" — e.g. licenses, case studies, sample materials.'), ertReadOnlySection()]} />
+  return <VaultSections actions={SPECIALIST_VAULT_ACTIONS} sections={[...DEFAULT_VAULT_SECTIONS, showroomVaultSection('Documents members can open from your showroom card under "Vault" — e.g. licenses, case studies, sample materials.'), ertReadOnlySection()]} />
 }
