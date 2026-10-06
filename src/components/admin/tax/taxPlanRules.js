@@ -17,6 +17,15 @@ export const amendStage = (t) => (t?.status_options === AMEND_FEE_TAX5_CODE ? 't
 // client_tax_progress.status on the Deposit Paid step of a WAIVED intake.
 export const DEPOSIT_NA_STATUS = 'N/A — No Deposit'
 
+// The implementation revenue share is finished when the member was emailed — or
+// when the engine recorded the member leg as 'N/A — No Share Due' (a $0 member
+// share pays and emails no member, so the email flag never turns true; the
+// backend step machine already counts it done via REV_DONE in
+// utils/tax-plan-steps.ts). Plans 46 / 47 sat 'Not completed' on this (2026-10-06).
+export const IMPL_REV_NO_SHARE = 'N/A — No Share Due'
+export const implRevShareDone = (pl) =>
+  pl?.implementation_rev_email_sent === true || pl?.implementation_rev_paid === IMPL_REV_NO_SHARE
+
 // Stepper badge + label. Set Up gets a letter: a pre-step outside Tax 1-6.
 export const phaseBadgeToken = (name) => {
   if (name === 'Set Up') return 'S'
@@ -282,7 +291,7 @@ export function makeTaxPlanRules({ plan, livePlan, phases, localProgress, taxSpe
       const impl = livePlan?.implementation_decision
       const finalDec = livePlan?.implementation_final_decision
       const decline = impl === 'Not Implementing' || (impl === 'Undecided' && finalDec === 'No')
-      const fullyDone = livePlan?.implementation_rev_email_sent === true
+      const fullyDone = implRevShareDone(livePlan)
       if (decline || fullyDone) return 'done'
       if (impl) return 'active'
       return 'pending'

@@ -8,6 +8,12 @@
 
 ---
 
+## 2026-10-06 (b) — Implementation revenue share shows done on a $0 member share
+
+Branch `fix/impl-revshare-zero-share` (react only, FRONTEND ONLY — `vfo-admin-api` untouched at v942, no migration, action count 565 unmoved). Jake asked why *"Implementation fee revenue share verified, member paid, member emailed"* was not complete for Nadina Kezel (59073-003, plan 46): the step tested only `implementation_rev_email_sent`, and a $0 member share sends no member email (her implementation revenue share completed 2026-09-24 — planner $5,000 paid, member leg `N/A — No Share Due`). Census: plans **46** and **47** (Violetta Terpeluk), both legacy with `member_share` 0. New helper `implRevShareDone` in `src/components/admin/tax/taxPlanRules.js` (email sent OR `N/A — No Share Due`) now drives the row (which reads *"…verified (no member share due — nothing to pay or email)"* in that case), the Tax 5 AI PC Admin step, `tax5bAipcDone` and the Tax 5 (Post Allocation) phase state — matching the backend `REV_DONE`. Side effect, intended: Tax 6 unlocks on those two plans. **LIVE-PROVEN** (Jake, dev server vs v942): plans 46 + 47 green, Gwen Bostick plan 156 (member paid + emailed) unchanged. Gotcha **#587**.
+
+---
+
 ## 2026-10-06 — Ship notes + one membership data correction
 
 - **`live-226-showroom-vault-members-only` published** (`index-D2qwzLR3.js`). The first GitHub Pages build of that publish (`gh-pages` `5fb29d3`, 2026-10-05 19:40Z) **FAILED during GitHub's Actions incident** and never retries on its own, so the site stayed on `live-225` overnight with the client/specialist Vault button still visible (harmless — v942 already refused those sessions). Retriggered 2026-10-06 by an EMPTY commit on `gh-pages` (`23d951e`); live ~30 s later. Lesson: after `npm run deploy`, poll the live bundle name AND the latest "pages build and deployment" run's conclusion (`/repos/JLathamERT/vfo-portal/actions/runs`) — "Published" from the gh-pages CLI only means the branch was pushed.

@@ -9,7 +9,7 @@ import StepEmailsChip from '../../shared/StepEmailsChip'
 import PricingSplitCard from './PricingSplitCard'
 import { CONFIRMATION_CARD_SKIP } from '../../../lib/confirmationStatus'
 import { formatDate as formatFullDate } from '../../../lib/dates'
-import { makeTaxPlanRules, KNOWN_FEE_PROCESS_VERSIONS, isNewFeeProcess, AMEND_FEE_CODE, AMEND_FEE_TAX5_CODE, isAmendStepTask, amendStage, DEPOSIT_NA_STATUS, phaseBadgeToken, phaseShortLabel } from './taxPlanRules'
+import { makeTaxPlanRules, KNOWN_FEE_PROCESS_VERSIONS, isNewFeeProcess, AMEND_FEE_CODE, AMEND_FEE_TAX5_CODE, isAmendStepTask, amendStage, DEPOSIT_NA_STATUS, phaseBadgeToken, phaseShortLabel, implRevShareDone, IMPL_REV_NO_SHARE } from './taxPlanRules'
 import { TAX_DISPLAY_NAMES, taxDisplayName } from '../../shared/taxDisplayNames'
 import { numberTaxIntakeQuestions } from '../../member/taxIntakeQuestions'
 
@@ -2876,7 +2876,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   if (tax5bImplFinal === 'No') tax5bImplFinal = 'Decline'
   const tax5bAipcDone = livePlan?.implementation_decision === 'Not Implementing'
     || ((livePlan?.implementation_decision === 'Proceed' || livePlan?.implementation_decision === 'Undecided') && tax5bImplFinal === 'Decline')
-    || livePlan?.implementation_rev_email_sent === true
+    || implRevShareDone(livePlan)
     // A $0 implementation fee has no charge, receipt or revenue-share email to
     // wait for, so the client's Proceed click completes the cascade on its own
     // (mirrors implement-final-decision.ts's no-fee branch).
@@ -4202,7 +4202,6 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       const emailSentAt = livePlan?.implementation_decision_email_sent_at
       const chargeStatus = livePlan?.implementation_charge_status
       const recStatus = livePlan?.implementation_receipt_status
-      const revEmailSent = livePlan?.implementation_rev_email_sent
       // An amendment may leave implementation_amount at $0 (the retainer already
       // covers the whole fee). Mirrors the backend's `implAmt > 0` gate in
       // utils/tax-plan-steps.ts and implement-final-decision.ts's no-fee branch:
@@ -4250,7 +4249,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         <>
           {autoStep('Implementation fee charged to saved payment method', chargeStatus === 'succeeded', (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Implementation fee auto-charged using saved payment method" templates={[{ name: 'TAX_implementdecision|Proceeding', when: 'Automatic — drafted when the client clicks Proceed on the implementation decision email' }, { name: 'TAX_invoicereceipt_email|implementation', when: 'Automatic — implementation invoice + receipt' }, { name: 'TAX_implementation_charge_failed', when: 'Automatic — if the implementation charge fails' }]} context={emailCtx} />, livePlan?.implementation_charge_date, chargeStatus === 'processing')}
           {autoStep('Implementation fee receipt created and emailed to client', recStatus === 'Sent', null, livePlan?.implementation_receipt_email_sent_at)}
-          {autoStep('Implementation fee revenue share verified, member paid, member emailed', revEmailSent === true, (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Implementation fee revenue share verified, member paid, member emailed" templates={[{ name: 'TAX_member_revshare|retainer', when: 'Automatic — member revenue-share notice (retainer)' }, { name: 'TAX_member_revshare|implementation', when: 'Automatic — member revenue-share notice (implementation)' }, { name: 'TAX_planner_revshare|retainer', when: 'Automatic — tax planner revenue-share notice (retainer)' }, { name: 'TAX_planner_revshare|implementation', when: 'Automatic — tax planner revenue-share notice (implementation)' }]} context={emailCtx} />, livePlan?.implementation_rev_email_sent_at || livePlan?.implementation_rev_completed_at)}
+          {autoStep(livePlan?.implementation_rev_paid === IMPL_REV_NO_SHARE ? 'Implementation fee revenue share verified (no member share due — nothing to pay or email)' : 'Implementation fee revenue share verified, member paid, member emailed', implRevShareDone(livePlan), (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Implementation fee revenue share verified, member paid, member emailed" templates={[{ name: 'TAX_member_revshare|retainer', when: 'Automatic — member revenue-share notice (retainer)' }, { name: 'TAX_member_revshare|implementation', when: 'Automatic — member revenue-share notice (implementation)' }, { name: 'TAX_planner_revshare|retainer', when: 'Automatic — tax planner revenue-share notice (retainer)' }, { name: 'TAX_planner_revshare|implementation', when: 'Automatic — tax planner revenue-share notice (implementation)' }]} context={emailCtx} />, livePlan?.implementation_rev_email_sent_at || livePlan?.implementation_rev_completed_at)}
         </>
       )
 
@@ -4328,7 +4327,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         const impl = livePlan?.implementation_decision
         const finalDec = livePlan?.implementation_final_decision
         const decline = impl === 'Not Implementing' || (impl === 'Undecided' && finalDec === 'No')
-        const fullyDone = livePlan?.implementation_rev_email_sent === true
+        const fullyDone = implRevShareDone(livePlan)
         autoIsDone = decline || fullyDone
       }
       return (
