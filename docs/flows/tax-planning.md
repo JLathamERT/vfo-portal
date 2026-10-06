@@ -233,6 +233,8 @@ Like the Tax 4 chain rows marked **Server-enforced** in the table (2026-09-25), 
 >
 > Its owner chip reads **Automated** (grey): `stepOwner` returns `'auto'` for that one name, so the AI PC Admin cards carry a chip while every other `auto` row stays chip-less. Chip colours were re-cut in the same change — **VFOS green** (`#1b9254`), **Client purple** (`#6f42c1`), Tax Team orange and Member blue unchanged, Automated grey (`var(--vfo-muted)`). The two cards' "waiting" pills became gate-style hints (circle-slash + `lockedHintStyle`): *Starts automatically after the "Client tax planning decision" step* (Tax 3) and *… after the "Implementation decision" step* (Tax 5b), so the row says why nothing is happening instead of only that nothing is.
 
+> **The Tax 5 (Post Allocation) cascade is DONE when the implementation revenue share is finished — `implRevShareDone` in `taxPlanRules.js` (2026-10-06):** `implementation_rev_email_sent === true` **or** `implementation_rev_paid === 'N/A — No Share Due'`. A $0 member share pays and emails no member, so the email flag alone never turned true and plans 46 (Nadina Kezel) / 47 (Violetta Terpeluk) showed the revenue-share row, the AI PC Admin step and the Tax 5 phase stuck at *Not completed* — which also kept Tax 6 locked (its gate needs that cascade). The one helper serves all four sites (the row, the AI PC Admin step, `tax5bAipcDone`, the phase state). The backend step machine already counted it via `REV_DONE` (#339); a real member payout still needs its email before turning green (gotcha #587).
+
 ### The escape hatches (deliberate — do not "tidy" them away)
 
 A gate that locks a stop path makes a bell un-performable (#365/#367), so the stop routes stay walkable:
