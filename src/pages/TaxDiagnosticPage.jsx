@@ -30,7 +30,14 @@ async function post(body) {
   return { ok: res.ok, status: res.status, data }
 }
 
+// ?client=<token> is a client's PERSONAL link (the MAP 1 payment-1 email's Tax
+// Form button, 2026-10-07): an existing client, member known, no deposit.
 export default function TaxDiagnosticPage() {
+  const clientToken = new URLSearchParams(window.location.search).get('client')
+  return clientToken ? <PersonalTaxForm token={clientToken} /> : <PublicTaxDiagnostic />
+}
+
+function PublicTaxDiagnostic() {
   const [status, setStatus] = useState('loading')
   // What the submit decided (pay-first, 2026-09-30): 'waived' = the named member
   // qualifies, no payment; 'queued' = the team links the member and sends the link.
@@ -213,6 +220,103 @@ export default function TaxDiagnosticPage() {
         title="VFO Tax Diagnostic"
         intro="Please answer the questions below about the client. When you press Proceed you will be taken to pay the $500 Tax Planning Deposit by card or bank transfer, unless no deposit is due."
         submitLabel="Proceed"
+        allowTestFill={import.meta.env.DEV}
+        clientFilling={completedBy === 'client'}
+      />
+    </TokenShell>
+  )
+}
+
+// The PERSONAL link for an EXISTING client (actions/tax/holistic-form.ts): the
+// same questions, the member already known, the client's name + email prefilled
+// and locked, no "referred by" question and no deposit. The token is the whole
+// credential — the server decides the client, the member and that nothing is owed.
+function PersonalTaxForm({ token }) {
+  const [status, setStatus] = useState('loading')
+  const [error, setError] = useState('')
+  const [info, setInfo] = useState(null)
+  const [completedBy, setCompletedBy] = useState('')
+  const [website, setWebsite] = useState('')
+
+  useEffect(() => {
+    let live = true
+    ;(async () => {
+      try {
+        const { ok, data } = await post({ action: 'tax_holistic_form_load', token })
+        if (!live) return
+        if (!ok) { setError(data?.error || 'This link is not valid.'); setStatus('error'); return }
+        setInfo(data)
+        setStatus(data.submitted ? 'already' : 'form')
+      } catch {
+        if (!live) return
+        setError('Unable to connect. Please try again later.')
+        setStatus('error')
+      }
+    })()
+    return () => { live = false }
+  }, [token])
+
+  function validatePrelude() {
+    return completedBy ? [] : ['Who is completing this form? is required']
+  }
+
+  async function submitAnswers(answers) {
+    const { ok, data } = await post({ action: 'tax_holistic_form_submit', token, completed_by: completedBy, website, answers })
+    if (!ok) throw new Error(data?.error || 'Something went wrong — please try again.')
+    return data
+  }
+
+  if (status === 'loading') {
+    return <TokenShell maxWidth={520}><Message icon="…" color="#0095ff" title="One moment" message="Loading your Tax Planning Form..." /></TokenShell>
+  }
+  if (status === 'error') {
+    return <TokenShell maxWidth={520}><Message icon="!" color="#d93025" title="This form is not available" message={error} /></TokenShell>
+  }
+  if (status === 'already') {
+    return <TokenShell maxWidth={520}><Message icon="✓" color="#16a34a" title="Already received" message="The Tax Planning Form for this client has already been completed. Thank you." /></TokenShell>
+  }
+  if (status === 'thanks') {
+    return <TokenShell maxWidth={520}><Message icon="✓" color="#16a34a" title="Thank you." message="Your Tax Planning Form has been received. No payment is needed. The VFO Services team will be in touch shortly." /></TokenShell>
+  }
+
+  const labelStyle = { fontSize: '12.5px', fontWeight: 600, color: 'var(--vfo-ink)', display: 'block', marginBottom: '6px', lineHeight: 1.45 }
+  const radioRow = { display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: 'var(--vfo-ink)', cursor: 'pointer', lineHeight: 1.5 }
+  const memberName = info?.member_display_name || 'your VFO member'
+  const clientName = `${info?.client_first_name || ''} ${info?.client_last_name || ''}`.trim() || 'the client'
+
+  const prelude = (
+    <div style={{ display: 'grid', gap: '22px' }}>
+      <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}>
+        <label>Website<input type="text" name="website" tabIndex={-1} autoComplete="off" value={website} onChange={e => setWebsite(e.target.value)} /></label>
+      </div>
+      <div>
+        <label style={labelStyle}>1. Who is completing this form?<span style={{ color: '#d93025' }}> *</span></label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {[['client', `I am the client (${clientName})`], ['member', `I am ${memberName} (VFO member), completing this for my client`]].map(([v, text]) => (
+            <label key={v} style={radioRow}>
+              <input type="radio" name="completed_by" checked={completedBy === v} onChange={() => setCompletedBy(v)} style={{ marginTop: '3px', flexShrink: 0 }} />
+              <span>{text}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <TokenShell maxWidth={900}>
+      <TaxIntakeForm
+        publicMode
+        publicIntake={{ client_first_name: info?.client_first_name, client_last_name: info?.client_last_name, client_email: info?.client_email, test_member: info?.test_member === true }}
+        lockClientIdentity
+        onPublicSubmit={submitAnswers}
+        onDone={() => setStatus('thanks')}
+        prelude={prelude}
+        validatePrelude={validatePrelude}
+        numberOffset={1}
+        title="VFO Tax Diagnostic"
+        intro={`Please answer the questions below for ${clientName} (VFO member: ${memberName}). No payment is needed.`}
+        submitLabel="Submit"
         allowTestFill={import.meta.env.DEV}
         clientFilling={completedBy === 'client'}
       />

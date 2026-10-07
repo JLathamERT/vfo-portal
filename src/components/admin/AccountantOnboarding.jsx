@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { callApi, getSession } from '../../lib/api'
 import { AccountantOnboardingListSkeleton, AccountantOnboardingDetailSkeleton } from '../shared/Skeleton'
 import { TrackHero, PhaseBadge, ListHeader } from '../shared/TrackKit'
@@ -13,6 +13,7 @@ import OnboardingExtraMeetingCard from './OnboardingExtraMeetingCard'
 import StepEmailsChip from '../shared/StepEmailsChip'
 import { MemberNameLink } from '../shared/personLinks'
 import { formatDate as formatFullDate } from '../../lib/dates'
+import { stage1Lock, createMemberLock } from './onboardingOrder'
 
 const STAGE_NAMES = ['', 'Preliminary Meeting', 'PC Admin', 'Add New Accountant']
 
@@ -70,6 +71,12 @@ const MEETING_TIMEZONES = [
   ['HT', 'Hawaii (HT)'],
 ]
 
+// A ?onboarding=<id> link opens its record ONCE per navigation. Tab switches do
+// not navigate, so the router still holds the last link when this panel is opened
+// again — remembering the consumed location key sends the admin to the list
+// instead of back into the last person. A reload starts fresh and stays on it.
+let consumedOnboardingLinkKey = null
+
 export default function AccountantOnboarding() {
   const [view, setView] = useState('list')
   const [onboardings, setOnboardings] = useState([])
@@ -84,6 +91,7 @@ export default function AccountantOnboarding() {
   const [showCompleted, setShowCompleted] = useState(false)
   const [showStopped, setShowStopped] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
   const session = getSession()
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
@@ -95,7 +103,9 @@ export default function AccountantOnboarding() {
   // notification link (/admin?...&onboarding=<id>) opens that record's detail.
   useEffect(() => {
     const sessionId = sessionStorage.getItem('accountantOnboardingOpenId')
-    const openId = sessionId || searchParams.get('onboarding')
+    const urlId = consumedOnboardingLinkKey === location.key ? null : searchParams.get('onboarding')
+    if (urlId) consumedOnboardingLinkKey = location.key
+    const openId = sessionId || urlId
     if (openId) {
       if (sessionId) sessionStorage.removeItem('accountantOnboardingOpenId')
       setSelectedId(parseInt(openId, 10))
@@ -476,19 +486,16 @@ function OnboardingDetail({ id, onBack }) {
   const noPath = finalDec === 'No'
   const undecidedPending = decision === 'Undecided' && !ob.final_decision
 
-  // Stage 1 runs strictly in order now: team member, then the meeting reminder,
-  // then the meeting outcome, then the partnership and the decision. A step that
-  // is already done is never locked, so legacy rows keep rendering what they hold.
+  // Stage 1 runs strictly in order (onboardingOrder.js): every step stays locked
+  // until each step above it is done, the deposit counting only once its
+  // confirmation email is out. A step that is already done is never locked, so
+  // legacy rows keep rendering what they hold.
   const prelimStatus = ob.prelim_meeting_status
   const depositSent = !!ob.deposit_email_sent_at
   const reminderDone = !!(ob.meeting_reminder_scheduled_at || ob.meeting_reminder_skipped_at)
   const reminderDate = ob.meeting_reminder_scheduled_at || ob.meeting_reminder_skipped_at
-  const prelimSettled = prelimStatus === PRELIM_NO_DEPOSIT || prelimStatus === LEGACY_PRELIM_STATUS
-    || prelimStatus === 'Request no meeting'
-    || (prelimStatus === PRELIM_SEND_DEPOSIT && depositSent)
-  const prelimLockHint = prelimStatus === PRELIM_SEND_DEPOSIT && !depositSent
-    ? 'Send the deposit link first'
-    : 'Complete the Preliminary Meeting step first'
+  const lockFor = (key) => stage1Lock(ob, 'accountant', key)
+  const createLock = createMemberLock(ob, 'accountant')
   const prelimSelectValue = prelimStatus === LEGACY_PRELIM_STATUS ? PRELIM_NO_DEPOSIT : (prelimStatus || '')
 
   const tdInput = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '11px' }
@@ -647,7 +654,7 @@ function OnboardingDetail({ id, onBack }) {
     return 'pending'
   }
 
-  const stage3Locked = isAssociate ? false : !(yesPath && ob.invoice_sent_at)
+  const stage3Locked = !ob.member_created_at && !!createLock
 
   // Extra-meeting card, injected into the Yes step list at the point it
   // interrupted (extra_meeting_stage) so the meeting squeezes between rows.
@@ -742,12 +749,12 @@ function OnboardingDetail({ id, onBack }) {
           </select>
         </Row>
         <Row label="Meeting Reminder Setup" done={reminderDone} date={reminderDate} emails={ACCOUNTANT_MEETING_REMINDER_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx}
-          locked={!reminderDone && !ob.onboarding_team_member} lockedHint="Select the Team Member Responsible first">
+          locked={!reminderDone && !!lockFor('reminder')} lockedHint={lockFor('reminder')}>
           {reminderControl}
         </Row>
         {reminderCascade}
         <Row label="Preliminary Meeting" done={!!prelimStatus} date={ob.prelim_meeting_status_at} onDateChange={d => saveStepDate('prelim_meeting_status_at', d)} saving={saving}
-          locked={!prelimStatus && !reminderDone} lockedHint="Send or skip the meeting reminder first">
+          locked={!prelimStatus && !!lockFor('prelim')} lockedHint={lockFor('prelim')}>
           <select value={prelimSelectValue} onChange={e => savePrelimMeeting(e.target.value)} disabled={saving || depositSent} title={depositSent ? 'A deposit link has already been sent' : undefined} style={{ ...selectStyle, color: 'var(--vfo-ink)' }}>
             <option value="">-- Select --</option>
             <option value={PRELIM_SEND_DEPOSIT}>{PRELIM_SEND_DEPOSIT}</option>
@@ -757,7 +764,7 @@ function OnboardingDetail({ id, onBack }) {
           </select>
         </Row>
         <Row label="Direct or Advisor Partnership" done={!!ob.accountant_partnership} date={ob.accountant_partnership_at} onDateChange={d => saveStepDate('accountant_partnership_at', d)} saving={saving}
-          locked={!ob.accountant_partnership && (!prelimStatus || prelimStatus === 'No Show')} lockedHint={prelimStatus === 'No Show' ? 'Preliminary meeting was a no-show' : 'Complete the Preliminary Meeting step first'}>
+          locked={!ob.accountant_partnership && !!lockFor('partnership')} lockedHint={lockFor('partnership')}>
           <select value={ob.accountant_partnership || ''} onChange={e => savePartnership(e.target.value)} disabled={saving || depositSent} title={depositSent ? 'A deposit link has already been sent' : undefined} style={{ ...selectStyle, color: 'var(--vfo-ink)' }}>
             <option value="">-- Select --</option>
             <option value="No accountant partnership">Direct</option>
@@ -765,7 +772,8 @@ function OnboardingDetail({ id, onBack }) {
           </select>
         </Row>
         {ob.accountant_partnership === 'Accountant Partnership' && (
-          <Row label="CC Connected Advisor" done={!!ob.cc_advisor_email} date={ob.cc_advisor_at} onDateChange={d => saveStepDate('cc_advisor_at', d)} saving={saving}>
+          <Row label="CC Connected Advisor" done={!!ob.cc_advisor_email} date={ob.cc_advisor_at} onDateChange={d => saveStepDate('cc_advisor_at', d)} saving={saving}
+            locked={!ob.cc_advisor_email && !!lockFor('cc_advisor')} lockedHint={lockFor('cc_advisor')}>
             <AdvisorCombo
               advisors={advisors}
               currentNumber={ob.cc_advisor_member_number}
@@ -780,16 +788,16 @@ function OnboardingDetail({ id, onBack }) {
         {prelimStatus === PRELIM_SEND_DEPOSIT && (
           <>
             <Row label="Deposit" done={depositSent} date={depositRefunded ? ob.deposit_refund_date : ob.deposit_email_sent_at} emails={ACCOUNTANT_DEPOSIT_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx}
-              locked={!depositSent && !ob.accountant_partnership} lockedHint="Select Direct or Advisor Partnership first">
+              locked={!depositSent && !!lockFor('deposit')} lockedHint={lockFor('deposit')}>
               {depositControl}
             </Row>
-            {!depositSent && ob.accountant_partnership && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '4px 0 0 18px' }}>{`Minimum $500, maximum $${fmtMoney(depositMax)}`}</div>}
+            {!depositSent && !lockFor('deposit') && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '4px 0 0 18px' }}>{`Minimum $500, maximum $${fmtMoney(depositMax)}`}</div>}
             {depositRefundCard}
             {depositCascade}
           </>
         )}
         <Row label="Preliminary Meeting Decision" done={!!decision} date={ob.prelim_meeting_decision_at} emails={ACCOUNTANT_DECISION_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} onDateChange={d => saveStepDate('prelim_meeting_decision_at', d)} saving={saving}
-          locked={!decision && !prelimSettled} lockedHint={prelimStatus === 'No Show' ? 'Preliminary meeting was a no-show' : prelimLockHint}>
+          locked={!decision && !!lockFor('decision')} lockedHint={lockFor('decision')}>
           {decision ? (
             <span style={pillStyle(decision === 'Yes' ? '#1b9254' : decision === 'No' ? '#e74c3c' : '#e06717')}>{decision}</span>
           ) : (
@@ -803,7 +811,7 @@ function OnboardingDetail({ id, onBack }) {
       </StageBlock>}
 
       {!isAssociate && <StageBlock stage={2} title="PC Admin" state={stage2State()} expanded={expanded[2]} onToggle={() => setExpanded(p => ({ ...p, 2: !p[2] }))}>
-        {!decision && <div style={{ padding: '12px', color: 'var(--vfo-muted)', fontSize: '13px' }}>Waiting for Stage 1 decision.</div>}
+        {!decision && <Row label="Engagement agreement created and sent for signing" done={false} locked lockedHint='Complete "Preliminary Meeting Decision" first' />}
 
         {decision === 'Yes' && yesRows(true)}
 
@@ -842,9 +850,7 @@ function OnboardingDetail({ id, onBack }) {
 
       <StageBlock stage={isAssociate ? 1 : 3} title="Add New Accountant" state={stage3State()} expanded={expanded[3]} onToggle={() => setExpanded(p => ({ ...p, 3: !p[3] }))} dimmed={stage3Locked}>
         {stage3Locked ? (
-          <div style={{ padding: '12px', color: 'var(--vfo-muted)', fontSize: '13px' }}>
-            Available once the invoice/receipt has been sent in Stage 2.
-          </div>
+          <Row label="Create Accountant & Send Setup Link" done={false} locked lockedHint={createLock} />
         ) : ob.member_created_at ? (
           <>
             <AutoRow label="Accountant created" done={true} date={ob.member_created_at} emails={ACCOUNTANT_LOGIN_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} />
