@@ -58,6 +58,10 @@ export default function TaxIntakeForm({
   // The CLIENT is the one filling it in (the /tax-intake link page, or the
   // diagnostic's "I am the client"): a question's selfLabel replaces its label.
   clientFilling = false,
+  // The personal Tax Diagnostic link for an EXISTING client (2026-10-07): the
+  // client's first / last name and email come from their record and are locked,
+  // and there is no deposit line (no deposit is ever due).
+  lockClientIdentity = false,
 }) {
   const holistic = !!existingClient
   const [step, setStep] = useState(() => (holistic || publicMode ? 'form' : 'choose'))
@@ -140,7 +144,9 @@ export default function TaxIntakeForm({
   }
   // q4 is locked on a link page (the invited address is half of what the token
   // proves) but typed freely on the public diagnostic page, which has no token.
-  const lockedIds = holistic ? new Set(['q2', 'q3', 'q4', 'q5']) : publicMode && publicIntake ? new Set(['q4']) : new Set()
+  const lockedIds = holistic ? new Set(['q2', 'q3', 'q4', 'q5'])
+    : lockClientIdentity ? new Set(['q2', 'q3', 'q4'])
+      : publicMode && publicIntake ? new Set(['q4']) : new Set()
 
   function set(id, value) {
     setAnswers(a => ({ ...a, [id]: value }))
@@ -251,7 +257,7 @@ export default function TaxIntakeForm({
   const depositAmount = publicMode ? (publicIntake?.deposit_amount || 500) : (eligibility?.deposit_amount || 500)
 
   // The public diagnostic page (no intake row yet) takes no payment and quotes none.
-  const depositLine = holistic || (publicMode && !publicIntake)
+  const depositLine = holistic || lockClientIdentity || (publicMode && !publicIntake)
     ? null
     : publicMode
       ? (depositRequired ? `Deposit: $${depositAmount}` : 'Deposit: waived')

@@ -45,28 +45,68 @@ Onboarding money — **deposit, balance, paid-in-full and refund** — is one of
 
 ---
 
-## Stage 1 — strictly sequential since 2026-09-04 (v811)
+## Stage 1 — strictly sequential (since 2026-09-04, v811; one shared step order since 2026-10-07, v949)
 
-Stage 1 renders as a tax-style locked cascade: each step is greyed with a lock icon and a hint until the step
-above it is answered. The locks are choreography; **every one of them is backed by a handler 400** (#403).
+Stage 1 renders as a tax-style locked cascade: a locked step shows the same red no-entry icon (`LockedIcon`) and
+grey hint as Tax in place of its control. The locks are choreography; **every one of them is backed by a handler
+400 carrying the SAME hint** (#403).
 
-| # | Step | Unlocks when | Backing refusal |
+**ONE step order, mirrored across the two repos.** The order, every lock and every hint come from a pair of files
+that must change together — a cross-repo contract, labels included, because the hint quotes the label:
+
+- frontend `src/components/admin/onboardingOrder.js`
+- backend `utils/onboarding-order.ts`
+
+Both export `stage1Steps(ob, pipeline)`, `stage1Lock(ob, pipeline, key)`, `depositStepDone(ob)`,
+`paymentStepLabel(ob)`, `createMemberLock(ob, pipeline)` and `lockHint(label)` = `Complete "<label>" first`.
+
+| # | Step (`key`) | On which rows | Done when |
 |---|---|---|---|
-| 1 | **Team Member Responsible** | — | `meeting-reminder.ts` 400s without one — the bells route to this person |
-| 2 | **Meeting Reminder Setup** *(NEW)* | a team member is picked | — |
-| 3 | **Preliminary Meeting** | the reminder was **sent or skipped** | `prelim-meeting.ts`: *"Send or skip the meeting reminder first"* |
-| 4 | **Deposit** *(NEW)* [advisor] / **Direct or Advisor Partnership** + **CC Connected Advisor** [accountant] | *advisor:* outcome = `Completed - Send Deposit` · *accountant:* the outcome is set and is not `No Show` | *advisor:* see *Deposit* below · *accountant:* `save-partnership.ts` |
-| 5 | **Implementation value (including deposit)** [advisor] / **Deposit** *(NEW)* [accountant] | *advisor:* the deposit step is settled or absent · *accountant:* a partnership is picked | *accountant:* `deposit-email.ts` 400s *"Select Direct or Advisor Partnership first"* |
-| 6 | **Preliminary Meeting Decision** | step 5 answered | — |
+| 1 | **Team Member Responsible** (`team`) | both | `onboarding_team_member` is set |
+| 2 | **Meeting Reminder Setup** (`reminder`) | both | `meeting_reminder_scheduled_at` or `meeting_reminder_skipped_at` is set, **or any Preliminary Meeting outcome is recorded** — the PFT `'Request no meeting'` fast path writes an outcome with no reminder |
+| 3 | **Preliminary Meeting** (`prelim`) | both | an outcome is set and it is not `No Show` |
+| 4 | **Direct or Advisor Partnership** (`partnership`) | accountant | `accountant_partnership` is set |
+| 5 | **CC Connected Advisor** (`cc_advisor`) | accountant, only when `accountant_partnership = 'Accountant Partnership'` | `cc_advisor_email` is set — **required** on that path |
+| 6 | **Deposit** (`deposit`) | both, only when the outcome is `Completed - Send Deposit` | `deposit_confirmation_email_sent_at` is set **AND** `deposit_status` is `succeeded` or `processing` |
+| 7 | **Implementation value (including deposit)** (`impl`) | advisor | `implementation_value_vfo_ft` and `implementation_value_pft` are both `> 0` |
+| 8 | **Preliminary Meeting Decision** (`decision`) | both | `prelim_meeting_decision` is set |
 
-**The two pipelines diverge at steps 4 and 5, since 2026-09-08 (v818).** The advisor order is the original one.
-On the **accountant** side the Deposit moved BELOW *Direct or Advisor Partnership* + *CC Connected Advisor*,
-because the partnership choice is what sets the deposit's maximum (see *Sending the link*) — asking for the
-money first would mean capping it against an answer nobody had given yet. The two new locks read
-*"Complete the Preliminary Meeting step first"* (or *"Preliminary meeting was a no-show"*) on the Partnership
-row and *"Select Direct or Advisor Partnership first"* on the Deposit row. **Once the deposit link is out the
-partnership select is disabled** (tooltip *"A deposit link has already been sent"*) and `save-partnership.ts`
-400s the same change — the cap must not move under a link that has already been priced against it.
+So the advisor runs 1-2-3-(6)-7-8 and the accountant 1-2-3-4-(5)-(6)-8. **On the accountant side the Deposit sits
+BELOW the partnership steps** because the partnership choice sets the deposit's maximum (see *Sending the link*) —
+asking for the money first would cap it against an answer nobody had given yet.
+
+**The lock rule (`stage1Lock`).** A step is locked while ANY step above it is unfinished. The hint names the step
+DIRECTLY above it when that one is unfinished, otherwise the first unfinished step above —
+`Complete "<step name>" first`; when that step is a `No Show` Preliminary Meeting the hint reads *"Preliminary
+meeting was a no-show"*. **A step that is already done is never locked**, so legacy rows keep rendering what they
+hold.
+
+**The Deposit counts as done only once its confirmation email is out on a paid or clearing deposit**
+(`depositStepDone`). The Deposit row itself shows done as soon as the link is sent (`deposit_email_sent_at`), but
+the step BELOW it stays locked with `Complete "Deposit" first` until `deposit_confirmation_email_sent_at` is set
+and `deposit_status` is `succeeded` or `processing` — so an ACH deposit unlocks the next step once its
+confirmation email has gone out, while a failed or unpaid deposit keeps it locked. The *"Minimum $500, maximum
+$…"* hint under the Deposit row is hidden while that row is locked.
+
+**Backing refusals** (each returns 400 with the hint the screen shows; `<p>` = `advisor` | `accountant`):
+
+| Handler | Refuses when |
+|---|---|
+| `<p>/meeting-reminder.ts` | no Team Member Responsible — `Complete "Team Member Responsible" first` (the bells route to this person) |
+| `<p>/prelim-meeting.ts` | `prelim_meeting_status` is NULL and the reminder was neither scheduled nor skipped — `Complete "Meeting Reminder Setup" first` |
+| `accountant/save-partnership.ts` | no partnership is on file yet and a value is being set → `stage1Lock(…, 'partnership')`; changing an existing choice is not re-locked. It now selects the full row (`select("*")`) to evaluate the lock. |
+| `accountant/save-cc-advisor.ts` | no advisor is picked yet and a `member_number` is being set → `stage1Lock(…, 'cc_advisor')`; changing or clearing an existing pick is allowed |
+| `<p>/deposit-email.ts` | `stage1Lock(…, 'deposit')` while `deposit_email_sent_at` is NULL |
+| `advisor/save-implementation-value.ts` | `stage1Lock(…, 'impl')`, unless both values are already set (a correction never re-locks) |
+| `<p>/decision.ts` | `stage1Lock(…, 'decision')`, only while no decision is on file |
+| `<p>/create-member.ts` | `createMemberLock` — see *Stage 3* below |
+
+**Once the deposit link is out the partnership select is disabled** (tooltip *"A deposit link has already been
+sent"*) and `save-partnership.ts` 400s the same change — the cap must not move under a link that has already been
+priced against it.
+
+**Stage 2 before a decision** renders a single locked row, *"Engagement agreement created and sent for signing"*,
+with the hint `Complete "Preliminary Meeting Decision" first`.
 
 **The reminder prerequisite only fires when `prelim_meeting_status` is currently NULL.** That is deliberate:
 pre-existing rows that already carry an outcome are never forced back through a reminder they cannot arm.
@@ -77,7 +117,8 @@ pre-existing rows that already carry an outcome are never forced back through a 
 - `Completed - Send Deposit` — unlocks the Deposit step.
 - `Completed - No Deposit` — skips it. **Legacy `'Completed'` rows read and display as this**; there was no
   backfill, so both values are live in the column.
-- `No Show` — auto-stops the onboarding (`status='stopped'`) and leaves the decision step locked.
+- `No Show` — auto-stops the onboarding (`status='stopped'`) and leaves every step below it locked with the hint
+  *"Preliminary meeting was a no-show"*.
 - `Request no meeting` — **the STORED value is unchanged on purpose**, because `actions/pft/ft-response.ts`
   writes that exact literal on the PFT fast path; only the UI label changed, to *"Requested no meeting"*. **Since
   2026-09-14 the ADVISOR select no longer offers it** (advisors never take the PFT path; `AdvisorOnboarding.jsx` shows
@@ -89,7 +130,12 @@ pre-existing rows that already carry an outcome are never forced back through a 
 `MM/DD` text: `StepDate` editing was removed from both components, so the backend action
 `save_onboarding_step_date` still exists and is still gated but **has no frontend caller**.
 
-Opening an onboarding writes `?onboarding=<id>` to the URL, so a reload stays on the record.
+Opening an onboarding writes `?onboarding=<id>` to the URL, so a reload stays on the record. **That link is
+opened only ONCE per router location key** *(since 2026-10-07)*: `AdvisorOnboarding.jsx` / `AccountantOnboarding.jsx`
+each keep a module-level `consumedOnboardingLinkKey`, set when the `?onboarding=` param is consumed. A tab switch
+does not navigate, so the router still holds the last link when the panel is opened again — the remembered key
+sends the admin to the LIST instead of back into the last person. A reload starts with a fresh module and stays on
+the record, and a bell link (a new navigation, a new key) still opens its record.
 
 ---
 
@@ -196,8 +242,10 @@ Amount (inclusive, at most 2 decimals; enforced in `deposit-email.ts` with a 400
 **The accountant cap is partnership-dependent as of 2026-09-08 (v818)** — an Advisor-partnership accountant
 pays a $2,000 baseline, so the deposit cannot exceed it. The hint under the field reads *"Minimum $500,
 maximum $2,000"* / *"$4,000"* and the Send button gates on the same number; `deposit-email.ts` enforces it
-server-side and **400s *"Select Direct or Advisor Partnership first"* when the partnership is still NULL** —
-a state the UI's lock makes unreachable, which is the point (#403). The advisor pipeline is unchanged.
+server-side. **A NULL partnership is refused by the Stage 1 lock first** — `stage1Lock(…, 'deposit')` returns
+`Complete "Direct or Advisor Partnership" first` (or `Complete "CC Connected Advisor" first` on the Advisor path
+with no advisor picked), a state the UI's lock makes unreachable, which is the point (#403); a separate NULL-
+partnership guard further down the handler is now only a backstop. The advisor pipeline has no partnership step.
 
 1. **Creates the Stripe customer EARLY if it is missing** — the deposit is now the first thing that needs one.
 2. Mints `deposit_checkout_token`.
@@ -327,6 +375,32 @@ advisor** — it used to drop cents.
 
 ---
 
+## Stage 3 — Create Advisor / Accountant is locked until Stage 2 is done *(since 2026-10-07)*
+
+`createMemberLock(ob, pipeline)` (the same `onboardingOrder.js` / `utils/onboarding-order.ts` pair) keeps
+**Create Advisor & Send Setup Link** / **Create Accountant & Send Setup Link** locked until every yes-path Stage 2
+step is done:
+
+1. *Engagement agreement created and sent for signing* — `agreement_sent_at`
+2. *Engagement agreement signed* — `agreement_signed_by_advisor_at` / `agreement_signed_by_accountant_at`
+3. *Engagement agreement signed by CEO* — `agreement_signed_by_ceo_at`
+4. the payment row, under whichever label Stage 2 shows it (`paymentStepLabel`: *Payment collected* /
+   *Remaining payment collected after deposit* / *Deposit covered the full onboarding payment*) —
+   `payment_status = 'succeeded'`
+5. *Invoice and receipt created and emailed to client* — `invoice_sent_at`
+
+The hint is always the step directly above Create: `Complete "Invoice and receipt created and emailed to client"
+first` — also while there is no Yes decision yet. A declined row reads *"The advisor declined"* / *"The accountant
+declined"*. **VFO Associate accountants are exempt** (they skip Stages 1-2; the lock returns null). The locked
+Stage 3 renders a single locked *Create … & Send Setup Link* row with that hint; once `member_created_at` is set
+the lock no longer applies.
+
+`<p>/create-member.ts` refuses with the same hint (400) — **skipped on the idempotent retry**, when
+`member_number` is already on the row. The older `invoice_sent_at` payment-complete guard is still there after it
+(non-Associate only on the accountant side).
+
+---
+
 ## Once-only CEO countersign stamp
 
 BoldSign **redelivers `Completed`**, and the advisor/accountant branch in `router/webhooks.ts` wrote
@@ -342,8 +416,12 @@ itself was NOT touched (still v40).
 `deposit-email.ts`, `deposit-confirmation.ts`, `deposit-refund.ts`, `charge-balance.ts`; **changed**
 `prelim-meeting.ts`, `stripe-customer.ts`, `stripe-checkout.ts`, `load-payment.ts`, `payment-email.ts`,
 `send-agreement.ts`, `invoice-receipt.ts`, `sweep.ts`; **2026-09-08 (v818)** `accountant/deposit-email.ts` (the
-partnership cap + the NULL-partnership 400) and `accountant/save-partnership.ts` (frozen once a link is out).
-Shared: `actions/onboarding/meeting-reminder-sweep.ts`, `actions/onboarding/meeting-response.ts`,
+partnership cap + the NULL-partnership 400) and `accountant/save-partnership.ts` (frozen once a link is out);
+**2026-10-07 (v949)** the step-order refusals — `decision.ts`, `deposit-email.ts`, `create-member.ts`,
+`meeting-reminder.ts` and `prelim-meeting.ts` (hint wording) on both sides, plus `advisor/save-implementation-value.ts`,
+`accountant/save-partnership.ts` and `accountant/save-cc-advisor.ts`.
+Shared: **`utils/onboarding-order.ts`** (the step order + every lock, mirrored by the frontend's
+`onboardingOrder.js`), `actions/onboarding/meeting-reminder-sweep.ts`, `actions/onboarding/meeting-response.ts`,
 `utils/onboarding-meeting.ts`, `constants/onboarding-team.ts`, `actions/automation/stall-ack.ts`,
 `router/webhooks.ts`, `router/dispatch.ts`, `constants/role-gates.ts`.
 
@@ -354,7 +432,9 @@ Shared: `actions/onboarding/meeting-reminder-sweep.ts`, `actions/onboarding/meet
 ## Frontend
 
 `src/components/admin/AdvisorOnboarding.jsx` + `AccountantOnboarding.jsx` (the locked Stage 1 cascade, the
-reminder form, the deposit + refund cards, the deposit-aware Stage 2 rows),
+reminder form, the deposit + refund cards, the deposit-aware Stage 2 rows, the locked Stage 3 row, the once-per-
+navigation `?onboarding=` link), `src/components/admin/onboardingOrder.js` (the step order + every lock and hint —
+the frontend half of `utils/onboarding-order.ts`),
 `src/pages/AdvisorPayPage.jsx` + `AccountantPayPage.jsx` (the two payment-kind labels),
 `src/pages/OnboardingMeetingPage.jsx` (`/onboarding-meeting`, added to `scripts/emit-route-pages.mjs`,
 33 → **34** route pages).
