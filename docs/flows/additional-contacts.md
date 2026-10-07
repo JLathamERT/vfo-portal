@@ -183,7 +183,7 @@ Consequences worth stating out loud:
 
 ### Credential exclusion — `options.skipMemberContacts`
 
-`resolveTemplateRecipients` gained a 7th `options` parameter. `{ skipMemberContacts: true }` is set on **exactly five** handlers, all of which mail a link that logs in as the member:
+`resolveTemplateRecipients` gained a 7th `options` parameter (`ResolveRecipientOptions`; its other field, `ccCorporateLeadOf`, is the corporate lead Cc below). `{ skipMemberContacts: true }` is set on **exactly five** handlers, all of which mail a link that logs in as the member:
 
 `login-setup/send-email.ts` · `login-setup/request-reset.ts` · `advisor/login-setup-email.ts` · `accountant/login-setup-email.ts` · `onboarding/login-setup-email.ts`
 
@@ -208,6 +208,30 @@ Notice line under the title: *"People on this member's team. With **Cc on all em
 ### Proven / not proven
 
 Live-proven on Test Member 59524: a contact added, edited, removed and toggled; a **REAL (non-sandbox) Stripe Connect setup draft** carried the contact in Cc; and a sandbox log line proved the contact rides when the member is merely **Cc'd on a client email**. Not yet exercised: the first REAL member-contact Cc on a non-Connect send, and all five `skipMemberContacts` arms.
+
+---
+
+## Corporate member lead Cc (2026-10-07)
+
+**A Corporate Member's revenue-share emails Cc their LEAD member.** Unlike the member-contact leg above, this one is **opt-in per call site**, not central: it is a `ResolveRecipientOptions` field, `ccCorporateLeadOf` (the PAYEE's `member_number`), passed as the `options` argument of `resolveTemplateRecipients` in `utils/email-recipients.ts`.
+
+**Resolution** (`utils/corporate-lead.ts` `loadCorporateLeadEmail`): the payee's `members` row is read by `member_number`; if its `member_type` is in `CORPORATE_MEMBER_TYPES` (`Corporate Member`, `Free Corporate Member`, `Free Corporate Member (Legacy)`), `resolveLeadNumber` derives the lead (`connected_member_number`, else the member-number prefix — [tables/members.md](../tables/members.md)) and the lead's `members.email` is added to Cc. A non-corporate payee, a lead that resolves to the payee itself, or a lead with no email adds nothing. It is **keyed on `member_number`, never on email** (two members can share one), and it **never throws** — any error returns null and the email goes out without it.
+
+**The lead only, NOT the lead's own Additional Contacts.** The lead is folded in AFTER the member-contact step: `loadMemberContactCc` runs over To + template Cc + extra Cc, which does not yet include the lead, so the lead's flagged `member_contacts` do not ride along (Jake, 2026-10-06). The lead is deduped and To-collision filtered like any other Cc. **Sandbox suppresses it** like every other Cc (the whole send reroutes to the sandbox address); the `sandbox: would have sent` log line shows it.
+
+**Set at every member revenue-share email:**
+
+| Pipeline | File | Email |
+|---|---|---|
+| MAP 1 | `actions/pipeline/contract-revshare.ts` | `CONTRACT_member_revshare\|first` / `\|subsequent` |
+| Tax | `actions/tax/revshare.ts` | `TAX_member_revshare\|retainer` / `\|implementation` |
+| PIP | `actions/msm/pip-revshare.ts` | `PIP_member_revshare` |
+| SpecRev | `utils/specialist-revenue-payout.ts` | `SPECREV_revenue_share_confirmation` **and** `SPECREV_money_mapping_notice` — **member lines only** (`recipient_type === 'member'`; a specialist line passes null) |
+| Accounting manual Connect payment | `actions/payouts/manual-connect-payment.ts` | the confirmation email — member recipients only (`memberNumber` is null for a specialist / group) |
+
+Derive the set rather than trusting this table: `grep -rn "ccCorporateLeadOf" supabase/functions/vfo-admin-api`.
+
+**Not yet exercised live** — no real corporate-member revenue-share email has gone out with the lead in Cc.
 
 ---
 
