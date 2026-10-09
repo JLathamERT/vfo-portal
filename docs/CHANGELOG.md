@@ -40,6 +40,8 @@ Branch `fix/tax-personal-link` (both repos, the same chat as L2). **Why:** the t
 - The six team bells (3050-3055) were marked read.
 - **The $500 refund is Jake's, by hand — not done here.**
 
+**Shipped:** merged edge `c02d89b` (#276) / react `6950ccb` (#437); v957 byte-identical to merged main (not redeployed); frontend PUBLISHED from a tree identical to merged main (`index-CR1Ge2xn.js`, live site verified, `/admin/` + `/tax-diagnostic/` 200); tags `backend-good-2026-10-09-v957` + `live-230-tax-personal-link`. The hub's version line before this branch read **v955** (v953 → v955 = `claude/vfo-session-setup-0fbec1`, portal licensing L2, the entry below).
+
 **Not exercised:** see the hub OWED line for this branch.
 
 ## 2026-10-09 — Portal licensing L2: the Basic client portal (Send portal access, Request an introduction, the Basic gate)
