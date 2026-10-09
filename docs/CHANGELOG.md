@@ -34,6 +34,8 @@ Branch `claude/vfo-session-setup-0fbec1` (both repos, ONE chat). Plan of record:
 - The member Showroom shows no intro button. The draft emails were read in aipc Gmail.
 - **Smoke 5/5 vs v953, vs v954 and vs v955.**
 
+**Shipped:** merged edge `382f8ea` (#275) / react `08fabfd` (#434); v955 byte-identical to merged main (not redeployed); frontend PUBLISHED from a tree identical to merged main (`index-C3SgvR00.js`, live site verified, `/client/` + `/member/` 200); tags `backend-good-2026-10-09-v955` + `live-229-basic-client-portal`. The hub's version line before this branch read **v952** (v943 → v949 = `claude/vfo-session-setup-7c24a3`, v950 = `fix/tax-move-forward-bell`, v951 = `fix/tax-diagnostic-team-recipients`, v952 = `fix/tax-agreement-email-buttons` — each in its own entry below).
+
 **Not exercised:** see the hub OWED line for this branch — the forged-client 403, the email-taken 409, a real expired-link resend, the API duplicate 409, the excluded / inactive 404, the email-failure rollback, the switch-off 403s, any Send-mode delivery. Gotchas **#595-#597**.
 
 ## 2026-10-09 — The "agreement sent" email: Tracy's wording, buttons, and a redraft-only mode
