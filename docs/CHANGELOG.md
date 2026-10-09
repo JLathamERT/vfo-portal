@@ -8,6 +8,40 @@
 
 ---
 
+## 2026-10-09 — A personal Tax Planning Form link on every Holistic tax plan (+ the John Ericson repair)
+
+Branch `fix/tax-personal-link` (both repos, the same chat as L2). **Why:** the team kept handing Holistic clients doing Tax Priorities the PUBLIC `/tax-diagnostic` link, which charges $500 unless the named member is past the waiver line, and on a member-named form creates a duplicate client (#593). The no-deposit personal link (2026-10-07) only ever travelled in the MAP 1 payment-1 email. At the time **only 49 of 253 clients had the token it needs (134 of 151 Holistic clients had none)**, and no admin screen showed it.
+
+**What was built.**
+- **A per-plan token.** Migration `20261009170000_tax_plan_personal_form_token.sql` adds the nullable column `client_tax_plans.personal_form_token` (unique where set; advisor GREEN, a confirmation). It is the plan's OWN token, so the link does not also open the client's `/tax-upload` page, as `tax_upload_token` does.
+- **New action `tax_personal_link_get {tax_plan_id}`** (`ADMIN_ONLY_ACTIONS`, action count **569 → 570**). It mints the token once with a race-safe `.is(null)` write and returns `{url, submitted}`. A VFO Tax Planning plan is refused with a 400.
+- **`tax_holistic_form_load` / `_submit`** accept a plan token (`formTarget`). The form is stored on the plan (`tax_plan_id`, plus the plan's `program_id`). "Already submitted" equals exactly what the plan page shows: the plan's own form, or a client-level one. The bell title gains `(tax plan <id>)`. A VFO Tax Planning plan's token is treated as invalid.
+- **`tax_intake_load`** takes an optional `tax_plan_id` and returns that plan's own form first, else the latest form with no plan.
+- **Frontend:** a **Personal Tax Planning Form link** box at the top of each **Holistic** plan (admin view only, `PersonalTaxFormLink.jsx`). It loads on open with "Loading link…" and shows Copy link only, with no URL. It is hidden once the plan shows a Tax Planning Form. The plan's form card reads its own plan's form.
+
+**Decided by Jake during the build.**
+- Per PLAN, not per client: each plan gets its own form.
+- Holistic plans only: a VFO Tax Planning client comes in through the deposit route.
+- The box disappears once a form shows.
+- No URL on screen.
+- Loaded up front so Copy works at once. A first click during the post-deploy cold start had errored, because the browser only allows a clipboard write inside the click.
+
+**Live-proven** (Jake, dev server vs v957):
+- No box on VFO Tax Planning plan 245. Its test token was cleared by SQL after the first build had shown the box there.
+- On Holistic test plan 252 (Test Client 62): load → Copy → the personal form with no deposit → submit (intake 35 on plan 252, program 1). The box is gone, the dropdown shows the answers, and the link says already submitted.
+- No box in the member view.
+- Bells 3056-3058 fired with the plan in the title (marked read).
+- **Smoke 5/5 vs v956 and vs v957.**
+
+**Production repair the same day — John Ericson (#598).** An existing Holistic client (client 125, plan 164) was sent the public link, named "No one" and paid $500 by card (diagnostic 16, intake 34, `pi_3UOjOBRwdhysCa6F0f1d5sw1`, VFO Services). He became a paid lead, and no duplicate client was created. The repair was by SQL with Jake's approval:
+- His 39 answers were copied onto plan 164 as no-deposit intake **36**.
+- Diagnostic 16 was dismissed with the reason recorded, so neither Confirm (a duplicate case) nor Deny (an auto-refund) can fire.
+- Intake 34 was left untouched for Jake's refund by hand. It has no member, so the finalize sweep ignores it.
+- The six team bells (3050-3055) were marked read.
+- **The $500 refund is Jake's, by hand — not done here.**
+
+**Not exercised:** see the hub OWED line for this branch.
+
 ## 2026-10-09 — Portal licensing L2: the Basic client portal (Send portal access, Request an introduction, the Basic gate)
 
 Branch `claude/vfo-session-setup-0fbec1` (both repos, ONE chat). Plan of record: [plans/portal-licensing/README.md](plans/portal-licensing/README.md) §3 L2 (questions answered and the build plan written read-only before any code, decisions 7-16); flow of record: [flows/client-portal.md](flows/client-portal.md). **Everything is dark behind the NEW Feature Switch `client_basic_portal`** (keyed on the client's member, seeded Test member only) — its card is on the Feature Switches tab.
