@@ -70,6 +70,7 @@
 > | 90 Day Plan | **3** | ✗ no section |
 > | Accountant Onboarding | 19 | 18 |
 > | Advisor Onboarding | 19 | 18 |
+> | **Client Portal** *(NEW area 2026-10-09)* | **1** | ✗ no section — see the note below + [flows/client-portal.md](flows/client-portal.md) |
 > | Growth Credits | 2 | ✗ no section |
 > | Growth Plan | 4 | 2 |
 > | MAP 1 | **18** | **15** |
@@ -111,6 +112,13 @@
 > call-site fallback when the member has no assigned MSM. And `VFO Specialist Revenue` **12 → 13** —
 > **`SPECREV_ert_transfer_failed`** (sort 31, action-required, to Jake), added 2026-09-11 with the ERT
 > share leg; it is the one row whose "listed" column slipped, so that area now lists 12 of 13.
+>
+> **The 2026-10-09 row (portal licensing L2), no section below:** NEW area `Client Portal` with ONE rule,
+> **`CLIENT_intro_requested`** (sort 351, `default_recipients ["tnmiller@elitert.com"]`, dismissible FYI, no
+> dedupe — the unique `(client_id, expert_id)` index already allows one request per specialist), raised by
+> `client_request_introduction` after the member's email is created: *"Introduction requested: <client> →
+> <specialist>"*, linking to `/admin/client/<id>`. Behind `client_basic_portal`. Fired once live (bell 3049,
+> Test Person → Todd Lofgren, marked read).
 
 ### MAP 1 (15)
 

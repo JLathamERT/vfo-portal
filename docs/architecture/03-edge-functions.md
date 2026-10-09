@@ -113,7 +113,7 @@ serve(req)
   │      • Applies SUPERADMIN_ONLY_ACTIONS gate (NEW 2026-06-16; 14 actions; 403 for non-superadmin incl. regular admins; runs first)
   │      • Applies ADMIN_ONLY_ACTIONS gate (403 for member callers on listed actions; predicate is callerRole==="member" as of 2026-07-22 so a planner skips it)
   │      • Applies MEMBER_SCOPED_ACTIONS gate (forces body.member_number to caller's own)
-  │      • Applies CLIENT_ALLOWED_ACTIONS gate (client role limited to 4 vault actions, scoped to auth.callerClientId)
+  │      • Applies CLIENT_ALLOWED_ACTIONS gate (client role limited to its own vault, showroom, intro-request and login actions, scoped to auth.callerClientId)
   │      • Applies SPECIALIST_ALLOWED_ACTIONS gate (specialist role limited to 4 vault actions, scoped to auth.callerSpecialistId)
   │      • Applies TAX_PLANNER_ALLOWED_ACTIONS gate (2026-07-22, TRIMMED; tax_planner role deny-by-default; per-handler group-scope guards + 3-surface PLANNER_EDITABLE_TASK_NAMES, gotchas #257/#262)
   │

@@ -24,7 +24,7 @@ Written 2026-09-28 (Jake, in the Feature Switches chat). **This file is the plan
 ### 2.1 Client portal tiers
 | Tier | What the client sees | Today |
 |---|---|---|
-| **Basic** | VFO Showroom only (+ the "request an introduction" button, unit L2) | The client portal today is Showroom + Vault + Settings (`src/pages/ClientPortal.jsx`), with no tier concept and no status gating |
+| **Basic** | VFO Showroom only (+ the "request an introduction" button, unit L2) | **Built in L2 (2026-10-09), behind `client_basic_portal`:** no active Standard licence = Showroom (+ Settings) only, the Vault actions 403. Switch off = the old portal (Showroom + Vault + Settings for every client, no tiers) |
 | **Standard** | Showroom + Client Vault + case progress **in summary** (the One Page Plan from CIQ, priorities' progress, tax/holistic case stages, history of completed items) | No case view exists in the client portal yet |
 
 What case progress looks like, and when it is built, is an open question (L1 question 5); until it exists "Standard" = Showroom + Vault.
@@ -55,7 +55,7 @@ An annual licence is a **disbursement**: the $300 comes off the fee before it is
 | # | Unit | Price | Switch (proposed key) | Status |
 |---|---|---|---|---|
 | **L1** | **Tax licence** (= DIRECT unit 4) | $300/yr disbursement | `portal_licensing` (EXISTS — it also carries the new tax agreement) | **SHIPPED 2026-09-28** (backend v921, dark behind the switch, Test member only; flow [flows/tax-planning.md](../../flows/tax-planning.md#client-portal-licence-direct-unit-4--portal-licensing-l1-2026-09-28)); still owed: the $300 TRANSFER to a VFO Portal Stripe account (display only today) |
-| L2 | Basic client portal: member sends the portal link + Showroom introduction button | $0 | `client_basic_portal` | planned |
+| L2 | Basic client portal: member sends the portal link + Showroom introduction button | $0 | `client_basic_portal` | **SHIPPED 2026-10-09** (backend v953 → v955, dark behind the switch, Test member only; decisions 7-16; flow [flows/client-portal.md](../../flows/client-portal.md)) |
 | L3 | Holistic licence | $300/yr disbursement | `holistic_licence` | planned |
 | L4 | CIQ licence (Basic vs Standard for a CIQ client; member self-drive) | $0 or $25/month | `ciq_licence` | planned |
 | L5 | Mirrored joint clients (connected advisor ↔ accountant, and one-off cases) | — | `mirrored_clients` | planned |
@@ -79,7 +79,26 @@ Every unit is its own shipping unit (own branch, own chat or chats, own wrap-up)
 - **A "Request an introduction" button on each specialist in the client's Showroom** — the request is emailed to the **member**, whose job it is to make the introduction; **Tracy Miller gets a notification** (bell, or Bcc — open).
 - Licence: **$0** (recorded, so a price can be added later).
 
-**Builds on:** L1's automatic client login (the same login creation, triggered by the member instead of a payment). **Open questions:** Tracy — bell or Bcc copy? Does the button exist for every member type (advisor, accountant, VFO-A, FC)? Can the member revoke Basic access? Is the Vault shown on Basic (it is today, for every client)?
+**Builds on:** L1's automatic client login (the same login creation, triggered by the member instead of a payment). **The four open questions are ANSWERED (decisions 7-12, 2026-10-09).**
+
+#### L2 build plan (written 2026-10-09, read-only, before any code — branch `claude/vfo-session-setup-0fbec1`, both repos)
+
+> **AS BUILT (2026-10-09) — the flow of record is [../../flows/client-portal.md](../../flows/client-portal.md).** Where the plan below differs, the flow wins: the member's button is ONE click with no confirm and no success message, at the bottom of the Profile tab in a CLIENT PORTAL card (decision 13); a never-set-up existing login gets a fresh set-up link on resend (#597); the Vault tab is OFF until the live load allows it (decision 16, #596); the intro button is white / VFO-blue under the pop-up header and the requested state is the same button, inert (decision 13); the intro email names the specialism, not a company, and puts the client's email inline (decisions 14-15).
+
+Switch `client_basic_portal`, keyed on the CLIENT's member, seeded Test member only. Off = exactly today. Every member type gets the button (decision 8) — the switch is the only rollout control.
+
+1. **Migration (one file, committed):** the `portal_feature_flags` row (`{59524}`); `client_portal_licenses.source` CHECK gains `'basic'` + a unique partial index `(client_id) where source='basic'` (one Basic row per client: `tier='basic'`, `amount 0`, `starts_on` = the send day, `ends_on` NULL — the existing `ends_on > starts_on` CHECK passes on NULL); **NEW table `client_intro_requests`** (client, member, expert, requested_at) deny-all in the same migration + anon probe + STRONG advisor; templates `CLIENT_portal_access` + `CLIENT_intro_request`, both **Draft** (decision 10); rule `CLIENT_intro_requested` (Tracy `tnmiller@elitert.com`, FYI, dismissible).
+2. **Send portal access:** action `member_client_portal_access_send {client_id}` — `denyIfNotOwnClient` first, member or admin caller, switch on for the client's member; reuses `ensureClientPortalLogin` (`utils/client-portal-login.ts`; `existing` → the "sign in" line, never a new token); writes the Basic row once; emails the CLIENT only (credential email: `skipMemberContacts`, no Cc/Bcc); `no_email` / `conflict` come back to the member as a message, not a Jake bell. `msm_load_client_home` gains a `portal_access` key ONLY while the switch is on (off = byte-identical). FE: member view of `ClientDetail.jsx` — button + confirm, then "Portal access sent MM/DD/YYYY" + Resend; while the template is Draft the screen says it is queued for the VFO team. No revoke (decision 9).
+3. **The Basic gate:** one helper `clientPortalTier` — `standard` = an unrevoked TAX licence live today, else `basic`. **Applied whenever `client_basic_portal` is on for the member** (decision 11, revised). `client_showroom_load` gains `tier`; the five `client_vault_*` actions 403 a Basic client (the hidden tab is cosmetic, the handler is the guard); `ClientPortal.jsx` hides the Vault tab. `clientLicenceStatus` must IGNORE `source='basic'` rows (its maths assumes a non-null `ends_on` — a Basic row would otherwise read "has ended" on Home).
+4. **Request an introduction:** client action `client_request_introduction {expert_id}` in `CLIENT_ALLOWED_ACTIONS`; member from the session's client row, never the body; expert must be Active; one request per client + specialist (409; the card then reads "Requested MM/DD/YYYY", carried in `client_showroom_load`); email to the MEMBER, Tracy Bcc `tnmiller@vfo-services.com`, + the Tracy bell (decision 7). Button in `ShowroomModal` behind a prop only `ClientPortal.jsx` passes — member/admin Showrooms unchanged.
+5. **Switch card** in `FeatureSwitchesPanel.jsx` `SWITCH_COPY` (same commit as the feature), docs, hub + CHANGELOG at ship.
+
+Gates: `deno check` 0 · action count 567 → 569 · build exit 0 · advisor STRONG + anon `*/0` · smoke 5/5 (`role-gates.ts` changes) · Jake's click-through after phases 2, 3, 4. Deploy `--use-docker` (#574) only on Jake's "deploy".
+
+**Approved copy (decision 12):**
+- `CLIENT_portal_access` (To the client): *Subject:* "[Member Name] has set up your VFO client portal". *Body:* "Hi [Client First], [Member Name] has given you access to the VFO client portal. In it you can browse the VFO Showroom — the specialists [Member First] works with — and ask [Member First] for an introduction to any of them with one click. [LOGIN_BLOCK] If you have any questions, just reply to this email or contact [Member First] directly." The training / customer-experience video line is added in the Email Editor when the URL exists (no code).
+- `CLIENT_intro_request` (To the member, Bcc Tracy): *Subject:* "[Client Name] has asked for an introduction to [Specialist Name]". *Body:* "Hi [Member First], Your client [Client Name] has asked, through their VFO client portal, for an introduction to [Specialist Name] of [Specialist Company]. Please make the introduction when you can. Client email: [Client Email]" + an Open client button.
+- Bell: "Introduction requested: [Client Name] → [Specialist Name]", linking to the client.
 
 ### L3 — Holistic licence ($300/year)
 
@@ -151,3 +170,13 @@ Each of these, when it is picked up, becomes a unit here with its own switch.
 | 4 | Build order after tax: client-first — L2 Basic portal + introductions, L3 Holistic, L4 CIQ, L5 mirrored clients, L6 VFO-A / FC, L7 suspension; Catalyst/Fusion, DIY and Accredited later. | 09-28 |
 | 5 | The tax licence's switch is the existing `portal_licensing` (it also carries the new tax agreement — DIRECT decision 53). | 09-28 |
 | 6 | **NO manual licence controls** (no by-hand grant / extend / revoke): licences are automatic only. An earlier version of this row said the opposite — Jake, 2026-09-28 (unit 4 chat): a misunderstanding by the previous chat, removed. | 09-28 |
+| 7 | L2: an introduction request emails the MEMBER with Tracy **Bcc'd** AND raises a **bell** to Tracy. | 10-09 |
+| 8 | L2: "Send portal access" is for **every member type**; the `client_basic_portal` switch (Off / Test member only / On for all) is the only rollout control. | 10-09 |
+| 9 | L2: the member **cannot revoke** Basic access (consistent with decision 6). | 10-09 |
+| 10 | L2: **Basic = Showroom only** (+ the introduction button); the Vault needs an active Standard licence. Both new emails are seeded **Draft** and flipped to Send in the Email Editor before the switch goes on. | 10-09 |
+| 11 | L2: **Basic = Showroom only whenever `client_basic_portal` is on** for the client's member — the Vault needs an active Standard (today: tax) licence. *Revised the same day:* the first version applied the gate only when `portal_licensing` was also on; Jake chose the simpler rule after the census showed no real client holds a login (only 59524's two test clients) and document requests use the `/vault-upload` links, not the portal Vault. Accepted: with `portal_licensing` off, no client of that member can reach the Vault until L3 / L4 add more Standard sources. | 10-09 |
+| 12 | L2: the two email bodies and the Tracy bell wording are approved as written in the L2 build plan (template 312 then changed by decisions 14-15). | 10-09 |
+| 13 | L2 UI (Jake, during the click-through): "Send portal access" is one click — no confirm, no success or "queued" message (members never hear about Drafts); only a refusal shows. The member's control sits in a CLIENT PORTAL card (house card + heading) at the bottom of the Profile tab. The client's intro button is white with VFO-blue text under the pop-up header; once requested it is the same button, inert, with a not-allowed cursor. The Showroom pop-up header becomes name + background badge, short bio, ecosystems as small dot-separated text, a larger headshot (every Showroom). | 10-09 |
+| 14 | L2: specialists have no company field, so the intro-request email names the specialist with their specialism (`experts.short_bio`). | 10-09 |
+| 15 | L2: the intro-request email reads "Your client [Client Name] ([Client Email]) has asked…" — no separate client-email line; the Open client button stays. | 10-09 |
+| 16 | L2: the client portal's Vault tab is OFF by default and appears only on the live server answer — a Basic client must never see it, even for a moment. | 10-09 |

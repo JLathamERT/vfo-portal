@@ -28,6 +28,18 @@ const SWITCH_COPY = {
     off: 'The tax agreement as it was before 24 Sept 2026 (no collaborating-team sentence, no Additional Benefits section) and its sample PDFs. No licence, no automatic client login, no login email, no Home screen, and revenue shares split the whole retainer.',
     note: 'Applies to agreements sent and retainers paid after the switch. Agreements already sent or signed, and retainers already paid, are never changed.',
   },
+  client_basic_portal: {
+    title: 'Basic client portal: members send portal access',
+    on: [
+      'A "Send portal access" button at the bottom of the Profile tab on the member\'s view of each of their clients ("Resend portal access" once sent). The member chooses when; there is no way to take access away again.',
+      'Clicking it creates the client\'s portal login if they have none and emails the client "[Member] has set up your VFO client portal" with a "Set up my portal login" button (or "Sign in to my portal" if they already have a login). The email is a Draft until it is switched to Send in the Email Editor (Client Portal section).',
+      'A $0 Basic licence is recorded for the client the first time access is sent, so a price can be added later. The client never sees a cost.',
+      'The Basic portal: a client of this member WITHOUT an active tax client portal licence sees the Showroom only — no Vault tab, and the Vault is refused if they try to reach it another way. A client whose tax licence is active keeps Showroom + Vault; when it expires or is refunded they drop to Showroom only.',
+      'A "Request an introduction" button on each specialist in the client\'s Showroom (Basic and Standard alike). One click emails the member "[Client] has asked for an introduction to [Specialist]" (Tracy Bcc\'d; Draft until switched to Send in the Email Editor) and rings a bell for Tracy. Once per specialist: the button then reads "Introduction requested MM/DD/YYYY".',
+    ],
+    off: 'No Send portal access button for members, and no portal access emails. Clients who already have a login keep it, and the client portal shows exactly what it shows today (Showroom + Vault for every client).',
+    note: 'Keyed on the client\'s member. A tax licence only exists while "New tax agreement + client portal licensing" is on for that member, so with that switch off every client of the member is Basic (Showroom only).',
+  },
   tpom_additional_benefits: {
     title: 'TPOM presentation: Additional Benefits slide',
     on: [

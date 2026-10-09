@@ -31,6 +31,15 @@ export default function ClientPortal() {
   // licence. Off: exactly the old portal — lands on Showroom, no Home.
   const [licensingOn, setLicensingOn] = useState(false)
   const [licence, setLicence] = useState(null)
+  // Portal licensing L2: tier 'basic' (sent only while client_basic_portal is on
+  // for this client's member) = Showroom only — no Vault tab. The Vault is OFF
+  // until the server's answer arrives (Jake): a Basic client must never see the
+  // tab, not even for the moment before the load returns. A failed load with no
+  // snapshot leaves it off. The client_vault_* actions refuse a Basic client too.
+  const [vaultAllowed, setVaultAllowed] = useState(false)
+  // Portal licensing L2: { [expert_id]: requested_at } — present only while
+  // client_basic_portal is on (intro_requests key); null = no intro button at all.
+  const [introRequested, setIntroRequested] = useState(null)
 
   useEffect(() => {
     if (!session || session.role !== 'client') navigate('/client/login')
@@ -42,7 +51,9 @@ export default function ClientPortal() {
   useLayoutEffect(() => {
     if (!session || session.role !== 'client') return
     let cancelled = false
-    function apply(data) {
+    // live = the fresh server answer. Only that may GRANT the Vault; a last-seen
+    // snapshot (possibly saved before the switch) can only take it away.
+    function apply(data, live) {
       const eco = {}
       ;(data.ecosystems || []).forEach(e => {
         if (!eco[e.expert_id]) eco[e.expert_id] = []
@@ -54,16 +65,26 @@ export default function ClientPortal() {
       setLicence(data.licence || null)
       if (on && !tabChosen.current) setTab('home')
       if (!on) setTab(t => (t === 'home' ? 'showroom' : t))
+      const allowed = data.tier !== 'basic'
+      if (live || !allowed) setVaultAllowed(allowed)
+      if (!allowed) setTab(t => (t === 'vault' ? 'showroom' : t))
+      if (Array.isArray(data.intro_requests)) {
+        const map = {}
+        data.intro_requests.forEach(r => { map[r.expert_id] = r.requested_at })
+        setIntroRequested(map)
+      } else {
+        setIntroRequested(null)
+      }
     }
     // Re-mount: draw the last showroom at once, refresh behind it.
     const key = `clientportal:showroom:${session.email}`
     const snap = getLastSeen(key)
-    if (snap) { apply(snap); setShowroomLoading(false) }
+    if (snap) { apply(snap, false); setShowroomLoading(false) }
     ;(async () => {
       try {
         setLoadError(null)
         const data = await callApi('client_showroom_load', {})
-        if (!cancelled) { apply(data); setLastSeen(key, data) }
+        if (!cancelled) { apply(data, true); setLastSeen(key, data) }
       } catch (err) {
         console.error('Showroom load error:', err)
         // Keep the empty substitute: the render below reads showroom.experts
@@ -80,6 +101,19 @@ export default function ClientPortal() {
 
   function signOut() { clearSession(); navigate('/client/login') }
 
+  // Returns an error message for the button to show, or null on success.
+  async function requestIntroduction(expertId) {
+    try {
+      const d = await callApi('client_request_introduction', { expert_id: expertId })
+      if (!d?.ok) return d?.error || 'Could not send your request.'
+      setIntroRequested(m => ({ ...(m || {}), [expertId]: d.requested_at }))
+      return null
+    } catch (e) {
+      return e.message || 'Could not send your request.'
+    }
+  }
+  const introRequest = introRequested ? { requested: introRequested, onRequest: requestIntroduction } : null
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
@@ -93,7 +127,7 @@ export default function ClientPortal() {
 
       {tab !== 'settings' && (
         <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', padding: '0 24px', background: 'var(--vfo-card)', position: 'relative', zIndex: 100 }}>
-          {[['showroom', 'Showroom'], ['vault', 'Vault']].map(([key, label]) => (
+          {[['showroom', 'Showroom'], ...(vaultAllowed ? [['vault', 'Vault']] : [])].map(([key, label]) => (
             <button key={key} onClick={() => chooseTab(key)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: tab === key ? '2px solid #125ecc' : '2px solid transparent', color: tab === key ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: tab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>{label}</button>
           ))}
         </div>
@@ -129,9 +163,9 @@ export default function ClientPortal() {
       {tab === 'showroom' && (
         showroomLoading
           ? <ShowroomSkeleton />
-          : <MemberShowroom experts={showroom.experts} exclusions={showroom.exclusions} ecoMap={showroom.ecoMap} />
+          : <MemberShowroom experts={showroom.experts} exclusions={showroom.exclusions} ecoMap={showroom.ecoMap} introRequest={introRequest} />
       )}
-      {tab === 'vault' && (
+      {tab === 'vault' && vaultAllowed && (
         <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
           <ClientVault />
         </div>
