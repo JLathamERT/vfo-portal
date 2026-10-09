@@ -7,6 +7,7 @@ import { TrackHero, PhaseBadge, ListHeader } from '../../shared/TrackKit'
 import { hasStrategicSplit, computeStrategicShares } from '../../../lib/strategicSplits'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import PricingSplitCard from './PricingSplitCard'
+import PersonalTaxFormLink from './PersonalTaxFormLink'
 import { CONFIRMATION_CARD_SKIP } from '../../../lib/confirmationStatus'
 import { formatDate as formatFullDate } from '../../../lib/dates'
 import { makeTaxPlanRules, KNOWN_FEE_PROCESS_VERSIONS, isNewFeeProcess, AMEND_FEE_CODE, AMEND_FEE_TAX5_CODE, isAmendStepTask, amendStage, DEPOSIT_NA_STATUS, phaseBadgeToken, phaseShortLabel, implRevShareDone, IMPL_REV_NO_SHARE } from './taxPlanRules'
@@ -2316,6 +2317,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   // the Deposit Paid step.
   const [taxIntake, setTaxIntake] = useState(null)
   const [taxIntakeQuestions, setTaxIntakeQuestions] = useState([])
+  // The personal form link box waits for this read, then shows only while the plan
+  // has no form — so it never flashes on a plan that already has one.
+  const [taxIntakeLoaded, setTaxIntakeLoaded] = useState(false)
   const [routeBusy, setRouteBusy] = useState(false)
   // Rapid Route question reply box (Tax 3 Automated steps).
   const [rapidReply, setRapidReply] = useState('')
@@ -2324,11 +2328,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   useEffect(() => {
     let live = true
     if (!clientId) return
-    callApi('tax_intake_load', { client_id: clientId })
-      .then(d => { if (!live) return; setTaxIntake(d?.intake || null); setTaxIntakeQuestions(d?.questions || []) })
+    // tax_plan_id: this plan's OWN form first (per-plan links, 2026-10-09), else
+    // the client's latest form not tied to a plan.
+    callApi('tax_intake_load', { client_id: clientId, tax_plan_id: plan.id })
+      .then(d => { if (!live) return; setTaxIntake(d?.intake || null); setTaxIntakeQuestions(d?.questions || []); setTaxIntakeLoaded(true) })
       .catch(() => { if (live) setTaxIntake(null) })
     return () => { live = false }
-  }, [clientId])
+  }, [clientId, plan.id])
   const [localProgress, setLocalProgress] = useState(initialProgress)
   const [saving, setSaving] = useState({})
   const [expanded, setExpanded] = useState({})
@@ -5249,7 +5255,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       />
 
       {/* Order at the top of the plan (Jake, 2026-09-25): Tax Planning Form,
-          Tax Planning Route, Pricing & revenue split. */}
+          Tax Planning Route, Pricing & revenue split. The personal form link
+          (admin view only, 2026-10-09) sits above the form it collects. */}
+      {!readOnly && !plannerMode && !directMode && plan.program_id !== 4 && taxIntakeLoaded && !taxIntake && <PersonalTaxFormLink taxPlanId={plan.id} />}
       <TaxIntakeCard intake={taxIntake} questions={taxIntakeQuestions} />
 
       <TaxRouteCard
