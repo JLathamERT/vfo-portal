@@ -8,6 +8,30 @@
 
 ---
 
+## 2026-10-09 — The personal Tax Planning Form emails the team; emailed client-page links survive the login
+
+Branch `fix/personal-form-team-email` (both repos, the same chat).
+
+**(1) The team email.** A submission through the personal `/tax-diagnostic?client=` link (per plan or client-level) sent only a bell, while the public form also emails the team (286). There was no recorded reason; it was a gap. Migration `20261009180000_tax_personal_form_team_email.sql` seeds template **313** `TAX_personal_form_submitted`:
+- **Draft.** Copy approved by Jake.
+- **Recipients** are copied from 286 at seed time: To Tracy; Cc Evan, Paul, Anton, Tray.
+- `utils/tax-diagnostic-emails.ts sendPersonalFormTeamEmail` drafts it from `tax_holistic_form_submit` after the bell, fail-soft.
+- **Team only** — nothing goes to the submitter, per decision 37, which every other form follows (Jake: *"copy how it's done for all other forms"*).
+- `vfo-admin-api` **v958**; action count 570 unmoved; advisor GREEN (data only).
+
+**(2) Emailed client-page links lost their address at login (#599).** Opening the email's **Open the tax plan** button logged out went to the portal picker instead of the login.
+- **Cause:** `ClientDetail` drew its header before its login guard redirected. `NotificationBell` then made a call with no token, and `api.js`'s 401 handler hard-reloaded to `/`.
+- **Fix:** the page renders nothing while logged out. It then lands on `/admin/login?next=…`, and the login returns you to the plan.
+- **Shipped:** frontend PUBLISHED from the branch (`index-CWbeD1tu.js`).
+- **Affected:** every emailed client-page button, not just this email.
+
+**Live-proven** (Jake):
+- Plan 252 on Test Client 62: Copy link → submit → the 313 draft in aipc Drafts with the right recipients, details, plan line and button. Test form 35 was deleted first, by agreement.
+- Dev server, then the LIVE site from the email's own button in a private window: login → plan 252.
+- **Smoke 5/5 vs v958.**
+
+**John Ericson:** his 313 email was NOT generated: his form was copied over by hand, and nothing re-runs the email for an existing form. Its exact content was given to Jake to send by hand if wanted.
+
 ## 2026-10-09 — A personal Tax Planning Form link on every Holistic tax plan (+ the John Ericson repair)
 
 Branch `fix/tax-personal-link` (both repos, the same chat as L2). **Why:** the team kept handing Holistic clients doing Tax Priorities the PUBLIC `/tax-diagnostic` link, which charges $500 unless the named member is past the waiver line, and on a member-named form creates a duplicate client (#593). The no-deposit personal link (2026-10-07) only ever travelled in the MAP 1 payment-1 email. At the time **only 49 of 253 clients had the token it needs (134 of 151 Holistic clients had none)**, and no admin screen showed it.
