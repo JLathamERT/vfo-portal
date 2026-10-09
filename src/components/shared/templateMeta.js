@@ -9,6 +9,10 @@ export const mv = (name, label, recip) => [name + MV, label + ' — version used
 // adds (client family / assigned PF) — the editable CC/BCC lists below each
 // email are the internal-team additions on top of these.
 export const TEMPLATE_META = {
+  'CLIENT_PORTAL': [
+    ['CLIENT_portal_access', 'The member clicked "Send portal access" on their client — the client\'s portal login link (Basic portal: VFO Showroom)', 'To: Client only (a login email — no Cc)'],
+    ['CLIENT_intro_request', 'A client clicked "Request an introduction" on a specialist in their portal Showroom — asks the member to make the introduction', 'To: Member · Bcc: Tracy'],
+  ],
   'LOGIN_SETUP': [
     ['MANUAL_login_setup', 'Manually send someone a portal login set-up link (works for members, specialists and clients)', 'To: Chosen recipient'],
     ['password_reset', 'Password Reset (self-service)', 'To: The account holder who requested the reset (member / specialist / tax planner / client)'],

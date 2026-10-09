@@ -7,6 +7,7 @@ import RegularPrioritiesTab from '../components/admin/regular/RegularPrioritiesT
 import PipMeetingsTab from '../components/admin/pip/PipMeetingsTab'
 import ClientVaultTab from '../components/admin/ClientVaultTab'
 import SendSetupEmailButton from '../components/admin/SendSetupEmailButton'
+import MemberPortalAccessCard from '../components/member/MemberPortalAccessCard'
 import ClientPaymentsTab from '../components/payments/ClientPaymentsTab'
 import PFTEngagementTrack from '../components/admin/pft/PFTEngagementTrack'
 import TaxPrioritiesTab from '../components/admin/tax/TaxPrioritiesTab'
@@ -74,6 +75,7 @@ export default function ClientDetail() {
   // so the tax tab opens the client's one open plan instead of the plan list.
   const [fromBell] = useState(() => new URLSearchParams(window.location.search).get('_from') === 'bell')
   const [client, setClient] = useState(null)
+  const [portalAccess, setPortalAccess] = useState(undefined)
   const [program, setProgram] = useState(null)
   const [contacts, setContacts] = useState([])
   const [specialists, setSpecialists] = useState([])
@@ -161,6 +163,8 @@ export default function ClientDetail() {
     setClient(data.client)
     setProgram(data.program)
     setContacts(data.contacts || [])
+    // Present only while client_basic_portal is on for the client's member.
+    setPortalAccess(Object.prototype.hasOwnProperty.call(data, 'portal_access') ? data.portal_access : undefined)
     setSpecialists(expertsData.experts || [])
     setEcosystems(expertsData.ecosystems || [])
     if (notesData) setClientNotes(notesData.notes || [])
@@ -372,6 +376,9 @@ export default function ClientDetail() {
         ) : (
           <>
             {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
+            {activeTab === 'home' && isMember && portalAccess !== undefined && client && (
+              <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} sectionStyle={sectionStyle} cardTitle={cardTitle} />
+            )}
             {activeTab === 'details' && isAdmin && <ClientDetails client={client} onUpdate={loadData} sectionStyle={sectionStyle} />}
             {pfLocked && PROGRAM_TABS.includes(activeTab) && (
               <div style={{ ...sectionStyle, borderColor: 'rgba(231,76,60,0.3)', textAlign: 'center', padding: '40px' }}>

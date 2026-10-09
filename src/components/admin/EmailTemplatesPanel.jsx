@@ -23,6 +23,7 @@ const SECTIONS = [
   { key: 'pft', label: 'Partnership Fast Track', pipeline: 'PARTNERSHIP_FAST_TRACK' },
   { key: 'training', label: '90 Day Plan', pipeline: 'TRAINING' },
   { key: 'growth_credits', label: 'Growth Credits', pipeline: 'GROWTH_CREDITS' },
+  { key: 'client_portal', label: 'Client Portal', pipeline: 'CLIENT_PORTAL' },
   // Miscellaneous — standalone, non-pipeline emails grouped together (each row
   // is an explicit [pipeline, template_name] ref rather than a whole pipeline).
   { key: 'misc', label: 'Miscellaneous', items: [

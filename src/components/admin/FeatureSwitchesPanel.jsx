@@ -28,6 +28,20 @@ const SWITCH_COPY = {
     off: 'The tax agreement as it was before 24 Sept 2026 (no collaborating-team sentence, no Additional Benefits section) and its sample PDFs. No licence, no automatic client login, no login email, no Home screen, and revenue shares split the whole retainer.',
     note: 'Applies to agreements sent and retainers paid after the switch. Agreements already sent or signed, and retainers already paid, are never changed.',
   },
+  client_basic_portal: {
+    title: 'Basic client portal: members send portal access',
+    on: [
+      'A "Send portal access" button at the bottom of the Profile tab on the member\'s view of each of their clients ("Resend portal access" once sent). The member chooses when; there is no way to take access away again.',
+      'Clicking it creates the client\'s portal login if they have none and emails the client "[Member] has set up your VFO client portal" with a "Set up my portal login" button (or "Sign in to my portal" if they already have a login). The email is a Draft until it is switched to Send in the Email Editor (Client Portal section).',
+      'A $0 Basic licence is recorded for the client the first time access is sent, so a price can be added later. The client never sees a cost.',
+    ],
+    off: 'No Send portal access button for members, and no portal access emails. Clients who already have a login keep it, and the client portal shows exactly what it shows today.',
+    coming: [
+      'A "Request an introduction" button on each specialist in the client\'s Showroom: emails the member to make the introduction (Tracy Bcc\'d) and rings a bell for Tracy.',
+      'The Basic portal: while "New tax agreement + client portal licensing" is ALSO on for the member, a client without an active tax licence sees the Showroom only (no Vault).',
+    ],
+    note: 'Keyed on the client\'s member.',
+  },
   tpom_additional_benefits: {
     title: 'TPOM presentation: Additional Benefits slide',
     on: [
