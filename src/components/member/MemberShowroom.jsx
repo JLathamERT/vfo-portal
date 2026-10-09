@@ -41,7 +41,7 @@ function Avatar({ expert, big }) {
   const src = stage === 0 ? HEADSHOT_SUPABASE + encodeURIComponent(expert.headshot_image)
     : stage === 1 ? HEADSHOT_FALLBACK + expert.headshot_image
     : null
-  if (!src) return <div className="vfo-sr-avatar-ph" style={big ? { fontSize: '36px' } : undefined}>{(expert.name || '?').charAt(0)}</div>
+  if (!src) return <div className="vfo-sr-avatar-ph" style={big ? { fontSize: '46px' } : undefined}>{(expert.name || '?').charAt(0)}</div>
   return <img src={src} alt={formatName(expert.name)} loading="lazy" decoding="async" onError={() => setStage(s => s + 1)} />
 }
 
@@ -182,7 +182,40 @@ function ShowroomVault({ expertId }) {
   )
 }
 
-function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = false }) {
+function fmtRequested(iso) {
+  const [y, m, d] = String(iso).slice(0, 10).split('-')
+  return `${m}/${d}/${y}`
+}
+
+// Portal licensing L2: the CLIENT portal's "Request an introduction". Only rendered
+// when ClientPortal passes `introRequest` (client_basic_portal on for the client's
+// member) — the member and admin Showrooms never pass it.
+function IntroRequestButton({ expertId, introRequest }) {
+  const requestedAt = introRequest.requested[expertId] || null
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function request() {
+    setBusy(true); setError(null)
+    const err = await introRequest.onRequest(expertId)
+    if (err) setError(err)
+    setBusy(false)
+  }
+
+  // Requested = the same white button, inert, with the "not allowed" pointer.
+  const done = !!requestedAt
+  return (
+    <div style={{ marginBottom: '24px' }}>
+      <button onClick={done ? undefined : request} disabled={busy} aria-disabled={done}
+        style={{ padding: '10px 24px', borderRadius: '8px', background: '#ffffff', border: '1.5px solid #125ecc', boxShadow: '0 2px 8px rgba(18,94,204,0.18)', color: '#125ecc', fontSize: '14px', fontWeight: 600, cursor: done ? 'not-allowed' : busy ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+        {done ? `Introduction requested ${fmtRequested(requestedAt)}` : busy ? 'Sending…' : 'Request an introduction'}
+      </button>
+      {error && <p style={{ fontSize: '13px', color: '#d93025', marginTop: '8px', marginBottom: 0 }}>{error}</p>}
+    </div>
+  )
+}
+
+function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = false, introRequest = null }) {
   const [showDetails, setShowDetails] = useState(false)
   // useLayoutEffect (not useEffect) so the scroll lock applies BEFORE the browser
   // paints the modal — otherwise the background reflow lands a frame late and the
@@ -218,16 +251,17 @@ function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = 
         <div className="vfo-sr-modal-header">
           <div className="vfo-sr-modal-avatar"><Avatar expert={expert} big /></div>
           <div>
-            <h3 className="vfo-sr-modal-name">{formatName(expert.name)}</h3>
+            <div className="vfo-sr-modal-namerow">
+              <h3 className="vfo-sr-modal-name">{formatName(expert.name)}</h3>
+              {expert.background_check && <BackgroundCheckBadge value={expert.background_check} large />}
+            </div>
             <p className="vfo-sr-modal-tagline">{expert.short_bio || ''}</p>
-            {expert.background_check && <div style={{ marginTop: '10px' }}><BackgroundCheckBadge value={expert.background_check} large /></div>}
+            {(expert.categories || []).length > 0 && (
+              <p className="vfo-sr-modal-ecos">{expert.categories.join(' · ')}</p>
+            )}
           </div>
         </div>
-        {(expert.categories || []).length > 0 && (
-          <div className="vfo-sr-modal-tags">
-            {expert.categories.map(cat => <span key={cat} className="vfo-sr-modal-tag">{cat}</span>)}
-          </div>
-        )}
+        {introRequest && <IntroRequestButton expertId={expert.id} introRequest={introRequest} />}
         {entries.length > 0 && (
           <div className="vfo-sr-db-wrap" style={{ marginBottom: '12px' }}>
             <button className={'vfo-sr-db-toggle' + (showDetails ? ' is-open' : '')} onClick={() => setShowDetails(o => !o)}
@@ -246,7 +280,7 @@ function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = 
   )
 }
 
-export default function MemberShowroom({ experts = [], exclusions = [], ecoMap = {}, showMemberServices = false, showRevenueShare = false, showVault = false }) {
+export default function MemberShowroom({ experts = [], exclusions = [], ecoMap = {}, showMemberServices = false, showRevenueShare = false, showVault = false, introRequest = null }) {
   const [activeFilter, setActiveFilter] = useState('All')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
@@ -315,7 +349,7 @@ export default function MemberShowroom({ experts = [], exclusions = [], ecoMap =
         )}
       </div>
 
-      {selected && <ShowroomModal expert={selected} onClose={() => setSelected(null)} showRevenueShare={showRevenueShare} showVault={showVault} />}
+      {selected && <ShowroomModal expert={selected} onClose={() => setSelected(null)} showRevenueShare={showRevenueShare} showVault={showVault} introRequest={introRequest} />}
     </div>
   )
 }
@@ -352,12 +386,12 @@ function showroomCss(s, scale) {
     .vfo-sr-modal-close { position: absolute; top: 16px; right: 16px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid ${s.card_text_color}26; background: ${s.card_text_color}14; color: ${s.card_text_color}cc; font-size: 18px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
     .vfo-sr-modal-close:hover { background: ${s.card_text_color}26; color: ${s.card_text_color}; }
     .vfo-sr-modal-header { display: flex; align-items: center; gap: 22px; margin-bottom: 24px; }
-    .vfo-sr-modal-avatar { width: 96px; height: 96px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: ${s.card_text_color}14; border: 2px solid ${s.primary_color}; }
+    .vfo-sr-modal-avatar { width: 108px; height: 108px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: ${s.card_text_color}14; border: 2px solid ${s.primary_color}; }
     .vfo-sr-modal-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
     .vfo-sr-modal-name { font-size: ${r(27)}px; font-weight: 700; margin: 0; color: ${s.card_text_color}; font-family: '${s.font}', serif; }
     .vfo-sr-modal-tagline { font-size: ${r(15)}px; margin: 7px 0 0; font-weight: 500; color: ${s.card_text_color}cc; }
-    .vfo-sr-modal-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
-    .vfo-sr-modal-tag { padding: 6px 14px; border-radius: 8px; font-size: ${r(12)}px; font-weight: 500; display: inline-block; background: ${s.card_text_color}1a; color: ${s.card_text_color}; border: 1px solid ${s.card_text_color}33; }
+    .vfo-sr-modal-namerow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+    .vfo-sr-modal-ecos { font-size: ${r(11)}px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; margin: 6px 0 0; color: ${s.card_text_color}bf; }
     .vfo-sr-db-wrap { margin-bottom: 24px; }
     .vfo-sr-db-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 12px 18px; border-radius: 10px; border: 1px solid ${s.primary_color}80; background: ${s.card_text_color}0f; color: ${s.card_text_color}; font-family: 'DM Sans', sans-serif; font-size: ${r(13.5)}px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
     .vfo-sr-db-toggle:hover { background: ${s.card_text_color}1f; border-color: ${s.primary_color}; }
@@ -378,6 +412,6 @@ function showroomCss(s, scale) {
     .vfo-sr-modal-divider { height: 1px; margin-bottom: 24px; background: linear-gradient(90deg, transparent, ${s.primary_color}59, transparent); }
     .vfo-sr-modal-bio { font-size: ${r(15)}px; line-height: 1.8; white-space: pre-wrap; font-weight: 300; color: ${s.card_text_color}d9; }
     @keyframes vfoSrFadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-    @media (max-width: 640px) { .vfo-sr-container { padding: 20px 14px 36px; } .vfo-sr-grid { grid-template-columns: 1fr; gap: 14px; } .vfo-sr-modal { padding: 22px; } .vfo-sr-overlay { padding: 12px; } .vfo-sr-modal-header { flex-direction: column; text-align: center; } .vfo-sr-modal-name { font-size: 22px; } .vfo-sr-modal-avatar { width: 80px; height: 80px; } .vfo-sr-search-wrap { max-width: 100%; } .vfo-sr-filters { gap: 6px; } }
+    @media (max-width: 640px) { .vfo-sr-container { padding: 20px 14px 36px; } .vfo-sr-grid { grid-template-columns: 1fr; gap: 14px; } .vfo-sr-modal { padding: 22px; } .vfo-sr-overlay { padding: 12px; } .vfo-sr-modal-header { flex-direction: column; text-align: center; } .vfo-sr-modal-name { font-size: 22px; } .vfo-sr-modal-avatar { width: 96px; height: 96px; } .vfo-sr-modal-namerow { justify-content: center; } .vfo-sr-search-wrap { max-width: 100%; } .vfo-sr-filters { gap: 6px; } }
   `
 }
