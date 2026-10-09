@@ -30,6 +30,8 @@ Branch `fix/personal-form-team-email` (both repos, the same chat).
 - Dev server, then the LIVE site from the email's own button in a private window: login → plan 252.
 - **Smoke 5/5 vs v958.**
 
+**Shipped:** merged edge `6bf5ab9` (#277) / react `5810615` (#439); v958 and the published `index-CWbeD1tu.js` both byte-identical to merged main (not redeployed); tags `backend-good-2026-10-09-v958` + `live-231-personal-form-team-email`. The hub's version line before this branch read **v957** (v956 → v957 = `fix/tax-personal-link`, the entry below).
+
 **John Ericson:** his 313 email was NOT generated: his form was copied over by hand, and nothing re-runs the email for an existing form. Its exact content was given to Jake to send by hand if wanted.
 
 ## 2026-10-09 — A personal Tax Planning Form link on every Holistic tax plan (+ the John Ericson repair)
