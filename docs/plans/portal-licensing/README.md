@@ -56,14 +56,16 @@ An annual licence is a **disbursement**: the $300 comes off the fee before it is
 |---|---|---|---|---|
 | **L1** | **Tax licence** (= DIRECT unit 4) | $300/yr disbursement | `portal_licensing` (EXISTS — it also carries the new tax agreement) | **SHIPPED 2026-09-28** (backend v921, dark behind the switch, Test member only; flow [flows/tax-planning.md](../../flows/tax-planning.md#client-portal-licence-direct-unit-4--portal-licensing-l1-2026-09-28)); still owed: the $300 TRANSFER to a VFO Portal Stripe account (display only today) |
 | L2 | Basic client portal: member sends the portal link + Showroom introduction button | $0 | `client_basic_portal` | **SHIPPED 2026-10-09** (backend v953 → v955, dark behind the switch, Test member only; decisions 7-16; flow [flows/client-portal.md](../../flows/client-portal.md)) |
-| L3 | Holistic licence | $300/yr disbursement | `holistic_licence` | planned |
+| L3 | Holistic licence | $300/yr disbursement | `holistic_licence` | planned — ON HOLD behind L5 (decision 17); open question whether VFOS-led Holistic carries the licence at all (decision 18) |
 | L4 | CIQ licence (Basic vs Standard for a CIQ client; member self-drive) | $0 or $25/month | `ciq_licence` | planned |
-| L5 | Mirrored joint clients (connected advisor ↔ accountant, and one-off cases) | — | `mirrored_clients` | planned |
+| **L5** | **Mirrored joint clients** (connected advisor ↔ accountant, and one-off cases) | $0 (Q4 deck) | `mirrored_clients` | **NEXT** (Jake, 2026-10-09 — decision 17) |
 | L6 | VFO Associate + Financial Collaborator portals | $0 / $25/month + their existing fees via the portal | `associate_fc_portal` | planned — Jake: NOT being worked on yet |
 | L7 | Portal suspension rules by member tier | — | `portal_suspension` | planned |
 | — | Catalyst v Fusion structure, member-direct Holistic / PFT ("DIY"), Accredited benefits | — | — | LATER — Jake: not being worked on yet |
 
-Every unit is its own shipping unit (own branch, own chat or chats, own wrap-up), built dark behind its switch. The order is the build order, not a release order — Jake can flip switches in any order he likes, except where a unit depends on another (L4 depends on L1's record; L2's case view depends on the Standard tier).
+Every unit is its own shipping unit (own branch, own chat or chats, own wrap-up), built dark behind its switch. The order is the build order, not a release order — Jake can flip switches in any order he likes, except where a unit depends on another (L4 depends on L1's record; L2's case view depends on the Standard tier). **Build order since 2026-10-09 (decision 17): L5 next, then L3 / L4 / L6 / L7 as Jake chooses.**
+
+**Second source (2026-10-09): Paul's TEAM deck "Q4 Update: VFO Portal"** (40 slides, Jake's Downloads, not in the repo — read as extracted text + slide images). It confirms §2 (prices, priority, the FIFO $75 example), L1 (the $300 comes out of the revenue share: $100 member on 33/33/33, $135 member on 45/45/10 Direct; 12 months + a 15% discount on future tax planning fees; Direct needs 2+ completed VFOS-led tax cases with paid fees), L2 (Basic portal + introductions + the training / customer-experience video), L4 (CIQ Option 1 = Basic, "replicates the old PPP"; Option 2 = $25/month Standard: Vault, CIQ, One Page Plan, case history) and L7 (unchanged). What it ADDS is folded into L3, L5 and L6 below, marked "(Q4 deck)".
 
 ---
 
@@ -109,7 +111,7 @@ Gates: `deno check` 0 · action count 567 → 569 · build exit 0 · advisor STR
 - **Holistic member-direct (Fusion only)** — see "Later" below; when it exists: $300 licence as a disbursement, card charges also a disbursement, 100% of the rest to the member.
 - **Extension:** a client who already holds a Tax licence gets the extra-days extension only (§2.3).
 
-**Touches:** the MAP 1 / Holistic payment + revenue-share engine (`contract-revshare.ts`, `pipeline_map1` legs, the MAP 1 invoice/receipt email, the Payments/Accounting split surfaces — #394: MAP 1's model is member full / strategic gross-prorated / VFOS residual, NOT tax's pro-rata, so the disbursement maths must be designed for it, not copied from L1). **Open questions:** is the $300 taken from the first installment or spread across a quarterly plan? Which Holistic tiers count ("Lite or above")? Refund / cancellation → revoke?
+**Touches:** the MAP 1 / Holistic payment + revenue-share engine (`contract-revshare.ts`, `pipeline_map1` legs, the MAP 1 invoice/receipt email, the Payments/Accounting split surfaces — #394: MAP 1's model is member full / strategic gross-prorated / VFOS residual, NOT tax's pro-rata, so the disbursement maths must be designed for it, not copied from L1). **Open questions:** **FIRST — does a VFOS-led Holistic client get the $300 licence at all?** (decision 18: Jake not sure yet). The spreadsheet says yes (the $2,600 example above), but the Q4 deck's only Holistic licence slide is the **Fusion member-led** route — the member keeps 100% instead of 50%, minus a $300 licence, and the client's portal is **branded to the member** — which is the "LATER" DIY work; the deck mentions Holistic otherwise only in the general "Tax Planning or Holistic Planning $300" rule and the FIFO example. If only member-led, L3 depends on DIY Holistic. Then: is the $300 taken from the first installment or spread across a quarterly plan? Which Holistic tiers count ("Lite or above")? Refund / cancellation → revoke?
 
 ### L4 — CIQ licence (Basic vs Standard for a CIQ client)
 
@@ -127,6 +129,7 @@ Gates: `deno check` 0 · action count 567 → 569 · build exit 0 · advisor STR
 - Where an advisor and an accountant are connected in the portal, **the connected member sees "mirrored" tracking of JOINT clients only** — never every client of either (Paul: that would be "highly inappropriate").
 - A **"Connected client" button** on a client: defaults to the member's normal connected partner; for a **one-off case** or an unusual connection, choose any member from a drop-down.
 - A general change for ALL connected members (advisors, accountants, VFO-A, FC).
+- **(Q4 deck, "Connected Members — Joint Case Mirroring")** — **$0 licence**, "mirroring is a CHOICE, not automatic" (client confidentiality). **Option 1, Normal Member Connections (advisor / accountant):** whoever "owns" the specific client clicks on the VFO Portal and connects their partner automatically; the partner then sees "mirrored" case tracking on THEIR portal. **Option 2, "One-Off" Member Connections:** the same, but the member picks who to connect from a drop-down — any combination of member to member (advisor ↔ advisor, accountant ↔ accountant), not just advisor / accountant. VFO Associates and Financial Collaborators (Basic portal) can be mirrored too.
 
 **Open questions:** read-only mirror or can the connected member act? Which tracks are mirrored (MAP 1, tax, CIQ)? Can a client have more than one connected member? Does it touch revenue share (commissions already exist for advisor/accountant connections)?
 
@@ -138,6 +141,12 @@ Gates: `deno check` 0 · action count 567 → 569 · build exit 0 · advisor STR
 - **Upgrades** for both: Standard portal **+$25/month** (adds CIQ and Member Vault, video training only); "Request an upgrade meeting" (introduction to Vanessa); become a **VFO Fast Track Accountant** ($2,000 implementation connected / $4,000 direct) or a **Catalyst Advisor** ($4,000). A video showing everything in the licence structure.
 - **VFO FT Accountant:** $0 licence to the member — the accountant pays their own membership and gets the Standard portal (Catalyst tab: connecting a VFO FT accountant discounts the accountant $4k a year and the Standard connection is free to the member).
 - **Clean-up:** the live VFO-A and FC members showing in the portal must be cleaned up first.
+- **(Q4 deck) prices, which differ from the bullets above where they disagree — confirm with Jake when L6 starts:**
+  - **Associate Accountant, Direct:** Basic = $145/month (clients get the Showroom; connected members can mirror joint cases); Standard = +$25 → **$170/month** (CIQ with video training, clients get CIQ + One Page Plan + case history, Member Vault).
+  - **Connected Associate Accountant:** Basic = **$0 membership** (discounted by $145/month) but the **ACCOUNTANT pays a $25/month portal licence** (the connected advisor CAN choose to pay it instead — the bullet above says the connected member pays); Standard = +$25 → **$50/month** (CIQ with video training or help from the connected member, Member Vault). The deck says this ends VFO Associate being free for connected members.
+  - **Financial Collaborator:** Basic = $99/month; Standard = +$25 → **$124/month**.
+  - The upgrade request is to a **6-month** VFO Fast Track Accountant Implementation (Associate) or Catalyst Implementation (FC), with direct access to the sales team.
+  - (LATER, member-led PFT) a $0 licence to run PFT; an accountant joining VFO Fast Track gets a $4,000 annual membership discount (the member's gift) and a free Standard portal.
 
 ### L7 — Portal suspension rules (deck slides 79-82)
 
@@ -180,3 +189,5 @@ Each of these, when it is picked up, becomes a unit here with its own switch.
 | 14 | L2: specialists have no company field, so the intro-request email names the specialist with their specialism (`experts.short_bio`). | 10-09 |
 | 15 | L2: the intro-request email reads "Your client [Client Name] ([Client Email]) has asked…" — no separate client-email line; the Open client button stays. | 10-09 |
 | 16 | L2: the client portal's Vault tab is OFF by default and appears only on the live server answer — a Basic client must never see it, even for a moment. | 10-09 |
+| 17 | **Build order changed: L5 (mirrored joint clients) is NEXT**, ahead of L3 Holistic (Jake). | 10-09 |
+| 18 | L3 open: whether a VFOS-led Holistic client gets the $300 licence, or only the Fusion member-led route (the Q4 deck shows only the latter) — Jake not sure yet; ask before L3 starts. | 10-09 |
