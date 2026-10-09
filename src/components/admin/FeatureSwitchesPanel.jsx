@@ -34,13 +34,13 @@ const SWITCH_COPY = {
       'A "Send portal access" button at the bottom of the Profile tab on the member\'s view of each of their clients ("Resend portal access" once sent). The member chooses when; there is no way to take access away again.',
       'Clicking it creates the client\'s portal login if they have none and emails the client "[Member] has set up your VFO client portal" with a "Set up my portal login" button (or "Sign in to my portal" if they already have a login). The email is a Draft until it is switched to Send in the Email Editor (Client Portal section).',
       'A $0 Basic licence is recorded for the client the first time access is sent, so a price can be added later. The client never sees a cost.',
+      'The Basic portal: a client of this member WITHOUT an active tax client portal licence sees the Showroom only — no Vault tab, and the Vault is refused if they try to reach it another way. A client whose tax licence is active keeps Showroom + Vault; when it expires or is refunded they drop to Showroom only.',
     ],
-    off: 'No Send portal access button for members, and no portal access emails. Clients who already have a login keep it, and the client portal shows exactly what it shows today.',
+    off: 'No Send portal access button for members, and no portal access emails. Clients who already have a login keep it, and the client portal shows exactly what it shows today (Showroom + Vault for every client).',
     coming: [
       'A "Request an introduction" button on each specialist in the client\'s Showroom: emails the member to make the introduction (Tracy Bcc\'d) and rings a bell for Tracy.',
-      'The Basic portal: while "New tax agreement + client portal licensing" is ALSO on for the member, a client without an active tax licence sees the Showroom only (no Vault).',
     ],
-    note: 'Keyed on the client\'s member.',
+    note: 'Keyed on the client\'s member. A tax licence only exists while "New tax agreement + client portal licensing" is on for that member, so with that switch off every client of the member is Basic (Showroom only).',
   },
   tpom_additional_benefits: {
     title: 'TPOM presentation: Additional Benefits slide',
