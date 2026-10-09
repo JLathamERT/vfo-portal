@@ -24,7 +24,7 @@ Written 2026-09-28 (Jake, in the Feature Switches chat). **This file is the plan
 ### 2.1 Client portal tiers
 | Tier | What the client sees | Today |
 |---|---|---|
-| **Basic** | VFO Showroom only (+ the "request an introduction" button, unit L2) | The client portal today is Showroom + Vault + Settings (`src/pages/ClientPortal.jsx`), with no tier concept and no status gating |
+| **Basic** | VFO Showroom only (+ the "request an introduction" button, unit L2) | **Built in L2 (2026-10-09), behind `client_basic_portal`:** no active Standard licence = Showroom (+ Settings) only, the Vault actions 403. Switch off = the old portal (Showroom + Vault + Settings for every client, no tiers) |
 | **Standard** | Showroom + Client Vault + case progress **in summary** (the One Page Plan from CIQ, priorities' progress, tax/holistic case stages, history of completed items) | No case view exists in the client portal yet |
 
 What case progress looks like, and when it is built, is an open question (L1 question 5); until it exists "Standard" = Showroom + Vault.
@@ -55,7 +55,7 @@ An annual licence is a **disbursement**: the $300 comes off the fee before it is
 | # | Unit | Price | Switch (proposed key) | Status |
 |---|---|---|---|---|
 | **L1** | **Tax licence** (= DIRECT unit 4) | $300/yr disbursement | `portal_licensing` (EXISTS — it also carries the new tax agreement) | **SHIPPED 2026-09-28** (backend v921, dark behind the switch, Test member only; flow [flows/tax-planning.md](../../flows/tax-planning.md#client-portal-licence-direct-unit-4--portal-licensing-l1-2026-09-28)); still owed: the $300 TRANSFER to a VFO Portal Stripe account (display only today) |
-| L2 | Basic client portal: member sends the portal link + Showroom introduction button | $0 | `client_basic_portal` | questions answered + build plan written 2026-10-09 (decisions 7-12); building on `claude/vfo-session-setup-0fbec1` |
+| L2 | Basic client portal: member sends the portal link + Showroom introduction button | $0 | `client_basic_portal` | **SHIPPED 2026-10-09** (backend v953 → v955, dark behind the switch, Test member only; decisions 7-16; flow [flows/client-portal.md](../../flows/client-portal.md)) |
 | L3 | Holistic licence | $300/yr disbursement | `holistic_licence` | planned |
 | L4 | CIQ licence (Basic vs Standard for a CIQ client; member self-drive) | $0 or $25/month | `ciq_licence` | planned |
 | L5 | Mirrored joint clients (connected advisor ↔ accountant, and one-off cases) | — | `mirrored_clients` | planned |
@@ -82,6 +82,8 @@ Every unit is its own shipping unit (own branch, own chat or chats, own wrap-up)
 **Builds on:** L1's automatic client login (the same login creation, triggered by the member instead of a payment). **The four open questions are ANSWERED (decisions 7-12, 2026-10-09).**
 
 #### L2 build plan (written 2026-10-09, read-only, before any code — branch `claude/vfo-session-setup-0fbec1`, both repos)
+
+> **AS BUILT (2026-10-09) — the flow of record is [../../flows/client-portal.md](../../flows/client-portal.md).** Where the plan below differs, the flow wins: the member's button is ONE click with no confirm and no success message, at the bottom of the Profile tab in a CLIENT PORTAL card (decision 13); a never-set-up existing login gets a fresh set-up link on resend (#597); the Vault tab is OFF until the live load allows it (decision 16, #596); the intro button is white / VFO-blue under the pop-up header and the requested state is the same button, inert (decision 13); the intro email names the specialism, not a company, and puts the client's email inline (decisions 14-15).
 
 Switch `client_basic_portal`, keyed on the CLIENT's member, seeded Test member only. Off = exactly today. Every member type gets the button (decision 8) — the switch is the only rollout control.
 
@@ -173,4 +175,8 @@ Each of these, when it is picked up, becomes a unit here with its own switch.
 | 9 | L2: the member **cannot revoke** Basic access (consistent with decision 6). | 10-09 |
 | 10 | L2: **Basic = Showroom only** (+ the introduction button); the Vault needs an active Standard licence. Both new emails are seeded **Draft** and flipped to Send in the Email Editor before the switch goes on. | 10-09 |
 | 11 | L2: **Basic = Showroom only whenever `client_basic_portal` is on** for the client's member — the Vault needs an active Standard (today: tax) licence. *Revised the same day:* the first version applied the gate only when `portal_licensing` was also on; Jake chose the simpler rule after the census showed no real client holds a login (only 59524's two test clients) and document requests use the `/vault-upload` links, not the portal Vault. Accepted: with `portal_licensing` off, no client of that member can reach the Vault until L3 / L4 add more Standard sources. | 10-09 |
-| 12 | L2: the two email bodies and the Tracy bell wording are approved as written in the L2 build plan. | 10-09 |
+| 12 | L2: the two email bodies and the Tracy bell wording are approved as written in the L2 build plan (template 312 then changed by decisions 14-15). | 10-09 |
+| 13 | L2 UI (Jake, during the click-through): "Send portal access" is one click — no confirm, no success or "queued" message (members never hear about Drafts); only a refusal shows. The member's control sits in a CLIENT PORTAL card (house card + heading) at the bottom of the Profile tab. The client's intro button is white with VFO-blue text under the pop-up header; once requested it is the same button, inert, with a not-allowed cursor. The Showroom pop-up header becomes name + background badge, short bio, ecosystems as small dot-separated text, a larger headshot (every Showroom). | 10-09 |
+| 14 | L2: specialists have no company field, so the intro-request email names the specialist with their specialism (`experts.short_bio`). | 10-09 |
+| 15 | L2: the intro-request email reads "Your client [Client Name] ([Client Email]) has asked…" — no separate client-email line; the Open client button stays. | 10-09 |
+| 16 | L2: the client portal's Vault tab is OFF by default and appears only on the live server answer — a Basic client must never see it, even for a moment. | 10-09 |

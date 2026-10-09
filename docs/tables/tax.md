@@ -561,7 +561,7 @@ The queue behind the public, no-login **VFO Tax Diagnostic** (`/tax-diagnostic`)
 
 ---
 
-## `client_portal_licenses` (added 2026-09-28, DIRECT unit 4 = portal licensing L1)
+## `client_portal_licenses` (added 2026-09-28, DIRECT unit 4 = portal licensing L1; `basic` rows since L2, 2026-10-09)
 
 **One row per licence PERIOD per client** — the shared licence record every later licensing unit adds a `source` to rather than rebuilding (plan: [../plans/portal-licensing/README.md](../plans/portal-licensing/README.md) §2.4). Migration `20260928160000_client_portal_licenses.sql`. **RLS enabled + `"Deny all access"` in the creating migration** (#141; anon probe `*/0`, re-probed 2026-09-28). Flow: [tax-planning.md → Client portal licence](../flows/tax-planning.md#client-portal-licence-direct-unit-4--portal-licensing-l1-2026-09-28). **Written only by the automatic grant — there are no manual grant / extend / revoke controls.**
 
@@ -571,13 +571,28 @@ The queue behind the public, no-login **VFO Tax Diagnostic** (`/tax-diagnostic`)
 | `created_at` | timestamptz | not null, default `now()`. |
 | `client_id` | integer | not null, fk → `clients.id` **ON DELETE CASCADE**. |
 | `member_number` | text | The member the licence was paid through (`clients.member_number` at grant time). |
-| `source` | text | not null, **CHECK `('tax')`**. Later units widen the CHECK (`holistic`, `ciq`). |
-| `tier` | text | not null, default `'standard'`, CHECK `basic` / `standard`. L1 writes `standard` only. |
+| `source` | text | not null, **CHECK `('tax', 'basic')`** (`'basic'` added 2026-10-09 by L2, migration `20261009140000_client_basic_portal.sql`). Later units widen the CHECK (`holistic`, `ciq`). |
+| `tier` | text | not null, default `'standard'`, CHECK `basic` / `standard`. L1 writes `standard`; L2 writes the `basic` row. **Every reader that does date maths filters `tier='standard'`** (`grantTaxLicence`'s extension read, `clientLicenceStatus`) — a Basic row has no `ends_on` (#595). |
 | `amount` | numeric(10,2) | not null, default 0. Dollars taken for THIS period: `300` for a fresh year, the pro-rata extra-days figure for an extension. Mirrors the plan's `licence_disbursement`. |
-| `starts_on` / `ends_on` | date | not null, CHECK `ends_on > starts_on`. 12 months (`addMonthsIso`, month-end clamped). An extension starts where the running period ends, so one client's live rows never overlap. |
+| `starts_on` / `ends_on` | date | `starts_on` not null; **`ends_on` nullable since 2026-10-09** — NULL only on the open-ended `source='basic'` row (CHECK `client_portal_licenses_ends_on_required_check`: `source='basic' or ends_on is not null`; CHECK `client_portal_licenses_basic_shape_check`: a basic row is `tier='basic'`, `amount=0`, `ends_on` NULL). CHECK `ends_on > starts_on` where set. 12 months (`addMonthsIso`, month-end clamped). An extension starts where the running period ends, so one client's live rows never overlap. |
 | `tax_plan_id` | integer | fk → `client_tax_plans.id` **ON DELETE SET NULL**. The plan whose retainer paid for it. |
 | `revoked_at` / `revoked_reason` | timestamptz / text | Stamped by `revokeTaxLicence` on ANY retainer refund (`actions/tax/refund.ts`): *"Tax retainer refunded"* / *"Tax retainer partially refunded"*. |
 
-**Indexes:** pkey; `client_portal_licenses_tax_plan_uidx` UNIQUE on `(tax_plan_id) where source='tax' and tax_plan_id is not null` — one tax grant per plan, the grant's second idempotency latch (a racing replay adopts the winner's row); `client_portal_licenses_client_idx` (`client_id, ends_on desc`).
+**Indexes:** pkey; `client_portal_licenses_tax_plan_uidx` UNIQUE on `(tax_plan_id) where source='tax' and tax_plan_id is not null` — one tax grant per plan, the grant's second idempotency latch (a racing replay adopts the winner's row); `client_portal_licenses_client_idx` (`client_id, ends_on desc`); `client_portal_licenses_basic_uidx` UNIQUE on `(client_id) where source='basic'` (2026-10-09) — one $0 Basic row per client, written the first time the member sends portal access.
 
-**Touched by:** `automation_TAX_invoicereceipt` (`grantTaxLicence` — insert), `automation_TAX_refund` (`revokeTaxLicence` — revoke), `client_showroom_load` (`clientLicenceStatus` — read, only while `portal_licensing` is on). Frontend: `src/pages/ClientPortal.jsx` (the Home screen's expiry line, from the load payload).
+**Touched by:** `automation_TAX_invoicereceipt` (`grantTaxLicence` — insert), `automation_TAX_refund` (`revokeTaxLicence` — revoke), `client_showroom_load` (`clientLicenceStatus` — read, only while `portal_licensing` is on; and `clientPortalTier` — Standard = an active tax row, while `client_basic_portal` is on), the five `client_vault_*` actions (`denyIfBasicClient`), `member_client_portal_access_send` (`recordBasicLicence` — the Basic insert) and `msm_load_client_home` (`portalAccessStatus` — reads the Basic row's `created_at`). All in `utils/client-portal-licence.ts` / `utils/client-basic-portal.ts`. Frontend: `src/pages/ClientPortal.jsx` (Home expiry line, Vault tab), `src/components/member/MemberPortalAccessCard.jsx`.
+
+## `client_intro_requests` (added 2026-10-09, portal licensing L2)
+
+A client's **"Request an introduction"** to one Showroom specialist. Migration `20261009140000_client_basic_portal.sql`. **RLS enabled + `"Deny all access"` in the creating migration** (#141; anon probe `*/0` 2026-10-09, advisor STRONG check GREEN). Flow: [../flows/client-portal.md](../flows/client-portal.md).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigserial | pk. |
+| `requested_at` | timestamptz | not null, default `now()`. Shown on the button as "Introduction requested MM/DD/YYYY". |
+| `client_id` | integer | not null, fk → `clients.id` **ON DELETE CASCADE**. From the client SESSION. |
+| `member_number` | text | The member emailed (`clients.member_number` at request time). |
+| `expert_id` | bigint | not null, fk → `experts.id` **ON DELETE CASCADE**. |
+| `email_result` | text | `sent` / `drafted` (template `send_mode`). A request whose email could not be created is DELETED, so the client can try again. |
+
+**Indexes:** pkey; `client_intro_requests_client_expert_uidx` UNIQUE `(client_id, expert_id)` — the duplicate guard (a second request is a 409). **Touched by:** `client_request_introduction` (insert / update / delete-on-failure), `client_showroom_load` (read, `intro_requests`, only while `client_basic_portal` is on).
