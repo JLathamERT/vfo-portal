@@ -18,6 +18,10 @@ const SECTIONS = [
   { key: 'regular', label: 'Regular Priorities' },
   { key: 'tax_planning', label: 'Tax Planning' },
   { key: 'pft', label: 'Partnership Fast Track' },
+  // Clients in NO program (a CIQ-created client starts here). One row per client,
+  // no tracks; the admin row's dropdown adds the client to one of its member's
+  // programs (msm_link_existing_client). Members see their own, read-only.
+  { key: 'unassigned', label: 'Unassigned' },
 ]
 
 // The second column exists only where a row needs its own identity: a Regular
@@ -39,8 +43,9 @@ const GRID_BY_SECTION = {
   regular: '1.1fr 1.7fr 96px 130px 1.9fr 1.1fr',
   tax_planning: '1.1fr 170px 96px 130px 90px 1.9fr 1.1fr',
   pft: '1.1fr 96px 130px 1.9fr 1.1fr',
+  unassigned: '1.4fr 96px 160px 260px',
 }
-const MIN_WIDTH_BY_SECTION = { map1: '980px', regular: '1000px', tax_planning: '1040px', pft: '860px' }
+const MIN_WIDTH_BY_SECTION = { map1: '980px', regular: '1000px', tax_planning: '1040px', pft: '860px', unassigned: '760px' }
 // The member portal's Client Overview (mode='member', L5 phase 2): the same table
 // minus the Next action and Owner columns (decision 27). Fixed widths shared by
 // every pill (Name 280 · Priority/Plan 260 · Status 110 · PF 180 · Service level /
@@ -51,8 +56,9 @@ const MEMBER_GRID_BY_SECTION = {
   regular: '280px 260px 110px 180px 1fr',
   tax_planning: '280px 260px 110px 180px 180px 1fr',
   pft: '280px 110px 180px 1fr',
+  unassigned: '280px 110px 180px 1fr',
 }
-const MEMBER_MIN_WIDTH_BY_SECTION = { map1: '820px', regular: '900px', tax_planning: '1080px', pft: '640px' }
+const MEMBER_MIN_WIDTH_BY_SECTION = { map1: '820px', regular: '900px', tax_planning: '1080px', pft: '640px', unassigned: '640px' }
 
 // A stopped / declined / otherwise closed track always sinks below the live ones
 // in the dropdown orderings; a clicked column header sorts purely by that column.
@@ -112,6 +118,7 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
     try { sessionStorage.setItem(sectionKey, key) } catch { /* private mode */ }
   }
   const [dataBySection, setDataBySection] = useState({})   // section -> clients[] (success only)
+  const [allPrograms, setAllPrograms] = useState([])       // Unassigned pill's dropdown (admin)
   const [loadingSection, setLoadingSection] = useState(null)
   const [errorBySection, setErrorBySection] = useState({}) // section -> message
   const [search, setSearch] = useState('')
@@ -134,7 +141,11 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
     let quiet = !!dataBySection[activeSection]
     if (!quiet) {
       const snap = getLastSeen(snapKey)
-      if (snap) { setDataBySection(d => ({ ...d, [activeSection]: snap.clients || [] })); quiet = true }
+      if (snap) {
+        setDataBySection(d => ({ ...d, [activeSection]: snap.clients || [] }))
+        if (snap.all_programs) setAllPrograms(snap.all_programs)
+        quiet = true
+      }
     }
     let alive = true
     setLoadingSection(activeSection)
@@ -145,6 +156,7 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
         if (!alive) return
         freshSections.current[activeSection] = true
         setDataBySection(d => ({ ...d, [activeSection]: res.clients || [] }))
+        if (res.all_programs) setAllPrograms(res.all_programs)
       })
       .catch(err => {
         if (quiet) { console.error(err); return }
@@ -193,7 +205,10 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
   // Flatten to one row per track; the client order above survives inside each
   // header sort because sortByColumn is stable. Closed tracks go last (stable,
   // so the dropdown order holds inside each half).
-  const flatRows = sorted.flatMap(c => (c.tracks || []).map(t => ({ client: c, track: t })))
+  const isUnassigned = activeSection === 'unassigned'
+  const flatRows = isUnassigned
+    ? sorted.map(c => ({ client: c, track: {} }))
+    : sorted.flatMap(c => (c.tracks || []).map(t => ({ client: c, track: t })))
   const liveFirst = [...flatRows.filter(r => !isClosedTrack(r.track)), ...flatRows.filter(r => isClosedTrack(r.track))]
   const sortColumns = {
     name: { type: 'text', get: r => r.client.name },
@@ -219,6 +234,44 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
   function openProfile(client, t) {
     const l = t.link || {}
     navigate(`${clientBase}/${client.id}?${l.program ? `program=${l.program}&` : ''}tab=home`)
+  }
+
+  // Unassigned pill (admin): add the client to a program. Every program is
+  // offered; when the member is not enrolled in it yet they are enrolled first
+  // (msm_enroll_member, the Members > program "Enroll" button's call), then the
+  // client is linked (msm_link_existing_client). The client then leaves this
+  // list; it joins the other pills once it has a track.
+  const [assigningId, setAssigningId] = useState(null)
+  const [assignError, setAssignError] = useState({}) // client id -> message
+  async function addToProgram(client, programId) {
+    const prog = allPrograms.find(p => String(p.id) === String(programId))
+    if (!prog) return
+    let enr = (client.enrollments || []).find(e => String(e.program_id) === String(prog.id))
+    const who = client.member_name || 'The member'
+    const ask = enr
+      ? `Add ${client.name} to ${prog.name}?`
+      : `${who} is not enrolled in ${prog.name} yet.\n\nEnroll ${who} in ${prog.name} (joined today) and add ${client.name} to it?`
+    if (!window.confirm(ask)) return
+    setAssigningId(client.id)
+    setAssignError(m => ({ ...m, [client.id]: '' }))
+    try {
+      if (!enr) {
+        if (!client.member_number) throw new Error('This client has no member')
+        const res = await callApi('msm_enroll_member', { member_number: client.member_number, program_id: prog.id })
+        enr = { id: res.enrollment.id, program_id: prog.id }
+        // The member's other unassigned clients now link to this enrollment, not re-enroll.
+        const added = enr
+        setDataBySection(d => ({ ...d, unassigned: (d.unassigned || []).map(c => c.member_number === client.member_number ? { ...c, enrollments: [...(c.enrollments || []), added] } : c) }))
+      }
+      await callApi('msm_link_existing_client', { client_id: client.id, enrollment_id: enr.id })
+      const remaining = (dataBySection.unassigned || []).filter(c => c.id !== client.id)
+      setDataBySection(d => ({ ...d, unassigned: (d.unassigned || []).filter(c => c.id !== client.id) }))
+      setLastSeen('clientoverview:unassigned', { section: 'unassigned', clients: remaining, all_programs: allPrograms })
+    } catch (err) {
+      setAssignError(m => ({ ...m, [client.id]: err.message }))
+    } finally {
+      setAssigningId(null)
+    }
   }
 
   const wrap = { padding: '24px', maxWidth: '1500px', margin: '0 auto' }
@@ -258,15 +311,48 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
               <SortHeader label="PF" sortKey="pf" sort={colSort} onSort={onSort} />
               {isMap1 && <span>Service level</span>}
               {isTax && <SortHeader label="Phase" sortKey="phase" sort={colSort} onSort={onSort} />}
-              {!memberMode && <span>Next action</span>}
-              {!memberMode && <span>Owner</span>}
+              {!memberMode && !isUnassigned && <span>Next action</span>}
+              {!memberMode && !isUnassigned && <span>Owner</span>}
+              {!memberMode && isUnassigned && <span>Add to program</span>}
             </div>
 
             {rows.length === 0 && !error && (
-              <div style={{ padding: '28px 18px', textAlign: 'center', color: 'var(--vfo-faint)', fontSize: '13px' }}>No clients match the current filters.</div>
+              <div style={{ padding: '28px 18px', textAlign: 'center', color: 'var(--vfo-faint)', fontSize: '13px' }}>
+                {isUnassigned && clients.length === 0 ? 'Every client is in a program.' : 'No clients match the current filters.'}
+              </div>
             )}
 
-            {rows.map(({ client: c, track: t }) => {
+            {isUnassigned && rows.map(({ client: c }) => {
+              const sc = clientStatusColors(c.status)
+              return (
+                <div key={c.id} onClick={() => openProfile(c, {})} {...rowHoverProps}
+                  style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                    <span title="Open client profile" style={{ fontWeight: 600, color: '#125ecc', alignSelf: 'flex-start' }}>{c.name || '—'}</span>
+                    {!memberMode && (c.member_name
+                      ? <MemberNameLink memberNumber={c.member_number} style={{ fontSize: '11px', color: 'var(--vfo-muted)', alignSelf: 'flex-start' }}>{c.member_name}</MemberNameLink>
+                      : <span style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>No member</span>)}
+                  </span>
+                  <span>
+                    {c.status
+                      ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: sc.bg, color: sc.color }}>{capitalize(c.status)}</span>
+                      : <span style={{ color: 'var(--vfo-faint)' }}>—</span>}
+                  </span>
+                  <span style={{ fontSize: '12px', color: c.assigned_pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.assigned_pf || '—'}</span>
+                  {!memberMode && (
+                    <span onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'default' }}>
+                      <select value="" disabled={assigningId === c.id} onChange={e => addToProgram(c, e.target.value)} style={{ ...sel, padding: '6px 10px', fontSize: '12.5px', cursor: 'pointer' }}>
+                        <option value="">{assigningId === c.id ? 'Adding...' : 'Add to program...'}</option>
+                        {allPrograms.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                      {assignError[c.id] && <span style={{ fontSize: '11px', color: '#c0392b' }}>{assignError[c.id]}</span>}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+
+            {!isUnassigned && rows.map(({ client: c, track: t }) => {
               const sc = clientStatusColors(c.status)
               const nexts = t.next_actions || []
               const entries = nexts.length > 0

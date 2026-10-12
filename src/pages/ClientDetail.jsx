@@ -237,6 +237,12 @@ export default function ClientDetail() {
     window.history.replaceState(null, '', window.location.pathname + '?' + params.toString())
   }, [program?.id, activeTab])
 
+  // A client in no program has no program tabs: a ?tab= carried in the URL
+  // (e.g. tab=map1) falls back to Profile instead of an empty page.
+  useEffect(() => {
+    if (!loading && client && !program && PROGRAM_TABS.includes(activeTab)) setActiveTab('home')
+  }, [loading, client, program, activeTab])
+
   // 'ciq' is a navigation action, not a tab: it hands off to the member's CIQ
   // feature in AdminPortal with this client pre-selected.
   function handleTabSelect(key) {
@@ -327,7 +333,7 @@ export default function ClientDetail() {
         ) : (
           <TrackHero
             eyebrow={isMirror ? 'Mirrored client' : 'Clients'}
-            title={`${client?.first_name} ${client?.last_name}`}
+            title={client ? `${client.first_name} ${client.last_name}` : 'Client'}
             avatar={<HeroAvatar src={null} name={`${client?.first_name || ''} ${client?.last_name || ''}`} />}
             meta={
               <>
@@ -367,7 +373,9 @@ export default function ClientDetail() {
                   </>
                 : <ClientTabDropdown label="Profile" isActive={activeTab === 'home' || activeTab === 'details' || activeTab === 'vault' || activeTab === 'payments' || activeTab === 'settings' || activeTab === 'continuation'} options={[{key:'home',label:'Profile'},{key:'details',label:'Edit Profile'},{key:'vault',label:'Vault'},...(client?.member_number ? [{key:'ciq',label:'CIQ'}] : []),{key:'payments',label:'Payments'},{key:'settings',label:'Settings'},...(session?.is_superadmin ? [{key:'continuation',label:'Payment Continuation'}] : [])]} onSelect={handleTabSelect} />
               }
-              {program?.name === 'Partnership Fast Track' ? (isMirror ? null :
+              {/* A client in no program (Client Overview > Unassigned) gets only the
+                  Profile menu - no program tabs until an admin adds it to one. */}
+              {!program ? null : program.name === 'Partnership Fast Track' ? (isMirror ? null :
                 <button style={tabStyle(activeTab === 'pft')} onClick={() => setActiveTab('pft')}>PFT Engagement Process</button>
               ) : program?.name === 'VFO Tax Planning' ? (
                 <button style={tabStyle(activeTab === 'tax')} onClick={() => setActiveTab('tax')}>Tax Priorities</button>
@@ -386,6 +394,14 @@ export default function ClientDetail() {
 
         {loading ? (
           <ProfileTabSkeleton sections={isMember ? 3 : 4} />
+        ) : !client ? (
+          // The load failed (network, timeout, a deleted client): say so instead of
+          // drawing the tabs, which read client.id and crashed the page to blank
+          // (Sentry, 2026-10-09).
+          <div style={{ ...sectionStyle, textAlign: 'center', padding: '40px' }}>
+            <div style={{ fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: 600 }}>Couldn't load this client</div>
+            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px' }}>Refresh the page to try again.</div>
+          </div>
         ) : (
           <>
             {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
@@ -396,7 +412,7 @@ export default function ClientDetail() {
               <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} />
             )}
             {activeTab === 'details' && isAdmin && <ClientDetails client={client} onUpdate={loadData} sectionStyle={sectionStyle} />}
-            {pfLocked && PROGRAM_TABS.includes(activeTab) && (
+            {pfLocked && program && PROGRAM_TABS.includes(activeTab) && (
               <div style={{ ...sectionStyle, borderColor: 'rgba(231,76,60,0.3)', textAlign: 'center', padding: '40px' }}>
                 <div style={{ fontSize: '15px', color: 'var(--vfo-muted)' }}>Please Select a PF</div>
                 <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px' }}>Assign a PF on the Profile tab before working this client's tracks.</div>

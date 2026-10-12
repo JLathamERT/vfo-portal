@@ -77,7 +77,9 @@ export default function TaxPayPage() {
   )
 
   const baseAmount = Number(data.payment_amount) || 0
-  const cardTotal = Math.round((baseAmount + 0.30) / (1 - 0.029) * 100) / 100
+  // Absent field = an older backend that never waived — keep the gross-up.
+  const cardFeeWaived = data.card_fee_waived === true
+  const cardTotal = cardFeeWaived ? baseAmount : Math.round((baseAmount + 0.30) / (1 - 0.029) * 100) / 100
   const cardFee = Math.round((cardTotal - baseAmount) * 100) / 100
 
   return (
@@ -116,14 +118,18 @@ export default function TaxPayPage() {
           onLeave={() => setHoveredOption(null)}
           onClick={() => handleChoice('card')}
           title="Credit / Debit Card"
-          badgeText="2.9% + $0.30 Fee"
-          badgeClass="blue"
+          badgeText={cardFeeWaived ? 'No Fee' : '2.9% + $0.30 Fee'}
+          badgeClass={cardFeeWaived ? 'green' : 'blue'}
           amount={cardTotal}
           breakdown={[
             { label: 'Tax Planning Retainer', value: `$${formatMoney(baseAmount)}`, valueColor: 'var(--vfo-ink-2)' },
-            { label: 'Card Processing Fee (2.9% + $0.30)', value: `$${formatMoney(cardFee)}`, valueColor: 'var(--vfo-ink-2)' },
+            cardFeeWaived
+              ? { label: 'Card Processing Fee', value: '$0.00', valueColor: '#16a34a' }
+              : { label: 'Card Processing Fee (2.9% + $0.30)', value: `$${formatMoney(cardFee)}`, valueColor: 'var(--vfo-ink-2)' },
           ]}
-          footer="Processes immediately. The processing fee covers card transaction costs."
+          footer={cardFeeWaived
+            ? 'Processes immediately. No card processing fee applies to your account.'
+            : 'Processes immediately. The processing fee covers card transaction costs.'}
         />
 
         <p style={securityNoteStyle}>
