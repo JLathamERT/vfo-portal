@@ -6,6 +6,7 @@ import MemberVault from '../components/shared/MemberVault'
 import MemberCIQ from '../components/shared/MemberCIQ'
 import MemberGCMarketplace from '../components/member/MemberGCMarketplace'
 import MemberMSMTracking from '../components/member/MemberMSMTracking'
+import ClientOverviewPanel from '../components/admin/ClientOverviewPanel'
 import MemberShowroom from '../components/member/MemberShowroom'
 import MemberGrowthPlan from '../components/member/MemberGrowthPlan'
 import VfoWordmark from '../components/shared/VfoWordmark'
@@ -39,6 +40,8 @@ export default function MemberPortal() {
     // email opens ?tab=msm_tax&intake_client=<id>. Either one lands on the Tax
     // Planning tab regardless of the tab the member last used.
     if (qs.get('intake') || qs.get('intake_client')) return 'msm_tax'
+    // The Client Mirroring email's Open Client Overview button (L5).
+    if (qs.get('tab') === 'client_overview') return 'client_overview'
     return sessionStorage.getItem('memberActiveTab') || 'profile'
   })
   const [showSettings, setShowSettings] = useState(false)
@@ -55,7 +58,7 @@ export default function MemberPortal() {
   const [allPrograms, setAllPrograms] = useState([])
 
   useLayoutEffect(() => {
-    if (!session || session.role !== 'member') { navigate('/member/login'); return }
+    if (!session || session.role !== 'member') { navigate('/member/login?next=' + encodeURIComponent(window.location.pathname + window.location.search)); return }
     if (sessionStorage.getItem('memberOpenView') === 'settings') {
       sessionStorage.removeItem('memberOpenView')
       setShowSettings(true); setActiveTab(null)
@@ -146,7 +149,9 @@ export default function MemberPortal() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
+      {/* zIndex above the tab bar below (also 100): with a tie the later tab bar
+          paints over the bell's dropdown and hides its top. */}
+      <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 110, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
         <VfoWordmark size={17} light onClick={handleTitleClick} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* Mounted exactly as TaxPlannerPortal.jsx mounts it. The member's
@@ -184,6 +189,9 @@ export default function MemberPortal() {
               ]}
               onSelect={setActiveTab}
             />
+            <button onClick={() => setActiveTab('client_overview')} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === 'client_overview' ? '2px solid #125ecc' : '2px solid transparent', color: activeTab === 'client_overview' ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === 'client_overview' ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+              Client Overview
+            </button>
             {['specialists','showroom','website','growthplan','ciq','gc','vault'].filter(tab => tab !== 'website' || memberData?.website_enabled).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === tab ? '2px solid #125ecc' : '2px solid transparent', color: activeTab === tab ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === tab ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
                 {tabLabels[tab]}
@@ -213,6 +221,7 @@ export default function MemberPortal() {
           {!loading && (activeTab === 'msm_home' || activeTab?.startsWith('msm_')) && memberData && (
             <MemberMSMTracking member={memberData} activeTab={activeTab} onNavigate={setActiveTab} />
           )}
+          {!loading && activeTab === 'client_overview' && <ClientOverviewPanel mode="member" />}
           {!loading && activeTab === 'specialists' && memberData && (
             <MemberSpecialists member={memberData} allExperts={allExperts} exclusions={exclusions} ecoMap={ecoMap} onDataChange={loadData} />
           )}

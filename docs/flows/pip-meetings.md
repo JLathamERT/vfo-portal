@@ -183,10 +183,10 @@ Writes `pip_rev_share_amount` always; `pip_rev_share_completed_at` on every non-
 | Action | File | Visibility |
 |---|---|---|
 | `msm_load_pip_phases` | `actions/msm/load-pip-phases.ts` | AUTH |
-| `msm_add_pip_meetings_for_year` | `actions/msm/add-pip-meetings-for-year.ts` | AUTH |
-| `msm_update_pip_meeting` | `actions/msm/update-pip-meeting.ts` | AUTH |
-| `msm_save_pip_purchase` | `actions/msm/save-pip-purchase.ts` | AUTH |
-| `msm_pip_meeting_confirmation_email` | `actions/msm/pip-meeting-confirmation-email.ts` | AUTH |
+| `msm_add_pip_meetings_for_year` | `actions/msm/add-pip-meetings-for-year.ts` | AUTH + `ADMIN_ONLY` (since 2026-10-09) |
+| `msm_update_pip_meeting` | `actions/msm/update-pip-meeting.ts` | AUTH + `ADMIN_ONLY` (since 2026-10-09) |
+| `msm_save_pip_purchase` | `actions/msm/save-pip-purchase.ts` | AUTH + `ADMIN_ONLY` (since 2026-10-09) |
+| `msm_pip_meeting_confirmation_email` | `actions/msm/pip-meeting-confirmation-email.ts` | AUTH + `ADMIN_ONLY` (since 2026-10-09) |
 | `automation_PIP_stripecustomer` | `actions/msm/pip-stripe-customer.ts` | PUBLIC |
 | `automation_PIP_paymentemail` | `actions/msm/pip-payment-email.ts` | PUBLIC |
 | `automation_PIP_loadpayment` | `actions/msm/pip-load-payment.ts` | PUBLIC (token) |

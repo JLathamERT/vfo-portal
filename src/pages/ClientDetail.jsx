@@ -8,6 +8,7 @@ import PipMeetingsTab from '../components/admin/pip/PipMeetingsTab'
 import ClientVaultTab from '../components/admin/ClientVaultTab'
 import SendSetupEmailButton from '../components/admin/SendSetupEmailButton'
 import MemberPortalAccessCard from '../components/member/MemberPortalAccessCard'
+import ClientConnectedMembersCard from '../components/shared/ClientConnectedMembersCard'
 import ClientPaymentsTab from '../components/payments/ClientPaymentsTab'
 import PFTEngagementTrack from '../components/admin/pft/PFTEngagementTrack'
 import TaxPrioritiesTab from '../components/admin/tax/TaxPrioritiesTab'
@@ -84,6 +85,10 @@ export default function ClientDetail() {
   const [ecosystems, setEcosystems] = useState([])
   const [loading, setLoading] = useState(true)
   const [clientNotes, setClientNotes] = useState([])
+  // Client Mirroring (L5): set when the client is MIRRORED to this member (not
+  // theirs) - msm_load_client_home returns { owner_name }. The screen is the owner's
+  // member view, view-only, with every money value already masked by the server.
+  const [mirror, setMirror] = useState(null)
 
   // Back URL — prefer state passed via navigate, fallback to admin
   const isMember = location.pathname.startsWith('/member')
@@ -97,7 +102,8 @@ export default function ClientDetail() {
   // (clients.pf_member_number, stamped by the intake finalize), so they run the
   // tax plan themselves and manage its contacts and notes. Compared against the
   // SESSION member number; the backend re-proves it on every write.
-  const isDirect = isMember && !!client?.pf_member_number && String(client.pf_member_number) === String(session?.member_number ?? '')
+  const isDirect = isMember && !mirror && !!client?.pf_member_number && String(client.pf_member_number) === String(session?.member_number ?? '')
+  const isMirror = isMember && !!mirror
 
   // Program sub-tabs (PFT / MAP 1 / Regular / Tax / PIP) are locked on the admin
   // side until a PF is assigned to this client (set on the Profile tab). Members
@@ -138,7 +144,7 @@ export default function ClientDetail() {
     if (isPlanner) {
       if (!session || session.role !== 'tax_planner') { navigate('/tax-planner/login'); return }
     } else if (!session) {
-      navigate('/admin/login?next=' + encodeURIComponent(location.pathname + location.search)); return
+      navigate((isMember ? '/member/login?next=' : '/admin/login?next=') + encodeURIComponent(location.pathname + location.search)); return
     }
     // Re-opened in the same session: draw the last client page at once, refresh behind it.
     const snap = getLastSeen(loadInputs().snapKey)
@@ -165,6 +171,7 @@ export default function ClientDetail() {
     setContacts(data.contacts || [])
     // Present only while client_basic_portal is on for the client's member.
     setPortalAccess(Object.prototype.hasOwnProperty.call(data, 'portal_access') ? data.portal_access : undefined)
+    setMirror(data.mirrored || null)
     setSpecialists(expertsData.experts || [])
     setEcosystems(expertsData.ecosystems || [])
     if (notesData) setClientNotes(notesData.notes || [])
@@ -319,7 +326,7 @@ export default function ClientDetail() {
           </div>
         ) : (
           <TrackHero
-            eyebrow="Clients"
+            eyebrow={isMirror ? 'Mirrored client' : 'Clients'}
             title={`${client?.first_name} ${client?.last_name}`}
             avatar={<HeroAvatar src={null} name={`${client?.first_name || ''} ${client?.last_name || ''}`} />}
             meta={
@@ -360,7 +367,7 @@ export default function ClientDetail() {
                   </>
                 : <ClientTabDropdown label="Profile" isActive={activeTab === 'home' || activeTab === 'details' || activeTab === 'vault' || activeTab === 'payments' || activeTab === 'settings' || activeTab === 'continuation'} options={[{key:'home',label:'Profile'},{key:'details',label:'Edit Profile'},{key:'vault',label:'Vault'},...(client?.member_number ? [{key:'ciq',label:'CIQ'}] : []),{key:'payments',label:'Payments'},{key:'settings',label:'Settings'},...(session?.is_superadmin ? [{key:'continuation',label:'Payment Continuation'}] : [])]} onSelect={handleTabSelect} />
               }
-              {program?.name === 'Partnership Fast Track' ? (
+              {program?.name === 'Partnership Fast Track' ? (isMirror ? null :
                 <button style={tabStyle(activeTab === 'pft')} onClick={() => setActiveTab('pft')}>PFT Engagement Process</button>
               ) : program?.name === 'VFO Tax Planning' ? (
                 <button style={tabStyle(activeTab === 'tax')} onClick={() => setActiveTab('tax')}>Tax Priorities</button>
@@ -385,6 +392,9 @@ export default function ClientDetail() {
             {activeTab === 'home' && isMember && portalAccess !== undefined && client && (
               <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} sectionStyle={sectionStyle} cardTitle={cardTitle} />
             )}
+            {activeTab === 'home' && (isMember || isAdmin) && client && (
+              <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} />
+            )}
             {activeTab === 'details' && isAdmin && <ClientDetails client={client} onUpdate={loadData} sectionStyle={sectionStyle} />}
             {pfLocked && PROGRAM_TABS.includes(activeTab) && (
               <div style={{ ...sectionStyle, borderColor: 'rgba(231,76,60,0.3)', textAlign: 'center', padding: '40px' }}>
@@ -392,15 +402,15 @@ export default function ClientDetail() {
                 <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px' }}>Assign a PF on the Profile tab before working this client's tracks.</div>
               </div>
             )}
-            {activeTab === 'map1' && program && !pfLocked && !isPlanner && <ClientTrackViewV2 clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} />}
-            {activeTab === 'pft' && program && !pfLocked && !isPlanner && <PFTEngagementTrack clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} />}
+            {activeTab === 'map1' && program && !pfLocked && !isPlanner && <ClientTrackViewV2 clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
+            {activeTab === 'pft' && program && !pfLocked && !isPlanner && !isMirror && <PFTEngagementTrack clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} />}
             {activeTab === 'regular' && program && !pfLocked && !isPlanner && <RegularPrioritiesTab clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} initialTrackId={initialTrackId} />}
-            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} openSinglePlan={fromBell} />}
-            {activeTab === 'pip' && program && !pfLocked && !isPlanner && <PipMeetingsTab clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} />}
+            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} mirror={isMirror} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} openSinglePlan={fromBell} />}
+            {activeTab === 'pip' && program && !pfLocked && !isPlanner && <PipMeetingsTab clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
             {/* memberMode is its own flag, not a relaxed readOnly: a member gets
                 view on all three sections + add on the two client-owned ones,
                 and never share / delete / request-docs / drag-to-move. */}
-            {activeTab === 'vault' && (isAdmin || isPlanner || isMember) && <ClientVaultTab clientId={parseInt(clientId)} sectionStyle={sectionStyle} specialists={specialists} readOnly={isPlanner} allowUpload={isPlanner} memberMode={isMember} recipientName={`${client?.first_name || ''} ${client?.last_name || ''}`.trim() || undefined} recipientFirst={client?.first_name || undefined} />}
+            {activeTab === 'vault' && (isAdmin || isPlanner || isMember) && <ClientVaultTab clientId={parseInt(clientId)} sectionStyle={sectionStyle} specialists={specialists} readOnly={isPlanner || isMirror} allowUpload={isPlanner} memberMode={isMember} recipientName={`${client?.first_name || ''} ${client?.last_name || ''}`.trim() || undefined} recipientFirst={client?.first_name || undefined} />}
             {activeTab === 'payments' && isAdmin && <ClientPaymentsTab clientId={parseInt(clientId)} sectionStyle={sectionStyle} />}
             {activeTab === 'settings' && isAdmin && (
               <div style={sectionStyle}>

@@ -40,6 +40,17 @@ const SWITCH_COPY = {
     off: 'No Send portal access button for members, and no portal access emails. Clients who already have a login keep it, and the client portal shows exactly what it shows today (Showroom + Vault for every client).',
     note: 'Keyed on the client\'s member. A tax licence only exists while "New tax agreement + client portal licensing" is on for that member, so with that switch off every client of the member is Basic (Showroom only).',
   },
+  mirrored_clients: {
+    title: 'Client Mirroring: mirror a client to another member',
+    on: [
+      'A "Client Mirroring" card on the Profile tab of each of the member\'s clients (and on the admin client Profile tab). The member\'s Connections are listed with a one-click Mirror, and "Mirror to a member" searches every active member by name or member number.',
+      'A client can be mirrored to several members. The member or an admin can stop mirroring at any time; a member a client is mirrored to can leave.',
+      'Mirroring emails that member (a Draft until it is switched to Send in the Email Editor, Client Portal section) and rings their portal bell.',
+      'That member sees the client\'s case on their own portal, view-only: MAP 1 / Holistic, Tax Planning (with the intake answers), CIQ, PIP and Regular priorities, the shared notes, the Client Vault (view and download) and the Additional Contacts. They can change nothing and never see fees, payments or revenue shares. Nothing about revenue share changes.',
+    ],
+    off: 'No Client Mirroring card and no client can be mirrored. Any member a client is already mirrored to stops seeing it at once (the record is kept, so switching back on restores it).',
+    note: 'Keyed on the client\'s OWNING member - the other member\'s own switch position does not matter. The new Client Overview tab for members is not behind this switch.',
+  },
   tpom_additional_benefits: {
     title: 'TPOM presentation: Additional Benefits slide',
     on: [

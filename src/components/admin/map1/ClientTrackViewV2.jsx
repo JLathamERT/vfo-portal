@@ -155,7 +155,10 @@ function PipConfirmStep({ clientId, task, p, meeting, readOnly, onDone, emailCtx
   )
 }
 
-function ClientTrackViewV2({ clientId, programId, client, readOnly = false, notes = [], onNotesChange }) {
+// mirror (Client Mirroring, L5): another member viewing a client mirrored to them.
+// Always with readOnly; additionally hides the fee breakdown, the payment-method
+// tag and the revenue-share rows (the server has already masked the values).
+function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirror = false, notes = [], onNotesChange }) {
   const [phases, setPhases] = useState([])
   const [progress, setProgress] = useState({})
   const [loading, setLoading] = useState(true)
@@ -295,7 +298,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
     } catch (err) { console.error(err); setCompletedPhases(p => ({ ...p, [phase.id]: null })) }
   }
 
-  const statusColors = { Completed: '#1b9254', Confirmed: '#1b9254', Yes: '#1b9254', VFOS: '#0095ff', Member: '#0095ff', 'Call arranged': '#1b9254', 'PIP 1 scheduled': '#1b9254', 'Follow-up scheduled': '#1b9254', 'PIP Follow-up confirmed': '#1b9254', 'Send confirmation email': '#1b9254', 'Sent confirmation email': '#1b9254', 'Regular priorities tab enabled': '#1b9254', 'Tax priorities tab enabled': '#1b9254', 'Completed + N/A': '#1b9254', 'Completed + Risk 1': '#1b9254', 'Completed + Risk 2': '#1b9254', 'Completed + Risk 3': '#1b9254', 'Completed + Risk 4': '#1b9254', 'Completed + Risk 5': '#1b9254', 'Lite': '#1b9254', 'Core': '#1b9254', 'Max': '#1b9254', 'In Progress': '#e06717', Undecided: '#e06717', 'No response': '#e74c3c', No: '#e74c3c', 'PIP Follow-up declined': '#e74c3c', 'Send declined email': '#e74c3c', 'Meeting declined': '#e74c3c', 'No show': '#e74c3c', 'Completed - Yes': '#1b9254', 'Completed - No': '#e74c3c', 'Completed - Undecided': '#e06717' }
+  const statusColors = { Completed: '#1b9254', Confirmed: '#1b9254', Yes: '#1b9254', VFOS: '#0095ff', Member: '#0095ff', 'Call arranged': '#1b9254', 'PIP 1 scheduled': '#1b9254', 'Follow-up scheduled': '#1b9254', 'PIP Follow-up confirmed': '#1b9254', 'Send confirmation email': '#1b9254', 'Sent confirmation email': '#1b9254', 'Confirmation email sent': '#1b9254', 'Email sent - date not arranged': '#e06717', 'Sent declined email': '#e74c3c', 'Regular priorities tab enabled': '#1b9254', 'Tax priorities tab enabled': '#1b9254', 'Completed + N/A': '#1b9254', 'Completed + Risk 1': '#1b9254', 'Completed + Risk 2': '#1b9254', 'Completed + Risk 3': '#1b9254', 'Completed + Risk 4': '#1b9254', 'Completed + Risk 5': '#1b9254', 'Lite': '#1b9254', 'Core': '#1b9254', 'Max': '#1b9254', 'In Progress': '#e06717', Undecided: '#e06717', 'No response': '#e74c3c', No: '#e74c3c', 'PIP Follow-up declined': '#e74c3c', 'Send declined email': '#e74c3c', 'Meeting declined': '#e74c3c', 'No show': '#e74c3c', 'Completed - Yes': '#1b9254', 'Completed - No': '#e74c3c', 'Completed - Undecided': '#e06717' }
 
   // Non-auto tasks that count toward a phase's completion. For the Initial
   // Contact phase a new first step ("Who is completing the tracking…") gates the
@@ -638,10 +641,10 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
                             {autoStep('Payment link sent (ACH or Card choice)', !!pd?.pay1_email_sent_at || !!pd?.pay1_status, null, false, pd?.pay1_email_sent_at)}
                             {reminderStep(pd?.pay1_reminder_sent_at)}
                             {pfNotifiedStep('pay1', pd?.pay1_pf_notified_at, pd?.pay1_pf_ack_at)}
-                            {autoStep('Payment collected', pd?.pay1_status === 'succeeded', pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null, false, pd?.pay1_date, pay1Pending(pd))}
+                            {autoStep('Payment collected', pd?.pay1_status === 'succeeded', !mirror && pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null, false, pd?.pay1_date, pay1Pending(pd))}
                             {autoStep('Invoice and receipt created and emailed to client', !!pd?.invoice_number, null, false, pd?.invoice_email_sent_at)}
-                            {autoStep('Revenue share paid', ['Yes', 'Money Mapping', 'N/A — No Share Due'].includes(pd?.rec1_rev_paid), null, isZeroShare(pd?.member_share), pd?.rec1_rev_completed_at)}
-                            {autoStep('Member notified of revenue share', pd?.c24_email_sent === true, null, isZeroShare(pd?.member_share), pd?.c24_email_sent_at)}
+                            {!mirror && autoStep('Revenue share paid', ['Yes', 'Money Mapping', 'N/A — No Share Due'].includes(pd?.rec1_rev_paid), null, isZeroShare(pd?.member_share), pd?.rec1_rev_completed_at)}
+                            {!mirror && autoStep('Member notified of revenue share', pd?.c24_email_sent === true, null, isZeroShare(pd?.member_share), pd?.c24_email_sent_at)}
                           </>
                         )
                       })()}
@@ -676,15 +679,15 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
                               <PFPricingForm clientId={clientId} serviceLevel={pd?.c15_service_level} pipelineId={pd?.id} memberCategory={client?.member_category} memberType={client?.member_type} onComplete={() => loadTrack()} />
                                     ) : pd?.gross_fee ? (
                                       <>
-                                        <div style={{ cursor: 'pointer' }} onClick={() => setExpanded(prev => ({ ...prev, pricing_details: !prev.pricing_details }))}>
+                                        <div style={{ cursor: mirror ? 'default' : 'pointer' }} onClick={() => { if (!mirror) setExpanded(prev => ({ ...prev, pricing_details: !prev.pricing_details })) }}>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                                             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#1b9254', flexShrink: 0, border: '1px solid #1b9254' }} />
                                             <span style={{ fontSize: '12px', color: 'var(--vfo-ink)', fontWeight: 600 }}>PF completed pricing</span>
-                                            <span style={{ fontSize: '10px', color: 'var(--vfo-muted)', marginLeft: '4px', transform: expanded.pricing_details ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
+                                            {!mirror && <span style={{ fontSize: '10px', color: 'var(--vfo-muted)', marginLeft: '4px', transform: expanded.pricing_details ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
                                             <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
                                           </div>
                                         </div>
-                                        {expanded.pricing_details && (
+                                        {expanded.pricing_details && !mirror && (
                                           <div style={{ marginLeft: '14px', padding: '8px 12px', background: 'var(--vfo-tint)', borderRadius: '6px', marginBottom: '4px', borderLeft: '1px solid var(--vfo-border-chip)' }}>
                                             <div style={{ display: 'flex', padding: '2px 0' }}><span style={{ fontSize: '11px', color: 'var(--vfo-muted)', width: '140px' }}>Service level</span><span style={{ fontSize: '11px', color: 'var(--vfo-ink-2)' }}>{pd?.service_level || pd?.c15_service_level || '—'}</span></div>
                                             <div style={{ display: 'flex', padding: '2px 0' }}><span style={{ fontSize: '11px', color: 'var(--vfo-muted)', width: '140px' }}>Gross fee</span><span style={{ fontSize: '11px', color: 'var(--vfo-ink-2)' }}>${pd?.gross_fee || '—'}</span></div>
@@ -703,10 +706,10 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
                                         {autoStep('Payment link sent (ACH or Card choice)', !!pd?.pay1_email_sent_at || !!pd?.pay1_status, null, false, pd?.pay1_email_sent_at)}
                                         {reminderStep(pd?.pay1_reminder_sent_at)}
                                         {pfNotifiedStep('pay1', pd?.pay1_pf_notified_at, pd?.pay1_pf_ack_at)}
-                                        {autoStep('Payment collected', pd?.pay1_status === 'succeeded', pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null, false, pd?.pay1_date, pay1Pending(pd))}
+                                        {autoStep('Payment collected', pd?.pay1_status === 'succeeded', !mirror && pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null, false, pd?.pay1_date, pay1Pending(pd))}
                                         {autoStep('Invoice and receipt created and emailed to client', !!pd?.invoice_number, null, false, pd?.invoice_email_sent_at)}
-                                        {autoStep('Revenue share paid', ['Yes', 'Money Mapping', 'N/A — No Share Due'].includes(pd?.rec1_rev_paid), null, isZeroShare(pd?.member_share), pd?.rec1_rev_completed_at)}
-                                        {autoStep('Member notified of revenue share', pd?.c24_email_sent === true, null, isZeroShare(pd?.member_share), pd?.c24_email_sent_at)}
+                                        {!mirror && autoStep('Revenue share paid', ['Yes', 'Money Mapping', 'N/A — No Share Due'].includes(pd?.rec1_rev_paid), null, isZeroShare(pd?.member_share), pd?.rec1_rev_completed_at)}
+                                        {!mirror && autoStep('Member notified of revenue share', pd?.c24_email_sent === true, null, isZeroShare(pd?.member_share), pd?.c24_email_sent_at)}
                                       </>
                                     ) : null}
                                   </>
@@ -715,7 +718,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
                                 {finalDec === 'ExtraMeeting' && (
                                   <>
                                     {autoStep('Extra meeting requested', true)}
-                                    <PFExtraMeetingForm clientId={clientId} pipelineId={pd?.id} memberCategory={client?.member_category} memberType={client?.member_type} onComplete={() => loadTrack()} />
+                                    {!readOnly && <PFExtraMeetingForm clientId={clientId} pipelineId={pd?.id} memberCategory={client?.member_category} memberType={client?.member_type} onComplete={() => loadTrack()} />}
                                   </>
                                 )}
                               </div>
@@ -727,10 +730,10 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, note
                                 {autoStep('Engagement agreement signed', pd?.c17_client_signed === 'Yes')}
                                 {autoStep('Engagement agreement signed by CEO', pd?.c18_ceo_signed === 'Yes')}
                                 {autoStep('Payment link sent (ACH or Card choice)', !!pd?.pay1_email_sent_at || !!pd?.pay1_status, null, false, pd?.pay1_email_sent_at)}
-                                {autoStep('Payment collected', pd?.pay1_status === 'succeeded', pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null, false, pd?.pay1_date, pay1Pending(pd))}
+                                {autoStep('Payment collected', pd?.pay1_status === 'succeeded', !mirror && pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null, false, pd?.pay1_date, pay1Pending(pd))}
                                 {autoStep('Invoice and receipt created and emailed to client', !!pd?.invoice_number, null, false, pd?.invoice_email_sent_at)}
-                                {autoStep('Revenue share paid', ['Yes', 'Money Mapping', 'N/A — No Share Due'].includes(pd?.rec1_rev_paid), null, isZeroShare(pd?.member_share))}
-                                {autoStep('Member notified of revenue share', pd?.c24_email_sent === true, null, isZeroShare(pd?.member_share), pd?.c24_email_sent_at)}
+                                {!mirror && autoStep('Revenue share paid', ['Yes', 'Money Mapping', 'N/A — No Share Due'].includes(pd?.rec1_rev_paid), null, isZeroShare(pd?.member_share))}
+                                {!mirror && autoStep('Member notified of revenue share', pd?.c24_email_sent === true, null, isZeroShare(pd?.member_share), pd?.c24_email_sent_at)}
                                 <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginBottom: '6px', marginTop: '10px' }}>If No:</div>
                                 {autoStep('Decline email sent to client')}
                                 <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginBottom: '6px', marginTop: '10px' }}>If extra meeting:</div>

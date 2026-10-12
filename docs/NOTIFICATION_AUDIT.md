@@ -70,7 +70,7 @@
 > | 90 Day Plan | **3** | ✗ no section |
 > | Accountant Onboarding | 19 | 18 |
 > | Advisor Onboarding | 19 | 18 |
-> | **Client Portal** *(NEW area 2026-10-09)* | **1** | ✗ no section — see the note below + [flows/client-portal.md](flows/client-portal.md) |
+> | **Client Portal** *(NEW area 2026-10-09)* | **2** | ✗ no section — see the notes below + [flows/client-portal.md](flows/client-portal.md) / [flows/client-mirroring.md](flows/client-mirroring.md) |
 > | Growth Credits | 2 | ✗ no section |
 > | Growth Plan | 4 | 2 |
 > | MAP 1 | **18** | **15** |
@@ -119,6 +119,14 @@
 > `client_request_introduction` after the member's email is created: *"Introduction requested: <client> →
 > <specialist>"*, linking to `/admin/client/<id>`. Behind `client_basic_portal`. Fired once live (bell 3049,
 > Test Person → Todd Lofgren, marked read).
+>
+> **The 2026-10-12 addition (portal licensing L5, Client Mirroring), no section below:** `Client Portal` **1 → 2**
+> — **`MEMBER_client_connected`** (sort 352, `default_recipients ["CONNECTED_MEMBER"]`, dismissible FYI,
+> `dedupe:"unread"`; migration-derived from `20261012120000` + the `20261012130000` wording update, not a live
+> query). Raised by `member_client_connection_add` (`sendConnectedNotice` in `utils/client-connections.ts`) to the
+> mirrored member's **`member_logins.email`** (`forceRecipients`; no login = no bell): *"Client mirrored: <client>
+> (from <owner>)"*, linking to `/member/client/<id>`. Its sibling email is template `CLIENT_PORTAL` /
+> `MEMBER_client_connected` (Draft). Behind `mirrored_clients`, keyed on the client's owner.
 
 ### MAP 1 (15)
 

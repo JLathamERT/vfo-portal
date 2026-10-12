@@ -57,7 +57,7 @@ function meetingLabelColor(track) {
   return 'var(--vfo-muted)'
 }
 
-function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChange, onTrackUpdate, readOnly, notes, onNotesChange, clientId, client }) {
+function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChange, onTrackUpdate, readOnly, mirror = false, notes, onNotesChange, clientId, client }) {
   const [localProgress, setLocalProgress] = useState(progress)
   const [scheduledDate, setScheduledDate] = useState(track.pip_scheduled_date || '')
   // Time/tz mirrors of the track columns the confirmation email writes back, so a
@@ -277,7 +277,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                         {stepDone && date && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(date)}</span>}
                       </div>
                     )
-                    const methodTag = track.pip_payment_method_type
+                    const methodTag = !mirror && track.pip_payment_method_type
                       ? track.pip_payment_method_type.toUpperCase()
                       : null
                     const allDone = false
@@ -293,7 +293,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                               step completes on the payment alone. Preview it here. */}
                           {autoStep('Payment collected', !!track.pip_payment_completed_at, methodTag, [{ name: 'PIP_confirmation', when: 'Bank transfer (ACH) only — card gets the invoice/receipt instead' }], track.pip_payment_completed_at, track.pip_payment_status === 'processing')}
                           {autoStep('Invoice and receipt created and emailed to client', !!track.pip_invoice_receipt_email_sent_at, null, [{ name: 'PIP_invoicereceipt_email', when: 'Automatic — invoice + receipt' }], track.pip_invoice_receipt_email_sent_at)}
-                          {autoStep('Revenue shares paid · Email member to confirm revenue share details', !!track.pip_rev_share_completed_at && !!track.pip_rev_member_email_sent_at, null, [{ name: 'PIP_member_revshare', when: 'Automatic — member revenue-share notice' }], track.pip_rev_share_completed_at)}
+                          {!mirror && autoStep('Revenue shares paid · Email member to confirm revenue share details', !!track.pip_rev_share_completed_at && !!track.pip_rev_member_email_sent_at, null, [{ name: 'PIP_member_revshare', when: 'Automatic — member revenue-share notice' }], track.pip_rev_share_completed_at)}
                         </div>
                       </div>
                     )
@@ -440,7 +440,9 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
   )
 }
 
-function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, notes = [], onNotesChange }) {
+// mirror (Client Mirroring, L5): a member viewing a client mirrored to them -
+// with readOnly, and no payment-method tag or revenue-share row.
+function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, mirror = false, notes = [], onNotesChange }) {
   const [tracks, setTracks] = useState([])
   const [phases, setPhases] = useState([])
   const [allProgress, setAllProgress] = useState({})
@@ -578,6 +580,7 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
         onProgressChange={(taskId, p) => setAllProgress(prev => ({ ...prev, [selectedTrack.id]: { ...prev[selectedTrack.id], [taskId]: p } }))}
         onTrackUpdate={loadData}
         readOnly={readOnly}
+        mirror={mirror}
         notes={notes}
         onNotesChange={onNotesChange}
         clientId={clientId}

@@ -41,6 +41,18 @@ const GRID_BY_SECTION = {
   pft: '1.1fr 96px 130px 1.9fr 1.1fr',
 }
 const MIN_WIDTH_BY_SECTION = { map1: '980px', regular: '1000px', tax_planning: '1040px', pft: '860px' }
+// The member portal's Client Overview (mode='member', L5 phase 2): the same table
+// minus the Next action and Owner columns (decision 27). Fixed widths shared by
+// every pill (Name 280 · Priority/Plan 260 · Status 110 · PF 180 · Service level /
+// Phase 180) so the columns line up from tab to tab; the trailing 1fr track
+// takes the spare width instead of stretching the columns apart.
+const MEMBER_GRID_BY_SECTION = {
+  map1: '280px 110px 180px 180px 1fr',
+  regular: '280px 260px 110px 180px 1fr',
+  tax_planning: '280px 260px 110px 180px 180px 1fr',
+  pft: '280px 110px 180px 1fr',
+}
+const MEMBER_MIN_WIDTH_BY_SECTION = { map1: '820px', regular: '900px', tax_planning: '1080px', pft: '640px' }
 
 // A stopped / declined / otherwise closed track always sinks below the live ones
 // in the dropdown orderings; a clicked column header sorts purely by that column.
@@ -79,21 +91,25 @@ function ProgramPill({ label, direct = false }) {
 // Overview from the nav is a fresh visit: AdminPortal.selectClientOverview
 // clears the key, so it starts on MAP 1.
 export const CLIENT_OVERVIEW_SECTION_KEY = 'clientOverviewSection'
-const SECTION_KEY = CLIENT_OVERVIEW_SECTION_KEY
-function readSection() {
+const MEMBER_SECTION_KEY = 'memberClientOverviewSection'
+function readSection(key) {
   try {
-    const v = sessionStorage.getItem(SECTION_KEY)
+    const v = sessionStorage.getItem(key)
     return SECTIONS.some(s => s.key === v) ? v : 'map1'
   } catch { return 'map1' }
 }
 
-export default function ClientOverviewPanel() {
+export default function ClientOverviewPanel({ mode = 'admin' }) {
   const navigate = useNavigate()
+  const memberMode = mode === 'member'
+  const sectionKey = memberMode ? MEMBER_SECTION_KEY : CLIENT_OVERVIEW_SECTION_KEY
+  const loadAction = memberMode ? 'member_client_overview_load' : 'client_overview_load'
+  const clientBase = memberMode ? '/member/client' : '/admin/client'
 
-  const [activeSection, setActiveSectionState] = useState(readSection)
+  const [activeSection, setActiveSectionState] = useState(() => readSection(sectionKey))
   function setActiveSection(key) {
     setActiveSectionState(key)
-    try { sessionStorage.setItem(SECTION_KEY, key) } catch { /* private mode */ }
+    try { sessionStorage.setItem(sectionKey, key) } catch { /* private mode */ }
   }
   const [dataBySection, setDataBySection] = useState({})   // section -> clients[] (success only)
   const [loadingSection, setLoadingSection] = useState(null)
@@ -114,7 +130,7 @@ export default function ClientOverviewPanel() {
   // the section's last list at once from the snapshot, refresh behind it.
   useLayoutEffect(() => {
     if (freshSections.current[activeSection]) return
-    const snapKey = `clientoverview:${activeSection}`
+    const snapKey = `${memberMode ? 'memberclientoverview' : 'clientoverview'}:${activeSection}`
     let quiet = !!dataBySection[activeSection]
     if (!quiet) {
       const snap = getLastSeen(snapKey)
@@ -123,7 +139,7 @@ export default function ClientOverviewPanel() {
     let alive = true
     setLoadingSection(activeSection)
     setErrorBySection(e => ({ ...e, [activeSection]: '' }))
-    callApi('client_overview_load', { section: activeSection })
+    callApi(loadAction, { section: activeSection })
       .then(res => {
         setLastSeen(snapKey, res)
         if (!alive) return
@@ -191,18 +207,18 @@ export default function ClientOverviewPanel() {
   const isMap1 = activeSection === 'map1'
   const isTax = activeSection === 'tax_planning'
   const secondCol = SECOND_COL[activeSection]
-  const grid = GRID_BY_SECTION[activeSection]
+  const grid = (memberMode ? MEMBER_GRID_BY_SECTION : GRID_BY_SECTION)[activeSection]
 
   function openTrack(client, t) {
     const l = t.link || {}
-    const url = `/admin/client/${client.id}?program=${l.program}&tab=${l.tab}` + (l.track ? `&track=${l.track}` : '') + (l.plan ? `&plan=${l.plan}` : '')
+    const url = `${clientBase}/${client.id}?program=${l.program}&tab=${l.tab}` + (l.track ? `&track=${l.track}` : '') + (l.plan ? `&plan=${l.plan}` : '')
     navigate(url)
   }
 
   // The client NAME opens the client's profile; the row itself opens the track.
   function openProfile(client, t) {
     const l = t.link || {}
-    navigate(`/admin/client/${client.id}?${l.program ? `program=${l.program}&` : ''}tab=home`)
+    navigate(`${clientBase}/${client.id}?${l.program ? `program=${l.program}&` : ''}tab=home`)
   }
 
   const wrap = { padding: '24px', maxWidth: '1500px', margin: '0 auto' }
@@ -234,7 +250,7 @@ export default function ClientOverviewPanel() {
 
       {isLoading ? <ClientOverviewSkeleton /> : (
         <div style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
-          <div style={{ minWidth: MIN_WIDTH_BY_SECTION[activeSection] }}>
+          <div style={{ minWidth: (memberMode ? MEMBER_MIN_WIDTH_BY_SECTION : MIN_WIDTH_BY_SECTION)[activeSection] }}>
             <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
               <SortHeader label="Name" sortKey="name" sort={colSort} onSort={onSort} />
               {secondCol && <span>{secondCol}</span>}
@@ -242,8 +258,8 @@ export default function ClientOverviewPanel() {
               <SortHeader label="PF" sortKey="pf" sort={colSort} onSort={onSort} />
               {isMap1 && <span>Service level</span>}
               {isTax && <SortHeader label="Phase" sortKey="phase" sort={colSort} onSort={onSort} />}
-              <span>Next action</span>
-              <span>Owner</span>
+              {!memberMode && <span>Next action</span>}
+              {!memberMode && <span>Owner</span>}
             </div>
 
             {rows.length === 0 && !error && (
@@ -264,7 +280,7 @@ export default function ClientOverviewPanel() {
                     <span onClick={e => { e.stopPropagation(); openProfile(c, t) }} title="Open client profile" style={{ fontWeight: 600, color: '#125ecc', cursor: 'pointer', alignSelf: 'flex-start' }}
                       onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
                       onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{c.name || '—'}</span>
-                    {c.member_name
+                    {memberMode ? (c.mirrored_from ? <span style={{ fontSize: '11px', color: '#0a85e8', fontWeight: 600 }}>Mirrored from {c.mirrored_from}</span> : null) : c.member_name
                       ? <MemberNameLink memberNumber={c.member_number} style={{ fontSize: '11px', color: 'var(--vfo-muted)', alignSelf: 'flex-start' }}>{c.member_name}</MemberNameLink>
                       : <span style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>No member</span>}
                   </span>
@@ -288,7 +304,7 @@ export default function ClientOverviewPanel() {
                   {isTax && (
                     <span style={{ fontSize: '12px', fontWeight: 600, color: t.state === 'closed' ? '#b23c30' : t.state === 'complete' ? '#1b9254' : t.phase ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.phase ? taxDisplayName(t.phase) : '—'}</span>
                   )}
-                  <span style={{ fontSize: '12.5px' }}>
+                  {!memberMode && <span style={{ fontSize: '12.5px' }}>
                     {t.state === 'complete' ? (
                       <span style={{ ...line, display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#1b9254', fontWeight: 600 }}><span style={dot('#1b9254')} />Complete</span>
                     ) : t.state === 'closed' ? (
@@ -298,14 +314,14 @@ export default function ClientOverviewPanel() {
                     ) : entries.map((n, i) => (
                       <span key={i} style={{ ...line, display: 'block' }}>{taxDisplayName(n.label)}</span>
                     ))}
-                  </span>
-                  <span style={{ fontSize: '12.5px', color: 'var(--vfo-muted)' }}>
+                  </span>}
+                  {!memberMode && <span style={{ fontSize: '12.5px', color: 'var(--vfo-muted)' }}>
                     {done || entries.length === 0
                       ? <span style={{ ...line, display: 'block', color: 'var(--vfo-faint)' }}>—</span>
                       : entries.map((n, i) => (
                         <span key={i} style={{ ...line, display: 'block', color: n.owner ? 'var(--vfo-muted)' : 'var(--vfo-faint)' }}>{n.owner || '—'}</span>
                       ))}
-                  </span>
+                  </span>}
                 </div>
               )
             })}

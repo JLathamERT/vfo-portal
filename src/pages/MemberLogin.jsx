@@ -29,7 +29,11 @@ export default function MemberLogin() {
       const data = await callApi('member_login', { email: emailVal, passcode: passVal })
       sessionStorage.removeItem('memberActiveTab')
       setSession({ token: data.token, email: emailVal, name: data.name, role: 'member', member_number: data.member_number, website_enabled: data.website_enabled })
-      navigate('/member')
+      // A logged-out deep link (an emailed Client Overview button, a bell link)
+      // arrives as ?next=; only a member-portal address is followed (#599).
+      const next = new URLSearchParams(window.location.search).get('next') || ''
+      const safeNext = (next === '/member' || next.startsWith('/member?') || next.startsWith('/member/')) && !next.startsWith('/member/login')
+      navigate(safeNext ? next : '/member')
     } catch (err) {
       setError(err.message)
     } finally {
