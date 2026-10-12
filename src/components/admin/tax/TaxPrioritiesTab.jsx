@@ -822,7 +822,7 @@ function TotalFeeField({ label, hint, value, onChange, split, readOnly = false, 
 // not leave a completed step behind. The amounts' truth is always the plan
 // columns (#286): this card re-reads them from `plan` after every save, and the
 // step's completion is proven by the progress row OR the fee_amended_at_* stamp.
-function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAnswer, act = (n) => n, nameChip = null }) {
+function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirror = false, onAnswer, act = (n) => n, nameChip = null }) {
   const [mode, setMode] = useState('')          // '' | 'amend'
   const [totalInput, setTotalInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -942,7 +942,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAn
       </div>
 
       {/* Answered: what happened, plus the schedule that is now in force. */}
-      {answered && current && mode !== 'amend' && (
+      {answered && current && mode !== 'amend' && !mirror && (
         <div style={{ marginLeft: '18px', marginBottom: '10px' }}>
           <div style={{ fontSize: '12px', color: 'var(--vfo-ink)', fontWeight: 600 }}>
             {amended ? `Fee amended to $${fmtMoney(current.total)}` : `Fee kept at $${fmtMoney(current.total)}`}
@@ -1010,12 +1010,12 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, onAn
       {submitError && (
         <div style={{ marginLeft: '18px', marginBottom: '10px', color: '#e74c3c', fontWeight: 500, fontSize: '12px' }}>{submitError}</div>
       )}
-      {revisedPending && (
+      {revisedPending && !mirror && (
         <div style={{ marginLeft: '18px', marginBottom: '10px', color: 'var(--vfo-muted)', fontSize: '11px' }}>
           A revised invoice (same number, original and revised fee shown) will be drafted into the original invoice email thread when the {stage === 'tax4' ? 'Client decision 1' : 'implementation decision'} email is sent.
         </div>
       )}
-      {revisedDone && (
+      {revisedDone && !mirror && (
         <div style={{ marginLeft: '18px', marginBottom: '10px', color: 'var(--vfo-muted)', fontSize: '11px' }}>
           Revised invoice drafted {new Date(revisedSentAt).toLocaleDateString()}{plan.amended_invoice_threaded === false ? ' as a new email (original thread not found)' : ' in the original invoice email thread'}.
         </div>
@@ -2304,7 +2304,7 @@ function TaxIntakeCard({ intake, questions }) {
   )
 }
 
-function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxSpecialists = null, specialists, expertBios = {}, onBack, readOnly = false, plannerMode = false, directMode = false, notes = [], onNotesChange, clientId, programName, client }) {
+function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxSpecialists = null, specialists, expertBios = {}, onBack, readOnly = false, mirror = false, plannerMode = false, directMode = false, notes = [], onNotesChange, clientId, programName, client }) {
   // Phase notes belong to THIS plan (plus untagged older notes) — a client with
   // two tax plans never sees one plan's notes inside the other.
   const noteScope = { tax_plan_id: plan.id }
@@ -2886,7 +2886,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     // A $0 implementation fee has no charge, receipt or revenue-share email to
     // wait for, so the client's Proceed click completes the cascade on its own
     // (mirrors implement-final-decision.ts's no-fee branch).
-    || (!(amendToCents(livePlan?.implementation_amount) > 0)
+    || (livePlan?.implementation_amount !== '—' && !(amendToCents(livePlan?.implementation_amount) > 0)
       && (tax5bImplFinal === 'Proceed' || tax5bImplFinal === 'Confirmed'))
 
   const returnsChain = depositOk && returnsReceived
@@ -3403,6 +3403,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           status={p.status || ''}
           completedDate={p.completed_date || ''}
           readOnly={memberLocked}
+          mirror={mirror}
           onAnswer={(st) => saveTask(task.id, st)}
           act={act}
           nameChip={<OwnerChip owner={stepOwner(task, phase, isDirectPlanView)} label={ownerLabel(stepOwner(task, phase, isDirectPlanView), task, phase)} />}
@@ -3738,6 +3739,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       const pricingExpanded = !!expanded[pricingFoldKey]
       const pricingStep = (done) => {
         if (!done) return autoStep('Pricing submitted by admin', false)
+        if (mirror) return autoStep('Pricing submitted by admin', true)
         return (
           <div style={{ borderBottom: '1px solid var(--vfo-border-soft)' }}>
             <div onClick={() => setExpanded(p => ({ ...p, [pricingFoldKey]: !pricingExpanded }))} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', cursor: 'pointer' }}>
@@ -4213,7 +4215,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       // utils/tax-plan-steps.ts and implement-final-decision.ts's no-fee branch:
       // no charge, no receipt, no revenue share — so show one done row, not three
       // rows stuck on "Not completed" forever.
-      const implFeeDue = amendToCents(livePlan?.implementation_amount) > 0
+      const implFeeDue = livePlan?.implementation_amount === '—' || amendToCents(livePlan?.implementation_amount) > 0
 
       // No decision yet → waiting for admin
       if (!implDecision) {
@@ -4255,7 +4257,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         <>
           {autoStep('Implementation fee charged to saved payment method', chargeStatus === 'succeeded', (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Implementation fee auto-charged using saved payment method" templates={[{ name: 'TAX_implementdecision|Proceeding', when: 'Automatic — drafted when the client clicks Proceed on the implementation decision email' }, { name: 'TAX_invoicereceipt_email|implementation', when: 'Automatic — implementation invoice + receipt' }, { name: 'TAX_implementation_charge_failed', when: 'Automatic — if the implementation charge fails' }]} context={emailCtx} />, livePlan?.implementation_charge_date, chargeStatus === 'processing')}
           {autoStep('Implementation fee receipt created and emailed to client', recStatus === 'Sent', null, livePlan?.implementation_receipt_email_sent_at)}
-          {autoStep(livePlan?.implementation_rev_paid === IMPL_REV_NO_SHARE ? 'Implementation fee revenue share verified (no member share due — nothing to pay or email)' : 'Implementation fee revenue share verified, member paid, member emailed', implRevShareDone(livePlan), (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Implementation fee revenue share verified, member paid, member emailed" templates={[{ name: 'TAX_member_revshare|retainer', when: 'Automatic — member revenue-share notice (retainer)' }, { name: 'TAX_member_revshare|implementation', when: 'Automatic — member revenue-share notice (implementation)' }, { name: 'TAX_planner_revshare|retainer', when: 'Automatic — tax planner revenue-share notice (retainer)' }, { name: 'TAX_planner_revshare|implementation', when: 'Automatic — tax planner revenue-share notice (implementation)' }]} context={emailCtx} />, livePlan?.implementation_rev_email_sent_at || livePlan?.implementation_rev_completed_at)}
+          {!mirror && autoStep(livePlan?.implementation_rev_paid === IMPL_REV_NO_SHARE ? 'Implementation fee revenue share verified (no member share due — nothing to pay or email)' : 'Implementation fee revenue share verified, member paid, member emailed', implRevShareDone(livePlan), (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Implementation fee revenue share verified, member paid, member emailed" templates={[{ name: 'TAX_member_revshare|retainer', when: 'Automatic — member revenue-share notice (retainer)' }, { name: 'TAX_member_revshare|implementation', when: 'Automatic — member revenue-share notice (implementation)' }, { name: 'TAX_planner_revshare|retainer', when: 'Automatic — tax planner revenue-share notice (retainer)' }, { name: 'TAX_planner_revshare|implementation', when: 'Automatic — tax planner revenue-share notice (implementation)' }]} context={emailCtx} />, livePlan?.implementation_rev_email_sent_at || livePlan?.implementation_rev_completed_at)}
         </>
       )
 
@@ -4423,7 +4425,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               </span>
             )}
             {refunded
-              ? <span style={chipStyle('#e74c3c')}>Refunded ${livePlan?.deposit_refund_amount}</span>
+              ? <span style={chipStyle('#e74c3c')}>Refunded{mirror ? '' : ` $${livePlan?.deposit_refund_amount}`}</span>
               : stopped
                 ? <span style={chipStyle('#e74c3c')}>Stopped</span>
                 : decision
@@ -4537,7 +4539,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           {depositWaived ? (
             <span style={neutralChipStyle} title="No deposit was taken: the member already had two qualifying tax clients">N/A — No Deposit</span>
           ) : readOnly ? (
-            savedPi && <span style={{ ...chipStyle('#1b9254'), fontFamily: 'monospace' }}>{savedPi}</span>
+            savedPi && !mirror && <span style={{ ...chipStyle('#1b9254'), fontFamily: 'monospace' }}>{savedPi}</span>
           ) : (
             <>
               <input
@@ -4831,13 +4833,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                   {clientDecision === 'Auto-Locked' && (
                     <>
                       {autoStep('Auto-locked (legacy 24h flow)', true)}
-                      {autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
+                      {!mirror && autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
                   {clientDecision === 'Confirmed' && (
                     <>
                       {autoStep('Client confirmed Continue (clicked "Continue now")', true, { at: livePlan?.post_review_client_decision_at })}
-                      {autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
+                      {!mirror && autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
                   {/* A Continue client who answered from the REMINDER email. Until
@@ -4851,7 +4853,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                   {clientDecision === 'Proceed' && (
                     <>
                       {autoStep('Client confirmed Continue (from the reminder email)', true, { at: livePlan?.post_review_client_decision_at })}
-                      {autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
+                      {!mirror && autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
                 </>
@@ -4864,7 +4866,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                   {clientDecision === 'Proceed' && (
                     <>
                       {autoStep('Client clicked Proceed', true, { at: livePlan?.post_review_client_decision_at })}
-                      {autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
+                      {!mirror && autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
                   {clientDecision === 'Refund' && (
@@ -5566,7 +5568,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   )
 }
 
-function TaxPrioritiesTab({ clientId, programId, programName, client, specialists, ecosystems = [], readOnly = false, notes = [], onNotesChange, initialPlanId = null, openSinglePlan = false, plannerMode = false, directMode = false }) {
+// mirror (Client Mirroring, L5): a member viewing a client mirrored to them -
+// always with readOnly; the server masks every money value and this hides the
+// fee schedule, entered pricing, revenue-share rows, refund amount and PI id.
+function TaxPrioritiesTab({ clientId, programId, programName, client, specialists, ecosystems = [], readOnly = false, mirror = false, notes = [], onNotesChange, initialPlanId = null, openSinglePlan = false, plannerMode = false, directMode = false }) {
   const [taxPlans, setTaxPlans] = useState([])
   const [phases, setPhases] = useState([])
   const [loading, setLoading] = useState(true)
@@ -5862,6 +5867,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
         expertBios={expertBios}
         onBack={() => { setSelectedPlan(null); setSnapPending(getWriteCount() !== writesAtLoadRef.current); loadData(true) }}
         readOnly={readOnly}
+        mirror={mirror}
         plannerMode={plannerMode}
         directMode={directMode}
         notes={notes}

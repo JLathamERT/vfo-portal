@@ -149,7 +149,9 @@ export default function MemberPortal() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
+      {/* zIndex above the tab bar below (also 100): with a tie the later tab bar
+          paints over the bell's dropdown and hides its top. */}
+      <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 110, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
         <VfoWordmark size={17} light onClick={handleTitleClick} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* Mounted exactly as TaxPlannerPortal.jsx mounts it. The member's

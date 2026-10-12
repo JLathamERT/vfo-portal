@@ -280,7 +280,7 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
                     <span onClick={e => { e.stopPropagation(); openProfile(c, t) }} title="Open client profile" style={{ fontWeight: 600, color: '#125ecc', cursor: 'pointer', alignSelf: 'flex-start' }}
                       onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
                       onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{c.name || '—'}</span>
-                    {memberMode ? null : c.member_name
+                    {memberMode ? (c.mirrored_from ? <span style={{ fontSize: '11px', color: '#0a85e8', fontWeight: 600 }}>Mirrored from {c.mirrored_from}</span> : null) : c.member_name
                       ? <MemberNameLink memberNumber={c.member_number} style={{ fontSize: '11px', color: 'var(--vfo-muted)', alignSelf: 'flex-start' }}>{c.member_name}</MemberNameLink>
                       : <span style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>No member</span>}
                   </span>
