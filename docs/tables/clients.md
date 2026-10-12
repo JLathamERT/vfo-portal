@@ -87,6 +87,27 @@ Many-to-many bridge linking a `client` to a `member_enrollments` row. Allows one
 
 ---
 
+## `client_member_connections`
+
+**Client Mirroring** (portal licensing L5, 2026-10-12, migration `20261012120000_mirrored_clients.sql`): one row per (client, member the client is MIRRORED to). The client's owner stays `clients.member_number`; a row here lets one OTHER member read that client, view-only and money-masked. Behind the `mirrored_clients` Feature Switch, keyed on the client's OWNER (seeded Test member only, 59524). Not to be confused with `member_connections` (a member's normal partners, [members.md](members.md)). Flow: [../flows/client-mirroring.md](../flows/client-mirroring.md).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigserial | pk |
+| `client_id` | integer | not null. fk → `clients.id` (CASCADE). |
+| `member_number` | text | not null. fk → `members.member_number` (CASCADE). The mirrored member — never the owner (refused in-handler). |
+| `source` | text | not null, CHECK `'partner'` (one of the owner's `member_connections` partners) \| `'one_off'` (any other Active member from the search). |
+| `connected_at` | timestamptz | not null, default `now()` |
+| `connected_by_name` | text | Who mirrored it — a NAME (`gcActorFor`), never an email. |
+| `removed_at` / `removed_by_name` | timestamptz / text | Set on removal; the row is KEPT. NULL `removed_at` = active. |
+| `email_result` | text | `'sent'` \| `'drafted'` \| `'failed'` — the `MEMBER_client_connected` email to the mirrored member. |
+
+**Indexes:** unique `(client_id, member_number) WHERE removed_at IS NULL` (one ACTIVE row per pair — the same member can be mirrored again after removal; it also decides a double-click race), plus `(member_number) WHERE removed_at IS NULL`. **RLS:** enabled, deny-all policy in the same migration; service role only.
+
+**Touched by:** writers `member_client_connection_add` (insert, then `email_result`) and `member_client_connection_remove` (stamps `removed_at` / `removed_by_name`). Readers `member_client_connections_load`, `member_connect_candidates` and `_add` (`activeConnections` in `utils/client-connections.ts`), `member_client_overview_load` (the caller's mirrored clients), and `memberClientAccess` in `utils/client-ownership.ts` — behind every `mirrorReadGate` read and `denyIfNotOwnOrMirroredClient`. Frontend: [ClientConnectedMembersCard.jsx](src/components/shared/ClientConnectedMembersCard.jsx).
+
+---
+
 ## `client_progress`
 
 Per-task progress tracking for "client" (non-training) program tasks. Drives the MAP1 / regular / PF tracks UI.

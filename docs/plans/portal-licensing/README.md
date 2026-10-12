@@ -58,7 +58,7 @@ An annual licence is a **disbursement**: the $300 comes off the fee before it is
 | L2 | Basic client portal: member sends the portal link + Showroom introduction button | $0 | `client_basic_portal` | **SHIPPED 2026-10-09** (backend v953 → v955, dark behind the switch, Test member only; decisions 7-16; flow [flows/client-portal.md](../../flows/client-portal.md)) |
 | L3 | Holistic licence | $300/yr disbursement | `holistic_licence` | planned — ON HOLD behind L5 (decision 17); open question whether VFOS-led Holistic carries the licence at all (decision 18) |
 | L4 | CIQ licence (Basic vs Standard for a CIQ client; member self-drive) | $0 or $25/month | `ciq_licence` | planned |
-| **L5** | **Mirrored joint clients** (connected advisor ↔ accountant, and one-off cases) | $0 (Q4 deck) | `mirrored_clients` | **IN BUILD** — build plan written 2026-10-09 (decisions 19-29), branch `claude/vfo-session-starter-022e8b` |
+| **L5** | **Mirrored joint clients** (connected advisor ↔ accountant, and one-off cases) | $0 (Q4 deck) | `mirrored_clients` | **SHIPPED 2026-10-12** (backend v959 → v963, dark behind the switch, Test member only; the member Client Overview tab ships with no switch; decisions 19-34; flow [flows/client-mirroring.md](../../flows/client-mirroring.md)) |
 | L6 | VFO Associate + Financial Collaborator portals | $0 / $25/month + their existing fees via the portal | `associate_fc_portal` | planned — Jake: NOT being worked on yet |
 | L7 | Portal suspension rules by member tier | — | `portal_suspension` | planned |
 | — | Catalyst v Fusion structure, member-direct Holistic / PFT ("DIY"), Accredited benefits | — | — | LATER — Jake: not being worked on yet |

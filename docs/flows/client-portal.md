@@ -4,9 +4,11 @@ Shipped 2026-10-09 (`vfo-admin-api` v953 → v955), **dark behind the Feature Sw
 
 **Switch off = the portal as before**: no member button, no introduction button, no tier, and every `client_*` response byte-identical. One frontend change applies to everyone regardless: the client portal's **Vault tab is hidden until the live `client_showroom_load` answer arrives** (see *The Basic gate*).
 
+**Client Mirroring** (portal licensing L5, 2026-10-12 — a member sharing one client with another member, read-only) is a separate feature: see [client-mirroring.md](client-mirroring.md).
+
 ## 1. Send portal access (member)
 
-The member's view of their client (`/member/client/:id`, Profile tab) ends with a **CLIENT PORTAL** card holding one button, present only when `msm_load_client_home` carries `portal_access` (member/admin caller AND the switch on for the client's member; planners never get it). One click, no confirm, no success message — the button just becomes **Resend portal access** (the sent date on hover). Only a refusal is shown, in red.
+The member's view of their client (`/member/client/:id`, Profile tab) carries a **CLIENT PORTAL** card holding one button (the Client Mirroring card follows it), present only when `msm_load_client_home` carries `portal_access` (member/admin caller AND the switch on for the client's member; planners never get it, and neither does a member the client is only mirrored to). One click, no confirm, no success message — the button just becomes **Resend portal access** (the sent date on hover). Only a refusal is shown, in red.
 
 `member_client_portal_access_send { client_id }` (members + admins; in NO gate list, confined by `denyIfNotOwnClient` right after the role check):
 
