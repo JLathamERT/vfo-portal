@@ -8,6 +8,7 @@ import PipMeetingsTab from '../components/admin/pip/PipMeetingsTab'
 import ClientVaultTab from '../components/admin/ClientVaultTab'
 import SendSetupEmailButton from '../components/admin/SendSetupEmailButton'
 import MemberPortalAccessCard from '../components/member/MemberPortalAccessCard'
+import ClientConnectedMembersCard from '../components/shared/ClientConnectedMembersCard'
 import ClientPaymentsTab from '../components/payments/ClientPaymentsTab'
 import PFTEngagementTrack from '../components/admin/pft/PFTEngagementTrack'
 import TaxPrioritiesTab from '../components/admin/tax/TaxPrioritiesTab'
@@ -384,6 +385,9 @@ export default function ClientDetail() {
             {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
             {activeTab === 'home' && isMember && portalAccess !== undefined && client && (
               <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} sectionStyle={sectionStyle} cardTitle={cardTitle} />
+            )}
+            {activeTab === 'home' && (isMember || isAdmin) && client && (
+              <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} />
             )}
             {activeTab === 'details' && isAdmin && <ClientDetails client={client} onUpdate={loadData} sectionStyle={sectionStyle} />}
             {pfLocked && PROGRAM_TABS.includes(activeTab) && (
