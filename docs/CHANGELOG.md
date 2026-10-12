@@ -8,9 +8,17 @@
 
 ---
 
-## 2026-10-12 (d) — Card fees: charged only when due, waivers honoured everywhere, documents say what was charged
+## 2026-10-12 (b) — Branch `claude/vfo-session-starter-717105`: Client Overview Unassigned, tax reminder recipients, the card-fee audit, three small fixes
 
-Same branch `claude/vfo-session-starter-717105`. `vfo-admin-api` **v968 → v970** (from the branch, `--use-docker`), action count 575 unmoved, no migration. Trigger: Jake held two MAP 1 receipt drafts (Josh Vang P3, Pat Hurst P4) reading *"Total Charged (incl. card fee) $1,350.00"*.
+One chat, both repos. `vfo-admin-api` **v964 → v971** (every deploy from the branch, `--use-docker`; smoke **5/5 vs v964, v966, v967, v970 and v971**), action count **575 unmoved**, migrations `20261012140000` + `20261012150000` (data only, advisor GREEN at the exact baseline). Parts (A)-(C) below, plus two small frontend fixes (D) and (E):
+
+- **(D) Tax Diagnostics intro** (`TaxDiagnosticsPanel.jsx`, frontend): the paragraph now reads *the public form (copy link) is open to anyone and takes a $500 deposit; an existing Holistic client gets the Personal Tax Planning Form link at the top of their plan on the Tax Priorities tab* + *Forms appear here once paid. Pick the member for anything under Pending.* (Jake's option B).
+- **(E) Client page crash** (`ClientDetail.jsx`, frontend): Sentry JAVASCRIPT-REACT-M (2026-10-09, bundle of 2026-10-07) — a failed `msm_load_client_home` left `client` null and `ClientHome` crashed on `client.id` (the All Notes box); the logged-out case was already closed by #599 (v958 / live-231). A failed load now shows *Couldn't load this client — Refresh the page to try again*; header reads *Client*. Click-tested by Jake (DevTools Offline).
+- **Same-day Sentry review:** *Importing a module script failed* on `/admin` (4 events, ~22:30Z) = tabs/caches holding the pre-live-232 bundle (#580 reload-once); no failed logins in `login_attempts`, every edge request 200 — the reported login blip.
+
+### (C) Card fees: charged only when due, waivers honoured everywhere, documents say what was charged
+
+`vfo-admin-api` **v968 → v970** (from the branch, `--use-docker`), action count 575 unmoved, no migration. Trigger: Jake held two MAP 1 receipt drafts (Josh Vang P3, Pat Hurst P4) reading *"Total Charged (incl. card fee) $1,350.00"*.
 
 - **The rule (audited at every charge site):** card = base + 2.9% + $0.30, ACH / check never. Waivers exist only as `card_fee_waived` on `pipeline_map1` + `client_tax_plans` (setup-link migrated clients) and membership's rule-based one (fee only for `advisor_model = 'New Model'`); the licence never carries a fee; PIP, SpecRev, advisor/accountant, GC, background checks and the $500 tax deposit always gross up on card (no waiver exists).
 - **v969 — money:** `actions/tax/stripe-checkout.ts` (the `/tax-pay` fresh link) grossed up EVERY card payment, so a waived tax client recovering a final retainer / implementation there would have been charged a fee the off-session charges never take. It now honours `card_fee_waived`; `load-payment.ts` returns the flag and `TaxPayPage.jsx` shows *No Fee*. Census: 5 waived tax plans, none ever charged a fee there, none with an open link.
@@ -19,22 +27,18 @@ Same branch `claude/vfo-session-starter-717105`. `vfo-admin-api` **v968 → v970
 - **Already out (drafted before the fix, sent status unknown):** MAP 1 card receipts P2-4 — amount UNDERSTATED (fee charged, base printed): Melissa Cruts 90385-001 P2, Steve Bitzer 20003-001 P2; label only (waived, *"incl. card fee"*): Henry Mennig P3/P4, Pat Hurst P3, Marc Ehrhardt P4, Steve Manseau P3, Lenny Genna P2/P3, Sandra Jones P3/P4, Dr. John Nnadi P3, Arielle Martinez P3. Re-issue is Jake's decision (the superadmin `reissue: true` mode re-drafts in the original thread). No wrong licence or tax receipt found.
 - **v971 — `automation_CONTRACT_invoicereceipt` is service-role only.** It sat in `PUBLIC_HANDLERS` and checked nothing on its normal path, so anyone could make it re-render + re-upload a client's PDFs and create a Draft (#600 family). Every caller is a server chain already sending the service key (`router/webhooks.ts` ×3, `contract-checkcleared.ts`); the `reissue` path keeps its superadmin check. Probed: no key and a wrong key both 403 (client 999999999); the positive path's proof is the next real MAP 1 payment's receipt draft. Jake: the 14 old receipts are LEFT as sent (long ago). Audit UNSURE items left: a MAP 1 REISSUE after a card/bank switch renders the new method; the tax revised invoice reads the plan-wide `payment_method_type`; SpecRev recurring card plans priced without gross-up; the SpecRev confirmation email derives a fee when the stamp is null.
 
----
+### (B) Tax reminder chases Cc the plan team
 
-## 2026-10-12 (c) — Tax reminder chases Cc the plan team
-
-Same branch `claude/vfo-session-starter-717105`. `vfo-admin-api` **v967** (from the branch, `--use-docker`), action count 575 unmoved; migration `20261012140000_tax_reminder_chase_cc.sql` (data only — two `email_templates.cc_list` values) applied via MCP + committed, security advisor GREEN at the exact baseline (a confirmation).
+`vfo-admin-api` **v967** (from the branch, `--use-docker`), action count 575 unmoved; migration `20261012140000_tax_reminder_chase_cc.sql` (data only — two `email_templates.cc_list` values) applied via MCP + committed, security advisor GREEN at the exact baseline (a confirmation).
 
 - **Additional-info reminder** (`TAX_additional_info_reminder`): To the client; Cc now matches the original *Additional information required* email (`TAX_request_additional_info`) — the PF, the member, the planner + allocated team member, `tnmiller@` + `tvaldes@vfo-services.com`, and the client's flagged Additional Contacts (also greeted by name); and (migration `20261012150000`, data only) Bcc Paul + Anton (`platham@` / `aanderson@elitert.com`), as the original does. Before: Cc the PF only, no Bcc. `utils/tax-reminder-chases.ts` now passes `MEMBER`, `TAX_PLANNER` and `extraCc` — template tokens resolve only when the handler supplies them (#324).
 - **Planner-review reminder** (`TAX_planner_review_reminder`): To the planner + team member (unchanged); Cc now `tnmiller@` + `tvaldes@vfo-services.com` and the PF (`ASSIGNED_PF` now passed). Before: no Cc.
 - Both stay **Draft**; the Feature Switches *Tax reminder chases* card copy names the new Cc lists (frontend).
 - **Not exercised:** no Test Member plan is due a chase and an on-demand run (`only: "reminder_chases"`) processes EVERY due plan (it would draft real reminders and re-stamp their clocks), so the first proof is the next scheduled run (job `tax-revshare-sweep-daily`, 13:10 UTC Mon–Fri): read the Cc of the reminder drafts in Gmail Drafts.
 
----
+### (A) Client Overview "Unassigned": clients in no program, and an Add to program dropdown
 
-## 2026-10-12 (b) — Client Overview "Unassigned": clients in no program, and an Add to program dropdown
-
-Branch `claude/vfo-session-starter-717105` (both repos, one chat). `vfo-admin-api` **v964 → v966** (deployed from the branch, `--use-docker`), action count **575 unmoved** (no new action, no gate change), no migration, no DB change.
+`vfo-admin-api` **v964 → v966** (deployed from the branch, `--use-docker`), action count **575 unmoved** (no new action, no gate change), no migration, no DB change.
 
 - **The problem.** Clients created from the member CIQ tab (`ciq_add_client_and_create`) are linked to no program — neither `clients.enrollment_id` nor a `client_enrollments` row — the consequence the 2026-09-12 *members self-edit 90 Day Plan* branch accepted ("until an admin links it"). Admins were not linking them: 23 clients sat in no program (22 from CIQ, e.g. Chris Wallace 58020-002, Test One 59014-001), and on the admin client page their MAP 1 / Regular / Tax / PIP tabs rendered completely blank (gotcha #606).
 - **Decision (Jake): nothing is assigned automatically.** Auto-linking a new CIQ client to the member's Holistic / Tax Planning enrollment, plus a one-time backfill, was proposed and REJECTED — a client with no program stays unassigned until an admin picks one. The 2026-09-12 decision stands; it is now signposted.
