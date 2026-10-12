@@ -333,7 +333,7 @@ export default function ClientDetail() {
         ) : (
           <TrackHero
             eyebrow={isMirror ? 'Mirrored client' : 'Clients'}
-            title={`${client?.first_name} ${client?.last_name}`}
+            title={client ? `${client.first_name} ${client.last_name}` : 'Client'}
             avatar={<HeroAvatar src={null} name={`${client?.first_name || ''} ${client?.last_name || ''}`} />}
             meta={
               <>
@@ -394,6 +394,14 @@ export default function ClientDetail() {
 
         {loading ? (
           <ProfileTabSkeleton sections={isMember ? 3 : 4} />
+        ) : !client ? (
+          // The load failed (network, timeout, a deleted client): say so instead of
+          // drawing the tabs, which read client.id and crashed the page to blank
+          // (Sentry, 2026-10-09).
+          <div style={{ ...sectionStyle, textAlign: 'center', padding: '40px' }}>
+            <div style={{ fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: 600 }}>Couldn't load this client</div>
+            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px' }}>Refresh the page to try again.</div>
+          </div>
         ) : (
           <>
             {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
