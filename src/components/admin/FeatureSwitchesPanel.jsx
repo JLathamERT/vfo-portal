@@ -62,8 +62,8 @@ const SWITCH_COPY = {
   tax_reminders: {
     title: 'Tax reminder chases',
     on: [
-      'Additional information: a reminder to the client (PF in Cc) 2 business days after the "Additional information required" email, repeating every 2 business days until they upload or reply.',
-      'Planner review: a reminder to the tax planner and team member 2 business days after the planner is allocated, repeating every 2 business days until "Tax planner review complete" is answered (paused while waiting on the client for more information).',
+      'Additional information: a reminder to the client (Cc the PF, the member, the tax planner and team member, Tracy, Tray and any additional contacts on the client) 2 business days after the "Additional information required" email, repeating every 2 business days until they upload or reply.',
+      'Planner review: a reminder to the tax planner and team member (Cc Tracy, Tray and the PF) 2 business days after the planner is allocated, repeating every 2 business days until "Tax planner review complete" is answered (paused while waiting on the client for more information).',
       'Both are Draft emails and only go out Mon-Fri in ET business hours.',
     ],
     off: 'Neither reminder is sent; the one-off planner bells work as before.',
