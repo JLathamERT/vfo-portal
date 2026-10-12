@@ -245,6 +245,12 @@ export default function ClientDetail() {
   const tabStyle = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' })
   const statusColors2 = { active: '#1b9254', pending: '#e06717', lost: '#e74c3c' }
 
+  // Logged out (e.g. a deep link opened from an email in a new tab): render nothing
+  // while the layout effect above sends you to the login page with ?next=. Drawing
+  // the header first would mount NotificationBell, whose call 401s, and api.js's
+  // 401 handler hard-reloads to "/" — losing the address before the login runs.
+  if (isPlanner ? (!session || session.role !== 'tax_planner') : !session) return null
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
