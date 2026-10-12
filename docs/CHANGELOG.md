@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-10-12 (c) — Tax reminder chases Cc the plan team
+
+Same branch `claude/vfo-session-starter-717105`. `vfo-admin-api` **v967** (from the branch, `--use-docker`), action count 575 unmoved; migration `20261012140000_tax_reminder_chase_cc.sql` (data only — two `email_templates.cc_list` values) applied via MCP + committed, security advisor GREEN at the exact baseline (a confirmation).
+
+- **Additional-info reminder** (`TAX_additional_info_reminder`): To the client; Cc now matches the original *Additional information required* email (`TAX_request_additional_info`) — the PF, the member, the planner + allocated team member, `tnmiller@` + `tvaldes@vfo-services.com`, and the client's flagged Additional Contacts (also greeted by name). Before: Cc the PF only. `utils/tax-reminder-chases.ts` now passes `MEMBER`, `TAX_PLANNER` and `extraCc` — template tokens resolve only when the handler supplies them (#324).
+- **Planner-review reminder** (`TAX_planner_review_reminder`): To the planner + team member (unchanged); Cc now `tnmiller@` + `tvaldes@vfo-services.com` and the PF (`ASSIGNED_PF` now passed). Before: no Cc.
+- Both stay **Draft**; the Feature Switches *Tax reminder chases* card copy names the new Cc lists (frontend).
+- **Not exercised:** no Test Member plan is due a chase and an on-demand run (`only: "reminder_chases"`) processes EVERY due plan (it would draft real reminders and re-stamp their clocks), so the first proof is the next scheduled run (job `tax-revshare-sweep-daily`, 13:10 UTC Mon–Fri): read the Cc of the reminder drafts in Gmail Drafts.
+
+---
+
 ## 2026-10-12 (b) — Client Overview "Unassigned": clients in no program, and an Add to program dropdown
 
 Branch `claude/vfo-session-starter-717105` (both repos, one chat). `vfo-admin-api` **v964 → v966** (deployed from the branch, `--use-docker`), action count **575 unmoved** (no new action, no gate change), no migration, no DB change.
