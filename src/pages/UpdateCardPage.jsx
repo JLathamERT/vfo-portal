@@ -129,21 +129,45 @@ export default function UpdateCardPage() {
 
 function EngagementCard({ engagement, onChoose }) {
   const e = engagement
-  const current = e.current_method
-    ? `Currently ${e.current_method === 'ach' ? 'bank account' : 'card'}${e.current_last4 ? ` ••${e.current_last4}` : ''}`
-    : 'No method on file'
+  const currentPill = e.current_method
+    ? `${e.current_method === 'ach' ? 'Bank' : 'Card'}${e.current_last4 ? ` ••${e.current_last4}` : ''}`
+    : 'None on file'
   return (
     <div style={cardStyle}>
-      <div style={{ marginBottom: '4px', fontSize: '15px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{e.label}</div>
+      <div style={cardHeaderStyle}>
+        <span style={cardTitleStyle}>{e.label}</span>
+        <span style={currentPillStyle} title="Payment method currently on file">{currentPill}</span>
+      </div>
       {e.for_client_name && (
-        <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '2px' }}>For {e.for_client_name}</div>
+        <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '-8px', marginBottom: '14px' }}>For {e.for_client_name}</div>
       )}
-      <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '14px' }}>{current}</div>
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <button style={choiceBtn} onClick={() => onChoose(e, 'card')}>Use a Card</button>
-        <button style={{ ...choiceBtn, background: 'var(--vfo-card)', color: '#125ecc', border: '1.5px solid #125ecc' }} onClick={() => onChoose(e, 'ach')}>Use a Bank Account</button>
+      <div style={tileGridStyle}>
+        <MethodTile title="Credit / Debit Card" subtitle="Switch to a new card" onClick={() => onChoose(e, 'card')} />
+        <MethodTile title="Bank Account (ACH)" subtitle="Switch to a bank transfer" onClick={() => onChoose(e, 'ach')} />
       </div>
     </div>
+  )
+}
+
+// One choice, styled like the /pay page's payment options: bordered tile,
+// blue border + tint on hover, centred text.
+function MethodTile({ title, subtitle, onClick }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        ...tileStyle,
+        borderColor: hover ? '#0095ff' : 'var(--vfo-border)',
+        background: hover ? 'rgba(0,149,255,0.05)' : 'transparent',
+      }}
+    >
+      <span style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{title}</span>
+      <span style={{ display: 'block', fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{subtitle}</span>
+    </button>
   )
 }
 
@@ -154,11 +178,20 @@ const iconCircle = {
 const titleStyle = { fontSize: '24px', fontWeight: 700, color: 'var(--vfo-ink)', marginBottom: '12px' }
 const subtitleStyle = { fontSize: '14px', color: 'var(--vfo-muted)', margin: 0 }
 const cardStyle = {
-  border: '2px solid var(--vfo-border)', borderRadius: '16px', padding: '20px 22px', marginBottom: '14px',
+  border: '2px solid var(--vfo-border)', borderRadius: '16px', padding: '24px', marginBottom: '16px',
 }
-const choiceBtn = {
-  background: '#125ecc', color: '#fff', border: '1.5px solid #125ecc', borderRadius: '10px',
-  padding: '10px 18px', fontSize: '13.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+const cardHeaderStyle = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px',
+}
+const cardTitleStyle = { fontSize: '16px', fontWeight: 700, color: 'var(--vfo-ink)' }
+const currentPillStyle = {
+  fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px', whiteSpace: 'nowrap',
+  textTransform: 'uppercase', letterSpacing: '0.5px', background: 'rgba(0,149,255,0.15)', color: '#0095ff',
+}
+const tileGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }
+const tileStyle = {
+  border: '2px solid var(--vfo-border)', borderRadius: '12px', padding: '16px 12px', textAlign: 'center',
+  cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'Inter, sans-serif', width: '100%',
 }
 const securityNote = {
   textAlign: 'center', color: 'var(--vfo-muted)', fontSize: '12px', marginTop: '24px', lineHeight: 1.6,

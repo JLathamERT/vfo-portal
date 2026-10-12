@@ -87,7 +87,7 @@ Next off-session charge prefers the stored default PM
 2. **Short-circuits** with a friendly `{sent:false, reason}` if the person has no reusable engagement (`reason:"none"`) or no email on file (`reason:"no_email"`). Neither is an error.
 3. **Sandbox routing:** if **any** involved pipeline is in sandbox mode, the draft is redirected to that pipeline's `sandbox_email` (test-safe) and `sandbox:true` is returned.
 4. Inserts a `card_update_tokens` row — a fresh 32-byte hex token (`token32()`), `created_by` = the admin's email, `expires_at` = now + 7 days.
-5. Loads the editable email body from `email_templates` `(PAYMENTS, card_update)` (id 156); falls back to a built-in subject/body if the row is absent. Substitutes `[First Name]` and `[UPDATE_LINK]` (an HTML button → `/update-card?token=…`). Template `cc_list`/`bcc_list` are applied via `templateRecipients` (empty in sandbox).
+5. Loads the editable email body from `email_templates` `(PAYMENTS, card_update)` (id 156); falls back to a built-in subject/body if the row is absent. Substitutes `[First Name]` and `[UPDATE_LINK]` (an HTML button → `/update-card?token=…`); for a CLIENT the body's `[First Name]` also names the greeting-flagged Additional Contacts (`withGreetingNames`, since 2026-10-12 / v972 — the subject keeps the client alone). Template `cc_list` (since 2026-10-12, migration `20261012160000`: `tnmiller@` + `tvaldes@vfo-services.com`, on EVERY send — client, member or specialist) / `bcc_list` are applied via `resolveTemplateRecipients`, plus the client's flagged Additional Contacts as `extraCc` (empty in sandbox).
 6. Drafts the Gmail via `draftGmail` / `getGmailAccessToken` ([utils/gmail-draft.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/utils/gmail-draft.ts)). Like every other automation email it is a **draft**, not a sent message.
 
 Returns `{sent:true, count, to_email, sandbox}`. No charge, no Stripe call — this step only mints the token and drafts the email.
@@ -175,7 +175,7 @@ See [../integrations/stripe.md](../integrations/stripe.md) for the cross-flow St
 | Surface | File |
 |---|---|
 | "Send Email to Change Payment Method" button (Jake-only) | [PaymentsHeader.jsx](src/components/payments/PaymentsHeader.jsx) |
-| Public update-card landing page | [UpdateCardPage.jsx](src/pages/UpdateCardPage.jsx) — `/update-card?token=` route (registered in `src/App.jsx`); lists engagements, per-engagement card/bank choice, redirects to Stripe |
+| Public update-card landing page | [UpdateCardPage.jsx](src/pages/UpdateCardPage.jsx) — `/update-card?token=` route (registered in `src/App.jsx`); lists engagements (one card each: label + a pill naming the method on file), per-engagement card/bank choice as two centred `/pay`-style tiles (`MethodTile`, restyled 2026-10-12), redirects to Stripe |
 | Email body editor | Admin **Email Templates** tab → "Payments — Change Payment Method" (pipeline `PAYMENTS`, template_name `card_update`) |
 
 ## Backend handlers

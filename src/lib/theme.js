@@ -24,12 +24,15 @@ export function applyTheme(theme = getTheme()) {
 }
 
 // Mounted by the four portal shells (+ the client-detail page). Applies the
-// saved preference while the portal is on screen and resets to light when it
-// unmounts (sign-out / navigation back to a public page).
+// saved preference while the portal is on screen. On unmount the theme follows
+// the route being navigated TO (the URL has already changed): light on a login /
+// public page, kept on another portal page. A blanket reset to light painted the
+// whole screen light while the next portal page's lazy chunk loaded - a white
+// flash in dark mode on every first visit to a section (2026-10-12).
 export function usePortalTheme() {
   useEffect(() => {
     applyTheme()
-    return () => applyTheme('light')
+    return () => applyThemeForCurrentRoute()
   }, [])
 }
 
