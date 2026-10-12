@@ -152,8 +152,11 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
     // Same page frame as the FAQ Editor / Growth Credits tabs.
     <div style={{ maxWidth: '980px', margin: '0 auto', padding: '32px 24px' }}>
       <h2 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '0 0 6px' }}>Tax Diagnostics</h2>
+      <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 8px', lineHeight: 1.6 }}>
+        The public tax form at <CopyLink url={PUBLIC_URL} /> is open to anyone and takes a $500 deposit. If they're already a Holistic client, don't send this link. Use the <strong>Personal Tax Planning Form</strong> link at the top of their plan on the client's <strong>Tax Priorities</strong> tab instead.
+      </p>
       <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 24px', lineHeight: 1.6 }}>
-        Every tax questionnaire: the public form at <CopyLink url={PUBLIC_URL} /> and the member portal's tax intake forms. A form shows here once its $500 deposit is paid (or no deposit is due). A public form naming one member is approved automatically; a paid lead waits under Pending for you to choose the member or Deny. Portal forms go straight to Confirmed.
+        Forms appear here once paid. Pick the member for anything under <strong>Pending</strong>.
       </p>
 
       {data && data.public_page_enabled === false && (
