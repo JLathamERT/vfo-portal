@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-10-12 (d) — Card fees: charged only when due, waivers honoured everywhere, documents say what was charged
+
+Same branch `claude/vfo-session-starter-717105`. `vfo-admin-api` **v968 → v970** (from the branch, `--use-docker`), action count 575 unmoved, no migration. Trigger: Jake held two MAP 1 receipt drafts (Josh Vang P3, Pat Hurst P4) reading *"Total Charged (incl. card fee) $1,350.00"*.
+
+- **The rule (audited at every charge site):** card = base + 2.9% + $0.30, ACH / check never. Waivers exist only as `card_fee_waived` on `pipeline_map1` + `client_tax_plans` (setup-link migrated clients) and membership's rule-based one (fee only for `advisor_model = 'New Model'`); the licence never carries a fee; PIP, SpecRev, advisor/accountant, GC, background checks and the $500 tax deposit always gross up on card (no waiver exists).
+- **v969 — money:** `actions/tax/stripe-checkout.ts` (the `/tax-pay` fresh link) grossed up EVERY card payment, so a waived tax client recovering a final retainer / implementation there would have been charged a fee the off-session charges never take. It now honours `card_fee_waived`; `load-payment.ts` returns the flag and `TaxPayPage.jsx` shows *No Fee*. Census: 5 waived tax plans, none ever charged a fee there, none with an open link.
+- **v968 — MAP 1 receipt, payments 2-4:** `contract-invoice-receipt.ts` passed `cardFee: 0` for P2-4, so a card installment printed its BASE as *"Total Charged (incl. card fee)"* (Josh: $1,350.00 printed, $1,390.63 charged) and a waived one claimed a fee never taken (Pat). The receipt now applies the charge paths' rule (P1 keeps the stamped fee) and reads `pay{N}_method` / `pay{N}_last4` when frozen. Josh P3 + Pat P4 re-drafted through `automation_CONTRACT_invoicereceipt` (draft only; same numbers; no charge, no revenue share).
+- **v970 — documents everywhere:** every receipt label (tax retainer / final retainer / implementation, PIP, specialist licence + BG, SpecRev invoice + receipt, advisor/accountant, MAP 1) says *"(incl. card fee)"* only when a fee > 0 was charged; the MAP 1 invoice's per-payment fee note + blank card status cell only when a fee applies; the MAP 1 per-installment confirmation email no longer quotes a fee to a waived client; the licence `invoice.paid` path stamped the old $3.27 gross-up on a fee-free $99 licence and now stamps 0 like the other licence path (none stamped today). Gotcha #607.
+- **Already out (drafted before the fix, sent status unknown):** MAP 1 card receipts P2-4 — amount UNDERSTATED (fee charged, base printed): Melissa Cruts 90385-001 P2, Steve Bitzer 20003-001 P2; label only (waived, *"incl. card fee"*): Henry Mennig P3/P4, Pat Hurst P3, Marc Ehrhardt P4, Steve Manseau P3, Lenny Genna P2/P3, Sandra Jones P3/P4, Dr. John Nnadi P3, Arielle Martinez P3. Re-issue is Jake's decision (the superadmin `reissue: true` mode re-drafts in the original thread). No wrong licence or tax receipt found.
+- **Flagged, not fixed:** `automation_CONTRACT_invoicereceipt` sits in `PUBLIC_HANDLERS` and does not check a service-role bearer on its normal path, so anyone can make it re-render + re-upload a client's PDFs and create a Draft (#600 family). Audit UNSURE items left: a MAP 1 REISSUE after a card/bank switch renders the new method; the tax revised invoice reads the plan-wide `payment_method_type`; SpecRev recurring card plans priced without gross-up; the SpecRev confirmation email derives a fee when the stamp is null.
+
+---
+
 ## 2026-10-12 (c) — Tax reminder chases Cc the plan team
 
 Same branch `claude/vfo-session-starter-717105`. `vfo-admin-api` **v967** (from the branch, `--use-docker`), action count 575 unmoved; migration `20261012140000_tax_reminder_chase_cc.sql` (data only — two `email_templates.cc_list` values) applied via MCP + committed, security advisor GREEN at the exact baseline (a confirmation).
