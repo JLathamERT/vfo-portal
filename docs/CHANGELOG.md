@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-10-12 (c) — Dark-mode white flash; the payment-method email's Cc + greeting; the `/update-card` page restyle
+
+Branch `fix/theme-flash` (both repos, the same chat as (b)). `vfo-admin-api` **v972** (from the branch, `--use-docker`, smoke **5/5 vs v972**), action count 575 unmoved, migration `20261012160000` (data only, advisor GREEN at the exact baseline).
+
+- **White flash (frontend, `src/lib/theme.js`).** Jake: *"when i open some pages the screen flashes for a split second white"*. `usePortalTheme()` reset the theme to LIGHT on every unmount, so moving between two portal pages painted the screen light while the next page's lazy chunk loaded (#580) — on every first visit to a section, and on every section after a deploy replaced the chunks (today's `live-233` made it visible). The cleanup now calls `applyThemeForCurrentRoute()`, which reads the URL already navigated to: light on a login / public page, the saved theme on another portal page. Click-tested by Jake in dark mode on a `vite preview` of the production build. Gotcha #608.
+- **"Update your payment method" email** (`payments_send_card_update`, template 156): Cc `tnmiller@` + `tvaldes@vfo-services.com` (template `cc_list`, so on member and specialist sends too); a client's greeting-flagged Additional Contacts now join the BODY salutation (*Hi Josh and Mai Ya,*) as on every other client email — they were already Cc'd. Proven on Josh Vang's real re-draft (Jake).
+- **`/update-card` page** (`UpdateCardPage.jsx`): each payment is a card (label + a blue pill naming the method on file) with two centred `/pay`-style tiles, *Credit / Debit Card* and *Bank Account (ACH)*, replacing two left-aligned buttons. Eyeballed by Jake on the preview with Josh's real token (no tile clicked through to Stripe).
+- **Also cleaned up:** the 717105 react worktree's dev server had survived its stop (pid on :5173, locking the folder) — killed; its folder is an empty shell to delete by hand. The 5174 server belongs to `C:\iag-react` and was left alone.
+
+---
+
 ## 2026-10-12 (b) — Branch `claude/vfo-session-starter-717105`: Client Overview Unassigned, tax reminder recipients, the card-fee audit, three small fixes
 
 One chat, both repos. `vfo-admin-api` **v964 → v971** (every deploy from the branch, `--use-docker`; smoke **5/5 vs v964, v966, v967, v970 and v971**), action count **575 unmoved**, migrations `20261012140000` + `20261012150000` (data only, advisor GREEN at the exact baseline). Parts (A)-(C) below, plus two small frontend fixes (D) and (E):
