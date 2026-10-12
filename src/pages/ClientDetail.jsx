@@ -139,7 +139,7 @@ export default function ClientDetail() {
     if (isPlanner) {
       if (!session || session.role !== 'tax_planner') { navigate('/tax-planner/login'); return }
     } else if (!session) {
-      navigate('/admin/login?next=' + encodeURIComponent(location.pathname + location.search)); return
+      navigate((isMember ? '/member/login?next=' : '/admin/login?next=') + encodeURIComponent(location.pathname + location.search)); return
     }
     // Re-opened in the same session: draw the last client page at once, refresh behind it.
     const snap = getLastSeen(loadInputs().snapKey)
