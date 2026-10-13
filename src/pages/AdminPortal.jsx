@@ -267,7 +267,11 @@ export default function AdminPortal() {
     if (tab === 'tax_diagnostics' && !canSeeTab('tax_diagnostics')) return
     if (tab === 'feature_switches' && !session?.is_superadmin) return
     // The diagnostic bell carries its row id so the queue can open that card.
-    if (tab === 'tax_diagnostics' && params.get('diag')) setInitialDiagnosticId(Number(params.get('diag')))
+    if (tab === 'tax_diagnostics' && params.get('diag')) {
+      // A member-portal form's card is keyed `portal-<intake id>` (2026-10-13).
+      const diag = params.get('diag')
+      setInitialDiagnosticId(diag.startsWith('portal-') ? diag : Number(diag))
+    }
     setActiveTab(tab)
     sessionStorage.setItem('adminActiveTab', tab)
     if (section) {

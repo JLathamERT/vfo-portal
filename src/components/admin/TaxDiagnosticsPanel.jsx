@@ -20,12 +20,14 @@ import CopyLink from '../shared/CopyLink'
 // with a member — the public ones AND every portal tax intake form, read-only),
 // Denied (refunded), All.
 //
-// ONLY PAID FORMS SHOW (Jake, 2026-10-06): a form appears once its deposit is
-// paid (or clearing), or when no deposit is due. An abandoned, never-paid form
-// stays off the page — so nothing is ever dismissed from here — and appears the
-// moment its payer does pay. Two exceptions still need the team before anyone can
-// pay: a public form whose name matched two members (Pending, Confirm/Dismiss),
-// and a confirmed one whose deposit-link email failed (Retry).
+// UNPAID FORMS (Jake, 2026-10-13, replacing 2026-10-06's paid-only rule): a form
+// whose payer has not paid sits under Pending as "Awaiting payment" — no email to
+// anyone went out for it — with Send payment link (drafts the pay-link email; the
+// token never reaches this page) and Dismiss. Every other tab still shows a form
+// only once paid (or clearing), or when no deposit is due. Two other cases need
+// the team before anyone can pay: a public form whose name matched two members
+// (Pending, Confirm/Dismiss), and a confirmed one whose deposit-link email failed
+// (Retry).
 
 const PUBLIC_URL = 'https://vfoportal.com/tax-diagnostic'
 const AUTO_CONFIRMED_BY = 'Tax Diagnostic form (auto)'
@@ -40,11 +42,28 @@ const STATUS_CHIP = {
   confirmed: { label: 'Confirmed', color: '#1b9254' },
   portal: { label: 'Confirmed', color: '#1b9254' },
   denied: { label: 'Denied — $500 refunded', color: '#d93025' },
+  awaiting: { label: 'Awaiting payment', color: '#e06717' },
 }
 
-// Which tab a card sits under. A portal form never needs the team, so it is
-// always Confirmed. (A dismissed form is never shown — see isShown.)
+// A form with a deposit still to pay (2026-10-13 — one rule for public AND
+// member-portal forms): an automatic approval or a lead straight from the
+// public form, a portal form the member or the client filled in, a bank payment
+// that failed, or a team-confirmed form whose link email went out. (An invited
+// row with no link email is the Retry case on the Confirmed tab instead; an
+// unanswered portal client link is not a form yet and is never listed.)
+function awaitingPayment(d) {
+  const i = d.intake
+  if (!i || i.deposit_processing_at) return false
+  if (d.source === 'portal') return i.status === 'pending' || i.status === 'expired'
+  if (!['new', 'confirmed'].includes(d.status)) return false
+  if (i.status === 'invited') return !!i.link_sent_at
+  return i.status === 'pending' || i.status === 'expired'
+}
+
+// Which tab a card sits under. An unpaid form (public or portal) is Pending; any
+// other portal form never needs the team, so it is Confirmed. (A dismissed form is never shown — see isShown.)
 function tabOf(d) {
+  if (awaitingPayment(d)) return 'pending'
   if (d.source === 'portal') return 'confirmed'
   if (d.status === 'new') return 'pending'
   return d.status
@@ -60,6 +79,7 @@ function isShown(d) {
   if (d.status === 'dismissed') return false
   const i = d.intake
   if (!i) return true
+  if (awaitingPayment(d)) return true
   if (['paid', 'completed', 'waived', 'refunded'].includes(i.status)) return true
   if (i.deposit_processing_at) return true
   return d.source !== 'portal' && i.status === 'invited' && !i.link_sent_at
@@ -123,7 +143,7 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
   // A bell deep link opens that card whatever its status.
   useEffect(() => {
     if (!initialDiagnosticId || !data) return
-    const row = (data.diagnostics || []).find(d => d.id === initialDiagnosticId)
+    const row = [...(data.diagnostics || []), ...(data.portal_intakes || [])].find(d => cardKey(d) === initialDiagnosticId)
     if (row && tabOf(row) !== filter && filter !== 'all') setFilter('all')
     setOpenId(initialDiagnosticId)
   }, [initialDiagnosticId, data])
@@ -156,7 +176,7 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
         The public tax form at <CopyLink url={PUBLIC_URL} /> is open to anyone and takes a $500 deposit. If they're already a Holistic client, don't send this link. Use the <strong>Personal Tax Planning Form</strong> link at the top of their plan on the client's <strong>Tax Priorities</strong> tab instead.
       </p>
       <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 24px', lineHeight: 1.6 }}>
-        Forms appear here once paid. Pick the member for anything under <strong>Pending</strong>.
+        Forms appear here once paid. Pick the member for anything under <strong>Pending</strong>. A form that hasn't been paid yet also sits under Pending as <strong>Awaiting payment</strong>: nobody has been emailed about it, and you can send the payment link or dismiss it.
       </p>
 
       {data && data.public_page_enabled === false && (
@@ -202,7 +222,8 @@ function referrerText(d) {
 
 function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
   const portal = d.source === 'portal'
-  const chip = STATUS_CHIP[portal ? 'portal' : d.status] || { label: d.status, color: '#64748b' }
+  const awaiting = awaitingPayment(d)
+  const chip = STATUS_CHIP[awaiting ? 'awaiting' : portal ? 'portal' : d.status] || { label: d.status, color: '#64748b' }
   const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim() || '(no name)'
   const answers = d.answers || {}
   const navigate = useNavigate()
@@ -242,11 +263,12 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
 
       {open && (
         <div style={{ marginTop: '18px', borderTop: '1px solid var(--vfo-border-soft)', paddingTop: '18px' }}>
-          {portal && <PortalSummary d={d} />}
-          {!portal && d.status === 'new' && d.intake && <LeadBox d={d} members={members} onChanged={onChanged} />}
+          {portal && !awaiting && <PortalSummary d={d} />}
+          {awaiting && <AwaitingPaymentBox d={d} onChanged={onChanged} />}
+          {!portal && !awaiting && d.status === 'new' && d.intake && <LeadBox d={d} members={members} onChanged={onChanged} />}
           {!portal && d.status === 'new' && !d.intake && <ConfirmBox d={d} members={members} onChanged={onChanged} />}
 
-          {!portal && d.status === 'confirmed' && (
+          {!portal && !awaiting && d.status === 'confirmed' && (
             <ConfirmedSummary d={d} onChanged={onChanged} />
           )}
 
@@ -388,6 +410,78 @@ function ConfirmBox({ d, members, onChanged }) {
         <button type="button" onClick={confirm} disabled={busy || !picked} style={btn(true, busy || !picked)}>{busy ? 'Working...' : 'Confirm'}</button>
         <button type="button" onClick={dismiss} disabled={busy}
           style={{ ...btn(false, busy), border: 'none', background: busy ? 'var(--vfo-faint)' : '#d93025', color: '#fff' }}>Dismiss</button>
+      </div>
+    </div>
+  )
+}
+
+// A form whose payer has not paid (2026-10-13). Nobody was emailed at submit, so
+// the team sends the pay link from here (tax_diagnostic_send_pay_link drafts it
+// to whoever pays; the link itself never reaches this page) or dismisses the form
+// (its payment link closes for good).
+function AwaitingPaymentBox({ d, onChanged }) {
+  const intake = d.intake
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim() || 'this client'
+  const m = d.confirmed_member
+  const portal = d.source === 'portal'
+  const lead = !portal && d.status === 'new'
+  const memberPays = intake.payer === 'member'
+  // A public form by its diagnostic id, a portal form by its intake id.
+  const target = portal ? { intake_id: intake.id } : { id: d.id }
+  const clientEmail = d.client_email || intake.client_email
+  const payerText = memberPays
+    ? `The member${m ? ` (${m.name})` : ''}`
+    : 'The client'
+
+  async function sendLink() {
+    if (!window.confirm(`Email the payment link to ${memberPays ? `the member${m ? ` (${m.name})` : ''}` : `${clientName} (${clientEmail || 'the client'})`}?`)) return
+    setBusy(true); setErr('')
+    try {
+      const res = await callApi('tax_diagnostic_send_pay_link', target)
+      window.alert(`The payment link email has been ${res?.email_sent ? 'sent' : 'drafted in Gmail'}.`)
+      setBusy(false)
+      onChanged()
+    } catch (e) {
+      setErr(e?.message || 'Could not send the payment link')
+      setBusy(false)
+    }
+  }
+  async function dismiss() {
+    const reason = window.prompt(`Dismiss ${clientName}'s form? Its payment link stops working. Optional reason (e.g. duplicate, not a fit):`, '')
+    if (reason === null) return
+    setBusy(true); setErr('')
+    try {
+      await callApi('tax_diagnostic_dismiss', { ...target, reason })
+      onChanged()
+    } catch (e) {
+      setErr(e?.message || 'Could not dismiss')
+      setBusy(false)
+    }
+  }
+  const btn = (color, disabled) => ({ padding: '9px 20px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif',
+    border: 'none', background: disabled ? 'var(--vfo-faint)' : color, color: '#fff' })
+
+  return (
+    <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: 'rgba(224,103,23,0.06)', border: '1px solid rgba(224,103,23,0.3)', fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.7 }}>
+      <div style={{ fontSize: '12.5px', color: '#e06717', marginBottom: '6px' }}>
+        The $500 deposit has not been paid.{intake.link_sent_at ? '' : ' No payment email has gone out yet.'}
+      </div>
+      <div><strong>Member:</strong> {lead ? 'None named (a lead)' : m ? `${m.name} (${m.member_number})` : d.confirmed_member_number}</div>
+      <div><strong>Pays the deposit:</strong> {payerText}</div>
+      <div><strong>Started:</strong> {formatDateTime(d.created_at)}{portal ? (memberPays ? ' · in the member portal' : " · by the client, through the member's link") : ''}</div>
+      <div><strong>Payment link email:</strong> {intake.link_sent_at
+        ? `Drafted ${formatDate(intake.link_sent_at)}${intake.link_opened_at ? ` · link opened ${formatDate(intake.link_opened_at)}` : ''}`
+        : 'Not sent'}</div>
+      {intake.deposit_failed_at && <div style={{ color: '#d93025' }}>A bank payment failed on {formatDate(intake.deposit_failed_at)}; the link works again.</div>}
+      {intake.sandbox && <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)' }}>Test (sandbox) form.</div>}
+      {err && <div style={{ marginTop: '10px', fontSize: '12.5px', color: '#d93025' }}>{err}</div>}
+      <div style={{ display: 'flex', gap: '10px', marginTop: '14px', flexWrap: 'wrap' }}>
+        <button type="button" onClick={sendLink} disabled={busy} style={btn('#1b9254', busy)}>
+          {busy ? 'Working...' : intake.link_sent_at ? 'Send payment link again' : 'Send payment link'}
+        </button>
+        <button type="button" onClick={dismiss} disabled={busy} style={btn('#d93025', busy)}>Dismiss</button>
       </div>
     </div>
   )

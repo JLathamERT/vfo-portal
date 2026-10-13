@@ -50,6 +50,8 @@ export default function TaxIntakePage() {
         // A bank transfer for the deposit is clearing (2026-09-23): the form is
         // finished, nothing to re-offer.
         if (data.status === 'processing') { setStatus('already_processing'); return }
+        // Dismissed by the team (2026-10-13), or a denied lead: the link is closed.
+        if (data.status === 'closed') { setError('This link is no longer active.'); setStatus('error'); return }
         // A link from a confirmed VFO Tax Diagnostic is PAY-ONLY: the answers were
         // already given and confirmed. Since 2026-09-23 the deposit is paid on the
         // card-or-ACH choice page, so an old /tax-intake link (already in an inbox)
