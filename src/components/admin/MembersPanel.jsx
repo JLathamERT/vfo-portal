@@ -1629,8 +1629,10 @@ function MemberGC({ member }) {
 
   async function addCredits() {
     if (!addAmount) return
+    const a = Number(addAmount)
+    if (!(a > 0) || Math.abs(a * 4 - Math.round(a * 4)) > 1e-9) { setStatusType('error'); setStatus('Use whole credits or quarters (.25, .5, .75).'); return }
     try {
-      await callApi('gc_add_credits', { member_number: member.plugin_member_number, amount: parseInt(addAmount), description: addDesc })
+      await callApi('gc_add_credits', { member_number: member.plugin_member_number, amount: a, description: addDesc })
       setAddAmount(''); setAddDesc('')
       setStatusType('success'); setStatus('Credits added!')
       setTimeout(() => setStatus(''), 4000)
@@ -1642,7 +1644,8 @@ function MemberGC({ member }) {
   // required (it is the history entry the member sees), never below zero.
   async function deductCredits() {
     const n = Number(deductAmount)
-    if (!Number.isInteger(n) || n <= 0) { setDeductStatus({ ok: false, text: 'Enter a whole number of credits greater than 0.' }); return }
+    // Quarter steps (numeric(10,2) since 2026-10-13): 0.25, 1.5, 43.75 ...
+    if (!(n > 0) || Math.abs(n * 4 - Math.round(n * 4)) > 1e-9) { setDeductStatus({ ok: false, text: 'Use whole credits or quarters (.25, .5, .75).' }); return }
     if (!deductReason.trim()) { setDeductStatus({ ok: false, text: 'Enter a reason - it is shown in the credit history.' }); return }
     if (balance !== null && n > balance) { setDeductStatus({ ok: false, text: `Only ${balance} credits available.` }); return }
     if (!window.confirm(`Deduct ${n} credit${n === 1 ? '' : 's'} from ${member.name || 'this member'}?\n\nBalance: ${balance} -> ${balance - n}\nReason: ${deductReason.trim()}`)) return
@@ -1689,7 +1692,7 @@ function MemberGC({ member }) {
           <div style={sectionStyle}>
             <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Add Credits</div>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
-              <div style={{ flex: 1 }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Amount</label><input type="number" value={addAmount} onChange={e => setAddAmount(e.target.value)} placeholder="e.g. 100" min="1" style={inputStyle} /></div>
+              <div style={{ flex: 1 }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Amount</label><input type="number" value={addAmount} onChange={e => setAddAmount(e.target.value)} placeholder="e.g. 100" min="0.25" step="0.25" style={inputStyle} /></div>
               <div style={{ flex: 1 }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Description (optional)</label><input value={addDesc} onChange={e => setAddDesc(e.target.value)} placeholder="e.g. Monthly allocation" style={inputStyle} /></div>
               <button onClick={addCredits} style={{ padding: '12px 24px', minWidth: '150px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add Credits</button>
             </div>
@@ -1698,7 +1701,7 @@ function MemberGC({ member }) {
           <div style={sectionStyle}>
             <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Deduct Credits</div>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
-              <div style={{ flex: 1 }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Amount</label><input type="number" value={deductAmount} onChange={e => setDeductAmount(e.target.value)} placeholder="e.g. 43" min="1" step="1" style={inputStyle} /></div>
+              <div style={{ flex: 1 }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Amount</label><input type="number" value={deductAmount} onChange={e => setDeductAmount(e.target.value)} placeholder="e.g. 43.75" min="0.25" step="0.25" style={inputStyle} /></div>
               <div style={{ flex: 1 }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Reason (shown in history)</label><input value={deductReason} onChange={e => setDeductReason(e.target.value)} placeholder="e.g. Prorated - downgrade to Catalyst" maxLength={300} style={inputStyle} /></div>
               <button onClick={deductCredits} style={{ padding: '12px 24px', minWidth: '150px', borderRadius: '8px', background: 'linear-gradient(135deg, #c0392b 0%, #e74c3c 100%)', border: 'none', boxShadow: '0 2px 8px rgba(217,48,37,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Deduct Credits</button>
             </div>
