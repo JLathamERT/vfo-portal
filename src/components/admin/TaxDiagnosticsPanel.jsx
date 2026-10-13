@@ -45,23 +45,27 @@ const STATUS_CHIP = {
   awaiting: { label: 'Awaiting payment', color: '#e06717' },
 }
 
-// A public form with a deposit still to pay: an automatic approval or a lead
-// straight from the form, a bank payment that failed, or a team-confirmed form
-// whose link email went out. (An invited row with no link email is the Retry
-// case on the Confirmed tab instead.)
+// A form with a deposit still to pay (2026-10-13 — one rule for public AND
+// member-portal forms): an automatic approval or a lead straight from the
+// public form, a portal form the member or the client filled in, a bank payment
+// that failed, or a team-confirmed form whose link email went out. (An invited
+// row with no link email is the Retry case on the Confirmed tab instead; an
+// unanswered portal client link is not a form yet and is never listed.)
 function awaitingPayment(d) {
   const i = d.intake
-  if (d.source === 'portal' || !i || !['new', 'confirmed'].includes(d.status)) return false
-  if (i.deposit_processing_at) return false
+  if (!i || i.deposit_processing_at) return false
+  if (d.source === 'portal') return i.status === 'pending' || i.status === 'expired'
+  if (!['new', 'confirmed'].includes(d.status)) return false
   if (i.status === 'invited') return !!i.link_sent_at
   return i.status === 'pending' || i.status === 'expired'
 }
 
-// Which tab a card sits under. A portal form never needs the team, so it is
-// always Confirmed. (A dismissed form is never shown — see isShown.)
+// Which tab a card sits under. An unpaid form (public or portal) is Pending; any
+// other portal form never needs the team, so it is Confirmed. (A dismissed form is never shown — see isShown.)
 function tabOf(d) {
+  if (awaitingPayment(d)) return 'pending'
   if (d.source === 'portal') return 'confirmed'
-  if (d.status === 'new' || awaitingPayment(d)) return 'pending'
+  if (d.status === 'new') return 'pending'
   return d.status
 }
 const cardKey = (d) => d.key || d.id
@@ -139,7 +143,7 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
   // A bell deep link opens that card whatever its status.
   useEffect(() => {
     if (!initialDiagnosticId || !data) return
-    const row = (data.diagnostics || []).find(d => d.id === initialDiagnosticId)
+    const row = [...(data.diagnostics || []), ...(data.portal_intakes || [])].find(d => cardKey(d) === initialDiagnosticId)
     if (row && tabOf(row) !== filter && filter !== 'all') setFilter('all')
     setOpenId(initialDiagnosticId)
   }, [initialDiagnosticId, data])
@@ -259,7 +263,7 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
 
       {open && (
         <div style={{ marginTop: '18px', borderTop: '1px solid var(--vfo-border-soft)', paddingTop: '18px' }}>
-          {portal && <PortalSummary d={d} />}
+          {portal && !awaiting && <PortalSummary d={d} />}
           {awaiting && <AwaitingPaymentBox d={d} onChanged={onChanged} />}
           {!portal && !awaiting && d.status === 'new' && d.intake && <LeadBox d={d} members={members} onChanged={onChanged} />}
           {!portal && d.status === 'new' && !d.intake && <ConfirmBox d={d} members={members} onChanged={onChanged} />}
@@ -421,17 +425,21 @@ function AwaitingPaymentBox({ d, onChanged }) {
   const [err, setErr] = useState('')
   const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim() || 'this client'
   const m = d.confirmed_member
-  const lead = d.status === 'new'
+  const portal = d.source === 'portal'
+  const lead = !portal && d.status === 'new'
   const memberPays = intake.payer === 'member'
+  // A public form by its diagnostic id, a portal form by its intake id.
+  const target = portal ? { intake_id: intake.id } : { id: d.id }
+  const clientEmail = d.client_email || intake.client_email
   const payerText = memberPays
     ? `The member${m ? ` (${m.name})` : ''}`
     : 'The client'
 
   async function sendLink() {
-    if (!window.confirm(`Email the payment link to ${memberPays ? `the member${m ? ` (${m.name})` : ''}` : `${clientName} (${d.client_email || 'the client'})`}?`)) return
+    if (!window.confirm(`Email the payment link to ${memberPays ? `the member${m ? ` (${m.name})` : ''}` : `${clientName} (${clientEmail || 'the client'})`}?`)) return
     setBusy(true); setErr('')
     try {
-      const res = await callApi('tax_diagnostic_send_pay_link', { id: d.id })
+      const res = await callApi('tax_diagnostic_send_pay_link', target)
       window.alert(`The payment link email has been ${res?.email_sent ? 'sent' : 'drafted in Gmail'}.`)
       setBusy(false)
       onChanged()
@@ -445,7 +453,7 @@ function AwaitingPaymentBox({ d, onChanged }) {
     if (reason === null) return
     setBusy(true); setErr('')
     try {
-      await callApi('tax_diagnostic_dismiss', { id: d.id, reason })
+      await callApi('tax_diagnostic_dismiss', { ...target, reason })
       onChanged()
     } catch (e) {
       setErr(e?.message || 'Could not dismiss')
@@ -458,11 +466,11 @@ function AwaitingPaymentBox({ d, onChanged }) {
   return (
     <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: 'rgba(224,103,23,0.06)', border: '1px solid rgba(224,103,23,0.3)', fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.7 }}>
       <div style={{ fontSize: '12.5px', color: '#e06717', marginBottom: '6px' }}>
-        The $500 deposit has not been paid. Nobody has been emailed about this form.
+        The $500 deposit has not been paid.{intake.link_sent_at ? '' : ' No payment email has gone out yet.'}
       </div>
       <div><strong>Member:</strong> {lead ? 'None named (a lead)' : m ? `${m.name} (${m.member_number})` : d.confirmed_member_number}</div>
       <div><strong>Pays the deposit:</strong> {payerText}</div>
-      <div><strong>Started:</strong> {formatDateTime(d.created_at)}</div>
+      <div><strong>Started:</strong> {formatDateTime(d.created_at)}{portal ? (memberPays ? ' · in the member portal' : " · by the client, through the member's link") : ''}</div>
       <div><strong>Payment link email:</strong> {intake.link_sent_at
         ? `Drafted ${formatDate(intake.link_sent_at)}${intake.link_opened_at ? ` · link opened ${formatDate(intake.link_opened_at)}` : ''}`
         : 'Not sent'}</div>
