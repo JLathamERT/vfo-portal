@@ -552,7 +552,7 @@ The queue behind the public, no-login **VFO Tax Diagnostic** (`/tax-diagnostic`)
 | `suggested_member_numbers` | text[] | not null, default `{}`. Every eligible member whose display name matched at submit — more than one when two members share a name. |
 | `heard_from` / `heard_from_other` | text | "How did you hear about us?" when no member referred them. |
 | `ip_hash` | text | HMAC of the submitter's IP, never the raw address. Stripped from `tax_diagnostic_list`'s response. |
-| `team_email_sent_at` | timestamptz | Stamped once the team email (template 286, Draft mode today) was handed to the delivery layer. |
+| `team_email_sent_at` | timestamptz | Stamped once the team email (template 286, Draft mode today) was handed to the delivery layer. **Since 2026-10-13 a pay-first form (an automatic approval, a "No one" lead) stamps it at PAYMENT, not at submit** — claimed before the send and released on a failed send (`sendTaxFormTeamEmail`); NULL on an unpaid form. |
 | `confirmed_member_number` / `deposit_payer` / `confirmed_by` / `confirmed_at` | text / text (CHECK `member` / `client`) / text / timestamptz | The Confirm stamps. |
 | `intake_id` | bigint | fk → `tax_intake_requests.id` **ON DELETE SET NULL**. The intake row Confirm minted; a Retry finds it by `diagnostic_id` when this stamp was lost. |
 | `dismissed_by` / `dismissed_at` / `dismiss_reason` | text / timestamptz / text | The Dismiss stamps (reason ≤ 500 chars). |
