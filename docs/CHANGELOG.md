@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-10-13 (f) — Client Overview MAP 1 no longer lists clients whose only MAP 1 step is the CIQ stamp
+
+Branch `fix/map1-overview-ciq-only` (edge only + docs, same chat as (e)). `vfo-admin-api` **v979** (from the branch, `--use-docker`; smoke **5/5 vs v979**, Jake), action count **577** unmoved, no migration, no frontend change.
+
+- **Found by Jake:** *Test One* (59014-001) and *TEST Sample* (59405-001) — CIQ-created, in no program, correctly on yesterday's **Unassigned** pill — also sat under **MAP 1**, and their row opened the Profile-only page. Census: **8** clients were on the MAP 1 tab only because `ciq_complete` had stamped the MAP 1 *CIQ complete* step (task 7) — Chris Wallace, Jeremy Reed, John Smith, Peter Engels, Jordan Thornhill, Test One, TEST Sample (no program) and Elizabeth Fong (VFO Tax Planning only). The stamp is written for every finished CIQ by design since 2026-08-03 (#323); `overview-map1.ts` listed anyone with any MAP 1 progress. Not caused by the Unassigned work — it only made it visible.
+- **Fix (`overview-map1.ts`):** a client whose ONLY MAP 1 progress is the *CIQ complete* row (no `pipeline_map1` row) is listed only while enrolled in program 1 (new `clientsInProgram1`: `clients.enrollment_id` / `client_enrollments` -> `member_enrollments.program_id = 1`). The stamp is kept, so the step reads done if the client joins MAP 1 later. Same engine serves the member Client Overview, fixed there too. No data change.
+- **LIVE-PROVEN** (Jake, v979, live site): MAP 1 tab **66 -> 58** (predicted by SQL), the 8 gone, real MAP 1 clients unchanged. Smoke 5/5 vs v979.
+- **OWED:** none for the code; the 7 no-program clients still wait on the Unassigned pill for the team to assign (carried from 2026-10-12 (b)).
+
 ## 2026-10-13 (e) — Tray's meeting-booking ask goes out when the client pays, not when the ACH clears
 
 Branch `claude/vfo-session-starter-645c1a` (both repos, ONE chat). `vfo-admin-api` **v978** (from the branch, `--use-docker`; smoke **5/5 vs v978**, Jake), action count **577** unmoved, no migration, no template, no new rule.
