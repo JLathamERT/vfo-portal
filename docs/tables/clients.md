@@ -124,7 +124,7 @@ Per-task progress tracking for "client" (non-training) program tasks. Drives the
 
 **Touched by:** `msm_load_client_progress`, `msm_save_client_task`, `msm_load_client_track`, **`ciq_complete`** (2026-08-03 — stamps the MAP 1 "CIQ complete" row). Frontend: [PFTEngagementTrack.jsx](src/components/admin/pft/PFTEngagementTrack.jsx), [ClientTrackViewV2.jsx](src/components/admin/map1/ClientTrackViewV2.jsx).
 
-> **This table has NO enrollment column — it is keyed `(client_id, task_id)` alone, and one writer depends on that.** `ciq_complete`'s MAP 1 step sync (2026-08-03, v695) writes the "CIQ complete" row **whether or not the client's MAP 1 track has been set up yet**; the row simply pre-exists and is picked up when the track is later created. Do not add an enrollment guard to this table's writes. See [../flows/ciq.md](../flows/ciq.md) and gotcha #323.
+> **This table has NO enrollment column — it is keyed `(client_id, task_id)` alone, and one writer depends on that.** `ciq_complete`'s MAP 1 step sync (2026-08-03, v695) writes the "CIQ complete" row **whether or not the client's MAP 1 track has been set up yet**; the row simply pre-exists and is picked up when the track is later created. Do not add an enrollment guard to this table's writes. **The guard lives on the READ side instead (2026-10-13, v979):** Client Overview's MAP 1 tab (`overview-map1.ts`) lists a client whose only MAP 1 row is this one only while the client is enrolled in program 1 — before that, every CIQ-finished client in no program or another program showed under MAP 1 (#616). See [../flows/ciq.md](../flows/ciq.md) and gotcha #323.
 
 ---
 
