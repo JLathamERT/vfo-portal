@@ -134,6 +134,8 @@ Then two best-effort side effects, each in its own `try/catch` — neither may f
 
 Updates `gc_balances` and inserts a `gc_transactions` row of **`type='purchased'`** with `description` defaulting to *"Credits added"*. It is **not** `'added'`, as this line claimed until 2026-09-03 — the handler reuses the SALE's type for a comp, so a granted credit is indistinguishable from a bought one by type, and `amount_usd` / `stripe_session_id` are left NULL because no money is taken. Used to manually credit (or, with negative `amount`, debit) a member's balance.
 
+**Deduct credits (2026-10-13, v973).** `gc_deduct_credits({member_number, amount, description})` ([MembersPanel.jsx](src/components/admin/MembersPanel.jsx) *Deduct Credits* box under Add Credits → [actions/gc/deduct-credits.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/gc/deduct-credits.ts)), ADMIN_ONLY like add: a positive WHOLE number (credits are `integer`), a REQUIRED reason (the history description the member sees), never more than the balance (400), and the balance UPDATE is guarded `.eq('balance', <value read>)` so a concurrent redemption / renewal is never overwritten (409 *refresh and try again*). It writes its OWN type **`deducted`** (negative `amount`, actor stamped) — never a negative `purchased` row, which would be counted as a grant (#466). Shown as an orange *Deducted* pill in both histories and an Accounting **Credits Deducted** tile (`load-accounting` `credits_deducted`). Its first real use is planned for Kwesi Robotham 59151's mid-contract Fusion → Catalyst downgrade (Tray: 133 → 90 — the prorated 43.75 rounded DOWN to 43, Jake's call). **Note:** `gc_add_credits` still accepts a negative `amount` (recorded as an *Added* row) — deduct is the proper path.
+
 **This conflation reached members.** Both credit histories keyed their label on `type` and so told 27 members across 31 rows that they had *purchased* credits they were given — one of them reported buying credits that appear nowhere in Stripe, correctly, because the portal said so. Since 2026-09-03 every reader derives the word from `stripe_session_id` instead (absent ⇒ *"added"*), and `load-accounting.ts` splits the totals the same way: `credits_purchased` counted 3,257 when 2 credits had ever been sold. **The row is still written as `purchased`** — the fix is at the readers, so anything new reading this table must apply the same test (#466). **Who granted a credit is recorded only from 2026-10-02:** `gc_add_credits` now stamps the calling admin's name on the row (`actor_name` / `actor_role='admin'`, see [Who did it](#who-did-it--the-actor-stamp-2026-10-02-v937)). Every grant before that date carries no actor and stays unanswerable (#466e) — the stamp is not backfillable.
 
 In `ADMIN_ONLY_ACTIONS`. Member callers cannot.
@@ -219,6 +221,7 @@ Both surfaces render the **same component**, [GCMarketplaceViews.jsx](src/compon
 | `gc_redeem` — member self-redeem | `redeemed` | `members.first_name + last_name` | `member` |
 | `gc_redeem` — admin on the member's behalf | `redeemed` | `allowed_admins.name` (session email if the admin row has no name) | `admin` |
 | `gc_add_credits` | `purchased` (a comp) | `allowed_admins.name` | `admin` |
+| `gc_deduct_credits` (2026-10-13) | `deducted` | `allowed_admins.name` | `admin` |
 | `gc_update_redemption` reject → refund | `refunded` | `allowed_admins.name` | `admin` |
 | `automation_GC_recurring_sweep` renewal | `redeemed` | `"System"` (`GC_SYSTEM_ACTOR`) | `system` |
 | `fulfillGrowthCredits` (Stripe webhook) | `purchased` (a sale) | — not stamped | — |
@@ -247,7 +250,7 @@ Both surfaces render the **same component**, [GCMarketplaceViews.jsx](src/compon
 
 ## Auth
 
-- `gc_redeem`, `gc_add_credits` and `gc_create_checkout` are all NOT in `ADMIN_ONLY_ACTIONS`. `gc_create_checkout` sits in **`MEMBER_SCOPED_ACTIONS`** ([constants/role-gates.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/constants/role-gates.ts)), so a member calls it for their own `member_number` — the router rewrites `body.member_number` to the caller's — and the price is derived server-side from `GC_PACKAGES` rather than from the request. An earlier admin-only gate here **did** 403 the member purchase flow; it was fixed together with server-side pricing (**GOTCHAS #210**).
+- `gc_add_credits` and `gc_deduct_credits` ARE in `ADMIN_ONLY_ACTIONS` (corrected 2026-10-13 — this line said otherwise); `gc_redeem` and `gc_create_checkout` are NOT. `gc_create_checkout` sits in **`MEMBER_SCOPED_ACTIONS`** ([constants/role-gates.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/constants/role-gates.ts)), so a member calls it for their own `member_number` — the router rewrites `body.member_number` to the caller's — and the price is derived server-side from `GC_PACKAGES` rather than from the request. An earlier admin-only gate here **did** 403 the member purchase flow; it was fixed together with server-side pricing (**GOTCHAS #210**).
 
 ## Failure modes
 

@@ -84,6 +84,7 @@ function gcTypeChip(tx) {
   const [label, rgb, hex] = tx.type === 'purchased' && !tx.stripe_session_id ? ['Added', '0,149,255', '#0095ff']
     : tx.type === 'purchased' ? ['Purchased', '27,146,84', '#1b9254']
       : tx.type === 'refunded' ? ['Refunded', '0,149,255', '#0095ff']
+        : tx.type === 'deducted' ? ['Deducted', '224,103,23', '#e06717']
         : ['Redeemed', '231,76,60', '#d93025']
   return <span style={{ fontSize: '11px', padding: '2px 10px', borderRadius: '999px', background: `rgba(${rgb},0.15)`, color: hex, fontWeight: 600, border: `1px solid rgba(${rgb},0.3)`, whiteSpace: 'nowrap' }}>{label}</span>
 }

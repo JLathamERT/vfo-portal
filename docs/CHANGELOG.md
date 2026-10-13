@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-10-13 — Admins can deduct Growth Credits
+
+Branch `feature/gc-deduct` (both repos). `vfo-admin-api` **v973** (from the branch, `--use-docker` — the first attempt fell back to the API upload with Docker stopped and 413'd, #574), action count **575 → 576**, no migration, no DB change.
+
+- **Why:** Tray asked to remove prorated credits for Kwesi Robotham 59151 (Fusion → Catalyst mid-contract: 133 → 89.25). Admins could only ADD credits, and credits are integers — Jake: round the 43.75 DOWN, deduct 43 → 90; any admin may deduct.
+- **Backend:** new ADMIN_ONLY `gc_deduct_credits` (`actions/gc/deduct-credits.ts`) — whole credits, a required reason, never below zero (400), the balance UPDATE guarded on the value just read (409 on a race), its OWN `gc_transactions.type = 'deducted'` (negative amount, actor stamped) rather than a negative `purchased` row (#466). `load-accounting` totals gain `credits_deducted`.
+- **Frontend:** Members → member → Growth Credits → Dashboard gains a **Deduct Credits** box (amount + reason + confirm showing the before → after balance; the button styled like Add Credits in red, both buttons equal width); an orange **Deducted** pill in the admin and member histories; an Accounting **Credits Deducted** tile.
+- **LIVE-PROVEN** (Jake, dev server vs v973): a 1-credit deduction on Test Member 59524 (938 → 937, history row Deducted / By / reason) and the over-balance refusal. Kwesi's 43 is left to Tray.
+- **Docs fixed on the way:** `flows/gift-credits.md` said `gc_add_credits` was NOT admin-only — it is (`ADMIN_ONLY_ACTIONS`). **Not changed (noted):** `gc_add_credits` still accepts a negative amount (recorded as *Added*).
+
+---
+
 ## 2026-10-12 (c) — Dark-mode white flash; the payment-method email's Cc + greeting; the `/update-card` page restyle
 
 Branch `fix/theme-flash` (both repos, the same chat as (b)). `vfo-admin-api` **v972** (from the branch, `--use-docker`, smoke **5/5 vs v972**), action count 575 unmoved, migration `20261012160000` (data only, advisor GREEN at the exact baseline).
