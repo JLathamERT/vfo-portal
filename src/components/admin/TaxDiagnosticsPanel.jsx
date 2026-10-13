@@ -223,7 +223,7 @@ function referrerText(d) {
 function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
   const portal = d.source === 'portal'
   const awaiting = awaitingPayment(d)
-  const chip = STATUS_CHIP[portal ? 'portal' : awaiting ? 'awaiting' : d.status] || { label: d.status, color: '#64748b' }
+  const chip = STATUS_CHIP[awaiting ? 'awaiting' : portal ? 'portal' : d.status] || { label: d.status, color: '#64748b' }
   const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim() || '(no name)'
   const answers = d.answers || {}
   const navigate = useNavigate()
