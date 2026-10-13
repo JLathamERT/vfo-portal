@@ -3050,7 +3050,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       // Meeting first books this meeting BEFORE the client decides, signs or pays,
       // so there is nothing left to wait for — the skip itself is the unlock.
       if (roiSkipMeetingFirst) return null
-      return { locked: !tax3AipcDone, hint: 'Complete the Tax 3 "Automated steps" first' }
+      // The meeting is booked as soon as the client pays (Jake, 2026-10-13): an ACH
+      // retainer in flight — manual bank entry included — opens this step, with
+      // the booking bell fired at submit (backend confirmation-email.ts).
+      const retainerPaidOrClearing = livePlan?.retainer_status === 'succeeded' || livePlan?.retainer_status === 'processing'
+      return { locked: !(tax3AipcDone || retainerPaidOrClearing), hint: 'Complete the Tax 3 "Automated steps" first' }
     }
     if (nm === 'Detailed tax plan presentation') {
       // Same on both routes — this step confirms the meeting the step above booked.
@@ -3718,7 +3722,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         { label: 'Engagement agreement signed',                       done: livePlan?.client_signed === 'Yes' },
         { label: 'Engagement agreement signed by CEO',                done: livePlan?.ceo_signed === 'Yes', chip: (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Engagement agreement signed by CEO" templates={[{ name: 'TAX_ceocountersign|Yes', when: 'Automatic — asks the CEO to countersign' }, { name: 'TAX_signing_reminder', when: 'Automatic reminder if unsigned (2 business days)' }]} context={emailCtx} /> },
         { label: 'Payment link sent (ACH or Card choice)',            done: !!livePlan?.checkout_token, at: livePlan?.payment_email_sent_at, stall: 'payment', chip: (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Payment link sent (ACH or Card choice)" templates={[{ name: 'TAX_paymentemail|Yes', when: 'Automatic — retainer payment link' }, { name: 'TAX_payment_reminder', when: 'Automatic reminder if unpaid (2 business days)' }]} context={emailCtx} /> },
-        { label: 'Payment collected',                                 done: livePlan?.retainer_confirmation_status === 'Sent' || livePlan?.retainer_confirmation_status === CONFIRMATION_CARD_SKIP, pending: retainerPending, at: livePlan?.retainer_date, chip: (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Payment collected" templates={[{ name: 'TAX_confirmationemail|card', when: 'No longer sent automatically — card gets the invoice/receipt instead' }, { name: 'TAX_confirmationemail|ach', when: 'If paid by bank transfer (ACH) — the only method that gets a confirmation' }, { name: 'TAX_confirmationemail|check', when: 'If paid by check' }, { name: 'TAX_paidbycheck|check', when: 'When admin records a check is on the way' }]} context={emailCtx} /> },
+        { label: 'Payment collected',                                 done: !retainerPending && (livePlan?.retainer_confirmation_status === 'Sent' || livePlan?.retainer_confirmation_status === CONFIRMATION_CARD_SKIP), pending: retainerPending, at: livePlan?.retainer_date, chip: (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Payment collected" templates={[{ name: 'TAX_confirmationemail|card', when: 'No longer sent automatically — card gets the invoice/receipt instead' }, { name: 'TAX_confirmationemail|ach', when: 'If paid by bank transfer (ACH) — the only method that gets a confirmation' }, { name: 'TAX_confirmationemail|check', when: 'If paid by check' }, { name: 'TAX_paidbycheck|check', when: 'When admin records a check is on the way' }]} context={emailCtx} /> },
         { label: 'Invoice and receipt created and emailed to client', done: livePlan?.retainer_invoice_email_sent === true, at: livePlan?.retainer_invoice_email_sent_at, chip: (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Invoice and receipt created and emailed to client" templates={[{ name: 'TAX_invoicereceipt_email|retainer', when: 'Retainer invoice + receipt' }]} context={emailCtx} /> },
       ]
       const signingEmailSent = livePlan?.agreement_sent === 'Yes'
