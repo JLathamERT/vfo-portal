@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-10-13 (g) — Re-draft a paid form's team email (286) after a deleted draft
+
+Branch `claude/tax-team-email-redraft` (edge code + react docs). `vfo-admin-api` **v980** (from the branch, `--use-docker`, on top of the other chat's v979; smoke **5/5 vs v980**, Jake), action count **577 → 578**, no migration, no frontend change.
+
+- **Why:** Ryan Yeaton paid Daniel Heberlie's form 19 by card (2026-10-13 20:58, client 384 `59334-002`, plan 272, `INV-59334-002-0113` / `REC-59334-002-0001`, 275 to Ryan); Jake dismissed form 18 as the duplicate. Form 19 was submitted at 17:31 under v974, so its 286 went at SUBMIT and the once-only latch correctly sent none at payment — and that draft had been deleted. No deployed action could draft a 286, and the local `.env.local` holds no Gmail credentials, so it needed a deployed path (Jake: earlier chats re-triggered drafts the same way, e.g. `scripts/tax-revised-invoice.ps1`).
+- **Built:** `tax_diagnostic_team_email_redraft` (ADMIN_ONLY + `TAB_ACTIONS.tax_diagnostics`; `{id}` / `{intake_id}`) — `sendTaxFormTeamEmail` gained `{ force }` (past the latch, re-stamps after) and now returns `{ drafted, reason }` (the webhook callers ignore it); refuses an unpaid form and an existing client's form. `scripts/tax-team-email-redraft.ps1` (admin_login, then the action).
+- **LIVE-PROVEN:** Jake ran it for form 19 → *OK - team email drafted (card)*, `team_email_sent_at` re-stamped 21:08:19. **Not exercised:** the `{intake_id}` portal arm, the lead / bank / waived wordings through it, its 409s.
+
+---
+
 ## 2026-10-13 (f) — Client Overview MAP 1 no longer lists clients whose only MAP 1 step is the CIQ stamp
 
 Branch `fix/map1-overview-ciq-only` (edge only + docs, same chat as (e)). `vfo-admin-api` **v979** (from the branch, `--use-docker`; smoke **5/5 vs v979**, Jake), action count **577** unmoved, no migration, no frontend change.
