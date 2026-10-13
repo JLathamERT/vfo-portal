@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-10-13 (d) — VFO Services webhook was never subscribed to `payment_intent.processing` (Jackie Meyer SpecRev)
+
+No code change. Jackie Meyer's SpecRev request **50** ($602.13, ACH with hand-typed bank details, submitted 2026-10-05) still read *Awaiting bank verification* although Stripe showed the PaymentIntent `pi_3UNEQDRwdhysCa6F0OhJIc1V` as *Pending — the customer's bank is processing this payment*; the 2026-10-13 SpecRev sweep had belled Tracy (bell 3114, already read) that she had not verified.
+
+- **Cause:** the function log Oct 6-13 shows `payment_intent.processing` arriving only from the ERT endpoints, never from VFO Services — the VFO Services endpoint was not subscribed to it, so the SpecRev `awaiting_verification → processing` branch (and the MAP 1 / Tax / tax-deposit verification-stamp clears) had never run. `integrations/stripe.md` wrongly listed it on all four endpoints. #614.
+- **Fix:** Jake added `payment_intent.processing` to the VFO Services LIVE endpoint (2026-10-13). Request 50 moved `awaiting_verification → processing` by SQL (guarded on the status + PaymentIntent id); `payment_intent.succeeded`, which IS subscribed, settles it to `received` and runs the invoice / receipt / payout as normal.
+- **OWED:** the VFO Services SANDBOX endpoint's subscription is unchecked; the first live `payment_intent.processing … account: vfos` log line is the proof the subscription works; Carson Grover's request 52 (also awaiting verification) should now advance on its own when he verifies.
+
+---
+
 ## 2026-10-13 (c) — One rule for every Tax Planning Form: unpaid forms email nobody and wait under Pending; the team is emailed when the money moves
 
 Branch `claude/vfo-session-starter-891e7d` (both repos, ONE chat). `vfo-admin-api` **v975 → v976 → v977** (all from the branch, `--use-docker`; smoke **5/5 vs v977**, Jake), action count **576 → 577** (`tax_diagnostic_send_pay_link`), migrations `20261013150000` (template **315** `TAX_diagnostic_deposit_link|lead`) / `160000` (`tax_intake_requests.team_email_sent_at`, additive on a deny-all table) / `170000` (wording) / `180000` (spacing) — advisor GREEN at the exact baseline after each (confirmations, no new table).
