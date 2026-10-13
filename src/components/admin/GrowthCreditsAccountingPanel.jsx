@@ -26,6 +26,8 @@ function TypeTag({ type, sessionId }) {
     ? { bg: 'rgba(22,163,74,0.14)', fg: '#16a34a' }
     : type === 'refunded'
     ? { bg: 'rgba(0,149,255,0.16)', fg: '#0095ff' }
+    : type === 'deducted'
+    ? { bg: 'rgba(224,103,23,0.14)', fg: '#e06717' }
     : { bg: 'rgba(217,48,37,0.14)', fg: '#d93025' }
   return <span style={{ padding: '3px 10px', borderRadius: '20px', background: tone.bg, color: tone.fg, fontSize: '11.5px', fontWeight: 700 }}>{label}</span>
 }
@@ -70,6 +72,8 @@ export default function GrowthCreditsAccountingPanel() {
     { label: 'Credits Granted', value: totals.credits_granted ?? 0 },
     { label: 'Credits Spent', value: totals.credits_spent ?? 0 },
     { label: 'Credits Refunded', value: totals.credits_refunded ?? 0 },
+    // Admin removals (gc_deduct_credits, 2026-10-13).
+    { label: 'Credits Deducted', value: totals.credits_deducted ?? 0 },
     { label: 'Revenue', value: money(totals.revenue_usd || 0) },
     { label: 'Outstanding Balance', value: totals.outstanding_credits ?? 0 },
   ]
