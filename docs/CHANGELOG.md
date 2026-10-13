@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-10-13 (b) — Growth Credits in quarters (0.25 steps)
+
+Branch `feature/gc-quarter-credits` (both repos). `vfo-admin-api` **v974** (from the branch, `--use-docker`, smoke **5/5 vs v974**), action count 576 unmoved, migration `20261013120000` (DDL on existing deny-all tables; advisor GREEN at the exact baseline).
+
+- **Why:** Jake — prorated adjustments *"will keep coming up"*; Kwesi Robotham needs 133 − 43.75 = 89.25, impossible with integer credits (the v973 deduct shipped whole-only, with 43 → 90 as the stop-gap — superseded).
+- **Database:** `gc_balances.balance`, `gc_transactions.amount` / `balance_after` integer → `numeric(10,2)`, every value carried over exactly; CHECKs allow only quarter steps and a non-negative balance. `gc_services.credit_cost` and `gc_redemptions.credits` stay integer. Nothing else depended on the columns (no views / functions).
+- **Backend:** `utils/gc-credits.ts` — `gcCredits()` reads every balance as a rounded number (purchase webhook, redeem, renewal sweep, rejected-redemption refund, `gc_load_balance`, add, deduct) so a numeric can never be string-concatenated (#609); `isQuarterCredits()` validates add / deduct (*Use whole credits or quarters*).
+- **Frontend:** Add / Deduct inputs step 0.25 with the same validation; balances and history already render decimals as-is.
+- **LIVE-PROVEN** (Jake, dev server vs v974, Test Member 59524, then read back from the DB): +0.25 → 937.25, −0.75 → 936.50, a 6-credit redemption → 930.50, its rejection refund → 936.50 (running balances chain exactly), 0.3 refused; values come back as JSON numbers. **Not exercised:** a real Stripe credit PURCHASE and an organic renewal on a fractional balance (both read through `gcCredits()`; the next real ones are the proof).
+- **Rollback note:** reverting the columns to integer is only clean while no balance holds a fraction.
+
+---
+
 ## 2026-10-13 — Admins can deduct Growth Credits
 
 Branch `feature/gc-deduct` (both repos). `vfo-admin-api` **v973** (from the branch, `--use-docker` — the first attempt fell back to the API upload with Docker stopped and 413'd, #574), action count **575 → 576**, no migration, no DB change.
