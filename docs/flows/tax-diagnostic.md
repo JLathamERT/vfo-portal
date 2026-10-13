@@ -126,6 +126,7 @@ RLS deny-all in the same migration (`20260923180000_tax_diagnostics.sql`); anon 
 - `tax_diagnostic_dismiss` — see *Dismiss and Deny*.
 - `tax_diagnostic_deny` (2026-09-30) — see *Dismiss and Deny*.
 - `tax_diagnostic_send_pay_link` (2026-10-13) — see *Unpaid forms*.
+- `tax_diagnostic_team_email_redraft` (2026-10-13, v980) — re-drafts a PAID form's team email 286 into Gmail Drafts after a draft was deleted (`{id}` public / `{intake_id}` portal; refuses an unpaid form and an existing client's). No button — run `scripts/tax-team-email-redraft.ps1 -Email … -Passcode "<password>" -DiagnosticId N` (or `-IntakeId N`).
 
 ## Unpaid forms (2026-10-13, Jake)
 
@@ -214,7 +215,7 @@ Nothing is sent to the submitter of a PUBLIC form at submit time (decision 37) �
 ## Files
 
 - **Backend** (`vfo-edge-functions/supabase/functions/vfo-admin-api/`):
-  - `actions/tax/diagnostic-{load,member-search,submit,list,confirm,dismiss,deny,send-pay-link}.ts`, `actions/tax/holistic-form.ts` (the personal `?client=` link, 2026-10-07)
+  - `actions/tax/diagnostic-{load,member-search,submit,list,confirm,dismiss,deny,send-pay-link,team-email-redraft}.ts`, `actions/tax/holistic-form.ts` (the personal `?client=` link, 2026-10-07)
   - `utils/public-rate-limit.ts`, `utils/tax-diagnostic-emails.ts`, `utils/tax-diagnostic-bell.ts` (queue bell raise/clear, 2026-09-30), `utils/tax-lead-paid-email.ts` (`TAX_deposit_received|lead`, 2026-10-07), `utils/tax-intake-finalize.ts` (`notifyTaxCasePaid` / `notifyTaxLeadPaid`), `utils/tax-diagnostic-intake.ts` (the intake row a diagnostic becomes + closing an unpaid one, 2026-09-30), `constants/public-member-directory.ts` (`isDevOrigin`, `isDiagnosticPickable`), `utils/feature-flags.ts` (`FEATURE_TAX_DIAGNOSTIC`, `featureEnabledGlobally`)
   - touched: `actions/tax/intake-link-load.ts`, `actions/tax/intake-link-submit.ts`, `actions/tax/intake-send-link.ts` (reuse skips diagnostic rows), `router/dispatch.ts`, `constants/role-gates.ts`; the pay link lands on the choice page's `actions/tax/intake-deposit-{load,checkout}.ts` + `utils/tax-intake-deposit-checkout.ts`; pay-first also touched `utils/tax-intake-deposit-webhook.ts`, `utils/tax-intake-finalize.ts`, `actions/tax/revshare-sweep.ts`
   - migrations `20260923180000_tax_diagnostics.sql`, `20260923180100_tax_diagnostic_templates_rule.sql`, `20260923190000_tax_diagnostic_team_email_draft.sql`, `20260923200000_tax_diagnostic_team_email_cc.sql`, `20260923210000_tax_diagnostic_deposit_link_pay_only.sql`, `20260930120000_tax_diagnostic_pay_first.sql`, `20260930130000_tax_diagnostic_team_email_next_step.sql`, `20261007120000_tax_lead_paid_email.sql` (template 310 + `lead_paid_email_sent_at`), `20261013150000_tax_diagnostic_lead_pay_link.sql` (template 315)
