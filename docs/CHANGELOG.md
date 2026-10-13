@@ -14,7 +14,8 @@ No code change. Jackie Meyer's SpecRev request **50** ($602.13, ACH with hand-ty
 
 - **Cause:** the function log Oct 6-13 shows `payment_intent.processing` arriving only from the ERT endpoints, never from VFO Services — the VFO Services endpoint was not subscribed to it, so the SpecRev `awaiting_verification → processing` branch (and the MAP 1 / Tax / tax-deposit verification-stamp clears) had never run. `integrations/stripe.md` wrongly listed it on all four endpoints. #614.
 - **Fix:** Jake added `payment_intent.processing` to the VFO Services LIVE endpoint (2026-10-13). Request 50 moved `awaiting_verification → processing` by SQL (guarded on the status + PaymentIntent id); `payment_intent.succeeded`, which IS subscribed, settles it to `received` and runs the invoice / receipt / payout as normal.
-- **OWED:** the VFO Services SANDBOX endpoint's subscription is unchecked; the first live `payment_intent.processing … account: vfos` log line is the proof the subscription works; Carson Grover's request 52 (also awaiting verification) should now advance on its own when he verifies.
+- **Sandbox:** Jake added it to the VFO Services SANDBOX endpoint the same day.
+- **OWED:** the first live `payment_intent.processing … account: vfos` log line is the proof the subscription works; Carson Grover's request 52 (also awaiting verification) should now advance on its own when he verifies.
 
 ---
 
