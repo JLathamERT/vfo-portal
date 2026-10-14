@@ -18,6 +18,15 @@ Branch `claude/tax-team-email-redraft` (edge code + react docs). `vfo-admin-api`
 
 ---
 
+## 2026-10-14 — Lenny Genna brought up to date (Payment Continuation + visual migration) + the Money Mapping rev-share sub-step
+
+Same chat as 2026-10-13 (e)/(f). Branch `fix/tax-money-mapping-substep` (react only); frontend published `index-CDNdRcz7.js`; no backend change, no migration.
+
+- **Lenny Genna (client 272, 59457-001, plan 188):** an organic Holistic plan (created 2026-09-10, a meeting-first TPOM skip 2026-10-07) for a client who paid his **$8,500** retainer on the OLD system and was really at Client decision 2 = Continue DD. Jake ran the **Payment Continuation tool** (setup-link mode, overwrite of the organic row confirmed): retainer $8,500 paid 2026-02-09 (`INV-/REC-Retainer-Genna`), implementation $8,500 split 1/3 member / planner / VFOS (stored 5,666.66 / 5,666.66 / 5,666.68 dollars-of-total), card fee waived, setup-link draft sent by Jake. Then a visual-migration SQL (rulebook v2.5 recipes 2/4/5/6, precedent Dale Svatik plan 151, dates 2026-10-13, run by Jake): tax returns requested, fake BoldSign id + random checkout token, confirmation Sent, invoice boolean, Tax 4 meeting + confirm stamp, Client decision 1 Continue/Confirmed, progress rows 175/93/95/96/99 (Client decision 2 = Continue DD); Justin Draplin was already allocated (row 129); Tray's stale bell 3006 marked read. The meeting-first skip was KEPT (it closes the TPOM steps). All 12 of the client's bells read; nothing re-fires.
+- **Money Mapping correction (Jake):** the $2,833.33 retainer member share went to Money Mapping (William Linc Campbell), not a payout — `retainer_rev_paid` 'Yes' → **'Money Mapping'** on plan 188 AND Dale Svatik plan 151 (same member, same mistake from 2026-08-19).
+- **Frontend fix (`TaxPrioritiesTab.jsx`):** the Client decision 1 sub-step *"Revenue share verified, member paid, member emailed"* now greens on `'Money Mapping'` too (#617) — it required `'Yes'`, so no Money Mapping plan could ever complete it. Verified on the dev server on both plans (Jake).
+- **OWED:** Lenny's implementation charge waits on his card setup (draft sent 2026-10-14); the rulebook (`visual-migration-rules.md`, outside the repos) Recipe 5 note amended to pick the value from `members.revenue_decision`.
+
 ## 2026-10-13 (f) — Client Overview MAP 1 no longer lists clients whose only MAP 1 step is the CIQ stamp
 
 Branch `fix/map1-overview-ciq-only` (edge only + docs, same chat as (e)). `vfo-admin-api` **v979** (from the branch, `--use-docker`; smoke **5/5 vs v979**, Jake), action count **577** unmoved, no migration, no frontend change.
