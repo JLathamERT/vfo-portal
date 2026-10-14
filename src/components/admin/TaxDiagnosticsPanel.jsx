@@ -220,16 +220,31 @@ function referrerText(d) {
   return `No one - heard about us via: ${how}`
 }
 
-function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
+// The member portal's Tax Diagnostic tab -> Submitted Diagnostics (2026-10-14)
+// reuses this card with memberMode: the member's own portal forms, read-only -
+// no admin boxes, member-worded chips, client links onto /member/client.
+function memberChip(d) {
+  const i = d.intake || {}
+  if (awaitingPayment(d)) return { label: 'Awaiting payment', color: '#e06717' }
+  if (i.deposit_processing_at) return { label: 'Payment clearing', color: '#e06717' }
+  if (i.status === 'refunded') return { label: 'Deposit refunded', color: '#d93025' }
+  if (i.status === 'completed') return { label: isHolisticForm(d) ? 'Received' : 'Client created', color: '#1b9254' }
+  if (i.status === 'paid' || i.status === 'waived') return { label: 'Creating the client', color: '#1b9254' }
+  return { label: 'Submitted', color: '#64748b' }
+}
+
+export function DiagnosticCard({ d, members, open, onToggle, onChanged, card, memberMode = false }) {
   const portal = d.source === 'portal'
   const awaiting = awaitingPayment(d)
-  const chip = STATUS_CHIP[awaiting ? 'awaiting' : portal ? 'portal' : d.status] || { label: d.status, color: '#64748b' }
+  const chip = memberMode
+    ? memberChip(d)
+    : STATUS_CHIP[awaiting ? 'awaiting' : portal ? 'portal' : d.status] || { label: d.status, color: '#64748b' }
   const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim() || '(no name)'
   const answers = d.answers || {}
   const navigate = useNavigate()
   // Linked only once the diagnostic is an OFFICIAL client (the case was created).
   const clientProfileUrl = d.intake?.status === 'completed' && d.intake?.client_id
-    ? `/admin/client/${d.intake.client_id}?program=4&tab=home`
+    ? (memberMode ? `/member/client/${d.intake.client_id}` : `/admin/client/${d.intake.client_id}?program=4&tab=home`)
     : null
   const label = { fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginBottom: '3px' }
   const value = { fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }
@@ -245,7 +260,9 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
               : clientName}
           </div>
           <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '3px', lineHeight: 1.55 }}>
-            {portal
+            {memberMode
+              ? <>Submitted {formatDateTime(d.created_at)} · {isHolisticForm(d) ? 'Existing client (no deposit) · ' : ''}{d.completed_by === 'member' ? 'Completed by you' : 'Completed by your client (your link)'}</>
+              : portal
               ? isHolisticForm(d)
                 ? <>Submitted {formatDateTime(d.created_at)} · Existing client (no deposit) · {d.completed_by === 'member' ? 'Completed by the member' : 'Completed by the client'}</>
                 : <>Submitted {formatDateTime(d.created_at)} · Via the member portal · {d.completed_by === 'member' ? 'Completed by the member' : "Completed by the client (member's link)"}</>
@@ -263,8 +280,9 @@ function DiagnosticCard({ d, members, open, onToggle, onChanged, card }) {
 
       {open && (
         <div style={{ marginTop: '18px', borderTop: '1px solid var(--vfo-border-soft)', paddingTop: '18px' }}>
-          {portal && !awaiting && <PortalSummary d={d} />}
-          {awaiting && <AwaitingPaymentBox d={d} onChanged={onChanged} />}
+          {memberMode && <MemberSummary d={d} onChanged={onChanged} />}
+          {!memberMode && portal && !awaiting && <PortalSummary d={d} />}
+          {!memberMode && awaiting && <AwaitingPaymentBox d={d} onChanged={onChanged} />}
           {!portal && !awaiting && d.status === 'new' && d.intake && <LeadBox d={d} members={members} onChanged={onChanged} />}
           {!portal && d.status === 'new' && !d.intake && <ConfirmBox d={d} members={members} onChanged={onChanged} />}
 
@@ -593,9 +611,11 @@ function LeadBox({ d, members, onChanged }) {
 // Confirm produced; nothing here writes.
 // payFirst (2026-09-30): the payer went straight from the form to the deposit
 // page, so there is no link email — the first step is the form itself.
-function DepositTrack({ intake, payer, payFirst = false, createdAt = null }) {
+function DepositTrack({ intake, payer, payFirst = false, createdAt = null, memberMode = false }) {
   const navigate = useNavigate()
-  const who = payer === 'member' ? 'the member' : 'the client'
+  const who = memberMode
+    ? (payer === 'member' ? 'you' : 'your client')
+    : (payer === 'member' ? 'the member' : 'the client')
   const isAch = intake.deposit_payment_method_type === 'us_bank_account'
   const isCard = intake.deposit_payment_method_type === 'card'
   const finished = intake.status === 'paid' || intake.status === 'completed'
@@ -608,12 +628,12 @@ function DepositTrack({ intake, payer, payFirst = false, createdAt = null }) {
 
   const steps = waived
     ? [
-        { label: 'Deposit', done: true, right: chip('Waived — member has 2+ qualifying clients', '#1b9254') },
+        { label: 'Deposit', done: true, right: chip(memberMode ? 'Waived — you have 2+ qualifying clients' : 'Waived — member has 2+ qualifying clients', '#1b9254') },
       ]
     : [
         payFirst
           ? {
-            label: `Sent to the payment page from the form (${who} pays)`,
+            label: `Sent to the payment page from the form (${who} ${who === 'you' ? 'pay' : 'pays'})`,
             done: true,
             right: <span>{formatDate(createdAt)}</span>,
           }
@@ -653,7 +673,7 @@ function DepositTrack({ intake, payer, payFirst = false, createdAt = null }) {
     right: clientCreated
       ? (
         <button type="button"
-          onClick={() => navigate(`/admin/client/${intake.client_id}?program=4&tab=home`)}
+          onClick={() => navigate(memberMode ? `/member/client/${intake.client_id}` : `/admin/client/${intake.client_id}?program=4&tab=home`)}
           style={{ padding: '4px 12px', borderRadius: '999px', border: 'none', background: '#125ecc', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
           Open client profile
         </button>
@@ -680,6 +700,82 @@ function DepositTrack({ intake, payer, payFirst = false, createdAt = null }) {
           <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', textAlign: 'right' }}>{s.right}</span>
         </div>
       ))}
+    </div>
+  )
+}
+
+// The member's own view of one of their forms (memberMode): who pays, an unpaid
+// note, and the same deposit track - nothing to act on.
+function MemberSummary({ d, onChanged }) {
+  const box = { marginBottom: '18px', fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.7 }
+  if (isHolisticForm(d)) return <div style={box}><strong>Deposit:</strong> none - an existing client; the answers are stored on their client record.</div>
+  return (
+    <div style={box}>
+      {awaitingPayment(d)
+        ? <div><strong>Who pays the deposit:</strong> {d.deposit_payer === 'member' ? 'You' : 'Your client'}</div>
+        : <div><strong>Deposit paid by:</strong> {d.deposit_payer === 'member' ? 'You' : 'Your client'}</div>}
+      {awaitingPayment(d) && <MemberAwaitingBox d={d} onChanged={onChanged} />}
+      <DepositTrack intake={d.intake} payer={d.deposit_payer} payFirst={d.completed_by === 'member'} createdAt={d.created_at} memberMode />
+    </div>
+  )
+}
+
+// The member's own unpaid form (2026-10-14): Pay now when the member pays (the
+// /tax-deposit-pay URL from member_tax_diagnostic_pay_url), Send payment link when
+// the client pays (drafts the pay-link email to the client), and Dismiss - the
+// member's narrow twins of the admin AwaitingPaymentBox, each re-checked server-side.
+function MemberAwaitingBox({ d, onChanged }) {
+  const [busy, setBusy] = useState('')
+  const [err, setErr] = useState('')
+  const [note, setNote] = useState('')
+  const intakeId = d.intake?.id
+  const memberPays = d.deposit_payer === 'member'
+  const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim() || 'your client'
+
+  async function payNow() {
+    setBusy('pay'); setErr('')
+    try {
+      const res = await callApi('member_tax_diagnostic_pay_url', { intake_id: intakeId })
+      if (res?.url) { window.location.assign(res.url); return }
+      setErr('Could not open the payment page - please try again.')
+    } catch (e) { setErr(e?.message || 'Could not open the payment page') }
+    setBusy('')
+  }
+  async function sendLink() {
+    setBusy('send'); setErr(''); setNote('')
+    try {
+      await callApi('member_tax_diagnostic_send_pay_link', { intake_id: intakeId })
+      setNote(`We have drafted the payment link email for ${clientName}. It will be sent shortly.`)
+      onChanged?.()
+    } catch (e) { setErr(e?.message || 'Could not send the payment link') }
+    setBusy('')
+  }
+  async function dismiss() {
+    if (!window.confirm(`Dismiss the Tax Planning Form for ${clientName}? The payment link will stop working.`)) return
+    setBusy('dismiss'); setErr('')
+    try {
+      await callApi('member_tax_diagnostic_dismiss', { intake_id: intakeId })
+      onChanged?.()
+    } catch (e) { setErr(e?.message || 'Could not dismiss this form'); setBusy('') }
+  }
+
+  const btn = (primary) => ({ padding: '7px 16px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif',
+    border: primary ? 'none' : '1px solid var(--vfo-border-strong)', background: primary ? '#125ecc' : 'transparent', color: primary ? '#fff' : 'var(--vfo-muted)', opacity: busy ? 0.6 : 1 })
+  return (
+    <div style={{ margin: '8px 0 4px' }}>
+      <div style={{ color: '#e06717', fontWeight: 600 }}>
+        {memberPays
+          ? 'Deposit not paid yet.'
+          : `Deposit not paid yet.${d.intake?.link_sent_at ? ` Payment link email last drafted ${formatDate(d.intake.link_sent_at)}.` : ''}`}
+      </div>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+        {memberPays
+          ? <button type="button" disabled={!!busy} onClick={payNow} style={btn(true)}>{busy === 'pay' ? 'Opening...' : 'Pay now'}</button>
+          : <button type="button" disabled={!!busy} onClick={sendLink} style={btn(true)}>{busy === 'send' ? 'Sending...' : d.intake?.link_sent_at ? 'Send payment link again' : 'Send payment link'}</button>}
+        <button type="button" disabled={!!busy} onClick={dismiss} style={btn(false)}>{busy === 'dismiss' ? 'Dismissing...' : 'Dismiss'}</button>
+      </div>
+      {note && <div style={{ color: '#1b9254', fontWeight: 600, marginTop: '8px' }}>{note}</div>}
+      {err && <div style={{ color: '#d93025', marginTop: '8px' }}>{err}</div>}
     </div>
   )
 }
