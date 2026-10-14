@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-10-14 (c) — TPOM + detailed presentation: slide 5's new VFO collage, centred heading, new TPOM notes (hot swap)
+
+Branch `claude/tpom-vfo-collage` (edge `scripts/roi-presentation/` + react docs). **No code, no deploy** — both deck masters replaced IN PLACE under their own names (slide 5 *"Virtual Family Office Concept"* carries no token, so THE HOT-SWAP RULE applies).
+
+- **Asked by the business:** the collage on slide 5 replaced by their new one (newer headshots, lighter tint, smaller circles — the only visual difference from their reference slide; title, text box and logo were already identical), the TPOM slide 5 speaker notes replaced by their two-paragraph script (*"Our VFO Tax Planning Process sits inside of our much larger 'Virtual Family Office'…"*, "ofcourse" corrected to "of course", "advance planning team" kept as written), then (Jake) the heading centred. The detailed presentation gets the collage + heading, no notes (Jake).
+- **Built by `scripts/roi-presentation/hotswap_vfo_collage.py`** from the LIVE objects (downloaded, re-checked unchanged by md5 before the swap): `image36.png` (slide 5 only — the script refuses a shared one) → the new 1207 x 568 PNG; the picture frame keeps its height and centre with its width following the new aspect, old `srcRect` crop removed (nothing stretched or cropped); heading box centred on the slide + `algn="ctr"`; TPOM `notesSlide5.xml` rewritten in the same italic Inter 12pt. Only those 3 parts (TPOM) / 2 parts (book-ends) differ; tokens, slide counts and every other entry byte-identical. Slide 5 rendered by PowerPoint (pixel-identical in both decks) and checked by Jake in Google Slides from real generations on Test Client 62.
+- **Bucket:** pre-swap copies `ROI-template-master-v11-pre-vfo-collage-2026-10-14.pptx` + `ROI-bookends-master-v4-pre-vfo-collage-2026-10-14.pptx` uploaded and read back identical FIRST (the rollback). CLI v2.78 `storage cp` will not overwrite (409 `KeyAlreadyExists`), so each live object was `storage rm` + `storage cp` with Jake's OK — absent 19:06:07-19:06:15 / 19:06:20-19:06:25 UTC; read back identical to the builds.
+- **Docs fixed on the way:** `integrations/supabase.md` still named **v10** as the live TPOM master and both it and `architecture/03-edge-functions.md` carried a stale "EIGHTEEN objects" count (v11 has been live since 2026-09-25) — now v11 + the swap, counts removed. Re-running `make_v11.py` / `make_bookends_v4.py` reproduces the PRE-swap decks; the script README says to re-apply this swap after them.
+- **Discharged:** the 2026-10-14 (b) OWED "TPOM deck not checked for *Director of Advanced Tax Planning*" — neither master contains it anywhere (slides or notes, every XML part searched).
+
 ## 2026-10-14 (b) — Tax agreements: the specialist-compensation footnote + Step 4 "the VFO Tax Planning Team"
 
 Branch `claude/vfo-session-starter-9d04a0` (edge migrations + react docs). **Data only** — no code, no deploy, `vfo-admin-api` unchanged at v980, action count 578 unmoved. Requested by the business as a revised template for ALL tax agreements.
