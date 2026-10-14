@@ -62,6 +62,9 @@ export default function TaxIntakeForm({
   // client's first / last name and email come from their record and are locked,
   // and there is no deposit line (no deposit is ever due).
   lockClientIdentity = false,
+  // The member Tax Diagnostic tab (2026-10-14) draws its own Client-Overview-
+  // style page heading above the form: drop the eyebrow, smaller step titles.
+  pageHeading = false,
 }) {
   const holistic = !!existingClient
   const [step, setStep] = useState(() => (holistic || publicMode ? 'form' : 'choose'))
@@ -316,8 +319,8 @@ export default function TaxIntakeForm({
     return (
       <div>
         <div style={{ marginBottom: '20px' }}>
-          <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>Add a new tax client</div>
+          {!pageHeading && <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>}
+          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: pageHeading ? '18px' : '22px', color: 'var(--vfo-heading)' }}>Add a new tax client</div>
           {depositLine && (
             <div style={{ fontSize: '13px', fontWeight: 600, color: eligibility && !eligibility.deposit_required ? green : 'var(--vfo-ink)', marginTop: '8px' }}>{depositLine}</div>
           )}
@@ -401,8 +404,8 @@ export default function TaxIntakeForm({
     return (
       <div>
         <div style={{ marginBottom: '20px' }}>
-          <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>Send my client a link</div>
+          {!pageHeading && <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>}
+          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: pageHeading ? '18px' : '22px', color: 'var(--vfo-heading)' }}>Send my client a link</div>
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px', lineHeight: 1.6 }}>
             We will email your client the Tax Planning Form{depositRequired === false ? '.' : ' and take the $500 deposit at the end of it.'} You will be copied in.
           </div>
@@ -443,8 +446,8 @@ export default function TaxIntakeForm({
   return (
     <div>
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>{title || 'Tax Planning Form'}</div>
+        {!pageHeading && <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>}
+        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: pageHeading ? '18px' : '22px', color: 'var(--vfo-heading)' }}>{title || 'Tax Planning Form'}</div>
         {intro && (
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px', lineHeight: 1.6 }}>{intro}</div>
         )}
