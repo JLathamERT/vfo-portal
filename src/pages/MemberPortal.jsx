@@ -6,6 +6,7 @@ import MemberVault from '../components/shared/MemberVault'
 import MemberCIQ from '../components/shared/MemberCIQ'
 import MemberGCMarketplace from '../components/member/MemberGCMarketplace'
 import MemberMSMTracking from '../components/member/MemberMSMTracking'
+import MemberTaxDiagnostic from '../components/member/MemberTaxDiagnostic'
 import ClientOverviewPanel from '../components/admin/ClientOverviewPanel'
 import MemberShowroom from '../components/member/MemberShowroom'
 import MemberGrowthPlan from '../components/member/MemberGrowthPlan'
@@ -192,6 +193,10 @@ export default function MemberPortal() {
             <button onClick={() => setActiveTab('client_overview')} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === 'client_overview' ? '2px solid #125ecc' : '2px solid transparent', color: activeTab === 'client_overview' ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === 'client_overview' ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
               Client Overview
             </button>
+            {/* Every member, no switch (2026-10-14) — see MemberTaxDiagnostic. */}
+            <button onClick={() => setActiveTab('tax_diagnostic')} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === 'tax_diagnostic' ? '2px solid #125ecc' : '2px solid transparent', color: activeTab === 'tax_diagnostic' ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === 'tax_diagnostic' ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+              Tax Diagnostic
+            </button>
             {['specialists','showroom','website','growthplan','ciq','gc','vault'].filter(tab => tab !== 'website' || memberData?.website_enabled).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === tab ? '2px solid #125ecc' : '2px solid transparent', color: activeTab === tab ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === tab ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
                 {tabLabels[tab]}
@@ -222,6 +227,7 @@ export default function MemberPortal() {
             <MemberMSMTracking member={memberData} activeTab={activeTab} onNavigate={setActiveTab} />
           )}
           {!loading && activeTab === 'client_overview' && <ClientOverviewPanel mode="member" />}
+          {!loading && activeTab === 'tax_diagnostic' && memberData && <MemberTaxDiagnostic member={memberData} />}
           {!loading && activeTab === 'specialists' && memberData && (
             <MemberSpecialists member={memberData} allExperts={allExperts} exclusions={exclusions} ecoMap={ecoMap} onDataChange={loadData} />
           )}

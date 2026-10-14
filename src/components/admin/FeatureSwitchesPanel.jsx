@@ -70,13 +70,12 @@ const SWITCH_COPY = {
     note: 'The planner chase covers plans allocated after 28 Sept 2026 only. The number of days is set in the Notification Editor.',
   },
   tax_intake: {
-    title: 'Members add their own tax clients',
+    title: 'Tax Planning tab + existing-client tax form',
     on: [
       'The Tax Planning tab shows for every member, with the "+ Add new tax client" button.',
-      'The tax intake form, the $500 deposit (card or ACH) or its waiver, and the option to send the client a link to complete the form.',
-      'The Holistic tax-form email to the member after a MAP 1 first payment.',
+      'The Tax Planning Form for an EXISTING client (the Holistic route) from that tab, and the Holistic tax-form email to the member after a MAP 1 first payment.',
     ],
-    off: 'The Tax Planning tab shows only for members with the program enabled, with no Add button; new tax clients are started by the VFO team. Client form links and deposit links already sent for a member intake stop working until it is back on.',
+    off: 'The Tax Planning tab shows only for members with the program enabled, with no Add button, and no Holistic form or email. Adding a NEW tax client is not affected: since 14 Oct 2026 every member does that from the Tax Diagnostic tab, and its form, deposit and client links work whatever this switch says.',
   },
   tax_direct: {
     title: 'Direct to Tax Planning',
