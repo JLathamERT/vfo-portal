@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-10-14 (b) — Tax agreements: the specialist-compensation footnote + Step 4 "the VFO Tax Planning Team"
+
+Branch `claude/vfo-session-starter-9d04a0` (edge migrations + react docs). **Data only** — no code, no deploy, `vfo-admin-api` unchanged at v980, action count 578 unmoved. Requested by the business as a revised template for ALL tax agreements.
+
+- **What changed, in all eight TAX `agreement_templates` (25-28 + the pre-benefits 29-32):** (1) Step 6's first bullet ends *"…with applicable tax specialists.\*"* and an 8pt line follows the Step 6 list, inside the Proactive Tax Planning Framework section: *"\*VFO Services may receive compensation from the VFO Specialist based on the client's decision to implement the plan."* (inline `font-size:8pt`, same wording on the member-paying rows — Jake); (2) Step 4's bullet *"Meeting with Director of Advanced Tax Planning to present…"* → *"Meeting with the VFO Tax Planning Team to present…"* (with "the" — Jake). Migrations `20261014120000_tax_agreements_specialist_compensation_note.sql` + `20261014130000_tax_agreements_step4_tax_planning_team.sql`, each md5-guarded to the exact bodies it was written against (a re-run changes nothing), each with its rollback in the header; applied via MCP, advisor GREEN at the exact baseline (data only, a confirmation). Every agreement sent from 2026-10-14 carries both; agreements already sent or signed are unchanged.
+- **Signature fields (`field_map`) unchanged, and why that is safe:** addr/phone (page 1) sit above both edits; every signature/date field is on page 4, which starts with the template's forced `page-break`, so it moves only if pages 1-3 overflow. Measured BEFORE the change by rendering all eight current-vs-new bodies in headless Chrome (same `@page` CSS, filled with long names) and binary-searching a spacer: all stay 4 pages, page-4 text identical, the fullest row (28, member 3-pay) keeps ~337 px (~22 lines) spare on page 3, the pre-benefits rows over 598 px.
+- **Sample PDFs re-made:** Jake ran `agreement_pdf_draft` (ids 25-32, real html2pdf.app render, one Gmail draft — duplicate titles get a `-<id>` suffix, so 29-32 arrive as `…-29` … `…-32`), renamed and uploaded all eight to `tax-agreements` over the old files. Verified from the public bucket: all 4 pages, both edits present, old wording gone, the right variant per file (member / 3pay / benefits), page 4 = the signature block alone.
+- **Not exercised:** no BoldSign send (sandbox or real) on the new bodies — the field-placement claim rests on the unchanged page-4 render plus the real-renderer sample PDFs; the first real agreement sent is the proof. *"Director of Advanced Tax Planning"* appeared nowhere else (email templates, edge code and `src/` grepped); the ROI/TPOM deck (a pptx in `presentation-templates`) was not checked.
+
 ## 2026-10-13 (g) — Re-draft a paid form's team email (286) after a deleted draft
 
 Branch `claude/tax-team-email-redraft` (edge code + react docs). `vfo-admin-api` **v980** (from the branch, `--use-docker`, on top of the other chat's v979; smoke **5/5 vs v980**, Jake), action count **577 → 578**, no migration, no frontend change.
