@@ -360,16 +360,22 @@ export default function TaxIntakeForm({
               : directOk
                 ? `Direct is available because you have ${eligibility.qualifying_count} qualifying tax clients.`
                 : `Direct (run the case yourself) becomes available once you have 2 qualifying tax clients — you have ${eligibility.qualifying_count}.`
+          // The route question shows only while the member's tax_direct switch is
+          // on (Jake 2026-10-14); otherwise every case is classic and only the
+          // fill question is asked.
+          const showRoute = eligibility?.direct_enabled === true
           return (
             <>
+              {showRoute && (
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={questionStyle}>1. Who runs this case?</div>
+                  <Toggle options={routeOptions} value={taxRoute} onChange={setTaxRoute} disabledKeys={directOk ? [] : ['direct']} />
+                  <div style={explainStyle}>{routeOptions.find(o => o.key === taxRoute)?.body}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{directNote}</div>
+                </div>
+              )}
               <div style={{ marginBottom: '24px' }}>
-                <div style={questionStyle}>1. Who runs this case?</div>
-                <Toggle options={routeOptions} value={taxRoute} onChange={setTaxRoute} disabledKeys={directOk ? [] : ['direct']} />
-                <div style={explainStyle}>{routeOptions.find(o => o.key === taxRoute)?.body}</div>
-                <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{directNote}</div>
-              </div>
-              <div style={{ marginBottom: '24px' }}>
-                <div style={questionStyle}>2. How will the Tax Planning Form be completed?</div>
+                <div style={questionStyle}>{showRoute ? '2. ' : ''}How will the Tax Planning Form be completed?</div>
                 <Toggle options={fillOptions} value={fillMode} onChange={setFillMode} />
                 <div style={explainStyle}>{fillOptions.find(o => o.key === fillMode)?.body}</div>
               </div>
