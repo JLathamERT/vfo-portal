@@ -4728,6 +4728,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       const reminderSentAt = livePlan?.post_review_reminder_sent_at
       const refundStatus = livePlan?.refund_status
       const revPaid = livePlan?.retainer_rev_paid
+      // A Money Mapping member's share is credited, not transferred — the engine's
+      // terminal value for that leg (tax/revshare.ts), so it settles the step too.
+      const revShareSettled = revPaid === 'Yes' || revPaid === 'Money Mapping'
       // Revenue share is N/A (still green) when member share is $0 — mirrors MAP 1.
       // Tax stores a $0 member share as NULL (decision.ts: parseFloat(...) || null),
       // so treat null/empty as zero-share too.
@@ -4837,13 +4840,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                   {clientDecision === 'Auto-Locked' && (
                     <>
                       {autoStep('Auto-locked (legacy 24h flow)', true)}
-                      {!mirror && autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
+                      {!mirror && autoStep('Revenue share verified, member paid, member emailed', revShareSettled, { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
                   {clientDecision === 'Confirmed' && (
                     <>
                       {autoStep('Client confirmed Continue (clicked "Continue now")', true, { at: livePlan?.post_review_client_decision_at })}
-                      {!mirror && autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
+                      {!mirror && autoStep('Revenue share verified, member paid, member emailed', revShareSettled, { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
                   {/* A Continue client who answered from the REMINDER email. Until
@@ -4857,7 +4860,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                   {clientDecision === 'Proceed' && (
                     <>
                       {autoStep('Client confirmed Continue (from the reminder email)', true, { at: livePlan?.post_review_client_decision_at })}
-                      {!mirror && autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
+                      {!mirror && autoStep('Revenue share verified, member paid, member emailed', revShareSettled, { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
                 </>
@@ -4870,7 +4873,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                   {clientDecision === 'Proceed' && (
                     <>
                       {autoStep('Client clicked Proceed', true, { at: livePlan?.post_review_client_decision_at })}
-                      {!mirror && autoStep('Revenue share verified, member paid, member emailed', revPaid === 'Yes', { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
+                      {!mirror && autoStep('Revenue share verified, member paid, member emailed', revShareSettled, { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
                   {clientDecision === 'Refund' && (
