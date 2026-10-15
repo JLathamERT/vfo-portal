@@ -26,7 +26,9 @@ Branch `claude/vfo-session-starter-e16a98` (edge + react, ONE chat). Four misc a
 
 **Live-proven (Jake):** smoke **5/5 vs v991**; the pill with the four backfilled rows, then the *Setup link sent by hand* wording (v992); a $10 SpecRev test hold on Test Member 59524 via *Retry payout* (live keys cannot see that sandbox account, so no money could move) → the Draft email in the Payment Continuation style, one dismissible bell, the pill row, and NO repeat on a second retry; a second $5 line → the cumulative draft (*Total due: $15.00*), one new bell; fixture (request 56, lines 155-156, two held rows, bells 3321-3323) deleted. Dark mode, menus and pills click-tested on the dev server.
 
-**Not exercised:** the MAP 1 / Tax / PIP hold calls (same helper, code-only); the reminder + Tracy ladder (no row has aged 2 business days); the borrowed-account and no-email refusals; minting an account for a member with none; a release on a real payout; the PIP sweep re-fire; **smoke against v992 / v993** (the 5/5 was against v991).
+**Not exercised:** the MAP 1 / Tax / PIP hold calls (same helper, code-only); the reminder + Tracy ladder (no row has aged 2 business days); the borrowed-account and no-email refusals; minting an account for a member with none; a release on a real payout; the PIP sweep re-fire. (Smoke 5/5 vs v993 — DISCHARGED after the merge, Jake, 2026-10-15.)
+
+**Follow-up `fix/nav-top-close` (react #473, `live-244-nav-top-close`):** the 400 ms close grace had been applied to the top-level `NavDropdown` too, so sweeping across the nav bar stacked open menus; the top menu closes on leave again and only the `SubmenuRow` flyouts keep the hover intent (Jake click-tested).
 
 **Process note:** Jake's *"start Phase 2"* button also carried *"commit Phase 1"* in its message and he did not intend the commit — a next-step button must do only what its label says (Claude memory).
 
