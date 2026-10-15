@@ -35,7 +35,7 @@ Run these instead of believing any version/tag/count written anywhere. Expected 
 #    Re-stamp these THREE lines AFTER wrap-up Part 4D, not during Part 1: the
 #    version and tag do not exist yet when the hub is written (#408).
 cd C:\vfo-react;          git tag -l 'live-*'         --sort=v:refname | Select-Object -Last 1   # (v: 2026-10-15 → live-244-nav-top-close)
-cd C:\vfo-edge-functions; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1   # (v: 2026-10-15 → backend-good-2026-10-15-v993)
+cd C:\vfo-edge-functions; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1   # (v: 2026-10-15 → backend-good-2026-10-15-v994)
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
 #    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-10-15 → 6 + 585 = **591**: 590 → 591 = `member_held_shares_load` (`TAB_ACTIONS.accounting`, the four Held pills — 2026-10-15 (b)); 582 → 590 = the eight Questions-for-the-client actions (`tax_client_question_ask` / `tax_client_questions_load` ADMIN_ONLY + planner, their two `tax_direct_*` twins, PUBLIC `tax_question_load` / `_upload_url` / `_upload_notify` / `_answer` — 2026-10-15); 578 → 582 = `member_tax_diagnostic_list` / `_pay_url` / `_send_pay_link` / `_dismiss` (2026-10-14 (e), members only, in no gate list, fenced in-handler); unmoved by 2026-10-14 (d); 577 → 578 = `tax_diagnostic_team_email_redraft`; 576 → 577 = `tax_diagnostic_send_pay_link`; 575 → 576 = `gc_deduct_credits`; before that 570 → 575 (the four Client Mirroring actions + `member_client_overview_load`, all in no gate list, fenced in-handler); past values in CHANGELOG)
