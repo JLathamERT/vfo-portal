@@ -30,6 +30,7 @@ function pipMemberState(r) {
   if (s === 'Held - Member Suspended') return { note: HELD_SUSPENDED_NOTE, tone: 'pending' }
   if (s === 'Held - Member Paused') return { note: HELD_PAUSED_NOTE, tone: 'pending' }
   if (s === 'Held - Member In Arrears') return { note: HELD_ARREARS_NOTE, tone: 'pending' }
+  if (s === 'Awaiting Connect Setup') return { note: 'awaiting payout setup', tone: 'pending' }
   if (s) return { note: String(s).toLowerCase(), tone: 'pending' }
   return { note: r.pip_payment_status === 'processing' ? 'payment clearing' : 'not yet paid', tone: 'pending' }
 }

@@ -43,6 +43,7 @@ import MemberOnboardingPanel from '../components/admin/MemberOnboardingPanel'
 import MembershipFeesPanel from '../components/admin/MembershipFeesPanel'
 import AccountingCombinedPanel, { PILL_KEY as ACCOUNTING_PILL_KEY } from '../components/admin/AccountingCombinedPanel'
 import OutstandingLinksPanel from '../components/admin/OutstandingLinksPanel'
+import HeldPayoutsPanel from '../components/admin/HeldPayoutsPanel'
 import SpecialistRevenueAutomationPanel from '../components/admin/SpecialistRevenueAutomationPanel'
 import GrowthCreditsPanel from '../components/admin/GrowthCreditsPanel'
 import GrowthCreditsAccountingPanel from '../components/admin/GrowthCreditsAccountingPanel'
@@ -196,11 +197,11 @@ const PROFILE_ORIGIN_TABS = ['member_overview', 'client_overview', 'accounting']
 // the fallback card below, so a stale sessionStorage key can never blank the page.
 const ACCOUNTING_SECTIONS = [
   'payments', 'manual_connect_payment',
-  'specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_reconciliation',
+  'specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_reconciliation', 'specialist_held_payouts',
   'specialist_license', 'specialist_bg',
-  'holistic_revenue', 'holistic_reconciliation',
-  'tax_revenue', 'tax_reconciliation',
-  'pip_revenue', 'pip_reconciliation',
+  'holistic_revenue', 'holistic_reconciliation', 'holistic_held_payouts',
+  'tax_revenue', 'tax_reconciliation', 'tax_held_payouts',
+  'pip_revenue', 'pip_reconciliation', 'pip_held_payouts',
   'advisor_onboarding_fees', 'advisor_membership_fees',
   'accountant_onboarding_fees', 'accountant_membership_fees',
   'gc_accounting',
@@ -396,7 +397,7 @@ export default function AdminPortal() {
   // Only these views read load_data (experts / members / exclusions / ecosystems);
   // every other panel loads its own data and mounts without waiting for it.
   const viewNeedsLoadData = ['specialists', 'member_overview', 'advisors', 'accountants', 'strategic'].includes(activeTab) ||
-    (activeTab === 'accounting' && ['specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_reconciliation',
+    (activeTab === 'accounting' && ['specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_reconciliation', 'specialist_held_payouts',
       'specialist_license', 'specialist_bg', 'advisor_membership_fees', 'accountant_membership_fees'].includes(accountingSection))
 
   // The return leg of openMemberProfile's `origin`: put the admin back on the tab
@@ -983,7 +984,7 @@ export default function AdminPortal() {
           {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'manual_connect_payment' && (
             <ManualConnectPaymentPanel />
           )}
-          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'specialist_revenue' || accountingSection === 'specialist_payment_input' || accountingSection === 'specialist_recurring' || accountingSection === 'specialist_reconciliation') && (
+          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'specialist_revenue' || accountingSection === 'specialist_payment_input' || accountingSection === 'specialist_recurring' || accountingSection === 'specialist_reconciliation' || accountingSection === 'specialist_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · Specialists" title="VFO Specialist Revenue"
               maxWidth="1200px" initialKey={accountingSection === 'specialist_payment_input' ? 'specialist_revenue' : accountingSection}
@@ -992,6 +993,7 @@ export default function AdminPortal() {
                 { key: 'specialist_reconciliation', label: 'VFO Specialist Reconciliation', render: () => <SpecialistReconciliationPanel allMembers={allMembers} embedded /> },
                 { key: 'specialist_recurring', label: 'VFO Specialist Recurring Revenue Payments', render: () => <SpecialistRecurringPanel embedded /> },
                 { key: 'specialist_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="specrev" embedded /> },
+                { key: 'specialist_held_payouts', label: 'Held - No Payout Account', render: () => <HeldPayoutsPanel engine="specrev" embedded /> },
               ]}
             />
           )}
@@ -1017,7 +1019,7 @@ export default function AdminPortal() {
               ]}
             />
           )}
-          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'holistic_revenue' || accountingSection === 'holistic_reconciliation') && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'holistic_revenue' || accountingSection === 'holistic_reconciliation' || accountingSection === 'holistic_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · VFO Services" title="Holistic Planning"
               maxWidth="1150px" initialKey={accountingSection}
@@ -1025,10 +1027,11 @@ export default function AdminPortal() {
                 { key: 'holistic_revenue', label: 'Holistic Planning Revenue', render: () => <HolisticRevenuePanel embedded /> },
                 { key: 'holistic_reconciliation', label: 'Holistic Planning Reconciliation', render: () => <HolisticReconciliationPanel embedded /> },
                 { key: 'holistic_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="map1" embedded /> },
+                { key: 'holistic_held_payouts', label: 'Held - No Payout Account', render: () => <HeldPayoutsPanel engine="map1" embedded /> },
               ]}
             />
           )}
-          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'tax_revenue' || accountingSection === 'tax_reconciliation') && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'tax_revenue' || accountingSection === 'tax_reconciliation' || accountingSection === 'tax_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · VFO Services" title="Tax Planning"
               maxWidth="1150px" initialKey={accountingSection}
@@ -1036,16 +1039,18 @@ export default function AdminPortal() {
                 { key: 'tax_revenue', label: 'Tax Planning Revenue', render: () => <TaxRevenuePanel embedded /> },
                 { key: 'tax_reconciliation', label: 'Tax Planning Reconciliation', render: () => <TaxReconciliationPanel embedded /> },
                 { key: 'tax_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="tax" embedded /> },
+                { key: 'tax_held_payouts', label: 'Held - No Payout Account', render: () => <HeldPayoutsPanel engine="tax" embedded /> },
               ]}
             />
           )}
-          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'pip_revenue' || accountingSection === 'pip_reconciliation') && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'pip_revenue' || accountingSection === 'pip_reconciliation' || accountingSection === 'pip_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · VFO Services" title="Additional PIP"
               maxWidth="1150px" initialKey={accountingSection}
               tabs={[
                 { key: 'pip_revenue', label: 'Additional PIP Revenue', render: () => <PipRevenuePanel embedded /> },
                 { key: 'pip_reconciliation', label: 'Additional PIP Reconciliation', render: () => <PipReconciliationPanel embedded /> },
+                { key: 'pip_held_payouts', label: 'Held - No Payout Account', render: () => <HeldPayoutsPanel engine="pip" embedded /> },
               ]}
             />
           )}
