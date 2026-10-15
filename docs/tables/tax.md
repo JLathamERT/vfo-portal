@@ -598,3 +598,26 @@ A client's **"Request an introduction"** to one Showroom specialist. Migration `
 | `email_result` | text | `sent` / `drafted` (template `send_mode`). A request whose email could not be created is DELETED, so the client can try again. |
 
 **Indexes:** pkey; `client_intro_requests_client_expert_uidx` UNIQUE `(client_id, expert_id)` — the duplicate guard (a second request is a 409). **Touched by:** `client_request_introduction` (insert / update / delete-on-failure), `client_showroom_load` (read, `intro_requests`, only while `client_basic_portal` is on).
+
+## `tax_client_questions` (Questions for the client, 2026-10-15)
+
+**One row per question** the team asks a client on a tax plan AFTER *Tax planner review complete* is answered (the *Additional information required* step is locked from then on). Migration `20261015120000_tax_client_questions.sql`, which also seeds the two Draft emails (`TAX_client_question`, `TAX_client_question_reminder`) and three `notification_rules` (`TAX_client_question_answered` 279, `TAX_planner_client_question_answered` 280, `TAX_client_question_reminder_email` 281). **RLS enabled + `"Deny all access"` in the creating migration** (#141; anon probe `*/0`, advisor GREEN). Flow: [tax-planning.md → Questions for the client](../flows/tax-planning.md#questions-for-the-client-2026-10-15). (The migration's table COMMENT still says "one answer" — it predates the `/tax-upload`-style rework; the behaviour below is current.)
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigserial | pk. Its 6-hex form tags every answer file's path. |
+| `tax_plan_id` | integer | not null, fk → `client_tax_plans.id` **ON DELETE CASCADE**. |
+| `client_id` | integer | not null, fk → `clients.id` **ON DELETE CASCADE**. Copied from the plan; scopes the answer files' folder. |
+| `question` | text | not null. ≤ 2000 chars, sent as plain escaped text with line breaks kept. |
+| `asked_by_name` | text | Who asked — a NAME, never an email (#577): `allowed_admins.name`, the planner's or the Direct member's first + last. |
+| `asked_at` | timestamptz | not null, default `now()`. Anchors the reminder and fills `[Question Date]`. |
+| `token` | text | not null, **UNIQUE**. 64-hex (`token32()`), the `/tax-question?token=` credential — the row it finds is the WHOLE credential (#310). Never returned by `tax_client_questions_load`. |
+| `email_result` | text | `sent` / `drafted` (the template's `send_mode`). A question whose email could not be created is DELETED, so the team asks again (the column comment also lists `failed`, which is never written). |
+| `answer` | text | The client's written explanation(s), ≤ 5000 chars each; a later reply is appended after a blank line. |
+| `answer_files` | jsonb | not null, default `[]`. `[{ name, path, at }]`, max 10. `path` = `<client_id>/<6-hex id><10 random hex>_<safeName>` in the private `client-tax-returns` bucket (the Sensitive Documents vault; listers strip the 16-hex prefix). |
+| `answered_at` | timestamptz | The FIRST file or reply. NULL = waiting. |
+| `reminder_sent_at` | timestamptz | The ONE reminder (`TAX_client_question_reminder`), stamped after a good draft; never repeats. |
+
+**Indexes:** pkey; `token` unique; `tax_client_questions_plan_idx` (`tax_plan_id`); `tax_client_questions_open_idx` (`asked_at`) **where `answered_at is null`**.
+
+**Touched by:** `tax_client_question_ask` / `tax_direct_client_question_ask` (insert, `email_result` update, delete-on-failure), `tax_client_questions_load` / `tax_direct_client_questions_load` (read, no token), PUBLIC `tax_question_load` (read — returns the question only), `tax_question_upload_url` (read), `tax_question_upload_notify` (`answer_files` + `answered_at`), `tax_question_answer` (`answer` + `answered_at`) — all in `actions/tax/client-questions.ts` — and the third pass of `runTaxReminderChases` in `utils/tax-reminder-chases.ts` (read open rows, stamp `reminder_sent_at`). Frontend: `ClientQuestionsCard` in `src/components/admin/tax/TaxPrioritiesTab.jsx`, `src/pages/TaxQuestionPage.jsx`.
