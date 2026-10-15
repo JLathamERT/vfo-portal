@@ -21,6 +21,34 @@ import { numberTaxIntakeQuestions } from '../../member/taxIntakeQuestions'
 // (utils/tax-plan-steps.ts displayLabel).
 const AUTO_STEP_NAME = 'AI PC Admin'
 const AUTO_STEP_LABEL = 'Automated steps'
+// Shown on the "Additional information required" step once the review is
+// answered — save-task.ts refuses the change with the same wording.
+// A locked step's control + a small lock icon. The reason shows AT ONCE in a
+// bubble on hover over either, and on a click / tap (the browser's own title
+// tooltip waits for the mouse to stop, so nobody saw it). The events sit on the
+// wrapper because a disabled <select> fires no mouse events in Chrome.
+function LockedControl({ locked, hint, children }) {
+  const [hover, setHover] = useState(false)
+  const [pinned, setPinned] = useState(false)
+  if (!locked) return children
+  const open = hover || pinned
+  return (
+    <span
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => { setHover(false); setPinned(false) }}
+      onClick={() => setPinned(v => !v)}
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'not-allowed' }}
+    >
+      <LockedIcon />
+      <span style={{ pointerEvents: 'none', display: 'inline-flex' }}>{children}</span>
+      {open && (
+        <span role="tooltip" style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 20, width: 'max-content', maxWidth: '320px', padding: '8px 10px', borderRadius: '8px', background: '#16264a', border: '1px solid rgba(255,255,255,0.18)', color: '#fff', fontSize: '12px', lineHeight: 1.45, fontWeight: 500, whiteSpace: 'normal', boxShadow: '0 4px 14px rgba(0,20,60,0.25)' }}>{hint}</span>
+      )}
+    </span>
+  )
+}
+const REVIEW_LOCKED_HINT = 'Locked: the tax planner review is complete and can no longer be changed.'
+const ADDL_INFO_LOCKED_HINT = 'Locked: the tax planner review is complete. Use "Questions for the client" at the top of this plan to ask the client anything further.'
 
 // Matches the backend invoice money formatting ($X,XXX.XX).
 const fmtMoney = (n) => (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -515,6 +543,8 @@ const DIRECT_ACTION_MAP = {
   tax_presentation_downloaded: 'tax_direct_presentation_downloaded',
   automation_TAX_presentation_schedule: 'tax_direct_presentation_schedule',
   automation_TAX_highlevelmeeting_confirm: 'tax_direct_highlevelmeeting_confirm',
+  tax_client_question_ask: 'tax_direct_client_question_ask',
+  tax_client_questions_load: 'tax_direct_client_questions_load',
   tax_save_task: 'tax_direct_save_task',
 }
 const actFor = (directMode) => (name) => (directMode ? DIRECT_ACTION_MAP[name] || name : name)
@@ -2230,6 +2260,124 @@ function AssessTaxForm({ task, plan, saveTask, existingData, onSubmitted, onCanc
   )
 }
 
+// "Questions for the client" (2026-10-15). Once the tax planner review is
+// answered, "Additional information required" locks and THIS is how the team asks
+// the client anything further: one question, one emailed link that works like
+// /tax-upload (files saved into the client's Vault, written replies). The client
+// cannot start a new question. Admin, the planner portal and the member on their own Direct plan
+// (`act` maps the two actions to their tax_direct_* twins).
+function ClientQuestionsCard({ planId, act }) {
+  // Full date: questions can stay open across a year boundary.
+  const formatStamp = (ts) => {
+    const d = ts ? new Date(ts) : null
+    return d && !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : ''
+  }
+  const [open, setOpen] = useState(false)
+  const [questions, setQuestions] = useState(null)
+  const [loadError, setLoadError] = useState('')
+  const [text, setText] = useState('')
+  const [sending, setSending] = useState(false)
+  const [notice, setNotice] = useState('')
+
+  async function load() {
+    try {
+      const res = await callApi(act('tax_client_questions_load'), { tax_plan_id: planId })
+      if (res?.error) { setLoadError(res.error); return }
+      setLoadError('')
+      setQuestions(res?.questions || [])
+    } catch (err) {
+      setLoadError(err?.message || 'Could not load questions')
+    }
+  }
+  useEffect(() => { load() }, [planId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function ask() {
+    const q = text.trim()
+    if (!q || sending) return
+    if (!window.confirm('Email this question to the client now?')) return
+    setSending(true); setNotice('')
+    try {
+      const res = await callApi(act('tax_client_question_ask'), { tax_plan_id: planId, question: q })
+      if (res?.error) { alert('Error: ' + res.error); return }
+      setText('')
+      setNotice(res?.email === 'sent' ? 'Question sent to the client.' : 'Question saved — the email is in Gmail Drafts, ready to send.')
+      await load()
+    } catch (err) {
+      alert('Error: ' + (err?.message || 'could not send the question'))
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const list = questions || []
+  const waiting = list.filter(q => !q.answered_at).length
+  const summary = questions == null ? '' : list.length === 0 ? 'No questions asked'
+    : `${list.length} asked${waiting ? ` · ${waiting} waiting` : ' · all answered'}`
+  const btn = { padding: '8px 18px', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)' }
+  return (
+    <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden' }}>
+      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer', gap: '10px', flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Questions for the client</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {waiting > 0 && <span style={chipStyle('#0095ff')}>{waiting} waiting</span>}
+          <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{summary}</span>
+          <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
+        </div>
+      </div>
+      {open && (
+        <div style={{ padding: '0 18px 16px', fontFamily: 'Inter, sans-serif' }}>
+          <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '8px' }}>
+            The client gets an email with a secure link where they can upload files or write an answer to this question.
+          </div>
+          <textarea
+            value={text}
+            onChange={e => { setText(e.target.value); setNotice('') }}
+            disabled={sending}
+            maxLength={2000}
+            placeholder="Type your question for the client..."
+            style={{ width: '100%', minHeight: '80px', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', fontSize: '13px', lineHeight: '1.5', boxSizing: 'border-box', resize: 'vertical' }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px', flexWrap: 'wrap' }}>
+            <button type="button" onClick={ask} disabled={sending || !text.trim()}
+              style={{ ...btn, cursor: (sending || !text.trim()) ? 'not-allowed' : 'pointer', opacity: (sending || !text.trim()) ? 0.55 : 1 }}>
+              {sending ? 'Sending…' : 'Ask the client'}
+            </button>
+            {notice && <span style={{ fontSize: '12px', color: '#1b9254', fontWeight: 500 }}>{notice}</span>}
+          </div>
+
+          {loadError && <div style={{ fontSize: '12px', color: '#e74c3c', marginTop: '12px' }}>{loadError}</div>}
+          {questions == null && !loadError && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '12px' }}>Loading…</div>}
+          {list.map(q => (
+            <div key={q.id} style={{ marginTop: '14px', padding: '12px 14px', borderRadius: '10px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>
+                  Asked {formatStamp(q.asked_at)}{q.asked_by_name ? ` by ${q.asked_by_name}` : ''}
+                  {q.email_result === 'drafted' ? ' · email drafted' : q.email_result === 'sent' ? ' · email sent' : ''}
+                  {q.reminder_sent_at ? ` · reminder ${formatStamp(q.reminder_sent_at)}` : ''}
+                </span>
+                {q.answered_at
+                  ? <span style={chipStyle('#1b9254')}>Answered {formatStamp(q.answered_at)}</span>
+                  : <span style={chipStyle('#0095ff')}>Waiting for the client</span>}
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', fontWeight: 600, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{q.question}</div>
+              {q.answered_at && (
+                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--vfo-border-soft)' }}>
+                  {q.answer && <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{q.answer}</div>}
+                  {Array.isArray(q.answer_files) && q.answer_files.length > 0 && (
+                    <div style={{ marginTop: q.answer ? '8px' : 0, fontSize: '12px', color: 'var(--vfo-muted)' }}>
+                      Files (saved to the client's Vault): {q.answer_files.map(f => f.name).join(', ')}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Read-only "Tax Planning Form" card — the 37 answers the member submitted when
 // they started the case (tax_intake_requests). Shown on ALL THREE tax-plan
 // surfaces (admin, tax-planner portal, member view), which is why
@@ -2247,7 +2395,7 @@ function TaxRouteCard({ rapid, canSwitch, busy, onChange }) {
   const pill = (on) => ({ padding: '4px 12px', borderRadius: '999px', border: 'none', fontSize: '11.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
     cursor: busy ? 'not-allowed' : 'pointer', background: on ? '#125ecc' : 'transparent', color: on ? '#fff' : 'var(--vfo-ink)' })
   return (
-    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 18px', flexWrap: 'wrap' }}>
+    <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 18px', flexWrap: 'wrap' }}>
       <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tax Planning Route</span>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{rapid ? 'The TPOM is replaced by a customized video' : 'The client attends the TPOM'}</span>
@@ -2278,7 +2426,7 @@ function TaxIntakeCard({ intake, questions }) {
     ? `Completed by the client via link on ${linkDate}`
     : 'Completed by the member'
   return (
-    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden' }}>
+    <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden' }}>
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer' }}>
         <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tax Planning Form</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -2818,7 +2966,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
 
   // Done-rules, phase states and hero counts: ONE copy, shared with the plan lists.
   const {
-    addlInfoDone, allTasks, allocDone, allocatedPlanner, amendWindowOpen, confirmReadyTask, decision2Status, decision2Task, depositOk, depositRefunded, directPlan, findStepTask, getPhaseState, heroCountedTasks, heroDoneTasks, heroSteps, heroTotalTasks, isAmendNotApplicable, isRapidHidden, isRoiSkipSetTask, isSkippedAway, isStepExcluded, isTaskStatused, isTaxProgram, newFeeProcess, noDeposit, phasesAfterSpec, phasesBeforeSpec, prereqDone, rapidPlan, redLightTask, redLightVisible, returnsReceived, reviewProceed, reviewStatus, reviewStop, reviewTask, riskProfileDone, riskProfileTask, roiBooked, roiSkipMeetingFirst, roiSkipped, tax5State, tax5aHeroState, tax5aPhase, tax5aSpecTasks, tax5aTasks, tax5bCounted, tax5bPhase, tax5bState, tax5bTaskDone, tax5bUnlocked, tax6SpecTasks, taxPlannerAllocated,
+    addlInfoDone, addlInfoLocked, allTasks, allocDone, allocatedPlanner, amendWindowOpen, confirmReadyTask, decision2Status, decision2Task, depositOk, depositRefunded, directPlan, findStepTask, getPhaseState, heroCountedTasks, heroDoneTasks, heroSteps, heroTotalTasks, isAmendNotApplicable, isRapidHidden, isRoiSkipSetTask, isSkippedAway, isStepExcluded, isTaskStatused, isTaxProgram, newFeeProcess, noDeposit, phasesAfterSpec, phasesBeforeSpec, prereqDone, rapidPlan, redLightTask, redLightVisible, returnsReceived, reviewProceed, reviewStatus, reviewStop, reviewTask, riskProfileDone, riskProfileTask, roiBooked, roiSkipMeetingFirst, roiSkipped, tax5State, tax5aHeroState, tax5aPhase, tax5aSpecTasks, tax5aTasks, tax5bCounted, tax5bPhase, tax5bState, tax5bTaskDone, tax5bUnlocked, tax6SpecTasks, taxPlannerAllocated,
   } = makeTaxPlanRules({ plan, livePlan, phases, localProgress, taxSpecialists, taxPlanners })
 
   // "Has the amend step been answered?" for the steps that wait on it. An ABSENT
@@ -5130,18 +5278,20 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
             <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
-            <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)' }}>
-              <option value="">-- Select --</option>
-              {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} />
+            <LockedControl locked={addlInfoLocked && !readOnly} hint={ADDL_INFO_LOCKED_HINT}>
+              <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key] || addlInfoLocked} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)', cursor: addlInfoLocked ? 'not-allowed' : undefined }}>
+                <option value="">-- Select --</option>
+                {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </LockedControl>
+            <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key] || addlInfoLocked} />
           </div>
           {infoRequired && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: subDotColor, flexShrink: 0, border: `1.5px solid ${subDotBorder}` }} />
                 <span style={{ fontSize: '13px', color: (done || requestedAt) ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>Request additional information{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={taxDisplayName(task.name)} templates={[{ name: 'TAX_request_additional_info', when: 'Asks the client to upload the requested additional information via a secure link' }]} context={emailCtx} /></span>}</span>
-                {readOnly ? (
+                {(readOnly || addlInfoLocked) ? (
                   done
                     ? <span style={chipStyle('#1b9254')}>Information received — {formatStamp(receivedAt)}</span>
                     : requestedAt ? <span style={chipStyle('#0095ff')}>Email sent — {formatStamp(requestedAt)}</span> : null
@@ -5150,7 +5300,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                 )}
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{requestedAt ? formatStamp(requestedAt) : ''}</span>
               </div>
-              {composeOpen && !readOnly && (
+              {composeOpen && !readOnly && !addlInfoLocked && (
                 <div style={{ marginLeft: '18px', marginBottom: '8px', padding: '14px 16px', background: 'var(--vfo-tint)', borderRadius: '10px', border: '1px solid var(--vfo-tint-deep)', fontFamily: 'Inter, sans-serif' }}>
                   <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
                     Subject: Additional information required - {clientFull || '[Client Name]'}
@@ -5221,16 +5371,21 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     const showTeamShareChip = task.name === 'Tax planner review complete'
       && isTaxProgram && !(readOnly || plannerMode)
       && p.status === 'Proceed with tax planning'
+    // An answered review is final (save-task.ts refuses a change): Proceed has
+    // forwarded the $250 team share and Stop opens the deposit refund.
+    const reviewLocked = task.name === 'Tax planner review complete' && addlInfoLocked
     return (
       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap', opacity: isGreyedOut ? 0.3 : 1, pointerEvents: isGreyedOut ? 'none' : undefined }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
         <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase, spec)}{greyNote && <span style={{ fontSize: '11px', color: '#e06717', fontWeight: 600, marginLeft: '8px' }}>({greyNote})</span>}</span>
         {showTeamShareChip && depositTeamChip(livePlan?.deposit_team_share_status)}
-        <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)' }}>
-          <option value="">-- Select --</option>
-          {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} />
+        <LockedControl locked={reviewLocked && !readOnly} hint={REVIEW_LOCKED_HINT}>
+          <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key] || reviewLocked} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)', cursor: reviewLocked ? 'not-allowed' : undefined }}>
+            <option value="">-- Select --</option>
+            {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </LockedControl>
+        <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key] || reviewLocked} />
       </div>
     )
   }
@@ -5305,6 +5460,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           isSuperadmin={!!getSession()?.is_superadmin}
           onSaved={refreshLivePlan}
         />
+      )}
+
+      {/* Questions for the client (2026-10-15): the only way to ask the client
+          anything once the review is answered and "Additional information
+          required" has locked. Admin, planner portal and the Direct member. */}
+      {addlInfoLocked && (!readOnly || directMode) && (
+        <ClientQuestionsCard planId={plan.id} act={act} />
       )}
 
       {phasesBeforeSpec.map((phase, phaseIdx) => {
@@ -5812,6 +5974,9 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
         return plan?.tax_planner_id != null
       }
       if (t.name === 'Additional information required') {
+        // An answered review closes this step for good (taxPlanRules.js reviewAnswered).
+        const rs = planReviewTask ? prog[planReviewTask.id]?.status : null
+        if (rs === 'Proceed with tax planning' || rs === 'Stop tax planning') return true
         const st = prog[t.id]?.status
         return !!st && (st !== 'Additional info required' || !!plan?.additional_info_received_at)
       }

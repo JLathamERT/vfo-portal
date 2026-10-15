@@ -71,6 +71,7 @@ const SpecialistPayPage = lazyPage(() => import('./pages/SpecialistPayPage'))
 const SpecialistQuestionsPage = lazyPage(() => import('./pages/SpecialistQuestionsPage'))
 const SpecialistDdcPage = lazyPage(() => import('./pages/SpecialistDdcPage'))
 const TaxUploadPage = lazyPage(() => import('./pages/TaxUploadPage'))
+const TaxQuestionPage = lazyPage(() => import('./pages/TaxQuestionPage'))
 const TaxIntakePage = lazyPage(() => import('./pages/TaxIntakePage'))
 const TaxDepositPayPage = lazyPage(() => import('./pages/TaxDepositPayPage'))
 const TaxDiagnosticPage = lazyPage(() => import('./pages/TaxDiagnosticPage'))
@@ -137,6 +138,7 @@ export default function App() {
       <Route path="/specialist-questions" element={<SpecialistQuestionsPage />} />
       <Route path="/specialist-ddc" element={<SpecialistDdcPage />} />
       <Route path="/tax-upload" element={<TaxUploadPage />} />
+      <Route path="/tax-question" element={<TaxQuestionPage />} />
       <Route path="/tax-intake" element={<TaxIntakePage />} />
       <Route path="/tax-deposit-pay" element={<TaxDepositPayPage />} />
       <Route path="/tax-diagnostic" element={<TaxDiagnosticPage />} />

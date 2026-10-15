@@ -7,7 +7,7 @@ import { callApi } from '../../../lib/api'
 // the box mounts (which creates the plan's token the first time; a copied link never
 // changes), so the Copy click writes to the clipboard at once — the browser only
 // allows that inside the click itself. The URL is never shown, only copied.
-const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '20px 24px', marginBottom: '20px' }
+const cardStyle = { background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '20px 24px', marginBottom: '20px' }
 
 export default function PersonalTaxFormLink({ taxPlanId }) {
   const [url, setUrl] = useState(null)

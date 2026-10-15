@@ -47,6 +47,9 @@
   --vfo-scrollbar-hover: #a9bcd9;
   --vfo-halo: rgba(18, 94, 204, 0.05); /* page top glow */
   --vfo-shadow-card: 0 4px 16px rgba(20, 45, 95, 0.06);
+  /* plan-level tool cards at the top of a tax plan (route, pricing, form, questions) */
+  --vfo-plan-tool-bg: #edf4ff;
+  --vfo-plan-tool-border: #a3bfe8;
 }
 
 [data-theme="dark"] {
@@ -85,6 +88,8 @@
   --vfo-scrollbar-hover: #3a63b8;
   --vfo-halo: rgba(0, 149, 255, 0.06);
   --vfo-shadow-card: 0 4px 16px rgba(0, 10, 35, 0.35);
+  --vfo-plan-tool-bg: #0b3a8e;
+  --vfo-plan-tool-border: #3f72d4;
 }
 
 /* Always reserve the scrollbar track so the page doesn't shift sideways
