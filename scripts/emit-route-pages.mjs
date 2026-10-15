@@ -42,6 +42,7 @@ const ROUTES = [
   'tax-intake',
   'tax-pay',
   'tax-postreview-decide',
+  'tax-question',
   'tax-upload',
   'update-card',
   'vault-upload',
