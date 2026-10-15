@@ -920,6 +920,7 @@ After each successful draft the sweep stamps `presentation_email_sent_at` and **
 3. Loads template `'TAX_ceocountersign|Yes'`.
 4. Substitutes `[Client Name]`, `[Total Fee]`, `[SIGNING_LINK]`.
 5. Creates Gmail draft to CEO with embedded sign link.
+6. **(2026-10-15, v994)** Raises the dismissible `TAX_client_signed` bell to the step owner (the PF; the member on a Direct plan — the chase bell's routing) — *"<client> signed the Tax Planning agreement"* (*"…was signed by the member"* on member-pays), `dedupe: "unread"` — and marks the unread *"<client> hasn't signed the Tax Planning agreement"* chase bell read. Fail-soft (runs before the BoldSign link poll).
 
 **Chains:** none — waits for CEO to sign.
 

@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-10-15 (c) — Tax "client signed the agreement" bell + the chase bell clears on signing (v994)
+
+Branch `fix/tax-client-signed-bell` (edge only + this docs PR). *Why:* Evan was chasing Herbert Carroll (plan 192) off the 4-business-day *"hasn't signed the Tax Planning agreement"* bell (9:10 AM ET 10/15) — Herbert signed at 2:29 PM and only Tracy told him. MAP 1 has had `MAP1_client_signed` for months; Tax had no signed bell and nothing cleared the chase.
+- `actions/tax/ceo-countersign.ts` (the BoldSign client-signed chain): a dismissible **`TAX_client_signed`** bell to the step owner — the PF, the member on a Direct plan (`taxPfRecipientsFor`, the chase bell's routing), `dedupe: "unread"` — titled *"<client> signed the Tax Planning agreement"* (*"…was signed by the member"* on member-pays); the unread *"<client> hasn't signed…"* bell for the client is marked read. Fail-soft.
+- Migration `20261015180000` (rule `TAX_client_signed`, area Tax, sort 175, applied live). No new action (591). `vfo-admin-api` **v994**; `boldsign-webhook` untouched.
+- Confirmed while here: both MAP 1 and Tax chase at **2 business days** (client email) and **4** (PF bell); no rule overrides.
+- **Live-proven** on sandbox plan 282 (Test Client 62, PF Jake): bell 3342 at the signing second, dummy chase bell 3341 cleared. **Not exercised:** member-pays wording, a Direct plan, the real-plan routing (code-identical to the chase bell).
+
+---
+
 ## 2026-10-15 (b) — Held member shares email the member automatically + four "Held - No Payout Account" pills; dark-mode contrast; forgiving admin menus; template 25 wording (v990 → v993)
 
 Branch `claude/vfo-session-starter-e16a98` (edge + react, ONE chat). Four misc asks from Jake.
