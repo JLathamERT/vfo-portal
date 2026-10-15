@@ -474,7 +474,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
               </label>
               {preview && (
                 <button type="button" onClick={() => setCropState({ which, src: preview })}
-                  style={{ marginLeft: '8px', padding: '8px 16px', borderRadius: '6px', border: '1px solid #125ecc', background: 'var(--vfo-card)', color: '#125ecc', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                  style={{ marginLeft: '8px', padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--vfo-accent-text)', background: 'var(--vfo-card)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
                   Adjust / Zoom
                 </button>
               )}
@@ -561,7 +561,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
           <div style={{ display: 'flex', gap: '8px' }}>
             {['Revenue Share', 'Money Mapping'].map(v => (
               <button key={v} type="button" onClick={() => setShared(p => ({ ...p, revenue_decision: v }))}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid ${shared.revenue_decision === v ? '#125ecc' : 'var(--vfo-border-mid)'}`, background: shared.revenue_decision === v ? 'rgba(18,94,204,0.12)' : '#fff', color: shared.revenue_decision === v ? '#125ecc' : 'var(--vfo-muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid ${shared.revenue_decision === v ? 'var(--vfo-accent-text)' : 'var(--vfo-border-mid)'}`, background: shared.revenue_decision === v ? 'rgba(18,94,204,0.12)' : 'var(--vfo-card)', color: shared.revenue_decision === v ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
                 {v}
               </button>
             ))}
@@ -584,7 +584,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
               ? <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', marginBottom: '8px' }}>Connected · <span style={{ fontFamily: 'monospace', color: 'var(--vfo-muted)' }}>{selectedExpert.stripe_account_id}</span></div>
               : <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginBottom: '8px' }}>No payout account yet.</div>}
             <button type="button" onClick={handleSpecialistConnect} disabled={connectBusy}
-              style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #125ecc', background: 'var(--vfo-card)', color: '#125ecc', fontSize: '13px', fontWeight: 600, cursor: connectBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+              style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid var(--vfo-accent-text)', background: 'var(--vfo-card)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600, cursor: connectBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
               {connectBusy ? 'Working…' : (selectedExpert?.stripe_account_id ? 'Resend Setup Link' : 'Set Up Payment Details')}
             </button>
             {connectMsg && <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '8px' }}>{connectMsg}</p>}
@@ -653,7 +653,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
               style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer' }}>
               Clear Form
             </button>
-            {addStatus && <span style={{ alignSelf: 'center', color: addStatusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', fontWeight: 600 }}>{addStatus}</span>}
+            {addStatus && <span style={{ alignSelf: 'center', color: addStatusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', fontWeight: 600 }}>{addStatus}</span>}
           </div>
         </div>
       )}
@@ -662,7 +662,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
       {activeTab === 'edit' && !selectedExpert && (
         <>
           {editStatus && (
-            <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: editStatusType === 'success' ? 'rgba(27,146,84,0.1)' : 'rgba(231,76,60,0.1)', color: editStatusType === 'success' ? '#1b9254' : '#e74c3c', border: `1px solid ${editStatusType === 'success' ? 'rgba(27,146,84,0.3)' : 'rgba(231,76,60,0.3)'}` }}>{editStatus}</div>
+            <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: editStatusType === 'success' ? 'rgba(27,146,84,0.1)' : 'rgba(231,76,60,0.1)', color: editStatusType === 'success' ? 'var(--vfo-success-text)' : '#e74c3c', border: `1px solid ${editStatusType === 'success' ? 'rgba(27,146,84,0.3)' : 'rgba(231,76,60,0.3)'}` }}>{editStatus}</div>
           )}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
             <input type="search" name="search" autoComplete="off" placeholder="Search by name..." style={inputStyle} onChange={e => setEditSearch(e.target.value.toLowerCase())} value={editSearch} />
@@ -701,13 +701,13 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
 
           <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '1px solid var(--vfo-border)', position: 'relative', zIndex: 50 }}>
             <div style={{ position: 'relative' }} onMouseEnter={() => setProfileDropOpen(true)} onMouseLeave={() => setProfileDropOpen(false)}>
-              <button style={{ padding: '8px 16px', border: 'none', background: 'none', borderBottom: '2px solid #125ecc', color: '#125ecc', fontWeight: 600, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', marginBottom: '-1px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button style={{ padding: '8px 16px', border: 'none', background: 'none', borderBottom: '2px solid var(--vfo-accent-text)', color: 'var(--vfo-accent-text)', fontWeight: 600, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', marginBottom: '-1px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 Profile<span style={{ fontSize: '9px', opacity: 0.6 }}>▾</span>
               </button>
               {profileDropOpen && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '150px', zIndex: 200, padding: '4px 0', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
                   {[['profile','Profile'],['edit','Edit Profile'],['vault','Vault'],['payments','Payments'],['settings','Settings']].map(([k, l]) => (
-                    <button key={k} onClick={() => { setSpecialistTab(k); setProfileDropOpen(false) }} style={{ display: 'block', width: '100%', padding: '8px 16px', background: specialistTab === k ? 'var(--vfo-tint)' : 'transparent', border: 'none', color: specialistTab === k ? '#125ecc' : 'var(--vfo-ink)', fontWeight: specialistTab === k ? 600 : 400, fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'} onMouseLeave={e => e.currentTarget.style.background = specialistTab === k ? 'var(--vfo-tint)' : 'transparent'}>{l}</button>
+                    <button key={k} onClick={() => { setSpecialistTab(k); setProfileDropOpen(false) }} style={{ display: 'block', width: '100%', padding: '8px 16px', background: specialistTab === k ? 'var(--vfo-tint)' : 'transparent', border: 'none', color: specialistTab === k ? 'var(--vfo-accent-text)' : 'var(--vfo-ink)', fontWeight: specialistTab === k ? 600 : 400, fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'} onMouseLeave={e => e.currentTarget.style.background = specialistTab === k ? 'var(--vfo-tint)' : 'transparent'}>{l}</button>
                   ))}
                 </div>
               )}
@@ -734,7 +734,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
                   style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer' }}>
                   Cancel
                 </button>
-                {editStatus && <span style={{ alignSelf: 'center', color: editStatusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', fontWeight: 600 }}>{editStatus}</span>}
+                {editStatus && <span style={{ alignSelf: 'center', color: editStatusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', fontWeight: 600 }}>{editStatus}</span>}
               </div>
             </div>
           )}
@@ -783,7 +783,7 @@ function SpecialistProfileView({ expert, ecos: ecosProp, connectBusy = false, co
   const fieldLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-faint)', textTransform: 'uppercase' }
   const dbHeading = { fontSize: '14px', fontWeight: 800, letterSpacing: '0.4px', color: 'var(--vfo-heading)', textTransform: 'uppercase' }
   const chip = { fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.25)' }
-  const activeChip = { ...chip, background: 'rgba(18,94,204,0.12)', color: '#125ecc', border: '1px solid rgba(18,94,204,0.25)', cursor: 'pointer' }
+  const activeChip = { ...chip, background: 'rgba(18,94,204,0.12)', color: 'var(--vfo-accent-text)', border: '1px solid rgba(18,94,204,0.25)', cursor: 'pointer' }
   const idleChip = { ...chip, background: 'transparent', color: 'var(--vfo-muted)', border: '1px solid var(--vfo-border-mid)', cursor: 'pointer' }
   // Accredited specialists carry a badge in the profile header only.
   const accredited = !!expert.vfo_accredited
@@ -876,7 +876,7 @@ function SpecialistProfileView({ expert, ecos: ecosProp, connectBusy = false, co
             {!expert.stripe_account_id && (
               <div style={{ marginTop: '16px' }}>
                 <button type="button" onClick={onConnect} disabled={connectBusy}
-                  style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #125ecc', background: 'var(--vfo-card)', color: '#125ecc', fontSize: '13px', fontWeight: 600, cursor: connectBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                  style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid var(--vfo-accent-text)', background: 'var(--vfo-card)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600, cursor: connectBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
                   {connectBusy ? 'Working…' : 'Send Stripe Connect setup email'}
                 </button>
                 {connectMsg && <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '8px' }}>{connectMsg}</p>}

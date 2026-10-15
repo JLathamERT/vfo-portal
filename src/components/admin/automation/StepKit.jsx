@@ -1,4 +1,5 @@
 // Shared presentation kit for the admin automation panels (MAP 1, Tax, PIP,
+import { readable } from '../../shared/readableColor'
 // Advisor, Accountant). Each pipeline step renders as a StepCard with a
 // status pill + status-colored rail, and a body of labeled sub-blocks
 // (WHAT WE DID / INFO ENTERED / SENT / CLIENT REPLY) so every step makes
@@ -63,7 +64,7 @@ export function Badge({ text, color }) {
   return (
     <span style={{
       fontSize: '11px', padding: '3px 10px', borderRadius: '999px', fontWeight: 600,
-      background: `${c}15`, color: c, border: `1px solid ${c}30`,
+      background: `${c}15`, color: readable(c), border: `1px solid ${c}30`,
     }}>{text}</span>
   )
 }

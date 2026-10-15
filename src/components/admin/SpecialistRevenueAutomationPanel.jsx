@@ -125,7 +125,7 @@ export default function SpecialistRevenueAutomationPanel() {
       </div>
 
       {retryMsg && (
-        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{retryMsg}</div>
+        <div style={{ background: 'var(--vfo-accent-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-accent-text)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{retryMsg}</div>
       )}
 
       {loading && <TableSkeleton cols={[2, 1, 1, 1]} rows={2} />}

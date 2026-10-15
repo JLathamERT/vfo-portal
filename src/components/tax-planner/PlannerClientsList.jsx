@@ -178,7 +178,7 @@ export default function PlannerClientsList() {
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button
               onClick={() => setFilterOpen(o => !o)}
-              style={{ padding: '9px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: filterActive ? 'rgba(18,94,204,0.1)' : 'var(--vfo-input)', color: filterActive ? '#125ecc' : 'var(--vfo-muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              style={{ padding: '9px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: filterActive ? 'rgba(18,94,204,0.1)' : 'var(--vfo-input)', color: filterActive ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
               {isTeamMember ? 'Tax Planners' : 'Group'}{filterActive ? ` (${included.length})` : ''}
               <span style={{ fontSize: '9px', opacity: 0.6 }}>▾</span>
             </button>

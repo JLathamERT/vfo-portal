@@ -72,7 +72,7 @@ function PartnerCard({ group, onSaved }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
         <div style={{ fontSize: '17px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{group.name}</div>
         {connected
-          ? <span style={{ fontSize: '12px', fontWeight: 600, color: '#1b9254', background: 'rgba(27,146,84,0.12)', border: '1px solid rgba(27,146,84,0.3)', borderRadius: '999px', padding: '4px 12px' }}>Payout connected</span>
+          ? <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-success-text)', background: 'rgba(27,146,84,0.12)', border: '1px solid rgba(27,146,84,0.3)', borderRadius: '999px', padding: '4px 12px' }}>Payout connected</span>
           : <span style={{ fontSize: '12px', fontWeight: 600, color: '#b26a00', background: 'rgba(224,103,23,0.10)', border: '1px solid rgba(224,103,23,0.3)', borderRadius: '999px', padding: '4px 12px' }}>No payout account</span>}
       </div>
 
@@ -95,7 +95,7 @@ function PartnerCard({ group, onSaved }) {
         style={{ padding: '10px 24px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: requesting ? 'not-allowed' : 'pointer', opacity: requesting ? 0.6 : 1 }}>
         {requesting ? 'Working…' : connected ? 'Resend Setup Email' : 'Set Up Payment Details'}
       </button>
-      {msg && <p style={{ color: msgType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{msg}</p>}
+      {msg && <p style={{ color: msgType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{msg}</p>}
     </div>
   )
 }

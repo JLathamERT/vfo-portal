@@ -384,7 +384,7 @@ export default function FaqEditorPanel() {
                     {embed && <span style={chip('#0a85e8')}>Video</span>}
                     {item.document_url && <span style={chip('#1b9254')}>Document</span>}
                   </div>
-                  <div style={{ fontSize: '11px', color: cat ? '#125ecc' : 'var(--vfo-faint)', fontWeight: 600, marginBottom: '4px' }}>{cat || UNCATEGORISED_LABEL}</div>
+                  <div style={{ fontSize: '11px', color: cat ? 'var(--vfo-accent-text)' : 'var(--vfo-faint)', fontWeight: 600, marginBottom: '4px' }}>{cat || UNCATEGORISED_LABEL}</div>
                   {item.answer && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{item.answer}</div>}
                   {embed && (
                     <div style={{ marginTop: '6px' }}>

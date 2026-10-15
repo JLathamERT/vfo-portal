@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { EmailTemplatesSkeleton } from '../shared/Skeleton'
 import { TEMPLATE_META, ROLE_LABELS } from '../shared/templateMeta'
+import { readable } from '../shared/readableColor'
 
 // Program sections — same six that have automation tabs. The standalone Tax
 // Planning program shares the TAX templates with Holistic Tax Priorities, so
@@ -88,7 +89,7 @@ function RecipientEditor({ title, accent, entries, onChange, input, setInput }) 
               style={{ border: 'none', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: 0, opacity: 0.85 }}>×</button>
           </span>
         ) : (
-          <span key={e} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, padding: '3px 8px', borderRadius: '999px', background: `${accent}1f`, color: accent, border: `1px solid ${accent}66` }}>
+          <span key={e} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, padding: '3px 8px', borderRadius: '999px', background: `${accent}1f`, color: readable(accent), border: `1px solid ${accent}66` }}>
             {e}
             <button onClick={() => onChange(entries.filter(x => x !== e))} title="Remove"
               style={{ border: 'none', background: 'transparent', color: accent, cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: 0, opacity: 0.8 }}>×</button>
@@ -111,7 +112,7 @@ function RecipientEditor({ title, accent, entries, onChange, input, setInput }) 
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
           onBlur={() => { if (input.trim()) add() }}
           style={{ ...inputStyle, maxWidth: '280px' }} />
-        <button onClick={add} style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: `1px solid ${accent}66`, background: `${accent}1a`, color: accent, whiteSpace: 'nowrap' }}>Add</button>
+        <button onClick={add} style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: `1px solid ${accent}66`, background: `${accent}1a`, color: readable(accent), whiteSpace: 'nowrap' }}>Add</button>
       </div>
       {warn && <div style={{ fontSize: '11px', color: '#d93025', fontWeight: 600, marginTop: '4px' }}>{warn}</div>}
     </div>
@@ -217,8 +218,8 @@ function TemplateCard({ tmpl, label, onSendModeChange }) {
             <div style={{ padding: '16px', background: 'var(--vfo-card)', borderRadius: '6px', color: '#333', fontSize: '14px', fontFamily: 'Arial, sans-serif', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: bodyText }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button onClick={save} disabled={saving} style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: saving ? 'default' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>
-            {savedMsg && <span style={{ fontSize: '12px', color: '#1b9254', fontWeight: 600 }}>{savedMsg}</span>}
+            <button onClick={save} disabled={saving} style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: saving ? 'default' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>
+            {savedMsg && <span style={{ fontSize: '12px', color: 'var(--vfo-success-text)', fontWeight: 600 }}>{savedMsg}</span>}
             {err && <span style={{ fontSize: '12px', color: '#d93025', fontWeight: 600 }}>{err}</span>}
           </div>
         </div>
@@ -312,7 +313,7 @@ export default function EmailTemplatesPanel() {
                 <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--vfo-ink)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{section.label}</span>
                 <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{rows.length}</span>
                 {sendCount > 0 && (
-                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', border: '1px solid rgba(27,146,84,0.4)', color: '#1b9254' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', border: '1px solid rgba(27,146,84,0.4)', color: 'var(--vfo-success-text)' }}>
                     {sendCount === rows.length ? 'all sending' : `${sendCount} sending`}
                   </span>
                 )}
@@ -323,7 +324,7 @@ export default function EmailTemplatesPanel() {
                   All draft
                 </button>
                 <button disabled={busy} onClick={() => bulkSetSendMode(section, rows, true)}
-                  style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: busy ? 'default' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', opacity: busy ? 0.6 : 1 }}>
+                  style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: busy ? 'default' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', opacity: busy ? 0.6 : 1 }}>
                   All send
                 </button>
               </div>

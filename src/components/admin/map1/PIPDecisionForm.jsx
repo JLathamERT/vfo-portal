@@ -338,7 +338,7 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
           <div style={sectionStyle}>
             <div style={{ fontSize: '12px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Membership options outlined</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
-              <span style={{ fontSize: '13px', color: '#1b9254', fontWeight: '600', width: '40px' }}>Lite</span>
+              <span style={{ fontSize: '13px', color: 'var(--vfo-success-text)', fontWeight: '600', width: '40px' }}>Lite</span>
               <div style={{ position: 'relative', flex: 1 }}>
                 <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--vfo-muted)', fontSize: '14px' }}>$</span>
                 <input value={liteCost} onChange={e => setLiteCost(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode} />

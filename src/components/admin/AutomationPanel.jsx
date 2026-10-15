@@ -5,6 +5,7 @@ import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import { CONFIRMATION_CARD_SKIP } from '../../lib/confirmationStatus'
 import { ClientNameLink } from '../shared/personLinks'
 import { formatDate } from '../../lib/dates'
+import { readable } from '../shared/readableColor'
 
 const STAGE_LABELS = {
   c81: 'PIP 1 — Reconfirmation Email',
@@ -569,7 +570,7 @@ export default function AutomationPanel({ section }) {
                       <td style={{ padding: '12px', fontSize: '13px', color: 'var(--vfo-muted)' }}>{row.member_name || '—'}</td>
                       <td style={{ padding: '12px', fontSize: '13px', color: 'var(--vfo-muted)' }}>{row.pf || '—'}</td>
                       <td style={{ padding: '12px' }}>
-                        <span style={{ padding: '3px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', background: `${stageColor}18`, color: stageColor, border: `1px solid ${stageColor}33` }}>
+                        <span style={{ padding: '3px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', background: `${stageColor}18`, color: readable(stageColor), border: `1px solid ${stageColor}33` }}>
                           {STAGE_LABELS[stage] || stage}
                         </span>
                       </td>

@@ -68,7 +68,7 @@ const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
 function clientStatusColors(status) {
   const s = (status || '').toLowerCase()
-  if (s === 'active') return { bg: 'rgba(27,146,84,0.13)', color: '#1b9254' }
+  if (s === 'active') return { bg: 'rgba(27,146,84,0.13)', color: 'var(--vfo-success-text)' }
   if (s === 'lost') return { bg: 'rgba(231,76,60,0.13)', color: '#e74c3c' }
   if (s === 'pending') return { bg: 'rgba(224,103,23,0.14)', color: '#e06717' }
   return { bg: 'var(--vfo-tint)', color: 'var(--vfo-muted)' }
@@ -83,11 +83,11 @@ const line = { lineHeight: '17px', padding: '1px 0' }
 function ProgramPill({ label, direct = false }) {
   const isPlanning = label === 'Tax Planning'
   // A Direct case is one pill, not two: the same Tax Planning pill turned orange.
-  const bg = direct ? 'rgba(224,103,23,0.12)' : isPlanning ? 'rgba(18,94,204,0.10)' : 'var(--vfo-tint)'
-  const color = direct ? '#e06717' : isPlanning ? '#125ecc' : 'var(--vfo-muted)'
+  const bg = direct ? 'rgba(224,103,23,0.12)' : isPlanning ? 'var(--vfo-accent-tint)' : 'var(--vfo-tint)'
+  const color = direct ? '#e06717' : isPlanning ? 'var(--vfo-accent-text)' : 'var(--vfo-chip-text)'
   return (
     <span title={direct ? 'Direct: the member runs this case and is the Planning Facilitator' : undefined}
-      style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', whiteSpace: 'nowrap', background: bg, color }}>{direct ? `${label} - Direct` : label}</span>
+      style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', whiteSpace: 'nowrap', background: bg, color, border: '1px solid var(--vfo-border-chip)' }}>{direct ? `${label} - Direct` : label}</span>
   )
 }
 
@@ -328,7 +328,7 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
                 <div key={c.id} onClick={() => openProfile(c, {})} {...rowHoverProps}
                   style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
                   <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                    <span title="Open client profile" style={{ fontWeight: 600, color: '#125ecc', alignSelf: 'flex-start' }}>{c.name || '—'}</span>
+                    <span title="Open client profile" style={{ fontWeight: 600, color: 'var(--vfo-link)', alignSelf: 'flex-start' }}>{c.name || '—'}</span>
                     {!memberMode && (c.member_name
                       ? <MemberNameLink memberNumber={c.member_number} style={{ fontSize: '11px', color: 'var(--vfo-muted)', alignSelf: 'flex-start' }}>{c.member_name}</MemberNameLink>
                       : <span style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>No member</span>)}
@@ -363,7 +363,7 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
                 <div key={`${c.id}:${t.id ?? activeSection}`} onClick={() => openTrack(c, t)} {...rowHoverProps}
                   style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
                   <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                    <span onClick={e => { e.stopPropagation(); openProfile(c, t) }} title="Open client profile" style={{ fontWeight: 600, color: '#125ecc', cursor: 'pointer', alignSelf: 'flex-start' }}
+                    <span onClick={e => { e.stopPropagation(); openProfile(c, t) }} title="Open client profile" style={{ fontWeight: 600, color: 'var(--vfo-link)', cursor: 'pointer', alignSelf: 'flex-start' }}
                       onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
                       onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{c.name || '—'}</span>
                     {memberMode ? (c.mirrored_from ? <span style={{ fontSize: '11px', color: '#0a85e8', fontWeight: 600 }}>Mirrored from {c.mirrored_from}</span> : null) : c.member_name
@@ -388,11 +388,11 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
                   <span style={{ fontSize: '12px', color: c.assigned_pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.assigned_pf || '—'}</span>
                   {isMap1 && <span style={{ fontSize: '12px', color: t.service_level ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.service_level || '—'}</span>}
                   {isTax && (
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: t.state === 'closed' ? '#b23c30' : t.state === 'complete' ? '#1b9254' : t.phase ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.phase ? taxDisplayName(t.phase) : '—'}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: t.state === 'closed' ? '#b23c30' : t.state === 'complete' ? 'var(--vfo-success-text)' : t.phase ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.phase ? taxDisplayName(t.phase) : '—'}</span>
                   )}
                   {!memberMode && <span style={{ fontSize: '12.5px' }}>
                     {t.state === 'complete' ? (
-                      <span style={{ ...line, display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#1b9254', fontWeight: 600 }}><span style={dot('#1b9254')} />Complete</span>
+                      <span style={{ ...line, display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--vfo-success-text)', fontWeight: 600 }}><span style={dot('#1b9254')} />Complete</span>
                     ) : t.state === 'closed' ? (
                       <span style={{ ...line, display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#b23c30', fontWeight: 600 }}><span style={dot('#b23c30')} />{t.closed_reason || 'Closed'}</span>
                     ) : entries.length === 0 ? (

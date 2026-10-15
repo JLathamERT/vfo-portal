@@ -39,7 +39,7 @@ export default function OnboardingExtraMeetingCard({ ob, pipeline, onComplete, c
 
   const inputStyle = { padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', width: '100%' }
   const labelStyle = { fontSize: '11px', color: 'var(--vfo-muted)', marginBottom: '4px', display: 'block' }
-  const greenBtn = { marginTop: '12px', padding: '8px 24px', borderRadius: '6px', fontSize: '12px', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600, fontFamily: 'Inter, sans-serif' }
+  const greenBtn = { marginTop: '12px', padding: '8px 24px', borderRadius: '6px', fontSize: '12px', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, fontFamily: 'Inter, sans-serif' }
 
   const detailRow = (label, value) => (
     <div style={{ display: 'flex', padding: '2px 0', alignItems: 'baseline' }}>

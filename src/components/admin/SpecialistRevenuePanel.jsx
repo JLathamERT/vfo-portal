@@ -132,13 +132,13 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
           <option value={-1}>All months</option>
           {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
         </select>
-        <button onClick={load} style={{ ...sel, color: '#125ecc', fontWeight: 600 }}>Refresh</button>
+        <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
       <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
         {[['specialist', 'By specialist'], ['member', 'By member']].map(([k, l]) => (
           <button key={k} onClick={() => setViewMode(k)}
-            style={{ padding: '7px 14px', borderRadius: '8px', border: `1px solid ${viewMode === k ? '#125ecc' : '#d6e0f0'}`, background: viewMode === k ? 'rgba(18,94,204,0.08)' : '#fff', color: viewMode === k ? '#125ecc' : 'var(--vfo-muted)', fontWeight: 600, fontSize: '12.5px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+            style={{ padding: '7px 14px', borderRadius: '8px', border: `1px solid ${viewMode === k ? 'var(--vfo-accent-text)' : 'var(--vfo-border-strong)'}`, background: viewMode === k ? 'rgba(18,94,204,0.08)' : 'var(--vfo-card)', color: viewMode === k ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontWeight: 600, fontSize: '12.5px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
             {l}
           </button>
         ))}

@@ -301,7 +301,7 @@ export default function TaxPlannersPanel({ section }) {
                 </label>
                 {preview && (
                   <button type="button" onClick={() => setCropState({ which, src: preview })}
-                    style={{ marginLeft: '8px', padding: '8px 16px', borderRadius: '6px', border: '1px solid #125ecc', background: 'var(--vfo-card)', color: '#125ecc', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                    style={{ marginLeft: '8px', padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--vfo-accent-text)', background: 'var(--vfo-card)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
                     Adjust / Zoom
                   </button>
                 )}
@@ -439,7 +439,7 @@ export default function TaxPlannersPanel({ section }) {
         return (
         <>
           {editStatus && (
-            <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: editStatusType === 'success' ? 'rgba(27,146,84,0.1)' : 'rgba(231,76,60,0.1)', color: editStatusType === 'success' ? '#1b9254' : '#e74c3c', border: `1px solid ${editStatusType === 'success' ? 'rgba(27,146,84,0.3)' : 'rgba(231,76,60,0.3)'}` }}>{editStatus}</div>
+            <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: editStatusType === 'success' ? 'rgba(27,146,84,0.1)' : 'rgba(231,76,60,0.1)', color: editStatusType === 'success' ? 'var(--vfo-success-text)' : '#e74c3c', border: `1px solid ${editStatusType === 'success' ? 'rgba(27,146,84,0.3)' : 'rgba(231,76,60,0.3)'}` }}>{editStatus}</div>
           )}
           <ListHeader title="Tax Planners" count={filteredPlanners.length} action={<ExportButton title="Tax Planners" columns={PLANNER_EXPORT_COLUMNS} rows={filteredPlanners} />} />
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
@@ -519,7 +519,7 @@ export default function TaxPlannersPanel({ section }) {
                   style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer' }}>
                   Cancel
                 </button>
-                {editStatus && <span style={{ alignSelf: 'center', color: editStatusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', fontWeight: 600 }}>{editStatus}</span>}
+                {editStatus && <span style={{ alignSelf: 'center', color: editStatusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', fontWeight: 600 }}>{editStatus}</span>}
               </div>
             </div>
           )}
@@ -910,7 +910,7 @@ function AddTaxPlannerSection({ addTab, setAddTab, groupNames, plannerForm, subm
               style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer' }}>
               Clear Form
             </button>
-            {addStatus && <span style={{ alignSelf: 'center', color: addStatusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', fontWeight: 600 }}>{addStatus}</span>}
+            {addStatus && <span style={{ alignSelf: 'center', color: addStatusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', fontWeight: 600 }}>{addStatus}</span>}
           </div>
         </div>
       )}
@@ -952,7 +952,7 @@ function AddTaxPlanningGroupForm({ onGroupsChange }) {
       <button onClick={submit} disabled={loading} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
         {loading ? 'Creating...' : 'Create Group'}
       </button>
-      {status && <p style={{ color: statusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
+      {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
     </div>
   )
 }
@@ -1117,7 +1117,7 @@ function TaxPartnerCard({ group, onSaved, experts = [] }) {
             </div>
           : <div style={{ fontSize: '17px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{group.name}</div>}
         {connected
-          ? <span style={{ fontSize: '12px', fontWeight: 600, color: '#1b9254', background: 'rgba(27,146,84,0.12)', border: '1px solid rgba(27,146,84,0.3)', borderRadius: '999px', padding: '4px 12px' }}>Payout connected</span>
+          ? <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-success-text)', background: 'rgba(27,146,84,0.12)', border: '1px solid rgba(27,146,84,0.3)', borderRadius: '999px', padding: '4px 12px' }}>Payout connected</span>
           : <span style={{ fontSize: '12px', fontWeight: 600, color: '#b26a00', background: 'rgba(224,103,23,0.10)', border: '1px solid rgba(224,103,23,0.3)', borderRadius: '999px', padding: '4px 12px' }}>No payout account</span>}
       </div>
 
@@ -1145,7 +1145,7 @@ function TaxPartnerCard({ group, onSaved, experts = [] }) {
           </span>
         </span>
       </label>
-      {pdfMsg.text && <p style={{ color: pdfMsg.ok ? '#1b9254' : '#d93025', fontSize: '13px', margin: '8px 0 0 26px' }}>{pdfMsg.text}</p>}
+      {pdfMsg.text && <p style={{ color: pdfMsg.ok ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', margin: '8px 0 0 26px' }}>{pdfMsg.text}</p>}
       <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>Linked specialist</div>
       <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '10px', lineHeight: 1.5, maxWidth: '640px' }}>
         The VFO specialist who is part of this group. On this group's plans, all four Tax 6 steps under this specialist are Tax Team steps. Under any other specialist, "Specialist confirms VFOS Gross Rev" and "PC confirms receipt of VFOS Gross Rev" are VFOS steps (the member's on a Direct plan).
@@ -1155,7 +1155,7 @@ function TaxPartnerCard({ group, onSaved, experts = [] }) {
         {linkedId !== '' && linkedId != null && !experts.some(e => String(e.id) === String(linkedId)) && <option value={String(linkedId)}>Specialist #{linkedId}</option>}
         {experts.map(e => <option key={e.id} value={String(e.id)}>{e.name}</option>)}
       </select>
-      {linkMsg.text && <p style={{ color: linkMsg.ok ? '#1b9254' : '#d93025', fontSize: '13px', margin: '8px 0 0' }}>{linkMsg.text}</p>}
+      {linkMsg.text && <p style={{ color: linkMsg.ok ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', margin: '8px 0 0' }}>{linkMsg.text}</p>}
       <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>Logo</div>
       <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '10px' }}>Shown on this group's clients' ROI presentations, on a small white badge. PNG, JPG or WebP; empty space around the logo is trimmed automatically.</div>
       <GroupLogoPreview src={logoPending?.dataUrl || logoUrl(group.logo_image)} />
@@ -1174,7 +1174,7 @@ function TaxPartnerCard({ group, onSaved, experts = [] }) {
           </>
         )}
       </div>
-      {msg && <p style={{ color: msgType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{msg}</p>}
+      {msg && <p style={{ color: msgType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{msg}</p>}
     </div>
   )
 }

@@ -433,7 +433,7 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
                       {sec.canManage ? (
                         <>
                           <button onClick={() => view(sec, f.path)} style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>View</button>
-                          {!readOnly && !memberMode && !sec.noShare && sec.canWrite !== false && <button onClick={() => toggleShare(sec.bucket, f.path)} style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(18,94,204,0.4)', background: open ? 'rgba(18,94,204,0.22)' : 'rgba(18,94,204,0.1)', color: '#125ecc', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Share</button>}
+                          {!readOnly && !memberMode && !sec.noShare && sec.canWrite !== false && <button onClick={() => toggleShare(sec.bucket, f.path)} style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(18,94,204,0.4)', background: open ? 'rgba(18,94,204,0.22)' : 'rgba(18,94,204,0.1)', color: 'var(--vfo-accent-text)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Share</button>}
                           {!readOnly && !memberMode && sec.canWrite !== false && <button onClick={() => remove(sec, f.path)} style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.1)', color: '#e74c3c', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Delete</button>}
                         </>
                       ) : (

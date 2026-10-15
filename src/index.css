@@ -50,6 +50,17 @@
   /* plan-level tool cards at the top of a tax plan (route, pricing, form, questions) */
   --vfo-plan-tool-bg: #edf4ff;
   --vfo-plan-tool-border: #a3bfe8;
+
+  /* blue TEXT on a card / tint (links, active filters, accent chips) —
+     use these instead of a literal #125ecc, which is unreadable on navy */
+  --vfo-link: #125ecc;
+  --vfo-accent-text: #125ecc;
+  --vfo-accent-tint: rgba(18, 94, 204, 0.08);
+  --vfo-chip-text: #3a5488;
+  --vfo-nav-active: #125ecc;
+  --vfo-nav-muted: #97a3ba;
+  --vfo-success-text: #1b9254;
+  --vfo-success-text-2: #16a34a;
 }
 
 [data-theme="dark"] {
@@ -67,7 +78,7 @@
   /* lines */
   --vfo-border: #1c4394;
   --vfo-border-soft: #19408f;
-  --vfo-border-strong: #2a52a5;
+  --vfo-border-strong: #3d68bf;
   --vfo-border-chip: #244c9e;
   --vfo-border-mid: #3560b0;
 
@@ -77,7 +88,7 @@
   --vfo-muted: #a9bcdf;
   --vfo-faint: #8ba3cf;
   --vfo-heading: #ffffff;
-  --vfo-placeholder: #7d97c6;
+  --vfo-placeholder: #a2b8df;
 
   /* skeleton shimmer */
   --vfo-skel-a: #0d3684;
@@ -90,6 +101,15 @@
   --vfo-shadow-card: 0 4px 16px rgba(0, 10, 35, 0.35);
   --vfo-plan-tool-bg: #0b3a8e;
   --vfo-plan-tool-border: #3f72d4;
+
+  --vfo-link: #8cc8ff;
+  --vfo-accent-text: #8cc8ff;
+  --vfo-accent-tint: rgba(77, 163, 255, 0.14);
+  --vfo-chip-text: #dde7fb;
+  --vfo-nav-active: #ffffff;
+  --vfo-nav-muted: #eef3ff;
+  --vfo-success-text: #5fd99a;
+  --vfo-success-text-2: #5fd99a;
 }
 
 /* Always reserve the scrollbar track so the page doesn't shift sideways

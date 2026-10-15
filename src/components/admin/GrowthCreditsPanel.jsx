@@ -207,7 +207,7 @@ export default function GrowthCreditsPanel() {
         )}
       </div>
 
-      {status && <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{status}</div>}
+      {status && <div style={{ background: 'var(--vfo-accent-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-accent-text)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{status}</div>}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px', marginBottom: '14px' }}>{error}</div>}
 
       <div style={card}>
@@ -350,7 +350,7 @@ function ServiceRow({ svc, cols, input, descBox, busy, admins, categories, onSav
       <button
         onClick={save}
         disabled={busy || !dirty || cost === '' || !name.trim()}
-        style={{ padding: '6px 12px', borderRadius: '8px', border: `1px solid ${dirty ? '#125ecc' : 'var(--vfo-border-strong)'}`, background: 'var(--vfo-card)', color: dirty ? '#125ecc' : 'var(--vfo-faint)', fontSize: '12.5px', fontWeight: 600, cursor: (busy || !dirty) ? 'default' : 'pointer' }}>
+        style={{ padding: '6px 12px', borderRadius: '8px', border: `1px solid ${dirty ? 'var(--vfo-accent-text)' : 'var(--vfo-border-strong)'}`, background: 'var(--vfo-card)', color: dirty ? 'var(--vfo-accent-text)' : 'var(--vfo-faint)', fontSize: '12.5px', fontWeight: 600, cursor: (busy || !dirty) ? 'default' : 'pointer' }}>
         Save
       </button>
       <button

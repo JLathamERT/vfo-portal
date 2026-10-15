@@ -191,14 +191,14 @@ function RuleCard({ rule, admins, adminsByEmail, onSaved }) {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button onClick={() => save(false)} disabled={saving}
-              style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: saving ? 'default' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600, opacity: saving ? 0.6 : 1 }}>
+              style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: saving ? 'default' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Saving…' : 'Save'}
             </button>
             <button onClick={() => save(true)} disabled={saving}
               style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: saving ? 'default' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontWeight: 600 }}>
               Reset to default
             </button>
-            {savedMsg && <span style={{ fontSize: '12px', color: '#1b9254', fontWeight: 600 }}>{savedMsg}</span>}
+            {savedMsg && <span style={{ fontSize: '12px', color: 'var(--vfo-success-text)', fontWeight: 600 }}>{savedMsg}</span>}
             {err && <span style={{ fontSize: '12px', color: '#d93025', fontWeight: 600 }}>{err}</span>}
           </div>
         </div>

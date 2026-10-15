@@ -133,7 +133,7 @@ export default function MemberGCMarketplace({ memberNumber }) {
       {/* Dashboard */}
       {gcTab === 'dashboard' && (
         <>
-          {banner && <div style={{ background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.4)', color: '#1b9254', fontWeight: 500, padding: '14px 20px', borderRadius: '10px', fontSize: '14px', marginBottom: '20px', textAlign: 'left' }}>{banner}</div>}
+          {banner && <div style={{ background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.4)', color: 'var(--vfo-success-text)', fontWeight: 500, padding: '14px 20px', borderRadius: '10px', fontSize: '14px', marginBottom: '20px', textAlign: 'left' }}>{banner}</div>}
           <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
             <div style={{ ...sectionStyle, flex: 1, textAlign: 'center' }}>
               <p style={{ color: 'var(--vfo-muted)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Credit Balance</p>
@@ -182,7 +182,7 @@ export default function MemberGCMarketplace({ memberNumber }) {
                     <tr>
                       {GC_PACKAGES.map(pkg => (
                         <td key={pkg.amount} {...pkgCellProps(pkg)}
-                          style={{ ...pkgCell(pkg.amount), padding: '2px 18px', fontSize: '12px', fontWeight: 600, color: '#1b9254', whiteSpace: 'nowrap' }}>
+                          style={{ ...pkgCell(pkg.amount), padding: '2px 18px', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-success-text)', whiteSpace: 'nowrap' }}>
                           {pkg.savings > 0 ? `${pkg.discountPct}% off` : '\u00a0'}
                         </td>
                       ))}
@@ -229,7 +229,7 @@ export default function MemberGCMarketplace({ memberNumber }) {
                     style={{ padding: '16px 20px', textAlign: 'left', borderRadius: '10px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-tint)', cursor: 'pointer' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>Bank transfer (ACH)</span>
-                      <span style={{ fontSize: '11px', fontWeight: 600, color: '#1b9254', background: 'rgba(27,146,84,0.15)', padding: '3px 10px', borderRadius: '999px' }}>No fee</span>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--vfo-success-text)', background: 'rgba(27,146,84,0.15)', padding: '3px 10px', borderRadius: '999px' }}>No fee</span>
                     </div>
                     <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--vfo-ink)', marginTop: '8px' }}>${money(buyPkg.price)}</div>
                     <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>Funds transfer directly from your bank. Takes a few business days; credits appear once it settles.</div>

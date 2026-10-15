@@ -9,6 +9,7 @@ import { isTrackerTask } from '../shared/trackerSteps'
 import RoleplayStep, { isRoleplayTask } from '../shared/RoleplayStep'
 import TaxIntakeForm from './TaxIntakeForm'
 import { formatDate as formatFullDate } from '../../lib/dates'
+import { readable } from '../shared/readableColor'
 
 // Group a phase's tasks so each section header owns the contiguous sub-steps beneath it,
 // letting the UI enclose the group and keep following standalone tasks visually separate.
@@ -653,7 +654,7 @@ function MemberTrackerTask({ task, meta, enrollmentId, progress, inGroup, onStat
   const count = entries != null ? entries.length : fallbackCount
   const dotColor = count >= meta.threshold ? '#1b9254' : count >= 1 ? '#e06717' : 'transparent'
   const pillStyle = count >= meta.threshold
-    ? { background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600 }
+    ? { background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }
     : count >= 1
       ? { background: 'rgba(224,103,23,0.15)', color: '#e06717', fontWeight: 600 }
       : { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }
@@ -896,7 +897,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
 
   if (intakeOn && mode === 'done') return (
     <div style={{ ...sectionStyle, borderColor: 'rgba(27,146,84,0.35)' }}>
-      <div style={{ fontSize: '15px', fontWeight: 700, color: '#1b9254', marginBottom: '8px' }}>Thank you</div>
+      <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-success-text)', marginBottom: '8px' }}>Thank you</div>
       <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>{doneMessage}</div>
       <button type="button" onClick={() => { setDoneMessage(''); setMode('list') }}
         style={{ marginTop: '16px', padding: '8px 18px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: 'none', background: '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
@@ -1039,7 +1040,7 @@ function MemberClientTrackView({ client, program }) {
                 <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{phase.name}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
+                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{nonAutoTasks.length}</span>}
                 {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
                 <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
@@ -1064,7 +1065,7 @@ function MemberClientTrackView({ client, program }) {
                         <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
                         <span style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
                           {done && tag && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{tag}</span>}
-                          {done && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600 }}>Done</span>}
+                          {done && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Done</span>}
                         </span>
                       </div>
                     )
@@ -1103,9 +1104,9 @@ function MemberClientTrackView({ client, program }) {
                       <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
                       <span style={{ fontSize: '13px', color: isDone || task.status_options === 'auto' ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                       {task.status_options === 'auto'
-                        ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
+                        ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
                         : isDone
-                          ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
+                          ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
                           : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
                       }
                       {isDone && p.completed_date && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
@@ -1250,7 +1251,7 @@ function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', cursor: m.notes ? 'pointer' : 'default' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatFullDate(m.meeting_date)}</span>
-                  <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>
+                  <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>
                 </div>
                 {m.notes && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

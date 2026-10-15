@@ -10,6 +10,7 @@ import RoleplayStep, { isRoleplayTask } from '../shared/RoleplayStep'
 import { VisibilityBadge, noteTint, SaveVisibilityButtons } from '../shared/NoteVisibility'
 import StepDate from '../shared/StepDate'
 import { formatDate as formatFullDate } from '../../lib/dates'
+import { readable } from '../shared/readableColor'
 
 const PROGRAMS = [
   { key: 'holistic', name: 'VFO Holistic Planning' },
@@ -556,7 +557,7 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
               </div>
             </div>
             <button onClick={saveEnrollment} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Save</button>
-            {saveStatus && <span style={{ color: saveStatus === 'Saved!' ? '#1b9254' : '#d93025', fontSize: '13px', marginLeft: '12px' }}>{saveStatus}</span>}
+            {saveStatus && <span style={{ color: saveStatus === 'Saved!' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginLeft: '12px' }}>{saveStatus}</span>}
           </div>
         )}
       </div>
@@ -805,7 +806,7 @@ function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
                 <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{phase.name}{isReview && <span style={{ fontSize: '10px', color: 'var(--vfo-muted)', marginLeft: '8px', textTransform: 'none', fontWeight: '400', letterSpacing: '0' }}>checkpoint</span>}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
+                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{countable.length}</span>}
                 {state === 'pending' && !isReview && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
                 <span onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s', cursor: 'pointer' }}>▼</span>
@@ -830,7 +831,7 @@ function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
                     const isPositive = isPositiveStatus(p.status)
                     const statusColor = statusColors[p.status] || 'var(--vfo-muted)'
                     const statusSelect = (
-                      <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, phase.id)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '130px', borderColor: isTouched ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isTouched ? statusColor : 'var(--vfo-ink)' }}>
+                      <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, phase.id)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '130px', borderColor: isTouched ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isTouched ? readable(statusColor) : 'var(--vfo-ink)' }}>
                         <option value="">-- Status --</option>
                         {(task.status_options || 'Completed|Outstanding|Stopped').split('|').map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -883,7 +884,7 @@ function AdminTrackerRow({ task, meta, inGroup, enrollmentId, progress, onStatus
   const count = entries != null ? entries.length : fallbackCount
   const dotColor = count >= meta.threshold ? '#1b9254' : count >= 1 ? '#e06717' : 'transparent'
   const pillStyle = count >= meta.threshold
-    ? { background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }
+    ? { background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }
     : count >= 1
       ? { background: 'rgba(224,103,23,0.15)', color: '#e06717', fontWeight: 600, border: '1px solid rgba(224,103,23,0.3)' }
       : { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }
@@ -1088,7 +1089,7 @@ function ClientsPanel({ enrollment, member, program }) {
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Add Client</div>
           <div style={{ display: 'flex', gap: '12px' }}>
             <button onClick={() => selectAddMode('existing')} style={{ flex: 1, padding: '20px', borderRadius: '8px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.08)', color: '#0095ff', fontWeight: 500, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Add Existing Client</button>
-            <button onClick={() => selectAddMode('new')} style={{ flex: 1, padding: '20px', borderRadius: '8px', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.08)', color: '#1b9254', fontWeight: 500, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Add New Client</button>
+            <button onClick={() => selectAddMode('new')} style={{ flex: 1, padding: '20px', borderRadius: '8px', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.08)', color: 'var(--vfo-success-text)', fontWeight: 500, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Add New Client</button>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
             <button onClick={() => { setShowAdd(false); setAddMode(null) }} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
@@ -1282,7 +1283,7 @@ function MsmAssignment({ member, value, onChange, onSaved }) {
         <button onClick={save} disabled={saving} style={{ padding: '10px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>
           {saving ? 'Saving...' : 'Save'}
         </button>
-        {status && <span style={{ color: '#1b9254', fontWeight: 500, fontSize: '13px' }}>{status}</span>}
+        {status && <span style={{ color: 'var(--vfo-success-text)', fontWeight: 500, fontSize: '13px' }}>{status}</span>}
       </div>
     </div>
   )
@@ -1482,7 +1483,7 @@ function CoachingMeetings({ enrollment, member, eyebrow = 'Advanced Coaching' })
                     <textarea defaultValue={m.notes || ''} placeholder="Add notes..." rows={2} onBlur={e => { if (e.target.value !== (m.notes || '')) updateMeeting(m.id, { notes: e.target.value }) }} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
                   </div>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <button onClick={() => updateMeeting(m.id, { status: 'completed' })} style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Mark Completed</button>
+                    <button onClick={() => updateMeeting(m.id, { status: 'completed' })} style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Mark Completed</button>
                     <input type="date" defaultValue={m.meeting_date.split('T')[0]} onChange={e => updateMeeting(m.id, { meeting_date: e.target.value })} style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, fontSize: '11px', fontFamily: 'Inter, sans-serif' }} />
                     <button onClick={() => deleteMeeting(m.id)} style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.3)', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Delete</button>
                   </div>
@@ -1504,7 +1505,7 @@ function CoachingMeetings({ enrollment, member, eyebrow = 'Advanced Coaching' })
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   
                   <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatFullDate(m.meeting_date)}</span>
-                  <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>
+                  <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {m.notes && <VisibilityBadge visibility={m.visibility} />}

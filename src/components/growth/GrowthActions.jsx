@@ -51,7 +51,7 @@ export default function GrowthActions({ memberNumber, bundle, reload, onNavigate
       <TrackHero
         eyebrow="Growth Plan"
         title="Possible Growth Actions"
-        meta={<>Edit any action, then choose what to do with it — only <strong style={{ color: '#1b9254' }}>Potential Action</strong> items carry forward.</>}
+        meta={<>Edit any action, then choose what to do with it — only <strong style={{ color: 'var(--vfo-success-text)' }}>Potential Action</strong> items carry forward.</>}
       />
       {CATEGORY_ORDER.map(cat => {
         const catRows = rows.filter(r => r.category === cat).sort((a, b) => a.action_number - b.action_number)

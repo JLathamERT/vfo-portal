@@ -5,6 +5,7 @@ import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import { CONFIRMATION_CARD_SKIP } from '../../lib/confirmationStatus'
 import { ClientNameLink, MemberNameLink } from '../shared/personLinks'
 import { formatDate } from '../../lib/dates'
+import { readable } from '../shared/readableColor'
 
 const STAGE_LABELS = {
   not_started:     'Not Started',
@@ -83,7 +84,7 @@ function PaymentButtons({ plan, onRefresh }) {
     catch (e) { setErr(e.message || String(e)) } finally { setBusy(null) }
   }
 
-  const btnStyle = { padding: '4px 10px', fontSize: 11, fontWeight: 600, background: 'rgba(34,197,94,0.15)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.4)', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit' }
+  const btnStyle = { padding: '4px 10px', fontSize: 11, fontWeight: 600, background: 'rgba(34,197,94,0.15)', color: 'var(--vfo-success-text-2)', border: '1px solid rgba(34,197,94,0.4)', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit' }
   const btnDisabled = { ...btnStyle, opacity: 0.5, cursor: 'not-allowed' }
 
   const showPayByCheck = plan.checkout_token && !plan.retainer_status
@@ -447,7 +448,7 @@ export default function TaxAutomationPanel({ programScope = 'holistic' }) {
                       <td style={{ padding: 12, fontSize: 13, color: 'var(--vfo-muted)' }}><MemberNameLink memberNumber={row.member_number}>{row.member_name || row.member_number || '—'}</MemberNameLink></td>
                       <td style={{ padding: 12, fontSize: 13, color: 'var(--vfo-muted)' }}>{row.assigned_pf || '—'}</td>
                       <td style={{ padding: 12 }}>
-                        <span style={{ padding: '3px 10px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: `${stageColor}18`, color: stageColor, border: `1px solid ${stageColor}33` }}>
+                        <span style={{ padding: '3px 10px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: `${stageColor}18`, color: readable(stageColor), border: `1px solid ${stageColor}33` }}>
                           {STAGE_LABELS[stage] || stage}
                         </span>
                       </td>

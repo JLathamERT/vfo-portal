@@ -97,7 +97,7 @@ export default function MemberHelpButton() {
     : { position: 'fixed', right: '24px', bottom: '92px', zIndex: 899, width: '400px', maxHeight: '72vh', borderRadius: '16px' }
 
 
-  const smallBtn = { padding: '5px 12px', borderRadius: '6px', border: '1px solid rgba(18,94,204,0.35)', background: 'transparent', color: '#125ecc', fontWeight: 600, fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }
+  const smallBtn = { padding: '5px 12px', borderRadius: '6px', border: '1px solid rgba(18,94,204,0.35)', background: 'transparent', color: 'var(--vfo-accent-text)', fontWeight: 600, fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }
 
   const emptyText = q ? 'No matches. Try a different word.' : 'No FAQs yet.'
 
@@ -156,10 +156,10 @@ export default function MemberHelpButton() {
                   return (
                     <div key={item.id} style={{ borderBottom: '1px solid var(--vfo-tint)' }}>
                       <button onClick={() => toggle(item.id)} aria-expanded={isOpen} style={{ width: '100%', textAlign: 'left', padding: '12px 0', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px', fontFamily: 'Inter, sans-serif' }}>
-                        <span style={{ flexShrink: 0, width: '20px', height: '20px', borderRadius: '50%', background: showPlay ? 'rgba(0,149,255,0.15)' : showDoc ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', color: showPlay ? '#0095ff' : '#1b9254', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '1px' }}>
+                        <span style={{ flexShrink: 0, width: '20px', height: '20px', borderRadius: '50%', background: showPlay ? 'rgba(0,149,255,0.15)' : showDoc ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', color: showPlay ? '#0095ff' : 'var(--vfo-success-text)', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '1px' }}>
                           {showPlay ? '▶' : showDoc ? <span style={{ fontSize: '11px', fontWeight: 700 }}>PDF</span> : <span style={{ color: 'var(--vfo-muted)', fontSize: '12px', fontWeight: 700 }}>{isOpen ? '−' : '+'}</span>}
                         </span>
-                        <span style={{ flex: 1, fontSize: '14px', fontWeight: isOpen ? 600 : 500, color: isOpen ? '#125ecc' : 'var(--vfo-ink)', lineHeight: 1.4 }}>{item.question}</span>
+                        <span style={{ flex: 1, fontSize: '14px', fontWeight: isOpen ? 600 : 500, color: isOpen ? 'var(--vfo-accent-text)' : 'var(--vfo-ink)', lineHeight: 1.4 }}>{item.question}</span>
                       </button>
                       {isOpen && (
                         <div style={{ padding: '0 0 14px 30px' }}>

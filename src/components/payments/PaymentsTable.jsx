@@ -310,7 +310,7 @@ export default function PaymentsTable({
           </div>
           {r.detail && <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '3px' }}>{r.detail}</div>}
           {onBehalf && <div style={{ marginTop: '5px' }}><Tag fg="#8a5200" bg="#fcefd6">Paid by {r.onBehalfByMember} — not the client’s own payment</Tag></div>}
-          {r.onBehalfForClient && <div style={{ marginTop: '5px' }}><Tag fg="#1d4ed8" bg="var(--vfo-tint)">On behalf of {r.onBehalfForClient}</Tag></div>}
+          {r.onBehalfForClient && <div style={{ marginTop: '5px' }}><Tag fg="var(--vfo-accent-text)" bg="var(--vfo-tint)">On behalf of {r.onBehalfForClient}</Tag></div>}
           {(r.invoiceNumber || r.receiptNumber) && (
             <div style={{ fontSize: '11px', color: 'var(--vfo-placeholder)', marginTop: '5px', fontFamily: 'ui-monospace, monospace' }}>
               {[r.invoiceNumber, r.receiptNumber].filter(Boolean).join('  ·  ')}

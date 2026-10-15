@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 
-const baseStyle = { color: 'var(--vfo-primary, #125ecc)', cursor: 'pointer', textDecoration: 'none' }
+const baseStyle = { color: 'var(--vfo-link, #125ecc)', cursor: 'pointer', textDecoration: 'none' }
 const hoverProps = {
   onMouseEnter: e => { e.currentTarget.style.textDecoration = 'underline' },
   onMouseLeave: e => { e.currentTarget.style.textDecoration = 'none' },

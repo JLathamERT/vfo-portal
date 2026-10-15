@@ -67,7 +67,7 @@ export default function PayoutSetupPage() {
   if (status === 'complete') return (
     <TokenShell maxWidth={520}>
       <div style={cardStyle}>
-        <div style={{ ...iconCircleStyle, background: 'rgba(34,197,94,0.15)', color: '#16a34a' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>✓</span></div>
+        <div style={{ ...iconCircleStyle, background: 'rgba(34,197,94,0.15)', color: 'var(--vfo-success-text-2)' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>✓</span></div>
         <h1 style={titleStyle}>You're all set</h1>
         <p style={subtitleStyle}>Your payout details are complete and verified by Stripe. Payments to you can now be sent. You can close this page.</p>
       </div>

@@ -73,7 +73,7 @@ export default function MemberTaxDiagnostic({ member }) {
         ))}
         {view === 'submitted' && (
           <button type="button" onClick={loadForms}
-            style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid #125ecc', background: 'rgba(18,94,204,0.08)', color: '#125ecc', fontFamily: 'Inter, sans-serif' }}>
+            style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid var(--vfo-accent-text)', background: 'rgba(18,94,204,0.08)', color: 'var(--vfo-accent-text)', fontFamily: 'Inter, sans-serif' }}>
             Refresh
           </button>
         )}
@@ -82,7 +82,7 @@ export default function MemberTaxDiagnostic({ member }) {
       {/* The form keeps its usual width (900px, as on the MSM Tax Planning tab). */}
       {view === 'start' && <div style={{ maxWidth: '900px' }}>{doneMessage ? (
         <div style={{ ...sectionStyle, borderColor: 'rgba(27,146,84,0.35)' }}>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: '#1b9254', marginBottom: '8px' }}>Thank you</div>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-success-text)', marginBottom: '8px' }}>Thank you</div>
           <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>{doneMessage}</div>
           <button type="button" onClick={restart}
             style={{ marginTop: '16px', padding: '8px 18px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: 'none', background: '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif' }}>

@@ -107,7 +107,7 @@ function PFPricingForm({ clientId, serviceLevel, pipelineId, onComplete, memberC
         </div>
       </div>
       <button onClick={handleSubmit} disabled={submitting || !grossFee || !paymentPlan}
-        style={{ marginTop: '12px', padding: '8px 24px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
+        style={{ marginTop: '12px', padding: '8px 24px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
         {submitting ? 'Saving...' : 'Submit Pricing'}
       </button>
     </div>

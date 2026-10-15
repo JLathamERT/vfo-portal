@@ -42,7 +42,7 @@ export default function SpecialistLogin() {
       <p style={{ fontSize: '11.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2.5px', margin: '0 0 10px' }}>Specialist Portal</p>
       <h2 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--vfo-heading)', marginTop: 0, marginBottom: '8px', fontSize: '28px' }}>Sign in</h2>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', marginBottom: '28px' }}>Welcome back — enter your specialist credentials.</p>
-      {fromSetup && <p style={{ color: '#16a34a', fontWeight: 500, fontSize: '13px', marginBottom: '16px', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: '10px', padding: '10px 14px' }}>Login created. Sign in with your new passcode.</p>}
+      {fromSetup && <p style={{ color: 'var(--vfo-success-text-2)', fontWeight: 500, fontSize: '13px', marginBottom: '16px', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: '10px', padding: '10px 14px' }}>Login created. Sign in with your new passcode.</p>}
       <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div>
           <label style={labelStyle}>Email</label>

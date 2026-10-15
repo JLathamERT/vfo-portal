@@ -42,7 +42,7 @@ export default function RequestDocsButton({ entityType, entityKey, section, reci
           title="Drafts a Gmail asking this person for documentation, with a secure upload link."
           style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600 }}
         >Request documentation</button>
-        {sent && <span style={{ fontSize: '11px', color: '#1b9254', fontWeight: 600 }}>Request email drafted</span>}
+        {sent && <span style={{ fontSize: '11px', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Request email drafted</span>}
       </div>
 
       {composeOpen && (

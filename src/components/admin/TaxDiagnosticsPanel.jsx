@@ -4,6 +4,7 @@ import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { formatDate, formatDateTime } from '../../lib/dates'
 import { TAX_INTAKE_QUESTIONS, numberTaxIntakeQuestions } from '../member/taxIntakeQuestions'
 import CopyLink from '../shared/CopyLink'
+import { readable } from '../shared/readableColor'
 
 // Tax Diagnostics — the queue of public /tax-diagnostic submissions (grantable
 // tab `tax_diagnostics`, backend TAB_ACTIONS.tax_diagnostics).
@@ -195,7 +196,7 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
           </button>
         ))}
         <button type="button" onClick={load}
-          style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid #125ecc', background: 'rgba(18,94,204,0.08)', color: '#125ecc', fontFamily: 'Inter, sans-serif' }}>
+          style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid var(--vfo-accent-text)', background: 'rgba(18,94,204,0.08)', color: 'var(--vfo-accent-text)', fontFamily: 'Inter, sans-serif' }}>
           Refresh
         </button>
       </div>
@@ -256,7 +257,7 @@ export function DiagnosticCard({ d, members, open, onToggle, onChanged, card, me
           <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
             {clientProfileUrl
               ? <a href={clientProfileUrl} onClick={e => { e.preventDefault(); e.stopPropagation(); navigate(clientProfileUrl) }}
-                  title="Open client profile" style={{ color: '#125ecc', textDecoration: 'underline' }}>{clientName}</a>
+                  title="Open client profile" style={{ color: 'var(--vfo-link)', textDecoration: 'underline' }}>{clientName}</a>
               : clientName}
           </div>
           <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '3px', lineHeight: 1.55 }}>
@@ -269,8 +270,8 @@ export function DiagnosticCard({ d, members, open, onToggle, onChanged, card, me
               : <>Submitted {formatDateTime(d.created_at)} · {d.completed_by === 'member' ? 'Completed by a VFO member' : 'Completed by the client'} · Referred by: {referrerText(d)}</>}
           </div>
         </div>
-        <span style={{ padding: '4px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, color: chip.color, background: chip.color + '1a' }}>{chip.label}</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', fontSize: '12px', fontWeight: 600, color: '#125ecc' }}>
+        <span style={{ padding: '4px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, color: readable(chip.color), background: chip.color + '1a' }}>{chip.label}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-accent-text)' }}>
           {open ? 'Hide' : 'Open'}
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ transition: 'transform 0.15s', transform: open ? 'rotate(180deg)' : 'none' }}>
             <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -392,7 +393,7 @@ function ConfirmBox({ d, members, onChanged }) {
       )}
       {picked ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
-          <span style={{ padding: '7px 14px', borderRadius: '999px', background: 'rgba(18,94,204,0.10)', color: '#125ecc', fontSize: '13px', fontWeight: 600 }}>
+          <span style={{ padding: '7px 14px', borderRadius: '999px', background: 'rgba(18,94,204,0.10)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600 }}>
             {picked.name} ({picked.member_number}){picked.member_type ? ` - ${picked.member_type}` : ''}
           </span>
           <button type="button" onClick={() => { setMemberNumber(''); setSearch('') }} style={{ ...btn(false, false), padding: '6px 14px', fontSize: '12px' }}>Change</button>
@@ -423,7 +424,7 @@ function ConfirmBox({ d, members, onChanged }) {
       </div>
 
       {err && <div style={{ marginTop: '12px', fontSize: '12.5px', color: '#d93025' }}>{err}</div>}
-      {msg && <div style={{ marginTop: '12px', fontSize: '12.5px', color: '#1b9254' }}>{msg}</div>}
+      {msg && <div style={{ marginTop: '12px', fontSize: '12.5px', color: 'var(--vfo-success-text)' }}>{msg}</div>}
       <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
         <button type="button" onClick={confirm} disabled={busy || !picked} style={btn(true, busy || !picked)}>{busy ? 'Working...' : 'Confirm'}</button>
         <button type="button" onClick={dismiss} disabled={busy}
@@ -564,7 +565,7 @@ function LeadBox({ d, members, onChanged }) {
           <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '14px 0 8px' }}>Choose the member</div>
           {picked ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
-              <span style={{ padding: '7px 14px', borderRadius: '999px', background: 'rgba(18,94,204,0.10)', color: '#125ecc', fontSize: '13px', fontWeight: 600 }}>
+              <span style={{ padding: '7px 14px', borderRadius: '999px', background: 'rgba(18,94,204,0.10)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600 }}>
                 {picked.name} ({picked.member_number}){picked.member_type ? ` - ${picked.member_type}` : ''}
               </span>
               <button type="button" onClick={() => { setMemberNumber(''); setSearch('') }}
@@ -623,7 +624,7 @@ function DepositTrack({ intake, payer, payFirst = false, createdAt = null, membe
   const clientCreated = intake.status === 'completed' && intake.client_id
   const orange = '#e06717'
   const chip = (text, color) => (
-    <span style={{ fontSize: '10.5px', padding: '2px 9px', borderRadius: '999px', background: color + '26', border: `1px solid ${color}4d`, color, fontWeight: 600, whiteSpace: 'nowrap' }}>{text}</span>
+    <span style={{ fontSize: '10.5px', padding: '2px 9px', borderRadius: '999px', background: color + '26', border: `1px solid ${color}4d`, color: readable(color), fontWeight: 600, whiteSpace: 'nowrap' }}>{text}</span>
   )
 
   const steps = waived
@@ -774,7 +775,7 @@ function MemberAwaitingBox({ d, onChanged }) {
           : <button type="button" disabled={!!busy} onClick={sendLink} style={btn(true)}>{busy === 'send' ? 'Sending...' : d.intake?.link_sent_at ? 'Send payment link again' : 'Send payment link'}</button>}
         <button type="button" disabled={!!busy} onClick={dismiss} style={btn(false)}>{busy === 'dismiss' ? 'Dismissing...' : 'Dismiss'}</button>
       </div>
-      {note && <div style={{ color: '#1b9254', fontWeight: 600, marginTop: '8px' }}>{note}</div>}
+      {note && <div style={{ color: 'var(--vfo-success-text)', fontWeight: 600, marginTop: '8px' }}>{note}</div>}
       {err && <div style={{ color: '#d93025', marginTop: '8px' }}>{err}</div>}
     </div>
   )

@@ -43,6 +43,7 @@ import MemberOnboardingPanel from '../components/admin/MemberOnboardingPanel'
 import MembershipFeesPanel from '../components/admin/MembershipFeesPanel'
 import AccountingCombinedPanel, { PILL_KEY as ACCOUNTING_PILL_KEY } from '../components/admin/AccountingCombinedPanel'
 import OutstandingLinksPanel from '../components/admin/OutstandingLinksPanel'
+import HeldPayoutsPanel from '../components/admin/HeldPayoutsPanel'
 import SpecialistRevenueAutomationPanel from '../components/admin/SpecialistRevenueAutomationPanel'
 import GrowthCreditsPanel from '../components/admin/GrowthCreditsPanel'
 import GrowthCreditsAccountingPanel from '../components/admin/GrowthCreditsAccountingPanel'
@@ -54,21 +55,53 @@ import { DirectoryListSkeleton } from '../components/shared/Skeleton'
 // A dropdown row that, on hover, flies out a submenu of options to the right.
 // An option carrying its own `submenu` nests another flyout (More ▸ Accounting ▸
 // Members ▸ …).
-function SubmenuRow({ label, options, onSelect }) {
-  const [open, setOpen] = useState(false)
+// Hover intent for one menu level, so a diagonal move toward an open flyout
+// may cross sibling rows (or briefly leave the menu) without losing it: with a
+// flyout open, a sibling takes over only after the pointer rests on it, and
+// leaving the level closes it only after a grace period.
+const FLYOUT_SWITCH_MS = 250
+const FLYOUT_CLOSE_MS = 400
+
+function useFlyoutLevel() {
+  const [active, setActive] = useState(null)
+  const activeRef = useRef(null)
+  const timer = useRef(null)
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const set = (key) => { activeRef.current = key; setActive(key) }
+  return {
+    active,
+    enter(key) {
+      clearTimeout(timer.current)
+      if (activeRef.current === null || activeRef.current === key) set(key)
+      else timer.current = setTimeout(() => set(key), FLYOUT_SWITCH_MS)
+    },
+    leave() {
+      clearTimeout(timer.current)
+      timer.current = setTimeout(() => set(null), FLYOUT_CLOSE_MS)
+    },
+    reset() {
+      clearTimeout(timer.current)
+      set(null)
+    },
+  }
+}
+
+function SubmenuRow({ label, options, onSelect, open, onEnter }) {
+  const level = useFlyoutLevel()
   return (
-    <div style={{ position: 'relative' }} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+    <div style={{ position: 'relative' }} onMouseEnter={onEnter}>
       <button style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%', padding: '8px 20px', background: open ? 'var(--vfo-tint)' : 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}>
         {label}<span style={{ fontSize: '9px', opacity: 0.6 }}>▸</span>
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: '-4px', left: '100%', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '210px', zIndex: 210, paddingTop: '4px', paddingBottom: '4px', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
+        <div onMouseLeave={level.leave} style={{ position: 'absolute', top: '-4px', left: '100%', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '210px', zIndex: 210, paddingTop: '4px', paddingBottom: '4px', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
           {options.map(opt => opt.submenu ? (
-            <SubmenuRow key={opt.key} label={opt.label} options={opt.submenu} onSelect={onSelect} />
+            <SubmenuRow key={opt.key} label={opt.label} options={opt.submenu} onSelect={onSelect}
+              open={level.active === opt.key} onEnter={() => level.enter(opt.key)} />
           ) : (
             <button key={opt.key} onClick={() => onSelect(opt.key)}
               style={{ display: 'block', width: '100%', padding: '8px 20px', background: 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--vfo-tint)'; level.enter(opt.key) }}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               {opt.label}
             </button>
@@ -82,6 +115,9 @@ function SubmenuRow({ label, options, onSelect }) {
 function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
   const [open, setOpen] = useState(false)
   const closeTimer = useRef(null)
+  const level = useFlyoutLevel()
+
+  useEffect(() => () => clearTimeout(closeTimer.current), [])
 
   function handleMouseEnter() {
     clearTimeout(closeTimer.current)
@@ -89,22 +125,30 @@ function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
   }
 
   function handleMouseLeave() {
+    clearTimeout(closeTimer.current)
+    closeTimer.current = setTimeout(() => setOpen(false), FLYOUT_CLOSE_MS)
+    level.leave()
+  }
+
+  function closeNow() {
+    clearTimeout(closeTimer.current)
     setOpen(false)
+    level.reset()
   }
 
   // Key tabs (default) read as primary — larger, bolder, darker. Muted "other"
   // tabs (Accounting / Automation) are visually secondary.
   const btnStyle = muted ? {
     padding: '14px 14px', background: 'transparent', border: 'none',
-    borderBottom: isActive ? '2px solid #125ecc' : '2px solid transparent',
-    color: isActive ? '#125ecc' : '#97a3ba', fontSize: '13px',
+    borderBottom: isActive ? '2px solid var(--vfo-primary)' : '2px solid transparent',
+    color: isActive ? 'var(--vfo-nav-active)' : 'var(--vfo-nav-muted)', fontSize: '13px',
     fontWeight: isActive ? '600' : '500', cursor: 'pointer',
     fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
     display: 'flex', alignItems: 'center', gap: '6px'
   } : {
     padding: '15px 20px', background: 'transparent', border: 'none',
-    borderBottom: isActive ? '2px solid #125ecc' : '2px solid transparent',
-    color: isActive ? '#125ecc' : 'var(--vfo-ink)', fontSize: '14.5px',
+    borderBottom: isActive ? '2px solid var(--vfo-primary)' : '2px solid transparent',
+    color: isActive ? 'var(--vfo-nav-active)' : 'var(--vfo-ink)', fontSize: '14.5px',
     fontWeight: isActive ? '700' : '600', cursor: 'pointer',
     fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
     display: 'flex', alignItems: 'center', gap: '6px'
@@ -121,15 +165,16 @@ function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
           {items.map(item => (
             <div key={item.key}>
               {item.submenu && (
-                <SubmenuRow label={item.submenuLabel} options={item.submenu} onSelect={(k) => { onSelect(k); setOpen(false) }} />
+                <SubmenuRow label={item.submenuLabel} options={item.submenu} onSelect={(k) => { onSelect(k); closeNow() }}
+                  open={level.active === item.key} onEnter={() => level.enter(item.key)} />
               )}
               {item.header && (
                 <div style={{ padding: '8px 16px 4px', fontSize: '10px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{item.header}</div>
               )}
               {item.options && item.options.map(opt => (
-                <button key={opt.key} onClick={() => { onSelect(opt.key); setOpen(false) }}
+                <button key={opt.key} onClick={() => { onSelect(opt.key); closeNow() }}
                   style={{ display: 'block', width: '100%', padding: '8px 20px', background: 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--vfo-tint)'; level.enter(opt.key) }}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   {opt.label}
                 </button>
@@ -152,11 +197,11 @@ const PROFILE_ORIGIN_TABS = ['member_overview', 'client_overview', 'accounting']
 // the fallback card below, so a stale sessionStorage key can never blank the page.
 const ACCOUNTING_SECTIONS = [
   'payments', 'manual_connect_payment',
-  'specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_reconciliation',
+  'specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_reconciliation', 'specialist_held_payouts',
   'specialist_license', 'specialist_bg',
-  'holistic_revenue', 'holistic_reconciliation',
-  'tax_revenue', 'tax_reconciliation',
-  'pip_revenue', 'pip_reconciliation',
+  'holistic_revenue', 'holistic_reconciliation', 'holistic_held_payouts',
+  'tax_revenue', 'tax_reconciliation', 'tax_held_payouts',
+  'pip_revenue', 'pip_reconciliation', 'pip_held_payouts',
   'advisor_onboarding_fees', 'advisor_membership_fees',
   'accountant_onboarding_fees', 'accountant_membership_fees',
   'gc_accounting',
@@ -352,7 +397,7 @@ export default function AdminPortal() {
   // Only these views read load_data (experts / members / exclusions / ecosystems);
   // every other panel loads its own data and mounts without waiting for it.
   const viewNeedsLoadData = ['specialists', 'member_overview', 'advisors', 'accountants', 'strategic'].includes(activeTab) ||
-    (activeTab === 'accounting' && ['specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_reconciliation',
+    (activeTab === 'accounting' && ['specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_reconciliation', 'specialist_held_payouts',
       'specialist_license', 'specialist_bg', 'advisor_membership_fees', 'accountant_membership_fees'].includes(accountingSection))
 
   // The return leg of openMemberProfile's `origin`: put the admin back on the tab
@@ -939,7 +984,7 @@ export default function AdminPortal() {
           {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'manual_connect_payment' && (
             <ManualConnectPaymentPanel />
           )}
-          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'specialist_revenue' || accountingSection === 'specialist_payment_input' || accountingSection === 'specialist_recurring' || accountingSection === 'specialist_reconciliation') && (
+          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'specialist_revenue' || accountingSection === 'specialist_payment_input' || accountingSection === 'specialist_recurring' || accountingSection === 'specialist_reconciliation' || accountingSection === 'specialist_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · Specialists" title="VFO Specialist Revenue"
               maxWidth="1200px" initialKey={accountingSection === 'specialist_payment_input' ? 'specialist_revenue' : accountingSection}
@@ -948,6 +993,7 @@ export default function AdminPortal() {
                 { key: 'specialist_reconciliation', label: 'VFO Specialist Reconciliation', render: () => <SpecialistReconciliationPanel allMembers={allMembers} embedded /> },
                 { key: 'specialist_recurring', label: 'VFO Specialist Recurring Revenue Payments', render: () => <SpecialistRecurringPanel embedded /> },
                 { key: 'specialist_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="specrev" embedded /> },
+                { key: 'specialist_held_payouts', label: 'Held - No Payout Account', render: () => <HeldPayoutsPanel engine="specrev" embedded /> },
               ]}
             />
           )}
@@ -973,7 +1019,7 @@ export default function AdminPortal() {
               ]}
             />
           )}
-          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'holistic_revenue' || accountingSection === 'holistic_reconciliation') && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'holistic_revenue' || accountingSection === 'holistic_reconciliation' || accountingSection === 'holistic_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · VFO Services" title="Holistic Planning"
               maxWidth="1150px" initialKey={accountingSection}
@@ -981,10 +1027,11 @@ export default function AdminPortal() {
                 { key: 'holistic_revenue', label: 'Holistic Planning Revenue', render: () => <HolisticRevenuePanel embedded /> },
                 { key: 'holistic_reconciliation', label: 'Holistic Planning Reconciliation', render: () => <HolisticReconciliationPanel embedded /> },
                 { key: 'holistic_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="map1" embedded /> },
+                { key: 'holistic_held_payouts', label: 'Held - No Payout Account', render: () => <HeldPayoutsPanel engine="map1" embedded /> },
               ]}
             />
           )}
-          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'tax_revenue' || accountingSection === 'tax_reconciliation') && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'tax_revenue' || accountingSection === 'tax_reconciliation' || accountingSection === 'tax_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · VFO Services" title="Tax Planning"
               maxWidth="1150px" initialKey={accountingSection}
@@ -992,16 +1039,18 @@ export default function AdminPortal() {
                 { key: 'tax_revenue', label: 'Tax Planning Revenue', render: () => <TaxRevenuePanel embedded /> },
                 { key: 'tax_reconciliation', label: 'Tax Planning Reconciliation', render: () => <TaxReconciliationPanel embedded /> },
                 { key: 'tax_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="tax" embedded /> },
+                { key: 'tax_held_payouts', label: 'Held - No Payout Account', render: () => <HeldPayoutsPanel engine="tax" embedded /> },
               ]}
             />
           )}
-          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'pip_revenue' || accountingSection === 'pip_reconciliation') && (
+          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'pip_revenue' || accountingSection === 'pip_reconciliation' || accountingSection === 'pip_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · VFO Services" title="Additional PIP"
               maxWidth="1150px" initialKey={accountingSection}
               tabs={[
                 { key: 'pip_revenue', label: 'Additional PIP Revenue', render: () => <PipRevenuePanel embedded /> },
                 { key: 'pip_reconciliation', label: 'Additional PIP Reconciliation', render: () => <PipReconciliationPanel embedded /> },
+                { key: 'pip_held_payouts', label: 'Held - No Payout Account', render: () => <HeldPayoutsPanel engine="pip" embedded /> },
               ]}
             />
           )}

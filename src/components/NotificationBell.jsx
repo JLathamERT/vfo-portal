@@ -214,7 +214,7 @@ export default function NotificationBell() {
                       style={{
                         padding: '3px 9px', borderRadius: '4px', fontSize: '10.5px',
                         border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)',
-                        color: '#1b9254', fontWeight: 600, cursor: 'pointer', flexShrink: 0
+                        color: 'var(--vfo-success-text)', fontWeight: 600, cursor: 'pointer', flexShrink: 0
                       }}
                     >Done</button>
                   )}
