@@ -21,6 +21,9 @@ import { numberTaxIntakeQuestions } from '../../member/taxIntakeQuestions'
 // (utils/tax-plan-steps.ts displayLabel).
 const AUTO_STEP_NAME = 'AI PC Admin'
 const AUTO_STEP_LABEL = 'Automated steps'
+// Shown on the "Additional information required" step once the review is
+// answered — save-task.ts refuses the change with the same wording.
+const ADDL_INFO_LOCKED_HINT = 'Locked: the tax planner review is complete, so this step can no longer be changed.'
 
 // Matches the backend invoice money formatting ($X,XXX.XX).
 const fmtMoney = (n) => (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -2818,7 +2821,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
 
   // Done-rules, phase states and hero counts: ONE copy, shared with the plan lists.
   const {
-    addlInfoDone, allTasks, allocDone, allocatedPlanner, amendWindowOpen, confirmReadyTask, decision2Status, decision2Task, depositOk, depositRefunded, directPlan, findStepTask, getPhaseState, heroCountedTasks, heroDoneTasks, heroSteps, heroTotalTasks, isAmendNotApplicable, isRapidHidden, isRoiSkipSetTask, isSkippedAway, isStepExcluded, isTaskStatused, isTaxProgram, newFeeProcess, noDeposit, phasesAfterSpec, phasesBeforeSpec, prereqDone, rapidPlan, redLightTask, redLightVisible, returnsReceived, reviewProceed, reviewStatus, reviewStop, reviewTask, riskProfileDone, riskProfileTask, roiBooked, roiSkipMeetingFirst, roiSkipped, tax5State, tax5aHeroState, tax5aPhase, tax5aSpecTasks, tax5aTasks, tax5bCounted, tax5bPhase, tax5bState, tax5bTaskDone, tax5bUnlocked, tax6SpecTasks, taxPlannerAllocated,
+    addlInfoDone, addlInfoLocked, allTasks, allocDone, allocatedPlanner, amendWindowOpen, confirmReadyTask, decision2Status, decision2Task, depositOk, depositRefunded, directPlan, findStepTask, getPhaseState, heroCountedTasks, heroDoneTasks, heroSteps, heroTotalTasks, isAmendNotApplicable, isRapidHidden, isRoiSkipSetTask, isSkippedAway, isStepExcluded, isTaskStatused, isTaxProgram, newFeeProcess, noDeposit, phasesAfterSpec, phasesBeforeSpec, prereqDone, rapidPlan, redLightTask, redLightVisible, returnsReceived, reviewProceed, reviewStatus, reviewStop, reviewTask, riskProfileDone, riskProfileTask, roiBooked, roiSkipMeetingFirst, roiSkipped, tax5State, tax5aHeroState, tax5aPhase, tax5aSpecTasks, tax5aTasks, tax5bCounted, tax5bPhase, tax5bState, tax5bTaskDone, tax5bUnlocked, tax6SpecTasks, taxPlannerAllocated,
   } = makeTaxPlanRules({ plan, livePlan, phases, localProgress, taxSpecialists, taxPlanners })
 
   // "Has the amend step been answered?" for the steps that wait on it. An ABSENT
@@ -5130,18 +5133,21 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
             <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
-            <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)' }}>
+            <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key] || addlInfoLocked} title={addlInfoLocked ? ADDL_INFO_LOCKED_HINT : undefined} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)', cursor: addlInfoLocked ? 'not-allowed' : undefined }}>
               <option value="">-- Select --</option>
               {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} />
+            <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key] || addlInfoLocked} />
           </div>
+          {addlInfoLocked && !readOnly && (
+            <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', padding: '6px 0 6px 18px', borderBottom: '1px solid var(--vfo-border-soft)' }}>{ADDL_INFO_LOCKED_HINT}</div>
+          )}
           {infoRequired && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: subDotColor, flexShrink: 0, border: `1.5px solid ${subDotBorder}` }} />
                 <span style={{ fontSize: '13px', color: (done || requestedAt) ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>Request additional information{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={taxDisplayName(task.name)} templates={[{ name: 'TAX_request_additional_info', when: 'Asks the client to upload the requested additional information via a secure link' }]} context={emailCtx} /></span>}</span>
-                {readOnly ? (
+                {(readOnly || addlInfoLocked) ? (
                   done
                     ? <span style={chipStyle('#1b9254')}>Information received — {formatStamp(receivedAt)}</span>
                     : requestedAt ? <span style={chipStyle('#0095ff')}>Email sent — {formatStamp(requestedAt)}</span> : null
@@ -5150,7 +5156,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                 )}
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{requestedAt ? formatStamp(requestedAt) : ''}</span>
               </div>
-              {composeOpen && !readOnly && (
+              {composeOpen && !readOnly && !addlInfoLocked && (
                 <div style={{ marginLeft: '18px', marginBottom: '8px', padding: '14px 16px', background: 'var(--vfo-tint)', borderRadius: '10px', border: '1px solid var(--vfo-tint-deep)', fontFamily: 'Inter, sans-serif' }}>
                   <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
                     Subject: Additional information required - {clientFull || '[Client Name]'}
@@ -5812,6 +5818,9 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
         return plan?.tax_planner_id != null
       }
       if (t.name === 'Additional information required') {
+        // An answered review closes this step for good (taxPlanRules.js reviewAnswered).
+        const rs = planReviewTask ? prog[planReviewTask.id]?.status : null
+        if (rs === 'Proceed with tax planning' || rs === 'Stop tax planning') return true
         const st = prog[t.id]?.status
         return !!st && (st !== 'Additional info required' || !!plan?.additional_info_received_at)
       }

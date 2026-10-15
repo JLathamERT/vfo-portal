@@ -81,6 +81,17 @@ export function makeTaxPlanRules({ plan, livePlan, phases, localProgress, taxSpe
   const rapidPlan = !!(livePlan || plan)?.rapid_route && !roiSkipped
   const isRapidHidden = (t) => rapidPlan && (t?.status_options === 'tax_presentation_link' || t?.name === 'ROI Presentation')
 
+  // An ANSWERED "Tax planner review complete" (Proceed or Stop) closes the
+  // "Additional information required" step for good: the review is locked behind
+  // that step, so the answer proves it was done, and the step locks so going back
+  // to it can no longer re-lock everything after the review (Ameya Kabre plan 266,
+  // 2026-10-13). Mirrored in utils/tax-plan-steps.ts and save-task.ts (#339).
+  const reviewAnswered = (() => {
+    const rt = allTasks.find(t => t.name === 'Tax planner review complete')
+    const st = rt ? localProgress[rt.id]?.status : null
+    return st === 'Proceed with tax planning' || st === 'Stop tax planning'
+  })()
+
   // A task counts as statused for display when its progress is recorded in
   // client_tax_progress — or, for the two steps that write to client_tax_plans
   // instead, when the corresponding plan column is set.
@@ -117,6 +128,7 @@ export function makeTaxPlanRules({ plan, livePlan, phases, localProgress, taxSpe
     // Additional information required: the dropdown alone isn't done while info
     // is still being requested — it needs the received stamp to complete.
     if (t.name === 'Additional information required') {
+      if (reviewAnswered) return true
       const st = localProgress[t.id]?.status
       return !!st && (st !== 'Additional info required' || !!livePlan?.additional_info_received_at)
     }
@@ -371,6 +383,7 @@ export function makeTaxPlanRules({ plan, livePlan, phases, localProgress, taxSpe
 
   return {
     addlInfoDone,
+    addlInfoLocked: reviewAnswered,
     allTasks,
     allocDone,
     allocatedPlanner,
