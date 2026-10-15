@@ -14,7 +14,7 @@ Branch `fix/tax-client-signed-bell` (edge only + this docs PR). *Why:* Evan was 
 - `actions/tax/ceo-countersign.ts` (the BoldSign client-signed chain): a dismissible **`TAX_client_signed`** bell to the step owner — the PF, the member on a Direct plan (`taxPfRecipientsFor`, the chase bell's routing), `dedupe: "unread"` — titled *"<client> signed the Tax Planning agreement"* (*"…was signed by the member"* on member-pays); the unread *"<client> hasn't signed…"* bell for the client is marked read. Fail-soft.
 - Migration `20261015180000` (rule `TAX_client_signed`, area Tax, sort 175, applied live). No new action (591). `vfo-admin-api` **v994**; `boldsign-webhook` untouched.
 - Confirmed while here: both MAP 1 and Tax chase at **2 business days** (client email) and **4** (PF bell); no rule overrides.
-- **Live-proven** on sandbox plan 282 (Test Client 62, PF Jake): bell 3342 at the signing second, dummy chase bell 3341 cleared. **Not exercised:** member-pays wording, a Direct plan, the real-plan routing (code-identical to the chase bell).
+- **Live-proven** on sandbox plan 282 (Test Client 62, PF Jake): bell 3342 at the signing second, dummy chase bell 3341 cleared. Merged (edge `c8fe981` #293, react `0bfffde` #475; v994 byte-identical, not redeployed), tag `backend-good-2026-10-15-v994` pushed. **Not exercised:** member-pays wording, a Direct plan, the real-plan routing (code-identical to the chase bell).
 
 ---
 
