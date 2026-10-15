@@ -300,7 +300,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
           <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Migrated</span>
         )}
         {locked && hasPricing && (
-          <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.3)', color: '#1b9254', fontWeight: 600 }}>Locked — charged</span>
+          <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.3)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Locked — charged</span>
         )}
         {refundOverride > 0 && !refunded && (
           <span title="A Refund click at Client decision 1 returns this amount instead of the full retainer" style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.12)', border: '1px solid rgba(224,103,23,0.35)', color: '#e06717', fontWeight: 600 }}>Refund on Stop: {fmt(refundOverride)}</span>
@@ -415,7 +415,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <div style={{ ...label, fontWeight: 600, color: 'var(--vfo-ink)' }}>Refund override ($)</div>
                 <input value={refundDraft} onChange={e => setRefundDraft(e.target.value)} placeholder={capturedBase > 0 ? `full retainer ${fmt(capturedBase)}` : 'full retainer'} inputMode="decimal" style={{ ...inputStyle, width: '150px' }} />
-                <button disabled={refundBusy} onClick={() => saveRefundOverride(false)} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '11px', cursor: refundBusy ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }}>{refundBusy ? 'Saving…' : 'Save'}</button>
+                <button disabled={refundBusy} onClick={() => saveRefundOverride(false)} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '11px', cursor: refundBusy ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>{refundBusy ? 'Saving…' : 'Save'}</button>
                 {refundOverride > 0 && (
                   <button disabled={refundBusy} onClick={() => saveRefundOverride(true)} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '11px', cursor: refundBusy ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Clear</button>
                 )}
@@ -424,7 +424,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
                 If the client clicks <b>Refund</b> on their decision email, Stripe returns this amount instead of the full retainer{capturedBase > 0 ? ` (${fmt(capturedBase)})` : ''}. It changes nothing else — Continue, rev-share and the implementation fee all run as normal. Blank = full retainer.
               </div>
               {refundErr && <div style={{ marginTop: '6px', fontSize: '11px', color: '#e74c3c' }}>{refundErr}</div>}
-              {refundOk && <div style={{ marginTop: '6px', fontSize: '11px', color: '#1b9254' }}>{refundOk}</div>}
+              {refundOk && <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--vfo-success-text)' }}>{refundOk}</div>}
             </div>
           )}
 
@@ -472,7 +472,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
                 </div>
               </div>
 
-              <div style={{ marginTop: '10px', fontSize: '12px', fontWeight: 600, color: sumOk ? '#1b9254' : '#e74c3c' }}>
+              <div style={{ marginTop: '10px', fontSize: '12px', fontWeight: 600, color: sumOk ? 'var(--vfo-success-text)' : '#e74c3c' }}>
                 {sumOk
                   ? `Sums to ${fmt(basisAmt)}`
                   : `${fmt(draftSum)} entered — must sum to ${fmt(basisAmt)}`}
@@ -487,7 +487,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
               {err && <div style={{ marginTop: '8px', fontSize: '11px', color: '#e74c3c' }}>{err}</div>}
 
               <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
-                <button disabled={busy || !sumOk} onClick={save} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '11px', cursor: (busy || !sumOk) ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600, opacity: (busy || !sumOk) ? 0.6 : 1 }}>{busy ? 'Saving…' : 'Save split'}</button>
+                <button disabled={busy || !sumOk} onClick={save} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '11px', cursor: (busy || !sumOk) ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, opacity: (busy || !sumOk) ? 0.6 : 1 }}>{busy ? 'Saving…' : 'Save split'}</button>
                 <button disabled={busy} onClick={() => setEditing(false)} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Cancel</button>
               </div>
             </div>

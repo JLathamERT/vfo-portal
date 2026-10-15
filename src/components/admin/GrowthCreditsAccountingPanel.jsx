@@ -131,7 +131,7 @@ export default function GrowthCreditsAccountingPanel() {
                 <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(t.created_at)}</span>
                 <span><MemberNameLink memberNumber={t.member_number} style={{ fontWeight: 600 }}>{t.member_name}</MemberNameLink></span>
                 <span><TypeTag type={t.type} sessionId={t.stripe_session_id} /></span>
-                <span style={{ textAlign: 'right', fontWeight: 700, color: (t.amount || 0) < 0 ? '#d93025' : '#16a34a' }}>{(t.amount || 0) > 0 ? '+' : ''}{t.amount}</span>
+                <span style={{ textAlign: 'right', fontWeight: 700, color: (t.amount || 0) < 0 ? '#d93025' : 'var(--vfo-success-text-2)' }}>{(t.amount || 0) > 0 ? '+' : ''}{t.amount}</span>
                 <span style={{ textAlign: 'right' }}>{t.amount_usd != null ? money(t.amount_usd) : '—'}</span>
                 <span style={{ color: 'var(--vfo-muted)' }}>{t.description || '—'}</span>
               </div>

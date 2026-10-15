@@ -24,7 +24,7 @@ function StatusTag({ status, method }) {
   return (
     <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
       <span style={{ padding: '3px 10px', borderRadius: '20px', background: tone.bg, color: tone.fg, fontSize: '11.5px', fontWeight: 700 }}>{tone.label}</span>
-      {method && <span style={{ padding: '3px 8px', borderRadius: '20px', background: ach ? 'rgba(2,41,115,0.08)' : 'rgba(18,94,204,0.10)', color: ach ? 'var(--vfo-heading)' : '#125ecc', fontSize: '11px', fontWeight: 600 }}>{ach ? 'ACH' : 'Card'}</span>}
+      {method && <span style={{ padding: '3px 8px', borderRadius: '20px', background: ach ? 'rgba(2,41,115,0.08)' : 'rgba(18,94,204,0.10)', color: ach ? 'var(--vfo-heading)' : 'var(--vfo-accent-text)', fontSize: '11px', fontWeight: 600 }}>{ach ? 'ACH' : 'Card'}</span>}
     </span>
   )
 }
@@ -96,7 +96,7 @@ export default function MemberOnboardingPanel({ kind = 'advisor', title }) {
           <option value={-1}>All months</option>
           {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
         </select>
-        <button onClick={load} style={{ ...sel, color: '#125ecc', fontWeight: 600 }}>Refresh</button>
+        <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
       {loading && <AccountingTableSkeleton cols={6} />}

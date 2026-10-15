@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
+import { readable } from './readableColor'
 
 // 90 Day Plan — the Proactive Facilitator Roleplay step (Holistic + Partnership
 // Fast Track, end of "MSM 5 Activity"). MSM-driven, laid out like the tax
@@ -157,7 +158,7 @@ export default function RoleplayStep({ task, enrollmentId, programId, inGroup, r
         disabled={busy || (notYet && !a.outcome)}
         title={notYet && !a.outcome ? 'Available from the roleplay date' : ''}
         onChange={e => setOutcome(a.id, e.target.value)}
-        style={{ ...tdInput, background: 'var(--vfo-card)', minWidth: '120px', color: outcomeColor || 'var(--vfo-ink)', borderColor: outcomeColor ? `${outcomeColor}66` : 'var(--vfo-border-strong)' }}
+        style={{ ...tdInput, background: 'var(--vfo-card)', minWidth: '120px', color: readable(outcomeColor) || 'var(--vfo-ink)', borderColor: outcomeColor ? `${outcomeColor}66` : 'var(--vfo-border-strong)' }}
       >
         <option value="">{notYet ? 'Scheduled' : '-- Outcome --'}</option>
         <option value="completed">Completed</option>

@@ -132,7 +132,7 @@ export default function MemberWebsitePlugin({ member, onDataChange, readOnly = f
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
               {PRESET_FONTS.map(font => (
                 <button key={font} onClick={() => update('font', font)}
-                  style={{ padding: '6px 14px', borderRadius: '6px', border: `1px solid ${settings.font === font ? '#125ecc' : 'var(--vfo-border-strong)'}`, background: settings.font === font ? 'rgba(18,94,204,0.08)' : 'transparent', color: settings.font === font ? '#125ecc' : 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }}>
+                  style={{ padding: '6px 14px', borderRadius: '6px', border: `1px solid ${settings.font === font ? 'var(--vfo-accent-text)' : 'var(--vfo-border-strong)'}`, background: settings.font === font ? 'rgba(18,94,204,0.08)' : 'transparent', color: settings.font === font ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }}>
                   {font}
                 </button>
               ))}
@@ -196,7 +196,7 @@ export default function MemberWebsitePlugin({ member, onDataChange, readOnly = f
               <div style={{ display: 'flex', gap: '8px' }}>
                 {[['filter', 'Filter Buttons'], ['grouped', 'Grouped']].map(([val, label]) => (
                   <button key={val} onClick={() => update('display_mode', val)}
-                    style={{ padding: '6px 14px', borderRadius: '6px', border: `1px solid ${settings.display_mode === val ? '#125ecc' : 'var(--vfo-border-strong)'}`, background: settings.display_mode === val ? 'rgba(18,94,204,0.08)' : 'transparent', color: settings.display_mode === val ? '#125ecc' : 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>
+                    style={{ padding: '6px 14px', borderRadius: '6px', border: `1px solid ${settings.display_mode === val ? 'var(--vfo-accent-text)' : 'var(--vfo-border-strong)'}`, background: settings.display_mode === val ? 'rgba(18,94,204,0.08)' : 'transparent', color: settings.display_mode === val ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>
                     {label}
                   </button>
                 ))}

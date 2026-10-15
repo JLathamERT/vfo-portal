@@ -200,7 +200,7 @@ export default function MemberBrandingCard({ memberNumber, mode = 'member', styl
         {!companyName && <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '8px' }}>{admin ? 'Company name is not set on this member.' : 'To use Company name, add your company name above and save it first.'}</div>}
       </div>
 
-      {msg && <div style={{ fontSize: '13px', marginTop: '6px', color: msgType === 'success' ? '#1b9254' : '#d93025' }}>{msg}</div>}
+      {msg && <div style={{ fontSize: '13px', marginTop: '6px', color: msgType === 'success' ? 'var(--vfo-success-text)' : '#d93025' }}>{msg}</div>}
     </div>
   )
 }

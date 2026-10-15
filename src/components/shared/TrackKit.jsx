@@ -44,14 +44,14 @@ function PhaseStepper({ steps }) {
                 fontSize: '10px', fontWeight: 700, lineHeight: 1,
                 background: isDone ? '#1b9254' : 'var(--vfo-card)',
                 border: isDone ? 'none' : isActive ? '2px solid #0a85e8' : '2px solid var(--vfo-border-chip)',
-                color: isDone ? '#ffffff' : isActive ? '#125ecc' : 'var(--vfo-faint)',
+                color: isDone ? '#ffffff' : isActive ? 'var(--vfo-accent-text)' : 'var(--vfo-faint)',
                 boxShadow: isActive ? '0 2px 8px rgba(18,94,204,0.22)' : 'none',
               }}>
                 {isDone ? '✓' : (s.number != null ? s.number : i + 1)}
               </div>
               <div style={{
                 fontSize: '10px', fontWeight: 600, lineHeight: 1.25, textAlign: 'center',
-                color: isActive ? '#125ecc' : isDone ? 'var(--vfo-muted)' : 'var(--vfo-faint)',
+                color: isActive ? 'var(--vfo-accent-text)' : isDone ? 'var(--vfo-muted)' : 'var(--vfo-faint)',
               }}>{s.label}</div>
             </div>
           </Fragment>

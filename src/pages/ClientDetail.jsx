@@ -540,7 +540,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                     <option value="pending">Pending</option>
                     <option value="lost">Lost</option>
                   </select>
-                  {statusSaved && <span style={{ color: '#1b9254', fontSize: '14px', fontWeight: '600' }}>Saved!</span>}
+                  {statusSaved && <span style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600' }}>Saved!</span>}
                 </div>
             }
           </div>
@@ -563,7 +563,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                     <option value="Jake Latham">Jake Latham</option>
                   </select>
                   <button onClick={savePf} disabled={savingPf} style={{ padding: '8px 20px', borderRadius: '8px', background: savingPf ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '14px', cursor: savingPf ? 'not-allowed' : 'pointer' }}>{savingPf ? 'Saving...' : 'Save'}</button>
-                  {pfSaved && <span style={{ color: '#1b9254', fontSize: '14px', fontWeight: '600' }}>Saved!</span>}
+                  {pfSaved && <span style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600' }}>Saved!</span>}
                 </div>
             }
           </div>
@@ -605,7 +605,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
                     <VisibilityBadge visibility={note.visibility} />
-                    {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
+                    {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
                     <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.tab_name}</span>
                     {note.phase_name !== 'General' && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{note.phase_name}</span>}
                     <button onClick={() => { setEditingNoteId(note.id); setEditNoteText(note.note_text) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>
@@ -637,7 +637,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
                 <VisibilityBadge visibility={note.visibility} />
-                {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
+                {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
                 {note.tab_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.tab_name}</span>}
                 {note.phase_name !== 'General' && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{note.phase_name}</span>}
               </div>
@@ -663,7 +663,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
-                {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
+                {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
                 {note.tab_name && note.phase_name !== 'General' && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.phase_name}</span>}
               </div>
             </div>
@@ -748,7 +748,7 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button onClick={save} disabled={saving} style={{ padding: '10px 24px', borderRadius: '8px', background: saving ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '14px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save Changes'}</button>
-          {status === 'saved' && <span style={{ color: '#1b9254', fontSize: '14px', fontWeight: '600' }}>✓ Changes saved</span>}
+          {status === 'saved' && <span style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600' }}>✓ Changes saved</span>}
           {status === 'error' && <span style={{ color: '#e74c3c', fontWeight: 500, fontSize: '14px' }}>Something went wrong</span>}
         </div>
       </div>
@@ -913,7 +913,7 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
           </div>
         )}
 
-        {contactStatus === 'saved' && <div style={{ color: '#1b9254', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>✓ Contact added</div>}
+        {contactStatus === 'saved' && <div style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>✓ Contact added</div>}
         {contacts.length === 0 && !showAddContact && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No additional contacts yet.</p>}
         {contacts.map(c => (
           <div key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
@@ -954,7 +954,7 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
                           Include in the greeting
                         </label>
                         {dirty && <button onClick={() => saveToggles(c)} disabled={busyId === c.id} style={{ padding: '6px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '12px', cursor: busyId === c.id ? 'not-allowed' : 'pointer' }}>{busyId === c.id ? 'Saving...' : 'Save'}</button>}
-                        {!dirty && rowSaved[c.id] && <span style={{ color: '#1b9254', fontWeight: 600, fontSize: '12px' }}>Saved</span>}
+                        {!dirty && rowSaved[c.id] && <span style={{ color: 'var(--vfo-success-text)', fontWeight: 600, fontSize: '12px' }}>Saved</span>}
                       </>
                     )
                   })()}

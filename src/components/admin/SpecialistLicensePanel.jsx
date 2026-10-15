@@ -120,7 +120,7 @@ export default function SpecialistLicensePanel({ allExperts = [], embedded = fal
           <option value={-1}>All months</option>
           {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
         </select>
-        <button onClick={load} style={{ ...sel, color: '#125ecc', fontWeight: 600 }}>Refresh</button>
+        <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
       {loading && <AccountingTableSkeleton cols={4} />}
@@ -258,7 +258,7 @@ function LicenseSetupForm({ allExperts = [], onSent }) {
         {sending ? 'Sending…' : 'Send setup link'}
       </button>
 
-      {sent && <p style={{ fontSize: '13px', color: '#1b9254', margin: '14px 0 0' }}>{sent}</p>}
+      {sent && <p style={{ fontSize: '13px', color: 'var(--vfo-success-text)', margin: '14px 0 0' }}>{sent}</p>}
       {warn && <p style={{ fontSize: '13px', color: '#b7791f', background: 'rgba(214,158,46,0.10)', padding: '10px 14px', borderRadius: '10px', margin: '14px 0 0' }}>{warn}</p>}
       {error && <p style={{ fontSize: '13px', color: '#b91c1c', margin: '14px 0 0' }}>{error}</p>}
     </div>

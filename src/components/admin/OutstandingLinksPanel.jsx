@@ -95,7 +95,7 @@ function MemberPrefix({ memberNumber }) {
 
 const ghostBtn = {
   padding: '5px 12px', borderRadius: '99px', border: '1px solid var(--vfo-border-soft)',
-  background: 'transparent', color: '#125ecc', fontSize: '12px', fontWeight: 600,
+  background: 'transparent', color: 'var(--vfo-accent-text)', fontSize: '12px', fontWeight: 600,
   cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
 }
 const confirmBtn = (busy) => ({
@@ -135,7 +135,7 @@ function ResendButton({ send, onDone }) {
       )}
       {stage === 'busy' && <button type="button" disabled style={confirmBtn(true)}>Sending…</button>}
       {stage === 'done' && (
-        <span style={{ fontSize: '12px', fontWeight: 700, color: '#16a34a', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>✓ Email drafted</span>
+        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--vfo-success-text-2)', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>✓ Email drafted</span>
       )}
       {err && (
         <span style={{ fontSize: '11px', color: '#b91c1c', fontFamily: 'Inter, sans-serif', textAlign: 'right', maxWidth: '260px', lineHeight: 1.4 }}>{err}</span>
@@ -490,7 +490,7 @@ export default function OutstandingLinksPanel({ kind, embedded = false }) {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
         <button type="button" onClick={() => load()}
-          style={{ background: 'none', border: 'none', padding: 0, color: '#125ecc', fontWeight: 600, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--vfo-accent-text)', fontWeight: 600, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
           Refresh
         </button>
       </div>

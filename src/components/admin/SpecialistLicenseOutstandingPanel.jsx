@@ -87,7 +87,7 @@ export default function SpecialistLicenseOutstandingPanel({ embedded = false }) 
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
         <button type="button" onClick={() => load()}
-          style={{ background: 'none', border: 'none', padding: 0, color: '#125ecc', fontWeight: 600, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--vfo-accent-text)', fontWeight: 600, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
           Refresh
         </button>
       </div>

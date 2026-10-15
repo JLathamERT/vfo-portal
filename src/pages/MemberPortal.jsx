@@ -190,15 +190,15 @@ export default function MemberPortal() {
               ]}
               onSelect={setActiveTab}
             />
-            <button onClick={() => setActiveTab('client_overview')} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === 'client_overview' ? '2px solid #125ecc' : '2px solid transparent', color: activeTab === 'client_overview' ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === 'client_overview' ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+            <button onClick={() => setActiveTab('client_overview')} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === 'client_overview' ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: activeTab === 'client_overview' ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === 'client_overview' ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
               Client Overview
             </button>
             {/* Every member, no switch (2026-10-14) — see MemberTaxDiagnostic. */}
-            <button onClick={() => setActiveTab('tax_diagnostic')} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === 'tax_diagnostic' ? '2px solid #125ecc' : '2px solid transparent', color: activeTab === 'tax_diagnostic' ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === 'tax_diagnostic' ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+            <button onClick={() => setActiveTab('tax_diagnostic')} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === 'tax_diagnostic' ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: activeTab === 'tax_diagnostic' ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === 'tax_diagnostic' ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
               Tax Diagnostic
             </button>
             {['specialists','showroom','website','growthplan','ciq','gc','vault'].filter(tab => tab !== 'website' || memberData?.website_enabled).map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === tab ? '2px solid #125ecc' : '2px solid transparent', color: activeTab === tab ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === tab ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+              <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === tab ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: activeTab === tab ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === tab ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
                 {tabLabels[tab]}
               </button>
             ))}
@@ -375,7 +375,7 @@ function MemberEditProfile({ member, onSaved }) {
       <div style={{ position: 'sticky', bottom: 0, background: 'var(--vfo-page)', borderTop: '1px solid var(--vfo-border)', padding: '16px 0', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '16px', zIndex: 5 }}>
         {(dirty || photoPreview) && <span style={{ fontSize: '13px', color: '#b08d26', fontWeight: 500 }}>You have unsaved changes</span>}
         <button onClick={save} disabled={saving || !(dirty || photoPreview)} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: saving ? 'wait' : 'pointer', opacity: (dirty || photoPreview) ? 1 : 0.55 }}>{saving ? 'Saving…' : 'Save Changes'}</button>
-        {status && <span style={{ color: statusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px' }}>{status}</span>}
+        {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px' }}>{status}</span>}
       </div>
 
       <MemberBrandingCard memberNumber={member.member_number} mode="member" styles={{ sectionStyle, cardTitle }} reloadKey={brandingKey} />
@@ -396,7 +396,7 @@ function NavDropdown({ label, isActive, options, activeTab, onSelect, onLabelCli
 
   return (
     <div style={{ position: 'relative' }} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <button onClick={onLabelClick ? () => { onLabelClick(); setOpen(false) } : undefined} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: isActive ? '2px solid #125ecc' : '2px solid transparent', color: isActive ? '#125ecc' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: isActive ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
+      <button onClick={onLabelClick ? () => { onLabelClick(); setOpen(false) } : undefined} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: isActive ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: isActive ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: isActive ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
         {label}<span style={{ fontSize: '9px', opacity: 0.6 }}>▾</span>
       </button>
       {open && (
@@ -516,7 +516,7 @@ function MemberSpecialists({ member, allExperts, exclusions, ecoMap = {}, onData
       <div style={{ position: 'sticky', bottom: 0, background: 'var(--vfo-page)', borderTop: '1px solid var(--vfo-border)', padding: '16px 0', display: 'flex', alignItems: 'center', gap: '16px' }}>
         {dirty && <span style={{ fontSize: '13px', color: '#b08d26', fontWeight: 500 }}>You have unsaved changes</span>}
         <button onClick={save} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Save Changes</button>
-        {status && <span style={{ color: statusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px' }}>{status}</span>}
+        {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px' }}>{status}</span>}
       </div>
     </div>
   )
@@ -674,7 +674,7 @@ function MemberSettings({ session }) {
           </div>
         </div>
         <button onClick={update} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Update</button>
-        {status && <p style={{ color: statusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
+        {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
       </div>
       <AppearanceCard />
     </div>

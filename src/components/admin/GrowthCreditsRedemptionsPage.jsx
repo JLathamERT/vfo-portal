@@ -127,7 +127,7 @@ export default function GrowthCreditsRedemptionsPage() {
         ))}
       </div>
 
-      {status && <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{status}</div>}
+      {status && <div style={{ background: 'var(--vfo-accent-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-accent-text)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{status}</div>}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px', marginBottom: '14px' }}>{error}</div>}
 
       {section === 'redemptions' && (<>
@@ -149,7 +149,7 @@ export default function GrowthCreditsRedemptionsPage() {
                 <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(r.created_at)}</span>
                 <span style={{ display: 'flex', gap: '8px', justifySelf: 'end' }}>
                   <button onClick={() => update(r.id, 'fulfilled')} disabled={busy}
-                    style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: 'rgba(22,163,74,0.14)', color: '#16a34a', fontSize: '12.5px', fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>Mark completed</button>
+                    style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: 'rgba(22,163,74,0.14)', color: 'var(--vfo-success-text-2)', fontSize: '12.5px', fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>Mark completed</button>
                   <button onClick={() => setConfirmReject(r)} disabled={busy}
                     style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: '#d93025', fontSize: '12.5px', cursor: busy ? 'default' : 'pointer' }}>Reject</button>
                 </span>
@@ -171,7 +171,7 @@ export default function GrowthCreditsRedemptionsPage() {
                 <span>{serviceOf(r)}</span>
                 <span style={{ color: 'var(--vfo-muted)' }}>{r.credits}</span>
                 <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(r.created_at)}</span>
-                <span style={{ justifySelf: 'end', padding: '3px 12px', borderRadius: '20px', fontSize: '11.5px', fontWeight: 700, background: r.status === 'fulfilled' ? 'rgba(22,163,74,0.12)' : 'rgba(217,48,37,0.12)', color: r.status === 'fulfilled' ? '#16a34a' : '#d93025' }}>{r.status === 'fulfilled' ? 'Completed' : 'Rejected'}</span>
+                <span style={{ justifySelf: 'end', padding: '3px 12px', borderRadius: '20px', fontSize: '11.5px', fontWeight: 700, background: r.status === 'fulfilled' ? 'rgba(22,163,74,0.12)' : 'rgba(217,48,37,0.12)', color: r.status === 'fulfilled' ? 'var(--vfo-success-text-2)' : '#d93025' }}>{r.status === 'fulfilled' ? 'Completed' : 'Rejected'}</span>
               </div>
             ))}
           </div>

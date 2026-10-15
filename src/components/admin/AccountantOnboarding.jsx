@@ -14,6 +14,7 @@ import StepEmailsChip from '../shared/StepEmailsChip'
 import { MemberNameLink } from '../shared/personLinks'
 import { formatDate as formatFullDate } from '../../lib/dates'
 import { stage1Lock, createMemberLock } from './onboardingOrder'
+import { readable } from '../shared/readableColor'
 
 const STAGE_NAMES = ['', 'Preliminary Meeting', 'PC Admin', 'Add New Accountant']
 
@@ -499,7 +500,7 @@ function OnboardingDetail({ id, onBack }) {
   const prelimSelectValue = prelimStatus === LEGACY_PRELIM_STATUS ? PRELIM_NO_DEPOSIT : (prelimStatus || '')
 
   const tdInput = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '11px' }
-  const tdGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: reminderBusy ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }
+  const tdGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: reminderBusy ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
   const tdCancel = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: reminderBusy ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
   const meetingLabel = [ob.meeting_date, String(ob.meeting_time || '').slice(0, 5), ob.meeting_timezone].filter(Boolean).join(' ')
   const reminderSendable = !!reminderForm.date && !!reminderForm.time
@@ -825,7 +826,7 @@ function OnboardingDetail({ id, onBack }) {
               <div style={{ marginLeft: '14px', paddingLeft: '12px', marginTop: '4px', marginBottom: '4px', borderLeft: '1px solid var(--vfo-tint-deep)' }}>
                 <div style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', display: 'inline-block', marginBottom: '8px',
                   background: finalDec === 'Yes' ? 'rgba(27,146,84,0.15)' : finalDec === 'ExtraMeeting' ? 'rgba(224,103,23,0.15)' : 'rgba(231,76,60,0.15)',
-                  color: finalDec === 'Yes' ? '#1b9254' : finalDec === 'ExtraMeeting' ? '#e06717' : '#e74c3c',
+                  color: finalDec === 'Yes' ? 'var(--vfo-success-text)' : finalDec === 'ExtraMeeting' ? '#e06717' : '#e74c3c',
                   border: `1px solid ${finalDec === 'Yes' ? 'rgba(27,146,84,0.3)' : finalDec === 'ExtraMeeting' ? 'rgba(224,103,23,0.3)' : 'rgba(231,76,60,0.3)'}`
                 }}>
                   {finalDec === 'Yes' ? 'Yes — proceeding' : finalDec === 'ExtraMeeting' ? 'Extra meeting requested' : 'No — declined'}
@@ -891,7 +892,7 @@ function StageBlock({ stage, title, state, expanded, onToggle, dimmed, children 
           <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{title}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
+          {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
           {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress</span>}
           {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
           <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: expanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
@@ -1035,7 +1036,7 @@ function AutoRow({ label, done, date, tag, emails, pipeline, emailCtx, pending =
         ))}
         {!done && pending
           ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>Pending — ACH clearing</span>
-          : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: done ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: done ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: done ? '#1b9254' : 'var(--vfo-muted)' }}>{done ? 'Done' : 'Not completed'}</span>}
+          : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: done ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: done ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: done ? 'var(--vfo-success-text)' : 'var(--vfo-muted)' }}>{done ? 'Done' : 'Not completed'}</span>}
         <span style={dateTextStyle}>{done && date ? formatDate(date) : ''}</span>
       </span>
     </div>
@@ -1089,9 +1090,9 @@ function StallRows({ ob, setOb, stall }) {
 }
 
 const selectStyle = { padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12px', minWidth: '150px', fontFamily: 'Inter, sans-serif' }
-function pillStyle(color) { return { fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${color}22`, color, border: `1px solid ${color}44` } }
+function pillStyle(color) { return { fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${color}22`, color: readable(color), border: `1px solid ${color}44` } }
 const neutralPillStyle = { fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', color: 'var(--vfo-muted)', border: '1px solid var(--vfo-border-chip)' }
-function branchBtn(color) { return { padding: '4px 12px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: `1px solid ${color}66`, background: `${color}22`, color } }
+function branchBtn(color) { return { padding: '4px 12px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: `1px solid ${color}66`, background: `${color}22`, color: readable(color) } }
 function pendingBtn(color, pendingValue, myValue) {
   const base = branchBtn(color)
   if (!pendingValue) return base

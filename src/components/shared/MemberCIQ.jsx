@@ -3,6 +3,7 @@ import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { CiqListSkeleton, SkeletonText } from './Skeleton'
 import { HubGrid, HubCard, HubBanner } from './HubKit'
 import { formatDate } from '../../lib/dates'
+import { readable } from './readableColor'
 
 export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true, ciqVfosManaged = true, isAdmin = false }) {
   const [ciqs, setCiqs] = useState([])
@@ -567,11 +568,11 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                     const active = curStatus === s.key
                     return (
                       <button key={s.label} onClick={() => savePriorityChange(item.item_key, { progress_status: s.key })}
-                        style={{ ...ctlBtnStyle, border: active ? `1px solid ${s.color}` : '1px solid var(--vfo-border-strong)', background: active ? `${s.color}1a` : 'transparent', color: active ? s.color : 'var(--vfo-muted)', fontWeight: active ? 600 : 400 }}>{s.label}</button>
+                        style={{ ...ctlBtnStyle, border: active ? `1px solid ${s.color}` : '1px solid var(--vfo-border-strong)', background: active ? `${s.color}1a` : 'transparent', color: active ? readable(s.color) : 'var(--vfo-muted)', fontWeight: active ? 600 : 400 }}>{s.label}</button>
                     )
                   })}
                   {kind === 'parked' && (
-                    <button onClick={() => savePriorityChange(item.item_key, { decision: 'prioritize' })} style={{ ...ctlBtnStyle, border: '1px solid #1b9254', color: '#1b9254', fontWeight: 600 }}>Set as Priority</button>
+                    <button onClick={() => savePriorityChange(item.item_key, { decision: 'prioritize' })} style={{ ...ctlBtnStyle, border: '1px solid #1b9254', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Set as Priority</button>
                   )}
                   {kind !== 'parked' && (
                     <button onClick={() => savePriorityChange(item.item_key, { decision: 'park', progress_status: null })} style={ctlBtnStyle}>Move to Parked</button>
@@ -632,7 +633,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
 
               {completedItems.length > 0 && (
                 <div style={{ marginBottom: '24px' }}>
-                  <div style={{ fontSize: '16px', fontWeight: '700', color: '#1b9254', marginBottom: '2px' }}>Completed</div>
+                  <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--vfo-success-text)', marginBottom: '2px' }}>Completed</div>
                   <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontStyle: 'italic', marginBottom: '12px' }}>Priorities that have been addressed and completed</div>
                   <div style={sectionStyle}>{renderPlanItems(completedItems, 'priority')}</div>
                 </div>
@@ -868,7 +869,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
         </div>
 
         {activeCiq.status === 'completed' && (
-          <div style={{ padding: '10px 16px', borderRadius: '8px', background: 'rgba(27,146,84,0.1)', border: '1px solid rgba(27,146,84,0.3)', color: '#1b9254', fontWeight: 500, fontSize: '13px', marginBottom: '20px' }}>✓ This CIQ has been completed</div>
+          <div style={{ padding: '10px 16px', borderRadius: '8px', background: 'rgba(27,146,84,0.1)', border: '1px solid rgba(27,146,84,0.3)', color: 'var(--vfo-success-text)', fontWeight: 500, fontSize: '13px', marginBottom: '20px' }}>✓ This CIQ has been completed</div>
         )}
 
         {/* Intro section */}
@@ -1511,7 +1512,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px' }}>
             <button onClick={() => saveCiqSetting(localCiqEnabled, localCiqVfosManaged)} style={{ padding: '10px 24px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Save Settings</button>
-            {ciqSettingsStatus && <span style={{ color: '#1b9254', fontWeight: 500, fontSize: '13px' }}>{ciqSettingsStatus}</span>}
+            {ciqSettingsStatus && <span style={{ color: 'var(--vfo-success-text)', fontWeight: 500, fontSize: '13px' }}>{ciqSettingsStatus}</span>}
           </div>
         </div>
       )}
@@ -1522,7 +1523,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Start New CIQ</div>
           <div style={{ display: 'flex', gap: '12px' }}>
             <button onClick={() => selectAddMode('existing')} style={{ flex: 1, padding: '20px', borderRadius: '8px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.08)', color: '#0095ff', fontWeight: 500, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Existing Client</button>
-            <button onClick={() => selectAddMode('new')} style={{ flex: 1, padding: '20px', borderRadius: '8px', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.08)', color: '#1b9254', fontWeight: 500, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>New Client</button>
+            <button onClick={() => selectAddMode('new')} style={{ flex: 1, padding: '20px', borderRadius: '8px', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.08)', color: 'var(--vfo-success-text)', fontWeight: 500, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>New Client</button>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
             <button onClick={() => { setShowAdd(false); setAddMode(null) }} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
@@ -1609,7 +1610,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-tint)'}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', background: `${statusColors[ciq.status]}22`, color: statusColors[ciq.status], border: `1px solid ${statusColors[ciq.status]}44` }}>{ciq.status === 'draft' ? 'Draft' : 'Completed'}</span>
+                  <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', background: `${statusColors[ciq.status]}22`, color: readable(statusColors[ciq.status]), border: `1px solid ${statusColors[ciq.status]}44` }}>{ciq.status === 'draft' ? 'Draft' : 'Completed'}</span>
                   <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>Started {formatDate(ciq.created_at)}</span>
                   {ciq.completed_at && <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>· Completed {formatDate(ciq.completed_at)}</span>}
                 </div>

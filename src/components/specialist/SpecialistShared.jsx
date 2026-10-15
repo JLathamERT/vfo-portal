@@ -80,7 +80,7 @@ export default function SpecialistShared({ onUnreadChange }) {
       <div style={card}>
         {active ? (
           <>
-            <button onClick={backToClients} style={{ background: 'transparent', border: 'none', color: '#125ecc', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '14px', fontWeight: 600 }}>← All clients</button>
+            <button onClick={backToClients} style={{ background: 'transparent', border: 'none', color: 'var(--vfo-accent-text)', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '14px', fontWeight: 600 }}>← All clients</button>
             <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '4px' }}>{active.name || `Client #${active.client_id}`}{active.member_name ? ` (${active.member_name})` : ''}</div>
             <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '16px' }}>Documents shared with you. Click View — they open securely in your browser.</p>
             {docsLoading ? <VaultRowsSkeleton rows={2} /> : (

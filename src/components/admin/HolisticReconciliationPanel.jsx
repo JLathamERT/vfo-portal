@@ -120,7 +120,7 @@ export default function HolisticReconciliationPanel({ embedded = false }) {
         <select style={sel} value={year} onChange={e => setYear(Number(e.target.value))}>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
-        <button onClick={load} style={{ ...sel, color: '#125ecc', fontWeight: 600 }}>Refresh</button>
+        <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
       {loading && <AccountingTableSkeleton cols={6} />}
@@ -143,7 +143,7 @@ export default function HolisticReconciliationPanel({ embedded = false }) {
             <div key={m.memberNumber} onClick={() => openMember(m.memberNumber)} {...rowHoverProps} style={{ ...clickableRowStyle, background: 'var(--vfo-card)', display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
               <span style={{ color: 'var(--vfo-muted)' }}>{m.memberNumber}</span>
               <span><MemberNameLink memberNumber={m.memberNumber} style={{ fontWeight: 600 }}>{m.name}</MemberNameLink></span>
-              <span style={{ textAlign: 'right', fontWeight: m.member ? 700 : 400, color: m.member ? '#16a34a' : 'var(--vfo-faint)' }}>{m.member ? money(m.member) : '—'}{m.member ? <><PendingNote amount={m.memberPending} money={money} /><HeldNote suspended={m.memberHeldSus} paused={m.memberHeldPau} arrears={m.memberHeldArr} money={money} /></> : null}</span>
+              <span style={{ textAlign: 'right', fontWeight: m.member ? 700 : 400, color: m.member ? 'var(--vfo-success-text-2)' : 'var(--vfo-faint)' }}>{m.member ? money(m.member) : '—'}{m.member ? <><PendingNote amount={m.memberPending} money={money} /><HeldNote suspended={m.memberHeldSus} paused={m.memberHeldPau} arrears={m.memberHeldArr} money={money} /></> : null}</span>
               <span style={{ textAlign: 'right', fontWeight: m.mm ? 700 : 400, color: m.mm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{m.mm ? money(m.mm) : '—'}{m.mm ? <><PendingNote amount={m.mmPending} money={money} /><HeldNote suspended={m.mmHeldSus} paused={m.mmHeldPau} arrears={m.mmHeldArr} money={money} /></> : null}</span>
               <span style={{ textAlign: 'right', fontWeight: m.vfos ? 700 : 400, color: m.vfos ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{money(m.vfos)}{m.vfos ? <PendingNote amount={m.vfosPending} money={money} /> : null}</span>
               <span style={{ textAlign: 'right', fontWeight: m.strategic ? 700 : 400, color: m.strategic ? '#8b5cf6' : 'var(--vfo-faint)' }}>{m.strategic ? money(m.strategic) : '—'}{m.strategic ? <PendingNote amount={m.strategicPending} money={money} /> : null}</span>

@@ -744,7 +744,7 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
                 <div />
                 <div>{money(sched.reduce((s, r) => s + Number(r.amount_due || 0), 0))}</div>
                 <div>{money(sched.reduce((s, r) => s + Number(r.credit_applied || 0), 0))}</div>
-                <div style={{ color: '#16a34a' }}>{money(sched.filter(r => r.status === 'paid').reduce((s, r) => s + Number(r.amount_due || 0), 0))} paid</div>
+                <div style={{ color: 'var(--vfo-success-text-2)' }}>{money(sched.filter(r => r.status === 'paid').reduce((s, r) => s + Number(r.amount_due || 0), 0))} paid</div>
                 <div />
               </div>
             </>

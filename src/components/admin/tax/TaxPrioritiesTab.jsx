@@ -13,6 +13,7 @@ import { formatDate as formatFullDate } from '../../../lib/dates'
 import { makeTaxPlanRules, KNOWN_FEE_PROCESS_VERSIONS, isNewFeeProcess, AMEND_FEE_CODE, AMEND_FEE_TAX5_CODE, isAmendStepTask, amendStage, DEPOSIT_NA_STATUS, phaseBadgeToken, phaseShortLabel, implRevShareDone, IMPL_REV_NO_SHARE } from './taxPlanRules'
 import { TAX_DISPLAY_NAMES, taxDisplayName } from '../../shared/taxDisplayNames'
 import { numberTaxIntakeQuestions } from '../../member/taxIntakeQuestions'
+import { readable } from '../../shared/readableColor'
 
 // The automated cascade card. The STORED program_client_tasks.name is a lookup
 // key on both sides of the wire — the two cards below switch on it, MAP 1 keys
@@ -787,7 +788,7 @@ const taskSubLabelStyle = { fontSize: '11px', color: 'var(--vfo-muted)', fontWei
 // can reuse it for the card header and both of its sub-sections (gotcha #193).
 function PhasePill({ state, detail = '' }) {
   const base = { fontSize: '11px', padding: '3px 10px', borderRadius: '999px', fontWeight: 600 }
-  if (state === 'done') return <span style={{ ...base, background: 'rgba(27,146,84,0.15)', color: '#1b9254', border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
+  if (state === 'done') return <span style={{ ...base, background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
   if (state === 'active') return <span style={{ ...base, background: 'rgba(0,149,255,0.15)', color: '#0095ff', border: '1px solid rgba(0,149,255,0.3)' }}>In progress{detail}</span>
   return <span style={{ ...base, background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', fontWeight: 400 }}>Not started</span>
 }
@@ -932,7 +933,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
           // amounts already moved), so re-amending is the offered change.
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {amended && mode !== 'amend' && (
-              <button disabled={busy} onClick={() => { setSubmitError(''); setMode('amend') }} style={{ border: 'none', background: 'transparent', color: '#125ecc', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', padding: 0 }}>Change amount</button>
+              <button disabled={busy} onClick={() => { setSubmitError(''); setMode('amend') }} style={{ border: 'none', background: 'transparent', color: 'var(--vfo-accent-text)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', padding: 0 }}>Change amount</button>
             )}
             {(() => {
               const selValue = mode === 'amend' ? 'amend' : (answered ? (amended ? 'amend' : 'keep') : '')
@@ -956,7 +957,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
                     else if (v === 'amend') setMode('amend')
                     else { setMode(''); setTotalInput('') }
                   }}
-                  style={{ padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '12px', fontFamily: 'Inter, sans-serif', minWidth: '150px', borderColor: committed ? '#1b925466' : 'var(--vfo-border-strong)', color: committed ? '#1b9254' : 'var(--vfo-ink)', opacity: busy ? 0.6 : 1 }}
+                  style={{ padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '12px', fontFamily: 'Inter, sans-serif', minWidth: '150px', borderColor: committed ? '#1b925466' : 'var(--vfo-border-strong)', color: committed ? 'var(--vfo-success-text)' : 'var(--vfo-ink)', opacity: busy ? 0.6 : 1 }}
                 >
                   <option value="">-- Select --</option>
                   <option value="keep" disabled={amended}>Keep the fee</option>
@@ -2342,7 +2343,7 @@ function ClientQuestionsCard({ planId, act }) {
               style={{ ...btn, cursor: (sending || !text.trim()) ? 'not-allowed' : 'pointer', opacity: (sending || !text.trim()) ? 0.55 : 1 }}>
               {sending ? 'Sending…' : 'Ask the client'}
             </button>
-            {notice && <span style={{ fontSize: '12px', color: '#1b9254', fontWeight: 500 }}>{notice}</span>}
+            {notice && <span style={{ fontSize: '12px', color: 'var(--vfo-success-text)', fontWeight: 500 }}>{notice}</span>}
           </div>
 
           {loadError && <div style={{ fontSize: '12px', color: '#e74c3c', marginTop: '12px' }}>{loadError}</div>}
@@ -4012,7 +4013,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                         <div style={{ padding: '8px 0', borderBottom: '1px solid var(--vfo-border-soft)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '12px', color: '#e06717' }}>The agreement did not go out automatically.</span>
                           <button disabled={rapidAgreementBusy} onClick={retryAgreement}
-                            style={{ padding: '5px 12px', borderRadius: '5px', fontSize: '11px', fontWeight: 600, cursor: rapidAgreementBusy ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254' }}>
+                            style={{ padding: '5px 12px', borderRadius: '5px', fontSize: '11px', fontWeight: 600, cursor: rapidAgreementBusy ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)' }}>
                             {rapidAgreementBusy ? 'Sending…' : 'Send engagement agreement'}
                           </button>
                         </div>
@@ -4084,7 +4085,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                         <div style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                           <div style={{ fontSize: '12px', color: 'var(--vfo-ink)', marginBottom: '8px' }}>PF outcome after extra meeting:</div>
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                            <button disabled={submittingExtraNo} onClick={() => setExtraMeetingPricingOpen(true)} style={{ padding: '6px 14px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }}>Yes — proceed with pricing</button>
+                            <button disabled={submittingExtraNo} onClick={() => setExtraMeetingPricingOpen(true)} style={{ padding: '6px 14px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Yes — proceed with pricing</button>
                             <button disabled={submittingExtraNo} onClick={async () => {
                               setSubmittingExtraNo(true)
                               try {
@@ -4142,7 +4143,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       const sending = !!draft.sending
       const setDraft = (patch) => setDeclineDrafts(d => ({ ...d, [task.id]: { ...(d[task.id] || {}), ...patch } }))
       const tdInput = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '11px' }
-      const tdGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }
+      const tdGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
       const tdCancel = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
       const done = !!sentAt
       const scheduled = !done && !!sendDate
@@ -4268,7 +4269,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       const sending = !!draft.sending
       const setDraft = (patch) => setDeclineDrafts(d => ({ ...d, [task.id]: { ...(d[task.id] || {}), ...patch } }))
       const tdInput = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '11px' }
-      const tdGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }
+      const tdGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
       const tdCancel = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
       const confirmedLabel = savedDate
         ? `${savedDate}${livePlan?.tax4_meeting_time ? ' ' + livePlan.tax4_meeting_time : ''}${livePlan?.tax4_meeting_timezone ? ' ' + livePlan.tax4_meeting_timezone : ''}`
@@ -4342,7 +4343,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           ) : (
             !readOnly && (
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <button onClick={handleSend} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }}>Send implementation decision email</button>
+                <button onClick={handleSend} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Send implementation decision email</button>
               </div>
             )
           )}
@@ -4749,12 +4750,12 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         return out
       })()
       const tdInput = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '11px' }
-      const tdGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }
+      const tdGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
       const tdRed = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600 }
       const tdCancel = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
       // Lighter than tdGreen: the two skip routes are alternatives to Send, not
       // the expected action, and they read as a pair.
-      const tdSkip = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.25)', background: 'rgba(27,146,84,0.06)', color: '#1b9254', fontWeight: 600 }
+      const tdSkip = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.25)', background: 'rgba(27,146,84,0.06)', color: 'var(--vfo-success-text)', fontWeight: 600 }
       const dateOpen = !!draft.dateOpen
       const setDraft = (patch) => setDeclineDrafts(d => ({ ...d, [task.id]: { ...(d[task.id] || {}), ...patch } }))
       // A booked meeting can be moved: reopen this same form pre-filled and re-send
@@ -5168,7 +5169,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                 value={pick}
                 onChange={e => setAllocPick(prev => ({ ...prev, [key]: e.target.value }))}
                 disabled={saving[key]}
-                style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isAllocated ? `${green}66` : 'var(--vfo-border-strong)', color: isAllocated ? green : 'var(--vfo-ink)' }}>
+                style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isAllocated ? `${green}66` : 'var(--vfo-border-strong)', color: isAllocated ? readable(green) : 'var(--vfo-ink)' }}>
                 <option value="">-- Select --</option>
                 {addable.map(pl => <option key={pl.id} value={String(pl.id)}>{plannerDisplayName(pl)}{pl.planner_role === 'Team Member' ? ' — Team Member' : ''}</option>)}
               </select>
@@ -5279,7 +5280,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
             <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
             <LockedControl locked={addlInfoLocked && !readOnly} hint={ADDL_INFO_LOCKED_HINT}>
-              <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key] || addlInfoLocked} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)', cursor: addlInfoLocked ? 'not-allowed' : undefined }}>
+              <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key] || addlInfoLocked} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)', cursor: addlInfoLocked ? 'not-allowed' : undefined }}>
                 <option value="">-- Select --</option>
                 {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
               </select>
@@ -5380,7 +5381,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase, spec)}{greyNote && <span style={{ fontSize: '11px', color: '#e06717', fontWeight: 600, marginLeft: '8px' }}>({greyNote})</span>}</span>
         {showTeamShareChip && depositTeamChip(livePlan?.deposit_team_share_status)}
         <LockedControl locked={reviewLocked && !readOnly} hint={REVIEW_LOCKED_HINT}>
-          <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key] || reviewLocked} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)', cursor: reviewLocked ? 'not-allowed' : undefined }}>
+          <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key] || reviewLocked} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)', cursor: reviewLocked ? 'not-allowed' : undefined }}>
             <option value="">-- Select --</option>
             {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -5493,7 +5494,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {!readOnly && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'Tax Priorities' && noteInScope(n, noteScope)).length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
-                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
+                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress{doneTasks < nonAutoTasks.length ? ` · ${doneTasks}/${nonAutoTasks.length}` : ''}</span>}
                 {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
                 <span onClick={() => setExpanded(p => ({ ...p, [phase.id]: !isExpanded }))} style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s', cursor: 'pointer' }}>▼</span>
@@ -5683,7 +5684,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                 )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
+                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress{doneTasks < totalTasks ? ` · ${doneTasks}/${totalTasks}` : ''}</span>}
                 {!readOnly && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'Tax Priorities' && noteInScope(n, noteScope)).length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
                 {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
@@ -5710,7 +5711,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                           <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{specDisplayName(spec)}</span>
                           {spec.strategy && <span style={strategyTextStyle}>{spec.strategy}</span>}
                           {specStopped && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(231,76,60,0.15)', color: '#e74c3c', fontWeight: 600, border: '1px solid rgba(231,76,60,0.3)' }}>Stopped</span>}
-                          {!specStopped && allSpecDone && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
+                          {!specStopped && allSpecDone && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                           {!specStopped && !allSpecDone && specDoneCount > 0 && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {specDoneCount}/{specTaskCount}</span>}
                           {!specStopped && specDoneCount === 0 && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
                         </div>
@@ -6086,8 +6087,8 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
                   {/* Only when there is a choice to tell apart — a single plan
                       carries the pill on its own header. */}
                   {taxPlans.length > 1 && plan.tax_route === 'direct' && <DirectPill />}
-                  <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: plan.status === 'stopped' ? 'rgba(231,76,60,0.15)' : 'rgba(27,146,84,0.15)', color: plan.status === 'stopped' ? '#e74c3c' : '#1b9254', border: `1px solid ${plan.status === 'stopped' ? 'rgba(231,76,60,0.3)' : 'rgba(27,146,84,0.3)'}` }}>{plan.status === 'stopped' ? 'Stopped' : 'Live'}</span>
-                  {plan.status !== 'stopped' && <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: `${stateColor}22`, color: stateColor, border: `1px solid ${stateColor}44`, textTransform: 'capitalize' }}>{state}</span>}
+                  <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: plan.status === 'stopped' ? 'rgba(231,76,60,0.15)' : 'rgba(27,146,84,0.15)', color: plan.status === 'stopped' ? '#e74c3c' : 'var(--vfo-success-text)', border: `1px solid ${plan.status === 'stopped' ? 'rgba(231,76,60,0.3)' : 'rgba(27,146,84,0.3)'}` }}>{plan.status === 'stopped' ? 'Stopped' : 'Live'}</span>
+                  {plan.status !== 'stopped' && <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: `${stateColor}22`, color: readable(stateColor), border: `1px solid ${stateColor}44`, textTransform: 'capitalize' }}>{state}</span>}
                   <span style={{ color: '#0095ff', fontWeight: 500, fontSize: '13px' }}>View →</span>
                 </div>
               </div>

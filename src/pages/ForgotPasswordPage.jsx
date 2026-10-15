@@ -63,7 +63,7 @@ export default function ForgotPasswordPage() {
         </p>
       )}
       {sent ? (
-        <p style={{ color: '#16a34a', fontWeight: 500, fontSize: '13px', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: '10px', padding: '12px 14px', margin: 0, lineHeight: 1.6 }}>If an account exists for that email, a reset link is on its way. It expires in 1 hour.</p>
+        <p style={{ color: 'var(--vfo-success-text-2)', fontWeight: 500, fontSize: '13px', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: '10px', padding: '12px 14px', margin: 0, lineHeight: 1.6 }}>If an account exists for that email, a reset link is on its way. It expires in 1 hour.</p>
       ) : (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>

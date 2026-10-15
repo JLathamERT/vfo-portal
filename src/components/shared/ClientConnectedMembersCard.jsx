@@ -82,7 +82,7 @@ export default function ClientConnectedMembersCard({ clientId, sectionStyle, car
   const dangerBtn = { ...ghostBtn, color: '#c0392b', borderColor: 'rgba(231,76,60,0.35)' }
   const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--vfo-border-soft)' }
   const muted = { fontSize: '12px', color: 'var(--vfo-muted)' }
-  const chip = (oneOff) => ({ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: oneOff ? 'rgba(18,94,204,0.08)' : 'rgba(27,146,84,0.1)', color: oneOff ? '#125ecc' : '#1b9254', marginLeft: '8px' })
+  const chip = (oneOff) => ({ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: oneOff ? 'rgba(18,94,204,0.08)' : 'rgba(27,146,84,0.1)', color: oneOff ? 'var(--vfo-accent-text)' : 'var(--vfo-success-text)', marginLeft: '8px' })
 
   const removeControls = (c, leaving) => confirmRemove === c.member_number ? (
     <span style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>

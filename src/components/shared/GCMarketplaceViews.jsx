@@ -21,7 +21,7 @@ function formatServiceDetails(description) {
 }
 
 const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-const bannerStyle = { background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.4)', color: '#1b9254', fontWeight: 500, padding: '14px 20px', borderRadius: '10px', fontSize: '14px', marginBottom: '20px', textAlign: 'left' }
+const bannerStyle = { background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.4)', color: 'var(--vfo-success-text)', fontWeight: 500, padding: '14px 20px', borderRadius: '10px', fontSize: '14px', marginBottom: '20px', textAlign: 'left' }
 // The hosts funnel failures through showBanner('Error: ...'), so the prefix is
 // the discriminator the historical single green banner never had.
 const errorBannerStyle = { ...bannerStyle, background: 'rgba(217,48,37,0.12)', border: '1px solid rgba(217,48,37,0.35)', color: '#d93025' }
@@ -128,7 +128,7 @@ export function GCTransactionHistory({ transactions }) {
             <span style={{ color: 'var(--vfo-muted)', fontSize: '13px' }}>{new Date(tx.created_at).toLocaleDateString()}</span>
             <span style={{ color: 'var(--vfo-muted)', fontSize: '13px' }}>{gcActorLabel(tx)}</span>
             <span style={{ justifySelf: 'end' }}>{gcTypeChip(tx)}</span>
-            <span style={{ ...TX_NUM, color: tx.amount > 0 ? '#1b9254' : '#d93025' }}>{tx.amount > 0 ? '+' : ''}{tx.amount}</span>
+            <span style={{ ...TX_NUM, color: tx.amount > 0 ? 'var(--vfo-success-text)' : '#d93025' }}>{tx.amount > 0 ? '+' : ''}{tx.amount}</span>
             <span style={{ ...TX_NUM, color: 'var(--vfo-ink)' }}>{tx.balance_after}</span>
           </div>
         ))}
@@ -337,7 +337,7 @@ export function GCServicesView({
                     {sub ? (
                       <>
                         {sub.status === 'active' ? (
-                          <span style={{ ...pillBase, background: 'rgba(27,146,84,0.15)', color: '#1b9254' }}>Subscribed — renews {fmtDate(sub.next_charge_date)}</span>
+                          <span style={{ ...pillBase, background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)' }}>Subscribed — renews {fmtDate(sub.next_charge_date)}</span>
                         ) : (
                           <span style={{ ...pillBase, background: 'rgba(176,141,38,0.15)', color: '#b08d26' }}>On hold — add credits to resume</span>
                         )}

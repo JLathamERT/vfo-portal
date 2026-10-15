@@ -5,6 +5,7 @@ import { TaxPlanListSkeleton, PhaseListSkeleton } from '../../shared/Skeleton'
 import { TrackHero, PhaseBadge, ListHeader } from '../../shared/TrackKit'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
+import { readable } from '../../shared/readableColor'
 
 const REGULAR_PRIORITIES = [
   "Business Growth", "Business Exit", "Business Advisory",
@@ -92,7 +93,7 @@ function Map4ConfirmStep({ trackId, task, p, track, onDone, emailCtx }) {
   const isDone = !!p.status
   const statusColor = isDone ? '#1b9254' : 'var(--vfo-muted)'
   const inputStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
-  const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }
+  const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
   const redBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600 }
   const cancelBtn = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
   function fmtDate(d) { if (!d) return ''; const parts = d.split('-'); return `${parts[1]}/${parts[2]}` }
@@ -153,7 +154,7 @@ function Map4ConfirmStep({ trackId, task, p, track, onDone, emailCtx }) {
         ? rescheduling
           ? dateForm(() => setRescheduling(false))
           : <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
+              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
               <button onClick={openReschedule} style={cancelBtn}>Reschedule</button>
             </div>
         : showDate
@@ -188,7 +189,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
   // mirror that here so the auto rows below stop claiming the old sends until reload.
   const [ladderCleared, setLadderCleared] = useState(false)
   const inputStyle ={ padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
-  const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }
+  const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
   const cancelBtn = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
   function fmtLong(d) { if (!d) return ''; const dt = new Date(d + 'T00:00:00'); return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }
   function fmtDate(d) { if (!d) return ''; const parts = String(d).split('-'); return parts.length === 3 ? `${parts[1]}/${parts[2]}` : d }
@@ -234,7 +235,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
       <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
-      <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', marginLeft: 'auto', ...(done ? { background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600 } : { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }) }}>{done ? 'Done' : 'Awaiting'}</span>
+      <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', marginLeft: 'auto', ...(done ? { background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 } : { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }) }}>{done ? 'Done' : 'Awaiting'}</span>
       {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
     </div>
   )
@@ -268,7 +269,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
             </div>
           : enteredDate
             ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', border: '1px solid rgba(27,146,84,0.3)' }}>MAP 4 meeting: {fmtLong(enteredDate)}</span>
+                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', border: '1px solid rgba(27,146,84,0.3)' }}>MAP 4 meeting: {fmtLong(enteredDate)}</span>
                 {/* Saving a different date re-arms the follow-up ladder (the backend
                     clears the sent/reminder/stall stamps), so it re-drafts. */}
                 <button onClick={() => { setDate(enteredDate); setShowDate(true) }} style={cancelBtn}>Edit date</button>
@@ -294,7 +295,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
                 <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>MAP 4 form completed</span>
                 {formDone
                   ? <>
-                      <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
+                      <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
                       {track.map4_form_submitted_at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(track.map4_form_submitted_at)}</span>}
                       <span style={{ color: 'var(--vfo-muted)', fontSize: '9px', transform: formOpen ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
                     </>
@@ -461,12 +462,12 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {showCompleteBtn && (
                   <button onClick={e => { e.stopPropagation(); completePhase(phase) }} disabled={phaseCompleteState === 'saving'}
-                    style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', background: phaseCompleteState === 'done' ? 'rgba(27,146,84,0.15)' : 'rgba(0,149,255,0.15)', border: `1px solid ${phaseCompleteState === 'done' ? 'rgba(27,146,84,0.4)' : 'rgba(0,149,255,0.4)'}`, color: phaseCompleteState === 'done' ? '#1b9254' : '#0095ff', whiteSpace: 'nowrap' }}>
+                    style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', background: phaseCompleteState === 'done' ? 'rgba(27,146,84,0.15)' : 'rgba(0,149,255,0.15)', border: `1px solid ${phaseCompleteState === 'done' ? 'rgba(27,146,84,0.4)' : 'rgba(0,149,255,0.4)'}`, color: phaseCompleteState === 'done' ? 'var(--vfo-success-text)' : '#0095ff', whiteSpace: 'nowrap' }}>
                     {phaseCompleteState === 'saving' ? 'Saving...' : '✓ Auto complete — all completed and confirmed'}
                   </button>
                 )}
                 {!readOnly && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'Regular Priorities' && noteInScope(n, noteScope)).length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
-                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
+                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{nonAutoTasks.length}</span>}
                 {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
                 <span onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s', cursor: 'pointer' }}>▼</span>
@@ -486,7 +487,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
                       <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
-                      <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: isDone ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', color: isDone ? '#1b9254' : 'var(--vfo-muted)', border: `1px solid ${isDone ? 'rgba(27,146,84,0.3)' : 'var(--vfo-border)'}` }}>{isDone ? 'Completed' : 'Not completed'}</span>
+                      <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: isDone ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', color: isDone ? 'var(--vfo-success-text)' : 'var(--vfo-muted)', border: `1px solid ${isDone ? 'rgba(27,146,84,0.3)' : 'var(--vfo-border)'}` }}>{isDone ? 'Completed' : 'Not completed'}</span>
                       {isDone && p.completed_date && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
                     </div>
                   )
@@ -496,7 +497,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
                       <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                       {isDone
-                        ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
+                        ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
                         : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
                       }
                       {isDone && p.completed_date && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
@@ -508,7 +509,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
                       <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                       {isDone
-                        ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>
+                        ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>
                         : <button onClick={() => saveTask(task.id, 'Completed', p.completed_date)} style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600 }}>Enter details</button>
                       }
                       <StepDate value={isDone ? (p.completed_date || '') : ''} onChange={d => saveTask(task.id, p.status, d)} disabled={saving[task.id]} />
@@ -562,7 +563,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
                           <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
-                          <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)' }}>
+                          <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
                             <option value="">-- Select --</option>
                             {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
@@ -577,7 +578,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                               <div key={ct.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
                                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: cDone ? cColor : 'transparent', flexShrink: 0, border: `1px solid ${cDone ? cColor : 'var(--vfo-border-mid)'}` }} />
                                 <span style={{ fontSize: '12px', color: cDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{ct.name}</span>
-                                <select value={cp.status || ''} onChange={e => saveTask(ct.id, e.target.value, cp.completed_date)} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '120px', fontSize: '11px', borderColor: cDone ? `${cColor}66` : 'var(--vfo-border-strong)', color: cDone ? cColor : 'var(--vfo-ink)' }}>
+                                <select value={cp.status || ''} onChange={e => saveTask(ct.id, e.target.value, cp.completed_date)} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '120px', fontSize: '11px', borderColor: cDone ? `${cColor}66` : 'var(--vfo-border-strong)', color: cDone ? readable(cColor) : 'var(--vfo-ink)' }}>
                                   <option value="">-- Select --</option>
                                   {(ct.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
@@ -595,7 +596,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap', opacity: isGreyedOut ? 0.3 : 1, pointerEvents: isGreyedOut ? 'none' : 'auto' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
                       <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
-                      <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)' }}>
+                      <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
                         <option value="">-- Select --</option>
                         {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -849,8 +850,8 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
                   <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{new Date(track.created_at).toLocaleDateString()}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: track.status === 'stopped' ? 'rgba(231,76,60,0.15)' : 'rgba(27,146,84,0.15)', color: track.status === 'stopped' ? '#e74c3c' : '#1b9254', border: `1px solid ${track.status === 'stopped' ? 'rgba(231,76,60,0.3)' : 'rgba(27,146,84,0.3)'}` }}>{track.status === 'stopped' ? 'Stopped' : 'Live'}</span>
-                  {track.status !== 'stopped' && <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: `${stateColor}22`, color: stateColor, border: `1px solid ${stateColor}44`, textTransform: 'capitalize' }}>{state}</span>}
+                  <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: track.status === 'stopped' ? 'rgba(231,76,60,0.15)' : 'rgba(27,146,84,0.15)', color: track.status === 'stopped' ? '#e74c3c' : 'var(--vfo-success-text)', border: `1px solid ${track.status === 'stopped' ? 'rgba(231,76,60,0.3)' : 'rgba(27,146,84,0.3)'}` }}>{track.status === 'stopped' ? 'Stopped' : 'Live'}</span>
+                  {track.status !== 'stopped' && <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: `${stateColor}22`, color: readable(stateColor), border: `1px solid ${stateColor}44`, textTransform: 'capitalize' }}>{state}</span>}
                   <span style={{ color: '#0095ff', fontWeight: 500, fontSize: '13px' }}>View →</span>
                 </div>
               </div>

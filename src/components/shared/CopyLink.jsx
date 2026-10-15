@@ -22,7 +22,7 @@ export default function CopyLink({ url, label }) {
     <button type="button" onClick={copy} title={copied ? 'Copied' : 'Copy link'}
       style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', margin: '0 2px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', maxWidth: '100%',
         border: `1px solid ${copied ? 'rgba(27,146,84,0.45)' : 'var(--vfo-border-strong)'}`, background: copied ? 'rgba(27,146,84,0.10)' : 'var(--vfo-card)',
-        color: copied ? '#1b9254' : 'var(--vfo-ink)', fontSize: '12.5px', fontWeight: 600 }}>
+        color: copied ? 'var(--vfo-success-text)' : 'var(--vfo-ink)', fontSize: '12.5px', fontWeight: 600 }}>
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{label || url}</span>
       {copied
         ? <span style={{ fontSize: '11.5px', flexShrink: 0 }}>Copied</span>

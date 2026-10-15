@@ -44,7 +44,7 @@ const dashCell = { textAlign: 'right', color: '#c7d0de' }
 
 function TierTag({ tier }) {
   const t = tier || ''
-  const c = t === 'Max' ? { bg: 'rgba(180,131,9,0.14)', fg: '#b48309' } : t === 'Core' ? { bg: 'rgba(18,94,204,0.10)', fg: '#125ecc' } : t === 'Lite' ? { bg: 'rgba(78,96,135,0.12)', fg: 'var(--vfo-muted)' } : { bg: 'var(--vfo-tint)', fg: 'var(--vfo-faint)' }
+  const c = t === 'Max' ? { bg: 'rgba(180,131,9,0.14)', fg: '#b48309' } : t === 'Core' ? { bg: 'var(--vfo-accent-tint)', fg: 'var(--vfo-accent-text)' } : t === 'Lite' ? { bg: 'rgba(78,96,135,0.12)', fg: 'var(--vfo-muted)' } : { bg: 'var(--vfo-tint)', fg: 'var(--vfo-faint)' }
   return <span style={{ padding: '3px 10px', borderRadius: '20px', background: c.bg, color: c.fg, fontSize: '11.5px', fontWeight: 700 }}>{t || '—'}</span>
 }
 
@@ -131,7 +131,7 @@ export default function HolisticRevenuePanel({ embedded = false }) {
           <option value={-1}>All months</option>
           {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
         </select>
-        <button onClick={load} style={{ ...sel, color: '#125ecc', fontWeight: 600 }}>Refresh</button>
+        <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
       {loading && <AccountingTableSkeleton cols={9} />}

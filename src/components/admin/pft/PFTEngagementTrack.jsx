@@ -6,6 +6,7 @@ import { PFTTrackSkeleton } from '../../shared/Skeleton'
 import { TrackHero, PhaseBadge } from '../../shared/TrackKit'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
+import { readable } from '../../shared/readableColor'
 
 // Read-only per-step email previews (see StepEmailsChip). Meeting 1 uses the
 // member-declined variant; Meetings 2/3 use the ERT/VFOS-declined variant.
@@ -61,7 +62,7 @@ function pftMeetingCtx(client, meeting) {
 const pftStatusColors = { Complete: '#1b9254', Completed: '#1b9254', 'Complete - Yes': '#1b9254', 'Complete - No': '#e74c3c', Yes: '#1b9254', No: '#e74c3c', Undecided: '#e06717', VFOS: '#0095ff', Member: '#0095ff', New: '#1b9254', 'Re-Set': '#1b9254', 'VFO FT': '#1b9254', 'VFO Associate': '#1b9254', Stopped: '#e74c3c', 'No show': '#e74c3c', 'Meeting 1 scheduled': '#1b9254', 'Meeting 2 scheduled': '#1b9254', 'Meeting 3 scheduled': '#1b9254', 'Confirmation email sent': '#1b9254', 'Email sent - date not yet arranged': '#1b9254', 'Meeting declined': '#e74c3c', 'No response': '#e74c3c', 'Call arranged': '#1b9254', 'VFO FT confirmed': '#1b9254', 'VFO Associate confirmed': '#1b9254', 'No confirmed': '#e74c3c', 'Undecided - awaiting client': '#e06717', 'Declined by Member': '#e74c3c', 'Declined by ERT/VFOS': '#e74c3c' }
 const inputStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
 const dateSpanStyle = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }
-const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }
+const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
 // Solid green — the "mark complete without sending an email" backfill buttons.
 // Filled (vs the tinted send buttons above) so the no-email path is visually
 // distinct and hard to misclick. PFT-only.
@@ -188,7 +189,7 @@ function Dot({ done, color }) {
 }
 
 function StatusPill({ status, color }) {
-  return <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${color}22`, color, border: `1px solid ${color}44` }}>{status}</span>
+  return <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${color}22`, color: readable(color), border: `1px solid ${color}44` }}>{status}</span>
 }
 
 function NotStarted() {
@@ -420,7 +421,7 @@ function autoStep(label, done, at = null) {
       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
       <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
       {done
-        ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
+        ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
         : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', marginLeft: 'auto' }}>Not completed</span>}
       {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
     </div>
@@ -526,7 +527,7 @@ function GenericTask({ task, p, readOnly, saving, onSelect, onDate }) {
       <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
       {readOnly
         ? (isDone ? <StatusPill status={p.status} color={statusColor} /> : <NotStarted />)
-        : <select value={p.status || ''} onChange={e => onSelect(e.target.value)} disabled={saving} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)' }}>
+        : <select value={p.status || ''} onChange={e => onSelect(e.target.value)} disabled={saving} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
             <option value="">-- Select --</option>
             {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -550,7 +551,7 @@ function Phase6Indicators({ onboarding, onOpen, readOnly }) {
         <Dot done={handed} color="#1b9254" />
         <span style={{ fontSize: '13px', color: handed ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>Sent to Accountant Onboarding</span>
         {handed
-          ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
+          ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
           : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Pending</span>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
@@ -598,7 +599,7 @@ function DiscoveryViewer({ eng, readOnly, client, onAck }) {
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
         <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#1b9254', flexShrink: 0 }} />
         <span style={{ fontSize: '12px', color: '#0095ff', fontWeight: 600, flex: 1 }}>View discovery form</span>
-        <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600 }}>Completed</span>
+        <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Completed</span>
         <span style={{ color: 'var(--vfo-muted)', fontSize: '9px', transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
       </div>
       {open && (
@@ -865,7 +866,7 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, not
                   <span style={{ fontSize: '12px', color: qDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{q.name}</span>
                   {readOnly
                     ? (qDone ? <StatusPill status={qp.status} color={qColor} /> : <NotStarted />)
-                    : <select value={qp.status || ''} onChange={e => saveTask(q.id, e.target.value, qp.completed_date)} disabled={saving[q.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '100px', fontSize: '11px', borderColor: qDone ? `${qColor}66` : 'var(--vfo-border-strong)', color: qDone ? qColor : 'var(--vfo-ink)' }}>
+                    : <select value={qp.status || ''} onChange={e => saveTask(q.id, e.target.value, qp.completed_date)} disabled={saving[q.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '100px', fontSize: '11px', borderColor: qDone ? `${qColor}66` : 'var(--vfo-border-strong)', color: qDone ? readable(qColor) : 'var(--vfo-ink)' }}>
                         <option value="">-- Select --</option>
                         {(q.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -880,7 +881,7 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, not
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', marginTop: '4px' }}>
               <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: a11Val ? a11Color : 'transparent', flexShrink: 0, border: `1px solid ${a11Val ? a11Color : 'var(--vfo-border-mid)'}` }} />
               <span style={{ fontSize: '12px', color: 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
-              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${a11Color}22`, color: a11Color, border: `1px solid ${a11Color}44`, fontWeight: '600' }}>{a11Val || 'Pending'}</span>
+              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${a11Color}22`, color: readable(a11Color), border: `1px solid ${a11Color}44`, fontWeight: '600' }}>{a11Val || 'Pending'}</span>
             </div>
           </div>
         </div>
@@ -968,7 +969,7 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, not
                       ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress</span>
                       : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>)
                   : <>
-                      {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
+                      {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                       {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{visibleTasks.length}</span>}
                       {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
                     </>

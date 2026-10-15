@@ -7,6 +7,7 @@ import { callApi } from '../../lib/api'
 // functions that run at render.
 import { HELD_SUSPENDED_NOTE, HELD_PAUSED_NOTE, HELD_ARREARS_NOTE, PENDING_COLOR } from './shareLegState'
 import { MemberNameLink, SpecialistNameLink } from '../shared/personLinks'
+import { readable } from '../shared/readableColor'
 
 export const NAVY = '#002973'
 export const BLUE = '#125ecc'
@@ -107,7 +108,7 @@ export function isHeldLine(line) {
 
 export function StatusPill({ label, color }) {
   return (
-    <span style={{ display: 'inline-block', padding: '3px 11px', borderRadius: '99px', fontSize: '11px', fontWeight: 600, background: `${color}18`, color, border: `1px solid ${color}33`, whiteSpace: 'nowrap' }}>{label}</span>
+    <span style={{ display: 'inline-block', padding: '3px 11px', borderRadius: '99px', fontSize: '11px', fontWeight: 600, background: `${color}18`, color: readable(color), border: `1px solid ${color}33`, whiteSpace: 'nowrap' }}>{label}</span>
   )
 }
 

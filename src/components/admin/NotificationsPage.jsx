@@ -172,7 +172,7 @@ function NotificationsView({ navigate }) {
           </button>
           {scope === 'current' && (
             <button onClick={clearSelected} disabled={busy || selected.size === 0}
-              style={{ padding: '7px 16px', borderRadius: '999px', border: 'none', background: selected.size ? 'rgba(22,163,74,0.14)' : 'var(--vfo-tint)', color: selected.size ? '#16a34a' : 'var(--vfo-faint)', fontSize: '12.5px', fontWeight: 700, cursor: selected.size && !busy ? 'pointer' : 'default' }}>
+              style={{ padding: '7px 16px', borderRadius: '999px', border: 'none', background: selected.size ? 'rgba(22,163,74,0.14)' : 'var(--vfo-tint)', color: selected.size ? 'var(--vfo-success-text-2)' : 'var(--vfo-faint)', fontSize: '12.5px', fontWeight: 700, cursor: selected.size && !busy ? 'pointer' : 'default' }}>
               Clear selected{selected.size ? ` (${selected.size})` : ''}
             </button>
           )}
@@ -323,7 +323,7 @@ function RemindersView() {
             Schedule reminder
           </button>
         </div>
-        {status && <div style={{ marginTop: '12px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', borderRadius: '10px', padding: '10px 14px', fontSize: '13px' }}>{status}</div>}
+        {status && <div style={{ marginTop: '12px', background: 'var(--vfo-accent-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-accent-text)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px' }}>{status}</div>}
         {error && <div style={{ marginTop: '12px', background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '10px', padding: '10px 14px', fontSize: '13px' }}>{error}</div>}
       </div>
 

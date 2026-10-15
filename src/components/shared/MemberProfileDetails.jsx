@@ -54,7 +54,7 @@ function Person({ person, chip, onOpenMember }) {
           <span onClick={clickable ? () => onOpenMember(person) : undefined}
             onMouseEnter={clickable ? e => { e.currentTarget.style.textDecoration = 'underline' } : undefined}
             onMouseLeave={clickable ? e => { e.currentTarget.style.textDecoration = 'none' } : undefined}
-            style={{ fontSize: '13px', fontWeight: 600, color: clickable ? '#125ecc' : 'var(--vfo-ink)', cursor: clickable ? 'pointer' : 'default', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.name}</span>
+            style={{ fontSize: '13px', fontWeight: 600, color: clickable ? 'var(--vfo-accent-text)' : 'var(--vfo-ink)', cursor: clickable ? 'pointer' : 'default', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.name}</span>
           {chip && <span style={introChip}>{chip}</span>}
         </div>
         <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

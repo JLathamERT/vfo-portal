@@ -142,7 +142,7 @@ export default function VaultUploadPage() {
               <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>Uploaded ({uploaded.length})</div>
               {uploaded.map((f, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'rgba(27,146,84,0.1)', border: '1px solid rgba(27,146,84,0.25)', borderRadius: '8px', marginBottom: '8px' }}>
-                  <span style={{ color: '#1b9254' }}>✓</span>
+                  <span style={{ color: 'var(--vfo-success-text)' }}>✓</span>
                   <span style={{ fontSize: '13px' }}>{f.name}</span>
                   {ctx.needs_section && f.section && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginLeft: 'auto' }}>{sectionLabel(f.section)}</span>}
                 </div>

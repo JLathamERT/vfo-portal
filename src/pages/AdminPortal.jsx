@@ -54,21 +54,53 @@ import { DirectoryListSkeleton } from '../components/shared/Skeleton'
 // A dropdown row that, on hover, flies out a submenu of options to the right.
 // An option carrying its own `submenu` nests another flyout (More ▸ Accounting ▸
 // Members ▸ …).
-function SubmenuRow({ label, options, onSelect }) {
-  const [open, setOpen] = useState(false)
+// Hover intent for one menu level, so a diagonal move toward an open flyout
+// may cross sibling rows (or briefly leave the menu) without losing it: with a
+// flyout open, a sibling takes over only after the pointer rests on it, and
+// leaving the level closes it only after a grace period.
+const FLYOUT_SWITCH_MS = 250
+const FLYOUT_CLOSE_MS = 400
+
+function useFlyoutLevel() {
+  const [active, setActive] = useState(null)
+  const activeRef = useRef(null)
+  const timer = useRef(null)
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const set = (key) => { activeRef.current = key; setActive(key) }
+  return {
+    active,
+    enter(key) {
+      clearTimeout(timer.current)
+      if (activeRef.current === null || activeRef.current === key) set(key)
+      else timer.current = setTimeout(() => set(key), FLYOUT_SWITCH_MS)
+    },
+    leave() {
+      clearTimeout(timer.current)
+      timer.current = setTimeout(() => set(null), FLYOUT_CLOSE_MS)
+    },
+    reset() {
+      clearTimeout(timer.current)
+      set(null)
+    },
+  }
+}
+
+function SubmenuRow({ label, options, onSelect, open, onEnter }) {
+  const level = useFlyoutLevel()
   return (
-    <div style={{ position: 'relative' }} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+    <div style={{ position: 'relative' }} onMouseEnter={onEnter}>
       <button style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%', padding: '8px 20px', background: open ? 'var(--vfo-tint)' : 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}>
         {label}<span style={{ fontSize: '9px', opacity: 0.6 }}>▸</span>
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: '-4px', left: '100%', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '210px', zIndex: 210, paddingTop: '4px', paddingBottom: '4px', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
+        <div onMouseLeave={level.leave} style={{ position: 'absolute', top: '-4px', left: '100%', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '210px', zIndex: 210, paddingTop: '4px', paddingBottom: '4px', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
           {options.map(opt => opt.submenu ? (
-            <SubmenuRow key={opt.key} label={opt.label} options={opt.submenu} onSelect={onSelect} />
+            <SubmenuRow key={opt.key} label={opt.label} options={opt.submenu} onSelect={onSelect}
+              open={level.active === opt.key} onEnter={() => level.enter(opt.key)} />
           ) : (
             <button key={opt.key} onClick={() => onSelect(opt.key)}
               style={{ display: 'block', width: '100%', padding: '8px 20px', background: 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--vfo-tint)'; level.enter(opt.key) }}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               {opt.label}
             </button>
@@ -82,6 +114,9 @@ function SubmenuRow({ label, options, onSelect }) {
 function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
   const [open, setOpen] = useState(false)
   const closeTimer = useRef(null)
+  const level = useFlyoutLevel()
+
+  useEffect(() => () => clearTimeout(closeTimer.current), [])
 
   function handleMouseEnter() {
     clearTimeout(closeTimer.current)
@@ -89,22 +124,30 @@ function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
   }
 
   function handleMouseLeave() {
+    clearTimeout(closeTimer.current)
+    closeTimer.current = setTimeout(() => setOpen(false), FLYOUT_CLOSE_MS)
+    level.leave()
+  }
+
+  function closeNow() {
+    clearTimeout(closeTimer.current)
     setOpen(false)
+    level.reset()
   }
 
   // Key tabs (default) read as primary — larger, bolder, darker. Muted "other"
   // tabs (Accounting / Automation) are visually secondary.
   const btnStyle = muted ? {
     padding: '14px 14px', background: 'transparent', border: 'none',
-    borderBottom: isActive ? '2px solid #125ecc' : '2px solid transparent',
-    color: isActive ? '#125ecc' : '#97a3ba', fontSize: '13px',
+    borderBottom: isActive ? '2px solid var(--vfo-primary)' : '2px solid transparent',
+    color: isActive ? 'var(--vfo-nav-active)' : 'var(--vfo-nav-muted)', fontSize: '13px',
     fontWeight: isActive ? '600' : '500', cursor: 'pointer',
     fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
     display: 'flex', alignItems: 'center', gap: '6px'
   } : {
     padding: '15px 20px', background: 'transparent', border: 'none',
-    borderBottom: isActive ? '2px solid #125ecc' : '2px solid transparent',
-    color: isActive ? '#125ecc' : 'var(--vfo-ink)', fontSize: '14.5px',
+    borderBottom: isActive ? '2px solid var(--vfo-primary)' : '2px solid transparent',
+    color: isActive ? 'var(--vfo-nav-active)' : 'var(--vfo-ink)', fontSize: '14.5px',
     fontWeight: isActive ? '700' : '600', cursor: 'pointer',
     fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
     display: 'flex', alignItems: 'center', gap: '6px'
@@ -121,15 +164,16 @@ function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
           {items.map(item => (
             <div key={item.key}>
               {item.submenu && (
-                <SubmenuRow label={item.submenuLabel} options={item.submenu} onSelect={(k) => { onSelect(k); setOpen(false) }} />
+                <SubmenuRow label={item.submenuLabel} options={item.submenu} onSelect={(k) => { onSelect(k); closeNow() }}
+                  open={level.active === item.key} onEnter={() => level.enter(item.key)} />
               )}
               {item.header && (
                 <div style={{ padding: '8px 16px 4px', fontSize: '10px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{item.header}</div>
               )}
               {item.options && item.options.map(opt => (
-                <button key={opt.key} onClick={() => { onSelect(opt.key); setOpen(false) }}
+                <button key={opt.key} onClick={() => { onSelect(opt.key); closeNow() }}
                   style={{ display: 'block', width: '100%', padding: '8px 20px', background: 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--vfo-tint)'; level.enter(opt.key) }}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   {opt.label}
                 </button>

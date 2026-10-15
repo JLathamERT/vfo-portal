@@ -11,6 +11,7 @@ import { TrackHero, PhaseBadge } from '../../shared/TrackKit'
 import Map1PricingSplitCard from './Map1PricingSplitCard'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
+import { readable } from '../../shared/readableColor'
 
 // The Initial Contact "Who is completing the tracking…" gate step. When it is
 // NOT set to "Member" (unset or "VFOS"), the other steps in the phase are inert
@@ -84,7 +85,7 @@ function PipConfirmStep({ clientId, task, p, meeting, readOnly, onDone, emailCtx
   const isDone = !!p.status
   const statusColor = isDone ? '#1b9254' : 'var(--vfo-muted)'
   const inputStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
-  const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: '#1b9254', fontWeight: 600 }
+  const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
   const redBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600 }
   const cancelBtn = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
   function fmtDate(d) { if (!d) return ''; const dt = new Date(d + 'T00:00:00'); return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }
@@ -137,7 +138,7 @@ function PipConfirmStep({ clientId, task, p, meeting, readOnly, onDone, emailCtx
         ? rescheduling
           ? dateForm(() => setRescheduling(false))
           : <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
+              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
               {!readOnly && <button onClick={openReschedule} style={cancelBtn}>Reschedule</button>}
             </div>
         : readOnly
@@ -507,7 +508,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {!readOnly && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'MAP 1').length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
-                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
+                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{headerTotal}</span>}
                 {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
                 <span onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s', cursor: 'pointer' }}>▼</span>
@@ -590,7 +591,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                         {done && tag && !na && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{tag}</span>}
                         {showPending
                           ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>{typeof pending === 'string' ? pending : 'Pending — ACH clearing'}</span>
-                          : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: (done || na) ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: (done || na) ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: (done || na) ? '#1b9254' : 'var(--vfo-muted)' }}>{na ? 'N/A' : (done ? 'Done' : 'Not completed')}</span>}
+                          : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: (done || na) ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: (done || na) ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: (done || na) ? 'var(--vfo-success-text)' : 'var(--vfo-muted)' }}>{na ? 'N/A' : (done ? 'Done' : 'Not completed')}</span>}
                       </span>
                       {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
                     </div>
@@ -624,7 +625,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                     <div style={{ padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                         <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Decision:</span>
-                        <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${decisionColor}22`, color: decisionColor, border: `1px solid ${decisionColor}44` }}>{decisionLabel}</span>
+                        <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${decisionColor}22`, color: readable(decisionColor), border: `1px solid ${decisionColor}44` }}>{decisionLabel}</span>
                       </div>
 
                       {pipDecision === 'No' && autoStep('Decline email sent to client')}
@@ -665,7 +666,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                               <div style={{ marginLeft: '14px', paddingLeft: '12px', marginTop: '4px', marginBottom: '4px', borderLeft: '1px solid var(--vfo-tint-deep)' }}>
                                 <div style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', display: 'inline-block', marginBottom: '8px',
                                   background: finalDec === 'Yes' ? 'rgba(27,146,84,0.15)' : finalDec === 'No' ? 'rgba(231,76,60,0.15)' : 'rgba(0,149,255,0.15)',
-                                  color: finalDec === 'Yes' ? '#1b9254' : finalDec === 'No' ? '#e74c3c' : '#0095ff',
+                                  color: finalDec === 'Yes' ? 'var(--vfo-success-text)' : finalDec === 'No' ? '#e74c3c' : '#0095ff',
                                   border: `1px solid ${finalDec === 'Yes' ? 'rgba(27,146,84,0.3)' : finalDec === 'No' ? 'rgba(231,76,60,0.3)' : 'rgba(0,149,255,0.3)'}`
                                 }}>
                                   {finalDec === 'Yes' ? `Yes — ${pd?.c15_service_level || ''}` : finalDec === 'No' ? 'No — declined' : 'Extra Meeting requested'}
@@ -684,7 +685,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                                             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#1b9254', flexShrink: 0, border: '1px solid #1b9254' }} />
                                             <span style={{ fontSize: '12px', color: 'var(--vfo-ink)', fontWeight: 600 }}>PF completed pricing</span>
                                             {!mirror && <span style={{ fontSize: '10px', color: 'var(--vfo-muted)', marginLeft: '4px', transform: expanded.pricing_details ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
-                                            <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
+                                            <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
                                           </div>
                                         </div>
                                         {expanded.pricing_details && !mirror && (
@@ -769,7 +770,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1b9254', flexShrink: 0 }} />
                       <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
-                      <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: '#1b9254', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
+                      <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
                       <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>
                     </div>
                   )
@@ -782,7 +783,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                         <span style={{ fontSize: '13px', color: dateVal ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                         {readOnly
                           ? (dateVal
-                              ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: '#1b925422', color: '#1b9254', fontWeight: 600, border: '1px solid #1b925444' }}>{formatDate(dateVal)}</span>
+                              ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: '#1b925422', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid #1b925444' }}>{formatDate(dateVal)}</span>
                               : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not scheduled</span>)
                           : <input type="date" value={dateVal} onChange={e => saveDateEntry(task.id, e.target.value)} disabled={saving[task.id]} style={inputStyle} />
                         }
@@ -801,7 +802,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
                         <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                         {isDone
-                          ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}44` }}>{p.status}</span>
+                          ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
                           : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
                         }
                         <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
@@ -827,7 +828,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
                         <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
-                        <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)' }}>
+                        <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
                           <option value="">-- Select --</option>
                           {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
@@ -845,7 +846,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', opacity: isGreyedOut ? 0.3 : 1 }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
                       <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
-                      <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: isDone ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', color: isDone ? '#1b9254' : 'var(--vfo-muted)', border: `1px solid ${isDone ? 'rgba(27,146,84,0.3)' : 'var(--vfo-border)'}` }}>
+                      <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: isDone ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', color: isDone ? 'var(--vfo-success-text)' : 'var(--vfo-muted)', border: `1px solid ${isDone ? 'rgba(27,146,84,0.3)' : 'var(--vfo-border)'}` }}>
                         {isDone ? 'Completed' : 'Not completed'}
                       </span>
                       <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
@@ -860,7 +861,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                         <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: dc, flexShrink: 0 }} />
                           <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
-                          <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${dc}22`, color: dc, border: `1px solid ${dc}44` }}>{dl}</span>
+                          <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${dc}22`, color: readable(dc), border: `1px solid ${dc}44` }}>{dl}</span>
                           <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>
                         </div>
                       )
@@ -892,7 +893,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                             { name: 'PIP1_reconfirmation|No', when: 'If the client later clicks No on the email (automatic)' },
                             { name: 'CONTRACT_pcadmin_undecided_reminder', when: 'Automatic reminder if the Undecided email gets no response (2 business days)' },
                           ]} context={emailCtx} /></span>}</span>
-                          {isDone && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${dc}22`, color: dc, border: `1px solid ${dc}44` }}>{dl}</span>}
+                          {isDone && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${dc}22`, color: readable(dc), border: `1px solid ${dc}44` }}>{dl}</span>}
                           <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
                           {isDone && <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isFormShown ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
                         </div>
@@ -926,7 +927,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                             style={{ fontSize: '13px', color: '#0095ff', flex: 1, cursor: 'pointer' }}>{task.name}</span>
                         : <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                       }
-                      <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? statusColor : 'var(--vfo-ink)' }}>
+                      <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
                         <option value="">-- Select --</option>
                         {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
                       </select>

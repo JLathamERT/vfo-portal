@@ -19,7 +19,7 @@ export default function ListFilterButton({ groups, value, onChange }) {
     const cur = value[key] || []
     onChange({ ...value, [key]: cur.includes(opt) ? cur.filter(x => x !== opt) : [...cur, opt] })
   }
-  const btnStyle = { padding: '9px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: total > 0 ? 'rgba(18,94,204,0.1)' : 'var(--vfo-input)', color: total > 0 ? '#125ecc' : 'var(--vfo-muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '6px' }
+  const btnStyle = { padding: '9px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: total > 0 ? 'rgba(18,94,204,0.1)' : 'var(--vfo-input)', color: total > 0 ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '6px' }
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <button onClick={() => setOpen(o => !o)} style={btnStyle}>
@@ -34,7 +34,7 @@ export default function ListFilterButton({ groups, value, onChange }) {
                 <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{g.label}</div>
                 {g.options.map(opt => (
                   <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 0', fontSize: '13px', color: 'var(--vfo-ink)', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={(value[g.key] || []).includes(opt)} onChange={() => toggle(g.key, opt)} style={{ accentColor: '#125ecc', cursor: 'pointer' }} />
+                    <input type="checkbox" checked={(value[g.key] || []).includes(opt)} onChange={() => toggle(g.key, opt)} style={{ accentColor: 'var(--vfo-primary)', cursor: 'pointer' }} />
                     {opt}
                   </label>
                 ))}
@@ -162,7 +162,7 @@ export function sortByColumn(arr, sort, columns) {
 // for a plain header <span>; inherits the header row's font.
 export function SortHeader({ label, sortKey, sort, onSort, style }) {
   const active = sort?.key === sortKey
-  const BLUE = '#125ecc'
+  const BLUE = 'var(--vfo-accent-text)'
   return (
     <span onClick={() => onSort(sortKey)} title={`Sort by ${label}`}
       onMouseEnter={e => { if (!active) e.currentTarget.style.color = BLUE }}

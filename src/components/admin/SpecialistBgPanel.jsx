@@ -172,7 +172,7 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
           <option value={-1}>All months</option>
           {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
         </select>
-        <button onClick={load} style={{ ...sel, color: '#125ecc', fontWeight: 600 }}>Refresh</button>
+        <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
       {loading && <AccountingTableSkeleton cols={4} />}
@@ -282,7 +282,7 @@ function BgRequestForm({ allExperts = [], onSent }) {
         {sending ? 'Sending…' : 'Send'}
       </button>
 
-      {sent && <p style={{ fontSize: '13px', color: '#1b9254', margin: '14px 0 0' }}>{sent}</p>}
+      {sent && <p style={{ fontSize: '13px', color: 'var(--vfo-success-text)', margin: '14px 0 0' }}>{sent}</p>}
       {error && <p style={{ fontSize: '13px', color: '#b91c1c', margin: '14px 0 0' }}>{error}</p>}
     </div>
   )

@@ -94,7 +94,7 @@ function GpMsg({ text, retry }) {
       {text}
       {retry && (
         <div style={{ marginTop: '12px' }}>
-          <button onClick={retry} style={{ padding: '6px 16px', borderRadius: '999px', border: '1px solid #125ecc', background: 'transparent', color: '#125ecc', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Retry</button>
+          <button onClick={retry} style={{ padding: '6px 16px', borderRadius: '999px', border: '1px solid var(--vfo-accent-text)', background: 'transparent', color: 'var(--vfo-accent-text)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Retry</button>
         </div>
       )}
     </div>

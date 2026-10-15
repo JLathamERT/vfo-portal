@@ -250,7 +250,7 @@ function AddAccountantForm({ allMembers, onDataChange }) {
       <button onClick={submit} disabled={loading} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
         {loading ? 'Creating...' : 'Create Accountant'}
       </button>
-      {status && <p style={{ color: statusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
+      {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
     </div>
   )
 }
@@ -661,7 +661,7 @@ function AddAdvisorForm({ allMembers, onDataChange }) {
       <button onClick={submit} disabled={loading} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
         {loading ? 'Creating...' : 'Create Advisor'}
       </button>
-      {status && <p style={{ color: statusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
+      {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
     </div>
   )
 }
@@ -822,7 +822,7 @@ function AddStrategicMemberForm({ groupNames, allMembers, onDataChange }) {
       <button onClick={submit} disabled={loading} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
         {loading ? 'Creating...' : 'Create Strategic Member'}
       </button>
-      {status && <p style={{ color: statusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
+      {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
     </div>
   )
 }
@@ -859,7 +859,7 @@ function AddStrategicGroupForm({ onGroupsChange }) {
       <button onClick={submit} disabled={loading} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
         {loading ? 'Creating...' : 'Create Group'}
       </button>
-      {status && <p style={{ color: statusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
+      {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
     </div>
   )
 }
@@ -1125,7 +1125,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
         // callback Member Overview uses), so a link lands on the target's own
         // category tab — an advisor card can open an accountant's profile.
         // Link treatment matches MemberOverviewPanel: #125ecc + underline on hover.
-        const nameLink = (base) => onOpenMember ? { ...base, color: '#125ecc', cursor: 'pointer' } : base
+        const nameLink = (base) => onOpenMember ? { ...base, color: 'var(--vfo-link)', cursor: 'pointer' } : base
         const linkHandlers = onOpenMember ? {
           onMouseEnter: e => e.currentTarget.style.textDecoration = 'underline',
           onMouseLeave: e => e.currentTarget.style.textDecoration = 'none',
@@ -1184,25 +1184,25 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
                           </button>
                         )}
                       </div>
-                      {stripeMsg && <p style={{ fontSize: '12px', marginTop: '8px', color: stripeMsgType === 'success' ? '#1b9254' : '#d93025' }}>{stripeMsg}</p>}
+                      {stripeMsg && <p style={{ fontSize: '12px', marginTop: '8px', color: stripeMsgType === 'success' ? 'var(--vfo-success-text)' : '#d93025' }}>{stripeMsg}</p>}
                     </div>
                   ) : (
                     <div>
                       <div style={fieldLabel}>Stripe Connect</div>
                       <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                         <button type="button" onClick={sendStripeRequest} disabled={stripeRequesting}
-                          style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #125ecc', background: 'var(--vfo-card)', color: '#125ecc', fontSize: '13px', fontWeight: 600, cursor: stripeRequesting ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                          style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid var(--vfo-accent-text)', background: 'var(--vfo-card)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600, cursor: stripeRequesting ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
                           {stripeRequesting ? 'Working…' : 'Send Stripe Connect setup email'}
                         </button>
                         {canLinkToLead && (
                           <button type="button" onClick={linkStripeToLead} disabled={stripeLinking || leadLacksAccount}
                             title={leadLacksAccount ? `${leadRowName} has no Stripe Connect account yet` : undefined}
-                            style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #125ecc', background: 'var(--vfo-card)', color: '#125ecc', fontSize: '13px', fontWeight: 600, cursor: leadLacksAccount ? 'not-allowed' : stripeLinking ? 'wait' : 'pointer', opacity: leadLacksAccount ? 0.5 : 1, fontFamily: 'Inter, sans-serif' }}>
+                            style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid var(--vfo-accent-text)', background: 'var(--vfo-card)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600, cursor: leadLacksAccount ? 'not-allowed' : stripeLinking ? 'wait' : 'pointer', opacity: leadLacksAccount ? 0.5 : 1, fontFamily: 'Inter, sans-serif' }}>
                             {stripeLinking ? 'Working…' : "Link to Lead Member's Stripe Connect"}
                           </button>
                         )}
                       </div>
-                      {stripeMsg && <p style={{ fontSize: '12px', marginTop: '8px', color: stripeMsgType === 'success' ? '#1b9254' : '#d93025' }}>{stripeMsg}</p>}
+                      {stripeMsg && <p style={{ fontSize: '12px', marginTop: '8px', color: stripeMsgType === 'success' ? 'var(--vfo-success-text)' : '#d93025' }}>{stripeMsg}</p>}
                     </div>
                   )
               }
@@ -1458,7 +1458,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
           <div style={{ position: 'sticky', bottom: 0, background: 'var(--vfo-page)', borderTop: '1px solid var(--vfo-border)', padding: '16px 0', display: 'flex', alignItems: 'center', gap: '16px' }}>
             {dirty && <span style={{ fontSize: '13px', color: '#b08d26', fontWeight: 500 }}>You have unsaved changes</span>}
             <button onClick={save} disabled={saving} style={{ padding: '10px 28px', borderRadius: '8px', background: saving ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '14px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save Changes'}</button>
-            {status && <span style={{ color: statusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px' }}>{status}</span>}
+            {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px' }}>{status}</span>}
           </div>
         </>
         )
@@ -1577,7 +1577,7 @@ function MemberSpecialists({ member, allExperts, allExclusionMap, ecoMap = {}, o
       <div style={{ position: 'sticky', bottom: 0, background: 'var(--vfo-page)', borderTop: '1px solid var(--vfo-border)', padding: '16px 0', display: 'flex', alignItems: 'center', gap: '16px' }}>
         {dirty && <span style={{ fontSize: '13px', color: '#b08d26', fontWeight: 500 }}>You have unsaved changes</span>}
         <button onClick={save} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Save Changes</button>
-        {status && <span style={{ color: statusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px' }}>{status}</span>}
+        {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px' }}>{status}</span>}
       </div>
     </div>
   )
@@ -1696,7 +1696,7 @@ function MemberGC({ member }) {
               <div style={{ flex: 1 }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Description (optional)</label><input value={addDesc} onChange={e => setAddDesc(e.target.value)} placeholder="e.g. Monthly allocation" style={inputStyle} /></div>
               <button onClick={addCredits} style={{ padding: '12px 24px', minWidth: '150px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add Credits</button>
             </div>
-            {status && <p style={{ color: statusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
+            {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
           </div>
           <div style={sectionStyle}>
             <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Deduct Credits</div>
@@ -1705,7 +1705,7 @@ function MemberGC({ member }) {
               <div style={{ flex: 1 }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Reason (shown in history)</label><input value={deductReason} onChange={e => setDeductReason(e.target.value)} placeholder="e.g. Prorated - downgrade to Catalyst" maxLength={300} style={inputStyle} /></div>
               <button onClick={deductCredits} style={{ padding: '12px 24px', minWidth: '150px', borderRadius: '8px', background: 'linear-gradient(135deg, #c0392b 0%, #e74c3c 100%)', border: 'none', boxShadow: '0 2px 8px rgba(217,48,37,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Deduct Credits</button>
             </div>
-            {deductStatus && <p style={{ color: deductStatus.ok ? '#1b9254' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{deductStatus.text}</p>}
+            {deductStatus && <p style={{ color: deductStatus.ok ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{deductStatus.text}</p>}
           </div>
         </>
       )}
@@ -1848,7 +1848,7 @@ function MemberSettings({ member, allMembers = [], onDataChange }) {
               <SendSetupEmailButton loginType="member" subjectId={member.plugin_member_number} hint="Drafts a Gmail with a secure link. The member sets their own passcode." />
             </>
           )}
-        {loginStatus && <p style={{ color: loginStatusType === 'success' ? '#1b9254' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{loginStatus}</p>}
+        {loginStatus && <p style={{ color: loginStatusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{loginStatus}</p>}
       </div>
       <div style={sectionStyle}>
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Stripe Connect</div>
@@ -1880,7 +1880,7 @@ function MemberSettings({ member, allMembers = [], onDataChange }) {
             </button>
           </div>
         )}
-        {stripeMsg && <p style={{ fontSize: '12.5px', marginTop: '12px', color: stripeMsgType === 'success' ? '#1b9254' : '#d93025' }}>{stripeMsg}</p>}
+        {stripeMsg && <p style={{ fontSize: '12.5px', marginTop: '12px', color: stripeMsgType === 'success' ? 'var(--vfo-success-text)' : '#d93025' }}>{stripeMsg}</p>}
       </div>
       <div style={{ ...sectionStyle, border: '1px solid rgba(231,76,60,0.3)' }}>
         <div style={{ fontSize: '13px', color: '#e74c3c', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Danger Zone</div>
@@ -2021,7 +2021,7 @@ function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) 
         </div>
       )}
 
-      {addedFlash && <div style={{ color: '#1b9254', fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>Contact added</div>}
+      {addedFlash && <div style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>Contact added</div>}
       {contacts.length === 0 && !showAdd && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', margin: 0 }}>No additional contacts yet.</p>}
       {contacts.map(c => (
         <div key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
@@ -2053,7 +2053,7 @@ function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) 
                   Cc on all emails
                 </label>
                 {busyId === c.id && <span style={{ color: 'var(--vfo-muted)', fontSize: '12px' }}>Saving...</span>}
-                {busyId !== c.id && rowSaved[c.id] && <span style={{ color: '#1b9254', fontWeight: 600, fontSize: '12px' }}>Saved</span>}
+                {busyId !== c.id && rowSaved[c.id] && <span style={{ color: 'var(--vfo-success-text)', fontWeight: 600, fontSize: '12px' }}>Saved</span>}
                 <button type="button" onClick={() => startEdit(c)} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>
                 <button type="button" onClick={() => removeContact(c)} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.3)', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Remove</button>
               </div>

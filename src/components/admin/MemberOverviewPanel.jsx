@@ -4,6 +4,7 @@ import { callApi } from '../../lib/api'
 import ListFilterButton, { matchesFilter, sortMembers, SortSelect, MEMBER_SORT_OPTIONS, useHeaderSort, sortByColumn, SortHeader } from './ListFilterButton'
 import { formatDate } from '../../lib/dates'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import { readable } from '../shared/readableColor'
 
 // Member Overview — one unified list of every member (advisor / accountant /
 // strategic) with at-a-glance columns, an expandable client drill-down, a
@@ -47,7 +48,7 @@ const CLIENT_GRID = '120px 1.4fr 96px 110px 130px 1.6fr'
 // Client status pill — capitalized + color-coded, matching the member status pills.
 function clientStatusColors(status) {
   const s = (status || '').toLowerCase()
-  if (s === 'active') return { bg: 'rgba(27,146,84,0.13)', color: '#1b9254' }
+  if (s === 'active') return { bg: 'rgba(27,146,84,0.13)', color: 'var(--vfo-success-text)' }
   if (s === 'lost') return { bg: 'rgba(231,76,60,0.13)', color: '#e74c3c' }
   if (s === 'pending') return { bg: 'rgba(224,103,23,0.14)', color: '#e06717' }
   return { bg: 'var(--vfo-tint)', color: 'var(--vfo-muted)' }   // removed / unknown
@@ -170,7 +171,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
             which is what makes the bare number unambiguous the rest of the time. */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
           <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '4px 0 0' }}>Member Overview</h2>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-muted)', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border)', borderRadius: '999px', padding: '3px 12px', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-mid)', borderRadius: '999px', padding: '3px 12px', whiteSpace: 'nowrap' }}>
             {rows.length}{rows.length === basePool.length ? '' : ` of ${basePool.length}`} member{rows.length === 1 ? '' : 's'}
           </span>
         </div>
@@ -224,27 +225,27 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
                     {isOpen ? '▾' : '▸'}
                   </button>
                   <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--vfo-muted)' }}>{mn}</span>
-                  <span onClick={ev => { ev.stopPropagation(); onOpenMember && onOpenMember(m) }} title="Open member profile" style={{ fontWeight: 600, color: '#125ecc', cursor: 'pointer', justifySelf: 'start' }}
+                  <span onClick={ev => { ev.stopPropagation(); onOpenMember && onOpenMember(m) }} title="Open member profile" style={{ fontWeight: 600, color: 'var(--vfo-link)', cursor: 'pointer', justifySelf: 'start' }}
                     onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
                     onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{m.name || '—'}</span>
                   <span>
-                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', color: CAT_COLORS[cat], background: `${CAT_COLORS[cat]}1f` }}>{cat}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', color: readable(CAT_COLORS[cat]), background: `${CAT_COLORS[cat]}1f` }}>{cat}</span>
                   </span>
                   <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{m.member_type || '—'}</span>
                   <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--vfo-muted)' }}>{m.join_date ? formatDate(m.join_date) : '—'}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 600, background: m.elite_status === 'Active' ? 'rgba(27,146,84,0.13)' : m.elite_status === 'Lost' ? 'rgba(231,76,60,0.13)' : 'var(--vfo-tint)', color: m.elite_status === 'Active' ? '#1b9254' : m.elite_status === 'Lost' ? '#e74c3c' : 'var(--vfo-muted)' }}>{m.elite_status || 'Active'}</span>
+                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 600, background: m.elite_status === 'Active' ? 'rgba(27,146,84,0.13)' : m.elite_status === 'Lost' ? 'rgba(231,76,60,0.13)' : 'var(--vfo-tint)', color: m.elite_status === 'Active' ? 'var(--vfo-success-text)' : m.elite_status === 'Lost' ? '#e74c3c' : 'var(--vfo-muted)' }}>{m.elite_status || 'Active'}</span>
                     {m.suspended && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(231,76,60,0.13)', color: '#e74c3c' }}>SUSP</span>}
                     {m.paused && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(224,103,23,0.14)', color: '#e06717' }}>PAUSE</span>}
                     {m.membership_arrears && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(180,83,9,0.14)', color: '#b45309' }}>ARREARS</span>}
                   </span>
                   <span style={{ fontSize: '12px', color: m.assigned_msm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{m.assigned_msm || '—'}</span>
                   <span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', color: clients.length ? '#125ecc' : 'var(--vfo-faint)', background: clients.length ? 'rgba(18,94,204,0.1)' : 'var(--vfo-border-soft)' }}>{clients.length}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', color: clients.length ? 'var(--vfo-accent-text)' : 'var(--vfo-faint)', background: clients.length ? 'rgba(18,94,204,0.1)' : 'var(--vfo-border-soft)' }}>{clients.length}</span>
                   </span>
                   <span style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                     {programs.length === 0 ? <span style={{ color: 'var(--vfo-faint)' }}>—</span> : programs.map(p => (
-                      <span key={p} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: 'var(--vfo-tint)', color: '#3a5488', fontWeight: 600 }}>{p}</span>
+                      <span key={p} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: 'var(--vfo-tint)', color: 'var(--vfo-chip-text)', fontWeight: 600 }}>{p}</span>
                     ))}
                   </span>
                   <span onClick={ev => ev.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'default' }}>
@@ -277,7 +278,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
                           <div key={c.id} onClick={() => openClientProfile(c)} {...rowHoverProps}
                             style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: CLIENT_GRID, gap: '10px', padding: '9px 14px', borderTop: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '12.5px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
                             <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{c.ref || '—'}</span>
-                            <span onClick={ev => { ev.stopPropagation(); openClientProfile(c) }} title="Open client profile" style={{ fontWeight: 600, color: '#125ecc', cursor: 'pointer', justifySelf: 'start' }}
+                            <span onClick={ev => { ev.stopPropagation(); openClientProfile(c) }} title="Open client profile" style={{ fontWeight: 600, color: 'var(--vfo-link)', cursor: 'pointer', justifySelf: 'start' }}
                               onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
                               onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{c.name}</span>
                             <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{c.joined ? formatDate(c.joined) : '—'}</span>
@@ -292,7 +293,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
                                 <span key={p.id}
                                   onClick={ev => { ev.stopPropagation(); navigate(`/admin/client/${c.id}?program=${p.id}`) }}
                                   title={`Open ${c.name} — ${p.name}`}
-                                  style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: 'var(--vfo-tint)', color: '#3a5488', fontWeight: 600, cursor: 'pointer' }}
+                                  style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: 'var(--vfo-tint)', color: 'var(--vfo-chip-text)', fontWeight: 600, cursor: 'pointer' }}
                                   onMouseEnter={e => { e.currentTarget.style.background = 'var(--vfo-tint)' }}
                                   onMouseLeave={e => { e.currentTarget.style.background = 'var(--vfo-tint)' }}>{p.name}</span>
                               ))}

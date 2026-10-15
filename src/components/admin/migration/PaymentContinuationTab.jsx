@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { callApi } from '../../../lib/api'
 import { hasStrategicSplit, computeStrategicShares } from '../../../lib/strategicSplits'
 import { formatDate } from '../../../lib/dates'
+import { readable } from '../../shared/readableColor'
 
 // Jake-only per-client migration tool: backfill an in-flight MAP 1 / Tax plan from the
 // old system so the native engine resumes charging the rest. Two Stripe modes:
@@ -64,7 +65,7 @@ function HazardPanel({ existingRow, requiresForce, forceAck, onToggle, note }) {
 function ModeChip({ active, onClick, title, sub }) {
   return (
     <button onClick={onClick} style={{ flex: 1, minWidth: '220px', textAlign: 'left', padding: '14px 16px', borderRadius: '12px', cursor: 'pointer', border: `1.5px solid ${active ? '#125ecc' : 'var(--vfo-border-strong)'}`, background: active ? 'rgba(18,94,204,0.06)' : '#fff' }}>
-      <div style={{ fontSize: '14px', fontWeight: 700, color: active ? '#125ecc' : 'var(--vfo-ink)' }}>{title}</div>
+      <div style={{ fontSize: '14px', fontWeight: 700, color: active ? 'var(--vfo-accent-text)' : 'var(--vfo-ink)' }}>{title}</div>
       <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px' }}>{sub}</div>
     </button>
   )
@@ -344,7 +345,7 @@ export default function PaymentContinuationTab({ clientId, client }) {
           </>
         )}
         {sharesFilled && totalAmount > 0 && (
-          <div style={{ marginTop: '12px', fontSize: '13px', fontWeight: 600, color: sumOk ? '#1b9254' : '#e74c3c' }}>
+          <div style={{ marginTop: '12px', fontSize: '13px', fontWeight: 600, color: sumOk ? 'var(--vfo-success-text)' : '#e74c3c' }}>
             {isMap1
               ? (sumOk
                 ? `Shares add up to the net invoice ($${sharesSum.toLocaleString()}).`
@@ -375,7 +376,7 @@ export default function PaymentContinuationTab({ clientId, client }) {
               const paid = i < numPaid
               return (
                 <div key={i} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', padding: '12px', borderRadius: '10px', marginTop: '10px', background: paid ? 'rgba(27,146,84,0.06)' : 'var(--vfo-input)', border: `1px solid ${paid ? 'rgba(27,146,84,0.2)' : 'var(--vfo-border-soft)'}` }}>
-                  <div style={{ width: '92px', fontSize: '13px', fontWeight: 700, color: paid ? '#1b9254' : 'var(--vfo-muted)' }}>Payment {i + 1}<div style={{ fontSize: '11px', fontWeight: 500 }}>{paid ? 'Paid' : 'Scheduled'}</div></div>
+                  <div style={{ width: '92px', fontSize: '13px', fontWeight: 700, color: paid ? 'var(--vfo-success-text)' : 'var(--vfo-muted)' }}>Payment {i + 1}<div style={{ fontSize: '11px', fontWeight: 500 }}>{paid ? 'Paid' : 'Scheduled'}</div></div>
                   <Field label={paid ? 'Date paid' : 'Scheduled date'}><input type="date" value={r.date} onChange={e => setRow(i, { date: e.target.value })} style={inputStyle} /></Field>
                   {paid && <Field label="Receipt number"><input value={r.receipt_number} onChange={e => setRow(i, { receipt_number: e.target.value })} style={inputStyle} /></Field>}
                 </div>
@@ -475,4 +476,4 @@ export default function PaymentContinuationTab({ clientId, client }) {
   )
 }
 
-const tag = (color) => ({ marginLeft: 'auto', fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: `${color}1a`, color, border: `1px solid ${color}44` })
+const tag = (color) => ({ marginLeft: 'auto', fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: `${color}1a`, color: readable(color), border: `1px solid ${color}44` })

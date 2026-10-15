@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { callApi } from '../../lib/api'
+import { readable } from '../shared/readableColor'
 
 // Accounting → VFO Specialist Payment Input.
 // Pick a specialist to charge, add recipient lines (recipient + ERT share + VFOS share +
@@ -99,7 +100,7 @@ function RevenueBadge({ decision }) {
   const color = isMM ? '#d97706' : '#16a34a'
   const label = isMM ? 'Money Mapping' : 'Revenue Share'
   return (
-    <span style={{ display: 'inline-block', marginTop: '6px', padding: '2px 9px', borderRadius: '99px', fontSize: '11px', fontWeight: 600, background: `${color}18`, color, border: `1px solid ${color}33` }}>{label}</span>
+    <span style={{ display: 'inline-block', marginTop: '6px', padding: '2px 9px', borderRadius: '99px', fontSize: '11px', fontWeight: 600, background: `${color}18`, color: readable(color), border: `1px solid ${color}33` }}>{label}</span>
   )
 }
 
