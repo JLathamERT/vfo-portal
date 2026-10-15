@@ -114,27 +114,20 @@ function SubmenuRow({ label, options, onSelect, open, onEnter }) {
 
 function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
   const [open, setOpen] = useState(false)
-  const closeTimer = useRef(null)
+  // The top-level menu closes the moment the pointer leaves it, so sweeping
+  // across the nav bar never stacks menus; only the flyouts inside get the
+  // hover-intent grace (useFlyoutLevel).
   const level = useFlyoutLevel()
 
-  useEffect(() => () => clearTimeout(closeTimer.current), [])
-
   function handleMouseEnter() {
-    clearTimeout(closeTimer.current)
     setOpen(true)
   }
 
-  function handleMouseLeave() {
-    clearTimeout(closeTimer.current)
-    closeTimer.current = setTimeout(() => setOpen(false), FLYOUT_CLOSE_MS)
-    level.leave()
-  }
-
   function closeNow() {
-    clearTimeout(closeTimer.current)
     setOpen(false)
     level.reset()
   }
+  const handleMouseLeave = closeNow
 
   // Key tabs (default) read as primary — larger, bolder, darker. Muted "other"
   // tabs (Accounting / Automation) are visually secondary.
