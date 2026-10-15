@@ -28,6 +28,8 @@ Branch `claude/vfo-session-starter-e16a98` (edge + react, ONE chat). Four misc a
 
 **Not exercised:** the MAP 1 / Tax / PIP hold calls (same helper, code-only); the reminder + Tracy ladder (no row has aged 2 business days); the borrowed-account and no-email refusals; minting an account for a member with none; a release on a real payout; the PIP sweep re-fire. (Smoke 5/5 vs v993 — DISCHARGED after the merge, Jake, 2026-10-15.)
 
+**Follow-up `fix/nav-top-close` (react #473, `live-244-nav-top-close`):** the 400 ms close grace had been applied to the top-level `NavDropdown` too, so sweeping across the nav bar stacked open menus; the top menu closes on leave again and only the `SubmenuRow` flyouts keep the hover intent (Jake click-tested).
+
 **Process note:** Jake's *"start Phase 2"* button also carried *"commit Phase 1"* in its message and he did not intend the commit — a next-step button must do only what its label says (Claude memory).
 
 ---
