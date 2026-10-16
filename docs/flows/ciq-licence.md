@@ -70,4 +70,4 @@ Every member action sits in NO gate list and is fenced in-handler: member caller
 
 ## Owed at go-live
 
-Flip 319-323 to Send before the switch goes on for real members; decision 38 (any revenue-share change when a member drives CIQ) is OPEN; the first LIVE subscription should show no `cancel_at` (the sandbox dashboard's 90-day "Auto-cancels" is display-only, #629); a tax takeover on a billing $25 is code-only (not yet clicked).
+Flip 319-323 to Send before the switch goes on for real members; decision 38 (any revenue-share change when a member drives CIQ) is OPEN; the first LIVE subscription should show no `cancel_at` (the sandbox dashboard's 90-day "Auto-cancels" is display-only, #629). The tax takeover is LIVE-PROVEN in sandbox (2026-10-16, Test Client 1457 / plan 280: tax row granted, the $25 cancelled at Stripe, the row stayed `superseded` through the `.deleted` webhook, 322 drafted, no failure bell).
