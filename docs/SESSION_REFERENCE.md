@@ -213,7 +213,7 @@ Money, auth/security, data-loss and cross-repo contracts only. **Everything narr
 | Advisor / accountant onboarding (incl. the step locks, `onboardingOrder.js` ↔ `utils/onboarding-order.ts`, #594) | [flows/advisor-accountant-onboarding.md](flows/advisor-accountant-onboarding.md) · PFT + the handoff + stop-status → [flows/partnership-fast-track.md](flows/partnership-fast-track.md) |
 | Membership fees, renewals, pauses | [flows/membership-fees.md](flows/membership-fees.md) · [flows/coaching-renewals.md](flows/coaching-renewals.md) |
 | PIP Meetings | [flows/pip-meetings.md](flows/pip-meetings.md) |
-| CIQ | [flows/ciq.md](flows/ciq.md) · [tables/ciq.md](tables/ciq.md) |
+| CIQ · the **$25/month CIQ licence** (Standard client portal, `ciq_licence`, portal licensing L4 — turn on/off, `/portal-license-pay`, Update payment method, failed-payment email + reminder, tax takeover, My One Page Plan, *v: 2026-10-16*) | [flows/ciq.md](flows/ciq.md) · [tables/ciq.md](tables/ciq.md) · licence → [flows/ciq-licence.md](flows/ciq-licence.md) |
 | 90 Day Plan / training tracks | [flows/msm-tracking.md](flows/msm-tracking.md) |
 | Growth Credits | [flows/gift-credits.md](flows/gift-credits.md) · [tables/marketplace-gc.md](tables/marketplace-gc.md) |
 | The member **Help (?) button** / the **FAQ Editor** tab / `faq_items` + `faq_categories` / FAQ PDF documents / any new grantable tab key | [flows/member-help-faq.md](flows/member-help-faq.md) · [tables/faq.md](tables/faq.md) |
