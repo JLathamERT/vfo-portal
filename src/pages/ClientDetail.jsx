@@ -118,18 +118,11 @@ export default function ClientDetail() {
   // list by re-seeding the AdminPortal/MemberDirectoryView sessionStorage keys.
   const isPFTBack = program?.name === 'Partnership Fast Track' && location.state?.backTo === 'pft_accountants'
   const backLabel = isPFTBack ? '← Back to Accountants' : '← Back to Clients'
-  // Portal licensing L4: back from a Stripe Checkout (?ciq_licence=done), the page
-  // before this one in history is Stripe's finished checkout ("You're all done
-  // here"), so Back must not step into it. Remembered per client for this tab -
-  // the page's own URL rewrite may drop the query before Back is clicked.
-  const stripeReturnKey = `clientBackSkipHistory:${clientId}`
-  if (new URLSearchParams(location.search).get('ciq_licence') === 'done') {
-    try { sessionStorage.setItem(stripeReturnKey, '1') } catch { /* private mode */ }
-  }
   function handleBack() {
-    let fromStripe = false
-    try { fromStripe = sessionStorage.getItem(stripeReturnKey) === '1'; sessionStorage.removeItem(stripeReturnKey) } catch { /* private mode */ }
-    if (fromStripe) {
+    // A page loaded fresh (a Stripe Checkout return, an emailed link, a new tab)
+    // has no in-app entry behind it - history.state.idx is 0 - so navigate(-1)
+    // would leave the portal (Stripe's "You're all done here"). Go to the list.
+    if (!isPlanner && !(window.history.state?.idx > 0)) {
       navigate(backUrl)
       return
     }
@@ -251,7 +244,9 @@ export default function ClientDetail() {
     params.set('program', String(program.id))
     params.set('tab', activeTab)
     params.delete('_from')
-    window.history.replaceState(null, '', window.location.pathname + '?' + params.toString())
+    // Keep react-router's own state (its idx tells handleBack whether there is an
+    // in-app page to go back to).
+    window.history.replaceState(window.history.state, '', window.location.pathname + '?' + params.toString())
   }, [program?.id, activeTab])
 
   // A client in no program has no program tabs: a ?tab= carried in the URL
