@@ -70,7 +70,7 @@
 > | 90 Day Plan | **3** | ✗ no section |
 > | Accountant Onboarding | 19 | 18 |
 > | Advisor Onboarding | 19 | 18 |
-> | **Client Portal** *(NEW area 2026-10-09)* | **2** | ✗ no section — see the notes below + [flows/client-portal.md](flows/client-portal.md) / [flows/client-mirroring.md](flows/client-mirroring.md) |
+> | **Client Portal** *(NEW area 2026-10-09)* | **3** | ✗ no section — see the notes below + [flows/client-portal.md](flows/client-portal.md) / [flows/client-mirroring.md](flows/client-mirroring.md) / [flows/ciq-licence.md](flows/ciq-licence.md) |
 > | Growth Credits | 2 | ✗ no section |
 > | Growth Plan | 4 | 2 |
 > | MAP 1 | **18** | **15** |
@@ -127,6 +127,15 @@
 > mirrored member's **`member_logins.email`** (`forceRecipients`; no login = no bell): *"Client mirrored: <client>
 > (from <owner>)"*, linking to `/member/client/<id>`. Its sibling email is template `CLIENT_PORTAL` /
 > `MEMBER_client_connected` (Draft). Behind `mirrored_clients`, keyed on the client's owner.
+>
+> **The 2026-10-16 addition (portal licensing L4, the $25 CIQ licence), no section below:** `Client Portal` **2 → 3**
+> — **`FAILURE_ciq_licence`** (sort 355, `default_recipients ["jlatham@elitert.com"]`, dismissible FYI; migration
+> `20261016160000`). Jake's hand-fix bell when Stripe refuses to stop a $25 on a tax takeover
+> (`utils/ciq-licence-supersede.ts`) or to move a subscription onto a member's new payment method
+> (`ciqBillingUpdateCompleted`). **By Jake's decision (52) the licence raises NO bell to the member or the team** —
+> a failed payment is the member email 321 + one reminder 323; the two bell rules seeded for it
+> (`CIQ_LICENCE_payment_failed` / `_team`) were deleted by `20261016170000` without ever firing. A paid month whose
+> INV/REC numbers cannot be reserved reuses `FAILURE_ach_first_payment` (Jake). Flow: [flows/ciq-licence.md](flows/ciq-licence.md).
 
 ### MAP 1 (15)
 

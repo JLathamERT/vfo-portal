@@ -24,7 +24,7 @@ The member's view of their client (`/member/client/:id`, Profile tab) carries a 
 
 ## 2. The Basic gate (client)
 
-`clientPortalTier(clientId)`: switch off → `null` (no tiers); otherwise **Standard** when `clientLicenceStatus` says an unrevoked Standard licence covers today (today only L1 tax rows; L3 / L4 add sources), else **Basic** — never held, expired, revoked, or the $0 Basic row only. **Decision 11 (revised 2026-10-09):** the gate needs only `client_basic_portal`; with `portal_licensing` off no client of that member can ever be Standard, accepted by Jake.
+`clientPortalTier(clientId)`: switch off → `null` (no tiers); otherwise **Standard** when `clientLicenceStatus` says an unrevoked Standard licence covers today (L1 tax rows, and since 2026-10-16 a PAID month of the member's $25 CIQ licence — L4, [ciq-licence.md](ciq-licence.md); L3 will add Holistic), else **Basic** — never held, expired, revoked, or the $0 Basic row only. **Decision 11 (revised 2026-10-09):** the gate needs only `client_basic_portal`; with `portal_licensing` off no client of that member can ever be Standard, accepted by Jake.
 
 - `client_showroom_load` carries `tier` (and `intro_requests`) while the switch is on.
 - **Server guard:** the five `client_vault_*` actions call `denyIfBasicClient` right after their client check → **403** *"The Client Vault is not part of your portal."* Live-probed 2026-10-09: all five 403 for Basic client 365, all pass for Standard client 62.

@@ -1,6 +1,6 @@
 # CIQ flow (Client Intake Questionnaire)
 
-A multi-step intake-and-prioritization process owned by a member, run for each of their clients. Lives entirely within the portal — no external integrations, no email or webhook chaining. *(Line refs re-checked 2026-10-16. Portal licensing L4 — the $25/month Standard client licence and a read-only One Page Plan for the client and the mirrored member — is planned in [../plans/portal-licensing/README.md](../plans/portal-licensing/README.md) §3 L4; not built yet.)*
+A multi-step intake-and-prioritization process owned by a member, run for each of their clients. Lives entirely within the portal — no external integrations, no email or webhook chaining. *(Line refs re-checked 2026-10-16. Portal licensing L4 — the $25/month Standard client licence and a read-only One Page Plan for the client and the mirrored member — is BUILT behind the `ciq_licence` switch (2026-10-16) — flow of record [ciq-licence.md](ciq-licence.md). Within this flow it adds: `ciq_create` / `ciq_add_client_and_create` record the client's $0 CIQ licence row (fail-soft, only while the switch is on), and the admin *Allow Member to Start New CIQs* toggle reads *Member drives CIQ (training complete)* while the switch is on. Unswitched: Client Overview's **CIQ** pill (admin + member, one row per client with a CIQ, opening that client's CIQ — decision 50, `actions/clients/overview-ciq.ts`).)*
 
 ## Trigger
 

@@ -18,6 +18,7 @@ Acronyms and domain terms used across the codebase and this documentation. Defin
 | **PFT** | Partnership Fast Track | A program type. Drives ClientDetail's tab branching (PFT-only view vs MAP1+Regular+Tax view). Component: [PFTEngagementTrack.jsx](src/components/admin/pft/PFTEngagementTrack.jsx). |
 | **MSM** | Member Servicing Manager | The role that manages member relationships. ~32 `msm_*` actions. Stored in `members.assigned_msm`, `member_enrollments.assigned_msm`. |
 | **CIQ** | Client Intake Questionnaire | A survey + ranked-priorities workflow run by members against their clients, with optional per-priority progress tracking ("Update Progress") on the One Page Plan. ~15 `ciq_*` actions. See [flows/ciq.md](flows/ciq.md). |
+| **Basic / Standard portal** | Client portal tiers | Basic = Showroom only (free, L2); Standard = + Client Vault + My One Page Plan, from a tax licence or the member's **$25/month CIQ licence** (L4). See [flows/client-portal.md](flows/client-portal.md), [flows/ciq-licence.md](flows/ciq-licence.md). |
 | **CEO** | Chief Executive Officer | Hardcoded as `aanderson@elitert.com` in code. Second signer on every BoldSign agreement. |
 | **GC** | Growth Credits (inferred from product copy) | Marketplace credits. Tables: `gc_balances`, `gc_redemptions`, `gc_services`, `gc_transactions`, `gc_subscriptions` (recurring services, 2026-08-27). The Stripe checkout product description reads `<amount> Growth Credits`. |
 | **D&B** | Details & Benefits | Public-facing marketing copy for specialists. Stored in `experts.D&B_*` columns. |
