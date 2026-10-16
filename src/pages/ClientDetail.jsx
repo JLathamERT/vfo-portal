@@ -417,8 +417,8 @@ export default function ClientDetail() {
         ) : (
           <>
             {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
-            {activeTab === 'home' && isMember && portalAccess !== undefined && client && (
-              <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} />
+            {activeTab === 'home' && (isMember || isAdmin) && portalAccess !== undefined && client && (
+              <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} readOnly={isAdmin} />
             )}
             {activeTab === 'home' && (isMember || isAdmin) && client && (
               <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} />

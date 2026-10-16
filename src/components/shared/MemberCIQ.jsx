@@ -40,6 +40,9 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   const [localCiqVfosManaged, setLocalCiqVfosManaged] = useState(ciqVfosManaged)
   const [ciqSettingsStatus, setCiqSettingsStatus] = useState('')
   const [settingsLoaded, setSettingsLoaded] = useState(false)
+  // Portal licensing L4 (decision 37): while ciq_licence is on for this member the
+  // toggle is the MSM's "member drives CIQ" switch - same column, new wording.
+  const [ciqLicenceOn, setCiqLicenceOn] = useState(false)
 
   useLayoutEffect(() => {
     // Re-opened tab: use the last settings at once, refresh behind them.
@@ -47,6 +50,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
     if (snap) {
       setLocalCiqEnabled(snap.ciq_enabled)
       setLocalCiqVfosManaged(snap.ciq_vfos_managed)
+      setCiqLicenceOn(!!snap.ciq_licence)
       setSettingsLoaded(true)
     }
     async function loadCiqSettings() {
@@ -54,6 +58,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
         const data = await callApi('ciq_load_settings', { member_number: memberNumber })
         setLocalCiqEnabled(data.ciq_enabled)
         setLocalCiqVfosManaged(data.ciq_vfos_managed)
+        setCiqLicenceOn(!!data.ciq_licence)
         setLastSeen(`ciqsettings:${memberNumber}`, data)
       } catch (err) { console.error(err) }
       finally { setSettingsLoaded(true) }
@@ -1504,8 +1509,10 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>CIQ Settings</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
             <div>
-              <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>Allow Member to Start New CIQs</div>
-              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>When on, the member can start new CIQs on their own. When off, they can still view existing CIQs but can't create new ones.</div>
+              <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{ciqLicenceOn ? 'Member drives CIQ (training complete)' : 'Allow Member to Start New CIQs'}</div>
+              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{ciqLicenceOn
+                ? 'Turn on once the MSM is satisfied the CIQ training is complete. The member then runs their own CIQs and chooses, per client, the free Basic portal or the $25/month Standard portal. When off, they can still view existing CIQs but can\'t create new ones.'
+                : 'When on, the member can start new CIQs on their own. When off, they can still view existing CIQs but can\'t create new ones.'}</div>
             </div>
             <div onClick={() => setLocalCiqEnabled(!localCiqEnabled)}
               style={{ width: '44px', height: '24px', borderRadius: '12px', background: localCiqEnabled ? '#125ecc' : 'var(--vfo-border-strong)', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
