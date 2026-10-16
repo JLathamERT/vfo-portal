@@ -118,6 +118,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
   const btn = { padding: '10px 24px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif' }
   const ghost = { padding: '9px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '13px', fontWeight: 600, cursor: licBusy ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif' }
   const first = client?.first_name || 'your client'
+  const fullName = `${client?.first_name || ''} ${client?.last_name || ''}`.trim() || 'your client'
   const your = readOnly ? "the member's" : 'your'
   const method = lic?.acct_last4 ? ` (${lic.payment_method_type === 'ach' ? 'bank' : 'card'} ending ${lic.acct_last4})` : ''
   const canChangeMethod = !readOnly && ['active', 'ending', 'past_due'].includes(lic?.state) && (lic?.subscription_count || 0) > 0
@@ -141,7 +142,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
 
       {lic && (
         <div style={{ marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '6px' }}>Standard portal - $25/month</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '6px' }}>{lic.state === 'covered' ? 'Standard portal' : 'Standard portal - $25/month'}</div>
           {syncing ? (
             <p style={{ fontSize: '13px', color: 'var(--vfo-ink)', margin: '0 0 12px', lineHeight: 1.6, display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span aria-hidden="true" style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid var(--vfo-border-strong)', borderTopColor: '#125ecc', display: 'inline-block', animation: 'vfoSpin 0.8s linear infinite', flexShrink: 0 }} />
@@ -150,7 +151,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
             </p>
           ) : (
           <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 12px', lineHeight: 1.6 }}>
-            {lic.state === 'covered' && <>Covered by the tax licence until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.covered_until)}</strong> - no charge.</>}
+            {lic.state === 'covered' && <>Included with {fullName}'s tax planning until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.covered_until)}</strong> - no charge. {readOnly ? 'The member' : 'You'} can turn on the $25/month Standard portal after that date if {readOnly ? 'they want' : 'you want'} {fullName} to keep it.</>}
             {lic.state === 'basic' && (readOnly
               ? <>{first} is on the Basic portal (Showroom only). The member has not turned on the $25/month Standard portal.</>
               : <>{first} is on the Basic portal (Showroom only). The Standard portal adds their One Page Plan and Client Vault. It is charged to you monthly; {first} never sees the cost.</>)}
