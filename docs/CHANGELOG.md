@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-10-16 — Meeting-booking bell to Tray + Tracy + Evan; retainer confirmations say the meeting is being scheduled
+
+Branch `fix/hlm-bell-tracy-evan-confirm-wording` (edge migration + react docs). **No function deploy** — `vfo-admin-api` unchanged; data migration `20261016120000_hlm_bell_tracy_evan_confirm_wording.sql` applied via MCP `apply_migration` + committed (advisor GREEN at the exact baseline — a confirmation, no DDL).
+
+- **Why (Tracy, via Jake):** confirm Tray gets the payment-time ask (she does — Fares Zaki, client 264 plan 139, bell **3348** fired 0.4 s after his ACH submit on 2026-10-15: the first REAL proof of 2026-10-13 (e)); add Tracy and Evan in case Tray is out; and the confirmation email's *"the team will be reaching out to outline next steps"* is wrong now that the meeting is booked at payment.
+- **Recipients:** `notification_rules.recipients` override `[tvaldes, tnmiller, eanderson]@elitert.com` on `TAX_planner_hlm_ready` AND its meeting-first twin `TAX_roi_skipped_hlm_ready` (labels → *(Tray, Tracy, Evan)*). The code default stays Tray; a non-empty override wins (`utils/notify.ts`); Direct plans still `forceRecipients` the member; the clear is title + `client_id`, so one sent email clears every copy. The Direct-case FYI (`TAX_retainer_paid_schedule_meeting`) is unchanged (Tray).
+- **Wording (approved by Jake):** templates 23 / 24 / 30 / 263 → *"Our Proactive Coordinator will be reaching out soon to schedule your Detailed Tax Planning meeting."*; member twins 134 / 135 / 136 / 264 → *"…your client's Detailed Tax Planning meeting."* All Draft. No planner name (the confirmation handler does not substitute `[Planner Name]`); the line reads slightly off on a meeting-first or Direct plan (accepted).
+- **Hand fix:** Fares Zaki's open bell 3348 copied to Tracy (3352) + Evan (3353).
+- **OWED:** the first organic Tracy / Evan copies on the next retainer payment.
+
+---
+
 ## 2026-10-16 (b) — Feature Switches tidy-up (frontend only)
 
 Branch `fix/ciq-licence-switch-copy` (react only, no backend change). The `ciq_licence` card lost its "(BEING BUILT)" title and the "still being built" bullet and now describes what shipped (Update payment method + the all-subscriptions warning, the failed-payment email + one 2-business-day reminder with no bells, the tax takeover, *Member drives CIQ*, Cc Tracy / Bcc Paul + Anton). The `tax_diagnostic` switch is **hidden from the tab** (`HIDDEN_SWITCHES`) because it is permanently on (Jake): the flag row stays ON, `feature_switches_load` still returns it and every backend read is unchanged — SQL can still flip it. Click-checked by Jake on the dev server. Merged react `3285d95` (#479), PUBLISHED as `live-246-switch-copy` (`index-CvwdmYvr.js`, live verified).
