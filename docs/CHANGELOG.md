@@ -8,6 +8,10 @@
 
 ---
 
+## 2026-10-16 (b) — Feature Switches tidy-up (frontend only)
+
+Branch `fix/ciq-licence-switch-copy` (react only, no backend change). The `ciq_licence` card lost its "(BEING BUILT)" title and the "still being built" bullet and now describes what shipped (Update payment method + the all-subscriptions warning, the failed-payment email + one 2-business-day reminder with no bells, the tax takeover, *Member drives CIQ*, Cc Tracy / Bcc Paul + Anton). The `tax_diagnostic` switch is **hidden from the tab** (`HIDDEN_SWITCHES`) because it is permanently on (Jake): the flag row stays ON, `feature_switches_load` still returns it and every backend read is unchanged — SQL can still flip it. Click-checked by Jake on the dev server.
+
 ## 2026-10-16 — Portal licensing L4: the $25/month CIQ licence (Standard client portal) — Phases 0-5 (v997 → v1009, from the branch)
 
 Branch `claude/vfo-session-starter-474d85` (both repos, two chats). Flow of record: [flows/ciq-licence.md](flows/ciq-licence.md); plan §3 L4 + decisions 35-58 in [plans/portal-licensing/README.md](plans/portal-licensing/README.md); tables [tables/ciq.md](tables/ciq.md) (`member_portal_billing`, `ciq_licence_subscriptions` — **NEW**, deny-all, anon `*/0`, advisor STRONG) + [tables/tax.md](tables/tax.md) (`client_portal_licenses.source='ciq'`); webhook block in [architecture/07-server-chains.md](architecture/07-server-chains.md); gotchas **#626-#631**.
