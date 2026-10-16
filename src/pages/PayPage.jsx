@@ -107,7 +107,7 @@ export default function PayPage() {
             { label: 'VFO Services Membership', value: `$${formatMoney(baseAmount)}`, valueColor: 'var(--vfo-ink-2)' },
             { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
           ]}
-          footer="Funds transfer directly from your bank account. Takes 2-4 business days to process."
+          footer="Funds transfer directly from your bank account. Takes 3-5 business days to process."
         />
 
         <div style={dividerStyle}>— or —</div>

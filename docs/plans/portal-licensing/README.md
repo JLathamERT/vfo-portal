@@ -57,7 +57,7 @@ An annual licence is a **disbursement**: the $300 comes off the fee before it is
 | **L1** | **Tax licence** (= DIRECT unit 4) | $300/yr disbursement | `portal_licensing` (EXISTS — it also carries the new tax agreement) | **SHIPPED 2026-09-28** (backend v921, dark behind the switch, Test member only; flow [flows/tax-planning.md](../../flows/tax-planning.md#client-portal-licence-direct-unit-4--portal-licensing-l1-2026-09-28)); still owed: the $300 TRANSFER to a VFO Portal Stripe account (display only today) |
 | L2 | Basic client portal: member sends the portal link + Showroom introduction button | $0 | `client_basic_portal` | **SHIPPED 2026-10-09** (backend v953 → v955, dark behind the switch, Test member only; decisions 7-16; flow [flows/client-portal.md](../../flows/client-portal.md)) |
 | L3 | Holistic licence | $300/yr disbursement | `holistic_licence` | planned — ON HOLD behind L5 (decision 17); open question whether VFOS-led Holistic carries the licence at all (decision 18) |
-| L4 | CIQ licence (Basic vs Standard for a CIQ client; member self-drive) | $0 or $25/month | `ciq_licence` | planned |
+| L4 | CIQ licence (Basic vs Standard for a CIQ client; member self-drive) | $0 or $25/month | `ciq_licence` | **build plan written 2026-10-16** (below; decisions 35-48, decision 38 still open) — no code yet |
 | **L5** | **Mirrored joint clients** (connected advisor ↔ accountant, and one-off cases) | $0 (Q4 deck) | `mirrored_clients` | **SHIPPED 2026-10-12** (backend v959 → v963, dark behind the switch, Test member only; the member Client Overview tab ships with no switch; decisions 19-34; flow [flows/client-mirroring.md](../../flows/client-mirroring.md)) |
 | L6 | VFO Associate + Financial Collaborator portals | $0 / $25/month + their existing fees via the portal | `associate_fc_portal` | planned — Jake: NOT being worked on yet |
 | L7 | Portal suspension rules by member tier | — | `portal_suspension` | planned |
@@ -66,6 +66,8 @@ An annual licence is a **disbursement**: the $300 comes off the fee before it is
 Every unit is its own shipping unit (own branch, own chat or chats, own wrap-up), built dark behind its switch. The order is the build order, not a release order — Jake can flip switches in any order he likes, except where a unit depends on another (L4 depends on L1's record; L2's case view depends on the Standard tier). **Build order since 2026-10-09 (decision 17): L5 next, then L3 / L4 / L6 / L7 as Jake chooses.**
 
 **Second source (2026-10-09): Paul's TEAM deck "Q4 Update: VFO Portal"** (40 slides, Jake's Downloads, not in the repo — read as extracted text + slide images). It confirms §2 (prices, priority, the FIFO $75 example), L1 (the $300 comes out of the revenue share: $100 member on 33/33/33, $135 member on 45/45/10 Direct; 12 months + a 15% discount on future tax planning fees; Direct needs 2+ completed VFOS-led tax cases with paid fees), L2 (Basic portal + introductions + the training / customer-experience video), L4 (CIQ Option 1 = Basic, "replicates the old PPP"; Option 2 = $25/month Standard: Vault, CIQ, One Page Plan, case history) and L7 (unchanged). What it ADDS is folded into L3, L5 and L6 below, marked "(Q4 deck)".
+
+**Third source (2026-10-16): the MEMBER-facing PDF "Changes coming to ERT & the VFO Portal"** (5 pages, Jake's Downloads, not in the repo), plus Paul's full 84-slide deck "PL - Q4 Update: VFO Portal" and the licensing spreadsheet re-supplied the same day — the deck and the sheet say nothing the sections below do not already record. The PDF adds: (a) a tax-licensed client gets "12 months free membership of VFO Services Holistic Lite planning (saving $2,600)" — **wording only, nothing to build** (decision 42: it describes the 12-month Standard portal); (b) the "15% discount on future tax planning fees" — **not built, undecided** (decision 43); (c) Fusion changes take effect **1 January 2027**, Accelerator / Plus members become Fusion / Advanced, new Fusion members must be VFO Certified and onboarded to the portal (LATER below); (d) it prices the Financial Collaborator at **$145 / $170** where the deck and the sheet say **$99 / $124** — a conflict to settle when L6 starts. Direct tax's "2+ completed VFOS-led cases with paid fees" is built as `utils/tax-direct-eligibility.ts qualifyingTaxClients` (2 DISTINCT clients, retainer paid, past Client decision 1, not refunded) — slightly looser than "completed".
 
 ---
 
@@ -121,7 +123,163 @@ Gates: `deno check` 0 · action count 567 → 569 · build exit 0 · advisor STR
 - **Switching off:** the member can switch the $25/month licence off (how — open); it stops CIQ at the end of the current calendar month and the client's Standard access is halted (back to Basic).
 - A client already holding an annual (Tax/Holistic) licence is not charged the $25 (§2.2: one licence at a time).
 
-**Today:** CIQ is gated per MEMBER only (`members.ciq_enabled`, every member on); there is no per-client licence. **Open questions:** who pays the $25 and how (the member's saved payment method? a Stripe subscription per client or one per member with quantity?); does the MSM toggle replace or sit beside `members.ciq_enabled`; what exactly "stops CIQ" means for a client mid-plan; do legacy vs new members need a stored flag?
+**Today:** CIQ is gated per MEMBER only (`members.ciq_enabled`, every member on); there is no per-client licence. **The open questions were ANSWERED 2026-10-16 (decisions 35-41) except the money one (decision 38, open).**
+
+#### L4 build plan (written 2026-10-16, read-only, before any code — branch `claude/vfo-session-starter-474d85`, both repos)
+
+> **STATUS 2026-10-16: Phases 0-5 BUILT and click-tested by Jake** (sandbox, 59524), backend deployed from the branch (v1009), frontend on the dev server only. **Flow of record now: [../../flows/ciq-licence.md](../../flows/ciq-licence.md)** — where it and this plan differ, the flow doc is what was built. Changes made while building, beyond the plan below: the card-or-bank choice page `/portal-license-pay` (PUBLIC `portal_license_pay_load` / `_checkout`); card $25 + 2.9% + $0.30 (decision 51); Phase 4 reworked by decisions 52-58 (emails only, a 2-business-day reminder, Cc Tracy / Bcc Paul + Anton, the all-subscriptions warning, the no-refresh card); new actions `member_ciq_licence_status` (the card's poll) and `automation_PORTAL_ciq_payment_reminders` (service-role, the reminder pass alone). **Action count 591 → 602** (not 598). Still OPEN: decision 38. The tax takeover was click-tested in sandbox (plan 280) and passed.
+
+**How CIQ works today (code-verified 2026-10-16).**
+- `members.ciq_enabled` (default `true` since `20260922120000`, on for every member) gates ONLY *starting* a CIQ: `actions/ciq/shared.ts blockIfMemberCannotStart`, called by `ciq_create` and `ciq_add_client_and_create`. The member CIQ tab always shows. Viewing, continuing, prioritising and the One Page Plan are not gated.
+- The admin toggle already exists: `MemberCIQ.jsx` Settings → *Allow Member to Start New CIQs*, saved through `member_profile_save`. Its sibling *VFO Services Managed* (`ciq_vfos_managed`) is a label only (*Powered by VFO Services*). `MembersPanel.jsx` `MemberSettings` carries dead CIQ state nothing renders.
+- Every `ciq_*` read and write is owner-only: `denyIfNotOwnCiq` on `client_ciqs.member_number`, or the `MEMBER_SCOPED_ACTIONS` rewrite for the three member-keyed loaders. No handler takes `auth` and skips its fence.
+- `client_ciqs` carries no money, licence or "who drives" column.
+- **Nobody but the owner and admins can see a CIQ.** `CLIENT_ALLOWED_ACTIONS` has no `ciq_*` action. `ClientPortal.jsx` has Home / Showroom / Vault / Settings only. The L5 mirror deliberately leaves CIQ out (`flows/client-mirroring.md`). `FeatureSwitchesPanel.jsx`'s L5 card wrongly says the mirrored member sees "CIQ" — fixed in Phase 0.
+- **The licence record.** `client_portal_licenses`: `source` CHECK `('tax','basic')`, `tier` `('basic','standard')`, `ends_on` required for every non-basic row.
+- `clientLicenceStatus` / `clientPortalTier` read **every** `tier='standard'` row, whatever its source.
+- **TRAP (#448 family):** `grantTaxLicence` → `taxLicencePeriod` also reads every `tier='standard'` row. A $25 CIQ month row would therefore make a new tax licence read as *covered*, or start it at the CIQ month's end and charge a few dollars. The same applies to the `clientLicenceStatus` call in `tax/invoice-receipt.ts` (the login email's end date). Phase 1 narrows both to `source='tax'` (today only `tax` and `basic` rows exist, so behaviour is unchanged).
+- **Billing precedent.** No pattern bills a MEMBER per item. The closest verified engine is the specialist licence subscription:
+  - `actions/onboarding/license-checkout.ts` + `actions/specialist-license/continuation-start.ts` create it: Checkout `mode=subscription`, inline monthly `price_data`, no card fee since 2026-09-22.
+  - Its webhook processor `processSpecialistLicenseInvoicePaid` in `router/webhooks.ts` handles three things:
+    - Newer Stripe API versions send `invoice_payment.paid` (an `inpay_` object, sometimes without a subscription ref) instead of `invoice.paid`. All three event shapes funnel into the one processor.
+    - Exactly ONE event claims each invoice id.
+    - $0 `subscription_create` stub invoices are skipped.
+  - It chains `automation_SPECIALIST_licinvoicereceipt`, a house invoice + receipt pair for EVERY paid month.
+  - Gotchas behind it: #491 (subscription mode + money due today hides manual bank entry), #489 (idempotency keys), #327 / #611 (redelivery latches), #485 (the account is a property of the row).
+- **Member creation sites** that would need the new-member default (Phase 4): `members/add-full.ts`, `advisor/create-member.ts`, `accountant/create-member.ts`, and `members/profile-save.ts` (an upsert). Grep `from("members")` + `.insert` / `.upsert` again at build time.
+
+**Rules for the whole unit.**
+- **Switch:** `ciq_licence`, keyed on the client's OWNER (the paying member), seeded Test member only. Off = exactly today: no new key in any payload, no new tab, `ciq_enabled` behaves as now.
+- **Depends on `client_basic_portal`.** The tier gate (Basic vs Standard) only exists while it is on, so every L4 member action refuses unless BOTH switches are on for the owner, and the switch card says so.
+- **No manual licence controls (decision 6).** The member turns the $25 on and off for their own client. An admin SEES the state but has no grant / extend / revoke button.
+- **Licence periods.** Every PAID month writes one `client_portal_licenses` row: `source='ciq'`, `tier='standard'`, `amount` = the invoice amount (25), `starts_on` / `ends_on` = the invoice's billing period. The existing tier helpers then light Standard with no new logic. Stopping, a failed payment, or a tax licence taking over all simply mean no next row, so the client falls back to Basic when the paid period ends (decision 39).
+- **Option 1 ($0 Basic) IS recorded (decision 47).** One `source='ciq'`, `tier='basic'`, `amount 0`, `ends_on NULL` row per client, so a price can be added later.
+  - It is written the first time the member starts a CIQ for that client while `ciq_licence` is on (`ciq_create` / `ciq_add_client_and_create`, fail-soft, after the CIQ insert).
+  - Unique partial index `(client_id) where source='ciq' and tier='basic'`.
+  - The tier helpers read `tier='standard'` only, so the row never lights Standard.
+- **The upgrade needs a client login first (decision 48).** The *Turn on* control is greyed out with *Send portal access first* until the client holds a portal login; the handler refuses the same case.
+- **One licence at a time (§2.2).**
+  - The member cannot start the $25 while the client holds an active `tax` licence. The refusal is a 409 carrying the end date, and the card reads *Covered by tax licence until MM/DD/YYYY*.
+  - A tax grant on a client with an open $25 subscription cancels it at once: no proration, no refund, status `superseded`.
+  - When the tax licence ends the client drops to Basic. Nothing restarts automatically (decision 40).
+- **Money.**
+  - The account is VFO Services (`vfos`) for now. Sandbox and account come from the **`TAX` `pipeline_sandbox_config` row** (`stripe_account='vfos'`), the same row L2 and L5 read through `loadSandboxConfigForMember(sb, "TAX", owner)`, plus the 59524 force. Changed at build 2026-10-16: a new `PORTAL_LICENCE` row would have shown at once in the admin `SandboxModeToggle` with the switch off. The VFO Portal account (decision 36) gets its own config row when it exists. Every row stamps its own `stripe_account` + `sandbox` (#485), so that move changes CONFIG, not old rows.
+  - Every Stripe-visible description, product and memo reads **`VFO Portal - …`**: product *VFO Portal - CIQ Standard licence*, subscription *VFO Portal - CIQ licence - <Client Name>*. This rule covers all portal licence money (decision 36).
+  - **Card OR bank account (decision 45).**
+    - Because the first month is charged today, Stripe offers bank **sign-in** only and hides manual account / routing entry (#491). Accepted. Manual entry would need the licence continuation's $0-today + SetupIntent shape and its `setup_intent.*` handling (#491) — a later change if Jake wants it.
+    - A bank payment sits `processing` for a few business days. Standard starts only when the invoice is PAID (the licence row is written at `invoice.paid`), so the client stays Basic until then.
+    - A late bank failure arrives as `invoice.payment_failed`, as on a card.
+    - Copy the specialist licence's ACH branches, not new ones (#475 / #482: a canceled PaymentIntent is a failure only when booked `processing`).
+  - No card fee on either method, the same as the specialist licence.
+  - The member's billing card is a member-level customer; each client's licence is its own subscription on it (decision 35).
+- **No revenue-share change** (decision 38 is OPEN): no payout engine is touched. If Jake later says money moves, that becomes its own phase.
+- **Documents.** Every paid month gets the house invoice + receipt PDF pair (`allocateDocNumber` INV- / REC- on the MEMBER's ref, as membership invoices do), emailed to the member. This copies the specialist licence's every-month precedent. Proposed — the alternative is the pair on the first month and receipt-only after.
+- **Templates.** Every new template is seeded **Draft**, and its copy is approved by Jake before it is seeded.
+- **Security.**
+  - Two NEW tables, each RLS deny-all in the same migration + an anon probe `*/0` + advisor STRONG.
+  - Every new member action sits in NO gate list and names its fence in-handler: member or admin caller, `denyIfNotOwnClient` first, then the switch. Writes are refused for an admin (admins read only) and for a mirrored member (#600 / #601).
+  - The client action sits in `CLIENT_ALLOWED_ACTIONS` and reads `auth.callerClientId` only, never a body id (#310 spirit).
+  - Any new money key on a client-screen payload carries a mask word (`amount`, `stripe`, `card`, …), and `scripts/probe-l5-mirroring.ps1` is re-run after the schema change (#602).
+  - If a claim RPC is needed it is SECURITY DEFINER with a pinned `search_path` + `REVOKE EXECUTE … FROM public` (#143). The plan prefers a unique-index insert as the claim.
+- **Sandbox.** Test Member 59524 is forced to sandbox at every `PORTAL_LICENCE` config read through `isTestSandboxMember` (#251 / #504). Webhooks follow the row's own `sandbox` stamp.
+
+**Phases (Jake's click-through after each user-facing phase):**
+
+0. **Read + fix docs first (the DOC MAP; fixing a wrong doc is part of the task).**
+   - Read `architecture/07-server-chains.md` (the licence + SpecRev recurring chains, the webhook rules), `flows/ciq.md`, `tables/ciq.md`, `flows/client-portal.md`, `flows/client-mirroring.md`.
+   - Fix what the 2026-10-16 read found stale:
+     - `tables/ciq.md` documents `client_ciqs.accountability_mode` and `ciq_priorities.progress_status`, which exist in code but in no migration file — verify live with `information_schema` and record the gap. It says `ciq_assignments` was dropped, but no migration drops it — verify live. Its line 14 "only DB-constrained status" claim is stale.
+     - `flows/ciq.md` line refs have drifted (MemberCIQ.jsx 42 → 51 …). Its "deleted only by cascade" is wrong: `members/delete.ts` also deletes by `member_number`.
+     - The `utils/feature-flags.ts` comment + migration `20261009140000` note say Basic applies "only while portal_licensing is also on" (superseded by decision 11).
+     - The L5 switch card says the mirrored member sees CIQ.
+1. **Schema, switch and the off-side guards** (backend only, no user-facing change).
+   - Migration, one committed file:
+     - The `ciq_licence` flag row `{59524}` + the `FEATURE_SWITCHES` key + the `SWITCH_COPY` card. The card says what switching on adds, that `client_basic_portal` must also be on, and that off = today.
+     - No sandbox-config row (the `TAX` row is reused, see Rules).
+     - A no-op catch-up file `20261016110000_ciq_schema_catchup.sql`: `client_ciqs.accountability_mode`, `ciq_priorities.progress_status` + its CHECK (live but in no migration file) and `drop table if exists ciq_assignments` (#196).
+     - `client_portal_licenses.source` CHECK gains `'ciq'`, plus nullable `ciq_subscription_id` (FK) and `stripe_invoice_id` with a unique partial index `(stripe_invoice_id) where source='ciq'` — the once-per-invoice claim.
+     - `ends_on_required_check` is relaxed to exempt `tier='basic'` rows, so the $0 CIQ row can have no end.
+     - The unique partial index for the $0 CIQ row (decision 47).
+     - **NEW `member_portal_billing`** (`member_number` PK FK, `stripe_account`, `sandbox`, `stripe_customer_id`, `default_payment_method_id`, `card_brand`, `card_last4`, timestamps) — one Stripe customer per member per account.
+     - **NEW `ciq_licence_subscriptions`** (`id`, `client_id` FK CASCADE, `member_number` FK, `stripe_account`, `sandbox`, `stripe_subscription_id` unique, `checkout_session_id`, `status` CHECK `('pending_checkout','active','ending','past_due','ended','superseded')`, `cancel_at_period_end`, `current_period_end`, `started_at`, `ended_at`, `ended_reason`, `created_at`; unique partial `(client_id) where status in ('pending_checkout','active','ending','past_due')`) — at most ONE open subscription per client.
+     - Both new tables are deny-all.
+   - Code: `taxLicencePeriod`'s row read and the `invoice-receipt.ts` end-date read narrow to `source='tax'`. `clientLicenceStatus` returns `source` so Home can word a monthly licence. Both are byte-identical on today's rows.
+   - Gates: `deno check` 0, action count unmoved, advisor STRONG + both anon probes.
+2. **What a Standard client sees** (decision 41).
+   - NEW `client_ciq_plan_load` (`CLIENT_ALLOWED_ACTIONS`, client from the session only). Refused unless `ciq_licence` is on for the owner AND `clientPortalTier` = `standard`. Standard from ANY source, so a tax-licensed client sees their plan too — slide 62: tax planning makes every portal feature free for 12 months.
+   - It returns an ALLOWLIST built by one shared helper, `utils/ciq-plan-view.ts`: per CIQ with a completed prioritisation, the items the member's One Page Plan shows (Immediate / Parked / Completed — label, section, value, notes, progress status) plus the History snapshots. Never the questionnaire answers, the report, or any id beyond the CIQ id.
+   - The same helper feeds NEW `member_mirrored_ciq_plan_load {client_id}`, admitted ONLY through `mirrorReadGate` / `denyIfNotOwnOrMirroredClient` (never a widened `denyIfNotOwnCiq`, #601) and gated on `ciq_licence` for the owner. This discharges L5's owed read-only CIQ.
+   - FE:
+     - NEW read-only `src/components/shared/OnePagePlanView.jsx` (Latest + History, no Update Progress, no Park / Drop). `MemberCIQ.jsx` is NOT refactored, so the member screen stays byte-identical.
+     - `ClientPortal.jsx` gains a **My Plan** tab, OFF until the live load allows it (decision 16's rule).
+     - The mirrored member's client screen gains the same read-only section.
+     - Home words a CIQ-only Standard licence as *Your VFO client portal is active* (no month-end date).
+   - Click-through: Test Client 62 (tax licence active to 2027-10-13) sees its plan; a Basic client gets no tab and a 403 by console probe; the switch off shows no tab; the mirror read on 11111.
+3. **Turning the $25 on and off** (the money phase).
+   - Actions, all in no list, fenced as above:
+     - `member_ciq_licence_start {client_id}`:
+       - Refused unless both switches are on, the client has a portal login (portal access sent), the caller is the owner (or a mirrored write is attempted → 403), there is no active tax licence (409 + end date), and there is no open subscription (409).
+       - With a saved card on `member_portal_billing` it creates the subscription straight onto it, off-session, with a logical idempotency key `ciq-lic-<subscription row id>` (#228 / #489). A decline or `requires_action` returns a Checkout link instead.
+       - Without a saved payment method it returns a Checkout `mode=subscription` (card + `us_bank_account`, `customer` = the member's billing customer, metadata `pipeline=PORTAL_LICENCE`, `payment_kind=ciq_licence`, the row id, client id, member number; `success_url` back to the member client page, whose copy reads the ROW's real state, never the return flag — #567).
+     - `member_ciq_licence_stop {client_id}`: `cancel_at_period_end=true` → status `ending` (decision 39).
+     - `member_ciq_licence_resume {client_id}`: only while `ending` and before the period end; `cancel_at_period_end=false`.
+   - `msm_load_client_home` gains a `ciq_licence` key, only while the switch is on and never for a mirrored viewer (the `portal_access` pattern): state, period end, covered-until, last4.
+   - Webhooks (`router/webhooks.ts`, read 07 first; the `pipeRow` null-check is NOT touched; `fromPrimary` + the row's account):
+     - `checkout.session.completed` with `payment_kind=ciq_licence` → stamp the subscription id, save the default payment method + last4 onto `member_portal_billing`, status `active`.
+     - `invoice.paid` / `invoice.payment_succeeded` / `invoice_payment.paid` funnel into ONE `processCiqLicenceInvoicePaid`:
+       - **Routed by SUBSCRIPTION id, never by customer** — one member customer carries many clients' subscriptions. When `inpay_` omits the ref, fetch the invoice.
+       - Skip $0 stubs.
+       - Claim by inserting the licence row on the unique `stripe_invoice_id`.
+       - Then chain a NEW service-role `automation_PORTAL_ciq_licence_invoicereceipt` (house pair + member email).
+     - The member billing customer is NOT in the `stripe_customer_id` cascade. Every generic resolver (`async_payment_failed`, the PaymentIntent first-payment resolver, the *unmapped Stripe customer* bell) gets an explicit no-op arm on `metadata.pipeline='PORTAL_LICENCE'`, the Background Check request precedent. The branch sits ahead of the cascade, keyed on metadata (07 checklist 9, #473).
+     - `customer.subscription.updated` / `.deleted` sync `cancel_at_period_end` / `current_period_end` / status (`ended` + reason).
+   - FE: the member client Profile tab's CLIENT PORTAL card gains a **Standard upgrade - $25/month** row:
+     - Basic → *Turn on*.
+     - Active → *Standard until MM/DD/YYYY* · *Turn off*.
+     - Ending → *Ends MM/DD/YYYY* · *Keep it on*.
+     - Covered → *Covered by tax licence until MM/DD/YYYY*.
+     - Past due → *Payment failed*.
+     - Only refusals show a message (decision 13's rule). The admin view of the card shows the state read-only.
+   - Click-through, sandbox, 59524 / Test Client 62 after its tax licence is removed or on another test client: first Checkout → row + licence row + Draft pair; a second client reuses the card with no Checkout; stop → ending → resume.
+   - The month boundary is proven with a **Stripe test clock** on a sandbox customer: advance one month → renewal invoice → second licence row; stop + advance → `ended`, client Basic. Gates: smoke 5/5 (webhooks + dispatch change).
+4. **Failure, takeover and the MSM switch.**
+   - `invoice.payment_failed` → status `past_due`, a member email (Draft) with an *Update card* link + a member bell + a Tracy FYI. Stripe's retries run; a final failure → `.deleted` → `ended`, client Basic at period end.
+   - NEW `member_portal_billing_update_card` → Checkout `mode=setup` (card or bank). Its completion swaps the default payment method on the customer AND every open subscription.
+   - Tax takeover:
+     - `grantTaxLicence` cancels an open CIQ subscription when it writes a `granted` row: best-effort, a bell to Jake on failure (#507), status `superseded`.
+     - A member email (Draft) says the client is now covered.
+   - The MSM switch (decision 37):
+     - While `ciq_licence` is on for the member, the admin CIQ Settings toggle reads *Member drives CIQ (training complete)*.
+     - While it is **On for all**, the member creation sites above write `ciq_enabled=false`.
+     - Existing members are untouched — all legacy. Test-member-only mode changes no new member.
+   - Click-through: a declined test card on the clock, update card, a tax payment on a client with an open $25.
+5. **Ship.**
+   - `scripts/probe-l4-ciq-licence.ps1` checks:
+     - Another member's client → 403 on start / stop / resume / mirrored plan.
+     - A Basic client → 403 on `client_ciq_plan_load`.
+     - Switch off → 403.
+     - Covered → 409; double start → 409.
+     - A mirrored member's start → 403.
+     - The `ciq_licence` key absent for a mirrored viewer.
+   - Re-run `probe-l5-mirroring.ps1`.
+   - Docs: a new `flows/ciq-licence.md`, plus `tables/clients.md` / `tables/ciq.md` / `tables/tax.md`, `07-server-chains.md`, the hub, CHANGELOG, GOTCHAS, and the decisions here.
+
+**Gates:**
+- `deno check` 0.
+- Action count 591 → **598** (`client_ciq_plan_load`, `member_mirrored_ciq_plan_load`, `member_ciq_licence_start` / `_stop` / `_resume`, `member_portal_billing_update_card`, `automation_PORTAL_ciq_licence_invoicereceipt`).
+- Build exit 0.
+- Advisor STRONG + anon `*/0` ×2.
+- Smoke 5/5 after every `vfo-admin-api` deploy that touches webhooks / dispatch / role-gates.
+- The two probe scripts.
+- Deploy `--use-docker` (#574), only on Jake's "deploy". The Off side needs no asset first (#555): every template the Off path reads already exists.
+
+**Still open:**
+- Decision 38 (money) only. The four review checks were answered 2026-10-16 (decisions 45-48).
+
+**Rollback:**
+- The switch off: no new subscription can start. Existing sandbox subscriptions are cancelled by hand in Stripe — no live ones exist until the switch goes On.
+- A Supabase version revert, and `git revert` of the squash.
+- The tables and columns are additive.
 
 ### L5 — Mirrored joint clients
 
@@ -236,3 +394,27 @@ Each of these, when it is picked up, becomes a unit here with its own switch.
 | 32 | L5: on a mirrored track a PAYMENT step shows as done / not done like any other step; no amount, method, document, revenue share or payout ever shows (payout steps are cut from the checklist). | 10-12 |
 | 34 | L5 (SUPERSEDES 33, Jake after seeing it): the mirrored member gets the owner's **own member client screen** (`/member/client/:id`), identical in look, eyebrow "Mirrored client", view-only (every button / upload hidden; the server refuses all writes). The screen's reads (`msm_load_client_home`, `client_notes_load_shared`, `msm_load_client_progress`, `member_load_pipeline`, `msm_load_priority_tracks` / `_progress`, `tax_load_plans` / `_progress` / `_specialists`, `tax_intake_load`) admit them through `mirrorReadGate`, which masks every money / id / token VALUE to "—" (`utils/mirror-mask.ts`, key-name rule, 0 and null kept); the FE `mirror` prop hides the fee schedule, entered pricing, revenue-share rows, payment-method tags, refund amount and PI id. PFT is not shown. The dedicated page and `member_mirrored_client_load` were deleted. | 10-12 |
 | 33 | ~~L5: the mirrored member gets a **dedicated read-only mirror page**~~ (superseded by 34) (`/member/mirrored/:id`, one allowlisted read built from the Client Overview step machines), NOT the owner's client tabs made read-only — supersedes the Phase 3 loader-by-loader opt-in below. The feature is called **Client Mirroring** in the UI ("connected member" means something else in the portal). The ERT/VFOS Documentation vault section is not mirrored (the agreements quote fees). | 10-12 |
+| 35 | L4: the $25 is a **separate Stripe subscription per client**; the member saves a card once (on the first upgrade) and every later upgrade reuses it, each client switched on / off on its own. | 10-16 |
+| 36 | L4 (and ALL portal licence money): **VFO Services** account until the new **VFO Portal** Stripe account exists; every portal licence charge / transfer description / memo reads **"VFO Portal - …"** so it is clear what it is (L1's $300 transfer included, once it exists). | 10-16 |
+| 37 | L4: the existing `members.ciq_enabled` toggle IS the MSM's "member drives CIQ" switch; every existing member is a legacy member and stays on; new members start off while `ciq_licence` is On for all. | 10-16 |
+| 38 | L4 **OPEN**: whether any revenue share changes when a member drives their own CIQ (the sheet: "they don't revenue share with VFOS") — Jake to answer; the build plan touches no payout engine until he does. | 10-16 |
+| 39 | L4: turning the $25 off lasts to the end of the PAID period, then the client is Basic again; the CIQ data and the Vault files are kept and the member can keep doing CIQ at $0. | 10-16 |
+| 40 | L4: a client holding a tax licence is "Covered until <date>" and the $25 cannot start; an open $25 stops when a tax licence is granted (no refund); when the tax year ends the client drops to Basic unless the member turns the $25 on (no automatic restart). | 10-16 |
+| 41 | L4: a Standard client sees a read-only **One Page Plan** (latest + history), never the questionnaire answers; the same read-only view is the mirrored member's CIQ (the L5 owed item). | 10-16 |
+| 42 | The member PDF's "12 months free Holistic Lite membership (saving $2,600)" for a tax client is WORDING ONLY — no build. | 10-16 |
+| 43 | The "15% discount on future tax planning fees" (deck + PDF) is NOT built and is undecided. | 10-16 |
+| 44 | Third source recorded: the member PDF "Changes coming to ERT & the VFO Portal" (2026-10-16); its Financial Collaborator price ($145 / $170) conflicts with the deck and sheet ($99 / $124) — settle when L6 starts. | 10-16 |
+| 45 | L4: the member pays the $25 by **card or bank account**; because the first month is charged at once, the bank route is Stripe's bank sign-in only (manual entry hidden, #491), and Standard starts when the payment actually settles. | 10-16 |
+| 46 | L4: **an invoice + receipt PDF pair every paid month**, emailed to the member (the specialist $99 licence precedent). | 10-16 |
+| 47 | L4: the free option (member does the CIQ, client on Basic) **is recorded as a $0 CIQ licence**, one per client, written when the member first starts a CIQ for that client, so a price can be added later. | 10-16 |
+| 51 | L4 (Jake, 2026-10-16, after seeing the choice page) — **SUPERSEDES the "no card fee" line in the build plan's Money rule:** the $25 follows the house card rule — **card = 2.9% + $0.30 on top (every month, $26.06), ACH = no fee**, on the choice page, the Stripe price (`ciqChargeCents`), the saved-card path, and the invoice / receipt (a Card Processing Fee row + *incl. card fee* total, #607) and the email's amount. The card-or-bank choice page is `/portal-license-pay` (a copy of `/specialist-pay?kind=license`; PUBLIC `portal_license_pay_load` / `_checkout`, the row's `checkout_token` is the credential, #310); Stripe returns to the member's client page on the caller's origin. Phase 4's update-payment-method must re-price the subscription when the method changes between card and bank. | 10-16 |
+| 50 | L4 (Jake, 2026-10-16): a **CIQ** pill in Client Overview (admin + member), so CIQ-only clients are easy to find. One row per client with a CIQ, its furthest state (*One Page Plan complete* / *Questionnaire complete* / *In progress*) + the latest date + the count; members see their OWN clients only (CIQ is not mirrored there). NOT behind a switch, like the rest of Client Overview (decision 31). Built as section `ciq` of `client_overview_load` / `member_client_overview_load` (`actions/clients/overview-ciq.ts`) — no new action. Columns sit in MAP 1's slots; members get the CIQs count column too. **The CIQ tab itself became two levels** (Jake, same day): a list of clients with CIQs → that client's CIQs → one CIQ, for members and admins alike; a CIQ pill row opens level 2 for THAT client (sessionStorage `ciqInitialListClientId`), the client NAME opens the profile. | 10-16 |
+| 49 | L4 (Jake, Phase 2 click-through): the client portal tab and its page title read **"My One Page Plan"**; the read-only One Page Plan card shows on the member client Profile tab for the client's **owning member** too, not only a mirrored member. | 10-16 |
+| 48 | L4: the $25 can only be turned on once the client has been sent portal access (has a login); until then the control reads *Send portal access first*. | 10-16 |
+| 52 | L4 Phase 4 (Jake) — **SUPERSEDES the Phase 4 plan's member bell + Tracy FYI:** a failed $25 payment emails the member at once (321) and ONCE more 2 business days later if still unpaid (323, membership sweep pass 6); **no bells** to the member or the team. Only Jake's hand-fix bells remain (`FAILURE_ciq_licence`, and the reused document-number failure). | 10-16 |
+| 53 | L4: every Standard licence email (319-323) is To the member, **Cc Tracy** (`tnmiller`), **Bcc Paul + Anton**. | 10-16 |
+| 54 | L4: a member's clients share ONE payment method but keep a separate subscription each (decision 35 stands — option 1); the failure email + reminder say *"updating it once fixes every one of them"*. One bill per member (option 2) was rejected. | 10-16 |
+| 55 | L4: Change / Update payment method — the member picks card or bank IN THE PORTAL before Stripe, and the panel warns it changes **ALL** of their Standard portal subscriptions, how many, and the new monthly amount. Every subscription moves and is re-priced (card $26.06 / bank $25.00); an overdue month on a NEW price is voided and charged again today (that client's monthly date moves), on the SAME price it is retried. | 10-16 |
+| 56 | L4: a failed renewal drops the client to Basic straight away while Stripe retries — no grace period. | 10-16 |
+| 57 | Every bank payment INTO VFO quotes **"3-5 business days"** to clear, everywhere (pay pages, return pages, panels, code-built emails, templates 284 / 289 / 290 / 320). | 10-16 |
+| 58 | L4: back from Stripe, the card updates on its own ("Updating…", polls `member_ciq_licence_status`) — nobody is asked to refresh; a bank payment clearing reads *processing*, never *failed*. | 10-16 |

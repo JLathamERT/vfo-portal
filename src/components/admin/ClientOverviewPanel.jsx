@@ -21,8 +21,23 @@ const SECTIONS = [
   // Clients in NO program (a CIQ-created client starts here). One row per client,
   // no tracks; the admin row's dropdown adds the client to one of its member's
   // programs (msm_link_existing_client). Members see their own, read-only.
+  // Every client with a CIQ (2026-10-16) - one row per client, its CIQ state.
+  // Members see their own clients only.
+  { key: 'ciq', label: 'CIQ' },
   { key: 'unassigned', label: 'Unassigned' },
 ]
+
+// The CIQ pill's state chip: the furthest any of the client's CIQs has got.
+const CIQ_STATE = {
+  plan_done: { label: 'One Page Plan complete', rank: 2, bg: 'rgba(27,146,84,0.13)', color: 'var(--vfo-success-text)' },
+  completed: { label: 'Questionnaire complete', rank: 1, bg: 'var(--vfo-accent-tint)', color: 'var(--vfo-accent-text)' },
+  draft: { label: 'In progress', rank: 0, bg: 'rgba(224,103,23,0.14)', color: '#e06717' },
+}
+function fmtDate(iso) {
+  if (!iso) return ''
+  const [y, m, d] = String(iso).slice(0, 10).split('-')
+  return `${m}/${d}/${y}`
+}
 
 // The second column exists only where a row needs its own identity: a Regular
 // priority has a title, and the Tax Planning tab merges both tax programs' plans
@@ -44,8 +59,11 @@ const GRID_BY_SECTION = {
   tax_planning: '1.1fr 170px 96px 130px 90px 1.9fr 1.1fr',
   pft: '1.1fr 96px 130px 1.9fr 1.1fr',
   unassigned: '1.4fr 96px 160px 260px',
+  // Same column slots as MAP 1: CIQ sits where Service level is, Last updated
+  // where Next action is, CIQs where Owner is - so the columns line up pill to pill.
+  ciq: '1.1fr 96px 130px 1fr 1.9fr 1.1fr',
 }
-const MIN_WIDTH_BY_SECTION = { map1: '980px', regular: '1000px', tax_planning: '1040px', pft: '860px', unassigned: '760px' }
+const MIN_WIDTH_BY_SECTION = { map1: '980px', regular: '1000px', tax_planning: '1040px', pft: '860px', unassigned: '760px', ciq: '980px' }
 // The member portal's Client Overview (mode='member', L5 phase 2): the same table
 // minus the Next action and Owner columns (decision 27). Fixed widths shared by
 // every pill (Name 280 · Priority/Plan 260 · Status 110 · PF 180 · Service level /
@@ -57,8 +75,9 @@ const MEMBER_GRID_BY_SECTION = {
   tax_planning: '280px 260px 110px 180px 180px 1fr',
   pft: '280px 110px 180px 1fr',
   unassigned: '280px 110px 180px 1fr',
+  ciq: '280px 110px 180px 180px 180px 1fr',
 }
-const MEMBER_MIN_WIDTH_BY_SECTION = { map1: '820px', regular: '900px', tax_planning: '1080px', pft: '640px', unassigned: '640px' }
+const MEMBER_MIN_WIDTH_BY_SECTION = { map1: '820px', regular: '900px', tax_planning: '1080px', pft: '640px', unassigned: '640px', ciq: '1000px' }
 
 // A stopped / declined / otherwise closed track always sinks below the live ones
 // in the dropdown orderings; a clicked column header sorts purely by that column.
@@ -105,7 +124,7 @@ function readSection(key) {
   } catch { return 'map1' }
 }
 
-export default function ClientOverviewPanel({ mode = 'admin' }) {
+export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq }) {
   const navigate = useNavigate()
   const memberMode = mode === 'member'
   const sectionKey = memberMode ? MEMBER_SECTION_KEY : CLIENT_OVERVIEW_SECTION_KEY
@@ -206,7 +225,8 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
   // header sort because sortByColumn is stable. Closed tracks go last (stable,
   // so the dropdown order holds inside each half).
   const isUnassigned = activeSection === 'unassigned'
-  const flatRows = isUnassigned
+  const isCiq = activeSection === 'ciq'
+  const flatRows = isUnassigned || isCiq
     ? sorted.map(c => ({ client: c, track: {} }))
     : sorted.flatMap(c => (c.tracks || []).map(t => ({ client: c, track: t })))
   const liveFirst = [...flatRows.filter(r => !isClosedTrack(r.track)), ...flatRows.filter(r => isClosedTrack(r.track))]
@@ -216,6 +236,8 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
     status: { type: 'text', get: r => capitalize(r.client.status) || 'Active' },
     pf: { type: 'text', get: r => r.client.assigned_pf },
     phase: { type: 'number', get: r => r.track.phase_rank },
+    ciq: { type: 'number', get: r => CIQ_STATE[r.client.ciq?.state]?.rank ?? -1 },
+    ciq_at: { type: 'text', get: r => r.client.ciq?.last_at || '' },
   }
   const rows = sortByColumn(liveFirst, colSort, sortColumns)
 
@@ -311,16 +333,52 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
               <SortHeader label="PF" sortKey="pf" sort={colSort} onSort={onSort} />
               {isMap1 && <span>Service level</span>}
               {isTax && <SortHeader label="Phase" sortKey="phase" sort={colSort} onSort={onSort} />}
-              {!memberMode && !isUnassigned && <span>Next action</span>}
-              {!memberMode && !isUnassigned && <span>Owner</span>}
+              {isCiq && <SortHeader label="CIQ" sortKey="ciq" sort={colSort} onSort={onSort} />}
+              {isCiq && <SortHeader label="Last updated" sortKey="ciq_at" sort={colSort} onSort={onSort} />}
+              {isCiq && <span>CIQs</span>}
+              {!memberMode && !isUnassigned && !isCiq && <span>Next action</span>}
+              {!memberMode && !isUnassigned && !isCiq && <span>Owner</span>}
               {!memberMode && isUnassigned && <span>Add to program</span>}
             </div>
 
             {rows.length === 0 && !error && (
               <div style={{ padding: '28px 18px', textAlign: 'center', color: 'var(--vfo-faint)', fontSize: '13px' }}>
-                {isUnassigned && clients.length === 0 ? 'Every client is in a program.' : 'No clients match the current filters.'}
+                {isUnassigned && clients.length === 0 ? 'Every client is in a program.' : isCiq && clients.length === 0 ? 'No client has a CIQ yet.' : 'No clients match the current filters.'}
               </div>
             )}
+
+            {isCiq && rows.map(({ client: c }) => {
+              const sc = clientStatusColors(c.status)
+              const st = CIQ_STATE[c.ciq?.state] || CIQ_STATE.draft
+              // The row opens THIS client's list of CIQs (the member's CIQ tab, at
+              // level 2); the client NAME still opens the profile.
+              return (
+                <div key={c.id} onClick={() => (onOpenCiq ? onOpenCiq(c) : openProfile(c, {}))} {...rowHoverProps}
+                  style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                    <span onClick={e => { e.stopPropagation(); openProfile(c, {}) }} title="Open client profile" style={{ fontWeight: 600, color: 'var(--vfo-link)', cursor: 'pointer', alignSelf: 'flex-start' }}
+                      onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                      onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{c.name || '—'}</span>
+                    {!memberMode && (c.member_name
+                      ? <MemberNameLink memberNumber={c.member_number} style={{ fontSize: '11px', color: 'var(--vfo-muted)', alignSelf: 'flex-start' }}>{c.member_name}</MemberNameLink>
+                      : <span style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>No member</span>)}
+                  </span>
+                  <span>
+                    {c.status
+                      ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: sc.bg, color: sc.color }}>{capitalize(c.status)}</span>
+                      : <span style={{ color: 'var(--vfo-faint)' }}>—</span>}
+                  </span>
+                  <span style={{ fontSize: '12px', color: c.assigned_pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.assigned_pf || '—'}</span>
+                  <span>
+                    <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: st.bg, color: st.color, whiteSpace: 'nowrap' }}>{st.label}</span>
+                  </span>
+                  <span style={{ fontSize: '12px', color: c.ciq?.last_at ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>
+                    {c.ciq?.last_at ? fmtDate(c.ciq.last_at) : '—'}
+                  </span>
+                  <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{c.ciq?.count || 0}</span>
+                </div>
+              )
+            })}
 
             {isUnassigned && rows.map(({ client: c }) => {
               const sc = clientStatusColors(c.status)
@@ -352,7 +410,7 @@ export default function ClientOverviewPanel({ mode = 'admin' }) {
               )
             })}
 
-            {!isUnassigned && rows.map(({ client: c, track: t }) => {
+            {!isUnassigned && !isCiq && rows.map(({ client: c, track: t }) => {
               const sc = clientStatusColors(c.status)
               const nexts = t.next_actions || []
               const entries = nexts.length > 0

@@ -108,7 +108,7 @@ export default function TaxDepositPayPage() {
   // Stripe having chosen ACH): nothing left to choose.
   if (state === 'processing' || (returnedPaid && returnedAch && state !== 'paid' && state !== 'completed')) return (
     <TokenShell maxWidth={520}>
-      <Message tone="green" title="Thank you — payment submitted" message="Bank transfers take 2-4 business days to clear; your invoice and receipt will follow by email." />
+      <Message tone="green" title="Thank you — payment submitted" message="Bank transfers take 3-5 business days to clear; your invoice and receipt will follow by email." />
     </TokenShell>
   )
 
@@ -174,7 +174,7 @@ export default function TaxDepositPayPage() {
             { label: lineLabel, value: `$${formatMoney(baseAmount)}`, valueColor: 'var(--vfo-ink-2)' },
             { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
           ]}
-          footer="Funds transfer directly from your bank account. Takes 2-4 business days to process."
+          footer="Funds transfer directly from your bank account. Takes 3-5 business days to process."
         />
 
         <div style={dividerStyle}>— or —</div>

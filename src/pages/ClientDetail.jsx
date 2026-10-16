@@ -9,6 +9,7 @@ import ClientVaultTab from '../components/admin/ClientVaultTab'
 import SendSetupEmailButton from '../components/admin/SendSetupEmailButton'
 import MemberPortalAccessCard from '../components/member/MemberPortalAccessCard'
 import ClientConnectedMembersCard from '../components/shared/ClientConnectedMembersCard'
+import MirroredOnePagePlanCard from '../components/shared/MirroredOnePagePlanCard'
 import ClientPaymentsTab from '../components/payments/ClientPaymentsTab'
 import PFTEngagementTrack from '../components/admin/pft/PFTEngagementTrack'
 import TaxPrioritiesTab from '../components/admin/tax/TaxPrioritiesTab'
@@ -77,6 +78,7 @@ export default function ClientDetail() {
   const [fromBell] = useState(() => new URLSearchParams(window.location.search).get('_from') === 'bell')
   const [client, setClient] = useState(null)
   const [portalAccess, setPortalAccess] = useState(undefined)
+  const [ciqLicence, setCiqLicence] = useState(undefined)
   const [program, setProgram] = useState(null)
   const [contacts, setContacts] = useState([])
   const [specialists, setSpecialists] = useState([])
@@ -117,6 +119,13 @@ export default function ClientDetail() {
   const isPFTBack = program?.name === 'Partnership Fast Track' && location.state?.backTo === 'pft_accountants'
   const backLabel = isPFTBack ? '← Back to Accountants' : '← Back to Clients'
   function handleBack() {
+    // A page loaded fresh (a Stripe Checkout return, an emailed link, a new tab)
+    // has no in-app entry behind it - history.state.idx is 0 - so navigate(-1)
+    // would leave the portal (Stripe's "You're all done here"). Go to the list.
+    if (!isPlanner && !(window.history.state?.idx > 0)) {
+      navigate(backUrl)
+      return
+    }
     if (isPlanner) {
       sessionStorage.setItem('taxPlannerActiveTab', 'planning')
       navigate('/tax-planner')
@@ -171,6 +180,7 @@ export default function ClientDetail() {
     setContacts(data.contacts || [])
     // Present only while client_basic_portal is on for the client's member.
     setPortalAccess(Object.prototype.hasOwnProperty.call(data, 'portal_access') ? data.portal_access : undefined)
+    setCiqLicence(Object.prototype.hasOwnProperty.call(data, 'ciq_licence') ? data.ciq_licence : undefined)
     setMirror(data.mirrored || null)
     setSpecialists(expertsData.experts || [])
     setEcosystems(expertsData.ecosystems || [])
@@ -234,7 +244,9 @@ export default function ClientDetail() {
     params.set('program', String(program.id))
     params.set('tab', activeTab)
     params.delete('_from')
-    window.history.replaceState(null, '', window.location.pathname + '?' + params.toString())
+    // Keep react-router's own state (its idx tells handleBack whether there is an
+    // in-app page to go back to).
+    window.history.replaceState(window.history.state, '', window.location.pathname + '?' + params.toString())
   }, [program?.id, activeTab])
 
   // A client in no program has no program tabs: a ?tab= carried in the URL
@@ -405,11 +417,14 @@ export default function ClientDetail() {
         ) : (
           <>
             {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
-            {activeTab === 'home' && isMember && portalAccess !== undefined && client && (
-              <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} sectionStyle={sectionStyle} cardTitle={cardTitle} />
+            {activeTab === 'home' && (isMember || isAdmin) && portalAccess !== undefined && client && (
+              <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} readOnly={isAdmin} />
             )}
             {activeTab === 'home' && (isMember || isAdmin) && client && (
               <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} />
+            )}
+            {activeTab === 'home' && isMember && client && (
+              <MirroredOnePagePlanCard key={`opp-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} />
             )}
             {activeTab === 'details' && isAdmin && <ClientDetails client={client} onUpdate={loadData} sectionStyle={sectionStyle} />}
             {pfLocked && program && PROGRAM_TABS.includes(activeTab) && (
