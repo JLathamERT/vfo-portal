@@ -11,13 +11,15 @@ One per (client, CIQ-run) pairing. Status moves `'draft'` → `'completed'`.
 | `id` | bigint | pk |
 | `client_id` | bigint | not null. fk → `clients.id` (CASCADE). |
 | `member_number` | text | not null. Owning member. |
-| `status` | text | not null, default `'draft'`. **Status field. CHECK: `status IN ('draft', 'completed')` — only DB-constrained status in the schema.** |
+| `status` | text | not null, default `'draft'`. **Status field. CHECK: `status IN ('draft', 'completed')`.** |
 | `created_at` | timestamptz | not null, default `now()` |
 | `completed_at` | timestamptz | Set when `status` flips to `'completed'`. |
 | `priorities_completed_at` | timestamptz | Set when priority ranking is finalized (separate step from CIQ completion). |
 | `accountability_mode` | boolean | not null, default `false`. **"Update Progress" toggle** for the One Page Plan. When true, per-priority progress controls render. Flippable by admin AND member via `ciq_set_accountability`; shared between both views. |
 
 **Status fields:** `status` (DB CHECK).
+
+> **Schema-file gap (verified live 2026-10-16).** `accountability_mode` here and `ciq_priorities.progress_status` (+ its CHECK) exist in the live database but in **no file** under `supabase/migrations/` — they were applied by hand, so a rebuilt environment would lack them (#196). The portal licensing L4 branch adds an idempotent catch-up migration (`add column if not exists`). The live shape is the one documented here.
 
 **Touched by:** `ciq_load_list`, `ciq_create`, `ciq_add_client_and_create`, `ciq_load`, `ciq_save`, `ciq_complete`, `ciq_load_priorities`, `ciq_save_priorities`, `ciq_complete_priorities`, `ciq_save_priority_snapshot`, `ciq_load_priority_snapshots`, `ciq_load_settings`, `ciq_set_accountability` (writes `accountability_mode`). Frontend: [MemberCIQ.jsx](src/components/shared/MemberCIQ.jsx).
 
@@ -74,10 +76,10 @@ Append-only history of the entire priority list at each save. Every "save priori
 | `saved_at` | timestamptz | not null, default `now()`. |
 | `snapshot` | jsonb | not null. Full priority list at this point in time. |
 
-**Touched by:** `ciq_save_priority_snapshot`, `ciq_load_priority_snapshots`. Frontend: [MemberCIQ.jsx:425-432](src/components/shared/MemberCIQ.jsx).
+**Touched by:** `ciq_save_priority_snapshot`, `ciq_load_priority_snapshots`. Frontend: [MemberCIQ.jsx](src/components/shared/MemberCIQ.jsx) (`savePriorities`, ~line 431-438 as of 2026-10-16).
 
 ---
 
 ## `ciq_assignments` — **DROPPED 2026-07-01**
 
-This table (specialist/expert "CIQ Topics" tag assignments) was **removed entirely** — the specialist CIQ-topics feature is gone (gotcha #168). `load_data` no longer returns a `ciq` array, `ciqMap` no longer exists in `AdminPortal`, and `save_specialist`/`delete_specialist` no longer touch it. This is UNRELATED to the member "CIQ One Page Plan" tables above, which remain fully in use.
+*(Verified absent from the live database 2026-10-16, but no migration file drops it — the baseline migration still CREATES it, so a rebuilt environment would bring it back (#196); the L4 catch-up migration drops it `if exists`.)* This table (specialist/expert "CIQ Topics" tag assignments) was **removed entirely** — the specialist CIQ-topics feature is gone (gotcha #168). `load_data` no longer returns a `ciq` array, `ciqMap` no longer exists in `AdminPortal`, and `save_specialist`/`delete_specialist` no longer touch it. This is UNRELATED to the member "CIQ One Page Plan" tables above, which remain fully in use.

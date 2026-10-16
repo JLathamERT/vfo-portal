@@ -226,7 +226,7 @@ export default function MemberPortal() {
           {!loading && (activeTab === 'msm_home' || activeTab?.startsWith('msm_')) && memberData && (
             <MemberMSMTracking member={memberData} activeTab={activeTab} onNavigate={setActiveTab} />
           )}
-          {!loading && activeTab === 'client_overview' && <ClientOverviewPanel mode="member" />}
+          {!loading && activeTab === 'client_overview' && <ClientOverviewPanel mode="member" onOpenCiq={c => { sessionStorage.setItem('ciqInitialListClientId', String(c.id)); setActiveTab('ciq') }} />}
           {!loading && activeTab === 'tax_diagnostic' && memberData && <MemberTaxDiagnostic member={memberData} />}
           {!loading && activeTab === 'specialists' && memberData && (
             <MemberSpecialists member={memberData} allExperts={allExperts} exclusions={exclusions} ecoMap={ecoMap} onDataChange={loadData} />

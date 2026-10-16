@@ -9,6 +9,7 @@ import ClientVaultTab from '../components/admin/ClientVaultTab'
 import SendSetupEmailButton from '../components/admin/SendSetupEmailButton'
 import MemberPortalAccessCard from '../components/member/MemberPortalAccessCard'
 import ClientConnectedMembersCard from '../components/shared/ClientConnectedMembersCard'
+import MirroredOnePagePlanCard from '../components/shared/MirroredOnePagePlanCard'
 import ClientPaymentsTab from '../components/payments/ClientPaymentsTab'
 import PFTEngagementTrack from '../components/admin/pft/PFTEngagementTrack'
 import TaxPrioritiesTab from '../components/admin/tax/TaxPrioritiesTab'
@@ -77,6 +78,7 @@ export default function ClientDetail() {
   const [fromBell] = useState(() => new URLSearchParams(window.location.search).get('_from') === 'bell')
   const [client, setClient] = useState(null)
   const [portalAccess, setPortalAccess] = useState(undefined)
+  const [ciqLicence, setCiqLicence] = useState(undefined)
   const [program, setProgram] = useState(null)
   const [contacts, setContacts] = useState([])
   const [specialists, setSpecialists] = useState([])
@@ -116,7 +118,21 @@ export default function ClientDetail() {
   // list by re-seeding the AdminPortal/MemberDirectoryView sessionStorage keys.
   const isPFTBack = program?.name === 'Partnership Fast Track' && location.state?.backTo === 'pft_accountants'
   const backLabel = isPFTBack ? '← Back to Accountants' : '← Back to Clients'
+  // Portal licensing L4: back from a Stripe Checkout (?ciq_licence=done), the page
+  // before this one in history is Stripe's finished checkout ("You're all done
+  // here"), so Back must not step into it. Remembered per client for this tab -
+  // the page's own URL rewrite may drop the query before Back is clicked.
+  const stripeReturnKey = `clientBackSkipHistory:${clientId}`
+  if (new URLSearchParams(location.search).get('ciq_licence') === 'done') {
+    try { sessionStorage.setItem(stripeReturnKey, '1') } catch { /* private mode */ }
+  }
   function handleBack() {
+    let fromStripe = false
+    try { fromStripe = sessionStorage.getItem(stripeReturnKey) === '1'; sessionStorage.removeItem(stripeReturnKey) } catch { /* private mode */ }
+    if (fromStripe) {
+      navigate(backUrl)
+      return
+    }
     if (isPlanner) {
       sessionStorage.setItem('taxPlannerActiveTab', 'planning')
       navigate('/tax-planner')
@@ -171,6 +187,7 @@ export default function ClientDetail() {
     setContacts(data.contacts || [])
     // Present only while client_basic_portal is on for the client's member.
     setPortalAccess(Object.prototype.hasOwnProperty.call(data, 'portal_access') ? data.portal_access : undefined)
+    setCiqLicence(Object.prototype.hasOwnProperty.call(data, 'ciq_licence') ? data.ciq_licence : undefined)
     setMirror(data.mirrored || null)
     setSpecialists(expertsData.experts || [])
     setEcosystems(expertsData.ecosystems || [])
@@ -406,10 +423,13 @@ export default function ClientDetail() {
           <>
             {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
             {activeTab === 'home' && isMember && portalAccess !== undefined && client && (
-              <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} sectionStyle={sectionStyle} cardTitle={cardTitle} />
+              <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} />
             )}
             {activeTab === 'home' && (isMember || isAdmin) && client && (
               <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} />
+            )}
+            {activeTab === 'home' && isMember && client && (
+              <MirroredOnePagePlanCard key={`opp-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} />
             )}
             {activeTab === 'details' && isAdmin && <ClientDetails client={client} onUpdate={loadData} sectionStyle={sectionStyle} />}
             {pfLocked && program && PROGRAM_TABS.includes(activeTab) && (

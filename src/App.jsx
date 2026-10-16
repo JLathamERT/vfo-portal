@@ -92,6 +92,7 @@ const ConnectCardPage = lazyPage(() => import('./pages/ConnectCardPage'))
 const PayoutSetupPage = lazyPage(() => import('./pages/PayoutSetupPage'))
 const SpecialistRevenuePayPage = lazyPage(() => import('./pages/SpecialistRevenuePayPage'))
 const MembershipPayPage = lazyPage(() => import('./pages/MembershipPayPage'))
+const PortalLicensePayPage = lazyPage(() => import('./pages/PortalLicensePayPage'))
 const MembershipMeetingPage = lazyPage(() => import('./pages/MembershipMeetingPage'))
 const OnboardingMeetingPage = lazyPage(() => import('./pages/OnboardingMeetingPage'))
 import { MemberHelpMount } from './components/member/MemberHelpButton'
@@ -127,6 +128,7 @@ export default function App() {
       <Route path="/payout-setup" element={<PayoutSetupPage />} />
       <Route path="/specialist-revenue-pay" element={<SpecialistRevenuePayPage />} />
       <Route path="/membership-pay" element={<MembershipPayPage />} />
+      <Route path="/portal-license-pay" element={<PortalLicensePayPage />} />
       <Route path="/membership-meeting" element={<MembershipMeetingPage />} />
       <Route path="/onboarding-meeting" element={<OnboardingMeetingPage />} />
       <Route path="/member-setup" element={<MemberSetupPage />} />

@@ -27,6 +27,7 @@ const ROUTES = [
   'pft-discovery',
   'pft-ft-decide',
   'pip-pay',
+  'portal-license-pay',
   'set-password',
   'specialist-ddc',
   'specialist-ddc-help',

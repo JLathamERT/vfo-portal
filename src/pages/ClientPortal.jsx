@@ -8,6 +8,7 @@ import ChangePasswordCard from '../components/shared/ChangePasswordCard'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { usePortalTheme } from '../lib/theme'
 import { ShowroomSkeleton } from '../components/shared/Skeleton'
+import OnePagePlanView from '../components/shared/OnePagePlanView'
 
 function fmtLicenceDate(iso) {
   const [y, m, d] = String(iso).slice(0, 10).split('-')
@@ -40,6 +41,11 @@ export default function ClientPortal() {
   // Portal licensing L2: { [expert_id]: requested_at } — present only while
   // client_basic_portal is on (intro_requests key); null = no intro button at all.
   const [introRequested, setIntroRequested] = useState(null)
+  // Portal licensing L4: the My Plan tab (a read-only One Page Plan) — granted the
+  // same way as the Vault: only the LIVE answer may show it (ciq_plan === true,
+  // sent only while ciq_licence is on), a snapshot can only take it away.
+  const [planAllowed, setPlanAllowed] = useState(false)
+  const [plan, setPlan] = useState(null)
 
   useEffect(() => {
     if (!session || session.role !== 'client') navigate('/client/login')
@@ -68,6 +74,9 @@ export default function ClientPortal() {
       const allowed = data.tier !== 'basic'
       if (live || !allowed) setVaultAllowed(allowed)
       if (!allowed) setTab(t => (t === 'vault' ? 'showroom' : t))
+      const planOn = data.ciq_plan === true
+      if (live || !planOn) setPlanAllowed(planOn)
+      if (!planOn) setTab(t => (t === 'plan' ? 'showroom' : t))
       if (Array.isArray(data.intro_requests)) {
         const map = {}
         data.intro_requests.forEach(r => { map[r.expert_id] = r.requested_at })
@@ -96,6 +105,13 @@ export default function ClientPortal() {
     })()
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    if (tab !== 'plan' || !planAllowed || plan) return
+    callApi('client_ciq_plan_load', {})
+      .then(d => setPlan({ plans: d.plans || [], member_name: d.member_name || null }))
+      .catch(err => setPlan({ error: err.message || 'Could not load your plan.' }))
+  }, [tab, planAllowed])
 
   if (!session || session.role !== 'client') return null
 
@@ -127,7 +143,7 @@ export default function ClientPortal() {
 
       {tab !== 'settings' && (
         <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', padding: '0 24px', background: 'var(--vfo-card)', position: 'relative', zIndex: 100 }}>
-          {[['showroom', 'Showroom'], ...(vaultAllowed ? [['vault', 'Vault']] : [])].map(([key, label]) => (
+          {[['showroom', 'Showroom'], ...(planAllowed ? [['plan', 'My One Page Plan']] : []), ...(vaultAllowed ? [['vault', 'Vault']] : [])].map(([key, label]) => (
             <button key={key} onClick={() => chooseTab(key)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: tab === key ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: tab === key ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: tab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>{label}</button>
           ))}
         </div>
@@ -140,7 +156,9 @@ export default function ClientPortal() {
           <div style={{ width: '46px', height: '4px', borderRadius: '99px', background: '#fb895a', margin: '18px auto 0' }} />
           {licence && (
             <p style={{ fontSize: '14px', color: 'var(--vfo-muted)', marginTop: '28px' }}>
-              {licence.status === 'active'
+              {licence.status === 'active' && licence.monthly
+                ? <>Your VFO client portal membership is active.</>
+                : licence.status === 'active'
                 ? <>Your VFO client portal membership is active until <strong style={{ color: 'var(--vfo-ink)' }}>{fmtLicenceDate(licence.ends_on)}</strong>.</>
                 : licence.status === 'expired'
                   ? <>Your VFO client portal membership ended on <strong style={{ color: 'var(--vfo-ink)' }}>{fmtLicenceDate(licence.ends_on)}</strong>.</>
@@ -164,6 +182,15 @@ export default function ClientPortal() {
         showroomLoading
           ? <ShowroomSkeleton />
           : <MemberShowroom experts={showroom.experts} exclusions={showroom.exclusions} ecoMap={showroom.ecoMap} introRequest={introRequest} />
+      )}
+      {tab === 'plan' && planAllowed && (
+        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
+          {!plan
+            ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)', fontSize: '14px' }}>Loading your plan…</div>
+            : plan.error
+              ? <div style={{ textAlign: 'center', padding: '40px', color: '#d93025', fontSize: '14px' }}>{plan.error}</div>
+              : <OnePagePlanView plans={plan.plans} title="My One Page Plan" subtitle={plan.member_name ? `with ${plan.member_name}` : ''} emptyText="Your One Page Plan will appear here once it has been prepared with you." />}
+        </div>
       )}
       {tab === 'vault' && vaultAllowed && (
         <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
