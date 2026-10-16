@@ -80,6 +80,9 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
           <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 12px', lineHeight: 1.6 }}>
             {lic.state === 'covered' && <>Covered by the tax licence until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.covered_until)}</strong> - no charge.</>}
             {lic.state === 'basic' && <>{first} is on the Basic portal (Showroom only). The Standard portal adds their One Page Plan and Client Vault. It is charged to you monthly; {first} never sees the cost.</>}
+            {lic.state === 'processing' && (lic.payment_method_type === 'ach'
+              ? <>Your bank payment is processing{method}. {first} gets the Standard portal once it clears, usually 3-5 business days.</>
+              : <>Your payment is being confirmed. Refresh in a moment to see the Standard portal on.</>)}
             {lic.state === 'active' && <>The Standard portal is on{lic.period_end ? <>. Renews <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong></> : ''}{method}.</>}
             {lic.state === 'ending' && <>The Standard portal is on until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong>, then {first} goes back to the Basic portal.</>}
             {lic.state === 'past_due' && <>The last payment failed and Stripe is retrying{method}. {first} keeps the Standard portal until the end of the month already paid for.</>}

@@ -102,7 +102,7 @@ function BgRequestPay() {
             {received
               ? `Thanks, ${data.first_name}. Your Background Check payment of $${formatMoney(amount)} has been received. Your invoice and receipt are on their way by email.`
               : bankInFlight
-                ? `Thanks, ${data.first_name}. Your Background Check payment of $${formatMoney(amount)} is on its way. Bank payments take 2–4 business days to clear; we'll email your invoice and receipt once it has.`
+                ? `Thanks, ${data.first_name}. Your Background Check payment of $${formatMoney(amount)} is on its way. Bank payments take 3-5 business days to clear; we'll email your invoice and receipt once it has.`
                 : `Thanks, ${data.first_name}. Your Background Check payment of $${formatMoney(amount)} has been submitted. We'll email your invoice and receipt as soon as it clears.`}
           </p>
         </div>
@@ -139,7 +139,7 @@ function BgRequestPay() {
             { label: lineLabel, value: `$${formatMoney(amount)}`, valueColor: 'var(--vfo-ink-2)' },
             { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
           ]}
-          footer='Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. Takes 2-4 business days to process.'
+          footer='Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. Takes 3-5 business days to process.'
         />
 
         <div style={dividerStyle}>— or —</div>
@@ -276,7 +276,7 @@ function OnboardingOrLicensePay() {
           ]}
           footer={isContinuation
             ? `Funds transfer directly from your bank account. Nothing is charged today — your first payment collects on the ${dayText} (next month's if this month's has already passed) and monthly on that day after that.`
-            : isLicense ? 'Funds transfer directly from your bank account. Your license renews automatically each month.' : 'Funds transfer directly from your bank account. Takes 2-4 business days to process.'}
+            : isLicense ? 'Funds transfer directly from your bank account. Your license renews automatically each month.' : 'Funds transfer directly from your bank account. Takes 3-5 business days to process.'}
         />
 
         <div style={dividerStyle}>— or —</div>

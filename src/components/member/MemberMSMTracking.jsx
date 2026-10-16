@@ -829,7 +829,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
       // ach=1: the member chose ACH on the choice page. Nothing exists yet — the
       // client is created only when the transfer SETTLES (2026-09-23).
       setDoneMessage(qs.get('ach') === '1'
-        ? 'Bank transfer submitted. The client will be created once it clears (2-4 business days).'
+        ? 'Bank transfer submitted. The client will be created once it clears (3-5 business days).'
         : 'Client created. We have emailed you a confirmation.')
       setMode('done')
       loadClients()

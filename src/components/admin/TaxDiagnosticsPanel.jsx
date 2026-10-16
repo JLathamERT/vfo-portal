@@ -100,7 +100,7 @@ function intakeLabel(intake) {
     case 'pending': return intake.deposit_processing_at
       ? (intake.deposit_bank_verification_pending_at
         ? 'Bank transfer awaiting bank verification (details entered by hand)'
-        : 'Bank transfer clearing (2-4 business days)')
+        : 'Bank transfer clearing (3-5 business days)')
       : `${intake.payer === 'member' ? 'Member' : 'Client'} started the payment`
     case 'expired': return intake.deposit_failed_at
       ? 'Bank payment failed — link works again'

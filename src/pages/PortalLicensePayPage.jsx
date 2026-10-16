@@ -121,7 +121,7 @@ export default function PortalLicensePayPage() {
             { label: lineLabel, value: `$${formatMoney(baseAmount)}`, valueColor: 'var(--vfo-ink-2)' },
             { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
           ]}
-          footer={`Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. The first payment takes 2-4 business days to clear; ${data.client_first} gets the Standard portal once it has. Renews automatically each month.`}
+          footer={`Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. The first payment takes 3-5 business days to clear; ${data.client_first} gets the Standard portal once it has. Renews automatically each month.`}
         />
 
         <div style={dividerStyle}>— or —</div>

@@ -46,7 +46,7 @@ export default function MemberGCMarketplace({ memberNumber }) {
 
     if (method === 'ach') {
       // setBanner (not showBanner) so the message persists — no auto-dismiss.
-      setBanner('Payment received. Your bank transfer is processing — credits will appear here automatically once it settles, typically a few business days.')
+      setBanner('Payment received. Your bank transfer is processing — credits will appear here automatically once it settles, typically 3-5 business days.')
       return
     }
 
@@ -232,7 +232,7 @@ export default function MemberGCMarketplace({ memberNumber }) {
                       <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--vfo-success-text)', background: 'rgba(27,146,84,0.15)', padding: '3px 10px', borderRadius: '999px' }}>No fee</span>
                     </div>
                     <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--vfo-ink)', marginTop: '8px' }}>${money(buyPkg.price)}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>Funds transfer directly from your bank. Takes a few business days; credits appear once it settles.</div>
+                    <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>Funds transfer directly from your bank. Takes 3-5 business days; credits appear once it settles.</div>
                   </button>
                   <button onClick={() => buyCredits(buyPkg.amount, 'card')}
                     style={{ padding: '16px 20px', textAlign: 'left', borderRadius: '10px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-tint)', cursor: 'pointer' }}>
