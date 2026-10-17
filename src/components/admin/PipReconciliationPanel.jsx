@@ -138,7 +138,7 @@ export default function PipReconciliationPanel({ embedded = false }) {
           {clients.map(c => (
             <div key={c.clientId} onClick={c.clientId ? () => navigate(clientPagePath(c.clientId, { program: 1, tab: 'pip' })) : undefined} {...(c.clientId ? rowHoverProps : {})}
               style={{ ...(c.clientId ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
-              <span><ClientNameLink clientId={c.clientId} program={1} tab="home" style={{ fontWeight: 600 }}>{c.clientName}</ClientNameLink></span>
+              <span><ClientNameLink clientId={c.clientId} program={1} style={{ fontWeight: 600 }}>{c.clientName}</ClientNameLink></span>
               <span style={{ color: 'var(--vfo-muted)' }}><MemberNameLink memberNumber={c.memberNumber}>{c.memberName}</MemberNameLink></span>
               <span style={{ textAlign: 'right', fontWeight: c.member ? 700 : 400, color: c.member ? 'var(--vfo-success-text-2)' : 'var(--vfo-faint)' }}>{c.member ? money(c.member) : '—'}{c.member ? <><PendingNote amount={c.memberPending} money={money} /><HeldNote suspended={c.memberHeldSus} paused={c.memberHeldPau} arrears={c.memberHeldArr} money={money} /></> : null}</span>
               <span style={{ textAlign: 'right', fontWeight: c.mm ? 700 : 400, color: c.mm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.mm ? money(c.mm) : '—'}{c.mm ? <><PendingNote amount={c.mmPending} money={money} /><HeldNote suspended={c.mmHeldSus} paused={c.mmHeldPau} arrears={c.mmHeldArr} money={money} /></> : null}</span>

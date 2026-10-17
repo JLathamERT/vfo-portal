@@ -67,7 +67,8 @@ export default function ClientDetail() {
   const session = getSession()
   usePortalTheme()
   console.log('session on client detail:', session)
-  const [activeTab, setActiveTab] = useState(new URLSearchParams(window.location.search).get('tab') || 'home')
+  // tab=automation is an old bell link for the MAP 1 agreement: it means MAP 1.
+  const [activeTab, setActiveTab] = useState(() => { const t = new URLSearchParams(window.location.search).get('tab') || 'home'; return t === 'automation' ? 'map1' : t })
   // Deep-link from Client Overview: a specific track/plan to auto-open once the
   // matching tab's list has loaded. Captured at mount so later URL rewrites
   // (the self-heal below preserves these params) can't retrigger auto-select.
@@ -151,7 +152,7 @@ export default function ClientDetail() {
 
   useLayoutEffect(() => {
     if (isPlanner) {
-      if (!session || session.role !== 'tax_planner') { navigate('/tax-planner/login'); return }
+      if (!session || session.role !== 'tax_planner') { navigate('/tax-planner/login?next=' + encodeURIComponent(location.pathname + location.search)); return }
     } else if (!session) {
       navigate((isMember ? '/member/login?next=' : '/admin/login?next=') + encodeURIComponent(location.pathname + location.search)); return
     }
@@ -164,10 +165,25 @@ export default function ClientDetail() {
     loadData(!!snap)
   }, [clientId])
 
+  // A link with no ?program= opens the client's first program, so a tab that only
+  // one program has names its program itself (Holistic = 1, PFT = 2). Stored bells
+  // carry tab=map1 / tab=pft with no program and stay correct this way.
+  function programForTab(tab) {
+    if (['map1', 'regular', 'pip', 'automation'].includes(tab)) return 1
+    if (tab === 'pft') return 2
+    return null
+  }
+
+  // Set when ?plan= turned out to belong to the client's other program (see
+  // handlePlanInOtherProgram): that program wins over the link and any state.
+  const programOverrideRef = useRef(null)
+
   function loadInputs() {
     const qp = new URLSearchParams(window.location.search)
-    const passedEnrollmentId = location.state?.enrollment_id || null
-    const passedProgramId = location.state?.program_id || (qp.get('program') ? parseInt(qp.get('program')) : null)
+    const override = programOverrideRef.current
+    const passedEnrollmentId = override ? null : (location.state?.enrollment_id || null)
+    const queryProgram = parseInt(qp.get('program'))
+    const passedProgramId = override || location.state?.program_id || (Number.isFinite(queryProgram) ? queryProgram : programForTab(qp.get('tab')))
     // Members only ever see notes the team explicitly shared.
     const notesAction = isMember ? 'client_notes_load_shared' : 'load_client_notes'
     const snapKey = `clientdetail:${isMember ? 'member' : isPlanner ? 'planner' : 'admin'}:${clientId}:${passedEnrollmentId ?? ''}:${passedProgramId ?? ''}`
@@ -204,6 +220,14 @@ export default function ClientDetail() {
       setLastSeen(snapKey, { data, expertsData, notesData })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
+  }
+
+  // The Tax tab found the linked ?plan= under the client's OTHER program (the link
+  // named the wrong program, or none): reload the page in that program, once.
+  function handlePlanInOtherProgram(planProgramId) {
+    if (programOverrideRef.current || !planProgramId || planProgramId === program?.id) return
+    programOverrideRef.current = planProgramId
+    loadData()
   }
 
   async function reloadContacts() {
@@ -436,7 +460,7 @@ export default function ClientDetail() {
             {activeTab === 'map1' && program && !pfLocked && !isPlanner && <ClientTrackViewV2 clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
             {activeTab === 'pft' && program && !pfLocked && !isPlanner && !isMirror && <PFTEngagementTrack clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} />}
             {activeTab === 'regular' && program && !pfLocked && !isPlanner && <RegularPrioritiesTab clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} initialTrackId={initialTrackId} />}
-            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} mirror={isMirror} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} openSinglePlan={fromBell} />}
+            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab key={program.id} onPlanInOtherProgram={handlePlanInOtherProgram} clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} mirror={isMirror} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} openSinglePlan={fromBell} />}
             {activeTab === 'pip' && program && !pfLocked && !isPlanner && <PipMeetingsTab clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
             {/* memberMode is its own flag, not a relaxed readOnly: a member gets
                 view on all three sections + add on the two client-owned ones,

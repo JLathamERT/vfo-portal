@@ -210,13 +210,16 @@ export default function PlannerClientsList() {
             </div>
             {section.rows.map(row => (
               <div key={row.tax_plan_id}
-                onClick={() => navigate(`/tax-planner/client/${row.client_id}?program=${row.program_id}`)}
+                onClick={() => navigate(`/tax-planner/client/${row.client_id}?program=${row.program_id || 1}&tab=tax&plan=${row.tax_plan_id}`)}
                 style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px 16px', marginBottom: '6px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', boxShadow: '0 2px 8px rgba(20,45,95,0.04)', cursor: 'pointer' }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,149,255,0.4)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border-soft)'}>
                 <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '12.5px', color: 'var(--vfo-muted)', width: '90px', flexShrink: 0 }}>{row.client_ref}</span>
                 <span style={{ display: 'flex', flexDirection: 'column', minWidth: '160px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '14px', color: 'var(--vfo-ink)', fontWeight: 600 }}>{row.client_name || '—'}</span>
+                  {/* The name opens the profile (Client Overview's rule); the row opens the plan. */}
+                  <span title="Open client profile" onClick={e => { e.stopPropagation(); navigate(`/tax-planner/client/${row.client_id}?program=${row.program_id || 1}&tab=home`) }}
+                    onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }} onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}
+                    style={{ fontSize: '14px', color: 'var(--vfo-link)', fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start' }}>{row.client_name || '—'}</span>
                   <span style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{row.member_name || '—'}</span>
                 </span>
                 {/* Next step is an Active-only column: on a finished or stopped

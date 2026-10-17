@@ -3,7 +3,8 @@ import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState, TableCard } from './automation/StepKit'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import { CONFIRMATION_CARD_SKIP } from '../../lib/confirmationStatus'
-import { ClientNameLink } from '../shared/personLinks'
+import { useNavigate } from 'react-router-dom'
+import { ClientNameLink, clientPagePath } from '../shared/personLinks'
 import { formatDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
 
@@ -436,6 +437,7 @@ function SandboxToggleModal({ currentlySandbox, onConfirm, onCancel, saving }) {
 }
 
 export default function AutomationPanel({ section }) {
+  const navigate = useNavigate()
   const [pipelines, setPipelines] = useState([])
   const [selectedPipeline, setSelectedPipeline] = useState(null)
   const [pipelineData, setPipelineData] = useState([])
@@ -555,15 +557,16 @@ export default function AutomationPanel({ section }) {
                 return (
                   <Fragment key={row.id}>
                     <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--vfo-tint)', cursor: 'pointer', background: isExpanded ? 'var(--vfo-tint)' : 'transparent' }}
-                      onClick={() => setExpandedRow(isExpanded ? null : row.id)}
+                      onClick={() => row.client_id ? navigate(clientPagePath(row.client_id, { program: 1, tab: 'map1' })) : setExpandedRow(isExpanded ? null : row.id)}
                       onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = 'var(--vfo-tint)' }}
                       onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = 'transparent' }}
                     >
-                      <td style={{ padding: '12px 8px', fontSize: '10px', color: 'var(--vfo-muted)' }}>
+                      {/* The row opens the plan (Client Overview's rule); the ▼ cell expands the steps. */}
+                      <td title={isExpanded ? 'Hide steps' : 'Show steps'} onClick={e => { e.stopPropagation(); setExpandedRow(isExpanded ? null : row.id) }} style={{ padding: '12px 8px', fontSize: '10px', color: 'var(--vfo-muted)' }}>
                         <span style={{ display: 'inline-block', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
                       </td>
                       <td style={{ padding: '12px', fontSize: '14px', color: 'var(--vfo-ink)' }}>
-                        <div><ClientNameLink clientId={row.client_id} tab="map1">{row.client_name || row.client_ref || '—'}</ClientNameLink></div>
+                        <div><ClientNameLink clientId={row.client_id} program={1}>{row.client_name || row.client_ref || '—'}</ClientNameLink></div>
                         {row.client_ref && row.client_name && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{row.client_ref}</div>}
                         {row.sandbox && <span style={{ fontSize: '10px', color: '#e06717', fontWeight: 600, fontStyle: 'italic' }}>sandbox</span>}
                       </td>

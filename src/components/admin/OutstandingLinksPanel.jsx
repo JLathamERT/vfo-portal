@@ -147,21 +147,22 @@ function ResendButton({ send, onDone }) {
 // One expandable person card. Per-row open state lives here because hooks cannot
 // be used inside the .map calls below. The name links to the client profile
 // (clientId, with `program` when known) or, on specialist cards, to the specialist
-// profile (expertId); with neither it stays plain text. The header click still
-// expands the card (Jake, 2026-09-30) — the plan is reached from the expanded body
-// via `planPath`. `action` is an optional right-edge control (the Resend button) —
+// profile (expertId); with neither it stays plain text. The header click opens
+// the plan when the card has one (`planPath`, Client Overview's rule — Jake,
+// 2026-10-17, replacing the 2026-09-30 expand-on-header); the ▸ expands the card,
+// and a card with no plan still expands from anywhere on the header. `action` is an optional right-edge control (the Resend button) —
 // it must not toggle the card.
 export function OutstandingCard({ name, clientId, program, planPath, expertId, subtitle, badge, amount, caption, action, children }) {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const nameEl = !name ? '-'
-    : clientId ? <ClientNameLink clientId={clientId} program={program} tab="home">{name}</ClientNameLink>
+    : clientId ? <ClientNameLink clientId={clientId} program={program}>{name}</ClientNameLink>
       : expertId ? <SpecialistNameLink expertId={expertId}>{name}</SpecialistNameLink>
         : name
   return (
     <div style={cardStyle}>
-      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', cursor: 'pointer' }}>
-        <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px' }}>{open ? '▾' : '▸'}</span>
+      <div onClick={() => (planPath ? navigate(planPath) : setOpen(o => !o))} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', cursor: 'pointer' }}>
+        <span title={open ? 'Hide details' : 'Show details'} onClick={e => { e.stopPropagation(); setOpen(o => !o) }} style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px', padding: '4px 0' }}>{open ? '▾' : '▸'}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{nameEl}</div>
           <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{subtitle}</div>

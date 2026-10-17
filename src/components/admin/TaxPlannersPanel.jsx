@@ -647,6 +647,7 @@ function HalfCell({ amount, paid, completedAt, receipt }) {
   )
 }
 function TaxPlannerPaymentsTab({ plannerId }) {
+  const navigate = useNavigate()
   const [rows, setRows] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -698,9 +699,13 @@ function TaxPlannerPaymentsTab({ plannerId }) {
             </thead>
             <tbody>
               {list.map(r => (
-                <tr key={r.plan_id}>
+                <tr key={r.plan_id} style={{ cursor: 'pointer' }}
+                  onClick={() => { rememberPlannerReturn(plannerId); navigate(clientPagePath(r.client_id, { tab: 'tax', plan: r.plan_id }), { state: { from: PLANNER_RETURN_FROM } }) }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--vfo-tint)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
                   <td style={td}>
-                    <div><ClientNameLink clientId={r.client_id} tab="tax" style={{ fontWeight: 600 }}>{r.client_name || `Client ${r.client_id}`}</ClientNameLink></div>
+                    <div><ClientNameLink clientId={r.client_id} style={{ fontWeight: 600 }}
+                      onOpen={() => rememberPlannerReturn(plannerId)} navState={{ from: PLANNER_RETURN_FROM }}>{r.client_name || `Client ${r.client_id}`}</ClientNameLink></div>
                     {r.total_fee != null && r.total_fee !== '' && <div style={{ fontSize: '11px', color: 'var(--vfo-faint)', marginTop: '3px' }}>Total fee {fmtMoney(r.total_fee)}</div>}
                   </td>
                   <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -846,7 +851,7 @@ function TaxPlannerClientsTab({ plannerId }) {
               {byClient.map(c => (
                 <tr key={c.client_id}>
                   <td style={td}>
-                    <ClientNameLink clientId={c.client_id} program={c.program_id || 1} tab="home" style={{ fontWeight: 600 }}
+                    <ClientNameLink clientId={c.client_id} program={c.program_id || 1} style={{ fontWeight: 600 }}
                       onOpen={() => rememberPlannerReturn(plannerId)} navState={{ from: PLANNER_RETURN_FROM }}>{c.client_name || `Client ${c.client_id}`}</ClientNameLink>
                   </td>
                   <td style={{ ...td, fontFamily: 'ui-monospace, monospace', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{c.client_ref || '—'}</td>

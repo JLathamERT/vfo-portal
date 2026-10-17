@@ -2,7 +2,8 @@ import { useState, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
-import { MemberNameLink, ClientNameLink } from '../shared/personLinks'
+import { useNavigate } from 'react-router-dom'
+import { MemberNameLink, ClientNameLink, clientPagePath } from '../shared/personLinks'
 
 // Accounting > ... > "Held - No Payout Account" (one per engine: Holistic, Tax,
 // PIP, VFO Specialist Revenue). Member revenue shares the payout engine could not
@@ -17,6 +18,11 @@ const fmtDate = (iso) => {
   return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
 }
 
+const hoverRowProps = {
+  onMouseEnter: e => { e.currentTarget.style.background = 'var(--vfo-tint)' },
+  onMouseLeave: e => { e.currentTarget.style.background = 'var(--vfo-card)' },
+}
+
 function emailedNote(r) {
   if (!r.asked_at) return { text: 'Not emailed', tone: 'var(--vfo-faint)' }
   const parts = [r.asked_by_hand ? `Setup link sent by hand ${fmtDate(r.asked_at)}` : `Emailed ${fmtDate(r.asked_at)}`]
@@ -26,11 +32,11 @@ function emailedNote(r) {
 }
 
 function SourceCell({ r, engine }) {
-  const clientTab = engine === 'map1' ? { program: 1, tab: 'map1' } : engine === 'tax' ? { program: r.program_id || undefined, tab: 'tax' } : {}
+  const program = engine === 'map1' || engine === 'pip' ? 1 : engine === 'tax' ? (r.program_id || undefined) : undefined
   return (
     <span>
       {r.client_id && r.client_name
-        ? <>{r.source_label.split(' - ')[0]} - <ClientNameLink clientId={r.client_id} {...clientTab}>{r.client_name}</ClientNameLink></>
+        ? <>{r.source_label.split(' - ')[0]} - <ClientNameLink clientId={r.client_id} program={program}>{r.client_name}</ClientNameLink></>
         : r.source_label}
       {r.detail && <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{r.detail}</div>}
       {r.sandbox && <span style={{ marginLeft: '6px', fontSize: '10px', fontWeight: 700, padding: '1px 7px', borderRadius: '999px', background: 'rgba(224,103,23,0.14)', color: '#e06717' }}>Sandbox</span>}
@@ -39,6 +45,13 @@ function SourceCell({ r, engine }) {
 }
 
 export default function HeldPayoutsPanel({ engine, embedded = false }) {
+  const navigate = useNavigate()
+  // A row opens the client's plan / track the held money came from (Client
+  // Overview's rule; the client's NAME opens their profile). SpecRev has no client.
+  const TAB_BY_ENGINE = { map1: 'map1', tax: 'tax', pip: 'pip' }
+  const rowProps = (r) => (r.client_id && TAB_BY_ENGINE[engine]
+    ? { onClick: () => navigate(clientPagePath(r.client_id, { program: engine === 'tax' ? r.program_id || undefined : 1, tab: TAB_BY_ENGINE[engine] })), title: 'Open plan', ...hoverRowProps }
+    : {})
   const snapKey = `heldpayouts:${engine}:`
   const [data, setData] = useState({ open: [], released: [] })
   const [loading, setLoading] = useState(true)
@@ -101,7 +114,7 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
           {data.open.map(r => {
             const note = emailedNote(r)
             return (
-              <div key={r.id} style={row}>
+              <div key={r.id} style={{ ...row, cursor: r.client_id && TAB_BY_ENGINE[engine] ? 'pointer' : undefined }} {...rowProps(r)}>
                 <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(r.held_at)}</span>
                 <span><MemberNameLink memberNumber={r.member_number} style={{ fontWeight: 600 }}>{r.member_name}</MemberNameLink><span style={{ color: 'var(--vfo-muted)' }}> · {r.member_number}</span></span>
                 <SourceCell r={r} engine={engine} />
@@ -120,7 +133,7 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
             <span>Released</span><span>Member</span><span>From</span><span style={{ textAlign: 'right' }}>Amount</span><span>Outcome</span>
           </div>
           {data.released.map(r => (
-            <div key={r.id} style={row}>
+            <div key={r.id} style={{ ...row, cursor: r.client_id && TAB_BY_ENGINE[engine] ? 'pointer' : undefined }} {...rowProps(r)}>
               <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(r.released_at)}</span>
               <span><MemberNameLink memberNumber={r.member_number} style={{ fontWeight: 600 }}>{r.member_name}</MemberNameLink><span style={{ color: 'var(--vfo-muted)' }}> · {r.member_number}</span></span>
               <SourceCell r={r} engine={engine} />

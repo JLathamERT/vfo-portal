@@ -5741,7 +5741,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
 // mirror (Client Mirroring, L5): a member viewing a client mirrored to them -
 // always with readOnly; the server masks every money value and this hides the
 // fee schedule, entered pricing, revenue-share rows, refund amount and PI id.
-function TaxPrioritiesTab({ clientId, programId, programName, client, specialists, ecosystems = [], readOnly = false, mirror = false, notes = [], onNotesChange, initialPlanId = null, openSinglePlan = false, plannerMode = false, directMode = false }) {
+function TaxPrioritiesTab({ clientId, programId, programName, client, specialists, ecosystems = [], readOnly = false, mirror = false, notes = [], onNotesChange, initialPlanId = null, openSinglePlan = false, plannerMode = false, directMode = false, onPlanInOtherProgram = null }) {
   const [taxPlans, setTaxPlans] = useState([])
   const [phases, setPhases] = useState([])
   const [loading, setLoading] = useState(true)
@@ -5836,6 +5836,12 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
     // per-plan track view, the Start button, and deep-link resolution all read
     // from taxPlans, so the filter belongs at this single entry point.
     const scopedPlans = plansForProgram(plansData.plans, programId)
+    // A ?plan= that belongs to the client's OTHER program (the link named the
+    // wrong program, or none): the page re-opens in that plan's program.
+    if (initialPlanId && onPlanInOtherProgram && !scopedPlans.some(p => p.id === initialPlanId)) {
+      const elsewhere = (plansData.plans || []).find(p => p.id === initialPlanId)
+      if (elsewhere) onPlanInOtherProgram(elsewhere.program_id || 1)
+    }
     setTaxPlans(scopedPlans)
     const loadedPhases = phasesData.phases || []
     loadedPhases.forEach(p => p.program_client_tasks?.sort((a, b) => a.task_order - b.task_order))
