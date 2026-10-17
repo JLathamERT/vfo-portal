@@ -70,7 +70,7 @@
 > | 90 Day Plan | **3** | ✗ no section |
 > | Accountant Onboarding | 19 | 18 |
 > | Advisor Onboarding | 19 | 18 |
-> | **Client Portal** *(NEW area 2026-10-09)* | **2** | ✗ no section — see the notes below + [flows/client-portal.md](flows/client-portal.md) / [flows/client-mirroring.md](flows/client-mirroring.md) |
+> | **Client Portal** *(NEW area 2026-10-09)* | **3** | ✗ no section — see the notes below + [flows/client-portal.md](flows/client-portal.md) / [flows/client-mirroring.md](flows/client-mirroring.md) / [flows/ciq-licence.md](flows/ciq-licence.md) |
 > | Growth Credits | 2 | ✗ no section |
 > | Growth Plan | 4 | 2 |
 > | MAP 1 | **18** | **15** |
@@ -127,6 +127,15 @@
 > mirrored member's **`member_logins.email`** (`forceRecipients`; no login = no bell): *"Client mirrored: <client>
 > (from <owner>)"*, linking to `/member/client/<id>`. Its sibling email is template `CLIENT_PORTAL` /
 > `MEMBER_client_connected` (Draft). Behind `mirrored_clients`, keyed on the client's owner.
+>
+> **The 2026-10-16 addition (portal licensing L4, the $25 CIQ licence), no section below:** `Client Portal` **2 → 3**
+> — **`FAILURE_ciq_licence`** (sort 355, `default_recipients ["jlatham@elitert.com"]`, dismissible FYI; migration
+> `20261016160000`). Jake's hand-fix bell when Stripe refuses to stop a $25 on a tax takeover
+> (`utils/ciq-licence-supersede.ts`) or to move a subscription onto a member's new payment method
+> (`ciqBillingUpdateCompleted`). **By Jake's decision (52) the licence raises NO bell to the member or the team** —
+> a failed payment is the member email 321 + one reminder 323; the two bell rules seeded for it
+> (`CIQ_LICENCE_payment_failed` / `_team`) were deleted by `20261016170000` without ever firing. A paid month whose
+> INV/REC numbers cannot be reserved reuses `FAILURE_ach_first_payment` (Jake). Flow: [flows/ciq-licence.md](flows/ciq-licence.md).
 
 ### MAP 1 (15)
 
@@ -153,7 +162,7 @@
 | Notification | Type | Who gets it (default) | When it fires |
 |---|---|---|---|
 | **ROI meeting skipped — complete the Client tax planning decision** (`TAX_roi_skipped_decision_needed`, NEW 2026-08-16) — the ROI meeting was skipped on a tax plan (either program), so the client is going straight to the detailed tax plan meeting and the assigned PF must complete the "Client tax planning decision" step. Persistent until **any** decision is recorded (`automation_TAX_decision`). **Not fired when a decision already exists.** | **Action required** | Assigned PF (fallback Tracy) on a classic plan; **the allocated Tax Planner + Team Member on a DIRECT plan** (2026-09-21 — the step is theirs there; same title, same clear site) | **TWO sites since 2026-08-17, by `roi_skip_mode`:** `retainer_first` → admin clicks **Skip ROI — retainer first** (`automation_TAX_skiproimeeting`), instant · `meeting_first` → later, when `tax_save_task` records the "Detailed tax plan presentation" step confirming the meeting was held |
-| **ROI meeting skipped, meeting first — send the meeting confirmation email** (`TAX_roi_skipped_hlm_ready`, NEW 2026-08-17, Tax Planners area, sort 31) — on the meeting-first route the detailed tax plan meeting precedes signing and paying, so its confirmation email is owed immediately. **Shares its title with `TAX_planner_hlm_ready` deliberately** (same instruction, same person, different route), so the same clear site retires it. **RE-ADDRESSED 2026-08-17:** both rules now go to **Tray**, not the allocated planner — the step became a VFO-team step and `automation_TAX_highlevelmeeting_confirm` left `TAX_PLANNER_ALLOWED_ACTIONS`. The shared title was **deliberately left unchanged** (it is the clearing API, and the clear site is recipient-agnostic, #411), so the key names and the `Tax Planners` area are now historic labels. Persistent until the email goes out; not fired when it already has. | **Action required** | **Tray (`tvaldes@elitert.com`)** — was Allocated Tax Planner until 2026-08-17 | Admin clicks **Skip ROI — meeting first** (`automation_TAX_skiproimeeting`) — instant |
+| **ROI meeting skipped, meeting first — send the meeting confirmation email** (`TAX_roi_skipped_hlm_ready`, NEW 2026-08-17, Tax Planners area, sort 31) — on the meeting-first route the detailed tax plan meeting precedes signing and paying, so its confirmation email is owed immediately. **Shares its title with `TAX_planner_hlm_ready` deliberately** (same instruction, same person, different route), so the same clear site retires it. **RE-ADDRESSED 2026-08-17:** both rules now go to **Tray**, not the allocated planner — the step became a VFO-team step and `automation_TAX_highlevelmeeting_confirm` left `TAX_PLANNER_ALLOWED_ACTIONS`. The shared title was **deliberately left unchanged** (it is the clearing API, and the clear site is recipient-agnostic, #411), so the key names and the `Tax Planners` area are now historic labels. Persistent until the email goes out; not fired when it already has. | **Action required** | **Tray + Tracy + Evan** (`recipients` override since 2026-10-16, code default Tray) — was Allocated Tax Planner until 2026-08-17 | Admin clicks **Skip ROI — meeting first** (`automation_TAX_skiproimeeting`) — instant |
 | **ROI meeting skipped, meeting first — retainer paid, complete Client decision 1** (`TAX_roi_skipped_decision1_ready`, NEW 2026-08-17, Tax Planners area, sort 32) — the meeting already happened, so once the retainer paperwork completes the only Tax 4 step still owed is Client decision 1. **Has its OWN title** (`Complete Client decision 1 for`) rather than reusing the two-step Tax 4 prefix, which on this route is already satisfied by the presentation alone and would self-clear it (#407). Cleared by `automation_TAX_postreviewdecision` on **every** branch, `Stop - Refund` included. | **Action required** | Allocated Tax Planner | Retainer invoice/receipt completes on a `roi_skip_mode='meeting_first'` plan (`actions/tax/invoice-receipt.ts`) |
 | **Client chose Yes (Tax 3)** (`TAX_client_decided_yes`) — Client clicked Yes on the /tax-decide page - pricing form needs to be completed to send the engagement agreement. | **Action required** | Assigned PF on a classic plan; **the allocated Tax Planner + Team Member on a DIRECT plan** (v873, #521 — the pricing form is theirs on Direct) | Client click on /tax-decide — instant |
 | **Client requested extra meeting** (`TAX_client_extra_meeting_requested`) — Client clicked Request Extra Meeting on the /tax-decide page instead of Yes/No. | **Action required** | Assigned PF on a classic plan; **the allocated Tax Planner + Team Member on a DIRECT plan** (v873, #521) | Client click on /tax-decide — instant |

@@ -4,7 +4,7 @@ The admin-initiated "change the card/bank on file" flow (Phase D). Added 2026-06
 
 Raw card/bank data is never seen or stored — the person types it directly into Stripe's hosted page, and the backend only ever handles the resulting payment-method id.
 
-This is the **first SetupIntent / `mode:'setup'`** usage in the system. Every prior Stripe flow either charges (`mode:'payment'`) or subscribes (`mode:'subscription'`); a setup session saves a reusable method with no charge.
+This is the **first SetupIntent / `mode:'setup'`** usage in the system (no longer the only one: the membership save-only cases and, since 2026-10-16, the L4 member **Update payment method** for the $25 CIQ licence — [ciq-licence.md](ciq-licence.md) — also use it). Every prior Stripe flow either charges (`mode:'payment'`) or subscribes (`mode:'subscription'`); a setup session saves a reusable method with no charge.
 
 ## Key modeling — per-engagement, person-keyed token
 

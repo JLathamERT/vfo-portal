@@ -46,10 +46,28 @@ const SWITCH_COPY = {
       'A "Client Mirroring" card on the Profile tab of each of the member\'s clients (and on the admin client Profile tab). The member\'s Connections are listed with a one-click Mirror, and "Mirror to a member" searches every active member by name or member number.',
       'A client can be mirrored to several members. The member or an admin can stop mirroring at any time; a member a client is mirrored to can leave.',
       'Mirroring emails that member (a Draft until it is switched to Send in the Email Editor, Client Portal section) and rings their portal bell.',
-      'That member sees the client\'s case on their own portal, view-only: MAP 1 / Holistic, Tax Planning (with the intake answers), CIQ, PIP and Regular priorities, the shared notes, the Client Vault (view and download) and the Additional Contacts. They can change nothing and never see fees, payments or revenue shares. Nothing about revenue share changes.',
+      'That member sees the client\'s case on their own portal, view-only: MAP 1 / Holistic, Tax Planning (with the intake answers), PIP and Regular priorities, the shared notes, the Client Vault (view and download) and the Additional Contacts. They can change nothing and never see fees, payments or revenue shares. Nothing about revenue share changes.',
     ],
     off: 'No Client Mirroring card and no client can be mirrored. Any member a client is already mirrored to stops seeing it at once (the record is kept, so switching back on restores it).',
     note: 'Keyed on the client\'s OWNING member - the other member\'s own switch position does not matter. The new Client Overview tab for members is not behind this switch.',
+  },
+  ciq_licence: {
+    title: 'CIQ licence: $25/month Standard portal for a client',
+    on: [
+      'A client of this member with the Standard portal (an active tax client portal licence, or a paid $25 month) gets a "My One Page Plan" tab in their client portal: their One Page Plan from the CIQ, read-only - Immediate, Parked and Completed priorities, plus earlier versions under History. Never the questionnaire answers.',
+      'The member\'s own client Profile tab, and the Profile tab of a member the client is mirrored to (Client Mirroring), show the same read-only One Page Plan card.',
+      'The client portal Home line reads "Your VFO client portal membership is active." when the Standard portal comes from a monthly licence rather than a tax licence.',
+      'The member\'s client Profile tab, in the Client Portal card: "Standard portal - $25/month" - Turn on (card or bank sign-in; the first time through a Stripe page that saves it, later clients reuse it), Turn off (stays on to the end of the paid month, then Basic again) and Keep it on. Needs portal access sent first. A client with an active tax licence reads "Included with ...\'s tax planning until ..." and cannot be charged.',
+      'Change / Update payment method: the member picks card or bank first and is warned it changes ALL of their Standard portal subscriptions (how many, and the new monthly amount); every subscription moves to the new method and is re-priced ($26.06 card / $25.00 bank). Back from Stripe, the card updates on its own.',
+      'Every paid month: an invoice + receipt PDF emailed to the member (Cc Tracy, Bcc Paul and Anton) and filed in their ERT/VFOS Documentation vault; a bank payment also gets a "payment started" email. Both emails are Drafts until switched to Send in the Email Editor (Client Portal section). Card adds the usual 2.9% + $0.30 card fee (shown on the invoice and receipt); bank has no fee. In Stripe the charge reads "VFO Portal - CIQ licence - <client>", on VFO Services.',
+      'Starting a CIQ for a client records a $0 CIQ licence for them (the free option), so a price can be added later.',
+      'A failed payment: one email to the member straight away (with an Update payment method button) and ONE reminder 2 business days later if it is still unpaid - no bells. The client is on the Basic portal until it is paid.',
+      'A tax licence starting for the client stops an open $25 at once (no refund for the month paid) and emails the member that the client is now covered.',
+      'The admin CIQ setting for this member reads "Member drives CIQ (training complete)". While this switch is On for all, new members start with it off.',
+      'All five licence emails are To the member, Cc Tracy, Bcc Paul and Anton, and are Drafts until switched to Send in the Email Editor (Client Portal section).',
+    ],
+    off: 'Exactly as today: no My One Page Plan tab, no One Page Plan card on member client profiles, no upgrade control, no $25 charge.',
+    note: 'Keyed on the client\'s OWNING member. Needs "Basic client portal" on for that member too (the Basic / Standard split only exists while it is on).',
   },
   tpom_additional_benefits: {
     title: 'TPOM presentation: Additional Benefits slide',
@@ -85,16 +103,13 @@ const SWITCH_COPY = {
     off: 'Every new tax case is run by VFO Services. Existing Direct cases carry on unchanged.',
     note: 'Direct is chosen on the intake form, so members can only reach it while "Members add their own tax clients" is on for them too.',
   },
-  tax_diagnostic: {
-    title: 'Public VFO Tax Diagnostic page',
-    on: [
-      'vfoportal.com/tax-diagnostic is open to the public; submissions land in the Tax Diagnostics queue for the team to confirm.',
-      'Deposit links sent from a confirmed diagnostic can be paid.',
-    ],
-    off: 'The public page is closed, and deposit links from diagnostics stop working.',
-    note: 'A public page has no member, so this switch is On or Off for everyone — there is no test-member position.',
-  },
 }
+
+// Switches that are permanently ON and must not be flipped from this tab (Jake,
+// 2026-10-16): hidden here only. The flag row stays ON and every backend read is
+// unchanged; feature_switches_load still returns it, and SQL can still flip it.
+// tax_diagnostic = the public vfoportal.com/tax-diagnostic page + its deposit links.
+const HIDDEN_SWITCHES = ['tax_diagnostic']
 
 const POSITIONS = [
   { mode: 'off', label: 'Off for all' },
@@ -173,7 +188,7 @@ export default function FeatureSwitchesPanel() {
       {loading && <div style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>Loading…</div>}
       {error && <div style={{ color: '#e74c3c', fontSize: '14px', marginBottom: '16px' }}>{error}</div>}
 
-      {!loading && switches.map(sw => {
+      {!loading && switches.filter(sw => !HIDDEN_SWITCHES.includes(sw.key)).map(sw => {
         const copy = SWITCH_COPY[sw.key] || { title: sw.key, on: [], off: '' }
         const pill = MODE_PILL[sw.mode] || MODE_PILL.off
         const positions = sw.member_scoped ? POSITIONS : POSITIONS.filter(p => p.mode !== 'test')

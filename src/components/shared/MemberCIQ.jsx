@@ -22,6 +22,9 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   const [loadingClients, setLoadingClients] = useState(false)
   const [clientSearch, setClientSearch] = useState('')
   const [activeCiq, setActiveCiq] = useState(null)
+  // The list is two levels (2026-10-16, Jake): every client with a CIQ, then one
+  // client's CIQs. null = the client list.
+  const [selectedClientId, setSelectedClientId] = useState(null)
   const [answers, setAnswers] = useState({})
   const [saving, setSaving] = useState(false)
   const [contactsMap, setContactsMap] = useState({})
@@ -37,6 +40,9 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   const [localCiqVfosManaged, setLocalCiqVfosManaged] = useState(ciqVfosManaged)
   const [ciqSettingsStatus, setCiqSettingsStatus] = useState('')
   const [settingsLoaded, setSettingsLoaded] = useState(false)
+  // Portal licensing L4 (decision 37): while ciq_licence is on for this member the
+  // toggle is the MSM's "member drives CIQ" switch - same column, new wording.
+  const [ciqLicenceOn, setCiqLicenceOn] = useState(false)
 
   useLayoutEffect(() => {
     // Re-opened tab: use the last settings at once, refresh behind them.
@@ -44,6 +50,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
     if (snap) {
       setLocalCiqEnabled(snap.ciq_enabled)
       setLocalCiqVfosManaged(snap.ciq_vfos_managed)
+      setCiqLicenceOn(!!snap.ciq_licence)
       setSettingsLoaded(true)
     }
     async function loadCiqSettings() {
@@ -51,6 +58,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
         const data = await callApi('ciq_load_settings', { member_number: memberNumber })
         setLocalCiqEnabled(data.ciq_enabled)
         setLocalCiqVfosManaged(data.ciq_vfos_managed)
+        setCiqLicenceOn(!!data.ciq_licence)
         setLastSeen(`ciqsettings:${memberNumber}`, data)
       } catch (err) { console.error(err) }
       finally { setSettingsLoaded(true) }
@@ -90,16 +98,22 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
       setCiqs(list)
       setContactsMap(contactData.contacts || {})
       setLastSeen(`ciqlist:${memberNumber}`, { data, contactData })
-      // Deep-link from a client profile / MAP 1 step: open that client's newest
-      // CIQ straight away. Consume the key even when nothing matches so a later
-      // visit to this tab doesn't re-hijack the list.
-      if (isAdmin) {
-        const wantedClientId = sessionStorage.getItem('ciqInitialClientId')
-        if (wantedClientId) {
-          sessionStorage.removeItem('ciqInitialClientId')
-          const match = list.find(c => String(c.client_id) === String(wantedClientId))
-          if (match) await openCiq(match)
-        }
+      // Deep-link from a client profile / MAP 1 step (admin) or a Client Overview
+      // CIQ pill row (admin + member): open that client's newest CIQ straight away.
+      // Consume the key even when nothing matches so a later visit to this tab
+      // doesn't re-hijack the list. Only the session's own list is searched.
+      const wantedClientId = sessionStorage.getItem('ciqInitialClientId')
+      if (wantedClientId) {
+        sessionStorage.removeItem('ciqInitialClientId')
+        const match = list.find(c => String(c.client_id) === String(wantedClientId))
+        if (match) { setSelectedClientId(match.client_id); await openCiq(match) }
+      }
+      // Client Overview's CIQ pill: land on THAT client's list of CIQs.
+      const wantedListClientId = sessionStorage.getItem('ciqInitialListClientId')
+      if (wantedListClientId) {
+        sessionStorage.removeItem('ciqInitialListClientId')
+        const match = list.find(c => String(c.client_id) === String(wantedListClientId))
+        if (match) setSelectedClientId(match.client_id)
       }
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -1472,6 +1486,9 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
     if (!byClient[key]) byClient[key] = { client: ciq.clients, ciqs: [] }
     byClient[key].ciqs.push(ciq)
   })
+  // The client whose CIQs are open (level 2); a stale id (deleted / not in this
+  // member's list) falls back to the client list.
+  const selectedClient = selectedClientId != null ? (byClient[selectedClientId] || null) : null
 
   return (
     <div>
@@ -1492,8 +1509,10 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>CIQ Settings</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
             <div>
-              <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>Allow Member to Start New CIQs</div>
-              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>When on, the member can start new CIQs on their own. When off, they can still view existing CIQs but can't create new ones.</div>
+              <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{ciqLicenceOn ? 'Member drives CIQ (training complete)' : 'Allow Member to Start New CIQs'}</div>
+              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{ciqLicenceOn
+                ? 'Turn on once the MSM is satisfied the CIQ training is complete. The member then runs their own CIQs and chooses, per client, the free Basic portal or the $25/month Standard portal. When off, they can still view existing CIQs but can\'t create new ones.'
+                : 'When on, the member can start new CIQs on their own. When off, they can still view existing CIQs but can\'t create new ones.'}</div>
             </div>
             <div onClick={() => setLocalCiqEnabled(!localCiqEnabled)}
               style={{ width: '44px', height: '24px', borderRadius: '12px', background: localCiqEnabled ? '#125ecc' : 'var(--vfo-border-strong)', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
@@ -1595,12 +1614,34 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
         </div>
       )}
 
-      {/* CIQ list grouped by client */}
+      {/* Level 1: every client with a CIQ. Level 2: one client's CIQs. */}
       {ciqs.length === 0 && !showAdd
         ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>{(isAdmin || localCiqEnabled) ? 'No CIQs yet. Click "Start New CIQ" to begin.' : 'No CIQs yet. Your VFO Services representative will start one for you.'}</div>
-        : Object.values(byClient).map(({ client, ciqs: clientCiqs }) => (
+        : selectedClient == null ? (
+          <div style={sectionStyle}>
+            {Object.values(byClient).map(({ client, ciqs: clientCiqs }) => {
+              const done = clientCiqs.filter(c => c.status === 'completed').length
+              return (
+                <div key={client?.id} onClick={() => setSelectedClientId(client?.id)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 14px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', cursor: 'pointer' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{client?.first_name} {client?.last_name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{client?.client_ref} · {client?.email}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
+                    <span style={{ fontSize: '12.5px', color: 'var(--vfo-muted)' }}>{clientCiqs.length} CIQ{clientCiqs.length !== 1 ? 's' : ''}{done ? ` · ${done} completed` : ''}</span>
+                    <span style={{ color: '#0095ff', fontWeight: 600, fontSize: '12px' }}>View CIQs →</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : [selectedClient].map(({ client, ciqs: clientCiqs }) => (
           <div key={client?.id} style={sectionStyle}>
-            <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)', marginBottom: '4px' }}>{client?.first_name} {client?.last_name}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+              <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)', marginBottom: '4px' }}>{client?.first_name} {client?.last_name}</div>
+              <button onClick={() => setSelectedClientId(null)} style={{ padding: '6px 14px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>← All clients</button>
+            </div>
             <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: contactsMap[client?.id]?.length > 0 ? '4px' : '16px' }}>{client?.client_ref} · {client?.email}</div>
             {contactsMap[client?.id]?.length > 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '16px', fontStyle: 'italic' }}>with {contactsMap[client.id].map(c => `${c.first_name} ${c.last_name}`).join(', ')}</div>}
             {clientCiqs.map(ciq => (

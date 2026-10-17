@@ -166,7 +166,7 @@ export default function SpecialistRevenuePayPage() {
           ]}
           footer={isRecurring
             ? `Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. Nothing is charged today — your first payment collects on the ${dayText} (next month's if this month's has already passed) and monthly on that day after that.`
-            : 'Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. Takes 2-4 business days to process.'}
+            : 'Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. Takes 3-5 business days to process.'}
         />
 
         <div style={dividerStyle}>— or —</div>

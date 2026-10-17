@@ -886,7 +886,14 @@ export default function AdminPortal() {
           )}
 
           {activeTab === 'client_overview' && (
-            <ClientOverviewPanel key={navClickCount} />
+            <ClientOverviewPanel key={navClickCount} onOpenCiq={c => {
+              // CIQ pill row: open the client's member on the CIQ feature tab, on
+              // THAT client's list of CIQs (MemberCIQ consumes the key).
+              const m = allMembers.find(x => String(x.plugin_member_number) === String(c.member_number))
+              if (!m) return
+              sessionStorage.setItem('ciqInitialListClientId', String(c.id))
+              openMemberProfile(m, 'ciq', 'client_overview')
+            }} />
           )}
 
           {activeTab === 'faq_editor' && (
