@@ -1,6 +1,6 @@
 # Single client profile — plan (read-only, 2026-10-16)
 
-**Status: PLAN ONLY — nothing built.** Written 2026-10-16 in the portal licensing L4 chat (branch `docs/single-client-profile-plan`, react only) at Jake's request. Code-verified the same day (a full link census + `ClientDetail.jsx` read). Decisions Jake still owes are listed at the end.
+**Status: Phase 0 BUILT + click-tested 2026-10-17 (frontend only, branch `feature/single-client-profile`, not yet published); Phases 1-2 next.** Written 2026-10-16 in the portal licensing L4 chat at Jake's request (code-verified that day: a full link census + `ClientDetail.jsx` read); re-checked 2026-10-17 after L4 merged — see §5 Phase 0 for what changed.
 
 ## 1. The problem (Jake, 2026-10-16)
 
@@ -52,7 +52,7 @@ Profile ▾ | Holistic: MAP 1 · Regular · PIP · Tax | Tax Planning: Tax | CIQ
 
 ## 5. Phases (each behind ONE Feature Switch, `single_client_profile`, per the licensing plan's switch rule)
 
-0. **Link hygiene (no switch — each is a plain bug fix, worth doing even if the rest never ships):** give the 7 + 2 programless tax links their program and plan; `tab=pft` links `program=2`; `tab=map1` links `program=1`; `tab=automation` → the right tab; the planner list's `tab=tax&plan=`; Tax Diagnostics' member `program=4`; never emit `program=null`; `replaceState` keeps `window.history.state`; the planner login `?next=`. Gates: `deno check`, build, smoke 5/5.
+0. **Link hygiene — DONE 2026-10-17, frontend only (no switch, no backend deploy).** Re-check after L4 merged: `replaceState` already kept `window.history.state`, admin / member logins already sent `?next=`, Tax Diagnostics' ADMIN links and the planner list already carried `program`, and no stored bell holds `program=null` (0) — but **209 stored bells** lacked a program (146 `map1`, 8 `pft`, 55 `tax`), which fixing the link BUILDERS would never reach. So the fix moved to the PAGE (#632): `ClientDetail` takes the program from a one-program tab (`map1` / `regular` / `pip` / `automation` → 1, `pft` → 2) and re-opens in the plan's own program when `?plan=` belongs to the other one (`TaxPrioritiesTab` `onPlanInOtherProgram`). Plus: the planner login honours `?next=`, Tax Diagnostics' member links carry `program=4`, and — Jake, the same day — **Client Overview's rule everywhere: a client's NAME opens the profile, the ROW opens the plan** (`ClientNameLink` lost `tab` / `plan`; Automation MAP 1 / Tax / PIP, Outstanding Links, Held payouts, Tax Planners → Payments and the planner Clients list now open the plan from the row, the ▼ / ▸ arrow alone expands). Left as they were, by decision: the program Clients lists (`MSMTracking` / `MemberMSMTracking`, whole card → profile), Member Overview's client rows, Tax Planners → Clients (chip → plan). The ~32 backend link builders were NOT edited (cosmetic now — optional tidy-up).
 1. **Backend, additive:** `msm_load_client_home` also returns `programs: [{ program_id, name, enrollment_id }]` for every program the client is in (same owner / admin / planner / mirror fences — `mirrorReadGate` unchanged), and the switch state for the client's member. Off = no new key.
 2. **Frontend, behind the switch:** `ClientDetail.jsx` builds the grouped tab strip from `programs`; each program tab is mounted with ITS enrollment's program id; the Tax tab gets a "both programs" mode (`plansForProgram` bypassed only while the switch is on); the header lists every program; `?tab=` resolves the program from the tab (+ the plan's own `program_id` for `plan=`). PF lock, Direct mode, mirror, planner and the no-program case each keep their current rule per tab. Back-navigation keys (`pftReturnEnrolledTab`, `memberReturnEnrolledTab`, `adminTaxPlannerReturn`, Client Overview's pill key) re-tested.
 3. **Rollout:** Test member only → Jake's click-through on the 10 two-program clients + one of each single program + an Unassigned client, every role → On for all.
@@ -67,8 +67,10 @@ Profile ▾ | Holistic: MAP 1 · Regular · PIP · Tax | Tax Planning: Tax | CIQ
 
 ## 7. Decisions
 
+**Revised by Jake, 2026-10-17 (supersedes decision 1's layout):** the header lists EVERY program the client is in; next to **Profile ▾** each program is ONE tab — a multi-tab program is a hover dropdown (**Holistic ▾** → MAP 1 · Regular Priorities · Tax Priorities · PIP Meetings), a one-tab program is a plain tab (Tax Planning's Tax Priorities, PFT's engagement). Both programs → both; one → one; none → Profile only.
+
 **Answered by Jake, 2026-10-16:**
-- **1 = grouped tabs on one strip** (not a header program dropdown).
+- **1 = grouped tabs on one strip** (not a header program dropdown) — *layout refined 2026-10-17, above.*
 - **4 = yes**, planners get the same single profile with their current limits.
 - **5 = yes**, Phase 0 (the link fixes) ships first, on its own.
 - **2 = a separate Tax tab per program.** Holistic tax (MAP 1 → Regular and/or Tax) and straight VFO Tax Planning are two separate journeys, even though their steps are alike. Under the grouped strip, Holistic's Tax Priorities shows only program-1 plans and Tax Planning's shows only program-4 plans, so `plansForProgram` stays as it is (the "both programs" mode in §5 Phase 2 is dropped). The strip, for a client in both programs: `[Profile ▾] │ HOLISTIC MAP 1 · Regular Priorities · Tax Priorities · PIP Meetings │ TAX PLANNING Tax Priorities`. One program = today's strip. No program = Profile ▾ only.
