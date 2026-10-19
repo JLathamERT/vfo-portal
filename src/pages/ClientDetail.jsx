@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { Fragment, useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { getSession, callApi, loadCachedData, getLastSeen, setLastSeen } from '../lib/api'
 import { usePortalTheme } from '../lib/theme'
@@ -17,12 +17,18 @@ import PaymentContinuationTab from '../components/admin/migration/PaymentContinu
 import AddGeneralNote from '../components/shared/AddGeneralNote'
 import { PhaseNotesButton, PhaseNotesPanel } from '../components/shared/PhaseNotes'
 import { VisibilityBadge, noteTint, SaveVisibilityButtons } from '../components/shared/NoteVisibility'
-import { Skeleton, ProfileTabSkeleton } from '../components/shared/Skeleton'
+import { Skeleton, ProfileTabSkeleton, PhaseListSkeleton } from '../components/shared/Skeleton'
 import { TrackHero, HeroAvatar } from '../components/shared/TrackKit'
 import { MemberNameLink } from '../components/shared/personLinks'
 import VfoWordmark from '../components/shared/VfoWordmark'
 import NotificationBell from '../components/NotificationBell'
 import { formatDate } from '../lib/dates'
+
+// Program names as programs.name holds them (single client profile tab strip).
+const HOLISTIC = 'VFO Holistic Planning'
+const PFT = 'Partnership Fast Track'
+const TAX_PLANNING = 'VFO Tax Planning'
+const HOLISTIC_TABS = ['map1', 'regular', 'tax', 'pip']
 
 const TEAM_MEMBERS = ['Sarah Freitas', 'Rachael', 'Bridger Silvester', 'Tracy Miller', 'Evan Anderson']
 const statusColors = { Completed: '#1b9254', Confirmed: '#1b9254', Yes: '#1b9254', 'In Progress': '#e06717', Scheduled: '#0095ff', No: '#e74c3c', 'N/A': 'var(--vfo-muted)', Pending: '#e06717' }
@@ -35,10 +41,12 @@ const CONTACT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const ccBadgeStyle = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.4px', color: 'var(--vfo-muted)', border: '1px solid var(--vfo-border-chip)', background: 'var(--vfo-tint)', borderRadius: '999px', padding: '2px 9px', whiteSpace: 'nowrap' }
 
 function ClientTabDropdown({ label, isActive, options, onSelect }) {
+  // Opens and closes instantly (Jake, 2026-10-19): a close delay left two menus
+  // open at once when moving between neighbouring tabs. The menu sits flush under
+  // the button inside this wrapper, so the pointer never leaves it on the way down.
   const [open, setOpen] = useState(false)
-  const closeTimer = useRef(null)
-  function handleMouseEnter() { clearTimeout(closeTimer.current); setOpen(true) }
-  function handleMouseLeave() { closeTimer.current = setTimeout(() => setOpen(false), 200) }
+  function handleMouseEnter() { setOpen(true) }
+  function handleMouseLeave() { setOpen(false) }
   return (
     <div style={{ position: 'relative' }} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       <button style={{ padding: '7px 16px', background: isActive ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: isActive ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: isActive ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -81,6 +89,10 @@ export default function ClientDetail() {
   const [portalAccess, setPortalAccess] = useState(undefined)
   const [ciqLicence, setCiqLicence] = useState(undefined)
   const [program, setProgram] = useState(null)
+  // Single client profile (switch single_client_profile): every program the client
+  // is in, from msm_load_client_home. null = switch off, the page opens inside one
+  // program exactly as before.
+  const [programs, setPrograms] = useState(null)
   const [contacts, setContacts] = useState([])
   const [specialists, setSpecialists] = useState([])
   // vfo_ecosystem_assignments rows ({ expert_id, name }) from the same cached
@@ -193,6 +205,7 @@ export default function ClientDetail() {
   function applyLoaded(data, expertsData, notesData) {
     setClient(data.client)
     setProgram(data.program)
+    setPrograms(Array.isArray(data.programs) ? data.programs : null)
     setContacts(data.contacts || [])
     // Present only while client_basic_portal is on for the client's member.
     setPortalAccess(Object.prototype.hasOwnProperty.call(data, 'portal_access') ? data.portal_access : undefined)
@@ -227,7 +240,17 @@ export default function ClientDetail() {
   function handlePlanInOtherProgram(planProgramId) {
     if (programOverrideRef.current || !planProgramId || planProgramId === program?.id) return
     programOverrideRef.current = planProgramId
+    const known = programs?.find(p => p.id === planProgramId)
+    if (known) { selectProgramTab(known, 'tax'); return }
     loadData()
+  }
+
+  // Single client profile: a program tab carries its own program, so picking it
+  // switches the page's program and tab together (no reload - the program only
+  // decides which track the tab components load).
+  function selectProgramTab(p, key) {
+    if (p.id !== program?.id) setProgram({ id: p.id, name: p.name })
+    setActiveTab(key)
   }
 
   async function reloadContacts() {
@@ -374,7 +397,9 @@ export default function ClientDetail() {
             meta={
               <>
                 <span style={{ fontFamily: 'monospace' }}>{client?.client_ref}</span>
-                {program && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ color: '#0095ff', fontWeight: 500 }}>{program.name}</span></>}
+                {programs
+                  ? programs.map(p => <Fragment key={p.id}><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ color: '#0095ff', fontWeight: 500 }}>{p.name}</span></Fragment>)
+                  : program && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ color: '#0095ff', fontWeight: 500 }}>{program.name}</span></>}
                 {client?.member_name && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Member: <MemberNameLink memberNumber={client.member_number}>{client.member_name}</MemberNameLink></span></>}
                 {contacts?.length > 0 && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ fontStyle: 'italic' }}>with {contacts.map(c => `${c.first_name} ${c.last_name}`).join(', ')}</span></>}
                 {client?.status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors2[client?.status] || 'var(--vfo-faint)', flexShrink: 0 }} />{client.status.charAt(0).toUpperCase() + client.status.slice(1)}</span></>}
@@ -396,7 +421,17 @@ export default function ClientDetail() {
               <>
                 <button style={tabStyle(activeTab === 'home')} onClick={() => setActiveTab('home')}>Profile</button>
                 <button style={tabStyle(activeTab === 'vault')} onClick={() => setActiveTab('vault')}>Vault</button>
-                {program && program.name !== 'Partnership Fast Track' && (
+                {programs
+                  // Planners get ONE "Tax Planning" tab (Jake, 2026-10-19): to them a
+                  // Holistic and a Tax Planning plan are the same job. It opens the
+                  // page's program, and TaxPrioritiesTab moves to the program holding
+                  // the client's plans when that one has none (no client has both).
+                  ? (() => {
+                      const taxPrograms = programs.filter(p => p.name === HOLISTIC || p.name === TAX_PLANNING)
+                      const target = taxPrograms.find(p => p.id === program?.id) || taxPrograms[0]
+                      return target ? <button style={tabStyle(activeTab === 'tax')} onClick={() => selectProgramTab(target, 'tax')}>Tax Planning</button> : null
+                    })()
+                  : program && program.name !== 'Partnership Fast Track' && (
                   <button style={tabStyle(activeTab === 'tax')} onClick={() => setActiveTab('tax')}>Tax Priorities</button>
                 )}
               </>
@@ -411,7 +446,17 @@ export default function ClientDetail() {
               }
               {/* A client in no program (Client Overview > Unassigned) gets only the
                   Profile menu - no program tabs until an admin adds it to one. */}
-              {!program ? null : program.name === 'Partnership Fast Track' ? (isMirror ? null :
+              {programs ? programs.map(p => (
+                p.name === HOLISTIC ? (
+                  <ClientTabDropdown key={p.id} label="Holistic Planning" isActive={program?.id === p.id && HOLISTIC_TABS.includes(activeTab)}
+                    options={[{ key: 'map1', label: 'MAP 1' }, { key: 'regular', label: 'Regular Priorities' }, { key: 'tax', label: 'Tax Priorities' }, { key: 'pip', label: 'PIP Meetings' }]}
+                    onSelect={key => selectProgramTab(p, key)} />
+                ) : p.name === TAX_PLANNING ? (
+                  <button key={p.id} style={tabStyle(program?.id === p.id && activeTab === 'tax')} onClick={() => selectProgramTab(p, 'tax')}>Tax Planning</button>
+                ) : p.name === PFT && !isMirror ? (
+                  <button key={p.id} style={tabStyle(program?.id === p.id && activeTab === 'pft')} onClick={() => selectProgramTab(p, 'pft')}>Partnership Fast Track</button>
+                ) : null
+              )) : !program ? null : program.name === 'Partnership Fast Track' ? (isMirror ? null :
                 <button style={tabStyle(activeTab === 'pft')} onClick={() => setActiveTab('pft')}>PFT Engagement Process</button>
               ) : program?.name === 'VFO Tax Planning' ? (
                 <button style={tabStyle(activeTab === 'tax')} onClick={() => setActiveTab('tax')}>Tax Priorities</button>
@@ -429,7 +474,9 @@ export default function ClientDetail() {
         </div>
 
         {loading ? (
-          <ProfileTabSkeleton sections={isMember ? 3 : 4} />
+          // Heading for a program tab (a plan / track link): draw a track-shaped
+          // skeleton, not the Profile one, so the profile never flashes first.
+          PROGRAM_TABS.includes(activeTab) ? <PhaseListSkeleton phases={6} rowsPerPhase={2} /> : <ProfileTabSkeleton sections={isMember ? 3 : 4} />
         ) : !client ? (
           // The load failed (network, timeout, a deleted client): say so instead of
           // drawing the tabs, which read client.id and crashed the page to blank

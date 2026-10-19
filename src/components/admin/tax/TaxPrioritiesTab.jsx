@@ -5814,6 +5814,11 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
       .catch(() => setPlannerExperts([]))
   }, [plannerMode])
 
+  // Opened on one plan (?plan=): draw the plan page's skeleton until it opens, never
+  // the plan list for a moment first (Jake, 2026-10-19). Cleared once the fresh list
+  // has been checked - a plan that is not there falls back to the list.
+  const [deepLinkPending, setDeepLinkPending] = useState(!!initialPlanId)
+
   // Deep-link from Client Overview: open the requested plan once, after the
   // list has loaded. The user can still navigate back to the list afterwards.
   // From a notification (openSinglePlan) with no plan id: open the one live plan
@@ -5827,7 +5832,9 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
       match = live.length === 1 ? live[0] : taxPlans.length === 1 ? taxPlans[0] : null
     }
     if (match) { autoSelectedRef.current = true; setSelectedPlan(match) }
+    setDeepLinkPending(false)
   }, [loading, initialPlanId, openSinglePlan, taxPlans, snapPending])
+
 
   // Applies the raw responses — fresh from loadData, or the last-seen snapshot.
   function applyLoaded({ plansData, phasesData, map1Progress, perPlan }) {
@@ -5840,6 +5847,11 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
     // wrong program, or none): the page re-opens in that plan's program.
     if (initialPlanId && onPlanInOtherProgram && !scopedPlans.some(p => p.id === initialPlanId)) {
       const elsewhere = (plansData.plans || []).find(p => p.id === initialPlanId)
+      if (elsewhere) onPlanInOtherProgram(elsewhere.program_id || 1)
+    } else if (plannerMode && onPlanInOtherProgram && scopedPlans.length === 0) {
+      // A planner's one Tax Priorities tab follows the plans: an empty program
+      // view hands over to the program that holds the client's plans.
+      const elsewhere = (plansData.plans || [])[0]
       if (elsewhere) onPlanInOtherProgram(elsewhere.program_id || 1)
     }
     setTaxPlans(scopedPlans)
@@ -6022,6 +6034,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
   const stateColors = { 'not started': 'var(--vfo-muted)', 'in progress': '#0095ff', 'completed': '#1b9254' }
 
+  if (deepLinkPending && !selectedPlan) return <PhaseListSkeleton phases={6} rowsPerPhase={2} />
   if (loading) return <TaxPlanListSkeleton />
 
   // Clicked while the list was still refreshing: go to the page at once and show
