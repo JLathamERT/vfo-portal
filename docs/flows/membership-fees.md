@@ -315,7 +315,11 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
    `supabase/cron/membership-sweep.sql`), **five** passes in order — **pass 0 = renewal notices,
    added 2026-08-04 / v700, runs FIRST so a plan is always warned before it is rolled over
    (see "Renewal notice + meeting" below)** — then: **renewals** (generate the next
-   year at next-year terms, advance `renewal_date` +12 months, guard = any row on/after renewal),
+   year at next-year terms, advance `renewal_date` +12 months, guard = any row on/after renewal;
+   **a monthly year CONTINUES the member's rhythm (2026-10-19, v1012, #634): first pull = the month
+   after the old year's last scheduled row, never before the renewal month (prepaid members) and
+   never before the renewal 15th (a passed charge day is due ON renewal day), then monthly on
+   `charge_day`** — it was "first charge day on/after the 15th", which left a month unbilled),
    **waive** due $0 rows, **charges** (one off-session PI per plan = due + missed rows;
    LOGICAL/date-less sorted row-set idempotency keys `membership-pull-<plan>-<rowids>`, gotcha
    #228 class; a charge that succeeds but whose ledger write fails alerts Jake loudly; sync
