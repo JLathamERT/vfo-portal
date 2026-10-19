@@ -59,13 +59,15 @@ export function MemberNameLink({ memberNumber, children, style }) {
   )
 }
 
-// navState (optional) rides on the navigation — ClientDetail's Back reads
-// location.state.from — and onOpen runs just before it, for a caller that must
-// remember where to return to (Tax Planners → Clients).
-export function ClientNameLink({ clientId, program, tab, children, style, navState, onOpen }) {
+// A client's NAME always opens their profile (Jake, 2026-10-17 — Client Overview's
+// rule, everywhere): the row it sits in opens the plan / track. `program` only picks
+// which program's tabs the profile shows. navState (optional) rides on the
+// navigation — ClientDetail's Back reads location.state.from — and onOpen runs just
+// before it, for a caller that must remember where to return to (Tax Planners → Clients).
+export function ClientNameLink({ clientId, program, children, style, navState, onOpen }) {
   const navigate = useNavigate()
   if (!clientId) return <span style={style}>{children}</span>
-  const target = clientPagePath(clientId, { program, tab })
+  const target = clientPagePath(clientId, { program, tab: 'home' })
   return (
     <span
       title="Open client profile"

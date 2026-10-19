@@ -29,7 +29,11 @@ export default function TaxPlannerLogin() {
       const data = await callApi('tax_planner_login', { email: emailVal, passcode: passVal })
       sessionStorage.removeItem('taxPlannerActiveTab')
       setSession({ token: data.token, email: emailVal, name: data.name, role: 'tax_planner', tax_planner_id: data.tax_planner_id })
-      navigate('/tax-planner')
+      // A logged-out deep link (a bell or emailed client link) arrives as ?next=;
+      // only a planner-portal address is followed (#599).
+      const next = new URLSearchParams(window.location.search).get('next') || ''
+      const safeNext = (next === '/tax-planner' || next.startsWith('/tax-planner?') || next.startsWith('/tax-planner/')) && !next.startsWith('/tax-planner/login')
+      navigate(safeNext ? next : '/tax-planner')
     } catch (err) {
       setError(err.message)
     } finally {

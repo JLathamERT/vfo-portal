@@ -5,7 +5,7 @@ import { DiagnosticCard } from '../admin/TaxDiagnosticsPanel'
 
 // The member portal's Tax Diagnostic tab (2026-10-14) — open to EVERY member, no
 // feature switch. Two views:
-//   - Start a Tax Diagnostic: the MSM Tax Planning tab's "+ Add new tax client"
+//   - Start a Tax Diagnostic: the MSM Tax Planning tab's "+ Add Client"
 //     flow on its own (TaxIntakeForm: who runs the case — only while tax_direct
 //     is on — then who fills the form), so every rule of that flow applies
 //     unchanged. The backend routes it reaches (tax_intake_submit /

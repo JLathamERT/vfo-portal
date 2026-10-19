@@ -69,6 +69,16 @@ const SWITCH_COPY = {
     off: 'Exactly as today: no My One Page Plan tab, no One Page Plan card on member client profiles, no upgrade control, no $25 charge.',
     note: 'Keyed on the client\'s OWNING member. Needs "Basic client portal" on for that member too (the Basic / Standard split only exists while it is on).',
   },
+  single_client_profile: {
+    title: 'Single client profile: every program on one client page',
+    on: [
+      'A client page lists every program the client is in at the top (VFO Holistic Planning, Partnership Fast Track, VFO Tax Planning) instead of only the one it was opened in.',
+      'Next to Profile, each program is one tab: "Holistic Planning" opens a menu (MAP 1, Regular Priorities, Tax Priorities, PIP Meetings); "Tax Planning" and "Partnership Fast Track" open their one tab. A client in both Holistic and Tax Planning shows both; a client in no program shows Profile only.',
+      'The same for admins, members (and a member the client is mirrored to - no Partnership Fast Track there) and tax planners get ONE tax tab (Profile, Vault, Tax Planning) - it opens whichever program holds the client\'s plans.',
+    ],
+    off: 'Exactly as today: the page opens inside one program and shows only that program\'s tabs.',
+    note: 'Keyed on the client\'s OWNING member - the viewer\'s own position does not matter.',
+  },
   tpom_additional_benefits: {
     title: 'TPOM presentation: Additional Benefits slide',
     on: [
@@ -90,7 +100,7 @@ const SWITCH_COPY = {
   tax_intake: {
     title: 'Tax Planning tab + existing-client tax form',
     on: [
-      'The Tax Planning tab shows for every member, with the "+ Add new tax client" button.',
+      'The Tax Planning tab shows for every member, with the "+ Add Client" button.',
       'The Tax Planning Form for an EXISTING client (the Holistic route) from that tab, and the Holistic tax-form email to the member after a MAP 1 first payment.',
     ],
     off: 'The Tax Planning tab shows only for members with the program enabled, with no Add button, and no Holistic form or email. Adding a NEW tax client is not affected: since 14 Oct 2026 every member does that from the Tax Diagnostic tab, and its form, deposit and client links work whatever this switch says.',
@@ -109,7 +119,9 @@ const SWITCH_COPY = {
 // 2026-10-16): hidden here only. The flag row stays ON and every backend read is
 // unchanged; feature_switches_load still returns it, and SQL can still flip it.
 // tax_diagnostic = the public vfoportal.com/tax-diagnostic page + its deposit links.
-const HIDDEN_SWITCHES = ['tax_diagnostic']
+// 2026-10-19 (Jake): tax_reminders (the tax reminder chases) and single_client_profile
+// (every program on one client page) are On for all and hidden the same way.
+const HIDDEN_SWITCHES = ['tax_diagnostic', 'tax_reminders', 'single_client_profile']
 
 const POSITIONS = [
   { mode: 'off', label: 'Off for all' },

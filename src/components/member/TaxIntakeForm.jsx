@@ -12,7 +12,7 @@ import {
 // The VFO Tax Planning intake form (q1-q39).
 //
 // Four entry points, one component:
-//   CHOOSER      the member portal's "Add new tax client" button lands here
+//   CHOOSER      the member portal's "+ Add Client" button (MSM Tax Planning) lands here
 //                first: complete the form themselves (route A) or send the
 //                client a link to complete it (route B).
 //   NEW CLIENT   route A. Shows the deposit line ($500, or waived with the

@@ -159,7 +159,7 @@ export default function HolisticRevenuePanel({ embedded = false }) {
             <div key={p.id} onClick={p.clientId ? () => navigate(clientPagePath(p.clientId, { program: 1, tab: 'map1' })) : undefined} {...(p.clientId ? rowHoverProps : {})}
               style={{ ...(p.clientId ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
               <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(p.clearedAt)}</span>
-              <span style={{ fontWeight: 600 }}><ClientNameLink clientId={p.clientId} program={1} tab="home">{p.clientName}</ClientNameLink>{p.plan === 'Quarterly' && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · Q{p.installment}</span>}</span>
+              <span style={{ fontWeight: 600 }}><ClientNameLink clientId={p.clientId} program={1}>{p.clientName}</ClientNameLink>{p.plan === 'Quarterly' && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · Q{p.installment}</span>}</span>
               <span>{p.memberName ? <MemberNameLink memberNumber={p.memberNumber}>{p.memberName}</MemberNameLink> : '—'}{p.memberNumber && <span style={{ color: 'var(--vfo-faint)' }}> · {p.memberNumber}</span>}</span>
               <span><TierTag tier={p.tier} /></span>
               <span style={{ textAlign: 'right', fontWeight: 700, borderRight: '1px solid var(--vfo-tint)', paddingRight: '12px' }}>{money(p.amount)}<SubNote text={p.paymentNote} /></span>
