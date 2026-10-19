@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-10-19 (c) — Membership renewal keeps the monthly rhythm (Scott Burch's missing October)
+
+Branch `fix/membership-renewal-first-pull` (edge code + react docs, same chat as 2026-10-13 (e)). `vfo-admin-api` **v1012** (from the branch on top of merged main / v1011, `--use-docker`; smoke **5/5 vs v1012**, Jake), action count unmoved, no migration, no frontend change.
+
+- **Found by Jake (his dad asked):** Scott Burch (58145, plan 58, a transfer: $12,500 year 1 with 11 old-system payments, charge day 10, renews Oct 15) paid his 12th year-1 payment Sep 10 ($1,042); the renewal on 2026-10-15 applied his next-year terms correctly ($8,000 Catalyst, entered 2026-09-16 14:13 / 14:40 ET, type flip logged) but put year 2's first $667 pull on **Nov 10** — no charge in October. Tray's setup input was right; the cause was the sweep's rule "first charge day on/after the renewal 15th".
+- **Census before choosing a rule (#634):** of 43 other active monthly plans, ~25 end their year the month before renewal (the old rule leaves them a gap — Donovan Carson renews Nov 15), 12 end it IN the renewal month (a fixed "renewal month" rule — option A, first chosen — would double-bill them), 8 pay on the 15th, 1 is prepaid (LoPresti). Jake chose the rhythm rule.
+- **Code (`actions/membership/sweep.ts`, renewal pass, monthly branch):** first pull = the month after the old year's last scheduled membership row (`due_date < renewal_date`, any status), never before the renewal month, never before the renewal 15th (`max`, then `< renewal ⇒ renewal`); rows 2-12 monthly on `charge_day` from that cadence. No prior rows ⇒ the renewal month's charge day. Annual plans unchanged. The invoice engine's year opener is the earliest row of the year, so the first pull still carries the renewal invoice.
+- **Proof:** the same rule run against all 43 plans' real next renewals by SQL — 42 continuous, 0 doubles, 1 prepaid gap; a scratch test of the code's date logic on 7 shapes (Scott, Carson, Stadler, LoPresti, charge day 15, year-end rollover, no history) all pass. The live renewal pass itself is first exercised by **Donovan Carson on 2026-11-15** (expect Nov 15, then Dec 10).
+- **Scott fixed by data (Jake approved):** row **689** October 2026 $667 due 2026-10-15 added to year 2, row **676** (Oct 10, 2027) removed — year 2 now Oct 2026 → Sep 2027, same $8,004 total; charged by the 2026-10-20 13:30 UTC sweep (Visa 2001).
+- **OWED:** confirm Scott's Oct 20 charge + renewal invoice; Donovan Carson's Nov 15 renewal is the first organic run of the new rule; LoPresti's (plan 69) prepaid gap comes from his own year-1 setup count, not this rule.
+
 ## 2026-10-19 (b) — Feature Switches as four cards; the member's Holistic tax-form email removed; "Standard portal" naming (v1011)
 
 **Branch `feature/switches-cleanup` (both repos), ONE chat** (the same chat as the single client profile entry below). Jake: *"clean up the feature switches tab because some things should just go together that right now are separate switches"*, plus clearer names and shorter "what switching it on adds" wording.
