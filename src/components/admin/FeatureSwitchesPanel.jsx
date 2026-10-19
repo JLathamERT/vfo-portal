@@ -85,11 +85,12 @@ const CARDS = [
   {
     id: 'tax_intake',
     keys: ['tax_intake'],
-    title: 'Members add tax clients from MSM',
+    title: 'Members add clients',
     on: [
+      [null, 'Client Overview gets "+ Add Client" — the admin new-client form (name, email, phone, an additional contact). It creates a client profile in no program, ready for portal access later.'],
       [null, 'Every member gets VFO Tax Planning under MSM with "+ Add Client" — the same new-client form as the Tax Diagnostic tab (fill it in, or send the client a link).'],
     ],
-    off: 'VFO Tax Planning shows under MSM only for members enrolled in it, without "+ Add Client". Members add new tax clients from the Tax Diagnostic tab either way.',
+    off: 'No "+ Add Client" on Client Overview. VFO Tax Planning shows under MSM only for members enrolled in it, without "+ Add Client". Members add new tax clients from the Tax Diagnostic tab either way.',
   },
   {
     id: 'tax_direct',
