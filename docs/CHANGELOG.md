@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-10-19 (f) — Rapid Route planners are chased for the assess form (1 and 3 business days after Proceed)
+
+Branch `feature/rapid-assess-reminders` (edge code + migrations, react docs; same chat as 2026-10-19 (c)). `vfo-admin-api` **v1016** (from the branch on top of merged main / v1015, `--use-docker`; smoke **5/5 vs v1016**, Jake), action count unmoved, migrations `20261019150000` + `20261019160000` applied via MCP `apply_migration` + committed (advisor GREEN at the exact baseline — additive columns on a deny-all table, a confirmation).
+
+- **Why (Jake):** Daniel Heberlie (59334-002, plan 272, Rapid Route) — Eric Restrepo + Jane got *Enter the tax planning opportunities* on 2026-10-19 and nothing would ever chase them: both assess reminders key on `tax3_meeting_date`, which a Rapid Route plan never has.
+- **Built:** `save-task.ts` stamps `planner_review_proceed_at` once on *Proceed with tax planning*; `revshare-sweep.ts` gains two tiers (1 and 3 business days — first proposed 2 and 4, changed by Jake before deploy) for `rapid_route` live plans with the form / vault PDF missing; tier 2 only after tier 1. Templates 324-327 (`TAX_rapid_assess_reminder[2]` + `|vault`, Draft) in Jake's approved wording — *"The tax planner review for [Client Name] was completed on [Proceed Date] with "Proceed with tax planning", and the "Assess tax planning opportunities" step has not been completed / is still outstanding…"*. TPOM plans keep their meeting-date tiers (Rapid only, Jake). The builder chain needed `any` (TS2589 on dynamic guard columns).
+- **Backfill:** plan 272's `planner_review_proceed_at` = 2026-10-19 19:07:54 UTC (its Proceed bell). No other Rapid plan was past Proceed with the form missing.
+- **OWED:** first organic drafts — Daniel tier 1 on 2026-10-21 ~9:10 AM ET, tier 2 on 2026-10-23 (if still not done); plans that proceeded before 2026-10-19 are not chased (no stamp).
+
 ## 2026-10-19 (e) — Cleaner client entry: duplicates refused, names + phones tidied, one person per name
 
 Branch `feature/client-entry-cleanup` (both repos, the same chat as (d); Phase 2 of two).
