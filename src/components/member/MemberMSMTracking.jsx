@@ -918,8 +918,8 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
         </div>
         {intakeOn && (
           <button type="button" onClick={() => { setIntakeClient(null); setMode('form') }}
-            style={{ padding: '9px 20px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: 'none', background: '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', whiteSpace: 'nowrap' }}>
-            + Add new tax client
+            style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            + Add Client
           </button>
         )}
       </div>

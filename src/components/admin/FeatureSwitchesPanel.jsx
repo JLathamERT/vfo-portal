@@ -100,7 +100,7 @@ const SWITCH_COPY = {
   tax_intake: {
     title: 'Tax Planning tab + existing-client tax form',
     on: [
-      'The Tax Planning tab shows for every member, with the "+ Add new tax client" button.',
+      'The Tax Planning tab shows for every member, with the "+ Add Client" button.',
       'The Tax Planning Form for an EXISTING client (the Holistic route) from that tab, and the Holistic tax-form email to the member after a MAP 1 first payment.',
     ],
     off: 'The Tax Planning tab shows only for members with the program enabled, with no Add button, and no Holistic form or email. Adding a NEW tax client is not affected: since 14 Oct 2026 every member does that from the Tax Diagnostic tab, and its form, deposit and client links work whatever this switch says.',
