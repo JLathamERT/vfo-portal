@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-10-19 (g) — A paid tax form reuses the member's existing client; non-English email subjects encoded
+
+Branch `fix/tax-intake-reuse-client` (edge code + react docs, the same chat as (d)/(e)). `vfo-admin-api` **v1017** → **v1018** (from the branch, on top of merged main / v1016, `--use-docker`).
+
+- **Why (Jake):** Julia Davis-Haasch (client 360, `59279-001`, member Susan Marshall) — a Holistic client who declined and is going through VFO Tax Planning — filled the public Tax Diagnostic (form 24, auto-confirmed to 59279) and paid the $500 by bank (intake 50, `processing` since 10-15). On settle, `finalizeTaxIntake` always inserted a NEW client, so she would have become a second `59279-002` with the same email (only one of them could ever hold a portal login). No live feature could point a paid form at an existing client.
+- **Fix (v1017, #637):** `finalizeTaxIntake` first looks for this member's own non-PFT client with the same email (`findOwnClientByEmail`, `utils/client-duplicates.ts`; case-insensitive; the OLDEST of several) and reuses it — the plan goes on that record, the client joins the member's program-4 enrollment, nothing on the client row changes, `client_id` stamped as for a new one. A match only under ANOTHER member, and every Direct intake (the PF is per client, so reuse would re-point the existing client's PF), create a new client, silently (Jake: no flag). Ride-along: the resume path's junction now always uses the member's Tax Planning enrollment (it took a reused client's own `clients.enrollment_id`, which for a Holistic client is the Holistic one).
+- **Subject encoding (v1018, #638):** the test drafts' subjects read *Oâ€™Neil*: ~100 handlers write `Subject:` raw and a non-ASCII character (a curly apostrophe from a phone keyboard, an accent, a long dash) needs RFC 2047 encoding. `encodeSubjectMime` in `utils/email-signature.ts` now encodes it inside `ensureSignatureEncoded`, i.e. inside `gmailDraftFetch` / `deliverRaw` — every email; `draftGmail` already encoded its own. ASCII / already-encoded subjects byte-identical (unit-tested: curly, accent + dash, multipart, already-encoded).
+- **Julia, by hand:** intake 50 stamped `client_id = 360` (before the code); then the team (Evan, 22:16-22:17 UTC) added her to Susan Marshall's VFO Tax Planning and started **plan 285** (Rapid Route), and Tracy pasted the deposit PI on it — so intake 50 was also stamped `tax_plan_id = 285`: on settle finalize reuses BOTH (deposit step, INV/REC pair, confirmation email, the "Tax case paid" bells), no second client or plan. She is still ALSO linked to Holistic (enrollment 61) — Jake's call.
+- **Gates:** `deno check` 0; action count 602 unmoved; no migration; **smoke 5/5 vs v1017 and v1018** (Jake). **LIVE-PROVEN** (59524 sandbox, Jake): a same-member same-email form → intake 60 on the existing client `59524-003` (plan 286, no new record); a new email → new client `59524-002` (intake 61, plan 287); both drafts' subjects with a curly apostrophe correct. Fixtures wiped (clients 397 / 398, plans 286 / 287, intakes 60 / 61, their bells); the sandbox INV/REC numbers stay used; Drive / Gmail / Stripe sandbox objects are user-side.
+- **Not exercised:** the several-matches-oldest and the other-member paths (code-only); Julia's own settle is the first real reuse.
+
+---
+
 ## 2026-10-19 (f) — Rapid Route planners are chased for the assess form (1 and 3 business days after Proceed)
 
 Branch `feature/rapid-assess-reminders` (edge code + migrations, react docs; same chat as 2026-10-19 (c)). `vfo-admin-api` **v1016** (from the branch on top of merged main / v1015, `--use-docker`; smoke **5/5 vs v1016**, Jake), action count unmoved, migrations `20261019150000` + `20261019160000` applied via MCP `apply_migration` + committed (advisor GREEN at the exact baseline — additive columns on a deny-all table, a confirmation).
