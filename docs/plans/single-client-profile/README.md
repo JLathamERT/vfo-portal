@@ -1,6 +1,6 @@
 # Single client profile — plan (read-only, 2026-10-16)
 
-**Status: Phase 0 BUILT + click-tested 2026-10-17 (frontend only, branch `feature/single-client-profile`, not yet published); Phases 1-2 next.** Written 2026-10-16 in the portal licensing L4 chat at Jake's request (code-verified that day: a full link census + `ClientDetail.jsx` read); re-checked 2026-10-17 after L4 merged — see §5 Phase 0 for what changed.
+**Status: Phases 0-3 BUILT + click-tested 2026-10-17 → 10-19 (branch `feature/single-client-profile`, `vfo-admin-api` v1010; `single_client_profile` On for all and hidden from the Feature Switches tab); Phase 4 cleanup open.** Narrative: CHANGELOG 2026-10-19. Written 2026-10-16 in the portal licensing L4 chat at Jake's request (code-verified that day: a full link census + `ClientDetail.jsx` read); re-checked 2026-10-17 after L4 merged — see §5 Phase 0 for what changed.
 
 ## 1. The problem (Jake, 2026-10-16)
 
@@ -57,6 +57,8 @@ Profile ▾ | Holistic: MAP 1 · Regular · PIP · Tax | Tax Planning: Tax | CIQ
 2. **Frontend, behind the switch:** `ClientDetail.jsx` builds the grouped tab strip from `programs`; each program tab is mounted with ITS enrollment's program id; the Tax tab gets a "both programs" mode (`plansForProgram` bypassed only while the switch is on); the header lists every program; `?tab=` resolves the program from the tab (+ the plan's own `program_id` for `plan=`). PF lock, Direct mode, mirror, planner and the no-program case each keep their current rule per tab. Back-navigation keys (`pftReturnEnrolledTab`, `memberReturnEnrolledTab`, `adminTaxPlannerReturn`, Client Overview's pill key) re-tested.
 3. **Rollout:** Test member only → Jake's click-through on the 10 two-program clients + one of each single program + an Unassigned client, every role → On for all.
 4. **Cleanup** once On for all has run a while: retire the dead `state.program_id`, collapse `?program=` handling, update `architecture/02-frontend-shell.md`.
+
+**As built (2026-10-19):** Phase 1 = `msm_load_client_home.programs` `[{ id, name }]` (no `enrollment_id` — a program tab sets `program_id` and the page never reloads). Phase 2 = Jake's revised layout (below): admin / member `Profile ▾ │ Holistic Planning ▾ │ Tax Planning │ Partnership Fast Track`; **planners get ONE tab, *Tax Planning*** (Jake: Holistic and Tax Planning plans are the same job to them; 0 of 84 clients hold plans in both), which follows the client's plans. Phase 3 = Test member only → click-tested → On for all, then hidden from the tab. Phase 4 (cleanup: dead `state.program_id`, `?program=` handling, the backend link builders) is NOT done.
 
 ## 6. Size and risk
 

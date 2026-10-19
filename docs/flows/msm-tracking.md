@@ -76,7 +76,7 @@ The 32 `msm_*` actions fall into 5 subsystems. Each is a small CRUD island — n
 | `msm_update_priority_status` | updates `client_priority_tracks.status` | E.g. `'live'`, `'archived'`. |
 | `msm_load_priority_progress` | `priority_progress` | Per-track task progress. A member caller passes `mirrorReadGate` on the track's client (owner, or a mirrored member, reply masked — 2026-10-12; `msm_load_priority_tracks` the same on `client_id`). |
 | `msm_save_priority_task` | upserts `priority_progress` | `ADMIN_ONLY` since 2026-10-09 (as are `msm_add_priority_track` / `msm_update_priority_status`). |
-| `msm_load_client_home` | `clients` + `client_contacts` + `member_enrollments` + `programs` + `client_enrollments` | Aggregate read for ClientDetail's home tab. |
+| `msm_load_client_home` | `clients` + `client_contacts` + `member_enrollments` + `programs` + `client_enrollments` | Aggregate read for ClientDetail's home tab. Since 2026-10-19 also `programs` (every program the client is in) while `single_client_profile` is on — the single client profile strip. |
 | `msm_load_client_detail` | `clients` + `member_enrollments` + `programs` | Smaller aggregate read. |
 
 ## Member-side view
