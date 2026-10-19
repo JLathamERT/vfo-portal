@@ -802,7 +802,6 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
   // Tax intake (2026-09-17). `mode` drives the whole tab: 'list' is the client
   // list, 'form' the 37-question form, 'done' the post-submit card.
   const [mode, setMode] = useState('list')
-  const [intakeClient, setIntakeClient] = useState(null)
   const [doneMessage, setDoneMessage] = useState('')
 
   // Back from a client page lands here: draw the last list at once, refresh behind it.
@@ -816,39 +815,27 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     loadClients(!!snap)
   }, [enrollment?.id])
 
-  // Returning from the deposit Checkout (?intake=<id>&paid=1) or arriving from
-  // the Holistic "complete the form" email (?intake_client=<id>). Read once,
-  // then stripped from the URL so a refresh does not replay them.
+  // Returning from the deposit Checkout (?intake=<id>&paid=1). Read once, then
+  // stripped from the URL so a refresh does not replay it.
   useEffect(() => {
     if (!intakeOn) return
     const qs = new URLSearchParams(window.location.search)
     const paid = qs.get('intake') && qs.get('paid') === '1'
-    const forClient = qs.get('intake_client')
-    if (!paid && !forClient) return
-    if (paid) {
-      // ach=1: the member chose ACH on the choice page. Nothing exists yet — the
-      // client is created only when the transfer SETTLES (2026-09-23).
-      setDoneMessage(qs.get('ach') === '1'
-        ? 'Bank transfer submitted. The client will be created once it clears (3-5 business days).'
-        : 'Client created. We have emailed you a confirmation.')
-      setMode('done')
-      loadClients()
-      onEnrollmentsChanged?.()
-      // The client is created by the Stripe WEBHOOK, which can land a second or
-      // two after the browser gets back here — one delayed re-read so the list
-      // is right by the time they click through to it.
-      setTimeout(() => { loadClients(); onEnrollmentsChanged?.() }, 4000)
-    } else if (forClient) {
-      callApi('msm_load_member_clients', { member_number: member.member_number })
-        .then(d => {
-          const hit = (d.clients || []).find(c => String(c.id) === String(forClient))
-          if (hit) { setIntakeClient(hit); setMode('form') }
-          else setDoneMessage('We could not find that client on your account. Please contact your VFO team.')
-        })
-        .catch(() => setDoneMessage('We could not open that form. Please try again.'))
-    }
+    if (!paid) return
+    // ach=1: the member chose ACH on the choice page. Nothing exists yet — the
+    // client is created only when the transfer SETTLES (2026-09-23).
+    setDoneMessage(qs.get('ach') === '1'
+      ? 'Bank transfer submitted. The client will be created once it clears (3-5 business days).'
+      : 'Client created. We have emailed you a confirmation.')
+    setMode('done')
+    loadClients()
+    onEnrollmentsChanged?.()
+    // The client is created by the Stripe WEBHOOK, which can land a second or
+    // two after the browser gets back here — one delayed re-read so the list
+    // is right by the time they click through to it.
+    setTimeout(() => { loadClients(); onEnrollmentsChanged?.() }, 4000)
     const url = new URL(window.location.href)
-    ;['intake', 'paid', 'ach', 'intake_client'].forEach(k => url.searchParams.delete(k))
+    ;['intake', 'paid', 'ach'].forEach(k => url.searchParams.delete(k))
     window.history.replaceState({}, '', url.toString())
   }, [intakeOn])
 
@@ -869,9 +856,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
   }
 
   function finishIntake(res) {
-    setIntakeClient(null)
-    // tax_plan_id comes back only from the WAIVED new-client path; the Holistic
-    // route stores answers against a client that already exists; link_sent_to is
+    // tax_plan_id comes back only from the WAIVED new-client path; link_sent_to is
     // the "send my client a link" route, where nothing exists yet at all.
     setDoneMessage(res?.link_sent_to
       ? `We have drafted the Tax Planning Form link for ${res.link_sent_to}. It will be sent shortly.`
@@ -889,8 +874,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
   if (intakeOn && mode === 'form') return (
     <TaxIntakeForm
       member={member}
-      existingClient={intakeClient}
-      onCancel={() => { setIntakeClient(null); setMode('list') }}
+      onCancel={() => setMode('list')}
       onDone={finishIntake}
     />
   )
@@ -917,7 +901,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
           <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.filter(c => c.status === 'active').length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>ACTIVE</div></div>
         </div>
         {intakeOn && (
-          <button type="button" onClick={() => { setIntakeClient(null); setMode('form') }}
+          <button type="button" onClick={() => setMode('form')}
             style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             + Add Client
           </button>

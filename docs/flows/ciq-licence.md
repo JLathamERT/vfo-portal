@@ -4,7 +4,7 @@
 
 ## Switches
 
-- **`ciq_licence`** (Feature Switches tab), keyed on the client's OWNER. It needs **`client_basic_portal`** on too — the Basic / Standard split only exists under L2. Every member action refuses (403, `FEATURE_OFF_MESSAGE`) unless BOTH are on for the caller. Off = exactly the pre-L4 behaviour: no `ciq_licence` key in any payload, no My One Page Plan tab.
+- **`ciq_licence`** (shown as the **Standard portal, $25 a month**, inside the Feature Switches card *VFO Client Portal* since 2026-10-19 — the card flips it with `portal_licensing`, `client_basic_portal` and `tpom_additional_benefits`; new subscriptions' Stripe description reads `VFO Portal - Standard portal - <client>`, the product name and the `INV-CIQ` / `REC-CIQ` numbers unchanged), keyed on the client's OWNER. It needs **`client_basic_portal`** on too — the Basic / Standard split only exists under L2. Every member action refuses (403, `FEATURE_OFF_MESSAGE`) unless BOTH are on for the caller. Off = exactly the pre-L4 behaviour: no `ciq_licence` key in any payload, no My One Page Plan tab.
 - **`members.ciq_enabled`** is the MSM's "member drives CIQ" switch (decision 37). While `ciq_licence` is on for a member, the admin CIQ Settings toggle reads *Member drives CIQ (training complete)* (`ciq_load_settings` returns `ciq_licence`). While `ciq_licence` is **On for all**, every member INSERT writes `ciq_enabled=false` (`utils/feature-flags.ts newMemberCiqFields`: `members/add-full.ts`, `advisor/create-member.ts`, `accountant/create-member.ts`, and `members/profile-save.ts` for a brand-new member only). Existing members are never touched.
 
 ## What the client gets
