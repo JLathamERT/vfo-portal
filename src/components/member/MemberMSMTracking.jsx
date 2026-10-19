@@ -10,6 +10,8 @@ import RoleplayStep, { isRoleplayTask } from '../shared/RoleplayStep'
 import TaxIntakeForm from './TaxIntakeForm'
 import { formatDate as formatFullDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
+import PhoneInput from '../shared/PhoneInput'
+import { cleanText, formatPersonName } from '../../lib/formatters'
 
 // Group a phase's tasks so each section header owns the contiguous sub-steps beneath it,
 // letting the UI enclose the group and keep following standalone tasks visually separate.
@@ -677,7 +679,7 @@ function MemberTrackerTask({ task, meta, enrollmentId, progress, inGroup, onStat
   }
 
   async function addEntry() {
-    const fn = firstName.trim(), ln = lastName.trim(), em = email.trim()
+    const fn = formatPersonName(firstName), ln = formatPersonName(lastName), em = cleanText(email)
     if (!fn) { setError('First name is required.'); return }
     if (!ln) { setError('Last name is required.'); return }
     if (!em || !em.includes('@')) { setError('A valid email is required.'); return }
@@ -688,7 +690,7 @@ function MemberTrackerTask({ task, meta, enrollmentId, progress, inGroup, onStat
       const data = await callApi('training_tracker_add', {
         enrollment_id: enrollmentId,
         task_id: task.id,
-        entry: { first_name: fn, last_name: ln, firm_name: firmName.trim(), email: em, phone: phone.trim(), source: source.trim(), warm_cold: warmCold, notes: notes.trim() },
+        entry: { first_name: fn, last_name: ln, firm_name: firmName.trim(), email: em, phone: cleanText(phone), source: source.trim(), warm_cold: warmCold, notes: notes.trim() },
       })
       setEntries(prev => [...(prev || []), data.entry])
       setFirstName(''); setLastName(''); setFirmName(''); setEmail(''); setPhone(''); setSource(''); setWarmCold(''); setNotes('')
@@ -733,7 +735,7 @@ function MemberTrackerTask({ task, meta, enrollmentId, progress, inGroup, onStat
               {fieldGroup('Email *', <input value={email} onChange={e => setEmail(e.target.value)} type="email" style={inputStyle} />, '180px')}
             </div>
             <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-              {fieldGroup('Phone', <input value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} />)}
+              {fieldGroup('Phone', <PhoneInput value={phone} onChange={setPhone} style={inputStyle} />)}
               {fieldGroup('Source', <input value={source} onChange={e => setSource(e.target.value)} placeholder="e.g. LinkedIn, Word of mouth" style={inputStyle} />)}
               {fieldGroup('Warm / Cold *', (
                 <select value={warmCold} onChange={e => setWarmCold(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>

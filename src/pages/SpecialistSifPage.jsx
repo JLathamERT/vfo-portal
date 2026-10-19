@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { TokenFormSkeleton } from '../components/shared/Skeleton'
+import { formatPhoneTyping } from '../lib/formatters'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -125,7 +126,7 @@ export default function SpecialistSifPage() {
         <Field label="Company Name" value={form.company_name} onChange={v => set('company_name', v)} />
         <Field label="Address" value={form.address} onChange={v => set('address', v)} required />
         <div style={rowStyle}>
-          <Field label="Phone" value={form.phone} onChange={v => set('phone', v)} flex required />
+          <Field label="Phone" value={form.phone} onChange={v => set('phone', formatPhoneTyping(v, form.phone))} flex required />
           <Field label="Email" value={form.email} onChange={v => set('email', v)} flex required />
         </div>
         <Field label="Website URL" value={form.website_url} onChange={v => set('website_url', v)} />

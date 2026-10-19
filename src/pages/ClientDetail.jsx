@@ -23,6 +23,8 @@ import { MemberNameLink } from '../components/shared/personLinks'
 import VfoWordmark from '../components/shared/VfoWordmark'
 import NotificationBell from '../components/NotificationBell'
 import { formatDate } from '../lib/dates'
+import { cleanText, formatPersonName, phoneIncomplete, nameHasTwoPeople, TWO_PEOPLE_MESSAGE, TWO_PEOPLE_CONTACT_MESSAGE } from '../lib/formatters'
+import PhoneInput from '../components/shared/PhoneInput'
 
 // Program names as programs.name holds them (single client profile tab strip).
 const HOLISTIC = 'VFO Holistic Planning'
@@ -810,13 +812,22 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
   const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
 
+  const [errorText, setErrorText] = useState('')
+
+  // Tidied as the server does (src/lib/formatters.js); a 409 names the client
+  // that already has this email.
   async function save() {
+    const f = formatPersonName(firstName), l = formatPersonName(lastName), em = cleanText(email)
+    setFirstName(f); setLastName(l); setEmail(em)
+    if (!f || !l) { setErrorText('First and last name are required.'); setStatus('error'); return }
+    if ((f !== cleanText(client?.first_name) && nameHasTwoPeople(f)) || (l !== cleanText(client?.last_name) && nameHasTwoPeople(l))) { setErrorText(TWO_PEOPLE_MESSAGE); setStatus('error'); return }
+    if (phoneIncomplete(phone)) { setErrorText('Enter the full 10-digit phone number, or leave it blank.'); setStatus('error'); return }
     setSaving(true)
     try {
-      await callApi('msm_update_client', { client_id: client.id, status: client.status, first_name: firstName, last_name: lastName, email, phone })
+      await callApi('msm_update_client', { client_id: client.id, status: client.status, first_name: f, last_name: l, email: em, phone: cleanText(phone) })
       setStatus('saved')
       setTimeout(() => setStatus(''), 4000)
-    } catch (err) { setStatus('error') }
+    } catch (err) { setErrorText(err.status === 409 || err.status === 400 ? err.message : 'Something went wrong'); setStatus('error') }
     finally { setSaving(false) }
   }
 
@@ -825,17 +836,17 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
       <div style={sectionStyle}>
         <div style={cardTitle}>Primary Contact</div>
         <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name</label><input value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} /></div>
-          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name</label><input value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} /></div>
+          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name</label><input value={firstName} onChange={e => setFirstName(e.target.value)} onBlur={() => setFirstName(formatPersonName(firstName))} style={inputStyle} /></div>
+          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name</label><input value={lastName} onChange={e => setLastName(e.target.value)} onBlur={() => setLastName(formatPersonName(lastName))} style={inputStyle} /></div>
         </div>
         <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Email</label><input value={email} onChange={e => setEmail(e.target.value)} type="email" style={inputStyle} /></div>
-          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Phone</label><input value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} /></div>
+          <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Email</label><input value={email} onChange={e => setEmail(e.target.value)} onBlur={() => setEmail(cleanText(email))} type="email" style={inputStyle} /></div>
+          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Phone</label><PhoneInput value={phone} onChange={setPhone} style={inputStyle} /></div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button onClick={save} disabled={saving} style={{ padding: '10px 24px', borderRadius: '8px', background: saving ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '14px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save Changes'}</button>
           {status === 'saved' && <span style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600' }}>✓ Changes saved</span>}
-          {status === 'error' && <span style={{ color: '#e74c3c', fontWeight: 500, fontSize: '14px' }}>Something went wrong</span>}
+          {status === 'error' && <span style={{ color: '#e74c3c', fontWeight: 500, fontSize: '14px' }}>{errorText || 'Something went wrong'}</span>}
         </div>
       </div>
 
@@ -877,13 +888,14 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
 
   async function addContact() {
     if (!canAddContact) return
+    if (nameHasTwoPeople(contactFirst) || nameHasTwoPeople(contactLast)) { setContactStatus(TWO_PEOPLE_CONTACT_MESSAGE); return }
     try {
-      await callApi('msm_add_client_contact', { client_id: client.id, first_name: contactFirst.trim(), last_name: contactLast.trim(), email: contactEmail.trim() })
+      await callApi('msm_add_client_contact', { client_id: client.id, first_name: formatPersonName(contactFirst), last_name: formatPersonName(contactLast), email: cleanText(contactEmail) })
       setContactFirst(''); setContactLast(''); setContactEmail(''); setShowAddContact(false)
       setContactStatus('saved')
       setTimeout(() => setContactStatus(''), 4000)
       onReloadContacts()
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error(err); setContactStatus(err?.message || 'Something went wrong') }
   }
 
   async function deleteContact(contactId) {
@@ -917,8 +929,9 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
   async function saveEdit(contactId) {
     const next = editEmail.trim()
     if (!editFirst.trim() || !editLast.trim()) { setError(contactId, 'First and last name are required.'); return }
+    if (nameHasTwoPeople(editFirst) || nameHasTwoPeople(editLast)) { setError(contactId, TWO_PEOPLE_CONTACT_MESSAGE); return }
     if (next && !CONTACT_EMAIL_RE.test(next)) { setError(contactId, 'Enter a valid email address.'); return }
-    const ok = await saveContact(contactId, { first_name: editFirst.trim(), last_name: editLast.trim(), email: next })
+    const ok = await saveContact(contactId, { first_name: formatPersonName(editFirst), last_name: formatPersonName(editLast), email: next })
     if (ok) setEditId(null)
   }
 
@@ -984,8 +997,8 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
         {showAddContact && (
           <div style={{ padding: '16px', background: 'var(--vfo-tint)', borderRadius: '8px', marginBottom: '16px' }}>
             <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={contactFirst} onChange={e => setContactFirst(e.target.value)} style={inputStyle} /></div>
-              <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={contactLast} onChange={e => setContactLast(e.target.value)} style={inputStyle} /></div>
+              <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={contactFirst} onChange={e => setContactFirst(e.target.value)} onBlur={() => setContactFirst(formatPersonName(contactFirst))} style={inputStyle} /></div>
+              <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={contactLast} onChange={e => setContactLast(e.target.value)} onBlur={() => setContactLast(formatPersonName(contactLast))} style={inputStyle} /></div>
               <div style={{ flex: 1, minWidth: '180px' }}>
                 <label style={labelStyle}>Email *</label>
                 <input value={contactEmail} onChange={e => setContactEmail(e.target.value)} type="email" style={inputStyle} />
@@ -1000,14 +1013,15 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
         )}
 
         {contactStatus === 'saved' && <div style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>✓ Contact added</div>}
+        {contactStatus && contactStatus !== 'saved' && <div style={{ color: '#e74c3c', fontSize: '13px', fontWeight: 500, marginBottom: '12px' }}>{contactStatus}</div>}
         {contacts.length === 0 && !showAddContact && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No additional contacts yet.</p>}
         {contacts.map(c => (
           <div key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
             {editId === c.id ? (
               <div>
                 <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={editFirst} onChange={e => setEditFirst(e.target.value)} style={inputStyle} /></div>
-                  <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={editLast} onChange={e => setEditLast(e.target.value)} style={inputStyle} /></div>
+                  <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={editFirst} onChange={e => setEditFirst(e.target.value)} onBlur={() => setEditFirst(formatPersonName(editFirst))} style={inputStyle} /></div>
+                  <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={editLast} onChange={e => setEditLast(e.target.value)} onBlur={() => setEditLast(formatPersonName(editLast))} style={inputStyle} /></div>
                   <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Email</label><input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email" style={inputStyle} /></div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>

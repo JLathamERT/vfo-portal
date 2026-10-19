@@ -4,20 +4,14 @@ import { CiqListSkeleton, SkeletonText } from './Skeleton'
 import { HubGrid, HubCard, HubBanner } from './HubKit'
 import { formatDate } from '../../lib/dates'
 import { readable } from './readableColor'
+import AddClientForm from './AddClientForm'
 
 export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true, ciqVfosManaged = true, isAdmin = false }) {
   const [ciqs, setCiqs] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [addMode, setAddMode] = useState(null)
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [email, setEmail] = useState('')
   const [addStatus, setAddStatus] = useState('')
-  const [showAdditional, setShowAdditional] = useState(false)
-  const [addFirstName, setAddFirstName] = useState('')
-  const [addLastName, setAddLastName] = useState('')
-  const [addEmail, setAddEmail] = useState('')
   const [allClients, setAllClients] = useState([])
   const [loadingClients, setLoadingClients] = useState(false)
   const [clientSearch, setClientSearch] = useState('')
@@ -143,16 +137,13 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
     } catch (err) { setAddStatus(err.message) }
   }
 
-  async function createNew() {
-    if (!firstName || !lastName || !email) { setAddStatus('First name, last name, and email are required.'); return }
-    try {
-      const additional_contact = showAdditional && addFirstName && addLastName ? { first_name: addFirstName, last_name: addLastName, email: addEmail } : undefined
-      const data = await callApi('ciq_add_client_and_create', { member_number: memberNumber, first_name: firstName, last_name: lastName, email, additional_contact })
-      setFirstName(''); setLastName(''); setEmail(''); setShowAdditional(false); setAddFirstName(''); setAddLastName(''); setAddEmail('')
-      setShowAdd(false); setAddMode(null); setAddStatus('')
-      loadCiqs()
-      openCiq(data.ciq)
-    } catch (err) { setAddStatus(err.message) }
+  // The shared AddClientForm validates, tidies and shows a duplicate clash; a
+  // throw here goes back to it.
+  async function createNew(fields) {
+    const data = await callApi('ciq_add_client_and_create', { member_number: memberNumber, ...fields })
+    setShowAdd(false); setAddMode(null); setAddStatus('')
+    loadCiqs()
+    openCiq(data.ciq)
   }
 
   async function openCiq(ciq) {
@@ -1581,37 +1572,11 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
         </div>
       )}
 
-      {/* Add: new client */}
+      {/* Add: new client - the shared form (tidying, duplicates, contact names) */}
       {showAdd && addMode === 'new' && (
-        <div style={{ ...sectionStyle, marginBottom: '20px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>New Client</div>
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>First Name *</label><input value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} /></div>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Last Name *</label><input value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} /></div>
-            <div style={{ flex: 1, minWidth: '180px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Email *</label><input value={email} onChange={e => setEmail(e.target.value)} type="email" style={inputStyle} /></div>
-          </div>
-          {!showAdditional && (
-            <button onClick={() => setShowAdditional(true)} style={{ padding: '8px 14px', borderRadius: '6px', border: '1px dashed rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.06)', color: '#0095ff', fontWeight: 600, fontSize: '12px', cursor: 'pointer', marginBottom: '12px', fontFamily: 'Inter, sans-serif' }}>+ Add additional contact (e.g. spouse)</button>
-          )}
-          {showAdditional && (
-            <div style={{ padding: '16px', background: 'rgba(0,149,255,0.06)', border: '1px solid rgba(0,149,255,0.2)', borderRadius: '8px', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <div style={{ fontSize: '12px', color: '#0095ff', fontWeight: 600, fontStyle: 'italic' }}>Additional contact (not the primary client)</div>
-                <button onClick={() => { setShowAdditional(false); setAddFirstName(''); setAddLastName(''); setAddEmail('') }} style={{ background: 'none', border: 'none', color: 'var(--vfo-muted)', fontSize: '11px', cursor: 'pointer' }}>Remove</button>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '120px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>First Name</label><input value={addFirstName} onChange={e => setAddFirstName(e.target.value)} style={inputStyle} /></div>
-                <div style={{ flex: 1, minWidth: '120px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Last Name</label><input value={addLastName} onChange={e => setAddLastName(e.target.value)} style={inputStyle} /></div>
-                <div style={{ flex: 1, minWidth: '160px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Email</label><input value={addEmail} onChange={e => setAddEmail(e.target.value)} type="email" style={inputStyle} /></div>
-              </div>
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={createNew} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Create & Start CIQ</button>
-            <button onClick={() => setAddMode(null)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Back</button>
-          </div>
-          {addStatus && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '8px' }}>{addStatus}</p>}
-        </div>
+        <AddClientForm title="New Client" saveLabel="Create & Start CIQ" showPhone={false}
+          profileBase={isAdmin ? '/admin/client' : '/member/client'}
+          onSave={createNew} onCancel={() => setAddMode(null)} />
       )}
 
       {/* Level 1: every client with a CIQ. Level 2: one client's CIQs. */}

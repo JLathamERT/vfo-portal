@@ -347,7 +347,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
       </div>
 
       {memberMode && canAddClient && activeSection === 'clients' && showAddClient && (
-        <AddClientForm onSave={addClient} onCancel={() => setShowAddClient(false)} />
+        <AddClientForm onSave={addClient} onCancel={() => setShowAddClient(false)} profileBase={clientBase} />
       )}
       {addedMessage && activeSection === 'clients' && !showAddClient && (
         <div style={{ padding: '10px 14px', marginBottom: '16px', background: 'rgba(27,146,84,0.10)', border: '1px solid rgba(27,146,84,0.3)', borderRadius: '8px', color: 'var(--vfo-success-text)', fontSize: '13px' }}>{addedMessage}</div>

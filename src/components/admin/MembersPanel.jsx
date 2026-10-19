@@ -38,6 +38,8 @@ const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:
 import vfoCertifiedSeal from '../../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../../assets/vfo-accredited-emblem.png'
 import { formatDate } from '../../lib/dates'
+import { cleanText, formatPersonName } from '../../lib/formatters'
+import PhoneInput from '../shared/PhoneInput'
 import MemberBrandingCard from '../shared/MemberBrandingCard'
 import MemberProfileDetails from '../shared/MemberProfileDetails'
 
@@ -1934,7 +1936,7 @@ function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) 
     if (!canAdd) return
     setAddError('')
     try {
-      await callApi('member_contact_add', { member_number: memberNumber, first_name: addFirst.trim(), last_name: addLast.trim(), email: addEmail.trim(), phone: addPhone.trim() })
+      await callApi('member_contact_add', { member_number: memberNumber, first_name: formatPersonName(addFirst), last_name: formatPersonName(addLast), email: cleanText(addEmail), phone: cleanText(addPhone) })
       setAddFirst(''); setAddLast(''); setAddEmail(''); setAddPhone(''); setShowAdd(false)
       setAddedFlash(true); setTimeout(() => setAddedFlash(false), 4000)
       onReload()
@@ -1972,7 +1974,7 @@ function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) 
     const next = editEmail.trim()
     if (!editFirst.trim() || !editLast.trim()) { setError(id, 'First and last name are required.'); return }
     if (next && !MEMBER_CONTACT_EMAIL_RE.test(next)) { setError(id, 'Enter a valid email address.'); return }
-    const ok = await saveContact(id, { first_name: editFirst.trim(), last_name: editLast.trim(), email: next, phone: editPhone.trim() })
+    const ok = await saveContact(id, { first_name: formatPersonName(editFirst), last_name: formatPersonName(editLast), email: next, phone: cleanText(editPhone) })
     if (ok) setEditId(null)
   }
 
@@ -2004,14 +2006,14 @@ function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) 
       {showAdd && (
         <div style={{ padding: '16px', background: 'var(--vfo-tint)', borderRadius: '8px', marginBottom: '16px' }}>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={addFirst} onChange={e => setAddFirst(e.target.value)} style={inputStyle} /></div>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={addLast} onChange={e => setAddLast(e.target.value)} style={inputStyle} /></div>
+            <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={addFirst} onChange={e => setAddFirst(e.target.value)} onBlur={() => setAddFirst(formatPersonName(addFirst))} style={inputStyle} /></div>
+            <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={addLast} onChange={e => setAddLast(e.target.value)} onBlur={() => setAddLast(formatPersonName(addLast))} style={inputStyle} /></div>
             <div style={{ flex: 1, minWidth: '180px' }}>
               <label style={labelStyle}>Email *</label>
               <input value={addEmail} onChange={e => setAddEmail(e.target.value)} type="email" style={inputStyle} />
               {!!addEmail.trim() && !addEmailValid && <div style={{ ...labelStyle, marginTop: '6px', marginBottom: 0 }}>Enter a valid email address.</div>}
             </div>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Phone</label><input value={addPhone} onChange={e => setAddPhone(e.target.value)} style={inputStyle} /></div>
+            <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Phone</label><PhoneInput value={addPhone} onChange={setAddPhone} style={inputStyle} /></div>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button type="button" onClick={addContact} disabled={!canAdd} style={{ ...primaryBtn, padding: '8px 20px', fontSize: '13px', background: canAdd ? primaryBtn.background : 'var(--vfo-tint)', border: canAdd ? 'none' : '1px solid var(--vfo-border-mid)', boxShadow: canAdd ? primaryBtn.boxShadow : 'none', color: canAdd ? '#fff' : 'var(--vfo-muted)', cursor: canAdd ? 'pointer' : 'not-allowed' }}>Save</button>
@@ -2028,10 +2030,10 @@ function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) 
           {editId === c.id ? (
             <div>
               <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={editFirst} onChange={e => setEditFirst(e.target.value)} style={inputStyle} /></div>
-                <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={editLast} onChange={e => setEditLast(e.target.value)} style={inputStyle} /></div>
+                <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={editFirst} onChange={e => setEditFirst(e.target.value)} onBlur={() => setEditFirst(formatPersonName(editFirst))} style={inputStyle} /></div>
+                <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={editLast} onChange={e => setEditLast(e.target.value)} onBlur={() => setEditLast(formatPersonName(editLast))} style={inputStyle} /></div>
                 <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Email</label><input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email" style={inputStyle} /></div>
-                <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Phone</label><input value={editPhone} onChange={e => setEditPhone(e.target.value)} style={inputStyle} /></div>
+                <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Phone</label><PhoneInput value={editPhone} onChange={setEditPhone} style={inputStyle} /></div>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button type="button" onClick={() => saveEdit(c.id)} disabled={busyId === c.id} style={{ ...primaryBtn, cursor: busyId === c.id ? 'not-allowed' : 'pointer' }}>{busyId === c.id ? 'Saving...' : 'Save'}</button>

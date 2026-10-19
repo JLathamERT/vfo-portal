@@ -48,7 +48,7 @@ Blanking the email out from under a live Cc is refused with its own message (*"R
 
 | Action | File | Who | Notes |
 |---|---|---|---|
-| `msm_add_client_contact` | `actions/msm/add-client-contact.ts` | admin, or a member on a **Direct** client they run (own client AND `clients.pf_member_number` = the session member — `denyIfNotDirectClient`, 2026-09-18) | **Email is REQUIRED** and regex-validated. Toggle fields are **not accepted** — a contact is always created Cc-off. Dispatch passes `c.auth`; the old `body.member_number` ownership test is gone. |
+| `msm_add_client_contact` | `actions/msm/add-client-contact.ts` | admin, or a member on a **Direct** client they run (own client AND `clients.pf_member_number` = the session member — `denyIfNotDirectClient`, 2026-09-18) | **Email is REQUIRED** and regex-validated; **first + last name REQUIRED** server-side and tidied since 2026-10-19 (v1014, #635 — also on every add-client form's inline contact, `readAdditionalContact`). Toggle fields are **not accepted** — a contact is always created Cc-off. Dispatch passes `c.auth`; the old `body.member_number` ownership test is gone. |
 | `msm_update_client_contact` | `actions/msm/update-client-contact.ts` | name/email: same as above (a member only on a Direct client, resolved from the STORED row's `client_id`) · **toggles: admin only** | New 2026-08-20. |
 | `msm_delete_client_contact` | `actions/msm/delete-client-contact.ts` | admin, or a member on a Direct client they run (stored `client_id`) | `denyIfNotDirectClient` since 2026-09-18 (was `denyIfNotOwnClient`). |
 
