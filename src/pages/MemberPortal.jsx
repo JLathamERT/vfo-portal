@@ -37,10 +37,9 @@ export default function MemberPortal() {
     // Land returning Stripe buyers (/member?gc_success=1) on the GC Marketplace.
     if (qs.get('gc_success') === '1') return 'gc'
     // Tax intake (2026-09-17): the $500 deposit Checkout returns to
-    // ?tab=msm_tax&intake=<id>&paid=1, and the Holistic "complete the form"
-    // email opens ?tab=msm_tax&intake_client=<id>. Either one lands on the Tax
-    // Planning tab regardless of the tab the member last used.
-    if (qs.get('intake') || qs.get('intake_client')) return 'msm_tax'
+    // ?tab=msm_tax&intake=<id>&paid=1, which lands on the Tax Planning tab
+    // regardless of the tab the member last used.
+    if (qs.get('intake')) return 'msm_tax'
     // The Client Mirroring email's Open Client Overview button (L5).
     if (qs.get('tab') === 'client_overview') return 'client_overview'
     return sessionStorage.getItem('memberActiveTab') || 'profile'

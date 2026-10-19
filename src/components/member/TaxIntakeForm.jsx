@@ -11,7 +11,7 @@ import {
 
 // The VFO Tax Planning intake form (q1-q39).
 //
-// Four entry points, one component:
+// Three entry points, one component:
 //   CHOOSER      the member portal's "+ Add Client" button (MSM Tax Planning) lands here
 //                first: complete the form themselves (route A) or send the
 //                client a link to complete it (route B).
@@ -19,10 +19,6 @@ import {
 //                qualifying count), submits to tax_intake_submit, and either
 //                follows the returned url (the /tax-deposit-pay card-or-ACH
 //                choice page) or lands straight on the success card (waived).
-//   HOLISTIC     ?intake_client=<id>, reached from the "Complete the Tax
-//                Planning Form" email. The client already exists, so name /
-//                email / phone are prefilled and locked, there is NO deposit,
-//                and it submits to tax_intake_holistic_submit. Skips the chooser.
 //   PUBLIC       the client's own /tax-intake page (TaxIntakePage.jsx). No
 //                session, so no eligibility call and no callApi: the page owns
 //                the fetch and passes `onPublicSubmit`.
@@ -38,7 +34,6 @@ const green = '#1b9254'
 
 export default function TaxIntakeForm({
   member,
-  existingClient = null,
   onCancel,
   onDone,
   // Public (client-link) mode.
@@ -66,8 +61,7 @@ export default function TaxIntakeForm({
   // style page heading above the form: drop the eyebrow, smaller step titles.
   pageHeading = false,
 }) {
-  const holistic = !!existingClient
-  const [step, setStep] = useState(() => (holistic || publicMode ? 'form' : 'choose'))
+  const [step, setStep] = useState(() => (publicMode ? 'form' : 'choose'))
   const [answers, setAnswers] = useState(() => {
     const seed = {}
     for (const q of TAX_INTAKE_QUESTIONS) seed[q.id] = ''
@@ -76,12 +70,6 @@ export default function TaxIntakeForm({
     seed.q7 = `${member?.first_name || ''} ${member?.last_name || ''}`.trim() || member?.member_number || ''
     seed.q8 = member?.email || ''
     seed.q9 = member?.trading_name || ''
-    if (existingClient) {
-      seed.q2 = existingClient.first_name || ''
-      seed.q3 = existingClient.last_name || ''
-      seed.q4 = existingClient.email || ''
-      seed.q5 = existingClient.phone || ''
-    }
     if (publicIntake) {
       // The member filled these three in when they sent the link. The client may
       // correct their name; the email is the one we invited and is locked.
@@ -105,13 +93,13 @@ export default function TaxIntakeForm({
   const [linkForm, setLinkForm] = useState({ first: '', last: '', email: '' })
 
   useEffect(() => {
-    if (holistic || publicMode) return
+    if (publicMode) return
     let live = true
     callApi('tax_intake_eligibility', { member_number: member?.member_number })
       .then(d => { if (live) setEligibility(d) })
       .catch(() => { if (live) setEligibility(null) })
     return () => { live = false }
-  }, [holistic, publicMode, member?.member_number])
+  }, [publicMode, member?.member_number])
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
@@ -147,8 +135,7 @@ export default function TaxIntakeForm({
   }
   // q4 is locked on a link page (the invited address is half of what the token
   // proves) but typed freely on the public diagnostic page, which has no token.
-  const lockedIds = holistic ? new Set(['q2', 'q3', 'q4', 'q5'])
-    : lockClientIdentity ? new Set(['q2', 'q3', 'q4'])
+  const lockedIds = lockClientIdentity ? new Set(['q2', 'q3', 'q4'])
       : publicMode && publicIntake ? new Set(['q4']) : new Set()
 
   function set(id, value) {
@@ -170,9 +157,7 @@ export default function TaxIntakeForm({
       const normalized = normalizeTaxIntakeAnswers(answers)
       const res = publicMode
         ? await onPublicSubmit(normalized)
-        : holistic
-          ? await callApi('tax_intake_holistic_submit', { answers: normalized, client_id: existingClient.id })
-          : await callApi('tax_intake_submit', { answers: normalized, ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}) })
+        : await callApi('tax_intake_submit', { answers: normalized, ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}) })
       // A url means the deposit is owed — since 2026-09-23 it is the card-or-ACH
       // choice page (/tax-deposit-pay), for route A and route B alike.
       if (res?.url) { window.location.assign(res.url); return }
@@ -260,7 +245,7 @@ export default function TaxIntakeForm({
   const depositAmount = publicMode ? (publicIntake?.deposit_amount || 500) : (eligibility?.deposit_amount || 500)
 
   // The public diagnostic page (no intake row yet) takes no payment and quotes none.
-  const depositLine = holistic || lockClientIdentity || (publicMode && !publicIntake)
+  const depositLine = lockClientIdentity || (publicMode && !publicIntake)
     ? null
     : publicMode
       ? (depositRequired ? `Deposit: $${depositAmount}` : 'Deposit: waived')
@@ -459,11 +444,6 @@ export default function TaxIntakeForm({
         {depositLine && (
           <div style={{ fontSize: '13px', fontWeight: 600, color: depositRequired === false ? green : 'var(--vfo-ink)', marginTop: '8px' }}>{depositLine}</div>
         )}
-        {holistic && (
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px' }}>
-            For {existingClient.first_name} {existingClient.last_name} — no deposit is required.
-          </div>
-        )}
       </div>
 
       {errorBox}
@@ -501,14 +481,14 @@ export default function TaxIntakeForm({
       )}
       <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginBottom: '32px' }}>
         {!publicMode && (
-          <button type="button" onClick={holistic ? onCancel : () => setStep('choose')} disabled={submitting}
+          <button type="button" onClick={() => setStep('choose')} disabled={submitting}
             style={{ padding: '10px 20px', borderRadius: '999px', fontSize: '13px', cursor: submitting ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
-            {holistic ? 'Cancel' : 'Back'}
+            Back
           </button>
         )}
         <button type="button" onClick={submit} disabled={submitting}
           style={{ padding: '10px 24px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', border: 'none', background: submitting ? 'var(--vfo-faint)' : '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif', boxShadow: submitting ? 'none' : '0 2px 8px rgba(18,94,204,0.28)' }}>
-          {submitting ? 'Submitting...' : (submitLabel || (holistic || depositRequired === false ? 'Submit' : 'Submit and pay deposit'))}
+          {submitting ? 'Submitting...' : (submitLabel || (depositRequired === false ? 'Submit' : 'Submit and pay deposit'))}
         </button>
       </div>
     </div>
