@@ -8,6 +8,8 @@ import {
   normalizeTaxIntakeAnswers,
   numberTaxIntakeQuestions,
 } from './taxIntakeQuestions'
+import PhoneInput from '../shared/PhoneInput'
+import { cleanText, formatPersonName } from '../../lib/formatters'
 
 // The VFO Tax Planning intake form (q1-q39).
 //
@@ -122,7 +124,7 @@ export default function TaxIntakeForm({
         if (q.id === 'q2') next.q2 = next.q2 || 'Test'
         else if (q.id === 'q3') next.q3 = next.q3 || `Client ${stamp}`
         else if (q.id === 'q4') next.q4 = next.q4 || `test.client.${stamp}@example.com`
-        else if (q.id === 'q5') next.q5 = '555-555-0100'
+        else if (q.id === 'q5') next.q5 = '(555) 555-0100'
         else if (q.id === 'q18') next.q18 = q.options.find(o => o.startsWith('$100k')) || q.options[1]
         else if (q.type === 'radio') next[q.id] = q.options[0]
         else if (q.type === 'select') next[q.id] = q.options.find(o => o && !/select/i.test(String(o))) || q.options[0]
@@ -170,9 +172,9 @@ export default function TaxIntakeForm({
 
   async function sendLink() {
     setFailed('')
-    const first = linkForm.first.trim()
-    const last = linkForm.last.trim()
-    const email = linkForm.email.trim()
+    const first = formatPersonName(linkForm.first)
+    const last = formatPersonName(linkForm.last)
+    const email = cleanText(linkForm.email)
     const found = []
     if (!first) found.push('Client First Name is required')
     if (!last) found.push('Client Last Name is required')
@@ -227,12 +229,19 @@ export default function TaxIntakeForm({
     if (q.type === 'textarea') {
       return <textarea value={val} onChange={e => set(q.id, e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
     }
+    // q5 shapes itself as typed; q2 / q3 names tidy when the box is left
+    // (src/lib/formatters.js - the server tidies again on save).
+    if (q.format === 'phone') {
+      return <PhoneInput value={val} disabled={locked} onChange={v => set(q.id, v)}
+        style={{ ...inputStyle, opacity: locked ? 0.65 : 1, cursor: locked ? 'not-allowed' : 'text' }} />
+    }
     return (
       <input
         type="text"
         value={val}
         disabled={locked}
         onChange={e => set(q.id, e.target.value)}
+        onBlur={q.format === 'name' && !locked ? () => set(q.id, formatPersonName(val)) : undefined}
         placeholder={q.type === 'money' ? '$' : ''}
         style={{ ...inputStyle, opacity: locked ? 0.65 : 1, cursor: locked ? 'not-allowed' : 'text' }}
       />

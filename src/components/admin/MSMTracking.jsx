@@ -11,6 +11,7 @@ import { VisibilityBadge, noteTint, SaveVisibilityButtons } from '../shared/Note
 import StepDate from '../shared/StepDate'
 import { formatDate as formatFullDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
+import AddClientForm from '../shared/AddClientForm'
 
 const PROGRAMS = [
   { key: 'holistic', name: 'VFO Holistic Planning' },
@@ -977,15 +978,7 @@ function ClientsPanel({ enrollment, member, program }) {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [addMode, setAddMode] = useState(null)
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
   const [addStatus, setAddStatus] = useState('')
-  const [showAdditional, setShowAdditional] = useState(false)
-  const [addFirstName, setAddFirstName] = useState('')
-  const [addLastName, setAddLastName] = useState('')
-  const [addEmail, setAddEmail] = useState('')
   const [existingSearch, setExistingSearch] = useState('')
   const [allMemberClients, setAllMemberClients] = useState([])
   const [loadingExisting, setLoadingExisting] = useState(false)
@@ -1028,14 +1021,12 @@ function ClientsPanel({ enrollment, member, program }) {
     finally { setLoadingExisting(false) }
   }
 
-  async function addClient() {
-    if (!firstName || !lastName || !email) { setAddStatus('First name, last name, and email are required.'); return }
-    try {
-      const additional_contact = showAdditional && addFirstName && addLastName ? { first_name: addFirstName, last_name: addLastName, email: addEmail } : undefined
-      await callApi('msm_add_client', { enrollment_id: enrollment.id, member_number: member.plugin_member_number, first_name: firstName, last_name: lastName, email, phone, additional_contact })
-      setFirstName(''); setLastName(''); setEmail(''); setPhone(''); setShowAdd(false); setAddMode(null); setAddStatus(''); setShowAdditional(false); setAddFirstName(''); setAddLastName(''); setAddEmail('')
-      loadClients()
-    } catch (err) { setAddStatus(err.message) }
+  // The shared AddClientForm validates, tidies and shows a duplicate clash; a
+  // throw here goes back to it.
+  async function addClient(fields) {
+    await callApi('msm_add_client', { enrollment_id: enrollment.id, member_number: member.plugin_member_number, ...fields })
+    setShowAdd(false); setAddMode(null); setAddStatus('')
+    loadClients()
   }
 
   async function linkExistingClient(clientId) {
@@ -1128,36 +1119,9 @@ function ClientsPanel({ enrollment, member, program }) {
       )}
 
       {showAdd && addMode === 'new' && (
-        <div style={{ ...sectionStyle, marginBottom: '20px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Add New {isPFT ? 'Accountant' : 'Client'}</div>
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>First Name *</label><input value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} /></div>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Last Name *</label><input value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} /></div>
-            <div style={{ flex: 1, minWidth: '180px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Email *</label><input value={email} onChange={e => setEmail(e.target.value)} type="email" style={inputStyle} /></div>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Phone</label><input value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} /></div>
-          </div>
-          {!showAdditional && (
-            <button onClick={() => setShowAdditional(true)} style={{ padding: '8px 14px', borderRadius: '6px', border: '1px dashed rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.06)', color: '#0095ff', fontWeight: 600, fontSize: '12px', cursor: 'pointer', marginBottom: '12px', fontFamily: 'Inter, sans-serif' }}>+ Add additional contact (e.g. spouse)</button>
-          )}
-          {showAdditional && (
-            <div style={{ padding: '16px', background: 'rgba(0,149,255,0.06)', border: '1px solid rgba(0,149,255,0.2)', borderRadius: '8px', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <div style={{ fontSize: '12px', color: '#0095ff', fontWeight: 600, fontStyle: 'italic' }}>Additional contact (not the primary client)</div>
-                <button onClick={() => { setShowAdditional(false); setAddFirstName(''); setAddLastName(''); setAddEmail('') }} style={{ background: 'none', border: 'none', color: 'var(--vfo-muted)', fontSize: '11px', cursor: 'pointer' }}>Remove</button>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '120px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>First Name</label><input value={addFirstName} onChange={e => setAddFirstName(e.target.value)} style={inputStyle} /></div>
-                <div style={{ flex: 1, minWidth: '120px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Last Name</label><input value={addLastName} onChange={e => setAddLastName(e.target.value)} style={inputStyle} /></div>
-                <div style={{ flex: 1, minWidth: '160px' }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Email</label><input value={addEmail} onChange={e => setAddEmail(e.target.value)} type="email" style={inputStyle} /></div>
-              </div>
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={addClient} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Save</button>
-            <button onClick={() => { isPFT ? setShowAdd(false) : setAddMode(null) }} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>{isPFT ? 'Cancel' : 'Back'}</button>
-          </div>
-          {addStatus && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '8px' }}>{addStatus}</p>}
-        </div>
+        <AddClientForm title={`Add New ${isPFT ? 'Accountant' : 'Client'}`} profileBase="/admin/client"
+          cancelLabel={isPFT ? 'Cancel' : 'Back'} onSave={addClient}
+          onCancel={() => { isPFT ? setShowAdd(false) : setAddMode(null) }} />
       )}
 
       {clients.length === 0 && !showAdd

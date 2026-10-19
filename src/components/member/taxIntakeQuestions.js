@@ -4,6 +4,8 @@
 // server re-validates, and both produce every message from the SAME two
 // templates below so FE and BE can never disagree (#306/#314).
 
+import { formatPersonName, formatPhone } from "../../lib/formatters";
+
 // US states + DC, then Canadian provinces/territories. Q6 is a plain select.
 export const TAX_INTAKE_STATES = [
   "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
@@ -41,10 +43,10 @@ export const TAX_INTAKE_Q38_RAPID = "Rapid Route - Step 3: Orientation Meeting r
 
 export const TAX_INTAKE_QUESTIONS = [
   { id: "q1", label: "Who is completing this form?", type: "derived", required: false, options: [TAX_INTAKE_Q1_ADVISOR, TAX_INTAKE_Q1_ACCOUNTANT, TAX_INTAKE_Q1_CLIENT] },
-  { id: "q2", label: "Client First Name", type: "text", required: true },
-  { id: "q3", label: "Client Last Name", type: "text", required: true },
+  { id: "q2", label: "Client First Name", type: "text", required: true, format: "name" },
+  { id: "q3", label: "Client Last Name", type: "text", required: true, format: "name" },
   { id: "q4", label: "Client Email", type: "text", required: true },
-  { id: "q5", label: "Client Phone Number", type: "text", required: true },
+  { id: "q5", label: "Client Phone Number", type: "text", required: true, format: "phone" },
   { id: "q6", label: "Client State of Residence", type: "select", required: true, options: TAX_INTAKE_STATES },
   { id: "q7", label: "Associated VFO Member", type: "text", required: false, hidden: true },
   { id: "q8", label: "Introducer Email", type: "text", required: false, hidden: true },
@@ -178,7 +180,11 @@ export function normalizeTaxIntakeAnswers(answers) {
     if (q.type === "derived") { out[q.id] = ""; continue; }
     if (!taxIntakeQuestionShown(q, a)) { out[q.id] = ""; continue; }
     const raw = a[q.id];
-    out[q.id] = q.type === "money" ? normalizeTaxIntakeMoney(raw) : String(raw ?? "").trim();
+    // format: "name" / "phone" answers tidied as the server does (src/lib/formatters.js).
+    out[q.id] = q.type === "money" ? normalizeTaxIntakeMoney(raw)
+      : q.format === "name" ? formatPersonName(raw)
+      : q.format === "phone" ? formatPhone(raw)
+      : String(raw ?? "").trim();
   }
   return out;
 }

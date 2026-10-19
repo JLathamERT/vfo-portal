@@ -100,7 +100,14 @@ export async function callApi(action, payload = {}, retries = 3) {
         window.location.href = window.location.origin + '/'
         throw new Error('Session expired — please log in again.')
       }
-      if (!res.ok) throw new Error(data.error || 'Request failed')
+      if (!res.ok) {
+        // status + body ride along for callers that branch on them (e.g. the 409
+        // duplicate-client reply's `duplicate` object).
+        const e = new Error(data.error || 'Request failed')
+        e.status = res.status
+        e.data = data
+        throw e
+      }
       return data
     } catch (err) {
       clearTimeout(timeoutId)
