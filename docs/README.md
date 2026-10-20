@@ -56,7 +56,7 @@ docs/
 │   ├── contract-and-payment.md       (the master MAP1 flow — all 13 steps)
 │   ├── tax-planning.md               (the Tax Planning flow within Holistic Planning — parallel to MAP1)
 │   ├── tax-fee-process.md            (the tax fee/pricing flow — one total in, derived amounts, the 3-payment split, the amend steps)
-│   ├── tax-intake.md                 (the member-run tax intake — 39-question form, $500 card-or-ACH deposit on /tax-deposit-pay / waiver, routes A / B / Holistic, deposit docs, $250 team share, linked refund)
+│   ├── tax-intake.md                 (the member-run tax intake — Tax Planning Form, $500 card-or-ACH deposit on /tax-deposit-pay / waiver, routes A / B / Holistic, deposit docs, $250 team share, linked refund)
 │   ├── tax-diagnostic.md             (the public no-login VFO Tax Diagnostic + its admin confirm queue)
 │   ├── client-portal.md              (portal licensing L2 — member Send portal access, client Request an introduction, the Basic portal gate)
 │   ├── boldsign-webhook.md           (sign events → pipeline updates → chains)
@@ -117,7 +117,7 @@ docs/
 | Admin logs in | [architecture/04-auth-and-sessions.md](architecture/04-auth-and-sessions.md) |
 | Member fills out a CIQ | [flows/ciq.md](flows/ciq.md) → [tables/ciq.md](tables/ciq.md) |
 | Member clicks the Help (?) button / admin edits the FAQs | [flows/member-help-faq.md](flows/member-help-faq.md) → [tables/faq.md](tables/faq.md) |
-| A member starts a tax client from the portal (the 39-question form + $500 deposit) | [flows/tax-intake.md](flows/tax-intake.md) → [tables/tax.md](tables/tax.md#tax_intake_requests-added-2026-09-17) → [integrations/stripe.md](integrations/stripe.md#checkout-session-shape--tax-intake-deposit-2026-09-17) |
+| A member starts a tax client from the portal (the Tax Planning Form + $500 deposit) | [flows/tax-intake.md](flows/tax-intake.md) → [tables/tax.md](tables/tax.md#tax_intake_requests-added-2026-09-17) → [integrations/stripe.md](integrations/stripe.md#checkout-session-shape--tax-intake-deposit-2026-09-17) |
 | Someone fills in the public VFO Tax Diagnostic / the team confirms it | [flows/tax-diagnostic.md](flows/tax-diagnostic.md) → [flows/tax-intake.md](flows/tax-intake.md#the-choice-page--tax-deposit-pay-2026-09-23) → [tables/tax.md](tables/tax.md) |
 | A member runs a tax case themselves (the DIRECT route: the member is the PF, the `tax_direct_*` twins, the member bell) | [plans/direct-tax-planning/README.md](plans/direct-tax-planning/README.md) (decisions 26–29) → [flows/tax-intake.md](flows/tax-intake.md#feature-flag-and-the-direct-choice-unit-2-2026-09-18) → [flows/tax-planning.md](flows/tax-planning.md) → [flows/notifications.md](flows/notifications.md#direct-tax-plans-the-pf-is-the-member-2026-09-21-unit-2-phase-5e) → [architecture/05-api-action-catalog.md](architecture/05-api-action-catalog.md) (the DIRECT member twins table) |
 | Client portal LICENCES — the $300 tax / Holistic licence, the $25/month CIQ licence, Basic vs Standard client portal, introductions, mirrored clients, VFO-A / FC portals, suspension (every unit dark behind its own Feature Switch) | [plans/portal-licensing/README.md](plans/portal-licensing/README.md) → the tax licence's detail in [plans/direct-tax-planning/README.md](plans/direct-tax-planning/README.md) §9 → the switches in [flows/tax-planning.md](flows/tax-planning.md#feature-switches-2026-09-28) |
