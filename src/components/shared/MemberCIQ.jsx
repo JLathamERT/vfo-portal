@@ -6,12 +6,18 @@ import { formatDate } from '../../lib/dates'
 import { readable } from './readableColor'
 import AddClientForm from './AddClientForm'
 
-export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true, ciqVfosManaged = true, isAdmin = false }) {
+// `client` (2026-10-20): the client page's CIQ tab passes its client
+// ({ id, first_name, last_name, client_ref, email }) and the list is locked to
+// that one client — no client list, no chooser, + Start New CIQ starts one for
+// them, and a client with no CIQs still shows their card. Without it this is the
+// member-wide CIQ tab, unchanged.
+export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true, ciqVfosManaged = true, isAdmin = false, client: lockedClient = null }) {
   const [ciqs, setCiqs] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [addMode, setAddMode] = useState(null)
   const [addStatus, setAddStatus] = useState('')
+  const [startingCiq, setStartingCiq] = useState(false)
   const [allClients, setAllClients] = useState([])
   const [loadingClients, setLoadingClients] = useState(false)
   const [clientSearch, setClientSearch] = useState('')
@@ -92,6 +98,9 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
       setCiqs(list)
       setContactsMap(contactData.contacts || {})
       setLastSeen(`ciqlist:${memberNumber}`, { data, contactData })
+      // A client page's tab never consumes the deep-link keys below - they belong
+      // to the member-wide tab.
+      if (lockedClient) return
       // Deep-link from a client profile / MAP 1 step (admin) or a Client Overview
       // CIQ pill row (admin + member): open that client's newest CIQ straight away.
       // Consume the key even when nothing matches so a later visit to this tab
@@ -1480,6 +1489,50 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   // The client whose CIQs are open (level 2); a stale id (deleted / not in this
   // member's list) falls back to the client list.
   const selectedClient = selectedClientId != null ? (byClient[selectedClientId] || null) : null
+
+  // The client page's CIQ tab: this one client's CIQs, even when there are none.
+  if (lockedClient) {
+    const clientCiqs = ciqs.filter(c => String(c.client_id) === String(lockedClient.id))
+    const canStart = isAdmin || localCiqEnabled
+    async function startForClient() {
+      if (startingCiq) return
+      setStartingCiq(true); setAddStatus('')
+      try { await createForExisting(lockedClient.id) }
+      finally { setStartingCiq(false) }
+    }
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>{clientCiqs.length} questionnaire{clientCiqs.length !== 1 ? 's' : ''}</div>
+          {canStart && (
+            <button disabled={startingCiq} onClick={startForClient} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: startingCiq ? 'not-allowed' : 'pointer', opacity: startingCiq ? 0.7 : 1 }}>{startingCiq ? 'Starting…' : '+ Start New CIQ'}</button>
+          )}
+        </div>
+        {addStatus && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', margin: '0 0 12px' }}>{addStatus}</p>}
+        <div style={sectionStyle}>
+          <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)', marginBottom: '4px' }}>{lockedClient.first_name} {lockedClient.last_name}</div>
+          <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: contactsMap[lockedClient.id]?.length > 0 ? '4px' : '16px' }}>{lockedClient.client_ref}{lockedClient.email ? ` · ${lockedClient.email}` : ''}</div>
+          {contactsMap[lockedClient.id]?.length > 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '16px', fontStyle: 'italic' }}>with {contactsMap[lockedClient.id].map(c => `${c.first_name} ${c.last_name}`).join(', ')}</div>}
+          {clientCiqs.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--vfo-muted)', fontSize: '13px' }}>
+              {canStart ? `${lockedClient.first_name} has no CIQs yet. Click "+ Start New CIQ" to begin.` : `${lockedClient.first_name} has no CIQs yet. Your VFO Services representative will start one.`}
+            </div>
+          ) : clientCiqs.map(ciq => (
+            <div key={ciq.id}
+              onClick={() => openCiq(ciq)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', background: `${statusColors[ciq.status]}22`, color: readable(statusColors[ciq.status]), border: `1px solid ${statusColors[ciq.status]}44` }}>{ciq.status === 'draft' ? 'Draft' : 'Completed'}</span>
+                <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>Started {formatDate(ciq.created_at)}</span>
+                {ciq.completed_at && <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>· Completed {formatDate(ciq.completed_at)}</span>}
+              </div>
+              <span style={{ color: '#0095ff', fontWeight: 600, fontSize: '12px' }}>{ciq.status === 'draft' ? 'Continue →' : 'View / Edit →'}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>

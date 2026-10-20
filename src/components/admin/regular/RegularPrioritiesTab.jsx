@@ -623,6 +623,8 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
   const [newPriority, setNewPriority] = useState('')
   const [newSpecialist, setNewSpecialist] = useState('')
   const [newCustomName, setNewCustomName] = useState('')
+  // Rename of a Custom specialist in progress: { [track.id]: typed name }.
+  const [renameDrafts, setRenameDrafts] = useState({})
   const [addStatus, setAddStatus] = useState('')
   const [regularEnabled, setRegularEnabled] = useState(false)
   const autoSelectedRef = useRef(false)
@@ -732,6 +734,25 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
       setNewPriority(''); setNewSpecialist(''); setNewCustomName(''); setShowAdd(false); setAddStatus('')
       loadData()
     } catch (err) { setAddStatus(err.message) }
+  }
+
+  // Rename the typed name of a Custom specialist (admin-only, like Add). The
+  // backend owns the "Custom - " prefix.
+  const isCustomSpec = (track) => String(track.specialist_name || '').startsWith('Custom - ')
+  const clearRename = (id) => setRenameDrafts(p => { const n = { ...p }; delete n[id]; return n })
+  async function saveRename(track) {
+    const draft = renameDrafts[track.id]
+    if (draft === undefined) return
+    const next = draft.replace(/\s+/g, ' ').trim()
+    if (!next || `Custom - ${next}` === track.specialist_name) { clearRename(track.id); return }
+    try {
+      const res = await callApi('msm_rename_custom_priority_specialist', { track_id: track.id, custom_name: next })
+      setPriorityTracks(p => p.map(t => t.id === track.id ? { ...t, specialist_name: res.specialist_name } : t))
+      clearRename(track.id)
+    } catch (err) {
+      console.error(err)
+      alert('Rename failed: ' + (err?.message || 'unknown error'))
+    }
   }
 
   function getTrackState(track) {
@@ -846,7 +867,32 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>
                 <div>
-                  <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)', marginBottom: '4px' }}>{track.priority_name}{track.specialist_name ? ` (${track.specialist_name})` : ''}</div>
+                  {renameDrafts[track.id] !== undefined ? (
+                    // Inline in the title text: the input wears the title's own font
+                    // and grows with what is typed, so only an underline shows it.
+                    <div onClick={e => e.stopPropagation()} style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)', marginBottom: '4px' }}>
+                      {track.priority_name} (Custom - <input
+                        autoFocus
+                        value={renameDrafts[track.id]}
+                        onChange={e => setRenameDrafts(p => ({ ...p, [track.id]: e.target.value }))}
+                        onBlur={() => saveRename(track)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { e.preventDefault(); e.target.blur() }
+                          if (e.key === 'Escape') { e.preventDefault(); clearRename(track.id) }
+                        }}
+                        maxLength={80}
+                        style={{ font: 'inherit', color: 'inherit', background: 'transparent', border: 'none', borderBottom: '1.5px solid #0095ff', outline: 'none', padding: 0, margin: 0, width: `${Math.max(renameDrafts[track.id].length, 3) + 1}ch`, maxWidth: '100%' }}
+                      />)
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)', marginBottom: '4px' }}>
+                      {track.priority_name}{track.specialist_name ? ` (${track.specialist_name})` : ''}
+                      {!readOnly && isCustomSpec(track) && (
+                        <span onClick={e => { e.stopPropagation(); setRenameDrafts(p => ({ ...p, [track.id]: track.specialist_name.replace(/^Custom - /, '') })) }}
+                          title="Edit the typed name" style={{ fontSize: '11px', fontWeight: 500, color: '#0095ff', cursor: 'pointer', marginLeft: '8px' }}>Edit</span>
+                      )}
+                    </div>
+                  )}
                   <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{new Date(track.created_at).toLocaleDateString()}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

@@ -921,7 +921,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                       {isCiqStep
                         ? <span
                             title="Open this client's CIQ"
-                            onClick={() => navigate(`/admin?member=${encodeURIComponent(client.member_number)}&feature=ciq&ciqclient=${clientId}&_n=${Date.now()}`)}
+                            onClick={() => navigate(`/admin/client/${clientId}?tab=ciq&_n=${Date.now()}`)}
                             onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }}
                             onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}
                             style={{ fontSize: '13px', color: '#0095ff', flex: 1, cursor: 'pointer' }}>{task.name}</span>

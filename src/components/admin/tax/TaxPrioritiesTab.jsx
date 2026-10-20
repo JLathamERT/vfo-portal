@@ -464,14 +464,16 @@ const PLANNER_EDITABLE_TASK_NAMES = new Set([
 // PLANNER_EDITABLE_TASK_NAMES) and constants/role-gates.ts (the four Direct-only
 // planner actions). The name set above stays unconditional: on a classic plan
 // both surfaces 403.
-// Tax 6 ownership by specialist (2026-10-02). Steps 3-4 of every specialist
-// block belong to VFOS (the member on Direct) unless that specialist is the plan
+// Tax 6 ownership by specialist (2026-10-02). Step 3 of every specialist block
+// belongs to VFOS (the member on Direct) unless that specialist is the plan
 // group's linked specialist (Tax Planning Partners -> Linked specialist), when
-// all four are the Tax Team's. `group_linked` comes from tax_load_specialists.
+// it is the Tax Team's. Step 4 is VFOS's under every specialist (2026-10-20).
+// `group_linked` comes from tax_load_specialists.
 // CROSS-REPO CONTRACT with utils/tax6-ownership.ts (the save-task.ts /
 // direct-save-task.ts boundary and the step machine's owner).
 const TAX6_VFOS_STEP_NAMES = new Set(['Specialist confirms VFOS Gross Rev', 'PC confirms receipt of VFOS Gross Rev'])
-const isTax6VfosStep = (task, spec) => TAX6_VFOS_STEP_NAMES.has(task?.name) && !!spec && !spec.group_linked
+const TAX6_ALWAYS_VFOS_STEP_NAMES = new Set(['PC confirms receipt of VFOS Gross Rev'])
+const isTax6VfosStep = (task, spec) => TAX6_VFOS_STEP_NAMES.has(task?.name) && !!spec && (TAX6_ALWAYS_VFOS_STEP_NAMES.has(task?.name) || !spec.group_linked)
 const isPlannerEditable = (task, phase = null, direct = false, spec = null) => !isTax6VfosStep(task, spec) && (
   PLANNER_EDITABLE_TASK_NAMES.has(task?.name)
   || (direct && (
@@ -2496,6 +2498,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   const [loadingSpecs, setLoadingSpecs] = useState(true)
   const [removingSpec, setRemovingSpec] = useState({})
   const [strategyDrafts, setStrategyDrafts] = useState({})
+  // Rename of a Custom allocation in progress: { [spec.id]: typed name }.
+  const [renameDrafts, setRenameDrafts] = useState({})
   const [declineDrafts, setDeclineDrafts] = useState({})
   const [livePlan, setLivePlan] = useState(plan)
   const [extraMeetingPricingOpen, setExtraMeetingPricingOpen] = useState(false)
@@ -2724,6 +2728,33 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     } catch (err) {
       console.error(err)
       alert('Save failed: ' + (err?.message || 'unknown error'))
+    }
+  }
+
+  // Rename a Custom allocation (expert_id null) — the same callers as Add. The
+  // backend owns the "Custom - " prefix and moves this plan's notes thread to the
+  // new name (specPhaseName keys on the stored name), mirrored here locally.
+  const customTypedName = (spec) => String(spec.specialist_name || '').replace(/^Custom - /, '')
+  async function saveRename(spec) {
+    const draft = renameDrafts[spec.id]
+    if (draft === undefined) return
+    const next = draft.replace(/\s+/g, ' ').trim()
+    const clear = () => setRenameDrafts(p => { const n = { ...p }; delete n[spec.id]; return n })
+    if (!next || next === customTypedName(spec)) { clear(); return }
+    try {
+      const res = await callApi('tax_rename_custom_specialist', { tax_plan_id: plan.id, specialist_id: spec.id, custom_name: next })
+      if (res?.error) { alert('Rename failed: ' + res.error); return }
+      const oldPhase = specPhaseName(spec)
+      const newPhase = 'Specialist - ' + res.specialist_name
+      setTaxSpecialists(p => p.map(s => s.id === spec.id ? { ...s, specialist_name: res.specialist_name } : s))
+      if (onNotesChange && Array.isArray(notes)) {
+        onNotesChange(notes.map(n => (n.phase_name === oldPhase && n.tab_name === 'Tax Priorities' && noteInScope(n, noteScope)) ? { ...n, phase_name: newPhase } : n))
+      }
+      if (res.notes_warning) alert(res.notes_warning)
+      clear()
+    } catch (err) {
+      console.error(err)
+      alert('Rename failed: ' + (err?.message || 'unknown error'))
     }
   }
 
@@ -3213,7 +3244,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       // Its lock names only the step directly above it (Jake, 2026-09-25): the
       // Generate row is itself locked until the confirmation email has gone out,
       // and generate-bookends.ts refuses before it, so the chain holds.
-      return { locked: !livePlan?.generated_bookends_at, hint: 'Complete the "Generate detailed tax plan presentation" step first' }
+      // A Skip on that row (generated_bookends_skipped_at) unlocks it too.
+      return { locked: !livePlan?.generated_bookends_at && !livePlan?.generated_bookends_skipped_at, hint: 'Complete the "Generate detailed tax plan presentation" step first' }
     }
     // The fee may be amended after the detailed tax plan meeting and before
     // Client decision 1 goes out — on every fee shape, legacy included. Same
@@ -3305,9 +3337,15 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     const url = livePlan.generated_bookends_url || ''
     const generatedAt = livePlan.generated_bookends_at
     const generated = !!generatedAt
+    // Skip (2026-10-20, tax_skip_bookends): done without a deck. Generate stays
+    // available; once generated there is nothing to skip, so generated wins.
+    const skippedAt = generated ? null : livePlan.generated_bookends_skipped_at
+    const skipped = !!skippedAt
+    const done = generated || skipped
     const canRun = !readOnly
     const draft = declineDrafts[key] || {}
     const generating = !!draft.generating
+    const skipping = !!draft.skipping
     const genError = draft.genError || ''
     const setDraft = (patch) => setDeclineDrafts(d => ({ ...d, [key]: { ...(d[key] || {}), ...patch } }))
     const genBlue = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: generating ? 'not-allowed' : 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600 }
@@ -3317,22 +3355,22 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     // auto basis plus a lock hint overflows the row and flex-wrap drops the date
     // cell onto a second line; a zero basis lets the name wrap inside its own box.
     const label = (
-      <span style={{ fontSize: '13px', color: generated ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: '1 1 0%', minWidth: '140px' }}>
+      <span style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: '1 1 0%', minWidth: '140px' }}>
         Generate detailed tax plan presentation
         <OwnerChip owner="team" label="Tax Team" />
       </span>
     )
     const dateCell = (
-      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{generatedAt ? formatStamp(generatedAt) : ''}</span>
+      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{(generatedAt || skippedAt) ? formatStamp(generatedAt || skippedAt) : ''}</span>
     )
     const dot = (
-      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: generated ? green : 'transparent', flexShrink: 0, border: `1.5px solid ${generated ? green : 'var(--vfo-border-mid)'}` }} />
+      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? green : 'transparent', flexShrink: 0, border: `1.5px solid ${done ? green : 'var(--vfo-border-mid)'}` }} />
     )
 
     // The same prerequisite vocabulary every other row uses: the admin's and the
     // planner's view, and the Direct member's (the classic member view is exempt,
     // as in renderTaskBase).
-    if (!generated && !hlmConfirmDone && (!readOnly || directMode)) {
+    if (!done && !hlmConfirmDone && (!readOnly || directMode)) {
       const hint = 'Complete the "Detailed tax plan meeting confirmation email" step first'
       return (
         <div key={key} title={hint} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
@@ -3356,7 +3394,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           {label}
           {generated
             ? <span style={chipStyle(green)}>Generated</span>
-            : <span style={neutralChipStyle}>Not started</span>}
+            : skipped
+              ? <span style={neutralChipStyle}>Skipped</span>
+              : <span style={neutralChipStyle}>Not started</span>}
           {dateCell}
         </div>
       )
@@ -3380,6 +3420,20 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       }
     }
 
+    // Its own busy flag: a skip must never make the Generate button read "Generating…".
+    async function skipBookends() {
+      setDraft({ skipping: true, genError: '' })
+      try {
+        const res = await callApi('tax_skip_bookends', { tax_plan_id: livePlan.id })
+        if (res?.error) { setDraft({ skipping: false, genError: res.error }); return }
+        await refreshLivePlan()
+        setDeclineDrafts(d => { const n = { ...d }; delete n[key]; return n })
+      } catch (err) {
+        console.error(err)
+        setDraft({ skipping: false, genError: err?.message || 'Skip failed' })
+      }
+    }
+
     return (
       <div key={key} style={{ borderBottom: '1px solid var(--vfo-border-soft)', padding: '7px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -3391,13 +3445,21 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               {url && <button onClick={() => window.open(url, '_blank', 'noopener')} style={genGreen} title="Opens the detailed tax plan presentation in Google Slides.">Open</button>}
               <button disabled={generating} onClick={generateBookends} style={genPlain} title="Builds a fresh detailed tax plan presentation and replaces the link above.">{generating ? 'Generating…' : 'Regenerate'}</button>
             </>
-          ) : !riskProfileDone ? (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
-              <LockedIcon />
-              <span style={lockedHintStyle}>Set the Client risk profile step first</span>
-            </span>
           ) : (
-            <button disabled={generating} onClick={generateBookends} style={genBlue} title="Builds the opening and closing slides for the detailed tax plan presentation in Google Slides. Takes up to a minute.">{generating ? 'Generating…' : 'Generate presentation'}</button>
+            <>
+              {skipped && <span style={neutralChipStyle}>Skipped</span>}
+              {!riskProfileDone ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
+                  <LockedIcon />
+                  <span style={lockedHintStyle}>Set the Client risk profile step first</span>
+                </span>
+              ) : (
+                <button disabled={generating || skipping} onClick={generateBookends} style={genBlue} title="Builds the opening and closing slides for the detailed tax plan presentation in Google Slides. Takes up to a minute.">{generating ? 'Generating…' : 'Generate presentation'}</button>
+              )}
+              {!skipped && (
+                <button disabled={generating || skipping} onClick={skipBookends} style={genPlain} title="Marks this step done without generating a presentation. You can still generate one later.">{skipping ? 'Skipping…' : 'Skip'}</button>
+              )}
+            </>
           )}
           {dateCell}
         </div>
@@ -5596,7 +5658,32 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                 <div key={spec.id} style={{ background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', marginBottom: '8px', overflow: 'hidden' }}>
                   <div onClick={() => setExpanded(p => ({ ...p, [specExpKey]: !isSpecExpanded }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', cursor: 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{specDisplayName(spec)}</span>
+                      {renameDrafts[spec.id] !== undefined ? (
+                        <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--vfo-ink)' }}>Custom -</span>
+                          <input
+                            autoFocus
+                            value={renameDrafts[spec.id]}
+                            onClick={e => e.stopPropagation()}
+                            onChange={e => setRenameDrafts(p => ({ ...p, [spec.id]: e.target.value }))}
+                            onBlur={() => saveRename(spec)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') { e.preventDefault(); e.target.blur() }
+                              if (e.key === 'Escape') { e.preventDefault(); setRenameDrafts(p => { const n = { ...p }; delete n[spec.id]; return n }) }
+                            }}
+                            maxLength={80}
+                            style={{ ...strategyInputStyle, fontSize: '13px', fontWeight: 600 }}
+                          />
+                        </span>
+                      ) : (
+                        <>
+                          <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{specDisplayName(spec)}</span>
+                          {!readOnly && spec.expert_id == null && (
+                            <span onClick={e => { e.stopPropagation(); setRenameDrafts(p => ({ ...p, [spec.id]: customTypedName(spec) })) }}
+                              title="Edit the typed name" style={{ fontSize: '11px', fontWeight: 500, color: '#0095ff', cursor: 'pointer' }}>Edit</span>
+                          )}
+                        </>
+                      )}
                       {!readOnly && !plannerMode ? (
                         <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                           <input
@@ -5706,16 +5793,18 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                   const isSpecExpanded = expanded[specExpKey] !== undefined ? expanded[specExpKey] : !allSpecDone
                   return (
                     <div key={spec.id} style={{ background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', marginBottom: '8px', overflow: 'hidden' }}>
-                      <div onClick={() => setExpanded(p => ({ ...p, [specExpKey]: !isSpecExpanded }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', cursor: 'pointer' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{specDisplayName(spec)}</span>
-                          {spec.strategy && <span style={strategyTextStyle}>{spec.strategy}</span>}
-                          {specStopped && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(231,76,60,0.15)', color: '#e74c3c', fontWeight: 600, border: '1px solid rgba(231,76,60,0.3)' }}>Stopped</span>}
-                          {!specStopped && allSpecDone && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
-                          {!specStopped && !allSpecDone && specDoneCount > 0 && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {specDoneCount}/{specTaskCount}</span>}
-                          {!specStopped && specDoneCount === 0 && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
+                      {/* A long specialist name wraps onto more lines (as on the Tax 5 card);
+                          the strategy, the pill and Notes keep their full width. */}
+                      <div onClick={() => setExpanded(p => ({ ...p, [specExpKey]: !isSpecExpanded }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 14px', cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 auto', minWidth: 0 }}>
+                          <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--vfo-ink)', flex: '0 1 auto', minWidth: 0 }}>{specDisplayName(spec)}</span>
+                          {spec.strategy && <span style={{ ...strategyTextStyle, flexShrink: 0 }}>{spec.strategy}</span>}
+                          {specStopped && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(231,76,60,0.15)', color: '#e74c3c', fontWeight: 600, border: '1px solid rgba(231,76,60,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}>Stopped</span>}
+                          {!specStopped && allSpecDone && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}>Done</span>}
+                          {!specStopped && !allSpecDone && specDoneCount > 0 && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}>In progress · {specDoneCount}/{specTaskCount}</span>}
+                          {!specStopped && specDoneCount === 0 && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>Not started</span>}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
                           {!readOnly && <PhaseNotesButton count={specNotesCount(spec)} isOpen={expanded[`notes_tax6_spec_${spec.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_tax6_spec_${spec.id}`]: !p[`notes_tax6_spec_${spec.id}`] }))} />}
                           <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isSpecExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
                         </div>
@@ -5834,6 +5923,24 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
     if (match) { autoSelectedRef.current = true; setSelectedPlan(match) }
     setDeepLinkPending(false)
   }, [loading, initialPlanId, openSinglePlan, taxPlans, snapPending])
+
+  // Keep the open plan in the URL (?plan=) so a reload re-opens it through the
+  // deep link above instead of dropping back to the list (Jake, 2026-10-20).
+  // replaceState, like ClientDetail's ?program= / ?tab= self-heal, so no history
+  // entries; leaving the tab takes the param with it.
+  useEffect(() => {
+    if (deepLinkPending) return
+    const params = new URLSearchParams(window.location.search)
+    if (selectedPlan?.id) params.set('plan', String(selectedPlan.id))
+    else params.delete('plan')
+    window.history.replaceState(window.history.state, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''))
+  }, [selectedPlan?.id, deepLinkPending])
+  useEffect(() => () => {
+    const params = new URLSearchParams(window.location.search)
+    if (!params.has('plan')) return
+    params.delete('plan')
+    window.history.replaceState(window.history.state, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''))
+  }, [])
 
 
   // Applies the raw responses — fresh from loadData, or the last-seen snapshot.

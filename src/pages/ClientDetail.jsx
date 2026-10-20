@@ -9,7 +9,7 @@ import ClientVaultTab from '../components/admin/ClientVaultTab'
 import SendSetupEmailButton from '../components/admin/SendSetupEmailButton'
 import MemberPortalAccessCard from '../components/member/MemberPortalAccessCard'
 import ClientConnectedMembersCard from '../components/shared/ClientConnectedMembersCard'
-import MirroredOnePagePlanCard from '../components/shared/MirroredOnePagePlanCard'
+import MemberCIQ from '../components/shared/MemberCIQ'
 import ClientPaymentsTab from '../components/payments/ClientPaymentsTab'
 import PFTEngagementTrack from '../components/admin/pft/PFTEngagementTrack'
 import TaxPrioritiesTab from '../components/admin/tax/TaxPrioritiesTab'
@@ -20,8 +20,10 @@ import { VisibilityBadge, noteTint, SaveVisibilityButtons } from '../components/
 import { Skeleton, ProfileTabSkeleton, PhaseListSkeleton } from '../components/shared/Skeleton'
 import { TrackHero, HeroAvatar } from '../components/shared/TrackKit'
 import { MemberNameLink } from '../components/shared/personLinks'
-import VfoWordmark from '../components/shared/VfoWordmark'
-import NotificationBell from '../components/NotificationBell'
+import PortalHeader from '../components/shared/PortalHeader'
+import AdminNavBar, { openAdminSection } from '../components/admin/AdminNavBar'
+import MemberNavBar, { useMemberNavData } from '../components/member/MemberNavBar'
+import PlannerNavBar from '../components/tax-planner/PlannerNavBar'
 import { formatDate } from '../lib/dates'
 import { cleanText, formatPersonName, phoneIncomplete, nameHasTwoPeople, TWO_PEOPLE_MESSAGE, TWO_PEOPLE_CONTACT_MESSAGE } from '../lib/formatters'
 import PhoneInput from '../components/shared/PhoneInput'
@@ -121,6 +123,10 @@ export default function ClientDetail() {
   // SESSION member number; the backend re-proves it on every write.
   const isDirect = isMember && !mirror && !!client?.pf_member_number && String(client.pf_member_number) === String(session?.member_number ?? '')
   const isMirror = isMember && !!mirror
+  // The portal tab this page was opened from, highlighted in the shared nav bar.
+  const [portalNavTab] = useState(() => { try { return sessionStorage.getItem(isMember ? 'memberActiveTab' : isPlanner ? 'taxPlannerActiveTab' : 'adminActiveTab') || null } catch { return null } })
+  // The member nav bar's program list + Website tab, as MemberPortal loads them.
+  const memberNav = useMemberNavData(session, isMember)
 
   // Program sub-tabs (PFT / MAP 1 / Regular / Tax / PIP) are locked on the admin
   // side until a PF is assigned to this client (set on the Profile tab). Members
@@ -271,7 +277,9 @@ export default function ClientDetail() {
       if (prog?.name === 'Partnership Fast Track') return base
       return [...base, 'tax']
     }
-    const profile = isMember ? ['home', 'vault'] : ['home', 'details', 'vault', 'payments', 'settings', ...(session?.is_superadmin ? ['continuation'] : [])]
+    const profile = isMember
+      ? ['home', ...(isMirror ? [] : ['ciq']), 'vault']
+      : ['home', 'details', 'vault', ...(client?.member_number ? ['ciq'] : []), 'payments', 'settings', ...(session?.is_superadmin ? ['continuation'] : [])]
     if (prog?.name === 'Partnership Fast Track') return [...profile, 'pft']
     if (prog?.name === 'VFO Tax Planning') return [...profile, 'tax']
     return [...profile, 'map1', 'regular', 'tax', 'pip']
@@ -304,14 +312,7 @@ export default function ClientDetail() {
     if (!loading && client && !program && PROGRAM_TABS.includes(activeTab)) setActiveTab('home')
   }, [loading, client, program, activeTab])
 
-  // 'ciq' is a navigation action, not a tab: it hands off to the member's CIQ
-  // feature in AdminPortal with this client pre-selected.
   function handleTabSelect(key) {
-    if (key === 'ciq') {
-      if (!client?.member_number) return
-      navigate(`/admin?member=${encodeURIComponent(client.member_number)}&feature=ciq&ciqclient=${client.id || clientId}&_n=${Date.now()}`)
-      return
-    }
     setActiveTab(key)
   }
 
@@ -327,8 +328,11 @@ export default function ClientDetail() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
-        <VfoWordmark size={17} light onClick={() => {
+      {/* The same bar AND nav bar as the portal this page belongs to (2026-10-20):
+          a nav pick is stored the way that portal stores it, then the portal opens on it. */}
+      <PortalHeader
+        name={isPlanner ? (session.name || session.email) : session.name}
+        onTitleClick={() => {
           if (isPlanner) {
             sessionStorage.removeItem('taxPlannerActiveTab')
             navigate('/tax-planner')
@@ -340,41 +344,20 @@ export default function ClientDetail() {
             sessionStorage.removeItem('adminOpenView')
             navigate('/admin')
           }
-        }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Mirror the AdminPortal header for admin sessions so the top bar
-              stays identical on the client-detail route (bell + Settings /
-              Admin Editor deep-link back into the portal). Members get the
-              same bar as their portal home: bell + Settings + Sign Out. */}
-          <NotificationBell />
-          <span style={{ color: 'rgba(255,255,255,0.88)', fontSize: '14px', fontWeight: 500, whiteSpace: 'nowrap', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session?.name || ''}</span>
-          {isAdmin && session?.is_superadmin && (
-            <button onClick={() => { sessionStorage.setItem('adminOpenView', 'editor'); navigate('/admin') }}
-              style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,205,150,0.5)', background: 'transparent', color: '#ffd9a0', fontWeight: 500, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-              Admin Editor
-            </button>
-          )}
-          {isAdmin && (
-            <button onClick={() => { sessionStorage.setItem('adminOpenView', 'settings'); navigate('/admin') }}
-              style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-              Settings
-            </button>
-          )}
-          {isMember && (
-            <button onClick={() => { sessionStorage.setItem('memberOpenView', 'settings'); navigate('/member') }}
-              style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-              Settings
-            </button>
-          )}
-          {isPlanner && (
-            <button onClick={() => { sessionStorage.setItem('taxPlannerActiveTab', 'settings'); navigate('/tax-planner') }}
-              style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-              Settings
-            </button>
-          )}
-          <button onClick={() => { sessionStorage.clear(); navigate(isMember ? '/member/login' : isPlanner ? '/tax-planner/login' : '/admin/login') }} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Sign Out</button>
-        </div>
-      </div>
+        }}
+        actions={[
+          ...(isAdmin && session.is_superadmin ? [{ key: 'editor', label: 'Admin Editor', tone: 'gold', onClick: () => { sessionStorage.setItem('adminOpenView', 'editor'); navigate('/admin') } }] : []),
+          { key: 'settings', label: 'Settings', onClick: () => {
+            if (isPlanner) { sessionStorage.setItem('taxPlannerActiveTab', 'settings'); navigate('/tax-planner') }
+            else if (isMember) { sessionStorage.setItem('memberOpenView', 'settings'); navigate('/member') }
+            else { sessionStorage.setItem('adminOpenView', 'settings'); navigate('/admin') }
+          } },
+          { key: 'signout', label: 'Sign Out', onClick: () => { sessionStorage.clear(); navigate(isMember ? '/member/login' : isPlanner ? '/tax-planner/login' : '/admin/login') } },
+        ]}>
+        {isAdmin && <AdminNavBar session={session} activeTab={portalNavTab} onSelect={(tab, section) => { openAdminSection(tab, section); navigate('/admin') }} />}
+        {isMember && <MemberNavBar activeTab={portalNavTab} onSelect={key => { sessionStorage.setItem('memberActiveTab', key); navigate('/member') }} programs={memberNav.programs} websiteEnabled={memberNav.websiteEnabled} />}
+        {isPlanner && <PlannerNavBar activeTab={portalNavTab} onSelect={key => { sessionStorage.setItem('taxPlannerActiveTab', key); navigate('/tax-planner') }} />}
+      </PortalHeader>
 
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
         <button onClick={handleBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>{backLabel}</button>
@@ -442,9 +425,11 @@ export default function ClientDetail() {
               {isMember
                 ? <>
                     <button style={tabStyle(activeTab === 'home')} onClick={() => setActiveTab('home')}>Profile</button>
+                    {/* CIQs belong to the owning member: a mirrored member has none here. */}
+                    {!isMirror && <button style={tabStyle(activeTab === 'ciq')} onClick={() => setActiveTab('ciq')}>CIQ</button>}
                     <button style={tabStyle(activeTab === 'vault')} onClick={() => setActiveTab('vault')}>Vault</button>
                   </>
-                : <ClientTabDropdown label="Profile" isActive={activeTab === 'home' || activeTab === 'details' || activeTab === 'vault' || activeTab === 'payments' || activeTab === 'settings' || activeTab === 'continuation'} options={[{key:'home',label:'Profile'},{key:'details',label:'Edit Profile'},{key:'vault',label:'Vault'},...(client?.member_number ? [{key:'ciq',label:'CIQ'}] : []),{key:'payments',label:'Payments'},{key:'settings',label:'Settings'},...(session?.is_superadmin ? [{key:'continuation',label:'Payment Continuation'}] : [])]} onSelect={handleTabSelect} />
+                : <ClientTabDropdown label="Profile" isActive={activeTab === 'home' || activeTab === 'details' || activeTab === 'vault' || activeTab === 'ciq' || activeTab === 'payments' || activeTab === 'settings' || activeTab === 'continuation'} options={[{key:'home',label:'Profile'},{key:'details',label:'Edit Profile'},{key:'vault',label:'Vault'},...(client?.member_number ? [{key:'ciq',label:'CIQ'}] : []),{key:'payments',label:'Payments'},{key:'settings',label:'Settings'},...(session?.is_superadmin ? [{key:'continuation',label:'Payment Continuation'}] : [])]} onSelect={handleTabSelect} />
               }
               {/* A client in no program (Client Overview > Unassigned) gets only the
                   Profile menu - no program tabs until an admin adds it to one. */}
@@ -496,8 +481,11 @@ export default function ClientDetail() {
             {activeTab === 'home' && (isMember || isAdmin) && client && (
               <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} />
             )}
-            {activeTab === 'home' && isMember && client && (
-              <MirroredOnePagePlanCard key={`opp-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} />
+            {/* This client's CIQs, inside the profile (2026-10-20). The list loads by
+                the OWNING member (a member caller's number is forced server-side). */}
+            {activeTab === 'ciq' && client?.member_number && (isAdmin || (isMember && !isMirror)) && (
+              <MemberCIQ key={`ciq-${client.id}`} memberNumber={isMember ? session.member_number : client.member_number} memberName={client.member_name || client.member_number}
+                ciqEnabled={isMember ? session.ciq_enabled : true} ciqVfosManaged={isMember ? session.ciq_vfos_managed : true} isAdmin={isAdmin} client={client} />
             )}
             {activeTab === 'details' && isAdmin && <ClientDetails client={client} onUpdate={loadData} sectionStyle={sectionStyle} />}
             {pfLocked && program && PROGRAM_TABS.includes(activeTab) && (

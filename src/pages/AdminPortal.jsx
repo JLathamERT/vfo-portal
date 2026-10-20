@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useLayoutEffect } from 'react'
+import { useEffect, useState, useLayoutEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { getSession, clearSession, loadCachedData, hasCachedData, getLastSeen, setLastSeen } from '../lib/api'
 import { usePortalTheme } from '../lib/theme'
@@ -19,10 +19,10 @@ import AdvisorAutomationPanel from '../components/admin/AdvisorAutomationPanel'
 import AccountantAutomationPanel from '../components/admin/AccountantAutomationPanel'
 import PFTAutomationPanel from '../components/admin/PFTAutomationPanel'
 import SpecialistAutomationPanel from '../components/admin/SpecialistAutomationPanel'
-import NotificationBell from '../components/NotificationBell'
 import EmailTemplatesPanel from '../components/admin/EmailTemplatesPanel'
 import NotificationEditorPanel from '../components/admin/NotificationEditorPanel'
-import VfoWordmark from '../components/shared/VfoWordmark'
+import PortalHeader from '../components/shared/PortalHeader'
+import AdminNavBar from '../components/admin/AdminNavBar'
 import AllPaymentsTab from '../components/payments/AllPaymentsTab'
 import SpecialistRevenuePanel from '../components/admin/SpecialistRevenuePanel'
 import SpecialistRecurringPanel from '../components/admin/SpecialistRecurringPanel'
@@ -51,134 +51,6 @@ import ManualConnectPaymentPanel from '../components/admin/ManualConnectPaymentP
 import NotificationsPage from '../components/admin/NotificationsPage'
 import GrowthCreditsRedemptionsPage from '../components/admin/GrowthCreditsRedemptionsPage'
 import { DirectoryListSkeleton } from '../components/shared/Skeleton'
-
-// A dropdown row that, on hover, flies out a submenu of options to the right.
-// An option carrying its own `submenu` nests another flyout (More ▸ Accounting ▸
-// Members ▸ …).
-// Hover intent for one menu level, so a diagonal move toward an open flyout
-// may cross sibling rows (or briefly leave the menu) without losing it: with a
-// flyout open, a sibling takes over only after the pointer rests on it, and
-// leaving the level closes it only after a grace period.
-const FLYOUT_SWITCH_MS = 250
-const FLYOUT_CLOSE_MS = 400
-
-function useFlyoutLevel() {
-  const [active, setActive] = useState(null)
-  const activeRef = useRef(null)
-  const timer = useRef(null)
-  useEffect(() => () => clearTimeout(timer.current), [])
-  const set = (key) => { activeRef.current = key; setActive(key) }
-  return {
-    active,
-    enter(key) {
-      clearTimeout(timer.current)
-      if (activeRef.current === null || activeRef.current === key) set(key)
-      else timer.current = setTimeout(() => set(key), FLYOUT_SWITCH_MS)
-    },
-    leave() {
-      clearTimeout(timer.current)
-      timer.current = setTimeout(() => set(null), FLYOUT_CLOSE_MS)
-    },
-    reset() {
-      clearTimeout(timer.current)
-      set(null)
-    },
-  }
-}
-
-function SubmenuRow({ label, options, onSelect, open, onEnter }) {
-  const level = useFlyoutLevel()
-  return (
-    <div style={{ position: 'relative' }} onMouseEnter={onEnter}>
-      <button style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%', padding: '8px 20px', background: open ? 'var(--vfo-tint)' : 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}>
-        {label}<span style={{ fontSize: '9px', opacity: 0.6 }}>▸</span>
-      </button>
-      {open && (
-        <div onMouseLeave={level.leave} style={{ position: 'absolute', top: '-4px', left: '100%', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '210px', zIndex: 210, paddingTop: '4px', paddingBottom: '4px', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
-          {options.map(opt => opt.submenu ? (
-            <SubmenuRow key={opt.key} label={opt.label} options={opt.submenu} onSelect={onSelect}
-              open={level.active === opt.key} onEnter={() => level.enter(opt.key)} />
-          ) : (
-            <button key={opt.key} onClick={() => onSelect(opt.key)}
-              style={{ display: 'block', width: '100%', padding: '8px 20px', background: 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--vfo-tint)'; level.enter(opt.key) }}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
-  const [open, setOpen] = useState(false)
-  // The top-level menu closes the moment the pointer leaves it, so sweeping
-  // across the nav bar never stacks menus; only the flyouts inside get the
-  // hover-intent grace (useFlyoutLevel).
-  const level = useFlyoutLevel()
-
-  function handleMouseEnter() {
-    setOpen(true)
-  }
-
-  function closeNow() {
-    setOpen(false)
-    level.reset()
-  }
-  const handleMouseLeave = closeNow
-
-  // Key tabs (default) read as primary — larger, bolder, darker. Muted "other"
-  // tabs (Accounting / Automation) are visually secondary.
-  const btnStyle = muted ? {
-    padding: '14px 14px', background: 'transparent', border: 'none',
-    borderBottom: isActive ? '2px solid var(--vfo-primary)' : '2px solid transparent',
-    color: isActive ? 'var(--vfo-nav-active)' : 'var(--vfo-nav-muted)', fontSize: '13px',
-    fontWeight: isActive ? '600' : '500', cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
-    display: 'flex', alignItems: 'center', gap: '6px'
-  } : {
-    padding: '15px 20px', background: 'transparent', border: 'none',
-    borderBottom: isActive ? '2px solid var(--vfo-primary)' : '2px solid transparent',
-    color: isActive ? 'var(--vfo-nav-active)' : 'var(--vfo-ink)', fontSize: '14.5px',
-    fontWeight: isActive ? '700' : '600', cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
-    display: 'flex', alignItems: 'center', gap: '6px'
-  }
-
-  return (
-    <div style={{ position: 'relative' }} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <button style={btnStyle}>
-        {label}
-        <span style={{ fontSize: '10px', opacity: 0.6 }}>▾</span>
-      </button>
-      {open && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '180px', zIndex: 200, paddingTop: '4px', paddingBottom: '4px', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
-          {items.map(item => (
-            <div key={item.key}>
-              {item.submenu && (
-                <SubmenuRow label={item.submenuLabel} options={item.submenu} onSelect={(k) => { onSelect(k); closeNow() }}
-                  open={level.active === item.key} onEnter={() => level.enter(item.key)} />
-              )}
-              {item.header && (
-                <div style={{ padding: '8px 16px 4px', fontSize: '10px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{item.header}</div>
-              )}
-              {item.options && item.options.map(opt => (
-                <button key={opt.key} onClick={() => { onSelect(opt.key); closeNow() }}
-                  style={{ display: 'block', width: '100%', padding: '8px 20px', background: 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--vfo-tint)'; level.enter(opt.key) }}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // Tabs a member profile's "Back to list" may return to when the profile was
 // opened from them (openMemberProfile's `origin`). Every other origin keeps the
@@ -586,247 +458,38 @@ export default function AdminPortal() {
 
   if (!session) return null
 
-  const headerStyle = {
-    background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)',
-    padding: '0 24px', display: 'flex', alignItems: 'center',
-    justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 100,
-    boxShadow: '0 2px 12px rgba(0,41,115,0.25)'
-  }
-
-  const advisorsDropdownItems = [
-    {
-      key: 'advisors', header: null,
-      options: [
-        { key: 'advisor_search', label: 'Advisor Search' },
-        { key: 'advisor_kpis', label: 'Advisor KPIs' },
-        { key: 'add_advisor', label: 'Add Advisor' },
-        { key: 'advisor_onboarding', label: 'Advisor Onboarding' },
-      ]
-    },
-  ]
-
-  const accountantsDropdownItems = [
-    {
-      key: 'accountants', header: null,
-      options: [
-        { key: 'accountant_search', label: 'Accountant Search' },
-        { key: 'accountant_kpis', label: 'Accountant KPIs' },
-        { key: 'add_accountant', label: 'Add Accountant' },
-        { key: 'accountant_onboarding', label: 'Accountant Onboarding' },
-      ]
-    },
-  ]
-
-  const strategicDropdownItems = [
-    {
-      key: 'strategic', header: null,
-      options: [
-        { key: 'strategic_member_search', label: 'Strategic Member Search' },
-        { key: 'strategic_member_kpis', label: 'Strategic Member KPIs' },
-        { key: 'strategic_partners', label: 'Strategic Partners' },
-        { key: 'add_strategic_member', label: 'Add Strategic Member' },
-      ]
-    },
-  ]
-
-  const specialistsDropdownItems = [
-    {
-      key: 'specialists', header: null,
-      options: [
-        { key: 'specialist_search', label: 'Specialist Search' },
-        { key: 'specialist_kpis', label: 'Specialist KPIs' },
-        { key: 'add_specialist', label: 'Add Specialist' },
-        { key: 'specialist_onboarding', label: 'Specialist Onboarding' },
-        { key: 'specialist_showroom', label: 'Showroom' },
-      ]
-    },
-  ]
-
-  const taxPlannersDropdownItems = [
-    {
-      key: 'taxplanners', header: null,
-      options: [
-        { key: 'tax_planner_search', label: 'Tax Planner Search' },
-        { key: 'tax_planner_kpis', label: 'Tax Planner KPIs' },
-        { key: 'tax_planning_partners', label: 'Tax Planning Partners' },
-        { key: 'add_tax_planner', label: 'Add Tax Planner' },
-      ]
-    },
-  ]
-
-  const automationDropdownItems = [
-    {
-      key: 'automation', header: null,
-      options: [
-        { key: 'map1_pipeline', label: 'Holistic Planning - MAP 1' },
-        { key: 'tax_pipeline', label: 'Holistic Planning - Tax Priorities' },
-        { key: 'pip_pipeline', label: 'Holistic Planning - PIP Meetings' },
-        { key: 'standalone_tax_pipeline', label: 'Tax Planning' },
-        { key: 'advisor_pipeline', label: 'Advisor Onboarding' },
-        { key: 'accountant_pipeline', label: 'Accountant Onboarding' },
-        { key: 'pft_pipeline', label: 'Partnership Fast Track' },
-        { key: 'specialist_pipeline', label: 'Specialist Onboarding' },
-        { key: 'specialist_revenue_pipeline', label: 'VFO Specialist Revenue' },
-        { key: 'growth_credits', label: 'Growth Credits' },
-        { key: 'email_templates', label: 'Email Templates' },
-        { key: 'notification_editor', label: 'Notification Editor' },
-      ]
-    },
-  ]
-
-  const accountingDropdownItems = [
-    {
-      key: 'accounting', header: null,
-      options: [
-        { key: 'payments', label: 'Payments' },
-        { key: 'manual_connect_payment', label: 'Manually sent Stripe Connect Payment' },
-      ]
-    },
-    {
-      key: 'accounting_members',
-      submenuLabel: 'Members',
-      submenu: [
-        { key: 'advisor_onboarding_fees', label: 'Advisor Onboarding' },
-        { key: 'advisor_membership_fees', label: 'Advisor Membership Fees' },
-        { key: 'accountant_onboarding_fees', label: 'Accountant Onboarding' },
-        { key: 'accountant_membership_fees', label: 'Accountant Membership Fees' },
-        { key: 'gc_accounting', label: 'Growth Credits' },
-      ],
-    },
-    {
-      key: 'accounting_vfo_services',
-      submenuLabel: 'VFO Services',
-      submenu: [
-        { key: 'holistic_revenue', label: 'Holistic Planning' },
-        { key: 'tax_revenue', label: 'Tax Planning' },
-        { key: 'pip_revenue', label: 'Additional PIP' },
-      ],
-    },
-    {
-      key: 'accounting_specialists',
-      submenuLabel: 'Specialists',
-      submenu: [
-        { key: 'specialist_revenue', label: 'VFO Specialist Revenue' },
-        { key: 'specialist_license', label: 'VFO Specialist License Fees' },
-        { key: 'specialist_bg', label: 'VFO Specialist Background Checks' },
-      ],
-    },
-  ]
-
-  // The grantable "other" tabs always sit in one More ▾ menu (2026-09-26 — was a
-  // row of tabs on wide screens), whatever mix a given admin is granted.
-  // Keys are prefixed so one onSelect can route back to the right section setter.
-  const moreDropdownItems = [
-    ...(canSeeTab('member_overview') ? [{ key: 'more_mo', options: [{ key: '__member_overview', label: 'Member Overview' }] }] : []),
-    ...(canSeeTab('client_overview') ? [{ key: 'more_co', options: [{ key: '__client_overview', label: 'Client Overview' }] }] : []),
-    ...(canSeeTab('growth_credits') ? [{ key: 'more_gc', options: [{ key: '__growth_credits', label: 'Growth Credits' }] }] : []),
-    ...(canSeeTab('faq_editor') ? [{ key: 'more_faq', options: [{ key: '__faq_editor', label: 'FAQ Editor' }] }] : []),
-    ...(canSeeTab('tax_diagnostics') ? [{ key: 'more_diag', options: [{ key: '__tax_diagnostics', label: 'Tax Diagnostics' }] }] : []),
-    // Superadmin only, never grantable (feature_switches_* are SUPERADMIN_ONLY_ACTIONS).
-    ...(session?.is_superadmin ? [{ key: 'more_switches', options: [{ key: '__feature_switches', label: 'Feature Switches' }] }] : []),
-    // The two tabs with their own sub-options open sideways on hover instead of
-    // listing every option inline.
-    ...(canSeeTab('automation') ? [{
-      key: 'more_auto', submenuLabel: 'Automation & Config',
-      submenu: automationDropdownItems[0].options.map(o => ({ ...o, key: 'auto:' + o.key })),
-    }] : []),
-    ...(canSeeTab('accounting') ? [{
-      key: 'more_acct', submenuLabel: 'Accounting',
-      submenu: [
-        { key: 'acct:payments', label: 'Payments' },
-        { key: 'acct:manual_connect_payment', label: 'Manually sent Stripe Connect Payment' },
-        ...accountingDropdownItems.slice(1).map(item => ({ key: 'more_' + item.key, label: item.submenuLabel, submenu: item.submenu.map(o => ({ ...o, key: 'acct:' + o.key })) })),
-      ],
-    }] : []),
-  ]
-  function selectMoreOption(key) {
-    if (key === '__member_overview') return selectMemberOverview()
-    if (key === '__client_overview') return selectClientOverview()
-    if (key === '__growth_credits') return selectGrowthCredits()
-    if (key === '__faq_editor') return selectFaqEditor()
-    if (key === '__tax_diagnostics') return selectTaxDiagnostics()
-    if (key === '__feature_switches') return selectFeatureSwitches()
-    if (key.startsWith('auto:')) return selectAutomationSection(key.slice(5))
-    if (key.startsWith('acct:')) return selectAccountingSection(key.slice(5))
+  // A pick on the shared AdminNavBar (components/admin/AdminNavBar.jsx).
+  function selectNav(tab, section) {
+    if (tab === 'advisors') return selectAdvisorsSection(section)
+    if (tab === 'accountants') return selectAccountantsSection(section)
+    if (tab === 'strategic') return selectStrategicSection(section)
+    if (tab === 'specialists') return selectSpecialistsSection(section)
+    if (tab === 'taxplanners') return selectTaxPlannersSection(section)
+    if (tab === 'automation') return selectAutomationSection(section)
+    if (tab === 'accounting') return selectAccountingSection(section)
+    if (tab === 'member_overview') return selectMemberOverview()
+    if (tab === 'client_overview') return selectClientOverview()
+    if (tab === 'growth_credits') return selectGrowthCredits()
+    if (tab === 'faq_editor') return selectFaqEditor()
+    if (tab === 'tax_diagnostics') return selectTaxDiagnostics()
+    if (tab === 'feature_switches') return selectFeatureSwitches()
   }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
-      <div style={headerStyle}>
-        <VfoWordmark size={17} light onClick={handleTitleClick} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <NotificationBell />
-          <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.88)', fontWeight: 500, whiteSpace: 'nowrap', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.name}</span>
-          {session.is_superadmin && (
-            <button onClick={() => { setShowEditor(true); setShowSettings(false); setActiveTab(null) }}
-              style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,205,150,0.5)', background: 'transparent', color: '#ffd9a0', fontWeight: 500, fontSize: '13px', cursor: 'pointer' }}>
-              Admin Editor
-            </button>
-          )}
-          <button onClick={() => { setShowSettings(true); setShowEditor(false); setActiveTab(null) }}
-            style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>
-            Settings
-          </button>
-          <button onClick={signOut}
-            style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>
-            Sign Out
-          </button>
-        </div>
-      </div>
+      <PortalHeader name={session.name} onTitleClick={handleTitleClick} actions={[
+        ...(session.is_superadmin ? [{ key: 'editor', label: 'Admin Editor', tone: 'gold', onClick: () => { setShowEditor(true); setShowSettings(false); setActiveTab(null) } }] : []),
+        { key: 'settings', label: 'Settings', onClick: () => { setShowSettings(true); setShowEditor(false); setActiveTab(null) } },
+        { key: 'signout', label: 'Sign Out', onClick: signOut },
+      ]}>
+        {!showEditor && !showSettings && <AdminNavBar session={session} activeTab={activeTab} onSelect={selectNav} />}
+      </PortalHeader>
 
       {showEditor && <AdminEditor onBack={handleTitleClick} />}
       {showSettings && <AdminSettings onBack={handleTitleClick} session={session} />}
 
       {!showEditor && !showSettings && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--vfo-border)', padding: '0 24px', background: 'var(--vfo-card)', boxShadow: '0 2px 8px rgba(20,45,95,0.04)' }}>
-            {/* Key tabs — the four primary member/specialist directories. */}
-            <NavDropdown
-              label="Advisors"
-              items={advisorsDropdownItems}
-              onSelect={selectAdvisorsSection}
-              isActive={activeTab === 'advisors'}
-            />
-            <NavDropdown
-              label="Accountants"
-              items={accountantsDropdownItems}
-              onSelect={selectAccountantsSection}
-              isActive={activeTab === 'accountants'}
-            />
-            <NavDropdown
-              label="Strategic Members"
-              items={strategicDropdownItems}
-              onSelect={selectStrategicSection}
-              isActive={activeTab === 'strategic'}
-            />
-            <NavDropdown
-              label="Specialists"
-              items={specialistsDropdownItems}
-              onSelect={selectSpecialistsSection}
-              isActive={activeTab === 'specialists'}
-            />
-            <NavDropdown
-              label="Tax Planners"
-              items={taxPlannersDropdownItems}
-              onSelect={selectTaxPlannersSection}
-              isActive={activeTab === 'taxplanners'}
-            />
-
-            {/* Secondary "other" tabs — beside the key tabs, muted, access-gated,
-                separated by a faint divider. On narrow screens they collapse
-                into a single More ▾ menu so nothing falls off-screen. */}
-            {moreDropdownItems.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', marginLeft: '10px', paddingLeft: '12px', borderLeft: '1px solid var(--vfo-tint)' }}>
-                <NavDropdown
-                  label="More" muted
-                  items={moreDropdownItems}
-                  onSelect={selectMoreOption}
-                  isActive={['member_overview', 'client_overview', 'growth_credits', 'faq_editor', 'tax_diagnostics', 'feature_switches', 'automation', 'accounting'].includes(activeTab)}
-                />
-              </div>
-            )}
-          </div>
-
           <div style={{ flex: 1 }}>
           {loadError && (
             <div style={{ maxWidth: '980px', margin: '20px auto 0', padding: '0 24px' }}>

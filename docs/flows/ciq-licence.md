@@ -14,7 +14,7 @@
 | Basic | default; the member does the CIQ for free | Showroom only. Recorded as ONE `client_portal_licenses` row `source='ciq'`, `tier='basic'`, `amount 0`, `ends_on NULL` (decision 47), written fail-soft by `ciq_create` / `ciq_add_client_and_create` the first time a CIQ is started while the switch is on (`recordFreeCiqLicence`). Never lights Standard. |
 | Standard | the member turns on the $25 (or the client holds a tax licence) | Vault + **My One Page Plan** (read-only, latest + history, never the answers — decision 41; `client_ciq_plan_load`, from the session only). A month is Standard only when a PAID `client_portal_licenses` row (`source='ciq'`, `tier='standard'`, the invoice's billing period) covers today. |
 
-The member's mirrored partner (L5) sees the same read-only plan through `member_mirrored_ciq_plan_load` (`mirrorReadGate`).
+**2026-10-20:** the member client screen's One Page Plan card and its action `member_mirrored_ciq_plan_load` were retired — no member (owner or L5 mirrored) sees a One Page Plan card on the client Profile tab; the owner reaches the CIQs through the client page's CIQ tab. `client_ciq_plan_load` (the client's own *My One Page Plan*) is unchanged.
 
 ## The member's card (member client Profile tab → CLIENT PORTAL → *Standard portal - $25/month*)
 

@@ -113,7 +113,7 @@ The frontend hardcodes the program names from the `programs` table in several pl
 
 | File:line | Hardcoded names |
 |---|---|
-| [MemberPortal.jsx](src/pages/MemberPortal.jsx) `PROGRAM_KEYS` + inline NavDropdown map + `PROGRAM_ORDER` | `'VFO Holistic Planning'`, `'Partnership Fast Track'`, `'VFO Tax Planning'`, `'Advanced Coaching'`, `'Standard Coaching'` |
+| [MemberNavBar.jsx](src/components/member/MemberNavBar.jsx) `PROGRAM_KEYS` + `PROGRAM_ORDER` (moved out of `MemberPortal.jsx` 2026-10-20; the member nav bar on the portal and the member client page) | `'VFO Holistic Planning'`, `'Partnership Fast Track'`, `'VFO Tax Planning'`, `'Advanced Coaching'`, `'Standard Coaching'` |
 | [MSMTracking.jsx](src/components/admin/MSMTracking.jsx) `PROGRAMS` + [MembersPanel.jsx](src/components/admin/MembersPanel.jsx) `DEFAULT_MSM_OPTIONS` | (same 5) |
 | [MemberMSMTracking.jsx](src/components/member/MemberMSMTracking.jsx) `PROGRAMS` | (same 5) |
 | [ClientDetail.jsx:133-143](src/pages/ClientDetail.jsx) | `'Partnership Fast Track'`, `'VFO Tax Planning'` (rest fall through to the MAP1+Regular+Tax bucket) |
