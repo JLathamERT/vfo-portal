@@ -347,7 +347,9 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
    `utils/membership-payment-failure.ts` helper; gotcha #236).
 6. **Reconciliation UI** — the Members section renders the ledger per member (green paid rows with
    payment id + method, red missed with the Stripe decline reason, waived, per-membership-year
-   selector once renewals accumulate, totals row). Outstanding lists overdue/missed by member,
+   selector once renewals accumulate, totals row). **Overdue Payments** (the pill read
+   "Outstanding" until 2026-10-20 — renamed so it is not confused with the setup-link pill;
+   section key still `outstanding`) lists overdue/missed by member,
    with a per-row "Send reminder email" button (`membership_send_reminder`, added Phase 4
    2026-07-15) that re-sends the failed-payment email on demand for the member's full arrears.
    **A 4th pill, "Outstanding Payment Links" (added 2026-07-31),** lists every `setup_pending`
@@ -357,6 +359,17 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
    holistic Outstanding tabs, sandbox rows are SHOWN here** (orange Sandbox badge) rather than
    hidden — this panel is where sandbox test runs are watched. Keep that exception if the
    "outstanding" pills are ever unified.
+   **A 5th pill, "Renewals" (2026-10-20, frontend only — `RenewalsSection` off the same
+   `membership_plans_load` payload),** lists the plans renewing in one month, picked with the
+   Accounting house year + month dropdowns and Refresh (current month by default). A plan is listed when its
+   `renewal_date` falls in the month and it is `active` (*Upcoming*; *Renewal pending* once the
+   date has passed without the sweep renewing it; *Auto-renew off* when `auto_renew` is false),
+   or when it ALREADY renewed in the month (*Renewed*) — the sweep moves `renewal_date` a year
+   on, so a renewal is found by a later membership year's `year_start` on
+   `member_payment_schedule` (the first `year_start` is the plan's first year, never a
+   renewal). Rows carry next year's terms (or *same terms*), *Notice sent* when
+   `renewal_notice_for` equals that renewal, and *Meeting requested*; the name opens the member
+   profile, the row opens that plan's card on Members (`focusPlanId`).
 7. **Setup-link reminder ladder (2026-09-15)** — until then a `setup_pending` plan got exactly
    one email and nothing chased it (24 plans were sitting idle, the oldest from 2026-08-18). The
    13:30 UTC sweep's LAST pass (`utils/membership-setup-reminder.ts`, try/catch-isolated so a Gmail
