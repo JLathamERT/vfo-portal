@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-10-20 (c) — Specialist Revenue shows each line's Transaction details; line status chips coloured
+
+Branch `claude/specrev-transaction-details` (react only, the same chat as (b)). **Frontend only** — no backend deploy, no migration, action count 604 unmoved; PUBLISHED from the branch (`index-D1ucE96a.js`, live verified).
+
+- **Why (Jake):** the *+ New Payment* form has a *Transaction details* box per recipient, stored on `specialist_revenue_lines.transaction_details` (74 of 89 lines hold one) and copied onto every recurring month by the invoice line-copy, but no screen showed it. `specialist_revenue_load` already returned it (`select("*")`).
+- **The expanded recipient table** (`RequestDetail` in `specialistRevenueShared.jsx`, used by Accounting → VFO Specialist Revenue) gains a **Transaction details** column between Deals and Status, for every request past and future. Its Status column is now sized to the request's widest pill (or the Totals row's payment-method text) instead of a fixed share of the row, so a short *Pending* leaves no gap and the details fill the space — Jake's ask after the first cut.
+- **Line-level *Pending* and *No payout due* now draw as chips** (orange `#e06717`, grey `#6b7280`). They were plain text because their colour was `var(--vfo-muted)` and `StatusPill` builds its fill + border by appending alpha to the colour — invalid for a CSS var (#643). The request row's unknown-status fallback got the same fix.
+- **CLICK-TESTED** (Jake, dev server, then live): Carson Grover (Oct 20, a single Pending line), Dan Zimanski (recurring, two Pending lines), Deborah Snyder (Oct 2, 12 lines, long details wrapping, green chips), Ken Smith's *No payout due*.
+
+---
+
 ## 2026-10-20 (b) — Tax form asks AGI instead of W-2 income; one "not a good fit" warning; membership Renewals tab + Overdue Payments
 
 Branch `claude/vfo-session-starter-51640c` (both repos, ONE chat). `vfo-admin-api` **v1020 → v1021** (from the branch at edge `7072077`, `--use-docker`, smoke **5/5 vs v1021** — Jake); frontend PUBLISHED twice from the branch (`index-DNkB7Bt0.js`, then `index-CGmmKMIA.js` for the warning re-word; both live-verified). Backend and frontend went out back to back because the new server requires q40 and the old page did not send it (#543 — a few minutes' window, no submission landed in it). Action count 604 unmoved, no migration, no table, no template.
