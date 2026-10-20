@@ -1,9 +1,10 @@
 import { useState } from 'react'
 
 // Portal licensing L4 (2026-10-16, decision 41): the READ-ONLY One Page Plan —
-// what a Standard client sees on their portal's My Plan tab, and what a mirrored
-// member sees on the owner's client screen. It draws the payload of
-// client_ciq_plan_load / member_mirrored_ciq_plan_load (utils/ciq-plan-view.ts):
+// what a Standard client sees on their portal's My Plan tab. (The member client
+// screen's copy and member_mirrored_ciq_plan_load were retired 2026-10-20 - that
+// screen has a CIQ tab now.) It draws the payload of
+// client_ciq_plan_load (utils/ciq-plan-view.ts):
 // plans = [{ ciq_id, priorities_completed_at, items, history: [{ saved_at, items }] }],
 // item = { key, label, section, detail, decision, notes, progress }.
 // Same sections and wording as the member's own One Page Plan in MemberCIQ.jsx,

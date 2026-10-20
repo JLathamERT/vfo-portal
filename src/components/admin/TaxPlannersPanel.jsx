@@ -1084,16 +1084,17 @@ function TaxPartnerCard({ group, onSaved, experts = [] }) {
     finally { setBusy(false) }
   }
 
-  // Tax 6 ownership (2026-10-02): on this group's plans the four Tax 6 steps under
-  // the linked specialist are all the Tax Team's; under any other specialist steps
-  // 3-4 are VFOS's (the member's on Direct). Card-local update, as saveDeliversPdf.
+  // Tax 6 ownership (2026-10-02): on this group's plans Tax 6 steps 1-3 under the
+  // linked specialist are the Tax Team's; under any other specialist steps 3-4
+  // are VFOS's (the member's on Direct); step 4 is VFOS's always (2026-10-20).
+  // Card-local update, as saveDeliversPdf.
   async function saveLinked(value) {
     setBusy(true); setLinkMsg({ text: '', ok: true })
     try {
       await callApi('save_tax_planning_group', { group: { name: group.name, linked_expert_id: value === '' ? null : Number(value) }, editing_id: group.id })
       setLinkedId(value)
       const nm = experts.find(e => String(e.id) === String(value))?.name
-      setLinkMsg({ ok: true, text: nm ? `Saved — all four Tax 6 steps under ${nm} are Tax Team steps.` : 'Saved — no linked specialist; Tax 6 steps 3-4 are VFOS steps under every specialist.' })
+      setLinkMsg({ ok: true, text: nm ? `Saved — Tax 6 steps 1-3 under ${nm} are Tax Team steps (step 4 is always VFOS).` : 'Saved — no linked specialist; Tax 6 steps 3-4 are VFOS steps under every specialist.' })
     } catch (err) { setLinkMsg({ ok: false, text: err.message }) }
     finally { setBusy(false) }
   }
@@ -1153,7 +1154,7 @@ function TaxPartnerCard({ group, onSaved, experts = [] }) {
       {pdfMsg.text && <p style={{ color: pdfMsg.ok ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', margin: '8px 0 0 26px' }}>{pdfMsg.text}</p>}
       <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>Linked specialist</div>
       <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '10px', lineHeight: 1.5, maxWidth: '640px' }}>
-        The VFO specialist who is part of this group. On this group's plans, all four Tax 6 steps under this specialist are Tax Team steps. Under any other specialist, "Specialist confirms VFOS Gross Rev" and "PC confirms receipt of VFOS Gross Rev" are VFOS steps (the member's on a Direct plan).
+        The VFO specialist who is part of this group. On this group's plans, Tax 6 steps 1-3 under this specialist are Tax Team steps. Under any other specialist, "Specialist confirms VFOS Gross Rev" is a VFOS step (the member's on a Direct plan). "PC confirms receipt of VFOS Gross Rev" is always a VFOS step.
       </div>
       <select value={linkedId === null ? '' : String(linkedId)} disabled={busy} onChange={e => saveLinked(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', minWidth: '260px', cursor: busy ? 'not-allowed' : 'pointer' }}>
         <option value="">None</option>

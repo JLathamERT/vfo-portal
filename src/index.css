@@ -128,7 +128,10 @@ body {
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
+  /* clip, not hidden: `hidden` makes body a scroll container (its overflow-y
+     computes to auto) that never scrolls - html does - so every position:sticky
+     element (the portal header + nav bar) stuck to body and scrolled away. */
+  overflow-x: clip;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 

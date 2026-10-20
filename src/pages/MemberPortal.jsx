@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useLayoutEffect } from 'react'
+import { useEffect, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getSession, clearSession, callApi, loadCachedData, loadCachedAction, clearCachedData, getLastSeen, setLastSeen } from '../lib/api'
 import MemberWebsitePlugin from '../components/shared/MemberWebsitePlugin'
@@ -10,8 +10,8 @@ import MemberTaxDiagnostic from '../components/member/MemberTaxDiagnostic'
 import ClientOverviewPanel from '../components/admin/ClientOverviewPanel'
 import MemberShowroom from '../components/member/MemberShowroom'
 import MemberGrowthPlan from '../components/member/MemberGrowthPlan'
-import VfoWordmark from '../components/shared/VfoWordmark'
-import NotificationBell from '../components/NotificationBell'
+import PortalHeader from '../components/shared/PortalHeader'
+import MemberNavBar, { orderMemberPrograms } from '../components/member/MemberNavBar'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { HeroAvatar } from '../components/shared/TrackKit'
 import { usePortalTheme } from '../lib/theme'
@@ -120,89 +120,24 @@ export default function MemberPortal() {
 
   if (!session) return null
 
-  const TAX_PROGRAM_NAME = 'VFO Tax Planning'
   const taxIntakeEnabled = features.tax_intake === true
-  const PROGRAM_KEYS = { 'VFO Holistic Planning': 'msm_holistic', 'Partnership Fast Track': 'msm_partnership', 'VFO Tax Planning': 'msm_tax', 'Advanced Coaching': 'msm_coaching', 'Standard Coaching': 'msm_standard' }
-  // Canonical program order — matches the admin MSM Home program-toggle list.
-  const PROGRAM_ORDER = ['VFO Holistic Planning', 'Partnership Fast Track', 'VFO Tax Planning', 'Advanced Coaching', 'Standard Coaching']
-  // ANY member may start a tax client (decision 2026-09-17) — but only once Jake
-  // flips portal_feature_flags.tax_intake. Until then VFO Tax Planning falls back
-  // to the pre-unit-1 rule it shares with every other program: a
-  // member_program_enabled row.
-  const orderedEnabledPrograms = allPrograms
-    .filter(p => enabledPrograms.some(e => e.program_id === p.id) || (taxIntakeEnabled && p.name === TAX_PROGRAM_NAME))
-    .sort((a, b) => {
-      const ia = PROGRAM_ORDER.indexOf(a.name), ib = PROGRAM_ORDER.indexOf(b.name)
-      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib)
-    })
-
-  const enabledProgramTabs = orderedEnabledPrograms.map(p => PROGRAM_KEYS[p.name]).filter(Boolean)
-
-  const tabs = ['profile', 'msm_home', ...enabledProgramTabs, 'specialists', 'showroom', 'website', 'growthplan', 'ciq', 'gc', 'vault']
-  const tabLabels = {
-    profile: 'Profile', msm_home: 'MSM Home',
-    msm_holistic: 'Holistic Planning', msm_partnership: 'Partnership Fast Track',
-    msm_tax: 'Tax Planning', msm_coaching: 'Advanced Coaching', msm_standard: 'Standard Coaching',
-    specialists: 'Specialists', showroom: 'Showroom', website: 'Website Plugin',
-    ciq: 'CIQ', growthplan: 'Growth Plan', gc: 'GC Marketplace', vault: 'Vault'
-  }
+  const orderedEnabledPrograms = orderMemberPrograms(allPrograms, enabledPrograms, features)
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
-      {/* zIndex above the tab bar below (also 100): with a tie the later tab bar
-          paints over the bell's dropdown and hides its top. */}
-      <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 110, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
-        <VfoWordmark size={17} light onClick={handleTitleClick} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Mounted exactly as TaxPlannerPortal.jsx mounts it. The member's
-              rows are scoped server-side to their own login email — never the
-              'admin'/'all' broadcasts (#259). */}
-          <NotificationBell />
-          <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.88)', fontWeight: 500, whiteSpace: 'nowrap', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.name}</span>
-          <button onClick={() => { setShowSettings(true); setActiveTab(null) }} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Settings</button>
-          <button onClick={signOut} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Sign Out</button>
-        </div>
-      </div>
+      <PortalHeader name={session.name} onTitleClick={handleTitleClick} actions={[
+        { key: 'settings', label: 'Settings', onClick: () => { setShowSettings(true); setActiveTab(null) } },
+        { key: 'signout', label: 'Sign Out', onClick: signOut },
+      ]}>
+        {/* The bell inside: the member's rows are scoped server-side to their own
+            login email - never the 'admin'/'all' broadcasts (#259). */}
+        {!showSettings && <MemberNavBar activeTab={activeTab} onSelect={setActiveTab} programs={orderedEnabledPrograms} websiteEnabled={!!memberData?.website_enabled} />}
+      </PortalHeader>
 
       {showSettings && <MemberSettings session={session} />}
 
       {!showSettings && (
         <>
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', padding: '0 24px', background: 'var(--vfo-card)', position: 'relative', zIndex: 100 }}>
-            <NavDropdown
-              label="Profile"
-              isActive={activeTab === 'profile' || activeTab === 'profile_edit'}
-              activeTab={activeTab}
-              options={[{ key: 'profile', label: 'Profile' }, { key: 'profile_edit', label: 'Edit Profile' }]}
-              onSelect={setActiveTab}
-              onLabelClick={() => setActiveTab('profile')}
-            />
-            <NavDropdown
-              label="MSM"
-              isActive={activeTab === 'msm_home' || activeTab?.startsWith('msm_')}
-              activeTab={activeTab}
-              options={[
-                { key: 'msm_home', label: 'MSM Home' },
-                ...orderedEnabledPrograms
-                  .map(p => ({ key: PROGRAM_KEYS[p.name], label: p.name }))
-                  .filter(o => o.key)
-              ]}
-              onSelect={setActiveTab}
-            />
-            <button onClick={() => setActiveTab('client_overview')} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === 'client_overview' ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: activeTab === 'client_overview' ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === 'client_overview' ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-              Client Overview
-            </button>
-            {/* Every member, no switch (2026-10-14) — see MemberTaxDiagnostic. */}
-            <button onClick={() => setActiveTab('tax_diagnostic')} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === 'tax_diagnostic' ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: activeTab === 'tax_diagnostic' ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === 'tax_diagnostic' ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-              Tax Diagnostic
-            </button>
-            {['specialists','showroom','website','growthplan','ciq','gc','vault'].filter(tab => tab !== 'website' || memberData?.website_enabled).map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === tab ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: activeTab === tab ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === tab ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-                {tabLabels[tab]}
-              </button>
-            ))}
-          </div>
-
           {loadError && (
             <div style={{ maxWidth: '980px', margin: '20px auto 0', padding: '0 24px' }}>
               <div style={{ background: 'rgba(217,48,37,0.10)', border: '1px solid rgba(217,48,37,0.32)', borderRadius: '12px', padding: '14px 16px' }}>
@@ -380,36 +315,6 @@ function MemberEditProfile({ member, onSaved }) {
       <MemberBrandingCard memberNumber={member.member_number} mode="member" styles={{ sectionStyle, cardTitle }} reloadKey={brandingKey} />
 
       {cropState && <ImageCropModal src={cropState.src} onApply={dataUrl => { setPhotoPreview(dataUrl); setCropState(null) }} onCancel={() => setCropState(null)} />}
-    </div>
-  )
-}
-
-// onLabelClick (optional): clicking the tab's own label navigates too, so the
-// first option is reachable without opening the menu (Profile uses it).
-function NavDropdown({ label, isActive, options, activeTab, onSelect, onLabelClick }) {
-  const [open, setOpen] = useState(false)
-  const closeTimer = useRef(null)
-
-  function handleMouseEnter() { clearTimeout(closeTimer.current); setOpen(true) }
-  function handleMouseLeave() { setOpen(false) }
-
-  return (
-    <div style={{ position: 'relative' }} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <button onClick={onLabelClick ? () => { onLabelClick(); setOpen(false) } : undefined} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: isActive ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: isActive ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: isActive ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
-        {label}<span style={{ fontSize: '9px', opacity: 0.6 }}>▾</span>
-      </button>
-      {open && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '200px', zIndex: 200, padding: '4px 0', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
-          {options.map(opt => (
-            <button key={opt.key} onClick={() => { onSelect(opt.key); setOpen(false) }}
-              style={{ display: 'block', width: '100%', padding: '8px 16px', background: activeTab === opt.key ? 'rgba(0,149,255,0.15)' : 'transparent', border: 'none', color: activeTab === opt.key ? '#0095ff' : 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
-              onMouseLeave={e => e.currentTarget.style.background = activeTab === opt.key ? 'rgba(0,149,255,0.15)' : 'transparent'}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
