@@ -42,19 +42,20 @@ const REQ_STATUS = {
 // it must be taught deliberately — 'no_payout_due' would otherwise have read as
 // "Pending" forever on a line that is in fact finished (#433).
 function lineStatusMeta(line, requestReceived) {
-  if (!requestReceived) return { label: 'Pending', color: 'var(--vfo-muted)' }
+  if (!requestReceived) return { label: 'Pending', color: '#e06717' }
   switch (line.payout_status) {
     case 'revenue_share_sent': return { label: 'Revenue share payment sent', color: '#16a34a' }
     case 'money_mapping': return { label: 'Allocated to money mapping', color: '#16a34a' }
     // Terminal, and deliberately NOT green: nothing was paid, there was simply
-    // nothing to pay (member share entered as $0). Muted grey = settled, no money.
-    case 'no_payout_due': return { label: 'No payout due', color: 'var(--vfo-muted)' }
+    // nothing to pay (member share entered as $0). Grey = settled, no money. Colours
+    // here are hex, never a CSS var: StatusPill appends alpha for its fill + border.
+    case 'no_payout_due': return { label: 'No payout due', color: '#6b7280' }
     case 'awaiting_connect': return { label: 'Awaiting Stripe Connect setup', color: '#b45309' }
     case 'held_member_suspended': return { label: HELD_SUSPENDED_NOTE, color: '#b45309' }
     case 'held_member_paused': return { label: HELD_PAUSED_NOTE, color: '#b45309' }
     case 'held_member_arrears': return { label: HELD_ARREARS_NOTE, color: '#b45309' }
     case 'failed': return { label: 'Transfer failed', color: '#ef4444' }
-    default: return { label: 'Pending', color: 'var(--vfo-muted)' }
+    default: return { label: 'Pending', color: '#e06717' }
   }
 }
 
@@ -261,7 +262,7 @@ export function RequestRow({ request, actions, grid }) {
   }
   const req = (isRecurring && RECURRING_STATUS[request.payment_status])
     || REQ_STATUS[request.payment_status]
-    || { label: request.payment_status, color: 'var(--vfo-muted)' }
+    || { label: request.payment_status, color: '#6b7280' }
   const received = request.payment_status === 'received'
   // A no-money record's lines are born 'no_payout_due'; read them as settled so they
   // show "No payout due" rather than "Pending".
@@ -348,11 +349,18 @@ export function RecipientName({ line }) {
 // details and any caller-supplied actions. Shared by the card and table layouts above.
 function RequestDetail({ request, actions, received, heldMemberTotal }) {
   const lines = request.lines || []
-  const detailGrid = '1.4fr 110px 110px 110px 70px 1fr'
+  const methodText = request.payment_method_type ? `${request.payment_method_type === 'bank_transfer' ? 'bank transfer' : request.payment_method_type === 'none' ? 'no payment' : request.payment_method_type === 'external' ? 'already paid' : request.payment_method_type}${request.acct_last4 ? ` ••${request.acct_last4}` : ''}` : ''
+  // Status is sized to THIS request's widest pill (11px pill ≈ 6.6px a character +
+  // padding) or its payment-method text, so a short "Pending" leaves no gap and
+  // Transaction details takes the rest of the row.
+  const statusWidth = Math.ceil(Math.max(70,
+    ...lines.map(l => lineStatusMeta(l, received).label.length * 6.6 + 26),
+    methodText.length * 7.6))
+  const detailGrid = `1.3fr 100px 100px 100px 60px 1.6fr ${statusWidth}px`
   return (
         <div style={{ background: 'var(--vfo-input)', borderTop: '1px solid var(--vfo-border-soft)', padding: '14px 18px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: detailGrid, gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
-            <div>Recipient</div><div>ERT $</div><div>VFOS $</div><div>Member $</div><div>Deals</div><div style={{ textAlign: 'right' }}>Status</div>
+            <div>Recipient</div><div>ERT $</div><div>VFOS $</div><div>Member $</div><div>Deals</div><div>Transaction details</div><div style={{ textAlign: 'right' }}>Status</div>
           </div>
           {lines.map(line => {
             const m = lineStatusMeta(line, received)
@@ -374,6 +382,7 @@ function RequestDetail({ request, actions, received, heldMemberTotal }) {
                   {note && <span style={{ ...shareNoteStyle, color: note.color }}>{note.text}</span>}
                 </div>
                 <div>{line.deals || 0}</div>
+                <div style={{ fontSize: '12px', color: line.transaction_details ? 'var(--vfo-ink-2)' : 'var(--vfo-faint)', lineHeight: 1.45, overflowWrap: 'anywhere' }}>{line.transaction_details || '—'}</div>
                 <div style={{ textAlign: 'right' }}><StatusPill label={m.label} color={m.color} /></div>
               </div>
             )
@@ -387,7 +396,8 @@ function RequestDetail({ request, actions, received, heldMemberTotal }) {
               {heldMemberTotal > 0 && <span style={{ ...shareNoteStyle, color: PENDING_COLOR }}>{money(heldMemberTotal)} held</span>}
             </div>
             <div>{request.total_deals || 0}</div>
-            <div style={{ textAlign: 'right', color: 'var(--vfo-muted)', fontWeight: 600 }}>{request.payment_method_type ? `${request.payment_method_type === 'bank_transfer' ? 'bank transfer' : request.payment_method_type === 'none' ? 'no payment' : request.payment_method_type === 'external' ? 'already paid' : request.payment_method_type}${request.acct_last4 ? ` ••${request.acct_last4}` : ''}` : ''}</div>
+            <div />
+            <div style={{ textAlign: 'right', color: 'var(--vfo-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{methodText}</div>
           </div>
           {request.payment_status === 'pending' && request.account && (
             <div style={{ marginTop: '14px', padding: '14px 16px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px' }}>
