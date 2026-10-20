@@ -28,7 +28,7 @@ export const TAX_INTAKE_STATES = [
 export const TAX_INTAKE_Q18_POOR_FIT = "Under $100k";
 export const TAX_INTAKE_Q40_POOR_FIT = "Under $400k";
 export const TAX_INTAKE_POOR_FIT_WARNING =
-  "The client is currently not a good fit for VFO Tax Planning. Please reach out to Tracy Miller if you have any questions.";
+  "The client is currently not a good fit for VFO Tax Planning. However, you may still want to work with individual VFO Tax Planning Specialists directly. For more information, please contact Tracy Miller or a Member Success Manager.";
 
 // The three Q1 answers. Q1 is type "derived" (2026-09-17, unit 1b): the SERVER
 // fills it — from the member's own type on the member route, "Client" on the
