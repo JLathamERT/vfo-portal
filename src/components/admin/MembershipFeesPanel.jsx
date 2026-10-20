@@ -6,6 +6,7 @@ import SandboxModeToggle from './SandboxModeToggle'
 import StepEmailsChip from '../shared/StepEmailsChip'
 import { MemberNameLink } from '../shared/personLinks'
 import { MEMBER_TYPES, ACCOUNTANT_TYPES } from '../shared/memberTypes'
+import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 
 // Accounting > Members > Advisor/Accountant Membership Fees.
 //
@@ -16,8 +17,9 @@ import { MEMBER_TYPES, ACCOUNTANT_TYPES } from '../shared/memberTypes'
 // (transfers keep the renewal they already had). The schedule appears once
 // they pay.
 //
-// Three sections per category: Members (expandable reconciliation grid),
-// Set Up Payments (input form incl. mid-year transfers), Outstanding.
+// Sections per category: Members (expandable reconciliation grid), Set Up
+// Payments (input form incl. mid-year transfers), Overdue Payments, Outstanding
+// Payment Links (setup links never completed) and Renewals (by month).
 
 const PLAN_STATUS = {
   setup_pending: { label: 'Awaiting first payment', color: '#0095ff' },
@@ -293,6 +295,8 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
   // The ref keeps a later reload/refresh from re-expanding it.
   const [focusMember, setFocusMember] = useState(initialMemberNumber || null)
   const focusConsumed = useRef(false)
+  // A Renewals row opens its own plan card (a member can hold more than one plan).
+  const [focusPlanId, setFocusPlanId] = useState(null)
 
   // Re-open draws the last plans for this category at once, refreshes behind them.
   useLayoutEffect(() => {
@@ -333,8 +337,9 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
   const pills = [
     { key: 'members', label: 'Members' },
     ...(isSuperadmin ? [{ key: 'setup', label: 'Set Up Payments' }] : []),
-    { key: 'outstanding', label: 'Outstanding' },
+    { key: 'outstanding', label: 'Overdue Payments' },
     { key: 'outstanding_links', label: 'Outstanding Payment Links' },
+    { key: 'renewals', label: 'Renewals' },
   ]
 
   return (
@@ -373,7 +378,8 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
 
       {!loading && !error && section === 'members' && (
         <MembersSection plans={plans} category={category} onChanged={load} onEdit={startEdit} isSuperadmin={isSuperadmin}
-          focusMember={focusMember} onFocusConsumed={() => { focusConsumed.current = true; setFocusMember(null) }} />
+          focusMember={focusMember} focusPlanId={focusPlanId}
+          onFocusConsumed={() => { focusConsumed.current = true; setFocusMember(null); setFocusPlanId(null) }} />
       )}
       {!loading && !error && section === 'setup' && isSuperadmin && (
         <SetupSection key={editPlan?.id || 'new'} category={category} allMembers={allMembers} plans={plans} editPlan={editPlan}
@@ -385,13 +391,16 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
       {!loading && !error && section === 'outstanding_links' && (
         <OutstandingLinksSection plans={plans} onChanged={load} onEdit={startEdit} isSuperadmin={isSuperadmin} />
       )}
+      {!loading && !error && section === 'renewals' && (
+        <RenewalsSection plans={plans} onRefresh={() => load()} onOpenPlan={(p) => { setFocusPlanId(p.id); setSection('members'); setNotice(null) }} />
+      )}
     </div>
   )
 }
 
 // ── Members: the reconciliation list ──────────────────────────────────────────
 
-function MembersSection({ plans, category, onChanged, onEdit, isSuperadmin, focusMember, onFocusConsumed }) {
+function MembersSection({ plans, category, onChanged, onEdit, isSuperadmin, focusMember, focusPlanId, onFocusConsumed }) {
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
@@ -424,7 +433,7 @@ function MembersSection({ plans, category, onChanged, onEdit, isSuperadmin, focu
       )}
       {filtered.map(p => (
         <PlanCard key={p.id} plan={p} category={category} onChanged={onChanged} onEdit={onEdit} isSuperadmin={isSuperadmin}
-          autoOpen={!!focusMember && String(p.member_number) === String(focusMember)}
+          autoOpen={focusPlanId ? p.id === focusPlanId : !!focusMember && String(p.member_number) === String(focusMember)}
           onAutoOpened={onFocusConsumed} />
       ))}
     </div>
@@ -1311,7 +1320,121 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
   )
 }
 
-// ── Outstanding: missed / overdue payments ────────────────────────────────────
+// ── Renewals: who renews in a given month ─────────────────────────────────────
+
+// A plan is listed for a month when its renewal_date falls in it (still to come,
+// or past and waiting on the sweep), or when it already renewed in it: the sweep
+// moves renewal_date a year on, so a renewal is found by a later membership year's
+// year_start (the first year_start is the plan's first year, not a renewal).
+const RENEWAL_STATE = {
+  upcoming: { label: 'Upcoming', color: '#0095ff' },
+  pending: { label: 'Renewal pending', color: '#e06717' },
+  not_renewing: { label: 'Auto-renew off', color: '#ef4444' },
+  renewed: { label: 'Renewed', color: '#16a34a' },
+}
+
+function renewalsForMonth(plans, monthKey, today) {
+  const out = []
+  for (const p of plans) {
+    const renewal = p.renewal_date ? String(p.renewal_date).slice(0, 10) : ''
+    if (p.status === 'active' && renewal.slice(0, 7) === monthKey) {
+      out.push({ plan: p, date: renewal, state: !p.auto_renew ? 'not_renewing' : renewal < today ? 'pending' : 'upcoming' })
+      continue
+    }
+    if (p.status === 'setup_pending') continue
+    const starts = [...new Set((p.schedule || []).map(r => r.year_start ? String(r.year_start).slice(0, 10) : '').filter(Boolean))].sort()
+    const renewedOn = starts.slice(1).find(s => s.slice(0, 7) === monthKey)
+    if (renewedOn) out.push({ plan: p, date: renewedOn, state: 'renewed' })
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date) || String(a.plan.member_name || '').localeCompare(String(b.plan.member_name || '')))
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+function RenewalsSection({ plans, onOpenPlan, onRefresh }) {
+  const today = todayIso()
+  const [year, setYear] = useState(Number(today.slice(0, 4)))
+  const [month, setMonth] = useState(Number(today.slice(5, 7)) - 1)
+  const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`
+  const rows = useMemo(() => renewalsForMonth(plans, monthKey, today), [plans, monthKey, today])
+  const monthLabel = `${MONTHS[month]} ${year}`
+  // This year and next (renewals sit up to a year ahead), plus any year a plan
+  // renewed or renews in.
+  const years = useMemo(() => {
+    const ty = Number(today.slice(0, 4))
+    const set = new Set([ty, ty + 1])
+    for (const p of plans) {
+      if (p.renewal_date) set.add(Number(String(p.renewal_date).slice(0, 4)))
+      for (const r of p.schedule || []) if (r.year_start) set.add(Number(String(r.year_start).slice(0, 4)))
+    }
+    return Array.from(set).sort((a, b) => b - a)
+  }, [plans, today])
+  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+  const renewedCount = rows.filter(r => r.state === 'renewed').length
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap' }}>
+        <select style={sel} value={year} onChange={e => setYear(Number(e.target.value))}>
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <select style={sel} value={month} onChange={e => setMonth(Number(e.target.value))}>
+          {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
+        </select>
+        <button type="button" onClick={onRefresh} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
+        <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>
+          {rows.length} renewal{rows.length === 1 ? '' : 's'}{renewedCount ? ` · ${renewedCount} already renewed` : ''}
+        </span>
+      </div>
+
+      {rows.length === 0 && (
+        <div style={{ ...card, textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>
+          No memberships renew in {monthLabel}.
+        </div>
+      )}
+      {rows.map(({ plan, date, state }) => {
+        const m = plan.member || {}
+        const st = RENEWAL_STATE[state]
+        const perPull = Number(plan.per_pull_amount) || 0
+        const openMeeting = (plan.renewal_meetings || []).find(x => !x.completed_at)
+        const noticeSent = state !== 'renewed' && plan.renewal_notice_for && String(plan.renewal_notice_for).slice(0, 10) === date
+        return (
+          <div key={`${plan.id}-${date}`} onClick={() => onOpenPlan(plan)} {...rowHoverProps}
+            style={{ ...card, ...clickableRowStyle, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <MemberNameLink memberNumber={plan.member_number}>{plan.member_name || plan.member_number}</MemberNameLink>
+                {noticeSent && <StatusPill label="Notice sent" color="#6b7280" />}
+                {openMeeting && <StatusPill label="Meeting requested" color="#e06717" />}
+                {m.membership_arrears && <StatusPill label="In arrears" color="#b45309" />}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
+                {plan.member_number} · {m.member_type || '—'}
+                {' · '}{plan.frequency === 'monthly' ? `Monthly (${money(perPull)}/mo)` : `Annual (${money(perPull)}/yr)`}
+                {state !== 'renewed' && (plan.next_year_amount
+                  ? ` · Next year ${money(plan.next_year_amount)}${Number(plan.next_year_credit_note) > 0 ? ` − ${money(plan.next_year_credit_note)} credit` : ''}${plan.next_year_member_type ? ` · ${plan.next_year_member_type}` : ''}`
+                  : ' · Next year: same terms')}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)' }}>{money(plan.net_annual)}</div>
+              <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>net / year</div>
+            </div>
+            <div style={{ textAlign: 'right', width: '110px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{fmtDate(date)}</div>
+              <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{state === 'renewed' ? 'renewed' : 'renewal'}</div>
+            </div>
+            <div style={{ width: '140px', textAlign: 'right' }}>
+              <StatusPill label={st.label} color={st.color} />
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Overdue Payments: missed / overdue payments ───────────────────────────────
 
 function OutstandingSection({ plans, isSuperadmin }) {
   const today = todayIso()

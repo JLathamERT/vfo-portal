@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { callApi } from '../../lib/api'
 import {
   TAX_INTAKE_QUESTIONS,
-  TAX_INTAKE_Q18_POOR_FIT,
+  TAX_INTAKE_POOR_FIT_WARNING,
   TAX_INTAKE_Q38_TRADITIONAL,
   validateTaxIntakeAnswers,
   normalizeTaxIntakeAnswers,
@@ -109,7 +109,7 @@ export default function TaxIntakeForm({
   const noteStyle = { fontSize: '11.5px', color: 'var(--vfo-muted)', lineHeight: 1.55, marginTop: '-2px', marginBottom: '8px' }
 
   // Hidden = session-filled; derived = server-filled. Neither is ever rendered.
-  const visible = useMemo(() => TAX_INTAKE_QUESTIONS.filter(q => !q.hidden && q.type !== 'derived'), [])
+  const visible = useMemo(() => TAX_INTAKE_QUESTIONS.filter(q => !q.hidden && !q.retired && q.type !== 'derived'), [])
   // Test Member 59524 only (mirrors the backend TEST_SANDBOX_MEMBER_NUMBERS):
   // one button that fills every field with plausible test values so a
   // click-through does not mean typing 36 answers. The public link page learns
@@ -126,6 +126,7 @@ export default function TaxIntakeForm({
         else if (q.id === 'q4') next.q4 = next.q4 || `test.client.${stamp}@example.com`
         else if (q.id === 'q5') next.q5 = '(555) 555-0100'
         else if (q.id === 'q18') next.q18 = q.options.find(o => o.startsWith('$100k')) || q.options[1]
+        else if (q.poorFitOption) next[q.id] = q.options.find(o => o !== q.poorFitOption)
         else if (q.type === 'radio') next[q.id] = q.options[0]
         else if (q.type === 'select') next[q.id] = q.options.find(o => o && !/select/i.test(String(o))) || q.options[0]
         else if (q.type === 'money') next[q.id] = '100000'
@@ -144,7 +145,6 @@ export default function TaxIntakeForm({
     setAnswers(a => ({ ...a, [id]: value }))
   }
 
-  const poorFit = answers.q18 === TAX_INTAKE_Q18_POOR_FIT
 
   async function submit() {
     const found = [...(validatePrelude ? validatePrelude() : []), ...validateTaxIntakeAnswers(answers)]
@@ -469,9 +469,9 @@ export default function TaxIntakeForm({
               </label>
               {q.note && <div style={noteStyle}>{q.note}</div>}
               {renderInput(q)}
-              {q.id === 'q18' && poorFit && (
+              {q.poorFitOption && answers[q.id] === q.poorFitOption && (
                 <div style={{ marginTop: '8px', fontSize: '12px', color: '#e06717', lineHeight: 1.55 }}>
-                  The client is currently not a good fit for VFO Tax Planning. Please reach out to Tracy Miller if you have any questions.
+                  {TAX_INTAKE_POOR_FIT_WARNING}
                 </div>
               )}
             </div>

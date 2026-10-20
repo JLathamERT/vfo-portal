@@ -21,10 +21,14 @@ export const TAX_INTAKE_STATES = [
   "Quebec", "Saskatchewan", "Yukon",
 ];
 
-// The exact Q18 option that triggers the inline fit warning. It is a legal
-// answer — the form still submits — but the member is told on the spot.
-export const TAX_INTAKE_Q18_POOR_FIT =
-  "Under $100k (The client is currently not a good fit for VFO Tax Planning. Please reach out to Tracy Miller if you have any questions)";
+// The Q18 / Q40 options that trigger the inline fit warning (each question's
+// `poorFitOption`). Legal answers — the form still submits — but the member is
+// told on the spot. Until 2026-10-20 the warning text was part of the Q18 option
+// itself; the server maps that old text to the short option.
+export const TAX_INTAKE_Q18_POOR_FIT = "Under $100k";
+export const TAX_INTAKE_Q40_POOR_FIT = "Under $400k";
+export const TAX_INTAKE_POOR_FIT_WARNING =
+  "The client is currently not a good fit for VFO Tax Planning. However, you may still want to work with individual VFO Tax Planning Specialists directly. For more information, please contact Tracy Miller or a Member Success Manager.";
 
 // The three Q1 answers. Q1 is type "derived" (2026-09-17, unit 1b): the SERVER
 // fills it — from the member's own type on the member route, "Client" on the
@@ -55,11 +59,14 @@ export const TAX_INTAKE_QUESTIONS = [
   { id: "q11", label: "If married & filing jointly, spouse's name & email", type: "text", required: false },
   { id: "q12", label: "Does client have children? If so, how many?", type: "text", required: true },
   { id: "q13", label: "Accredited Investor?", type: "radio", required: true, options: ["Yes", "No", "Not Verified"], note: "Non Accredited Investors will have limited options" },
-  { id: "q14", label: "Household W-2 Income", type: "money", required: true },
+  { id: "q40", label: "Household Adjusted Gross Income (AGI)", type: "radio", required: true, note: "From the client's most recent tax return (Form 1040)", options: [TAX_INTAKE_Q40_POOR_FIT, "$400k – $800k", "$800k – $1.5m", "$1.5m+"], poorFitOption: TAX_INTAKE_Q40_POOR_FIT },
+  // Retired 2026-10-20 (replaced by q40): never asked, shown on a read-only card
+  // only when an older form answered it.
+  { id: "q14", label: "Household W-2 Income", type: "money", required: false, retired: true },
   { id: "q15", label: "Household Capital Gains", type: "money", required: true },
   { id: "q16", label: "Dividends/interest or other income (if applicable)", type: "money", required: true },
   { id: "q17", label: "Estimated Net-Worth", type: "radio", required: true, options: ["Under $1m", "$1m – $2.5m", "$2.5m – $5m", "$5m – $10m", "$10m – $25m", "$25m+", "Unknown"] },
-  { id: "q18", label: "Federal income taxes paid last year", type: "radio", required: true, options: [TAX_INTAKE_Q18_POOR_FIT, "Combined $100K across previous three years", "$100k - $250k", "$250k - $500k", "$500k+"] },
+  { id: "q18", label: "Federal income taxes paid last year", type: "radio", required: true, options: [TAX_INTAKE_Q18_POOR_FIT, "Combined $100K across previous three years", "$100k - $250k", "$250k - $500k", "$500k+"], poorFitOption: TAX_INTAKE_Q18_POOR_FIT },
   { id: "q19", label: "Potential events or sales creating a tax liability of $100k+ in the next three years?", type: "text", required: false },
   { id: "q20", label: "Does client own a business?", type: "radio", required: true, options: ["Yes", "No"] },
   { id: "q21", label: "Entity type", type: "radio", required: false, parentId: "q20", parentValue: "Yes", options: ["Sole Proprietorship (Schedule C) or Single Member LLC", "S-corp", "C-corp", "Partnership", "Multiple Entity Types", "Other"] },
@@ -113,7 +120,8 @@ export function taxIntakeQuestionShown(q, answers) {
 // Display numbers for a rendered list: a follow-up takes its parent's number
 // plus a letter (17a, 17b, 17c) and does not advance the count, so every
 // question after it keeps counting from the parent. `keepAnswered` also keeps a
-// hidden follow-up that still holds a stored answer (read-only views).
+// hidden follow-up that still holds a stored answer (read-only views), and a
+// retired question only when an older form answered it.
 export function numberTaxIntakeQuestions(questions, answers, offset = 0, keepAnswered = false) {
   const byId = Object.fromEntries(TAX_INTAKE_QUESTIONS.map(q => [q.id, q]))
   const out = []
@@ -121,6 +129,7 @@ export function numberTaxIntakeQuestions(questions, answers, offset = 0, keepAns
   let letter = 0
   for (const listed of questions) {
     const def = byId[listed.id] || listed
+    if (def.retired && !(keepAnswered && String(answers?.[def.id] ?? "").trim() !== "")) continue
     if (def.parentId) {
       const kept = taxIntakeQuestionShown(def, answers) || (keepAnswered && String(answers?.[def.id] ?? "").trim() !== "")
       if (!kept) continue
@@ -156,7 +165,7 @@ export function validateTaxIntakeAnswers(answers) {
   for (const q of TAX_INTAKE_QUESTIONS) {
     const raw = a[q.id];
     const val = String(raw ?? "").trim();
-    if (q.type === "derived") continue;
+    if (q.type === "derived" || q.retired) continue;
     if (!taxIntakeQuestionShown(q, a)) continue;
     if (q.required && !q.hidden && !val) {
       errors.push(taxIntakeRequiredMessage(q.label));
@@ -177,7 +186,7 @@ export function normalizeTaxIntakeAnswers(answers) {
   const out = {};
   for (const q of TAX_INTAKE_QUESTIONS) {
     // A derived answer is never taken from the caller — the server assigns it.
-    if (q.type === "derived") { out[q.id] = ""; continue; }
+    if (q.type === "derived" || q.retired) { out[q.id] = ""; continue; }
     if (!taxIntakeQuestionShown(q, a)) { out[q.id] = ""; continue; }
     const raw = a[q.id];
     // format: "name" / "phone" answers tidied as the server does (src/lib/formatters.js).
