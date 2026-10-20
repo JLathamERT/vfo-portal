@@ -138,7 +138,8 @@ pipeline:  'TAX'
 title:     "Complete the tax plan review steps for <client>"
 message:   asks for BOTH steps the meeting produces —
            "Detailed tax plan presentation" AND "Client decision 1";
-           while generated_bookends_at is NULL it ends
+           while generated_bookends_at AND generated_bookends_skipped_at
+           (2026-10-20) are both NULL it ends
            ' Start with "Generate detailed tax plan presentation", which unlocks it.'
 link:      "/tax-planner/client/<id>?program=<program_id||1>"   (gotcha #292)
 dismissible: false
@@ -148,7 +149,7 @@ Fired once per plan (same guard column, `client_tax_plans.tax4_meeting_reminder_
 
 ### Tax 4 — generate the detailed tax plan presentation (action-required, in-app, 2026-09-25)
 
-Rule **`TAX_planner_bookends_needed`** (area `Tax Planners`, sort 220, `action_required`, `default_recipients '["ALLOCATED_TAX_PLANNER"]'`; migrations `20260925180000_…` + `20260925190000_…`). Raised by `actions/tax/highlevel-meeting-confirm.ts` — and its Direct twin `tax_direct_highlevelmeeting_confirm`, which wraps the same handler — the moment the detailed tax plan meeting confirmation email is drafted, **unless `generated_bookends_at` is already set** (a re-send / reschedule is not asked again):
+Rule **`TAX_planner_bookends_needed`** (area `Tax Planners`, sort 220, `action_required`, `default_recipients '["ALLOCATED_TAX_PLANNER"]'`; migrations `20260925180000_…` + `20260925190000_…`). Raised by `actions/tax/highlevel-meeting-confirm.ts` — and its Direct twin `tax_direct_highlevelmeeting_confirm`, which wraps the same handler — the moment the detailed tax plan meeting confirmation email is drafted, **unless `generated_bookends_at` or (2026-10-20) `generated_bookends_skipped_at` is already set** (a re-send / reschedule, or a skipped step, is not asked again):
 
 ```
 recipient: the allocated planner + the allocated team member   (notifyAllocatedPlanner; planner-portal link)
@@ -160,7 +161,7 @@ dedupe:    'unread'
 dismissible: false
 ```
 
-**Cleared** only by `actions/tax/generate-bookends.ts` on a successful generate (`clearBookendsNeededBells`, prefix `BOOKENDS_NEEDED_BELL_TITLE_PREFIX` in `utils/tax-review-bell.ts`). `allocate-planner.ts` does **not** re-address it on a planner change (same as the Tax 4 steps bell above).
+**Cleared** only by `actions/tax/generate-bookends.ts` on a successful generate and (2026-10-20) `actions/tax/skip-bookends.ts` on a Skip (`clearBookendsNeededBells`, prefix `BOOKENDS_NEEDED_BELL_TITLE_PREFIX` in `utils/tax-review-bell.ts`). `allocate-planner.ts` does **not** re-address it on a planner change (same as the Tax 4 steps bell above).
 
 ### TAX pipeline — no shared `admin` bell (rerouted 2026-06-09; recipients re-cut 2026-07-27)
 

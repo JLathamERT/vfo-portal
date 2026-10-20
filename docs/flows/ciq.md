@@ -1,6 +1,6 @@
 # CIQ flow (Client Intake Questionnaire)
 
-A multi-step intake-and-prioritization process owned by a member, run for each of their clients. Lives entirely within the portal — no external integrations, no email or webhook chaining. *(Line refs re-checked 2026-10-16. Portal licensing L4 — the $25/month Standard client licence and a read-only One Page Plan for the client and the mirrored member — is BUILT behind the `ciq_licence` switch (2026-10-16) — flow of record [ciq-licence.md](ciq-licence.md). Within this flow it adds: `ciq_create` / `ciq_add_client_and_create` record the client's $0 CIQ licence row (fail-soft, only while the switch is on), and the admin *Allow Member to Start New CIQs* toggle reads *Member drives CIQ (training complete)* while the switch is on. Unswitched: Client Overview's **CIQ** pill (admin + member, one row per client with a CIQ, opening that client's CIQ — decision 50, `actions/clients/overview-ciq.ts`).)*
+A multi-step intake-and-prioritization process owned by a member, run for each of their clients. Lives entirely within the portal — no external integrations, no email or webhook chaining. *(Line refs re-checked 2026-10-16. Portal licensing L4 — the $25/month Standard client licence and a read-only One Page Plan for the client (the mirrored member's copy was retired 2026-10-20) — is BUILT behind the `ciq_licence` switch (2026-10-16) — flow of record [ciq-licence.md](ciq-licence.md). Within this flow it adds: `ciq_create` / `ciq_add_client_and_create` record the client's $0 CIQ licence row (fail-soft, only while the switch is on), and the admin *Allow Member to Start New CIQs* toggle reads *Member drives CIQ (training complete)* while the switch is on. Unswitched: Client Overview's **CIQ** pill (admin + member, one row per client with a CIQ, opening that client's CIQ — decision 50, `actions/clients/overview-ciq.ts`).)*
 
 ## Trigger
 
@@ -68,15 +68,24 @@ Finishing a CIQ is precisely what the MAP 1 **"CIQ complete"** step tracks, so a
 
 > **The name is the contract, and nothing enforces it.** Renaming the task or the `map1` phase track silently breaks the auto-complete, and the same `'CIQ complete'` literal is exact-matched three more times in `ClientTrackViewV2.jsx` (the hyperlink condition + the two `autoCompleteCodes` lists). Grep both repos before renaming. Gotcha **#323**.
 
-### Deep link — opening one client's CIQ from elsewhere in admin (2026-08-03)
+### The client page's CIQ tab (2026-10-20)
 
-Two admin-only surfaces now navigate straight to a client's questionnaire: the client profile's **Profile** dropdown gained a **"CIQ"** entry below "Vault" (rendered only when `client.member_number` exists), and the MAP 1 **"CIQ complete"** step title is hyperlinked (`#0095ff`, admin/`!readOnly` only). Both emit:
+A client's questionnaires open **inside the client profile**, for admins and members:
+
+- **Admin:** the **Profile ▾** dropdown's **CIQ** entry (below Vault, only when `client.member_number` exists) is a real tab — `'ciq'` is in `validTabsForProgram` — rendered in the profile. The MAP 1 **"CIQ complete"** step title (`#0095ff`, admin / `!readOnly` only, `ClientTrackViewV2`) links to `/admin/client/<id>?tab=ciq`.
+- **Member:** the client page strip is **Profile · CIQ · Vault**; CIQ is hidden for a MIRRORED client (CIQs are owner-only). The list loads by the owning member (a member caller's number is forced server-side).
+
+The body is `MemberCIQ.jsx` with the **`client` prop**, which locks it to that one client: no client list, no Existing/New chooser, **+ Start New CIQ** calls `ciq_create` for that client directly, a client with 0 CIQs still shows its card (*"<First> has no CIQs yet"*), and it **never consumes** the deep-link sessionStorage keys below. This replaced the 2026-08-03 hand-off to `/admin?member=…&feature=ciq&ciqclient=…`, which landed a client with no CIQs on the member's whole CIQ tab.
+
+### Deep link — the member-wide CIQ tab on one client (2026-08-03)
+
+`AdminPortal.jsx` still honours
 
 ```
 /admin?member=<member_number>&feature=ciq&ciqclient=<client_id>&_n=<Date.now()>
 ```
 
-`'ciq'` is a **navigation action, not a tab** — `ClientDetail.jsx`'s `handleTabSelect` intercepts it before `setActiveTab`, and `validTabsForProgram` was deliberately left untouched. `AdminPortal.jsx`'s `?member=` branch parks `ciqclient` in **sessionStorage `ciqInitialClientId`** (mirroring the existing `sub` → `msmInitialSubTab` handling), and `MemberCIQ.jsx`'s `loadCiqs` consumes it **once** — `isAdmin` only, `removeItem` even when nothing matches — then finds the newest CIQ with that `client_id` and **`await openCiq(match)`**. The `await` holds the loading skeleton; without it the CIQ *list* flashes on screen before the questionnaire opens.
+(no in-app caller emits it since 2026-10-20 — kept for links already out there), and Client Overview's CIQ pill opens the member's CIQ feature tab on that client's list through sessionStorage **`ciqInitialListClientId`**. The `?member=` branch parks `ciqclient` in **sessionStorage `ciqInitialClientId`** (mirroring the existing `sub` → `msmInitialSubTab` handling), and `MemberCIQ.jsx`'s `loadCiqs` consumes it **once** — `isAdmin` only, `removeItem` even when nothing matches — then finds the newest CIQ with that `client_id` and **`await openCiq(match)`**. The `await` holds the loading skeleton; without it the CIQ *list* flashes on screen before the questionnaire opens.
 
 > **Note:** `ciq_complete` does NOT auto-generate `ciq_priorities` rows. Those are populated separately when the user enters the priorities phase (Step 6) — but the exact code that inserts them is inside the large `MemberCIQ.jsx`. The `ciq_save_priorities` action upserts whatever the UI sends; the UI must build the list initially.
 
