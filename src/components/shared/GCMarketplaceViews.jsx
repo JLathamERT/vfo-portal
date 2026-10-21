@@ -80,18 +80,19 @@ const TX_NUM = { fontSize: '13px', fontWeight: 600, textAlign: 'right' }
 // they were given — which is exactly what happened to 27 members before this.
 // The Stripe session id is what a real payment leaves behind, so derive the
 // word from that (#465).
-function gcTypeChip(tx) {
+export function gcTypeChip(tx) {
   const [label, rgb, hex] = tx.type === 'purchased' && !tx.stripe_session_id ? ['Added', '0,149,255', '#0095ff']
     : tx.type === 'purchased' ? ['Purchased', '27,146,84', '#1b9254']
       : tx.type === 'refunded' ? ['Refunded', '0,149,255', '#0095ff']
         : tx.type === 'deducted' ? ['Deducted', '224,103,23', '#e06717']
+        : tx.type === 'membership' ? ['Membership', '124,58,237', '#7c3aed']
         : ['Redeemed', '231,76,60', '#d93025']
   return <span style={{ fontSize: '11px', padding: '2px 10px', borderRadius: '999px', background: `rgba(${rgb},0.15)`, color: hex, fontWeight: 600, border: `1px solid rgba(${rgb},0.3)`, whiteSpace: 'nowrap' }}>{label}</span>
 }
 
 // The "By" column (gc_transactions.actor_name / actor_role, 2026-10-02). Rows
 // written before the column existed, and Stripe purchases, carry none.
-function gcActorLabel(tx) {
+export function gcActorLabel(tx) {
   if (tx.actor_role === 'system') return 'System (renewal)'
   if (!tx.actor_name) return '—'
   return tx.actor_role === 'admin' ? `${tx.actor_name} (admin)` : tx.actor_name

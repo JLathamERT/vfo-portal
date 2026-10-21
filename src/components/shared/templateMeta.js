@@ -242,6 +242,8 @@ export const TEMPLATE_META = {
     ['MEMBERSHIP_invoicereceipt_email|transfer', 'First payment after moving over from the old billing — catch-up invoice showing where they are in the year, plus receipt', 'To: Member · Cc: Tray · Bcc: Paul, Anna'],
     ['MEMBERSHIP_receipt_email|monthly', 'Every later monthly pull — receipt only, no invoice', 'To: Member · Cc: Tray · Bcc: Paul, Anna'],
     ['MEMBERSHIP_renewal_notice', 'Thirty days before the membership renews — what renews and when, with a button to request a meeting about it', 'To: Member · Cc: Tray, Rachael · Bcc: Anton, Paul'],
+    ['MEMBERSHIP_gc_confirmation', "Sent when a Corporate Member's annual membership is set up paid with Growth Credits — the credits used, whose account they came from, the balance left and the membership year", 'To: Member + their lead · Cc: Tray · Bcc: Paul, Anton'],
+    ['MEMBERSHIP_gc_renewal_notice', 'Thirty days before a Growth Credit membership renews — it renews on that date on the same credits from the same account unless they reply to cancel', 'To: Member + their lead · Cc: Tray, Rachael · Bcc: Anton, Paul'],
     ['MEMBERSHIP_next_year_terms', "Sent when an admin saves next year's terms on an active plan — confirms the renewal date, the member type and the annual value, charged the same way on the same method", 'To: Member · Cc: Tray, Rachael · Bcc: Anton, Paul'],
     ['MEMBERSHIP_cancel_confirmation', 'The renewal meeting ended in a cancellation — confirms auto-renew is off and the current year completes as contracted', 'To: Member · Cc: Tray, Rachael · Bcc: Anton, Paul'],
   ],

@@ -128,6 +128,13 @@
 > (from <owner>)"*, linking to `/member/client/<id>`. Its sibling email is template `CLIENT_PORTAL` /
 > `MEMBER_client_connected` (Draft). Behind `mirrored_clients`, keyed on the client's owner.
 >
+> **The 2026-10-22 additions, no section below:** `Payment Failure Alerts` **+2**, both Jake, dismissible FYI, deduped while
+> unread (migration `20261022130000`): **`FAILURE_email_delivery`** (sort 210) — raised by the delivery layer itself when a
+> Gmail draft / auto-send / sign-in or a PDF render still fails after its automatic retries (`utils/delivery-failure-alert.ts`);
+> **`FAILURE_documents_missing`** (sort 220) — the daily `automation_DOCS_missing_sweep` (jobid 20), one per paid payment
+> with no receipt or receipt email. Also **`MEMBERSHIP_gc_renewal_short`** (`Membership Fees`, sort 22, Tray) — a Growth
+> Credit membership short of credits at renewal (migration `20261022120000`).
+>
 > **The 2026-10-16 addition (portal licensing L4, the $25 CIQ licence), no section below:** `Client Portal` **2 → 3**
 > — **`FAILURE_ciq_licence`** (sort 355, `default_recipients ["jlatham@elitert.com"]`, dismissible FYI; migration
 > `20261016160000`). Jake's hand-fix bell when Stripe refuses to stop a $25 on a tax takeover

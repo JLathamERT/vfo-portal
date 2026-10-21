@@ -28,6 +28,7 @@ when checking, so terminate → create-new works).
 | `auto_renew` | default true |
 | `transfer` | mid-year move from the old billing (bills only until the entered renewal) |
 | `tracking_only` | boolean, default false. Added 2026-10-21 (`20261021120000_membership_tracking_only.sql`). **Billed on the OLD system and only TRACKED here** — Set Up Membership → *Track billing on old system*, written once by `membership_tracking_plan_save`: created **`active`** with this year's rows already inserted (never `setup_pending`), no Stripe customer / method / token ever, `charge_day` set (annual = 15). Every row status is HAND-SET by `membership_tracking_row_save` (the only writer that accepts such a plan; it refuses every ordinary plan's rows); a hand-set Missed / Declined (amount > 0) flips `members.membership_arrears` on, any other status runs `clearMembershipArrearsIfCaughtUp`. Refused by `send_setup_link`, `pause`, `send_reminder`, a terminate FEE; skipped by the sweep's notice pass (0) and charge pass (3, before the mode guard); `next_year_save` sends no email. Renewal (pass 1), waive (pass 2) and arrears-clear (pass 4) still run. Paid rows carry `payment_method_type='old_system'` and `paid_at` = the date entered (default the due date) at 12:00 UTC |
+| `paid_with_gc` / `gc_credits` / `gc_payer_member_number` | Added 2026-10-22 (`20261022120000_membership_gc_paid.sql`). **A `Corporate Member`'s annual membership paid in Growth Credits** — Set Up Membership → *Brand new membership* → **GC**, written once by `membership_gc_plan_save`: created **`active`**, annual, every $ column 0, one **`paid`** row a year (`amount_due` 0, `payment_method_type='growth_credits'`). `gc_credits` (numeric(10,2), quarters) is taken from `gc_payer_member_number` — the member or their lead — at creation and again by the sweep's renewal pass each year (short → no renewal + `MEMBERSHIP_gc_renewal_short`, retried nightly). Never charged on Stripe; refused by `send_setup_link`, `pause`, `send_reminder`, `next_year_save` and a terminate FEE; skipped by the charge pass (3) and the $ renewal notice (pass 0 sends `MEMBERSHIP_gc_renewal_notice` instead); left off the global Payments page. `tracking_only` stays false |
 | `status` | `setup_pending` → `active` → `canceled` \| `terminated` |
 | `stripe_customer_id` / `default_payment_method_id` / `payment_method_type` / `acct_last4` | charge rails (`ach`/`card`) |
 | `setup_token` / `setup_email_sent_at` | the /membership-pay link (doubles as the update-method link once active) |
@@ -150,7 +151,19 @@ one. Gotcha **#332**.
   Editor, #176). **Added 2026-09-23:** `MEMBERSHIP_arrears_suspension_lifted` (area "Membership Fees",
   `kind='bell'`, FYI — `action_required=false`, `default_recipients` `["jlatham@elitert.com"]`;
   migration `20260923120000_membership_arrears_suspension_lifted_rule.sql`) — raised when an arrears
-  clear switches a member's `suspended` flag off.
+  clear switches a member's `suspended` flag off. **Added 2026-10-22:** `MEMBERSHIP_gc_renewal_short`
+  (area "Membership Fees", `kind='bell'`, FYI, `default_recipients` `["tvaldes@elitert.com"]`, deduped
+  while unread; migration `20261022120000_membership_gc_paid.sql`) — a Growth Credit plan's renewal
+  found the paying account short; nothing taken, retried nightly.
+- **Two Growth Credit templates (2026-10-22, same migration, both Draft):**
+  **`MEMBERSHIP_gc_confirmation`** — *"Your ERT Membership is confirmed - paid with Growth Credits"*,
+  To the corporate member + their lead (`RECIPIENT` as an array), Cc `tvaldes@`, Bcc `platham@` +
+  `aanderson@`; tokens `[Member First]` `[Lead First]` `[Member Name]` `[Credits]` `[Payer Name]`
+  `[Balance After]` `[Start Date]` `[Renewal Date]`. **`MEMBERSHIP_gc_renewal_notice`** — 212's subject
+  and style, To the same two, Cc `tvaldes@` + `rhopson@`, Bcc `aanderson@` + `platham@`; tokens
+  `[Member First]` `[Lead First]` `[Member Name]` `[Renewal Date]` `[Credits]` `[Payer Name]`; no
+  meeting button (*reply all to cancel*). Both drafted by `utils/membership-gc.ts draftGcMembershipEmail`
+  (a member with no lead is greeted alone).
 - pg_cron jobid 16 `membership-sweep-daily` @13:30 UTC — **five passes as of 2026-08-04**
   (renewal notices → renewals → waive → charges → clear `members.membership_arrears`). **Pass 4 runs
   the shared `clearMembershipArrearsIfCaughtUp` once per member (all active plans counted), which also
