@@ -128,7 +128,7 @@
 > (from <owner>)"*, linking to `/member/client/<id>`. Its sibling email is template `CLIENT_PORTAL` /
 > `MEMBER_client_connected` (Draft). Behind `mirrored_clients`, keyed on the client's owner.
 >
-> **The 2026-10-22 additions, no section below:** `Payment Failure Alerts` **+2**, both Jake, dismissible FYI, deduped while
+> **The 2026-10-21 additions, no section below:** `Payment Failure Alerts` **+2**, both Jake, dismissible FYI, deduped while
 > unread (migration `20261022130000`): **`FAILURE_email_delivery`** (sort 210) — raised by the delivery layer itself when a
 > Gmail draft / auto-send / sign-in or a PDF render still fails after its automatic retries (`utils/delivery-failure-alert.ts`);
 > **`FAILURE_documents_missing`** (sort 220) — the daily `automation_DOCS_missing_sweep` (jobid 20), one per paid payment

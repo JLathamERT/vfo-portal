@@ -737,7 +737,7 @@ no setup link, no charge, no email — ever.** Column `member_payment_plans.trac
    pass 1 still renews it (#634 rhythm on `charge_day`, rows `scheduled` for the team to mark, the
    new year end = `addYears(renewal, 1)` so any renewal day is kept); pass 2 still waives due $0 rows.
 
-## Corporate Member paid with Growth Credits (added 2026-10-22)
+## Corporate Member paid with Growth Credits (added 2026-10-21)
 
 On **Set Up Membership → Brand new membership**, picking a member whose `member_type` is exactly
 **`Corporate Member`** (not the two free corporate types — Jake) shows a **$ / GC** switch above
