@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react'
 import { callApi } from "../../../lib/api";
 import { hasStrategicSplit, computeStrategicShares } from "../../../lib/strategicSplits";
 
-function PFPricingForm({ clientId, serviceLevel, pipelineId, onComplete, memberCategory, memberType }) {
+function PFPricingForm({ clientId, serviceLevel, pipelineId, onComplete, memberCategory, memberType, memberPays }) {
   // MAP 1 is always Holistic Planning. For a strategic member the split is
   // auto-computed off the gross (Member Contribution is removed, so net = gross).
   const isStrategic = memberCategory === 'strategic_member' && hasStrategicSplit(memberType)
+  // Member signing + paying on behalf: all to VFOS, locked (server matches -
+  // utils/member-pays-split.ts).
+  const locked = isStrategic || memberPays
   const [grossFee, setGrossFee] = useState('')
   const [memberContribution, setMemberContribution] = useState('')
   const netInvoice = ((parseFloat(grossFee) || 0) - (isStrategic ? 0 : (parseFloat(memberContribution) || 0))).toFixed(2)
@@ -17,7 +20,11 @@ function PFPricingForm({ clientId, serviceLevel, pipelineId, onComplete, memberC
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (!isStrategic) return
+    if (memberPays) { setMemberShare('0.00'); setVfosShare(netInvoice); setStrategicPartnerShare('') }
+  }, [memberPays, netInvoice])
+
+  useEffect(() => {
+    if (!isStrategic || memberPays) return
     const shares = computeStrategicShares(memberType, 'holistic', grossFee)
     if (shares) {
       setMemberShare(shares.member.toFixed(2))
@@ -26,7 +33,7 @@ function PFPricingForm({ clientId, serviceLevel, pipelineId, onComplete, memberC
     } else {
       setMemberShare(''); setVfosShare(''); setStrategicPartnerShare('')
     }
-  }, [isStrategic, memberType, grossFee])
+  }, [isStrategic, memberType, grossFee, memberPays])
 
   async function handleSubmit() {
     if (!grossFee || !paymentPlan) return
@@ -42,7 +49,7 @@ function PFPricingForm({ clientId, serviceLevel, pipelineId, onComplete, memberC
         net_invoice: netInvoice,
         member_share: memberShare,
         vfos_share: vfosShare,
-        strategic_partner_share: isStrategic ? strategicPartnerShare : null,
+        strategic_partner_share: isStrategic && !memberPays ? strategicPartnerShare : null,
         payment_plan: paymentPlan,
         pip_meeting_count: serviceLevel === 'Max' ? pipMeetingCount : (serviceLevel === 'Core' ? '4' : serviceLevel === 'Lite' ? '1' : null),
       })
@@ -86,12 +93,17 @@ function PFPricingForm({ clientId, serviceLevel, pipelineId, onComplete, memberC
             <input value={pipMeetingCount} onChange={e => setPipMeetingCount(e.target.value)} style={inputStyle} placeholder="e.g. 4" />
           </div>
         )}
-        {isStrategic && (
+        {memberPays && (
+          <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, marginTop: '2px' }}>
+            Member paying on behalf — all to VFOS, set automatically.
+          </div>
+        )}
+        {isStrategic && !memberPays && (
           <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, marginTop: '2px' }}>
             Strategic member ({memberType}) — split auto-calculated from the gross.
           </div>
         )}
-        {isStrategic && (
+        {isStrategic && !memberPays && (
           <div>
             <label style={labelStyle}>Strategic Partner Share ($)</label>
             <input value={strategicPartnerShare} readOnly style={{ ...inputStyle, opacity: 0.6 }} placeholder="0.00" />
@@ -99,11 +111,11 @@ function PFPricingForm({ clientId, serviceLevel, pipelineId, onComplete, memberC
         )}
         <div>
           <label style={labelStyle}>Member Share ($)</label>
-          <input value={memberShare} onChange={e => setMemberShare(e.target.value)} readOnly={isStrategic} style={{ ...inputStyle, ...(isStrategic ? { opacity: 0.6 } : {}) }} placeholder="e.g. 1200" />
+          <input value={memberShare} onChange={e => setMemberShare(e.target.value)} readOnly={locked} style={{ ...inputStyle, ...(locked ? { opacity: 0.6 } : {}) }} placeholder="e.g. 1200" />
         </div>
         <div>
           <label style={labelStyle}>VFOs Share ($)</label>
-          <input value={vfosShare} onChange={e => setVfosShare(e.target.value)} readOnly={isStrategic} style={{ ...inputStyle, ...(isStrategic ? { opacity: 0.6 } : {}) }} placeholder="e.g. 4200" />
+          <input value={vfosShare} onChange={e => setVfosShare(e.target.value)} readOnly={locked} style={{ ...inputStyle, ...(locked ? { opacity: 0.6 } : {}) }} placeholder="e.g. 4200" />
         </div>
       </div>
       <button onClick={handleSubmit} disabled={submitting || !grossFee || !paymentPlan}

@@ -5,6 +5,7 @@ import { TaxPlanListSkeleton, PhaseListSkeleton } from '../../shared/Skeleton'
 import { PhaseNotesButton, PhaseNotesPanel, noteInScope } from '../../shared/PhaseNotes'
 import { TrackHero, PhaseBadge, ListHeader } from '../../shared/TrackKit'
 import { hasStrategicSplit, computeStrategicShares } from '../../../lib/strategicSplits'
+import { MEMBER_PAYS_SPLIT_TYPE, memberPaysTaxShares } from '../../../lib/memberPaysSplit'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import PricingSplitCard from './PricingSplitCard'
 import PersonalTaxFormLink from './PersonalTaxFormLink'
@@ -1144,10 +1145,25 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
     }
   }, [splitType, totalFee])
 
+  // Member signing + paying on behalf (2026-10-21): the split is LOCKED to 50%
+  // Tax Planner / 50% VFOS, member $0 - the member keeps nothing. Wins over the
+  // strategic preset; the server stores the same (memberPaysSplitColumns).
+  const memberPaysSplit = memberPayingOnBehalf === 'Yes'
+  useEffect(() => {
+    if (isViewMode) return
+    if (memberPaysSplit) {
+      const shares = memberPaysTaxShares(totalFee)
+      setSplitType(MEMBER_PAYS_SPLIT_TYPE)
+      setMemberShare('0.00'); setTaxPlannerShare(shares.planner); setVfosShare(shares.vfos); setStrategicPartnerShare('')
+    } else if (splitType === MEMBER_PAYS_SPLIT_TYPE) {
+      setSplitType(''); setMemberShare(''); setTaxPlannerShare(''); setVfosShare('')
+    }
+  }, [memberPaysSplit, totalFee])
+
   // Strategic members: fixed split auto-computed off the total fee. Tax
   // Priorities uses the 'tax' rules for BOTH programs (program 1 and 4).
   useEffect(() => {
-    if (isViewMode || !isStrategic) return
+    if (isViewMode || !isStrategic || memberPaysSplit) return
     if (splitType !== 'Strategic Partner') setSplitType('Strategic Partner')
     const shares = computeStrategicShares(memberType, 'tax', totalFee)
     if (shares) {
@@ -1158,7 +1174,7 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
     } else {
       setMemberShare(''); setTaxPlannerShare(''); setVfosShare(''); setStrategicPartnerShare('')
     }
-  }, [isStrategic, memberType, totalFee, splitType])
+  }, [isStrategic, memberType, totalFee, splitType, memberPaysSplit])
 
   // Custom split: all three shares (member, tax-planner, VFOS) are freely
   // editable and must sum to the total fee (validated on submit). The preset
@@ -1203,7 +1219,7 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
       formData.memberShare = memberShare
       formData.taxPlannerShare = taxPlannerShare
       formData.vfosShare = vfosShare
-      if (isStrategic) formData.strategicPartnerShare = strategicPartnerShare
+      if (isStrategic && !memberPaysSplit) formData.strategicPartnerShare = strategicPartnerShare
       // > 0 or nothing at all: an empty, zero or unparseable amount omits the
       // key entirely, which is exactly the shape a 'No' toggle sends.
       if (isDironInsley && discountToggle === 'Yes' && parseFloat(discountApplied) > 0) {
@@ -1285,7 +1301,7 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
         }
         {memberPayingOnBehalf === 'Yes' && !isViewMode && (
           <div style={{ fontSize: '12px', color: '#e06717', fontWeight: 600, marginTop: '6px' }}>
-            The member-paid agreement &amp; emails will be used: addressed to the member, with the client CC'd, and the member signs &amp; pays.
+            The member-paid agreement &amp; emails will be used: addressed to the member, and the member signs &amp; pays.
           </div>
         )}
       </div>
@@ -1410,8 +1426,8 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
             ) : (<>
             <div style={{ marginBottom: '10px' }}>
               <label style={labelStyle}>Split type</label>
-              {isViewMode || isStrategic
-                ? <div style={readOnlyInput}>{isStrategic ? `Strategic Partner (${memberType}) — auto-calculated` : (splitType || '—')}</div>
+              {isViewMode || isStrategic || memberPaysSplit
+                ? <div style={readOnlyInput}>{memberPaysSplit && !isViewMode ? `${MEMBER_PAYS_SPLIT_TYPE} — set automatically (member paying)` : isStrategic && !isViewMode ? `Strategic Partner (${memberType}) — auto-calculated` : (splitType || '—')}</div>
                 : <select value={splitType} onChange={e => setSplitType(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
                     <option value="">-- Select --</option>
                     {splitOptions.map(s => <option key={s} value={s}>{s}</option>)}
@@ -1421,7 +1437,7 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
             </div>
             {splitType && (
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                {(isStrategic || strategicPartnerShare) && (
+                {((isStrategic && !memberPaysSplit) || strategicPartnerShare) && (
                   <div style={{ flex: 1, minWidth: '120px' }}>
                     <label style={labelStyle}>Strategic Partner share</label>
                     <div style={{ position: 'relative' }}>
@@ -1622,10 +1638,20 @@ function TaxPricingForm({ submitLabel = 'Submit', onSubmit, onCancel, memberCate
     }
   }, [splitType, totalFee])
 
+  // Member signing + paying (chosen at the decision, stored on the plan): the split
+  // is LOCKED to 50% Tax Planner / 50% VFOS, member $0 (2026-10-21).
+  const memberPaysSplit = plan?.member_paying_on_behalf === true
+  useEffect(() => {
+    if (!memberPaysSplit) return
+    const shares = memberPaysTaxShares(totalFee)
+    setSplitType(MEMBER_PAYS_SPLIT_TYPE)
+    setMemberShare('0.00'); setTaxPlannerShare(shares.planner); setVfosShare(shares.vfos); setStrategicPartnerShare('')
+  }, [memberPaysSplit, totalFee])
+
   // Strategic members: fixed split auto-computed off the total fee. Tax
   // Priorities uses the 'tax' rules for BOTH programs (program 1 and 4).
   useEffect(() => {
-    if (!isStrategic) return
+    if (!isStrategic || memberPaysSplit) return
     if (splitType !== 'Strategic Partner') setSplitType('Strategic Partner')
     const shares = computeStrategicShares(memberType, 'tax', totalFee)
     if (shares) {
@@ -1694,7 +1720,7 @@ function TaxPricingForm({ submitLabel = 'Submit', onSubmit, onCancel, memberCate
         memberShare,
         taxPlannerShare,
         vfosShare,
-        ...(isStrategic ? { strategicPartnerShare } : {}),
+        ...(isStrategic && !memberPaysSplit ? { strategicPartnerShare } : {}),
         ...(isDironInsley && discountToggle === 'Yes' && parseFloat(discountApplied) > 0
           ? { discountApplied: parseFloat(discountApplied) }
           : {}),
@@ -1737,8 +1763,8 @@ function TaxPricingForm({ submitLabel = 'Submit', onSubmit, onCancel, memberCate
         ) : (<>
         <div style={{ marginBottom: '10px' }}>
           <label style={labelStyle}>Split type</label>
-          {isStrategic
-            ? <div style={{ ...inputStyle, opacity: 0.6, pointerEvents: 'none' }}>{`Strategic Partner (${memberType}) — auto-calculated`}</div>
+          {isStrategic || memberPaysSplit
+            ? <div style={{ ...inputStyle, opacity: 0.6, pointerEvents: 'none' }}>{memberPaysSplit ? `${MEMBER_PAYS_SPLIT_TYPE} — set automatically (member paying)` : `Strategic Partner (${memberType}) — auto-calculated`}</div>
             : <select value={splitType} onChange={e => setSplitType(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
                 <option value="">-- Select --</option>
                 {splitOptions.map(s => <option key={s} value={s}>{s}</option>)}
@@ -1748,7 +1774,7 @@ function TaxPricingForm({ submitLabel = 'Submit', onSubmit, onCancel, memberCate
         </div>
         {splitType && (
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            {isStrategic && (
+            {isStrategic && !memberPaysSplit && (
               <div style={{ flex: 1, minWidth: '120px' }}>
                 <label style={labelStyle}>Strategic Partner share</label>
                 <div style={{ position: 'relative' }}>

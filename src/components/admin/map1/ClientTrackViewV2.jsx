@@ -677,7 +677,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                                 {finalDec === 'Yes' && (
                                   <>
                                     {needsPricing && !readOnly ? (
-                              <PFPricingForm clientId={clientId} serviceLevel={pd?.c15_service_level} pipelineId={pd?.id} memberCategory={client?.member_category} memberType={client?.member_type} onComplete={() => loadTrack()} />
+                              <PFPricingForm clientId={clientId} serviceLevel={pd?.c15_service_level} pipelineId={pd?.id} memberPays={pd?.member_paying_on_behalf === true} memberCategory={client?.member_category} memberType={client?.member_type} onComplete={() => loadTrack()} />
                                     ) : pd?.gross_fee ? (
                                       <>
                                         <div style={{ cursor: mirror ? 'default' : 'pointer' }} onClick={() => { if (!mirror) setExpanded(prev => ({ ...prev, pricing_details: !prev.pricing_details })) }}>
@@ -719,7 +719,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                                 {finalDec === 'ExtraMeeting' && (
                                   <>
                                     {autoStep('Extra meeting requested', true)}
-                                    {!readOnly && <PFExtraMeetingForm clientId={clientId} pipelineId={pd?.id} memberCategory={client?.member_category} memberType={client?.member_type} onComplete={() => loadTrack()} />}
+                                    {!readOnly && <PFExtraMeetingForm clientId={clientId} pipelineId={pd?.id} memberPays={pd?.member_paying_on_behalf === true} memberCategory={client?.member_category} memberType={client?.member_type} onComplete={() => loadTrack()} />}
                                   </>
                                 )}
                               </div>
