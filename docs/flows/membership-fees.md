@@ -14,7 +14,7 @@
 > be able to do anything they want within those sections like i can"*. Both mounts now pass
 > **`isSuperadmin={canSeeTab('accounting')}`**, so the prop still exists (and still guards every
 > money control in the panel) but is fed the TAB GRANT rather than the superadmin flag: a granted
-> admin gets Set Up Payments / create, setup + update links, the auto-renew toggle, next-year
+> admin gets Set Up Membership (named Set Up Payments until 2026-10-21) / create, setup + update links, the auto-renew toggle, next-year
 > terms, Pause, Terminate, cancel and resend/reminder. Correspondingly **every `membership_*`
 > handler dropped its in-handler `auth.isSuperadmin` 403** — `TAB_ACTIONS.accounting` is now the
 > only gate on the whole family. Gotcha **#338** (and #333, whose "TWO deliberate exceptions"
@@ -697,6 +697,45 @@ start + 11 months — otherwise a paused year's rows spill out of a fixed 12-mon
 
 **Pauses stack.** A second pause re-runs the same shift against the already-shifted schedule and
 writes a second audit row — verified live with a 3-month pause followed by a 2-month one.
+
+## Track billing on old system (added 2026-10-21)
+
+The third option on **Set Up Membership** (the sub-tab was *Set Up Payments* until this change),
+after *Brand new membership* and *Transfer from old billing (mid-year)*. For members who are NOT
+being set up on portal billing but whose membership the team still wants to see here: **no Stripe,
+no setup link, no charge, no email — ever.** Column `member_payment_plans.tracking_only` (table doc).
+
+1. **Form** — member, *Track billing on old system*, annual value, credit note + reason, Monthly /
+   Annual, then **renewal date (ANY day, future, within a year)** and, monthly only, **the day they
+   pay on (1st–15th)**. The preview says *"Based on your inputs there are N payments left this
+   year"* and lists them: every payment day **on or after today** and **strictly before** the
+   renewal, each `(annual − credit) ÷ 12` whole dollars (annual: none this year — next year's amount
+   is due at renewal). Each row's date + amount is editable, **✕** removes one, **+ Add a payment**
+   adds one; changing the inputs above rebuilds the list. Hidden while editing a pending plan.
+2. **`membership_tracking_plan_save`** (`actions/membership/tracking-plan-save.ts`,
+   `TAB_ACTIONS.accounting`) — inserts the plan **`active`** (`tracking_only=true`, `transfer=false`,
+   `start_date` = renewal − 1 year, `charge_day` = the day or 15 for annual) and the rows in one go
+   (`year_start` = renewal − 1 year, `year_end` = renewal, `scheduled`; plan deleted again if the row
+   insert fails). Refuses a row on/after the renewal (#235/#350), before the year start, two on one
+   date (#315), or a member who already has a live plan. Nothing chains after it — the form does
+   NOT call `membership_send_setup_link`.
+3. **Members tab** — an *Old system* pill; each row's Status is a picker of the seven schedule
+   statuses (`membership_tracking_row_save`, the only writer for these rows, which refuses any
+   ordinary plan); a Paid row shows *Paid on [date]* (default the due date) · *Old system*. Hidden:
+   *Send payment update link*, *Pause Membership Payments*, the emails chip and the terminate fee
+   box. Kept: auto-renew, *Edit next year's terms* (saves with no email), *Terminate member* ($0).
+4. **Arrears follow the hand-set status** (Jake, 2026-10-21): Missed / Declined on a non-zero row
+   sets `members.membership_arrears` (the *In arrears* pill, revenue-share payouts held, the Friday
+   digest); any other status runs the one clear rule `clearMembershipArrearsIfCaughtUp` (clears only
+   once no missed / declined row remains on the member's active plans, lifts a suspension, releases
+   held payouts — same as sweep pass 4).
+5. **Elsewhere** — Overdue Payments lists a tracked plan's late rows with an *Old system* pill and
+   *"Tracked — update each payment's status on their plan card"* (no reminder button; the handler
+   refuses too); the global Payments page labels its rows *(Old system)*, method *Old system*.
+6. **Sweep** — pass 0 (renewal notice) filters `tracking_only=false`; pass 3 (charges) skips the
+   plan BEFORE the mode guard (it has no Stripe stamp, so the guard would bell a mismatch nightly);
+   pass 1 still renews it (#634 rhythm on `charge_day`, rows `scheduled` for the team to mark, the
+   new year end = `addYears(renewal, 1)` so any renewal day is kept); pass 2 still waives due $0 rows.
 
 ## NOT built yet (next work)
 
