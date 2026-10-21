@@ -10,7 +10,7 @@ import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 function clientProgramOf(r) {
   return /^tax-/.test(r.key || '') && r.category === 'Tax Planning' ? 4 : 1
 }
-function clientPlanPath(r) {
+export function clientPlanPath(r) {
   const k = r.key || ''
   if (/^map1-/.test(k)) return clientPagePath(r.clientId, { program: 1, tab: 'map1' })
   const m = /^tax-(\d+)-/.exec(k)
@@ -35,6 +35,8 @@ const STATUS = {
   // both mean "no money came in" — but a distinct label, because a cancellation is a
   // decision we made, not something that went wrong.
   cancelled:  { label: 'Cancelled',         fg: '#b42318', bg: '#fdecea' },
+  // A payout owed but parked — no payout account yet, the member held, no planner.
+  held:       { label: 'Held', fg: '#b45309', bg: '#fef3c7' },
   unpaid:     { label: 'Not paid',          fg: 'var(--vfo-faint)', bg: '#f2f4f7' },
 }
 
@@ -54,13 +56,13 @@ const CATEGORY_ORDER = [
   'Background check', 'Monthly license',
 ]
 
-function fmtMoney(n) {
+export function fmtMoney(n) {
   if (n === null || n === undefined) return '—'
   const s = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return n < 0 ? `−$${s}` : `$${s}`
 }
 
-function fmtDate(d) {
+export function fmtDate(d) {
   if (!d) return '—'
   // Date-only values ("YYYY-MM-DD", e.g. pay1_date / retainer_date) are calendar
   // dates — build them in local time so they render as-is. `new Date("YYYY-MM-DD")`
@@ -72,18 +74,19 @@ function fmtDate(d) {
   return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function fmtMethod(method, last4) {
+export function fmtMethod(method, last4) {
   if (!method) return '—'
   const m = method === 'card' ? 'Card'
     : method === 'ach' ? 'ACH'
     : method === 'check' ? 'Check'
     : method === 'connect' ? 'Stripe Connect'
     : method === 'old_system' ? 'Old system'
+    : method === 'growth_credits' ? 'Growth Credits'
     : method
   return last4 ? `${m} ••${last4}` : m
 }
 
-function StatusPill({ status, count }) {
+export function StatusPill({ status, count }) {
   const s = STATUS[status] || STATUS.unpaid
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '999px', background: s.bg, color: s.fg, fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap' }}>

@@ -4,6 +4,9 @@ import { money } from './specialistRevenueShared'
 import { Skeleton, TableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink, useOpenMember } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+// The member History tab's own chip + By label: one look, and the sale-vs-grant
+// split of "purchased" (by Stripe session id, #465) lives in one place.
+import { gcTypeChip, gcActorLabel } from '../shared/GCMarketplaceViews'
 
 // Accounting > Members > Growth Credits. Program-wide totals plus the full
 // transaction ledger and every member's current balance. Read-only.
@@ -13,26 +16,6 @@ function fmtDate(s) {
   try { return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return String(s) }
 }
 
-// `type` is "purchased" for BOTH a Stripe sale and an admin grant (gc_add_credits), so
-// the label is derived from the Stripe session id instead — the thing only a real
-// payment leaves behind. Mirrors GCMarketplaceViews.jsx, which shows the member the
-// same word, and load-accounting.ts, which splits the totals on the same test (#465).
-function TypeTag({ type, sessionId }) {
-  const granted = type === 'purchased' && !sessionId
-  const label = granted ? 'added' : (type || '—')
-  const tone = granted
-    ? { bg: 'rgba(0,149,255,0.16)', fg: '#0095ff' }
-    : type === 'purchased'
-    ? { bg: 'rgba(22,163,74,0.14)', fg: '#16a34a' }
-    : type === 'refunded'
-    ? { bg: 'rgba(0,149,255,0.16)', fg: '#0095ff' }
-    : type === 'deducted'
-    ? { bg: 'rgba(224,103,23,0.14)', fg: '#e06717' }
-    : type === 'membership'
-    ? { bg: 'rgba(124,58,237,0.14)', fg: '#7c3aed' }
-    : { bg: 'rgba(217,48,37,0.14)', fg: '#d93025' }
-  return <span style={{ padding: '3px 10px', borderRadius: '20px', background: tone.bg, color: tone.fg, fontSize: '11.5px', fontWeight: 700 }}>{label}</span>
-}
 
 export default function GrowthCreditsAccountingPanel() {
   const openMember = useOpenMember()
@@ -67,23 +50,18 @@ export default function GrowthCreditsAccountingPanel() {
 
   const wrap = { padding: '24px', maxWidth: '1050px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
   const totals = data?.totals || {}
+  // The headline figures only (2026-10-22). Granted / refunded / deducted /
+  // membership credits stay in the totals payload and are told apart by the
+  // Type chip in the ledger below.
   const cards = [
-    { label: 'Credits Sold', value: totals.credits_purchased ?? 0 },
-    // Comped credits used to be counted as Sold. They are still real issued credits a
-    // member can spend, so they get their own tile rather than disappearing.
-    { label: 'Credits Granted', value: totals.credits_granted ?? 0 },
-    { label: 'Credits Spent', value: totals.credits_spent ?? 0 },
-    { label: 'Credits Refunded', value: totals.credits_refunded ?? 0 },
-    // Admin removals (gc_deduct_credits, 2026-10-13).
-    { label: 'Credits Deducted', value: totals.credits_deducted ?? 0 },
-    // Corporate memberships paid in credits (2026-10-22).
-    { label: 'Credits for Memberships', value: totals.credits_membership ?? 0 },
     { label: 'Revenue', value: money(totals.revenue_usd || 0) },
+    { label: 'Credits Sold', value: totals.credits_purchased ?? 0 },
+    { label: 'Credits Spent', value: totals.credits_spent ?? 0 },
     { label: 'Outstanding Balance', value: totals.outstanding_credits ?? 0 },
   ]
 
   const tableWrap = { border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)', marginBottom: '22px' }
-  const txCols = '150px 1.3fr 120px 90px 110px 1.4fr'
+  const txCols = '120px 1.1fr 110px 80px 90px 1fr 1.4fr'
   const balCols = '1fr 120px'
 
   return (
@@ -96,7 +74,7 @@ export default function GrowthCreditsAccountingPanel() {
       {loading && (
         <>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '22px' }}>
-            {Array.from({ length: 5 }).map((_, i) => (
+            {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} style={{ flex: 1, minWidth: '160px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '18px 16px', textAlign: 'center' }}>
                 <Skeleton width={64} height={26} style={{ margin: '0 auto' }} />
                 <Skeleton width={90} height={10} style={{ margin: '10px auto 0' }} />
@@ -104,7 +82,7 @@ export default function GrowthCreditsAccountingPanel() {
             ))}
           </div>
           <div style={{ marginBottom: '22px' }}>
-            <TableSkeleton cols={[1.2, 1.3, 1, 0.8, 1, 1.4]} rows={4} />
+            <TableSkeleton cols={[1.2, 1.1, 1, 0.8, 0.9, 1, 1.4]} rows={4} />
           </div>
           <Skeleton width={130} height={13} style={{ margin: '4px 2px 10px' }} />
           <TableSkeleton cols={[3, 1]} rows={3} />
@@ -125,7 +103,7 @@ export default function GrowthCreditsAccountingPanel() {
 
           <div style={tableWrap}>
             <div style={{ display: 'grid', gridTemplateColumns: txCols, gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
-              <span>Date</span><span>Member</span><span>Type</span><span style={{ textAlign: 'right' }}>Credits</span><span style={{ textAlign: 'right' }}>Amount</span><span>Description</span>
+              <span>Date</span><span>Member</span><span>Type</span><span style={{ textAlign: 'right' }}>Credits</span><span style={{ textAlign: 'right' }}>Amount</span><span>By</span><span>Description</span>
             </div>
             {(data.transactions || []).length === 0 && (
               <div style={{ textAlign: 'center', padding: '36px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No transactions yet.</div>
@@ -134,9 +112,10 @@ export default function GrowthCreditsAccountingPanel() {
               <div key={t.id} {...memberRow(t.member_number)} style={{ ...memberRowStyle(t.member_number), display: 'grid', gridTemplateColumns: txCols, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
                 <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(t.created_at)}</span>
                 <span><MemberNameLink memberNumber={t.member_number} style={{ fontWeight: 600 }}>{t.member_name}</MemberNameLink></span>
-                <span><TypeTag type={t.type} sessionId={t.stripe_session_id} /></span>
+                <span>{gcTypeChip(t)}</span>
                 <span style={{ textAlign: 'right', fontWeight: 700, color: (t.amount || 0) < 0 ? '#d93025' : 'var(--vfo-success-text-2)' }}>{(t.amount || 0) > 0 ? '+' : ''}{t.amount}</span>
                 <span style={{ textAlign: 'right' }}>{t.amount_usd != null ? money(t.amount_usd) : '—'}</span>
+                <span style={{ color: 'var(--vfo-muted)' }}>{gcActorLabel(t)}</span>
                 <span style={{ color: 'var(--vfo-muted)' }}>{t.description || '—'}</span>
               </div>
             ))}
