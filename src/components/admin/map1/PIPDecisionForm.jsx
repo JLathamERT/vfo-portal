@@ -31,8 +31,22 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
   const [vfosShare, setVfosShare] = useState(existing.vfosShare || '')
   const [strategicPartnerShare, setStrategicPartnerShare] = useState(existing.strategicPartnerShare || '')
 
+  // Member signing + paying on behalf: the whole net invoice goes to VFOS,
+  // locked (the server stores the same - utils/member-pays-split.ts).
+  const memberPaysSplit = memberPayingOnBehalf === 'Yes'
+  const splitLocked = isViewMode || isStrategic || memberPaysSplit
   useEffect(() => {
-    if (isViewMode || !isStrategic) return
+    if (isViewMode) return
+    if (memberPaysSplit) { setMemberShare('0.00'); setVfosShare(netInvoiceValue); setStrategicPartnerShare('') }
+  }, [memberPaysSplit, netInvoiceValue, isViewMode])
+  // Leaving member-pays: clear the locked numbers so the split is chosen again.
+  useEffect(() => {
+    if (isViewMode || memberPaysSplit || isStrategic) return
+    setMemberShare(''); setVfosShare('')
+  }, [memberPaysSplit])
+
+  useEffect(() => {
+    if (isViewMode || !isStrategic || memberPaysSplit) return
     const shares = computeStrategicShares(memberType, 'holistic', grossServiceValue)
     if (shares) {
       setMemberShare(shares.member.toFixed(2))
@@ -41,7 +55,7 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
     } else {
       setMemberShare(''); setVfosShare(''); setStrategicPartnerShare('')
     }
-  }, [isStrategic, memberType, grossServiceValue, isViewMode])
+  }, [isStrategic, memberType, grossServiceValue, isViewMode, memberPaysSplit])
   const [paymentPlan, setPaymentPlan] = useState(existing.paymentPlan || '')
   const [pipMeetingCount, setPipMeetingCount] = useState(existing.pipMeetingCount || '')
   const [undecidedReasons, setUndecidedReasons] = useState(existing.undecidedReasons || [])
@@ -77,7 +91,7 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
       if (!grossServiceValue) { setSubmitError('Please enter gross service value'); return }
       if (!paymentPlan) { setSubmitError('Please select a payment plan'); return }
       if (clientService === 'Max' && !pipMeetingCount) { setSubmitError('Please enter PIP meeting count for Max'); return }
-      const splitTotal = (parseFloat(memberShare) || 0) + (parseFloat(vfosShare) || 0) + (isStrategic ? (parseFloat(strategicPartnerShare) || 0) : 0)
+      const splitTotal = (parseFloat(memberShare) || 0) + (parseFloat(vfosShare) || 0) + (isStrategic && !memberPaysSplit ? (parseFloat(strategicPartnerShare) || 0) : 0)
       const netVal = parseFloat(netInvoiceValue) || 0
       if (Math.abs(splitTotal - netVal) > 0.01) {
         setSubmitError(`Revenue split ($${splitTotal.toFixed(2)}) must equal Net Invoice Value ($${netVal.toFixed(2)})`)
@@ -103,7 +117,7 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
       formData.netInvoiceValue = netInvoiceValue.toString()
       formData.memberShare = memberShare
       formData.vfosShare = vfosShare
-      if (isStrategic) formData.strategicPartnerShare = strategicPartnerShare
+      if (isStrategic && !memberPaysSplit) formData.strategicPartnerShare = strategicPartnerShare
       formData.paymentPlan = paymentPlan
       formData.pipMeetingCount = clientService === 'Max' ? pipMeetingCount : null
     } else if (decision === 'Undecided') {
@@ -154,7 +168,7 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
         }
         {memberPayingOnBehalf === 'Yes' && !isViewMode && (
           <div style={{ fontSize: '12px', color: '#e06717', fontWeight: 600, marginTop: '6px' }}>
-            The member-paid agreement &amp; emails will be used: addressed to the member, with the client CC'd, and the member signs &amp; pays.
+            The member-paid agreement &amp; emails will be used: addressed to the member, and the member signs &amp; pays.
           </div>
         )}
       </div>
@@ -241,13 +255,17 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
 
           <div style={sectionStyle}>
             <div style={{ fontSize: '12px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Revenue split</div>
-            {isStrategic && (
+            {memberPaysSplit ? (
+              <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, marginBottom: '10px' }}>
+                Member paying on behalf — all to VFOS, set automatically.
+              </div>
+            ) : isStrategic && (
               <div style={{ fontSize: '11px', color: '#0095ff', fontWeight: 600, marginBottom: '10px' }}>
                 Strategic member ({memberType}) — split auto-calculated from the gross.
               </div>
             )}
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              {(isStrategic || strategicPartnerShare) && (
+              {((isStrategic && !memberPaysSplit) || strategicPartnerShare) && (
                 <div style={{ flex: 1, minWidth: '120px' }}>
                   <label style={labelStyle}>Strategic Partner share</label>
                   <div style={{ position: 'relative' }}>
@@ -260,14 +278,14 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
                 <label style={labelStyle}>Member share</label>
                 <div style={{ position: 'relative' }}>
                   <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--vfo-muted)', fontSize: '14px' }}>$</span>
-                  <input value={memberShare} onChange={e => setMemberShare(e.target.value)} placeholder="0.00" style={{ ...(isViewMode || isStrategic ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode || isStrategic} />
+                  <input value={memberShare} onChange={e => setMemberShare(e.target.value)} placeholder="0.00" style={{ ...(splitLocked ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={splitLocked} />
                 </div>
               </div>
               <div style={{ flex: 1, minWidth: '120px' }}>
                 <label style={labelStyle}>VFOS share</label>
                 <div style={{ position: 'relative' }}>
                   <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--vfo-muted)', fontSize: '14px' }}>$</span>
-                  <input value={vfosShare} onChange={e => setVfosShare(e.target.value)} placeholder="0.00" style={{ ...(isViewMode || isStrategic ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode || isStrategic} />
+                  <input value={vfosShare} onChange={e => setVfosShare(e.target.value)} placeholder="0.00" style={{ ...(splitLocked ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={splitLocked} />
                 </div>
               </div>
             </div>
