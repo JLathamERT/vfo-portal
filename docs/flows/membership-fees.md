@@ -764,8 +764,8 @@ the annual value. **$** (the default) is the ordinary flow, unchanged. **GC**:
    *Edit next year's terms*, the terminate fee box (the server refuses all four). Kept: auto-renew,
    *Terminate member* ($0 — credits already used are not refunded). The Renewals list shows the pill.
 4. **Elsewhere** — the global Payments page leaves these rows out (no money moved); Accounting →
-   Growth Credits counts them on a **Credits for Memberships** tile; both credit histories show a
-   purple *Membership* chip.
+   Growth Credits counts them in `load-accounting`'s `credits_membership` total (no tile — the page
+   shows four headline tiles); both credit histories show a purple *Membership* chip.
 5. **Sweep** — pass 0's $ notice filters `paid_with_gc=false`; a **0b** pass sends
    **`MEMBERSHIP_gc_renewal_notice`** (same window and `renewal_notice_for` stamp; *"if you do nothing
    it will renew on [date] using [N] Growth Credits from [payer]'s account … reply all to cancel"*).
