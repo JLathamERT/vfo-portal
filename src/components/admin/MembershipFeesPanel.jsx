@@ -379,7 +379,7 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && section === 'members' && (
-        <MembersSection plans={plans} category={category} onChanged={load} onEdit={startEdit} isSuperadmin={isSuperadmin}
+        <MembersSection plans={plans} allMembers={allMembers} category={category} onChanged={load} onEdit={startEdit} isSuperadmin={isSuperadmin}
           focusMember={focusMember} focusPlanId={focusPlanId}
           onFocusConsumed={() => { focusConsumed.current = true; setFocusMember(null); setFocusPlanId(null) }} />
       )}
@@ -402,7 +402,7 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
 
 // ── Members: the reconciliation list ──────────────────────────────────────────
 
-function MembersSection({ plans, category, onChanged, onEdit, isSuperadmin, focusMember, focusPlanId, onFocusConsumed }) {
+function MembersSection({ plans, allMembers, category, onChanged, onEdit, isSuperadmin, focusMember, focusPlanId, onFocusConsumed }) {
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
@@ -434,7 +434,7 @@ function MembersSection({ plans, category, onChanged, onEdit, isSuperadmin, focu
         </div>
       )}
       {filtered.map(p => (
-        <PlanCard key={p.id} plan={p} category={category} onChanged={onChanged} onEdit={onEdit} isSuperadmin={isSuperadmin}
+        <PlanCard key={p.id} plan={p} allMembers={allMembers} category={category} onChanged={onChanged} onEdit={onEdit} isSuperadmin={isSuperadmin}
           autoOpen={focusPlanId ? p.id === focusPlanId : !!focusMember && String(p.member_number) === String(focusMember)}
           onAutoOpened={onFocusConsumed} />
       ))}
@@ -442,7 +442,7 @@ function MembersSection({ plans, category, onChanged, onEdit, isSuperadmin, focu
   )
 }
 
-function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = false, onAutoOpened }) {
+function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSuperadmin, autoOpen = false, onAutoOpened }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
@@ -471,7 +471,7 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
   const activeYear = years.length ? years[yearIdx === -1 ? years.length - 1 : yearIdx] : null
   const sched = activeYear ? activeYear.rows : []
   const currentRows = years.length ? years[years.length - 1].rows : []
-  const payable = currentRows.filter(r => Number(r.amount_due) > 0)
+  const payable = currentRows.filter(r => Number(r.amount_due) > 0 || (plan.paid_with_gc && r.kind === 'membership'))
   const paidCount = payable.filter(r => r.status === 'paid').length
   const missedCount = currentRows.filter(r => r.status === 'missed' || r.status === 'declined').length
   const perPull = Number(plan.per_pull_amount) || 0
@@ -480,6 +480,15 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
   // Billed on the old system — tracked only: no links, no charges, no emails.
   const tracking = !!plan.tracking_only
   const canMarkRows = tracking && isSuperadmin && plan.status === 'active'
+  // Paid in Growth Credits (a Corporate Member, 2026-10-22): no money, no links;
+  // each year the same credits come out of the same account.
+  const gc = !!plan.paid_with_gc
+  const gcCredits = Number(plan.gc_credits) || 0
+  const gcPayer = (allMembers || []).find(x => x.member_number === plan.gc_payer_member_number)
+  const gcPayerName = [gcPayer?.first_name, gcPayer?.last_name].filter(Boolean).join(' ')
+  const gcFrom = plan.gc_payer_member_number && plan.gc_payer_member_number !== plan.member_number
+    ? `from ${gcPayerName ? `${gcPayerName} (${plan.gc_payer_member_number})` : plan.gc_payer_member_number}`
+    : 'from their own account'
   // Header hint: any pause marker still dated today or later means the plan is
   // sitting inside (or about to enter) a pause. Deliberately simple — the marker
   // rows are only written by a pause and are removed with it.
@@ -563,7 +572,9 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
   async function terminate() {
     const fee = parseMoney(terminateFee)
     const res = await run('membership_terminate', { plan_id: plan.id, termination_fee: fee },
-      plan.tracking_only
+      plan.paid_with_gc
+        ? `Terminate ${plan.member_name}'s Growth Credit membership? It will not renew and no more credits are taken. Credits already used are not refunded.`
+        : plan.tracking_only
         ? `End ${plan.member_name}'s membership? The remaining scheduled payments are canceled and it will not renew. Nothing is charged or emailed.`
         : fee > 0
         ? `Terminate ${plan.member_name}'s membership and charge a ${money(roundDollar(fee))} termination fee to their ${plan.payment_method_type === 'ach' ? 'bank account' : 'card'} on file right now?`
@@ -670,6 +681,7 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
             <MemberNameLink memberNumber={plan.member_number}>{plan.member_name || plan.member_number}</MemberNameLink>
             {plan.transfer && <StatusPill label="Transferred" color={BLUE} />}
             {tracking && <StatusPill label="Old system" color="#6b7280" />}
+            {gc && <StatusPill label="Growth Credits" color="#7c3aed" />}
             {openMeeting && <StatusPill label="Meeting requested" color="#e06717" />}
             {m.suspended && <StatusPill label="Suspended" color="#ef4444" />}
             {m.paused && <StatusPill label="Paused" color="#e06717" />}
@@ -680,7 +692,9 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
           </div>
           <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
             {plan.member_number} · {plan.advisor_model || 'Model —'} · {m.member_type || '—'}
-            {' · '}{plan.frequency === 'monthly'
+            {' · '}{gc
+              ? `Annual (${gcCredits} GC/yr ${gcFrom})`
+              : plan.frequency === 'monthly'
               ? `Monthly (${money(perPull)}/mo${plan.charge_day ? ` on the ${ordinal(plan.charge_day)}` : ''})`
               : `Annual (${money(perPull)}/yr)`}
             {Number(plan.credit_note) > 0 ? ` · Credit note ${money(plan.credit_note)}` : ''}
@@ -692,8 +706,8 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)' }}>{money(plan.net_annual)}</div>
-          <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>net / year</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)' }}>{gc ? `${gcCredits} GC` : money(plan.net_annual)}</div>
+          <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{gc ? 'per year' : 'net / year'}</div>
         </div>
         <div style={{ textAlign: 'right', width: '110px' }}>
           <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{plan.status === 'setup_pending' ? '—' : fmtDate(plan.renewal_date)}</div>
@@ -758,7 +772,7 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
                   <div key={row.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: rowBg, borderRadius: '6px' }}>
                     <div style={{ fontWeight: 600 }}>{row.period_label}</div>
                     <div>{fmtDate(row.due_date)}</div>
-                    <div style={{ fontWeight: 600, color: zero ? 'var(--vfo-faint)' : 'var(--vfo-ink)' }}>{money(row.amount_due)}</div>
+                    <div style={{ fontWeight: 600, color: zero && !gc ? 'var(--vfo-faint)' : 'var(--vfo-ink)' }}>{gc && row.kind === 'membership' ? `${gcCredits} GC` : money(row.amount_due)}</div>
                     <div style={{ color: 'var(--vfo-faint)' }}>{Number(row.credit_applied) > 0 ? money(row.credit_applied) : '—'}</div>
                     <div>
                       {canMarkRows && row.kind === 'membership' ? (
@@ -771,7 +785,9 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
                       )}
                     </div>
                     <div style={{ textAlign: 'right', fontSize: '11.5px', color: 'var(--vfo-muted)', wordBreak: 'break-all' }}>
-                      {tracking ? (
+                      {gc && row.kind === 'membership' ? (
+                        row.status === 'paid' ? `${row.paid_at ? `${fmtStamp(row.paid_at)} · ` : ''}Growth Credits` : '—'
+                      ) : tracking ? (
                         row.status === 'paid' ? (
                           canMarkRows ? (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
@@ -794,14 +810,14 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
                   </div>
                 )
               })}
-              <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '10px 6px 2px', borderTop: '2px solid var(--vfo-border)', marginTop: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
+              {!gc && <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '10px 6px 2px', borderTop: '2px solid var(--vfo-border)', marginTop: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
                 <div>Totals</div>
                 <div />
                 <div>{money(sched.reduce((s, r) => s + Number(r.amount_due || 0), 0))}</div>
                 <div>{money(sched.reduce((s, r) => s + Number(r.credit_applied || 0), 0))}</div>
                 <div style={{ color: 'var(--vfo-success-text-2)' }}>{money(sched.filter(r => r.status === 'paid').reduce((s, r) => s + Number(r.amount_due || 0), 0))} paid</div>
                 <div />
-              </div>
+              </div>}
             </>
           )}
 
@@ -892,7 +908,7 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
               )}
               {plan.status === 'active' && (
                 <>
-                  {!tracking && (
+                  {!tracking && !gc && (
                     <button type="button" disabled={busy} onClick={sendUpdateLink} style={ghostBtn}>
                       {busy ? 'Working…' : 'Send payment update link'}
                     </button>
@@ -901,10 +917,12 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
                     onClick={() => run('membership_plan_cancel', { plan_id: plan.id, mode: plan.auto_renew ? 'auto_renew_off' : 'auto_renew_on' }).then(r => r && onChanged?.())}>
                     {plan.auto_renew ? 'Turn auto-renew off' : 'Turn auto-renew on'}
                   </button>
-                  <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowNextYear(v => !v)}>
-                    Edit next year's terms
-                  </button>
-                  {!tracking && (
+                  {!gc && (
+                    <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowNextYear(v => !v)}>
+                      Edit next year's terms
+                    </button>
+                  )}
+                  {!tracking && !gc && (
                     <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowPause(v => !v)}>
                       Pause Membership Payments
                     </button>
@@ -914,7 +932,12 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
                   </button>
                 </>
               )}
-              {tracking ? (
+              {gc ? (
+                <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MEMBER_MEMBERSHIP_FEES" title="Growth Credit emails" context={emailCtx} templates={[
+                  { name: 'MEMBERSHIP_gc_confirmation', when: 'Plan created — credits taken, to the member and the member they are connected to' },
+                  { name: 'MEMBERSHIP_gc_renewal_notice', when: '30 days before renewal — renews on the same credits unless they reply to cancel' },
+                ]} /></span>
+              ) : tracking ? (
                 <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>Billed on the old system — no emails are sent and nothing is charged here.</span>
               ) : (
                 <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MEMBER_MEMBERSHIP_FEES" title="Payment link emails" context={emailCtx} templates={[
@@ -1012,7 +1035,7 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
             <div style={{ marginTop: '12px', padding: '14px 16px', borderRadius: '10px', background: 'var(--vfo-card)', border: '1px solid #f3c0c0' }}>
               <div style={{ ...label, marginBottom: '10px', color: '#b91c1c' }}>{tracking ? `End ${plan.member_name}'s membership` : `Terminate ${plan.member_name}`}</div>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                {!tracking && (
+                {!tracking && !gc && (
                   <div style={{ width: '200px' }}>
                     <div style={label}>Termination fee ($, 0 = none)</div>
                     <input value={terminateFee} onChange={e => setTerminateFee(e.target.value)} placeholder="e.g. 2500" style={input} />
@@ -1025,7 +1048,9 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
                 <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowTerminate(false)}>Back</button>
               </div>
               <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
-                {tracking
+                {gc
+                  ? 'The plan will not renew and no more Growth Credits are taken. Credits already used are not refunded.'
+                  : tracking
                   ? 'The remaining scheduled payments are canceled and the plan will not renew. Nothing is charged or emailed.'
                   : <>The fee is charged to their saved {plan.payment_method_type === 'ach' ? 'bank account' : 'card'} immediately; all remaining scheduled payments are voided and the plan will not renew.</>}
               </div>
@@ -1076,6 +1101,14 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
   const [creditMemo, setCreditMemo] = useState(editPlan?.credit_note_memo || '')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
+  // A Corporate Member's brand-new membership can be paid in Growth Credits
+  // ('gc') instead of dollars ('usd', the default): annual only, no credit note,
+  // taken from their own account or the member they are connected to.
+  const [payIn, setPayIn] = useState('usd')
+  const [gcCreditsIn, setGcCreditsIn] = useState('')
+  const [gcPayer, setGcPayer] = useState('')
+  const [gcPayers, setGcPayers] = useState(null)
+  const [gcPayersErr, setGcPayersErr] = useState('')
 
   const liveNumbers = useMemo(() => new Set(
     plans.filter(p => p.status !== 'canceled' && p.status !== 'terminated' && p.id !== editPlan?.id).map(p => p.member_number)
@@ -1098,6 +1131,29 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
   }, [allMembers, category, liveNumbers])
 
   const selected = allMembers.find(m => m.member_number === memberNumber)
+  const gcOffered = !editPlan && mode === 'new' && selected?.member_type === 'Corporate Member'
+  const useGc = gcOffered && payIn === 'gc'
+  const gcCredits = Number(gcCreditsIn)
+  const gcCreditsValid = Number.isFinite(gcCredits) && gcCredits > 0 && Math.abs(gcCredits * 4 - Math.round(gcCredits * 4)) < 1e-9
+  const gcPayerRow = (gcPayers || []).find(p => p.member_number === gcPayer)
+
+  useEffect(() => { if (!gcOffered) setPayIn('usd') }, [gcOffered])
+  // Growth Credit memberships are annual — Monthly stays visible but disabled.
+  useEffect(() => { if (useGc) setFrequency('annual') }, [useGc])
+  useEffect(() => {
+    setGcPayers(null); setGcPayersErr(''); setGcPayer('')
+    if (!useGc || !memberNumber) return
+    let live = true
+    callApi('membership_gc_payers_load', { member_number: memberNumber })
+      .then(res => {
+        if (!live) return
+        if (res?.ok) setGcPayers(res.payers || [])
+        else setGcPayersErr(res?.error || 'Could not load the Growth Credit balances.')
+      })
+      .catch(e => { if (live) setGcPayersErr(e?.message || 'Could not load the Growth Credit balances.') })
+    return () => { live = false }
+  }, [useGc, memberNumber])
+
   const annual = parseMoney(annualAmount)
   const credit = parseMoney(creditNote)
   const net = Math.max(0, Math.round((annual - credit) * 100) / 100)
@@ -1211,9 +1267,35 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
     }
   }
 
+  async function saveGc() {
+    if (!gcCreditsValid) { setMsg({ tone: 'error', text: 'Enter how many Growth Credits — a number greater than 0 (whole or quarters).' }); return }
+    if (!gcPayerRow) { setMsg({ tone: 'error', text: 'Pick whose Growth Credit account to take them from.' }); return }
+    if (gcCredits > gcPayerRow.balance) { setMsg({ tone: 'error', text: `${gcPayerRow.name} only has ${gcPayerRow.balance} Growth Credits.` }); return }
+    if (!window.confirm(`Take ${gcCredits} Growth Credits from ${gcPayerRow.name}'s account now and create ${selected?.first_name || 'this member'}'s annual membership?`)) return
+    setBusy(true)
+    try {
+      const res = await callApi('membership_gc_plan_save', {
+        member_number: memberNumber,
+        category,
+        gc_credits: gcCredits,
+        payer_member_number: gcPayerRow.member_number,
+      })
+      if (!res?.ok) { setMsg({ tone: 'error', text: res?.error || 'Could not save the plan.' }); return }
+      const base = `Membership created — ${gcCredits} Growth Credits taken from ${gcPayerRow.name} (${res.balance_after} left), renews ${fmtDate(res.renewal_date)}.`
+      onSaved?.(res.email
+        ? { tone: 'success', text: `${base} Confirmation email drafted.` }
+        : { tone: 'amber', text: `${base} The confirmation email could not be drafted: ${res.email_error || 'unknown error'}.` })
+    } catch (e) {
+      setMsg({ tone: 'error', text: e?.message || 'Could not save the plan.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function save() {
     setMsg(null)
     if (!memberNumber) { setMsg({ tone: 'error', text: 'Pick a member first.' }); return }
+    if (useGc) { await saveGc(); return }
     if (!(annual > 0)) { setMsg({ tone: 'error', text: 'Enter the annual membership value.' }); return }
     if (isTracking) { await saveTracking(); return }
     if (isTransfer && !transferRenewalValid) { setMsg({ tone: 'error', text: 'Enter the member\'s existing renewal date — it must be the 15th of a month, within a year.' }); return }
@@ -1307,26 +1389,74 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
-        <div>
-          <div style={label}>Annual membership value ($)</div>
-          <input value={annualAmount} onChange={e => setAnnualAmount(e.target.value)} placeholder="e.g. 18000" style={input} />
+      {gcOffered && (
+        <div style={{ marginBottom: '12px' }}>
+          <div style={label}>Annual membership value in</div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button type="button" style={chip(!useGc)} onClick={() => setPayIn('usd')}>$</button>
+            <button type="button" style={chip(useGc)} onClick={() => setPayIn('gc')}>GC</button>
+          </div>
         </div>
-        <div>
-          <div style={label}>Credit note ($, optional)</div>
-          <input value={creditNote} onChange={e => setCreditNote(e.target.value)} placeholder="0" style={input} />
+      )}
+
+      {useGc ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+          <div>
+            <div style={label}>How many Growth Credits?</div>
+            <input type="number" min="0.25" step="0.25" value={gcCreditsIn} onChange={e => setGcCreditsIn(e.target.value)} placeholder="e.g. 40" style={input} />
+            {String(gcCreditsIn).trim() !== '' && !gcCreditsValid && (
+              <div style={{ marginTop: '5px', fontSize: '12px', color: '#b91c1c' }}>Must be greater than 0, in whole credits or quarters (.25, .5, .75).</div>
+            )}
+          </div>
         </div>
-        <div>
-          <div style={label}>Credit note reason (optional)</div>
-          <input value={creditMemo} onChange={e => setCreditMemo(e.target.value)} placeholder="e.g. earned via referrals in 2025" style={input} />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+          <div>
+            <div style={label}>Annual membership value ($)</div>
+            <input value={annualAmount} onChange={e => setAnnualAmount(e.target.value)} placeholder="e.g. 18000" style={input} />
+          </div>
+          <div>
+            <div style={label}>Credit note ($, optional)</div>
+            <input value={creditNote} onChange={e => setCreditNote(e.target.value)} placeholder="0" style={input} />
+          </div>
+          <div>
+            <div style={label}>Credit note reason (optional)</div>
+            <input value={creditMemo} onChange={e => setCreditMemo(e.target.value)} placeholder="e.g. earned via referrals in 2025" style={input} />
+          </div>
         </div>
-      </div>
+      )}
+
+      {useGc && (
+        <div style={{ marginBottom: '16px' }}>
+          <div style={label}>Whose Growth Credit account are we depleting from?</div>
+          {gcPayersErr ? (
+            <div style={{ fontSize: '12.5px', color: '#b91c1c' }}>{gcPayersErr}</div>
+          ) : !gcPayers ? (
+            <div style={{ fontSize: '12.5px', color: 'var(--vfo-faint)' }}>Loading balances…</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {gcPayers.map(p => {
+                const short = gcCreditsValid && gcCredits > p.balance
+                return (
+                  <label key={p.member_number} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: short ? 'var(--vfo-faint)' : 'var(--vfo-ink-2)', cursor: short ? 'not-allowed' : 'pointer' }}>
+                    <input type="radio" name="gc-payer" value={p.member_number} checked={gcPayer === p.member_number} disabled={short}
+                      onChange={() => setGcPayer(p.member_number)} />
+                    <span><strong>{p.name}</strong> ({p.member_number}){p.is_lead ? ' · connected member' : ''} — {p.balance} GC</span>
+                    {short && <span style={{ fontSize: '12px', color: '#b45309' }}>not enough credits</span>}
+                  </label>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
         <div>
           <div style={label}>Payment frequency</div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button type="button" style={chip(frequency === 'monthly')} onClick={() => setFrequency('monthly')}>Monthly</button>
+            {/* Growth Credit memberships are annual only — no Monthly option. */}
+            {!useGc && <button type="button" style={chip(frequency === 'monthly')} onClick={() => setFrequency('monthly')}>Monthly</button>}
             <button type="button" style={chip(frequency === 'annual')} onClick={() => setFrequency('annual')}>Annual</button>
           </div>
         </div>
@@ -1393,7 +1523,18 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
 
       <div style={{ marginBottom: '16px', padding: '14px 16px', borderRadius: '10px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
         <div style={{ ...label, marginBottom: '8px' }}>Plan preview</div>
-        {isTracking ? (
+        {useGc ? (
+          !gcCreditsValid || !gcPayerRow ? (
+            <div style={{ color: '#b45309' }}>Enter the Growth Credits and pick whose account they come from.</div>
+          ) : (
+            <div>
+              <strong>{gcCredits} Growth Credits</strong> taken from <strong>{gcPayerRow.name}</strong> today
+              {' '}({gcPayerRow.balance} → {Math.round((gcPayerRow.balance - gcCredits) * 100) / 100} left)
+              {' · '}membership year {fmtDate(today)} to <strong>{fmtDate(previewRenewal)}</strong>
+              {' · '}renews each year on the same credits from the same account, with a notice 30 days before
+            </div>
+          )
+        ) : isTracking ? (
           !trackRenewalValid || !trackDayValid ? (
             <div style={{ color: '#b45309' }}>Enter their renewal date{frequency === 'monthly' ? ' and the day they pay on' : ''} to see the payments left this year.</div>
           ) : (
@@ -1511,7 +1652,9 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
           {busy ? 'Saving…' : (editPlan ? 'Save changes' : isTracking ? 'Create tracking plan' : 'Create membership plan')}
         </button>
         <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>
-          {isTracking
+          {useGc
+            ? 'The credits are taken straight away and the plan is active at once — no payment link. A confirmation email to the member and the member they are connected to is drafted in Gmail.'
+            : isTracking
             ? 'Tracking only — no email, no payment link and no charge. The plan shows on the Members list straight away.'
             : 'Creating the plan also emails the member their payment setup link (resend anytime from the Members list). Legacy members pay no card fee; New Model card payments add the standard processing fee.'}
         </span>
@@ -1606,13 +1749,14 @@ function RenewalsSection({ plans, onOpenPlan, onRefresh }) {
               <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <MemberNameLink memberNumber={plan.member_number}>{plan.member_name || plan.member_number}</MemberNameLink>
                 {plan.tracking_only && <StatusPill label="Old system" color="#6b7280" />}
+                {plan.paid_with_gc && <StatusPill label="Growth Credits" color="#7c3aed" />}
                 {noticeSent && <StatusPill label="Notice sent" color="#6b7280" />}
                 {openMeeting && <StatusPill label="Meeting requested" color="#e06717" />}
                 {m.membership_arrears && <StatusPill label="In arrears" color="#b45309" />}
               </div>
               <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
                 {plan.member_number} · {m.member_type || '—'}
-                {' · '}{plan.frequency === 'monthly' ? `Monthly (${money(perPull)}/mo)` : `Annual (${money(perPull)}/yr)`}
+                {' · '}{plan.paid_with_gc ? `Annual (${Number(plan.gc_credits) || 0} GC/yr)` : plan.frequency === 'monthly' ? `Monthly (${money(perPull)}/mo)` : `Annual (${money(perPull)}/yr)`}
                 {state !== 'renewed' && (plan.next_year_amount
                   ? ` · Next year ${money(plan.next_year_amount)}${Number(plan.next_year_credit_note) > 0 ? ` − ${money(plan.next_year_credit_note)} credit` : ''}${plan.next_year_member_type ? ` · ${plan.next_year_member_type}` : ''}`
                   : ' · Next year: same terms')}
