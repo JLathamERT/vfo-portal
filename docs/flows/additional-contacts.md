@@ -12,7 +12,7 @@ There are **TWO tables and two mechanisms**, and they are wired at different lay
 | Phone column | no | **yes** (optional, display-only) |
 | Who manages | admin, or a member on their own client | **admin only, by decision** |
 | Wired at | **each handler**, via `loadAdditionalContacts` → the `extraCc` parameter (53 call sites) | **centrally**, inside `resolveTemplateRecipients` — no handler knows the table exists |
-| Trigger | the email is addressed **TO the client** | the **member's own email lands in To or Cc** of any templated send |
+| Trigger | the email is addressed **TO the client** (and **never on a member-pays plan** — the member is the payer, 2026-10-21) | the **member's own email lands in To or Cc** of any templated send **as the member** (not via a work-role token such as `TAX_PLANNER`, 2026-10-21) |
 
 Client contacts shipped 2026-08-20 (v767–v771) and **replace** the per-form "extra Cc" mechanism entirely; `pipeline_map1.extra_cc` and `client_tax_plans.extra_cc` are now dormant columns (see *The predecessor* at the bottom). Member contacts shipped 2026-09-16 (v854).
 
@@ -166,12 +166,16 @@ Two deliberate divergences from `client_contacts`: there is **no `use_in_greetin
 
 The list rides on **`member_profile_load.contacts`** (a fourth parallel query in that handler); there is no separate loader action.
 
+### Member pays on behalf — the client is off the email (2026-10-21, v1027, #648)
+
+On a plan / row with `member_paying_on_behalf = true` the member signs and pays, and **the client is on none of the money emails** — not in To or Cc, and none of the client's Additional Contacts. ~35 member-pays senders already did this (`CLIENT: memberPays ? undefined : client.email` + `extraCc: memberPays ? [] : addlCc`); five that never read the flag now do: MAP 1 `CONTRACT_installment_charge_failed` (`utils/map1-installment-failure.ts`), `CONTRACT_checkreminder|check` and the Payment Continuation `setup_link_reminder` (`contract-check-reminder-sweep.ts`), `CONTRACT_paidbycheck|check`, and `setup_link` / `setup_link_reminder` (`migration/send-setup-link.ts`) — each goes to the MEMBER, greets the member. The Tax deposit refund's member variant (`TAX_deposit_refund`, payer = member) no longer Cc's the client's contacts. The CEO countersign emails and the member revenue-share notices (MAP 1 + Tax) no longer pass `CLIENT` at all. **Deliberately still to the client** (they need the client): Questions for the client, the Tax 4 detailed meeting confirmation, the client portal login, and the Tax 1-2 / PIP 1 emails that fire before the member-pays choice is made.
+
 ### Send-time resolution — CENTRAL, not per-handler
 
 This is the structural difference from client contacts. `utils/email-recipients.ts resolveTemplateRecipients` now:
 
 1. computes the REAL To / Cc / Bcc first (`resolveRealRecipients`), then
-2. calls `loadMemberContactCc(supabase, [...to, ...cc, ...extraCc])`, which selects every `member_contacts` row with `cc_on_emails = true` joined to `members.email` and returns the contact emails of any member whose own address is in that list, then
+2. calls `loadMemberContactCc(supabase, [...memberTriggers, ...extraCc])`, which selects every `member_contacts` row with `cc_on_emails = true` joined to `members.email` and returns the contact emails of any member whose own address is in that list — where **`memberTriggers` is every To / Cc address EXCEPT one a work-role token put there (2026-10-21, v1026, #647)**: `WORK_ROLE_TOKENS` = `TAX_PLANNER`, `SPECIALIST`, `ASSIGNED_PF`, `TEAM_MEMBER`, `TEAM`, `FACILITATOR`, `ASSIGNED_MSM`. A member who is ALSO a tax planner (Carson Grover, member 58014 and Innovation's planner) brings his contacts only when he is on the email as the member (`MEMBER` / `CLIENT` / `RECIPIENT` / `ADVISOR` / `ACCOUNTANT`, a raw address, or the extra Cc) — not on his planner clients' tax emails. Then
 3. folds those into Cc (deduped, validated, To-collision filtered like anything else).
 
 Consequences worth stating out loud:

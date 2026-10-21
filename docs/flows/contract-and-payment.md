@@ -62,7 +62,7 @@ Each arrow is implemented either as:
 
 ### Decision = "Yes" (with grossServiceValue)
 
-1. UPDATEs the existing `pipeline_map1` row (creating one if none yet via fallback at [admin-api:4087-4113](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)) with all pricing fields: `c13_decision`, `current_priorities`, `parked_priorities`, `service_level`, `gross_fee`, `member_contribution`, `net_invoice`, `member_share`, `vfos_share`, `payment_plan`, `pip_meeting_count`. *(`extra_cc` is no longer written — the form field is gone; see the Additional Contacts note below.)*
+1. UPDATEs the existing `pipeline_map1` row (creating one if none yet via fallback at [admin-api:4087-4113](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)) with all pricing fields: `c13_decision`, `current_priorities`, `parked_priorities`, `service_level`, `gross_fee`, `member_contribution`, `net_invoice`, `member_share`, `vfos_share`, `payment_plan`, `pip_meeting_count`. *(`extra_cc` is no longer written — the form field is gone; see the Additional Contacts note below.)* **Member paying on behalf (2026-10-21, v1028, #649):** the split is a preset whatever the form sent — `member_share='0.00'`, `vfos_share` = the whole `net_invoice`, `strategic_partner_share` NULL (`utils/member-pays-split.ts`); `automation_PCADMIN_pricing` and `automation_PCADMIN_extrameeting` apply the same preset from the stored flag, and all three forms show it locked.
 2. **Chains** `automation_CONTRACT_sendagreement` — server-to-server.
 
 ### Decision = "Undecided"
