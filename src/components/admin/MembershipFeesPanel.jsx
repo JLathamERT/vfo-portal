@@ -18,8 +18,10 @@ import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 // they pay.
 //
 // Sections per category: Members (expandable reconciliation grid), Set Up
-// Payments (input form incl. mid-year transfers), Overdue Payments, Outstanding
-// Payment Links (setup links never completed) and Renewals (by month).
+// Membership (input form incl. mid-year transfers and "Track billing on old
+// system" — a plan only recorded here, never charged or emailed, its row
+// statuses set by hand), Overdue Payments, Outstanding Payment Links (setup
+// links never completed) and Renewals (by month).
 
 const PLAN_STATUS = {
   setup_pending: { label: 'Awaiting first payment', color: '#0095ff' },
@@ -336,7 +338,7 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
 
   const pills = [
     { key: 'members', label: 'Members' },
-    ...(isSuperadmin ? [{ key: 'setup', label: 'Set Up Payments' }] : []),
+    ...(isSuperadmin ? [{ key: 'setup', label: 'Set Up Membership' }] : []),
     { key: 'outstanding', label: 'Overdue Payments' },
     { key: 'outstanding_links', label: 'Outstanding Payment Links' },
     { key: 'renewals', label: 'Renewals' },
@@ -428,7 +430,7 @@ function MembersSection({ plans, category, onChanged, onEdit, isSuperadmin, focu
 
       {filtered.length === 0 && (
         <div style={{ ...card, textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>
-          No membership plans yet — create one under Set Up Payments.
+          No membership plans yet — create one under Set Up Membership.
         </div>
       )}
       {filtered.map(p => (
@@ -459,7 +461,10 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
   const [pausePreviewBusy, setPausePreviewBusy] = useState(false)
   const [pauseErr, setPauseErr] = useState('')
   const pauseReqRef = useRef(0)
-  const meta = PLAN_STATUS[plan.status] || { label: plan.status, color: 'var(--vfo-muted)' }
+  // A tracked plan is "ended", not terminated — nothing is charged on the way out.
+  const meta = plan.tracking_only && plan.status === 'terminated'
+    ? { label: 'Ended', color: '#6b7280' }
+    : PLAN_STATUS[plan.status] || { label: plan.status, color: 'var(--vfo-muted)' }
   const allSched = plan.schedule || []
   const years = useMemo(() => bucketByYear(allSched), [allSched])
   const [yearIdx, setYearIdx] = useState(-1) // -1 = latest (current) year
@@ -472,6 +477,9 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
   const perPull = Number(plan.per_pull_amount) || 0
   const m = plan.member || {}
   const closed = plan.status === 'canceled' || plan.status === 'terminated'
+  // Billed on the old system — tracked only: no links, no charges, no emails.
+  const tracking = !!plan.tracking_only
+  const canMarkRows = tracking && isSuperadmin && plan.status === 'active'
   // Header hint: any pause marker still dated today or later means the plan is
   // sitting inside (or about to enter) a pause. Deliberately simple — the marker
   // rows are only written by a pause and are removed with it.
@@ -555,7 +563,9 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
   async function terminate() {
     const fee = parseMoney(terminateFee)
     const res = await run('membership_terminate', { plan_id: plan.id, termination_fee: fee },
-      fee > 0
+      plan.tracking_only
+        ? `End ${plan.member_name}'s membership? The remaining scheduled payments are canceled and it will not renew. Nothing is charged or emailed.`
+        : fee > 0
         ? `Terminate ${plan.member_name}'s membership and charge a ${money(roundDollar(fee))} termination fee to their ${plan.payment_method_type === 'ach' ? 'bank account' : 'card'} on file right now?`
         : `Terminate ${plan.member_name}'s membership with no termination fee? Remaining scheduled payments are voided.`)
     if (!res) return
@@ -629,13 +639,27 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
     setShowNextYear(false)
     // The terms are saved either way — a Gmail problem is amber, never an error.
     if (!clear) {
-      if (res.email) setMsg({ tone: 'success', text: `Next year's terms saved — email ${res.email} to ${m.email || 'the member'}.` })
+      if (res.tracking_only) setMsg({ tone: 'success', text: "Next year's terms saved — they apply at renewal. No email (billed on the old system)." })
+      else if (res.email) setMsg({ tone: 'success', text: `Next year's terms saved — email ${res.email} to ${m.email || 'the member'}.` })
       else setMsg({ tone: 'amber', text: `Next year's terms saved, but the member email could not be drafted: ${res.email_error || 'unknown'}.` })
     }
     onChanged?.()
   }
 
-  const grid = '1.2fr 110px 110px 110px 110px 1.4fr'
+  // Old-system tracked plans: an admin records what the old system did. Missed /
+  // Declined puts the member In arrears (their revenue shares are held); anything
+  // else clears it once no missed payment is left. A Paid row's date defaults to
+  // its due date on the server.
+  async function setRowStatus(row, status, paidDate) {
+    const res = await run('membership_tracking_row_save', { row_id: row.id, status, paid_date: status === 'paid' ? (paidDate || undefined) : undefined })
+    if (!res) return
+    if (res.arrears_error) setMsg({ tone: 'amber', text: res.arrears_error })
+    else if (res.arrears === 'set') setMsg({ tone: 'amber', text: `${plan.member_name} is now In arrears — their revenue-share payouts are held until every missed payment is marked Paid.` })
+    else if (res.arrears === 'cleared') setMsg({ tone: 'success', text: `${plan.member_name} is no longer in arrears.` })
+    onChanged?.()
+  }
+
+  const grid = '1.2fr 110px 110px 110px 120px 1.4fr'
 
   return (
     <div ref={cardRef} style={{ ...card, marginBottom: '10px', overflow: 'hidden', opacity: closed ? 0.7 : 1 }}>
@@ -644,7 +668,8 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <MemberNameLink memberNumber={plan.member_number}>{plan.member_name || plan.member_number}</MemberNameLink>
-            {plan.transfer && <StatusPill label="Transferred" color="#6b7280" />}
+            {plan.transfer && <StatusPill label="Transferred" color={BLUE} />}
+            {tracking && <StatusPill label="Old system" color="#6b7280" />}
             {openMeeting && <StatusPill label="Meeting requested" color="#e06717" />}
             {m.suspended && <StatusPill label="Suspended" color="#ef4444" />}
             {m.paused && <StatusPill label="Paused" color="#e06717" />}
@@ -735,9 +760,30 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
                     <div>{fmtDate(row.due_date)}</div>
                     <div style={{ fontWeight: 600, color: zero ? 'var(--vfo-faint)' : 'var(--vfo-ink)' }}>{money(row.amount_due)}</div>
                     <div style={{ color: 'var(--vfo-faint)' }}>{Number(row.credit_applied) > 0 ? money(row.credit_applied) : '—'}</div>
-                    <div><StatusPill label={zero && row.status === 'scheduled' ? 'Covered by credit' : sMeta.label} color={zero && row.status === 'scheduled' ? '#6b7280' : sMeta.color} /></div>
+                    <div>
+                      {canMarkRows && row.kind === 'membership' ? (
+                        <select value={row.status} disabled={busy} onChange={e => setRowStatus(row, e.target.value)}
+                          style={{ width: '100%', padding: '4px 6px', borderRadius: '99px', border: `1px solid ${sMeta.color}`, background: 'var(--vfo-card)', color: sMeta.color, fontSize: '11.5px', fontWeight: 700, fontFamily: 'Inter, sans-serif', cursor: busy ? 'wait' : 'pointer' }}>
+                          {Object.entries(SCHED_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                        </select>
+                      ) : (
+                        <StatusPill label={zero && row.status === 'scheduled' ? 'Covered by credit' : sMeta.label} color={zero && row.status === 'scheduled' ? '#6b7280' : sMeta.color} />
+                      )}
+                    </div>
                     <div style={{ textAlign: 'right', fontSize: '11.5px', color: 'var(--vfo-muted)', wordBreak: 'break-all' }}>
-                      {row.status === 'paid' || row.status === 'processing' ? (
+                      {tracking ? (
+                        row.status === 'paid' ? (
+                          canMarkRows ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              Paid on
+                              <input type="date" value={row.paid_at ? String(row.paid_at).slice(0, 10) : ''} disabled={busy}
+                                onChange={e => e.target.value && setRowStatus(row, 'paid', e.target.value)}
+                                style={{ padding: '3px 6px', borderRadius: '6px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '11.5px', fontFamily: 'Inter, sans-serif' }} />
+                              · Old system
+                            </span>
+                          ) : `${row.paid_at ? `${fmtStamp(row.paid_at)} · ` : ''}Old system`
+                        ) : '—'
+                      ) : row.status === 'paid' || row.status === 'processing' ? (
                         <>
                           {row.paid_at ? `${fmtStamp(row.paid_at)} · ` : ''}
                           {row.payment_method_type ? `${row.payment_method_type}${row.acct_last4 ? ` ••${row.acct_last4}` : ''} · ` : ''}
@@ -846,9 +892,11 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
               )}
               {plan.status === 'active' && (
                 <>
-                  <button type="button" disabled={busy} onClick={sendUpdateLink} style={ghostBtn}>
-                    {busy ? 'Working…' : 'Send payment update link'}
-                  </button>
+                  {!tracking && (
+                    <button type="button" disabled={busy} onClick={sendUpdateLink} style={ghostBtn}>
+                      {busy ? 'Working…' : 'Send payment update link'}
+                    </button>
+                  )}
                   <button type="button" disabled={busy} style={ghostBtn}
                     onClick={() => run('membership_plan_cancel', { plan_id: plan.id, mode: plan.auto_renew ? 'auto_renew_off' : 'auto_renew_on' }).then(r => r && onChanged?.())}>
                     {plan.auto_renew ? 'Turn auto-renew off' : 'Turn auto-renew on'}
@@ -856,21 +904,27 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
                   <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowNextYear(v => !v)}>
                     Edit next year's terms
                   </button>
-                  <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowPause(v => !v)}>
-                    Pause Membership Payments
-                  </button>
+                  {!tracking && (
+                    <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowPause(v => !v)}>
+                      Pause Membership Payments
+                    </button>
+                  )}
                   <button type="button" disabled={busy} style={dangerBtn} onClick={() => setShowTerminate(v => !v)}>
-                    Terminate member
+                    {tracking ? 'End membership' : 'Terminate member'}
                   </button>
                 </>
               )}
-              <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MEMBER_MEMBERSHIP_FEES" title="Payment link emails" context={emailCtx} templates={[
-                { name: 'MEMBERSHIP_setup_link', when: 'New plan — payment setup link' },
-                { name: 'MEMBERSHIP_transfer_setup_link', when: 'Transfer plan — setup link' },
-                { name: 'MEMBERSHIP_transfer_setup_link|monthly-saveonly', when: 'Transfer plan with fixed charge day — setup link (save-only)' },
-                { name: 'MEMBERSHIP_update_link', when: 'Active plan — update payment method link' },
-                { name: 'MEMBERSHIP_next_year_terms', when: "Active plan — next year's terms saved" },
-              ]} /></span>
+              {tracking ? (
+                <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>Billed on the old system — no emails are sent and nothing is charged here.</span>
+              ) : (
+                <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MEMBER_MEMBERSHIP_FEES" title="Payment link emails" context={emailCtx} templates={[
+                  { name: 'MEMBERSHIP_setup_link', when: 'New plan — payment setup link' },
+                  { name: 'MEMBERSHIP_transfer_setup_link', when: 'Transfer plan — setup link' },
+                  { name: 'MEMBERSHIP_transfer_setup_link|monthly-saveonly', when: 'Transfer plan with fixed charge day — setup link (save-only)' },
+                  { name: 'MEMBERSHIP_update_link', when: 'Active plan — update payment method link' },
+                  { name: 'MEMBERSHIP_next_year_terms', when: "Active plan — next year's terms saved" },
+                ]} /></span>
+              )}
             </div>
           )}
 
@@ -898,13 +952,16 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
                     })()}
                   </select>
                 </div>
-                <button type="button" disabled={busy} style={primaryBtn(busy)} onClick={() => saveNextYear(false)}>Save &amp; email member</button>
+                <button type="button" disabled={busy} style={primaryBtn(busy)} onClick={() => saveNextYear(false)}>{tracking ? 'Save' : <>Save &amp; email member</>}</button>
                 {(plan.next_year_amount || plan.next_year_credit_note) && (
                   <button type="button" disabled={busy} style={ghostBtn} onClick={() => saveNextYear(true)}>Clear (use current terms)</button>
                 )}
               </div>
               <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
-                Saving emails the member a note confirming the new terms (Draft mode — it lands in Gmail Drafts for you to send). Unset = renews at the current annual value with no credit. Monthly amounts stay whole dollars (round half up).
+                {tracking
+                  ? 'Billed on the old system — saving sends no email. '
+                  : 'Saving emails the member a note confirming the new terms (Draft mode — it lands in Gmail Drafts for you to send). '}
+                Unset = renews at the current annual value with no credit. Monthly amounts stay whole dollars (round half up).
               </div>
             </div>
           )}
@@ -953,20 +1010,24 @@ function PlanCard({ plan, category, onChanged, onEdit, isSuperadmin, autoOpen = 
 
           {showTerminate && isSuperadmin && plan.status === 'active' && (
             <div style={{ marginTop: '12px', padding: '14px 16px', borderRadius: '10px', background: 'var(--vfo-card)', border: '1px solid #f3c0c0' }}>
-              <div style={{ ...label, marginBottom: '10px', color: '#b91c1c' }}>Terminate {plan.member_name}</div>
+              <div style={{ ...label, marginBottom: '10px', color: '#b91c1c' }}>{tracking ? `End ${plan.member_name}'s membership` : `Terminate ${plan.member_name}`}</div>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <div style={{ width: '200px' }}>
-                  <div style={label}>Termination fee ($, 0 = none)</div>
-                  <input value={terminateFee} onChange={e => setTerminateFee(e.target.value)} placeholder="e.g. 2500" style={input} />
-                </div>
+                {!tracking && (
+                  <div style={{ width: '200px' }}>
+                    <div style={label}>Termination fee ($, 0 = none)</div>
+                    <input value={terminateFee} onChange={e => setTerminateFee(e.target.value)} placeholder="e.g. 2500" style={input} />
+                  </div>
+                )}
                 <button type="button" disabled={busy} onClick={terminate}
                   style={{ ...primaryBtn(busy), background: busy ? '#c7d2e4' : '#ef4444' }}>
-                  {busy ? 'Working…' : 'Confirm termination'}
+                  {busy ? 'Working…' : (tracking ? 'Confirm — end membership' : 'Confirm termination')}
                 </button>
                 <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowTerminate(false)}>Back</button>
               </div>
               <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
-                The fee is charged to their saved {plan.payment_method_type === 'ach' ? 'bank account' : 'card'} immediately; all remaining scheduled payments are voided and the plan will not renew.
+                {tracking
+                  ? 'The remaining scheduled payments are canceled and the plan will not renew. Nothing is charged or emailed.'
+                  : <>The fee is charged to their saved {plan.payment_method_type === 'ach' ? 'bank account' : 'card'} immediately; all remaining scheduled payments are voided and the plan will not renew.</>}
               </div>
             </div>
           )}
@@ -990,11 +1051,18 @@ function ordinal(n) {
   return `${v}${s[(m - 20) % 10] || s[m] || s[0]}`
 }
 
-// ── Set Up Payments: the input form ───────────────────────────────────────────
+// ── Set Up Membership: the input form ─────────────────────────────────────────
 
 function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
   const [memberNumber, setMemberNumber] = useState(editPlan?.member_number || '')
-  const [isTransfer, setIsTransfer] = useState(!!editPlan?.transfer)
+  // 'new' | 'transfer' | 'tracking' (billed on the old system, only tracked here).
+  const [mode, setMode] = useState(editPlan?.transfer ? 'transfer' : 'new')
+  const isTransfer = mode === 'transfer'
+  const isTracking = mode === 'tracking'
+  const [trackRenewal, setTrackRenewal] = useState('')
+  const [trackDay, setTrackDay] = useState('')
+  const [trackRows, setTrackRows] = useState([])
+  const rowKey = useRef(0)
   const [transferRenewal, setTransferRenewal] = useState(editPlan?.transfer ? editPlan.renewal_date : '')
   const [priorPaid, setPriorPaid] = useState(
     editPlan?.prior_payments_made === 0 || editPlan?.prior_payments_made ? String(editPlan.prior_payments_made) : '',
@@ -1085,10 +1153,69 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
     ? transferDaySchedule(today, transferRenewal, Number(chargeDay), remaining)
     : null
 
+  // ── Track billing on old system ──────────────────────────────────────────
+  // Any renewal day; payments on the 1st–15th. "Payments left this year" = every
+  // payment day from today up to (not on) the renewal date, each (annual −
+  // credit) ÷ 12 — the list is rebuilt whenever those inputs change, then the
+  // admin can edit amounts, x out a row or add one for a weird case.
+  const trackRenewalValid = /^\d{4}-\d{2}-\d{2}$/.test(trackRenewal || '') && trackRenewal > today && trackRenewal <= addYearsIso(today, 1)
+  const trackDayValid = frequency === 'annual' || (/^\d+$/.test(String(trackDay)) && Number(trackDay) >= 1 && Number(trackDay) <= 15)
+  const trackYearStart = trackRenewalValid ? addYearsIso(trackRenewal, -1) : null
+  const trackPerPull = frequency === 'annual' ? roundDollar(net) : Math.max(0, roundDollar(net / 12))
+  useEffect(() => {
+    if (!isTracking || !trackRenewalValid || frequency !== 'monthly' || !trackDayValid) { setTrackRows([]); return }
+    // On or after today: a payment due today may not have been recorded yet.
+    const dates = dayOccurrencesAfter(addDaysIso(today, -1), Number(trackDay), trackRenewal)
+    setTrackRows(dates.map(d => ({ key: ++rowKey.current, due_date: d, amount: String(trackPerPull) })))
+  }, [isTracking, trackRenewal, trackDay, frequency, trackPerPull])
+
+  const trackRowErrors = trackRows.map((r, i) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(r.due_date || '')) return 'Pick a date'
+    if (trackRenewalValid && r.due_date >= trackRenewal) return 'On or after the renewal — that is next year'
+    if (trackYearStart && r.due_date < trackYearStart) return 'Before this membership year started'
+    if (trackRows.some((o, j) => j !== i && o.due_date === r.due_date)) return 'Two payments on the same date'
+    if (String(r.amount).trim() === '' || !(parseMoney(r.amount) >= 0)) return 'Enter an amount'
+    return null
+  })
+
+  function addTrackRow() {
+    const last = [...trackRows].sort((a, b) => a.due_date.localeCompare(b.due_date)).slice(-1)[0]
+    const day = frequency === 'monthly' && trackDayValid ? Number(trackDay) : 15
+    const next = last?.due_date ? addMonthsIso(last.due_date, 1) : `${today.slice(0, 8)}${String(day).padStart(2, '0')}`
+    setTrackRows(rows => [...rows, { key: ++rowKey.current, due_date: next, amount: String(trackPerPull) }])
+  }
+
+  async function saveTracking() {
+    if (!trackRenewalValid) { setMsg({ tone: 'error', text: 'Enter their renewal date — in the future and within a year.' }); return }
+    if (!trackDayValid) { setMsg({ tone: 'error', text: 'Pick the day of the month they pay on (1–15).' }); return }
+    if (trackRowErrors.some(Boolean)) { setMsg({ tone: 'error', text: 'Fix the highlighted payments first.' }); return }
+    setBusy(true)
+    try {
+      const res = await callApi('membership_tracking_plan_save', {
+        member_number: memberNumber,
+        category,
+        frequency,
+        annual_amount: annual,
+        credit_note: credit,
+        credit_note_memo: creditMemo || undefined,
+        renewal_date: trackRenewal,
+        charge_day: frequency === 'monthly' ? Number(trackDay) : 15,
+        rows: trackRows.map(r => ({ due_date: r.due_date, amount_due: parseMoney(r.amount) })),
+      })
+      if (!res?.ok) { setMsg({ tone: 'error', text: res?.error || 'Could not save the plan.' }); return }
+      onSaved?.({ tone: 'success', text: `Tracking plan created — ${res.rows} payment${res.rows === 1 ? '' : 's'} this year. Nothing was emailed or charged; set each payment's status on their plan card.` })
+    } catch (e) {
+      setMsg({ tone: 'error', text: e?.message || 'Could not save the plan.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function save() {
     setMsg(null)
     if (!memberNumber) { setMsg({ tone: 'error', text: 'Pick a member first.' }); return }
     if (!(annual > 0)) { setMsg({ tone: 'error', text: 'Enter the annual membership value.' }); return }
+    if (isTracking) { await saveTracking(); return }
     if (isTransfer && !transferRenewalValid) { setMsg({ tone: 'error', text: 'Enter the member\'s existing renewal date — it must be the 15th of a month, within a year.' }); return }
     if (isTransfer && frequency === 'monthly' && !priorPaidValid) {
       setMsg({ tone: 'error', text: priorPaidFilled ? 'Must be a whole number between 0 and 11.' : 'Enter how many payments they\'ve already made this year (0 if none).' })
@@ -1159,9 +1286,18 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
       <div style={{ marginBottom: '16px' }}>
         <div style={label}>Is this a brand-new membership, or moving someone over from the old billing?</div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button type="button" style={chip(!isTransfer)} onClick={() => setIsTransfer(false)}>Brand new membership</button>
-          <button type="button" style={chip(isTransfer)} onClick={() => setIsTransfer(true)}>Transfer from old billing (mid-year)</button>
+          <button type="button" style={chip(mode === 'new')} onClick={() => setMode('new')}>Brand new membership</button>
+          <button type="button" style={chip(isTransfer)} onClick={() => setMode('transfer')}>Transfer from old billing (mid-year)</button>
+          {/* A pending plan being edited may already have had its setup link sent. */}
+          {!editPlan && (
+            <button type="button" style={chip(isTracking)} onClick={() => setMode('tracking')}>Track billing on old system</button>
+          )}
         </div>
+        {isTracking && (
+          <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-muted)' }}>
+            They stay on the old billing — this only records their membership here so everyone is in one place. Nothing is charged and no email is sent. You set each payment's status by hand on their plan card; it still auto-renews on the same terms.
+          </div>
+        )}
         {isTransfer && (
           <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-muted)' }}>
             {frequency === 'monthly'
@@ -1194,6 +1330,26 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
             <button type="button" style={chip(frequency === 'annual')} onClick={() => setFrequency('annual')}>Annual</button>
           </div>
         </div>
+        {isTracking && (
+          <div>
+            <div style={label}>Their renewal date</div>
+            <input type="date" value={trackRenewal} onChange={e => setTrackRenewal(e.target.value)} style={input} />
+            {trackRenewal && !trackRenewalValid && (
+              <div style={{ marginTop: '5px', fontSize: '12px', color: '#b91c1c' }}>Must be in the future and within a year.</div>
+            )}
+          </div>
+        )}
+        {isTracking && frequency === 'monthly' && (
+          <div>
+            <div style={label}>Day of the month they pay on (1–15)</div>
+            <select value={trackDay} onChange={e => setTrackDay(e.target.value)} style={input}>
+              <option value="">Select a day…</option>
+              {Array.from({ length: 15 }, (_, i) => i + 1).map(d => (
+                <option key={d} value={String(d)}>{ordinal(d)}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {isTransfer && (
           <div>
             <div style={label}>Their existing renewal date (must be a 15th)</div>
@@ -1237,7 +1393,48 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
 
       <div style={{ marginBottom: '16px', padding: '14px 16px', borderRadius: '10px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
         <div style={{ ...label, marginBottom: '8px' }}>Plan preview</div>
-        {isTransfer ? (
+        {isTracking ? (
+          !trackRenewalValid || !trackDayValid ? (
+            <div style={{ color: '#b45309' }}>Enter their renewal date{frequency === 'monthly' ? ' and the day they pay on' : ''} to see the payments left this year.</div>
+          ) : (
+            <div>
+              <div>
+                Based on your inputs there {trackRows.length === 1 ? 'is' : 'are'} <strong>{trackRows.length} payment{trackRows.length === 1 ? '' : 's'}</strong> left this year
+                {' · '}renewal <strong>{fmtDate(trackRenewal)}</strong>
+                {frequency === 'annual' ? <> · next year's {money(trackPerPull)} is due at renewal</> : null}
+                {credit > 0 ? <> · credit {money(credit)}</> : null}
+              </div>
+              {trackRows.length > 0 && (
+                <div style={{ marginTop: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 170px 140px 36px', gap: '8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '4px' }}>
+                    <div>Month</div><div>Due date</div><div>Amount ($)</div><div />
+                  </div>
+                  {trackRows.map((r, i) => (
+                    <div key={r.key} style={{ marginBottom: '6px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 170px 140px 36px', gap: '8px', alignItems: 'center' }}>
+                        <div style={{ fontWeight: 600 }}>{/^\d{4}-\d{2}-\d{2}$/.test(r.due_date || '') ? fmtMonthYear(r.due_date) : '—'}</div>
+                        <input type="date" value={r.due_date} onChange={e => setTrackRows(rows => rows.map(x => x.key === r.key ? { ...x, due_date: e.target.value } : x))}
+                          style={{ ...input, padding: '7px 10px' }} />
+                        <input value={r.amount} onChange={e => setTrackRows(rows => rows.map(x => x.key === r.key ? { ...x, amount: e.target.value } : x))}
+                          style={{ ...input, padding: '7px 10px' }} />
+                        <button type="button" title="Remove this payment" onClick={() => setTrackRows(rows => rows.filter(x => x.key !== r.key))}
+                          style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #f3c0c0', background: 'var(--vfo-card)', color: '#b91c1c', fontWeight: 700, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>✕</button>
+                      </div>
+                      {trackRowErrors[i] && <div style={{ marginTop: '3px', fontSize: '12px', color: '#b91c1c' }}>{trackRowErrors[i]}</div>}
+                    </div>
+                  ))}
+                  <div style={{ marginTop: '6px', fontSize: '12.5px', fontWeight: 700 }}>
+                    Total this year {money(trackRows.reduce((s, r) => s + parseMoney(r.amount), 0))}
+                  </div>
+                </div>
+              )}
+              <button type="button" onClick={addTrackRow} style={{ ...ghostBtn, marginTop: '10px', padding: '6px 12px', fontSize: '12.5px' }}>+ Add a payment</button>
+              <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
+                Changing the renewal date, payment day or amounts above rebuilds this list.
+              </div>
+            </div>
+          )
+        ) : isTransfer ? (
           frequency === 'monthly' ? (
             (!transferRenewalValid || !priorPaidValid) ? (
               <div style={{ color: '#b45309' }}>Enter their existing renewal date and how many payments they've made to see the remaining schedule.</div>
@@ -1311,9 +1508,13 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
 
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
         <button type="button" disabled={busy} onClick={save} style={{ ...primaryBtn(busy), padding: '10px 22px' }}>
-          {busy ? 'Saving…' : (editPlan ? 'Save changes' : 'Create membership plan')}
+          {busy ? 'Saving…' : (editPlan ? 'Save changes' : isTracking ? 'Create tracking plan' : 'Create membership plan')}
         </button>
-        <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Creating the plan also emails the member their payment setup link (resend anytime from the Members list). Legacy members pay no card fee; New Model card payments add the standard processing fee.</span>
+        <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>
+          {isTracking
+            ? 'Tracking only — no email, no payment link and no charge. The plan shows on the Members list straight away.'
+            : 'Creating the plan also emails the member their payment setup link (resend anytime from the Members list). Legacy members pay no card fee; New Model card payments add the standard processing fee.'}
+        </span>
       </div>
       {msg && <div style={{ marginTop: '10px', fontSize: '12.5px', padding: '8px 12px', borderRadius: '8px', color: msg.tone === 'error' ? '#b91c1c' : '#166534', border: `1px solid ${msg.tone === 'error' ? '#fecaca' : '#bbf7d0'}`, background: msg.tone === 'error' ? '#fef2f2' : '#f0fdf4' }}>{msg.text}</div>}
     </div>
@@ -1404,6 +1605,7 @@ function RenewalsSection({ plans, onOpenPlan, onRefresh }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <MemberNameLink memberNumber={plan.member_number}>{plan.member_name || plan.member_number}</MemberNameLink>
+                {plan.tracking_only && <StatusPill label="Old system" color="#6b7280" />}
                 {noticeSent && <StatusPill label="Notice sent" color="#6b7280" />}
                 {openMeeting && <StatusPill label="Meeting requested" color="#e06717" />}
                 {m.membership_arrears && <StatusPill label="In arrears" color="#b45309" />}
@@ -1537,7 +1739,7 @@ function OutstandingLinkRow({ plan, onChanged, onEdit, isSuperadmin }) {
           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <MemberNameLink memberNumber={plan.member_number}>{plan.member_name || plan.member_number}</MemberNameLink>
             <StatusPill label="Setup link" color="#125ecc" />
-            {plan.transfer && <StatusPill label="Transferred" color="#6b7280" />}
+            {plan.transfer && <StatusPill label="Transferred" color={BLUE} />}
             {plan.sandbox && <StatusPill label="Sandbox" color="#e06717" />}
           </div>
           <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
@@ -1628,7 +1830,10 @@ function OutstandingRow({ plan, overdue, total, isSuperadmin }) {
     <div style={{ ...card, marginBottom: '10px', padding: '14px 18px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}><MemberNameLink memberNumber={plan.member_number}>{plan.member_name || plan.member_number}</MemberNameLink></div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <MemberNameLink memberNumber={plan.member_number}>{plan.member_name || plan.member_number}</MemberNameLink>
+            {plan.tracking_only && <StatusPill label="Old system" color="#6b7280" />}
+          </div>
           <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
             {plan.member_number} · {overdue.length} overdue payment{overdue.length === 1 ? '' : 's'}: {overdue.map(r => r.period_label).join(', ')}
           </div>
@@ -1637,7 +1842,12 @@ function OutstandingRow({ plan, overdue, total, isSuperadmin }) {
           <div style={{ fontSize: '14px', fontWeight: 700, color: '#ef4444' }}>{money(total)}</div>
           <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>owed</div>
         </div>
-        {canRemind && isSuperadmin ? (
+        {plan.tracking_only ? (
+          // Billed on the old system: nothing is charged or emailed from here.
+          <span style={{ fontSize: '12px', color: 'var(--vfo-faint)', maxWidth: '240px', textAlign: 'right' }}>
+            Tracked — update each payment's status on their plan card
+          </span>
+        ) : canRemind && isSuperadmin ? (
           <button type="button" disabled={busy} onClick={sendReminder} style={primaryBtn(busy)}>
             {busy ? 'Sending…' : 'Send reminder email'}
           </button>
@@ -1646,10 +1856,12 @@ function OutstandingRow({ plan, overdue, total, isSuperadmin }) {
             Overdue — will be charged by tonight's automatic run
           </span>
         )}
-        <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MEMBER_MEMBERSHIP_FEES" title="Payment reminder email" context={emailCtx} templates={[
-          { name: 'MEMBERSHIP_payment_failed', when: 'Payment failed / reminder to the member — update method and pay the arrears now' },
-          { name: 'MEMBERSHIP_arrears_digest', when: 'Friday morning digest to Paul — every member currently in arrears (Gmail draft)' },
-        ]} /></span>
+        {!plan.tracking_only && (
+          <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MEMBER_MEMBERSHIP_FEES" title="Payment reminder email" context={emailCtx} templates={[
+            { name: 'MEMBERSHIP_payment_failed', when: 'Payment failed / reminder to the member — update method and pay the arrears now' },
+            { name: 'MEMBERSHIP_arrears_digest', when: 'Friday morning digest to Paul — every member currently in arrears (Gmail draft)' },
+          ]} /></span>
+        )}
       </div>
       {msg && (
         <div style={{ marginTop: '10px', fontSize: '12.5px', padding: '8px 12px', borderRadius: '8px', wordBreak: 'break-all',

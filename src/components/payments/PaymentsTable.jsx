@@ -78,6 +78,7 @@ function fmtMethod(method, last4) {
     : method === 'ach' ? 'ACH'
     : method === 'check' ? 'Check'
     : method === 'connect' ? 'Stripe Connect'
+    : method === 'old_system' ? 'Old system'
     : method
   return last4 ? `${m} ••${last4}` : m
 }
