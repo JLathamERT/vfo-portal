@@ -737,6 +737,45 @@ no setup link, no charge, no email — ever.** Column `member_payment_plans.trac
    pass 1 still renews it (#634 rhythm on `charge_day`, rows `scheduled` for the team to mark, the
    new year end = `addYears(renewal, 1)` so any renewal day is kept); pass 2 still waives due $0 rows.
 
+## Corporate Member paid with Growth Credits (added 2026-10-22)
+
+On **Set Up Membership → Brand new membership**, picking a member whose `member_type` is exactly
+**`Corporate Member`** (not the two free corporate types — Jake) shows a **$ / GC** switch above
+the annual value. **$** (the default) is the ordinary flow, unchanged. **GC**:
+
+1. **Form** — *How many Growth Credits?* (quarters) replaces the $ value; no credit note or reason;
+   Payment frequency shows **Annual only** (the Monthly button is not drawn); *Whose Growth Credit
+   account are we depleting from?* lists the member and the member they are connected to (the lead:
+   `connected_member_number`, else the number prefix — `utils/corporate-lead.ts resolveLeadNumber`),
+   each with its balance from `membership_gc_payers_load`; an account short of the credits is
+   disabled. The preview quotes the balance after and the year (today → the usual 15th renewal).
+   Not offered on Transfer / Track billing on old system, nor when editing a plan.
+2. **`membership_gc_plan_save`** (`actions/membership/gc-plan-save.ts`) — re-derives the payer list,
+   refuses a payer not on it / a short balance / a live plan, inserts the plan **`active`**
+   (`paid_with_gc`, `gc_credits`, `gc_payer_member_number`, annual, every $ column 0, `start_date`
+   today, `renewal_date = renewalFromPayDate(today)`) + one **`paid`** row (`amount_due` 0,
+   `payment_method_type='growth_credits'`), then takes the credits — `utils/membership-gc.ts
+   spendGcCredits`, the same balance-guarded write as `gc_deduct_credits` (409 on a race), history
+   type **`membership`** (its own type, #466) with the admin as actor. A failed spend deletes the plan.
+   Then **`MEMBERSHIP_gc_confirmation`** is drafted to the member AND their lead (Cc Tray, Bcc Paul +
+   Anton). No setup link, no Stripe customer, ever.
+3. **Members tab** — a purple **Growth Credits** pill; *Annual (N GC/yr from <payer>)*, *N GC per
+   year*, each year's row *N GC · Growth Credits*. Hidden: *Send payment update link*, *Pause*,
+   *Edit next year's terms*, the terminate fee box (the server refuses all four). Kept: auto-renew,
+   *Terminate member* ($0 — credits already used are not refunded). The Renewals list shows the pill.
+4. **Elsewhere** — the global Payments page leaves these rows out (no money moved); Accounting →
+   Growth Credits counts them on a **Credits for Memberships** tile; both credit histories show a
+   purple *Membership* chip.
+5. **Sweep** — pass 0's $ notice filters `paid_with_gc=false`; a **0b** pass sends
+   **`MEMBERSHIP_gc_renewal_notice`** (same window and `renewal_notice_for` stamp; *"if you do nothing
+   it will renew on [date] using [N] Growth Credits from [payer]'s account … reply all to cancel"*).
+   Pass 1 renews a GC plan by taking the same credits from the same account (`GC_SYSTEM_ACTOR`) and
+   writing the new year's paid row, then moving `renewal_date` a year on (a 15th). **Short of
+   credits → nothing taken, no roll-over, a `MEMBERSHIP_gc_renewal_short` bell to Tray (deduped while
+   unread), retried every night** until the credits are there or auto-renew is turned off. A row write
+   that fails after the spend refunds the credits (`refunded` row) and bells Jake. Pass 3 skips the
+   plan. To cancel a renewal: *Turn auto-renew off*.
+
 ## NOT built yet (next work)
 
 - **A plan with `auto_renew` OFF lapses DARK** (named 2026-08-04, deliberately unbuilt). It keeps

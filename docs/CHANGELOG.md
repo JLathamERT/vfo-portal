@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-10-22 — Membership Fees: a Corporate Member's membership paid with Growth Credits
+
+Branch `claude/vfo-session-starter-afa6d9` (both repos, ONE chat). `vfo-admin-api` **v1022 → v1023** (from the branch, `--use-docker`, after migration `20261022120000_membership_gc_paid.sql` — three additive columns on the deny-all `member_payment_plans`, two Draft templates, one bell rule; advisor GREEN at the baseline, a confirmation). Action count **606 → 608** (`membership_gc_payers_load`, `membership_gc_plan_save`, both `TAB_ACTIONS.accounting`). Flow: [flows/membership-fees.md](flows/membership-fees.md) *Corporate Member paid with Growth Credits*.
+
+- **Why (Jake):** a corporate member's annual membership can be paid in Growth Credits from their own account or the member they are connected to.
+- **Jake's answers:** only `Corporate Member` (not the free corporate types); Brand new membership only; annual only, the Monthly button not drawn; no credit note; the year starts today and renews on the usual 15th rule; the plan shows credits, never a dollar figure; no invoice / receipt PDFs; both emails Draft and worded *ERT Membership*; at renewal the same credits come from the same account after a 30-day notice in the existing notice's style (*reply all to cancel*).
+- **Backend:** `utils/membership-gc.ts` (payer list, the guarded spend + refund, the two-recipient email); `actions/membership/gc-plan-save.ts`; sweep pass 0b (GC notice) + the GC branch of pass 1 (`renewGcPlan`) + pass 3 skip; refusals in `send_setup_link`, `pause`, `send_reminder`, `next_year_save` (its explicit select widened, #448), a terminate fee; `all-payments-load` leaves the rows out; `load-accounting` counts `credits_membership`. New `gc_transactions.type` **`membership`** (#466).
+- **Frontend:** `MembershipFeesPanel.jsx` (the $ / GC switch, payer picker, preview, the card's pill / credits / hidden buttons / payer name, Renewals pill); `GCMarketplaceViews.jsx` + `GrowthCreditsAccountingPanel.jsx` (*Membership* chip, *Credits for Memberships* tile); `templateMeta.js`.
+- **CLICK-TESTED** (Jake, dev server vs v1023): fixture **59524-C1 Test Corporate** (Corporate Member under 59524, 5 GC) — the switch on / off by member and mode, Annual only, the short account disabled, 10 GC from 59524 → plan 105 (930.75 → 920.75, renews 2027-10-15), the card, the confirmation draft (recipients + wording), the *Membership* history row, the tile, no Payments row, terminate with no fee box. **Wiped after:** plan 105 + its row, `gc_transactions` 149 deleted and 59524 restored to 930.75, member / plugin settings / balance of 59524-C1 deleted.
+- **Not exercised:** the renewal notice (0b) and the renewal spend / short bell / refund path (pass 1) — no GC plan has reached a renewal window; the server refusals (UI never offers them); the 409 race.
+
+---
+
 ## 2026-10-21 — Membership Fees: "Track billing on old system" + Set Up Membership
 
 Branch `claude/vfo-session-starter-ff9ea2` (both repos, ONE chat). `vfo-admin-api` **v1021 → v1022** (from the branch, `--use-docker`, after migration `20261021120000_membership_tracking_only.sql` — one additive column on the deny-all `member_payment_plans`, advisor GREEN at the baseline, a confirmation). Action count **604 → 606** (+ `membership_tracking_plan_save`, `membership_tracking_row_save`, both `TAB_ACTIONS.accounting`). Hub values superseded here: action count 604 (2026-10-20), live `vfo-admin-api` v1021.

@@ -224,6 +224,8 @@ Both surfaces render the **same component**, [GCMarketplaceViews.jsx](src/compon
 | `gc_redeem` — admin on the member's behalf | `redeemed` | `allowed_admins.name` (session email if the admin row has no name) | `admin` |
 | `gc_add_credits` | `purchased` (a comp) | `allowed_admins.name` | `admin` |
 | `gc_deduct_credits` (2026-10-13) | `deducted` | `allowed_admins.name` | `admin` |
+| `membership_gc_plan_save` (2026-10-22) — a Corporate Member's membership paid in credits | `membership` | `allowed_admins.name` | `admin` |
+| `automation_MEMBERSHIP_sweep` — that membership's yearly renewal | `membership` | `"System"` (`GC_SYSTEM_ACTOR`) | `system` |
 | `gc_update_redemption` reject → refund | `refunded` | `allowed_admins.name` | `admin` |
 | `automation_GC_recurring_sweep` renewal | `redeemed` | `"System"` (`GC_SYSTEM_ACTOR`) | `system` |
 | `fulfillGrowthCredits` (Stripe webhook) | `purchased` (a sale) | — not stamped | — |
