@@ -377,7 +377,7 @@ New client-facing email on the green click: `TAX_postreview_confirmed` and `TAX_
 
 **Every plan shape gets it, legacy included *(2026-08-28)*.** The original `isNewFeeProcess(plan)` gate around the draft was removed: a legacy green click was recording the decision and firing the revenue share while sending the client no acknowledgement at all. A legacy row can never carry `final_retainer_amount`, so `isThreePaymentPlan()` is false and it resolves to the plain `TAX_postreview_confirmed` (row 239) or its member twin (row 240) — the 2-payment wording, which describes a fully-collected retainer moving into the Education phase and is exactly the legacy truth. No column, no validation, no step and no money behaviour reaches legacy from this change.
 
-Two new `notification_rules`: `TAX_final_retainer_charge_failed` and `FAILURE_tax_final_retainer_charge`. Their list columns are **jsonb, not `text[]`** (#443).
+Two new `notification_rules`: `TAX_final_retainer_charge_failed` and `FAILURE_tax_final_retainer_charge`. Their list columns are **jsonb, not `text[]`** (#443). **Since 2026-10-22 only `FAILURE_tax_final_retainer_charge` fires** — one bell naming the client; the other is disabled (#650).
 
 ## Display
 
