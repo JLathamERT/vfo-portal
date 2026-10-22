@@ -116,7 +116,9 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
   active plan, consumed at renewal — see *"Edit next year's terms"* below) —
   unless auto-renew is toggled off.
 - **Transfers** (members moving off the old billing mid-year): keep their existing renewal 15th
-  (admin inputs it) — **the renewal date never moves**. **A MONTHLY transfer has TWO shapes, and
+  (admin inputs it) — **the renewal date never moves**. A member RENEWING from the old system
+  whose new year has not started yet is entered as *Brand new* + **Membership year starts on**
+  and stored as one of these transfers — see that section below. **A MONTHLY transfer has TWO shapes, and
   `member_payment_plans.charge_day` is the switch between them:** with a day (1–15) the link is
   **save-only** and the year is scheduled on that day — see *"Transfers with a fixed charge day"*
   below, which is what every new monthly transfer gets; **without** a day it uses the pay-at-the-link
@@ -697,6 +699,52 @@ start + 11 months — otherwise a paused year's rows spill out of a fixed 12-mon
 
 **Pauses stack.** A second pause re-runs the same shift against the already-shifted schedule and
 writes a second audit row — verified live with a 3-month pause followed by a 2-month one.
+
+## Brand new + "Membership year starts on" — renewing from the old system (added 2026-10-22)
+
+**Why.** Members renewing from the old system with all 12 old payments made were set up as
+*Brand new membership*, which starts the year on the day they PAY (and, until they pay, shows a
+placeholder renewal of save-day + a year). Meena Nimmagadda's profile read 9/28/2027 against a real
+10/15 anniversary, and James Martin III (real anniversary 11/15) would have been charged in
+October, a month the old system already covered.
+
+**What the admin does.** *Set Up Membership* → **Brand new membership** → optional
+**Membership year starts on**: a **future 15th** (their anniversary). Blank = a genuinely new member,
+behaviour unchanged. A start date that has already passed is refused with *"This year has already
+started — use Transfer from old billing (mid-year) instead"* — a year in progress is the Transfer
+option's job (decided 2026-10-22: one tool per case; an earlier build of this field also took
+"payments already made" for a passed start and was removed as a duplicate of Transfer).
+
+**How it is stored (frontend-only mapping, `MembershipFeesPanel.jsx` `isAnchored` / `xfer*`).** The
+form saves through `membership_plan_save` as a **day-carrying monthly transfer**: `transfer=true`,
+`charge_day=15`, `prior_payments_made=0` (so `remaining_payments=12`), `renewal_date` = start + 1
+year. **Annual**: `transfer=true`, `renewal_date` = the start date itself (an annual transfer pays
+nothing at the link and is charged in full at renewal — i.e. on the year start). So it gets the
+transfer's save-only link, its `MEMBERSHIP_transfer_setup_link|monthly-saveonly` email (Draft) and
+the invoice's *"Payments made under previous billing: 0"* panel, and its plan card reads as a
+Transfer when edited later. The renewal date is real from the moment of save, so the member
+profile shows it at once.
+
+**Two backend rules made it possible (v1029):**
+- `plan-save.ts` accepts a transfer renewal up to **`monthShift(today, 13, 15)`** (a year and a
+  month) instead of one year, but only for a **monthly** plan **with a charge day** — the only shape
+  whose schedule honours a not-yet-started year. Every renewal is still a 15th (unchanged check).
+- `shared.ts` `transferYearStart(renewal)` = renewal − 12 months. `transferDaySchedule` counts its
+  slots from the day before that year start whenever it is still in the future, so **no charge ever
+  falls before the year begins**; for every ordinary transfer the year start is already past and
+  the basis date is used exactly as before. `activate.ts` stamps `start_date` and the rows'
+  `year_start` with that year start when it is later than the activation day. The FE mirror
+  `transferDaySchedule` in `MembershipFeesPanel.jsx` applies the same floor (#654).
+
+**Verified** (Deno run of the real helper, 2026-10-22): renewal 2027-11-15 saved 10/22 → 12 rows
+Nov 15 2026 → Oct 15 2027; renewal 2027-10-15 with 1 made → 11 rows Nov 15 → Sep 15, or 10 rows
+from Dec 15 with a 2-month first charge if saved Nov 20; an ordinary transfer unchanged. **Applied**
+to James Martin III (plan 104: year starts 11/15/2026, renewal 2027-11-15, 0 made) and Meena
+Nimmagadda (plan 85: saved in the field's first build as renewal 2027-10-15, 1 made — October pulled
+on Cardpointe by Tray; she must save her card by Nov 14). Their original Oct 21 Brand new setup
+emails were real-sent (*"$667 is collected when you complete your setup"*); the link they hold now
+follows the edited plan and only saves the card. Brett Laine (plan 101) checked and left as Brand
+new — he restarts at $667 from now.
 
 ## Track billing on old system (added 2026-10-21)
 

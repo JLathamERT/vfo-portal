@@ -161,7 +161,12 @@ function dayOccurrencesAfter(basisIso, day, untilExclusive) {
 // charge as one combined row, AHEAD just stops early, and with no slots at all
 // the whole year collapses onto the save date itself.
 function transferDaySchedule(basisIso, renewalIso, day, remaining) {
-  const slotDates = dayOccurrencesAfter(basisIso, day, renewalIso)
+  // A year that has not started yet (renewal more than a year out) is charged
+  // from its first day, never before it — mirrors transferYearStart in the
+  // backend's shared.ts. Every other transfer: the basis date, as before.
+  const yearStart = /^\d{4}-\d{2}-\d{2}/.test(renewalIso || '') ? addMonthsIso(renewalIso.slice(0, 10), -12) : null
+  const slotBasis = yearStart && yearStart > basisIso ? addDaysIso(yearStart, -1) : basisIso
+  const slotDates = dayOccurrencesAfter(slotBasis, day, renewalIso)
   const rowDates = slotDates.length === 0
     ? [basisIso]
     : slotDates.slice(0, Math.min(remaining, slotDates.length))
@@ -1095,6 +1100,13 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
   const [chargeDay, setChargeDay] = useState(
     Number(editPlan?.charge_day) >= 1 ? String(editPlan.charge_day) : '',
   )
+  // Brand new + "Year starts on": a member renewing from the old system whose
+  // previous year is fully paid and whose NEW year has not started yet. Saved as
+  // a day-scheduled transfer (charge day the 15th, renewal a year after the
+  // start, 0 payments made; annual = charged at the start), so the real
+  // anniversary is kept and nothing is taken before the year begins. A year that
+  // has already started is Transfer from old billing's job, not this field's.
+  const [yearStart, setYearStart] = useState('')
   const [frequency, setFrequency] = useState(editPlan?.frequency || 'monthly')
   const [annualAmount, setAnnualAmount] = useState(editPlan ? String(editPlan.annual_amount) : '')
   const [creditNote, setCreditNote] = useState(editPlan && Number(editPlan.credit_note) > 0 ? String(editPlan.credit_note) : '')
@@ -1158,27 +1170,41 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
   const credit = parseMoney(creditNote)
   const net = Math.max(0, Math.round((annual - credit) * 100) / 100)
   const today = todayIso()
-  const transferRenewalValid = /^\d{4}-\d{2}-15$/.test(transferRenewal || '') && transferRenewal > today && transferRenewal <= addYearsIso(today, 1)
+  const isAnchored = mode === 'new' && !useGc && !!yearStart
+  // Everything below runs off these, so a Year-starts-on plan is quoted and
+  // saved exactly like the transfer it is stored as.
+  const xfer = isTransfer || isAnchored
+  const yearStartIs15th = /^\d{4}-\d{2}-15$/.test(yearStart || '')
+  const yearStartFuture = !!yearStart && yearStart > today
+  const xferRenewal = !isAnchored ? transferRenewal
+    : !yearStartIs15th ? ''
+    : frequency === 'monthly' ? addYearsIso(yearStart, 1) : yearStart
+  const xferPrior = isAnchored ? '0' : priorPaid
+  const xferDay = isAnchored ? '15' : chargeDay
+  // A monthly year may start up to a month ahead, so its renewal may be up to a
+  // year and a month out — the backend allows exactly that (plan-save.ts).
+  const transferRenewalLimit = frequency === 'monthly' ? addMonthsIso(today.slice(0, 8) + '15', 13) : addYearsIso(today, 1)
+  const transferRenewalValid = /^\d{4}-\d{2}-15$/.test(xferRenewal || '') && xferRenewal > today && xferRenewal <= transferRenewalLimit
 
   // As-if-they-pay-today preview (the real dates lock in when they pay).
   const previewChargeDay = Number(today.slice(8, 10)) <= 15 ? Number(today.slice(8, 10)) : 1
   const previewRenewal = renewalPreview(today)
-  const transferPullCount = isTransfer && transferRenewalValid && frequency === 'monthly'
-    ? transferSlots(today, transferRenewal)
+  const transferPullCount = xfer && transferRenewalValid && frequency === 'monthly'
+    ? transferSlots(today, xferRenewal)
     : 0
-  const priorPaidFilled = String(priorPaid).trim() !== ''
+  const priorPaidFilled = String(xferPrior).trim() !== ''
   const priorPaidValid = priorPaidFilled &&
-    /^\d+$/.test(String(priorPaid).trim()) && Number(priorPaid) >= 0 && Number(priorPaid) <= 11
+    /^\d+$/.test(String(xferPrior).trim()) && Number(xferPrior) >= 0 && Number(xferPrior) <= 11
   // Everything else about a monthly transfer is derived from the payments they
   // already made — the backend does the same arithmetic, so keep them in step.
-  const prior = priorPaidValid ? Number(priorPaid) : 0
+  const prior = priorPaidValid ? Number(xferPrior) : 0
   const remaining = 12 - prior
   // Fewer charge dates left than payments owed (a late-in-the-year transfer)
   // means the extra months ride along on the payment at the link.
   const pullsAtLink = 1 + Math.max(0, remaining - transferPullCount)
   const perPull = frequency === 'annual'
-    ? roundDollar(isTransfer ? annual : net)
-    : isTransfer
+    ? roundDollar(xfer ? annual : net)
+    : xfer
       ? (priorPaidValid ? Math.max(0, roundDollar(annual / 12 - credit / remaining)) : 0)
       : Math.max(0, roundDollar(net / 12))
   const linkAmount = pullsAtLink * perPull
@@ -1186,27 +1212,27 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
   // The transfer quote is as-if-paid-today and only ever gets worse: slots run
   // out as the fixed renewal approaches, so a member who sits on the email pays
   // more at the link than the admin was shown. Surface both ends of that.
-  const transferQuoteLive = isTransfer && frequency === 'monthly' && transferRenewalValid && priorPaidValid
+  const transferQuoteLive = xfer && frequency === 'monthly' && transferRenewalValid && priorPaidValid
   const cliff = useMemo(
-    () => (transferQuoteLive ? catchUpCliff(today, transferRenewal, remaining) : null),
-    [transferQuoteLive, today, transferRenewal, remaining],
+    () => (transferQuoteLive ? catchUpCliff(today, xferRenewal, remaining) : null),
+    [transferQuoteLive, today, xferRenewal, remaining],
   )
   // Year 1's last charge. An "ahead" transfer finishes well before the renewal,
   // so "until renewal" would overstate how long they keep paying.
   const lastChargeDate = transferQuoteLive
-    ? (chargeDatesAfter(today, transferRenewal, 23)
+    ? (chargeDatesAfter(today, xferRenewal, 23)
       .slice(0, Math.max(0, remaining - pullsAtLink)).slice(-1)[0] || today)
     : null
 
   // The fixed charge day (1-15) a monthly transfer already pays on. Required —
   // it turns the link save-only and schedules the whole year on that day.
-  const chargeDayFilled = String(chargeDay).trim() !== ''
+  const chargeDayFilled = String(xferDay).trim() !== ''
   const chargeDayValid = chargeDayFilled &&
-    /^\d+$/.test(String(chargeDay).trim()) && Number(chargeDay) >= 1 && Number(chargeDay) <= 15
+    /^\d+$/.test(String(xferDay).trim()) && Number(xferDay) >= 1 && Number(xferDay) <= 15
   // Quoted as-if-they-save-today; the real dates are recomputed from the day
   // they actually save, exactly as the backend does from its own basis date.
   const daySched = transferQuoteLive && chargeDayValid
-    ? transferDaySchedule(today, transferRenewal, Number(chargeDay), remaining)
+    ? transferDaySchedule(today, xferRenewal, Number(xferDay), remaining)
     : null
 
   // ── Track billing on old system ──────────────────────────────────────────
@@ -1298,6 +1324,12 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
     if (useGc) { await saveGc(); return }
     if (!(annual > 0)) { setMsg({ tone: 'error', text: 'Enter the annual membership value.' }); return }
     if (isTracking) { await saveTracking(); return }
+    if (isAnchored && !yearStartIs15th) { setMsg({ tone: 'error', text: 'The membership year must start on the 15th of a month — their anniversary.' }); return }
+    if (isAnchored && !yearStartFuture) { setMsg({ tone: 'error', text: 'This membership year has already started — use Transfer from old billing (mid-year) instead.' }); return }
+    if (isAnchored && !transferRenewalValid) {
+      setMsg({ tone: 'error', text: frequency === 'monthly' ? 'The new membership year must start by next month.' : 'An annual membership year must start within a year.' })
+      return
+    }
     if (isTransfer && !transferRenewalValid) { setMsg({ tone: 'error', text: 'Enter the member\'s existing renewal date — it must be the 15th of a month, within a year.' }); return }
     if (isTransfer && frequency === 'monthly' && !priorPaidValid) {
       setMsg({ tone: 'error', text: priorPaidFilled ? 'Must be a whole number between 0 and 11.' : 'Enter how many payments they\'ve already made this year (0 if none).' })
@@ -1314,13 +1346,13 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
         member_number: memberNumber,
         category,
         frequency,
-        transfer: isTransfer,
+        transfer: xfer,
         annual_amount: annual,
         credit_note: credit,
         credit_note_memo: creditMemo || undefined,
-        renewal_date: isTransfer ? transferRenewal : undefined,
-        prior_payments_made: isTransfer && frequency === 'monthly' ? Number(priorPaid) : undefined,
-        charge_day: isTransfer && frequency === 'monthly' ? Number(chargeDay) : undefined,
+        renewal_date: xfer ? xferRenewal : undefined,
+        prior_payments_made: xfer && frequency === 'monthly' ? Number(xferPrior) : undefined,
+        charge_day: xfer && frequency === 'monthly' ? Number(xferDay) : undefined,
       })
       if (!res?.ok) { setMsg({ tone: 'error', text: res?.error || 'Could not save the plan.' }); return }
       if (editPlan) { onSaved?.({ tone: 'success', text: 'Plan updated.' }); return }
@@ -1460,6 +1492,21 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
             <button type="button" style={chip(frequency === 'annual')} onClick={() => setFrequency('annual')}>Annual</button>
           </div>
         </div>
+        {mode === 'new' && !useGc && (
+          <div>
+            <div style={label}>Membership year starts on (optional)</div>
+            <input type="date" value={yearStart} onChange={e => setYearStart(e.target.value)} style={input} />
+            {yearStart && !yearStartIs15th ? (
+              <div style={{ marginTop: '5px', fontSize: '12px', color: '#b91c1c' }}>Must be the 15th of a month — their membership anniversary.</div>
+            ) : yearStart && !yearStartFuture ? (
+              <div style={{ marginTop: '5px', fontSize: '12px', color: '#b91c1c' }}>This year has already started — use Transfer from old billing (mid-year) instead.</div>
+            ) : yearStart && !transferRenewalValid ? (
+              <div style={{ marginTop: '5px', fontSize: '12px', color: '#b91c1c' }}>{frequency === 'monthly' ? 'Must start by next month.' : 'Must be within a year.'}</div>
+            ) : (
+              <div style={{ marginTop: '5px', fontSize: '12px', color: 'var(--vfo-ink-3)' }}>For a member renewing from the old system whose new year has not started yet: the day it starts (their anniversary). Keeps their real renewal date and charges nothing before it. Leave blank for a new member.</div>
+            )}
+          </div>
+        )}
         {isTracking && (
           <div>
             <div style={label}>Their renewal date</div>
@@ -1575,14 +1622,16 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
               </div>
             </div>
           )
-        ) : isTransfer ? (
+        ) : isAnchored && (!yearStartFuture || !transferRenewalValid) ? (
+          <div style={{ color: '#b45309' }}>{yearStart && yearStartIs15th && !yearStartFuture ? 'This year has already started — use Transfer from old billing (mid-year).' : 'Enter the future date their new membership year starts (a 15th) to see the schedule.'}</div>
+        ) : xfer ? (
           frequency === 'monthly' ? (
             (!transferRenewalValid || !priorPaidValid) ? (
               <div style={{ color: '#b45309' }}>Enter their existing renewal date and how many payments they've made to see the remaining schedule.</div>
             ) : daySched ? (
               <div>
                 <div>
-                  Paid {prior} of 12 — <strong>{remaining} × {money(perPull)}</strong> left on the <strong>{ordinal(Number(chargeDay))}</strong> of each month.
+                  Paid {prior} of 12 — <strong>{remaining} × {money(perPull)}</strong> left on the <strong>{ordinal(Number(xferDay))}</strong> of each month.
                   {' '}<strong>Nothing is collected at the link</strong> — it only saves their payment method.
                   {credit > 0 ? <> · credit {money(credit)}</> : null}
                 </div>
@@ -1590,7 +1639,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
                   First charge <strong>{fmtDate(daySched.firstChargeDate)}</strong>
                   {' · '}{daySched.payments} payment{daySched.payments === 1 ? '' : 's'} remaining
                   {' · '}last charge <strong>{fmtDate(daySched.lastChargeDate)}</strong>
-                  {' · '}renewal <strong>{fmtDate(transferRenewal)}</strong>
+                  {' · '}renewal <strong>{fmtDate(xferRenewal)}</strong>
                 </div>
                 {daySched.catchUpMonths > 1 && (
                   <div style={{ marginTop: '6px', fontSize: '12px', color: '#b45309' }}>
@@ -1601,7 +1650,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
                 )}
                 {daySched.slots === 0 && (
                   <div style={{ marginTop: '6px', fontSize: '12px', color: '#b45309' }}>
-                    No {ordinal(Number(chargeDay))} is left before the renewal, so the whole balance is due as soon as they save their method.
+                    No {ordinal(Number(xferDay))} is left before the renewal, so the whole balance is due as soon as they save their method.
                   </div>
                 )}
               </div>
@@ -1614,7 +1663,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
                   Paid {prior} of 12 — <strong>{remaining} × {money(perPull)}</strong> left: <strong>{money(linkAmount)}</strong> at the link
                   {pullsAtLink > 1 ? ` (includes ${pullsAtLink - 1}-month catch-up)` : ''}, then {remaining - pullsAtLink} monthly
                   {', last charge '}<strong>{fmtDate(lastChargeDate)}</strong>
-                  {' · '}renewal <strong>{fmtDate(transferRenewal)}</strong>
+                  {' · '}renewal <strong>{fmtDate(xferRenewal)}</strong>
                   {credit > 0 ? <> · credit {money(credit)}</> : null}
                 </div>
                 {cliff && (
@@ -1634,7 +1683,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
           ) : !transferRenewalValid ? (
             <div style={{ color: '#b45309' }}>Enter their existing renewal date to see the remaining schedule.</div>
           ) : (
-            <div>Nothing due now · next charge <strong>{money(roundDollar(annual))}</strong> at renewal <strong>{fmtDate(transferRenewal)}</strong></div>
+            <div>Nothing due now · next charge <strong>{money(roundDollar(annual))}</strong> at renewal <strong>{fmtDate(xferRenewal)}</strong></div>
           )
         ) : (
           <div>
