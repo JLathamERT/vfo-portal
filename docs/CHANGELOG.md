@@ -30,7 +30,7 @@ Branches `claude/vfo-session-starter-e1444e` (edge) / `claude/vfo-session-starte
 
 **Fixtures:** clients 403 (Test Portal) and 405 (Test Direct) deleted with every row after their sandbox subscription was cancelled; Test Client 62 keeps plans 281 / 282 (now paid, sandbox), revoked test licence rows 1 / 7 / 22, live row 26, mirror row 6 to 11111; document numbers kept; `tax_direct` back to Off for all; the other three cards Test member only, as before. Clients 401 / 402 (not this chat's) untouched. User-side: today's sandbox Gmail drafts, Drive INV / REC files, sandbox BoldSign documents and Stripe objects.
 
-**Gates:** `deno check` 0; action count 610; build exit 0, 49 route pages; advisor GREEN at the baseline after both migrations; smoke **5/5 vs v1030** (Jake) — **v1031 smoke owed**; `probe-l5-mirroring.ps1` 43/0 vs v1030.
+**Gates:** `deno check` 0; action count 610; build exit 0, 49 route pages; advisor GREEN at the baseline after both migrations; smoke **5/5 vs v1030** and **5/5 vs v1031** (Jake, after the merge); `probe-l5-mirroring.ps1` 43/0 vs v1030. **Shipped:** merged (edge `aeed438` #309, react `43ab43f` #510; v1031 byte-identical to merged main, not redeployed), frontend PUBLISHED from merged main as `live-258-switches-prelaunch-licence` (`index-BcUHqIh8.js`, live site verified), tags + `backend-good-2026-10-22-v1031` pushed.
 
 ## 2026-10-22 — One named bell per failed charge, payment links for old-system MAP 1 rows, the planner's allocation date, and "Membership year starts on"
 
