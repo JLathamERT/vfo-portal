@@ -53,7 +53,7 @@ function ClientTabDropdown({ label, isActive, options, onSelect }) {
   function handleMouseLeave() { setOpen(false) }
   return (
     <div style={{ position: 'relative' }} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <button style={{ padding: '7px 16px', background: isActive ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: isActive ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: isActive ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+      <button style={{ padding: '7px 10px 7px 12px', background: isActive ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: isActive ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: isActive ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
         {label}<span style={{ fontSize: '9px', opacity: 0.6 }}>▾</span>
       </button>
       {open && (
@@ -278,7 +278,7 @@ export default function ClientDetail() {
       return [...base, 'tax']
     }
     const profile = isMember
-      ? ['home', ...(isMirror ? [] : ['ciq']), 'vault']
+      ? ['home', 'ciq', 'vault']
       : ['home', 'details', 'vault', ...(client?.member_number ? ['ciq'] : []), 'payments', 'settings', ...(session?.is_superadmin ? ['continuation'] : [])]
     if (prog?.name === 'Partnership Fast Track') return [...profile, 'pft']
     if (prog?.name === 'VFO Tax Planning') return [...profile, 'tax']
@@ -317,7 +317,7 @@ export default function ClientDetail() {
   }
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const tabStyle = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' })
+  const tabStyle = (active) => ({ padding: '7px 12px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' })
   const statusColors2 = { active: '#1b9254', pending: '#e06717', lost: '#e74c3c' }
 
   // Logged out (e.g. a deep link opened from an email in a new tab): render nothing
@@ -394,7 +394,7 @@ export default function ClientDetail() {
         )}
 
         {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px', gap: '8px', paddingBottom: '10px' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px', gap: '4px', paddingBottom: '10px' }}>
           {loading ? (
             <>
               <Skeleton width={70} height={20} />
@@ -425,8 +425,8 @@ export default function ClientDetail() {
               {isMember
                 ? <>
                     <button style={tabStyle(activeTab === 'home')} onClick={() => setActiveTab('home')}>Profile</button>
-                    {/* CIQs belong to the owning member: a mirrored member has none here. */}
-                    {!isMirror && <button style={tabStyle(activeTab === 'ciq')} onClick={() => setActiveTab('ciq')}>CIQ</button>}
+                    {/* A mirrored member sees the CIQs too, read-only (2026-10-22). */}
+                    <button style={tabStyle(activeTab === 'ciq')} onClick={() => setActiveTab('ciq')}>CIQ</button>
                     <button style={tabStyle(activeTab === 'vault')} onClick={() => setActiveTab('vault')}>Vault</button>
                   </>
                 : <ClientTabDropdown label="Profile" isActive={activeTab === 'home' || activeTab === 'details' || activeTab === 'vault' || activeTab === 'ciq' || activeTab === 'payments' || activeTab === 'settings' || activeTab === 'continuation'} options={[{key:'home',label:'Profile'},{key:'details',label:'Edit Profile'},{key:'vault',label:'Vault'},...(client?.member_number ? [{key:'ciq',label:'CIQ'}] : []),{key:'payments',label:'Payments'},{key:'settings',label:'Settings'},...(session?.is_superadmin ? [{key:'continuation',label:'Payment Continuation'}] : [])]} onSelect={handleTabSelect} />
@@ -483,9 +483,10 @@ export default function ClientDetail() {
             )}
             {/* This client's CIQs, inside the profile (2026-10-20). The list loads by
                 the OWNING member (a member caller's number is forced server-side). */}
-            {activeTab === 'ciq' && client?.member_number && (isAdmin || (isMember && !isMirror)) && (
-              <MemberCIQ key={`ciq-${client.id}`} memberNumber={isMember ? session.member_number : client.member_number} memberName={client.member_name || client.member_number}
-                ciqEnabled={isMember ? session.ciq_enabled : true} ciqVfosManaged={isMember ? session.ciq_vfos_managed : true} isAdmin={isAdmin} client={client} />
+            {/* A mirrored member (2026-10-22) sees the client's CIQs read-only, exactly as the owner does. */}
+            {activeTab === 'ciq' && client?.member_number && (isAdmin || isMember) && (
+              <MemberCIQ key={`ciq-${client.id}`} memberNumber={isMember && !isMirror ? session.member_number : client.member_number} memberName={client.member_name || client.member_number}
+                ciqEnabled={isMember ? session.ciq_enabled : true} ciqVfosManaged={isMember ? session.ciq_vfos_managed : true} isAdmin={isAdmin} client={client} readOnly={isMirror} />
             )}
             {activeTab === 'details' && isAdmin && <ClientDetails client={client} onUpdate={loadData} sectionStyle={sectionStyle} />}
             {pfLocked && program && PROGRAM_TABS.includes(activeTab) && (

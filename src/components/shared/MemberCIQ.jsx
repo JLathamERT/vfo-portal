@@ -11,7 +11,11 @@ import AddClientForm from './AddClientForm'
 // that one client — no client list, no chooser, + Start New CIQ starts one for
 // them, and a client with no CIQs still shows their card. Without it this is the
 // member-wide CIQ tab, unchanged.
-export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true, ciqVfosManaged = true, isAdmin = false, client: lockedClient = null }) {
+// `readOnly` (2026-10-22, Client Mirroring): a member the client is MIRRORED to sees
+// that client's CIQs exactly as the owner does - every view, nothing editable. The
+// list comes from ciq_load_client_list (ciq_load_list is the caller's own CIQs);
+// the server refuses every CIQ write to them regardless.
+export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true, ciqVfosManaged = true, isAdmin = false, client: lockedClient = null, readOnly = false }) {
   const [ciqs, setCiqs] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
@@ -43,6 +47,9 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   // Portal licensing L4 (decision 37): while ciq_licence is on for this member the
   // toggle is the MSM's "member drives CIQ" switch - same column, new wording.
   const [ciqLicenceOn, setCiqLicenceOn] = useState(false)
+  // Read-only frame: disables the inputs and blocks the click-to-pick options;
+  // section tabs, Previous / Next and Back sit outside it and stay live.
+  const viewOnlyFrame = { border: 0, padding: 0, margin: 0, minWidth: 0, pointerEvents: readOnly ? 'none' : undefined }
 
   useLayoutEffect(() => {
     // Re-opened tab: use the last settings at once, refresh behind them.
@@ -54,6 +61,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
       setSettingsLoaded(true)
     }
     async function loadCiqSettings() {
+      if (readOnly) { setSettingsLoaded(true); return }
       try {
         const data = await callApi('ciq_load_settings', { member_number: memberNumber })
         setLocalCiqEnabled(data.ciq_enabled)
@@ -78,7 +86,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   // Re-opened tab: draw the last CIQ list at once, refresh behind it. The admin
   // deep link below only ever acts on the fresh list.
   useLayoutEffect(() => {
-    const snap = getLastSeen(`ciqlist:${memberNumber}`)
+    const snap = readOnly ? null : getLastSeen(`ciqlist:${memberNumber}`)
     if (snap) {
       setCiqs(snap.data.ciqs || [])
       setContactsMap(snap.contactData.contacts || {})
@@ -90,6 +98,11 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   async function loadCiqs(quiet = false) {
     if (quiet !== true) setLoading(true)
     try {
+      if (readOnly && lockedClient) {
+        const data = await callApi('ciq_load_client_list', { client_id: lockedClient.id })
+        setCiqs(data.ciqs || [])
+        return
+      }
       const [data, contactData] = await Promise.all([
         callApi('ciq_load_list', { member_number: memberNumber }),
         callApi('load_member_contacts', { member_number: memberNumber }),
@@ -320,18 +333,16 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
     if (ciqView === 'chooser') {
       return (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <div>
-              <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{client?.first_name} {client?.last_name}</div>
-              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client?.client_ref} · {client?.email}</div>
-            </div>
-            <button onClick={() => { setActiveCiq(null); setAnswers({}); setActiveSection('intro'); setCiqView(null); loadCiqs() }} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>← Back to list</button>
+          <button onClick={() => { setActiveCiq(null); setAnswers({}); setActiveSection('intro'); setCiqView(null); loadCiqs() }} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to list</button>
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{client?.first_name} {client?.last_name}</div>
+            <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client?.client_ref} · {client?.email}</div>
           </div>
 
           <HubBanner complete title="CIQ Diagnostic completed" meta={activeCiq.completed_at ? formatDate(activeCiq.completed_at) : ''} />
 
           <HubGrid>
-            <HubCard title="Diagnostic" sub="View or edit the questionnaire answers" accent="#002973" onClick={() => setCiqView('diagnostic')} />
+            <HubCard title="Diagnostic" sub={readOnly ? 'View the questionnaire answers' : 'View or edit the questionnaire answers'} accent="#002973" onClick={() => setCiqView('diagnostic')} />
             <HubCard title="Report" sub="View the completed CIQ summary" accent="#125ecc" onClick={() => { setCiqView('report'); setShowReport(true) }} />
             <HubCard title="Prioritize" sub="Prioritize identified opportunities" accent="#e06717" onClick={() => setCiqView('prioritize')} />
             {activeCiq.priorities_completed_at
@@ -466,6 +477,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             <button onClick={() => setCiqView('chooser')} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '8px 16px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', boxShadow: 'var(--vfo-shadow-card)' }}>← CIQ Menu</button>
           </div>
 
+          <fieldset disabled={readOnly} style={viewOnlyFrame}>
           {sections.map(sectionName => {
             const sectionItems = sectionMap[sectionName]
             let lastSubsection = null
@@ -513,10 +525,11 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             </div>
             )
           })}
+          </fieldset>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '24px' }}>
             <button onClick={() => setCiqView('chooser')} style={{ padding: '12px 28px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer' }}>← Back</button>
-            <button onClick={async () => { await savePriorities(); try { await callApi('ciq_complete_priorities', { ciq_id: activeCiq.id }); setActiveCiq(prev => ({ ...prev, priorities_completed_at: new Date().toISOString() })) } catch(e) { console.error(e) }; setCiqView('onePagePlan') }} disabled={saving} style={{ padding: '12px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save & Continue to One Page Plan →'}</button>
+            {!readOnly && <button onClick={async () => { await savePriorities(); try { await callApi('ciq_complete_priorities', { ciq_id: activeCiq.id }); setActiveCiq(prev => ({ ...prev, priorities_completed_at: new Date().toISOString() })) } catch(e) { console.error(e) }; setCiqView('onePagePlan') }} disabled={saving} style={{ padding: '12px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save & Continue to One Page Plan →'}</button>}
           </div>
         </div>
       )
@@ -531,7 +544,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
       const completedItems = Object.values(displayPriorities).filter(p => p.decision === 'prioritize' && p.progress_status === 'completed')
 
       const isLatest = oppSubTab === 'latest' && !selectedSnapshot
-      const progressMode = isLatest && !!activeCiq.accountability_mode
+      const progressMode = isLatest && !!activeCiq.accountability_mode && !readOnly
 
       async function toggleProgressMode() {
         const next = !activeCiq.accountability_mode
@@ -622,12 +635,12 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
                 <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Plan Completed on {planDate}</div>
-                <div onClick={toggleProgressMode} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                {!readOnly && <div onClick={toggleProgressMode} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                   <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', fontWeight: 500 }}>Update Progress</span>
                   <div style={{ width: '44px', height: '24px', borderRadius: '12px', background: activeCiq.accountability_mode ? '#125ecc' : 'var(--vfo-border-strong)', position: 'relative', flexShrink: 0 }}>
                     <div style={{ position: 'absolute', top: '2px', left: activeCiq.accountability_mode ? '22px' : '2px', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--vfo-card)', transition: 'left 0.2s' }} />
                   </div>
-                </div>
+                </div>}
               </div>
               <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: '1.8', marginBottom: '24px', paddingLeft: '4px' }}>
                 Having completed: Client Information Questionnaire to identify areas of interest, and Prioritization Process to determine immediate / later areas of focus.
@@ -864,12 +877,17 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
     // ─── DIAGNOSTIC VIEW ─────────────────────────────────
     return (
       <div>
+        {activeCiq.status !== 'completed' && (
+          <button onClick={() => { setActiveCiq(null); setAnswers({}); setActiveSection('intro'); setCiqView(null) }} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to list</button>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div>
             <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{client?.first_name} {client?.last_name}</div>
             <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client?.client_ref} · {client?.email}</div>
           </div>
-          <button onClick={() => { if (activeCiq.status === 'completed') { setCiqView('chooser'); setActiveSection('intro') } else { setActiveCiq(null); setAnswers({}); setActiveSection('intro'); setCiqView(null) } }} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '8px 16px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', boxShadow: 'var(--vfo-shadow-card)' }}>{activeCiq.status === 'completed' ? '← CIQ Menu' : '← Back to list'}</button>
+          {activeCiq.status === 'completed' && (
+            <button onClick={() => { setCiqView('chooser'); setActiveSection('intro') }} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '8px 16px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', boxShadow: 'var(--vfo-shadow-card)' }}>← CIQ Menu</button>
+          )}
         </div>
 
         {/* Section nav */}
@@ -886,6 +904,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           <div style={{ padding: '10px 16px', borderRadius: '8px', background: 'rgba(27,146,84,0.1)', border: '1px solid rgba(27,146,84,0.3)', color: 'var(--vfo-success-text)', fontWeight: 500, fontSize: '13px', marginBottom: '20px' }}>✓ This CIQ has been completed</div>
         )}
 
+        <fieldset disabled={readOnly} style={viewOnlyFrame}>
         {/* Intro section */}
         {activeSection === 'intro' && (
           <div style={sectionStyle}>
@@ -1422,7 +1441,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             <div style={{ fontSize: '14px', color: 'var(--vfo-muted)', marginBottom: '24px' }}>
               You have reached the end of the CIQ Diagnostic. If you need to go back and make any changes, do that now.
             </div>
-            {activeCiq.status !== 'completed' && (
+            {activeCiq.status !== 'completed' && !readOnly && (
               <button onClick={handleFinalize} style={{ padding: '12px 28px', borderRadius: '8px', background: '#1b9254', border: 'none', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>Finalize CIQ</button>
             )}
             {validationErrors.length > 0 && (
@@ -1454,6 +1473,8 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           </div>
         )}
 
+        </fieldset>
+
         {/* Navigation + save */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }}>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -1461,7 +1482,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             {!isLast && <button onClick={goNext} style={{ padding: '10px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Next →</button>}
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={saveAnswers} disabled={saving} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-ink)', fontSize: '13px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save Draft'}</button>
+            {!readOnly && <button onClick={saveAnswers} disabled={saving} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-ink)', fontSize: '13px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save Draft'}</button>}
           </div>
         </div>
       </div>
@@ -1493,7 +1514,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   // The client page's CIQ tab: this one client's CIQs, even when there are none.
   if (lockedClient) {
     const clientCiqs = ciqs.filter(c => String(c.client_id) === String(lockedClient.id))
-    const canStart = isAdmin || localCiqEnabled
+    const canStart = !readOnly && (isAdmin || localCiqEnabled)
     async function startForClient() {
       if (startingCiq) return
       setStartingCiq(true); setAddStatus('')
@@ -1515,7 +1536,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           {contactsMap[lockedClient.id]?.length > 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '16px', fontStyle: 'italic' }}>with {contactsMap[lockedClient.id].map(c => `${c.first_name} ${c.last_name}`).join(', ')}</div>}
           {clientCiqs.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px', color: 'var(--vfo-muted)', fontSize: '13px' }}>
-              {canStart ? `${lockedClient.first_name} has no CIQs yet. Click "+ Start New CIQ" to begin.` : `${lockedClient.first_name} has no CIQs yet. Your VFO Services representative will start one.`}
+              {canStart ? `${lockedClient.first_name} has no CIQs yet. Click "+ Start New CIQ" to begin.` : readOnly ? `${lockedClient.first_name} has no CIQs yet.` : `${lockedClient.first_name} has no CIQs yet. Your VFO Services representative will start one.`}
             </div>
           ) : clientCiqs.map(ciq => (
             <div key={ciq.id}
@@ -1526,7 +1547,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                 <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>Started {formatDate(ciq.created_at)}</span>
                 {ciq.completed_at && <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>· Completed {formatDate(ciq.completed_at)}</span>}
               </div>
-              <span style={{ color: '#0095ff', fontWeight: 600, fontSize: '12px' }}>{ciq.status === 'draft' ? 'Continue →' : 'View / Edit →'}</span>
+              <span style={{ color: '#0095ff', fontWeight: 600, fontSize: '12px' }}>{readOnly ? 'View →' : ciq.status === 'draft' ? 'Continue →' : 'View / Edit →'}</span>
             </div>
           ))}
         </div>

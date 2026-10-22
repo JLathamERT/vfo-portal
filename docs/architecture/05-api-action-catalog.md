@@ -708,6 +708,7 @@ The member's own tax actions on a **Direct** plan (`client_tax_plans.tax_route='
 | Action | File | R | W | Chains |
 |---|---|---|---|---|
 | `ciq_load_list` | `actions/ciq/load-list.ts` | `client_ciqs`, `clients` | — | — |
+| `ciq_load_client_list` (2026-10-22; AUTH, in NO gate list — fenced in-handler: admin, the owning member, or a member the client is MIRRORED to via `memberClientAccess`; client / specialist / planner 403) | `actions/ciq/load-client-list.ts` | `client_ciqs`, `clients`, `client_member_connections` | — | — |
 | `ciq_create` | `actions/ciq/create.ts` | — | `client_ciqs` | Member caller 403'd when `members.ciq_enabled` false (start-gate, `actions/ciq/shared.ts`); admins never gated. |
 | `ciq_add_client_and_create` | `actions/ciq/add-client-and-create.ts` | — | `clients`, optional `client_contacts`, `client_ciqs` | Same member start-gate as `ciq_create`. **(2026-10-19, v1014)** names / email tidied; duplicates as `msm_add_client` (#636: email anywhere 409, same name 409 + `allow_duplicate_name`); the additional contact needs both names. |
 | `ciq_load` | `actions/ciq/load.ts` | `client_ciqs`, `ciq_answers` | — | — |
@@ -722,7 +723,7 @@ The member's own tax actions on a **Direct** plan (`client_tax_plans.tax_route='
 | `ciq_load_settings` | `actions/ciq/load-settings.ts` | `members.ciq_enabled, ciq_vfos_managed` | — | Added to `MEMBER_SCOPED_ACTIONS` 2026-06-18 — member caller's `body.member_number` forced to their own. |
 | `ciq_set_accountability` | `actions/ciq/set-accountability.ts` | — | `client_ciqs.accountability_mode` | "Update Progress" toggle on the One Page Plan; AUTH, admin + member; `denyIfNotOwnCiq` (C2). |
 
-> **Caller-ownership (2026-06-18, C2):** `ciq_load`, `ciq_save`, `ciq_complete`, `ciq_load_priorities`, `ciq_save_priorities`, `ciq_complete_priorities`, `ciq_save_priority_snapshot`, `ciq_load_priority_snapshots`, and `ciq_set_accountability` now each call `denyIfNotOwnCiq` (`actions/ciq/shared.ts`) — a member caller's `body.ciq_id` must map to a `client_ciqs` row whose `member_number` is theirs, else 403. Admins are unrestricted. Closes a member→other-member CIQ IDOR.
+> **Caller-ownership (2026-06-18, C2):** `ciq_load`, `ciq_save`, `ciq_complete`, `ciq_load_priorities`, `ciq_save_priorities`, `ciq_complete_priorities`, `ciq_save_priority_snapshot`, `ciq_load_priority_snapshots`, and `ciq_set_accountability` now each call `denyIfNotOwnCiq` (`actions/ciq/shared.ts`; since 2026-10-22 the three READS — `ciq_load`, `ciq_load_priorities`, `ciq_load_priority_snapshots` — call its twin `denyIfNotOwnOrMirroredCiq`, which also admits a member the CIQ's client is mirrored to) — a member caller's `body.ciq_id` must map to a `client_ciqs` row whose `member_number` is theirs, else 403. Admins are unrestricted. Closes a member→other-member CIQ IDOR.
 
 ### Member program notes
 

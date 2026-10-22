@@ -23,6 +23,7 @@
 | State | Means | Buttons |
 |---|---|---|
 | `covered` | an active TAX licence — no charge (decision 40) | none |
+| `handover` | a paid $25 month is running out and the client's tax licence starts when it ends (row `ending`, `ended_reason='tax_licence'`, 2026-10-22) — *"The $25/month Standard portal runs to the end of the month already paid, [date], then stops - no further charge. From then it is included with [client]'s tax planning until [date]."* | none (Keep it on is refused server-side, 409) |
 | `basic` | no open subscription | *Turn on Standard portal* (greyed until portal access is sent — decision 48) |
 | `processing` | active/ending but NO paid month covers today: a bank payment clearing (first month, a monthly bank renewal, or a payment just restarted on a new method), or a card payment seconds from confirming | none |
 | `active` | paid month covers today | *Turn off*, *Change payment method* |
@@ -35,7 +36,7 @@ After a return from Stripe (`?ciq_licence=done` / `?ciq_billing=done`, read once
 
 - **One Stripe customer per member** (`member_portal_billing`, per account + mode) and **one subscription per client** on it (decision 35). VFO Services account for now (decision 36), sandbox + account from the **TAX** `pipeline_sandbox_config` row plus the 59524 force. Every Stripe-visible text reads `VFO Portal - …`.
 - **Price:** card = $25 + 2.9% + $0.30 = **$26.06**; bank = **$25.00** (decision 51, `ciqChargeCents`). Bank is Stripe sign-in only (`verification_method=instant`, #491) — first payment charged at once.
-- **Turn on** (`member_ciq_licence_start`): refuses a foreign / mirrored client (403), no login (400), a tax-covered client (409 + `covered_until`), an open subscription (409). A saved method → the subscription is created off-session on the fixed product `vfo_portal_ciq_licence` (idempotency `ciq-lic-<row id>`); none (or a decline) → the token page **`/portal-license-pay`** (card / bank tiles, PUBLIC `portal_license_pay_load` / `_checkout`, the row's `checkout_token` is the whole credential, #310) → Checkout `mode=subscription` → back to the member client page.
+- **Turn on** (`member_ciq_licence_start`): refuses a foreign / mirrored client (403), no login (400), a tax-covered client — a tax licence running OR queued, `liveTaxLicenceWindow` (409 + `covered_until`), an open subscription (409). A saved method → the subscription is created off-session on the fixed product `vfo_portal_ciq_licence` (idempotency `ciq-lic-<row id>`); none (or a decline) → the token page **`/portal-license-pay`** (card / bank tiles, PUBLIC `portal_license_pay_load` / `_checkout`, the row's `checkout_token` is the whole credential, #310) → Checkout `mode=subscription` → back to the member client page.
 - **Turn off / Keep it on**: `member_ciq_licence_stop` / `_resume` = `cancel_at_period_end` true / false.
 - **Every paid month** writes the licence row (claimed by the unique `stripe_invoice_id`; resolved by the STORED subscription id, falling back to the subscription's own `ciq_subscription_row_id` metadata because Stripe can send `invoice.paid` before `checkout.session.completed`, #630) and chains `automation_PORTAL_ciq_licence_invoicereceipt` — the house INV-/REC-CIQ-<member ref> pair + email 319 (decision 46). A first bank payment also sends 320 at submit (#287).
 - **Change / Update payment method** (`member_portal_billing_update_card {client_id, method}`): the member picks card or bank IN THE PORTAL first; the panel warns that it changes **ALL** of their Standard portal subscriptions, how many, and the new monthly amount (Jake, 2026-10-16). Checkout `mode=setup` for that one method → `ciqBillingUpdateCompleted` makes it the customer default and moves EVERY billed subscription (active / ending / past_due): sets `default_payment_method`, re-pins `payment_settings.payment_method_types` (#627), re-prices onto `vfo_portal_ciq_licence` when the price changes (#626). An overdue month on a NEW price is voided and restarted today (`billing_cycle_anchor=now`, so that client's date moves); on the SAME price it is retried on the new method. A restarted / retried month clears the failure and reads `processing`. Stamps `member_portal_billing.methods_moved_at` (what the card polls for). Anything Stripe refuses → `FAILURE_ciq_licence` bell to Jake.
@@ -48,9 +49,16 @@ After a return from Stripe (`?ciq_licence=done` / `?ciq_billing=done`, read once
 
 The paid month already covers the client until its `ends_on`, so a renewal failure drops them to Basic at the renewal date; a member with several clients gets one failure email per client as each renews (they share one method, so one update fixes all — option 1, Jake).
 
-## A tax licence takes over (decision 40)
+## A tax licence takes over (decision 40, changed 2026-10-22 — Jake)
 
-`tax/invoice-receipt.ts`, only when `grantTaxLicence` returns **`granted`** (never `already` — a later payment on the same plan must not stop a $25 turned on after the tax licence ended) → `utils/ciq-licence-supersede.ts supersedeCiqLicence`: each open row is CLAIMED `superseded` first (so the `customer.subscription.deleted` that follows finds it settled), then the Stripe subscription is cancelled at once (no proration, no refund) or an open Checkout expired; a Stripe refusal puts the row back and bells Jake. Email **322** `MEMBER_ciq_licence_superseded` where a subscription was billing.
+`tax/invoice-receipt.ts`, only when `grantTaxLicence` returns **`granted`** (never `already` — a later payment on the same plan must not stop a $25 turned on after the tax licence ended) → `utils/ciq-licence-supersede.ts supersedeCiqLicence(client, taxYear)`. The tax year itself always costs the full $300 at the retainer payment ([tax-planning.md → Client portal licence](tax-planning.md#client-portal-licence-direct-unit-4--portal-licensing-l1-2026-09-28)).
+
+- **Hand-over — a PAID $25 month covers the payment day** (`paidCiqMonthEnd`): `grantTaxLicence` starts the tax year on that month's end, and the subscription is set to stop there — `cancel_at_period_end` at Stripe, row `ending` + `ended_reason='tax_licence'`. Nothing is refunded because nothing more is charged. The member card reads `handover`; `member_ciq_licence_resume` refuses (409); a payment-method move keeps the hand-over; the `.deleted` webhook at the period end keeps `ended_reason='tax_licence'` (2026-10-22: sandbox subscription row 5, Test Client 62, LIVE-PROVEN — year 11/22/26-11/22/27, $300).
+- **Anything else open** (a failed payment, a first bank payment still clearing, a payment page still open): stopped AT ONCE as before — claimed `superseded` first (so the `.deleted` webhook finds it settled), the subscription cancelled (no proration, no refund) or the Checkout expired; the tax year started today. Code-only.
+- A row already handing over (`ended_reason='tax_licence'`) is skipped, so a second retainer queued behind the first never touches it.
+- A Stripe refusal leaves the row as it was and bells Jake (`FAILURE_ciq_licence`).
+
+Email **322** `MEMBER_ciq_licence_superseded` where a subscription was billing: *"…includes the Standard client portal from [COVERED FROM] until [COVERED UNTIL]."* + `[STOP SENTENCE]` built by the code — *"Your $25/month Standard portal licence for [Client First] runs to the end of the month you've already paid ([date]) and then stops, so you won't be charged for it again."* on a hand-over, *"We've stopped your $25/month Standard portal licence for [Client First], so you won't be charged for it again."* otherwise (migration `20261022160000`). `draftCiqMemberEmail` substitutes the caller's tokens FIRST so a value may carry `[Client First]` (#657).
 
 ## Emails (all Draft; To member, Cc Tracy `tnmiller`, Bcc Paul + Anton; the member's Cc-flagged Additional Contacts join centrally)
 
@@ -59,7 +67,7 @@ The paid month already covers the client until its `ends_on`, so a renewal failu
 | 319 | `MEMBER_ciq_licence_invoicereceipt` | every paid month, with the INV + REC PDFs |
 | 320 | `MEMBER_ciq_licence_ach_confirmation` | first month paid by bank, at submit |
 | 321 | `MEMBER_ciq_licence_payment_failed` | a failed invoice, once |
-| 322 | `MEMBER_ciq_licence_superseded` | a new tax licence stopped a billing $25 |
+| 322 | `MEMBER_ciq_licence_superseded` | a new tax licence takes over a billing $25 (hand-over at the paid month's end, or stopped now) |
 | 323 | `MEMBER_ciq_licence_payment_failed_reminder` | 2 business days after 321, still unpaid |
 
 **Bells:** only `FAILURE_ciq_licence` (Jake — a Stripe refusal on supersede or a method move) and the reused `FAILURE_ach_first_payment` (a paid month whose INV/REC numbers could not be reserved). Nothing to the member or the team.
