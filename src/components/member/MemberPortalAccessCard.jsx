@@ -142,7 +142,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
 
       {lic && (
         <div style={{ marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '6px' }}>{lic.state === 'covered' ? 'Standard portal' : 'Standard portal - $25/month'}</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '6px' }}>{lic.state === 'covered' || lic.state === 'handover' ? 'Standard portal' : 'Standard portal - $25/month'}</div>
           {syncing ? (
             <p style={{ fontSize: '13px', color: 'var(--vfo-ink)', margin: '0 0 12px', lineHeight: 1.6, display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span aria-hidden="true" style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid var(--vfo-border-strong)', borderTopColor: '#125ecc', display: 'inline-block', animation: 'vfoSpin 0.8s linear infinite', flexShrink: 0 }} />
@@ -160,6 +160,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
               : <>{readOnly ? "The member's" : 'Your'} payment is being confirmed.</>)}
             {lic.state === 'active' && <>The Standard portal is on{lic.period_end ? <>. Renews <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong></> : ''}{method}.</>}
             {lic.state === 'ending' && <>The Standard portal is on until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong>, then {first} goes back to the Basic portal.</>}
+            {lic.state === 'handover' && <>The $25/month Standard portal runs to the end of the month already paid, <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong>, then stops - no further charge. From then it is included with {fullName}'s tax planning until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.covered_until)}</strong>.</>}
             {lic.state === 'past_due' && <>The last payment failed{method}. {first} is on the Basic portal until it goes through. Stripe is retrying{readOnly ? '.' : '; update your payment method to fix it now.'}</>}
           </p>
           )}
