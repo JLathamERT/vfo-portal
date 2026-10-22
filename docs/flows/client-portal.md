@@ -18,6 +18,7 @@ The member's view of their client (`/member/client/:id`, Profile tab) carries a 
    - no login → a `client_logins` row with a random passcode + a 30-day `/set-password` link → the email's **Set up my portal login** button;
    - an existing login **never set up** (every client setup token auto-minted — `portal-licence` / `basic-portal` — and none completed) → a FRESH 30-day link, so a client whose first link expired, or whose first email failed after the login was made, can still get in;
    - any other existing login → **Sign in to my portal** (no token).
+   - Every link stays usable for its 30 days until a password is set through ANY of them; since 2026-10-22 `submit_login_setup` then expires all the others for that login (#655 — LIVE-PROVEN on Test Direct, the older link expired 0.1 s after the newer one was used).
    - no email → 400; the email already belongs to ANOTHER client's login (`client_logins.email` is unique) → 409. Both go back to the member, never a bell.
 4. **The email** — template **311** `CLIENT_PORTAL/CLIENT_portal_access` (Draft), To the CLIENT only: a credential email, `skipMemberContacts`, no Cc/Bcc. The handler drafts it and then calls `maybeSendDraft`, so it knows truthfully whether Gmail sent it (`delivery: sent | drafted`).
 5. **The licence** — after a successful email, `recordBasicLicence` writes the ONE `source='basic'` row ($0, `tier='basic'`, `starts_on` = today, `ends_on` NULL; unique per client). A resend adopts it. It never makes a client Standard. There is **no revoke** (decision 9 / decision 6).
