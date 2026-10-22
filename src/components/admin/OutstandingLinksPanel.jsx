@@ -368,7 +368,7 @@ function InstallmentCard({ item, onDone }) {
       badge={BADGE_INSTALLMENT}
       amount={item.amount_due}
       caption="due"
-      action={item.has_token ? <ResendButton onDone={onDone} send={() => redraftInstallmentEmail({ rowId: item.row_id })} /> : null}
+      action={<ResendButton onDone={onDone} send={() => redraftInstallmentEmail({ rowId: item.row_id })} />}
     >
       <Detail label="Amount due" value={money(item.amount_due)} />
       <Detail label="Installment" value={`Payment ${item.payment_number} of 4`} />
@@ -380,9 +380,11 @@ function InstallmentCard({ item, onDone }) {
           value={failed.filter(f => f.n !== item.payment_number).map(f => `Payment ${f.n} (${f.status})`).join(', ')}
         />
       )}
+      {/* A row migrated from the old system has no /pay token yet; the resend mints
+          one (accounting_redraft_installment_link), so the button is always offered. */}
       {!item.has_token && (
-        <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '8px', background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', fontSize: '12.5px' }}>
-          This row has no checkout token, so no /pay link can be emailed - follow up with the client manually.
+        <div style={{ marginTop: '12px', fontSize: '12.5px', color: 'var(--vfo-muted)' }}>
+          No payment link exists for this client yet - Resend email creates one.
         </div>
       )}
     </OutstandingCard>

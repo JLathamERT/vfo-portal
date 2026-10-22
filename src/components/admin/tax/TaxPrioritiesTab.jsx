@@ -409,6 +409,12 @@ const STEP_DATE_STYLE = { fontSize: '11px', color: 'var(--vfo-muted)', display: 
 function StepDate({ value }) {
   return <span style={STEP_DATE_STYLE}>{stepDateLabel(value)}</span>
 }
+// A timestamp as its Eastern calendar date, YYYY-MM-DD (the shape StepDate reads).
+const etDateOnly = (iso) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+}
 
 // Tax planner display name with certifications (professional designations) appended
 // as a comma suffix: "Carson Grover, EA, CPA". DISPLAY ONLY — the value saved to the
@@ -5157,6 +5163,15 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       // which is why the name never counts on its own. Downstream steps still
       // require a real Tax Planner: that is taxPlannerAllocated's job, unchanged.
       const isAllocated = !!(allocatedId || teamMemberId)
+      // The step's date is the day the TAX PLANNER went on (tax_planner_allocated_at,
+      // the same stamp the planner review reminder counts from), not the day the
+      // progress row was first written — that is the team member's date, and a
+      // planner added later kept it. No planner yet, or a plan allocated before the
+      // stamp existed (2026-09-28): the progress row's own date, as before.
+      const allocDate = !isAllocated ? ''
+        : (allocatedId && livePlan?.tax_planner_allocated_at)
+          ? etDateOnly(livePlan.tax_planner_allocated_at)
+          : (p.completed_date || '')
       // The planner pill is the PLANNER slot's own chip — never the team member's,
       // whose name the progress row now echoes when they are the only holder.
       const plannerShown = !!(allocatedId || selectedPlanner)
@@ -5204,7 +5219,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                   ? <span style={greenPill}>{p.status || 'Allocated'}</span>
                   : <span style={neutralChipStyle}>Not started</span>
               )}
-            <StepDate value={isAllocated ? (p.completed_date || '') : ''} />
+            <StepDate value={allocDate} />
           </div>
         )
       }
@@ -5271,7 +5286,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           {/* The whole chain (allocate, save, reload) runs behind saving[key], so
               this covers the seconds where the chips have not moved yet. */}
           {saving[key] && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Saving...</span>}
-          <StepDate value={isAllocated ? (p.completed_date || '') : ''} />
+          <StepDate value={allocDate} />
         </div>
       )
     }
