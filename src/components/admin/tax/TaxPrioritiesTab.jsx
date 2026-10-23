@@ -15,6 +15,7 @@ import { makeTaxPlanRules, KNOWN_FEE_PROCESS_VERSIONS, isNewFeeProcess, AMEND_FE
 import { TAX_DISPLAY_NAMES, taxDisplayName } from '../../shared/taxDisplayNames'
 import { numberTaxIntakeQuestions } from '../../member/taxIntakeQuestions'
 import { readable } from '../../shared/readableColor'
+import { retainerShareGrossFor } from '../taxShared'
 
 // The automated cascade card. The STORED program_client_tasks.name is a lookup
 // key on both sides of the wire — the two cards below switch on it, MAP 1 keys
@@ -249,6 +250,10 @@ function planFeeSchedule(pl) {
     initialRetainer: threePayment ? amendToCents(pl?.initial_retainer_amount) / 100 : null,
     finalRetainer: threePayment ? amendToCents(pl?.final_retainer_amount) / 100 : null,
     threePayment,
+    // A final fee below what was collected (2026-10-23): the refund owed, and
+    // whether the superadmin has issued it yet.
+    refundOwed: amendToCents(pl?.fee_reduction_refund_amount) / 100,
+    refundIssued: pl?.fee_reduction_refund_status === 'succeeded' || pl?.fee_reduction_refund_status === 'pending',
   }
 }
 
@@ -273,6 +278,20 @@ function planFeeSchedule(pl) {
 //
 // Returns { empty: true } for a blank input (the not-yet-typed state — no error,
 // no preview), { error } for anything the server would refuse, else { split }.
+// amend-fee.ts's "money that has moved cannot be taken back" refusal: once a
+// retainer revenue-share leg has paid, the retainer it was worked out on may not
+// shrink under it. `keptCents` is what VFO would keep of the retainer after the
+// amendment.
+function sharedRefusal(pl, keptCents) {
+  const paid = [pl?.retainer_rev_paid, pl?.retainer_planner_paid, pl?.retainer_strat_paid].some(s => s === 'Yes' || s === 'Money Mapping')
+  if (!paid) return null
+  const sharedOn = retainerShareGrossFor(pl, amendToCents(pl?.retainer_amount) / 100)
+  if (keptCents / 100 < sharedOn - 0.005) {
+    return `Revenue shares were already paid on ${fmtUsdCents(Math.round(sharedOn * 100))} of the retainer, so the final fee cannot be lower than ${fmtUsdCents(Math.round(sharedOn * 100))}.`
+  }
+  return null
+}
+
 function amendFeePreview(pl, stage, rawTotal) {
   if (String(rawTotal ?? '').trim() === '') return { empty: true }
   const newTotalCents = amendToCents(rawTotal)
@@ -311,29 +330,45 @@ function amendFeePreview(pl, stage, rawTotal) {
     // band — the plan CONVERTS to 2 payments (mirrors amend-fee.ts): the paid
     // initial retainer becomes the whole retainer, there is no final retainer any
     // more, and the reduction lands on the implementation fee.
-    if (newTotalCents <= initialCents) {
+    // At or below the initial retainer already paid: refused, unless the plan's
+    // fee arrangement is on (2026-10-23) — then $0.00 implementation and the
+    // difference RECORDED as a refund owed. Mirrors amend-fee.ts.
+    if (newTotalCents <= initialCents && pl?.fee_arrangement_active !== true) {
       return { error: `Total must be more than the initial retainer of ${fmtUsdCents(initialCents)} already paid` }
     }
+    const owedCents = Math.max(initialCents - newTotalCents, 0)
+    const refused = sharedRefusal(pl, initialCents - owedCents)
+    if (refused) return { error: refused }
     return {
       converts: true,
+      refundOwed: owedCents / 100,
       split: {
         total: newTotalCents / 100,
         retainer: initialCents / 100,
-        implementation: (newTotalCents - initialCents) / 100,
+        implementation: Math.max(newTotalCents - initialCents, 0) / 100,
         initialRetainer: null,
         finalRetainer: null,
         threePayment: false,
+        refundOwed: owedCents / 100,
       },
     }
   }
 
-  const newImplCents = newTotalCents - retainerCents
   // $0.00 exactly is allowed (mirrors amend-fee.ts): the retainer already paid
-  // covers the whole amended fee and nothing further is due. Only BELOW it — a
-  // negative payment against money already collected — is refused.
-  if (newImplCents < 0) return { error: 'Total cannot be less than the retainer already paid' }
+  // covers the whole amended fee and nothing further is due. BELOW it (2026-10-23)
+  // the implementation fee stays $0.00 and the difference is RECORDED as a refund
+  // owed — nothing is refunded by the amendment.
+  if (newTotalCents < retainerCents && pl?.fee_arrangement_active !== true) {
+    return { error: 'Total cannot be less than the retainer already paid' }
+  }
+  const newImplCents = Math.max(newTotalCents - retainerCents, 0)
+  const owedCents = Math.max(retainerCents - newTotalCents, 0)
+  const refused = sharedRefusal(pl, retainerCents - owedCents)
+  if (refused) return { error: refused }
   return {
+    refundOwed: owedCents / 100,
     split: {
+      refundOwed: owedCents / 100,
       total: newTotalCents / 100,
       retainer: retainerCents / 100,
       implementation: newImplCents / 100,
@@ -379,6 +414,11 @@ function FeeBreakdown({ split, projected = false, paidFlags = null }) {
           <span>${fmtMoney(amount)}</span>
         </div>
       ))}
+      {split.refundOwed > 0 && (
+        <div style={{ ...feeRowStyle(false), color: '#e06717' }}>
+          <span>{split.refundIssued ? 'Refunded to the client' : 'Refund owed to the client (not issued)'}</span><span>-${fmtMoney(split.refundOwed)}</span>
+        </div>
+      )}
       <div style={{ ...feeRowStyle(true), borderTop: '1px solid var(--vfo-border-chip)', paddingTop: '6px', marginTop: '6px' }}>
         <span>{projected ? 'Projected Total' : 'Total'}</span><span>${fmtMoney(split.total)}</span>
       </div>
@@ -886,7 +926,14 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
   // same boundary the backend enforces (amend-fee.ts 400s once
   // post_review_decision / implementation_decision is recorded).
   const lockedDownstream = stage === 'tax4' ? !!plan?.post_review_decision : !!plan?.implementation_decision
-  const editable = !readOnly && !lockedDownstream
+  // While a fee arrangement is on, both amend steps are the superadmin's alone
+  // (amend-fee.ts and save-task.ts refuse anyone else, 2026-10-23).
+  const arrangementLocked = plan?.fee_arrangement_active === true && !getSession()?.is_superadmin
+  const editable = !readOnly && !lockedDownstream && !arrangementLocked
+  // While a fee arrangement is on, Tax 5 needs the final fee TYPED (amend-fee.ts
+  // and save-task.ts refuse a keep) — a click-through must not let the
+  // implementation charge and final revenue shares run on an unconfirmed fee.
+  const keepBlocked = stage === 'tax5' && plan?.fee_arrangement_active === true
   // Which schedule components have actually been collected — shown as a Paid
   // tag beside the row in every breakdown this card renders.
   const paidFlags = {
@@ -912,7 +959,9 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
       // yet sent, nothing in flight) — show its refusal verbatim and leave the
       // step OPEN so it can still be answered once the blocker clears.
       if (res?.error) { setSubmitError(res.error); return }
-      await onAnswer(kind === 'keep' ? 'Completed - Kept' : 'Completed - Amended')
+      // An unchanged fee typed on a fee arrangement plan is a confirmation, not an
+      // amendment (amend-fee.ts returns `unchanged` and stamps nothing).
+      await onAnswer(kind === 'keep' ? 'Completed - Kept' : res?.unchanged ? 'Completed - Confirmed' : 'Completed - Amended')
       setMode('')
       setTotalInput('')
     } catch (err) {
@@ -931,7 +980,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: answered ? green : 'transparent', flexShrink: 0, border: `1.5px solid ${answered ? green : 'var(--vfo-border-mid)'}` }} />
         <span style={{ fontSize: '13px', color: answered ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}{nameChip}</span>
         {answered && !editable ? (
-          <span style={chipStyle(green)}>{amended ? 'Amended' : 'Fee kept'}</span>
+          <span style={chipStyle(green)}>{amended ? 'Amended' : status === 'Completed - Confirmed' ? 'Fee confirmed' : 'Fee kept'}</span>
         ) : editable ? (
           // House convention: dropdowns make selections, buttons send emails.
           // "Keep the fee" completes the step on selection, like every other
@@ -945,7 +994,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
               <button disabled={busy} onClick={() => { setSubmitError(''); setMode('amend') }} style={{ border: 'none', background: 'transparent', color: 'var(--vfo-accent-text)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', padding: 0 }}>Change amount</button>
             )}
             {(() => {
-              const selValue = mode === 'amend' ? 'amend' : (answered ? (amended ? 'amend' : 'keep') : '')
+              const selValue = mode === 'amend' ? 'amend' : (answered ? (amended || status === 'Completed - Confirmed' ? 'amend' : 'keep') : '')
               // EXACTLY the generic step dropdown's look (the renderTaskInner
               // fallback select): same padding/radius/size, green border + text
               // once committed, plain while unanswered or mid-edit.
@@ -969,7 +1018,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
                   style={{ padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '12px', fontFamily: 'Inter, sans-serif', minWidth: '150px', borderColor: committed ? '#1b925466' : 'var(--vfo-border-strong)', color: committed ? 'var(--vfo-success-text)' : 'var(--vfo-ink)', opacity: busy ? 0.6 : 1 }}
                 >
                   <option value="">-- Select --</option>
-                  <option value="keep" disabled={amended}>Keep the fee</option>
+                  <option value="keep" disabled={amended || keepBlocked}>Keep the fee{keepBlocked ? ' (not available — fee arrangement)' : ''}</option>
                   <option value="amend">Amend the fee</option>
                 </select>
               )
@@ -981,13 +1030,28 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
         <StepDate value={completedDate || ''} />
       </div>
 
+      {/* A fee arrangement (Pricing & revenue split card) never changes the fee
+          itself — this is where the final fee is set once it is known. */}
+      {arrangementLocked && !readOnly && !mirror && (
+        <div style={{ marginLeft: '18px', marginBottom: '10px', padding: '6px 10px', borderRadius: '8px', background: 'rgba(224,103,23,0.08)', border: '1px solid rgba(224,103,23,0.35)', fontSize: '11px', color: 'var(--vfo-ink)' }}>
+          <b style={{ color: '#e06717' }}>Fee arrangement in place</b> — only Jake can answer this step while the arrangement is on.
+        </div>
+      )}
+      {plan?.fee_arrangement_active === true && editable && !mirror && (
+        <div style={{ marginLeft: '18px', marginBottom: '10px', padding: '6px 10px', borderRadius: '8px', background: 'rgba(224,103,23,0.08)', border: '1px solid rgba(224,103,23,0.35)', fontSize: '11px', color: 'var(--vfo-ink)' }}>
+          <b style={{ color: '#e06717' }}>Fee arrangement in place</b> — see Pricing &amp; revenue split. {stage === 'tax5'
+            ? 'Enter the final fee with "Amend the fee", even if it has not changed — "Keep the fee" is not available while the arrangement is on, so the implementation charge and the final revenue shares only run on a fee someone has confirmed.'
+            : 'Keep the fee to leave the invoiced fee as it is for now; the final fee is entered at the implementation stage (Tax 5).'}
+        </div>
+      )}
+
       {/* Answered: what happened, plus the schedule that is now in force. */}
       {answered && current && mode !== 'amend' && !mirror && (
         <div style={{ marginLeft: '18px', marginBottom: '10px' }}>
           <div style={{ fontSize: '12px', color: 'var(--vfo-ink)', fontWeight: 600 }}>
-            {amended ? `Fee amended to $${fmtMoney(current.total)}` : `Fee kept at $${fmtMoney(current.total)}`}
+            {amended ? `Fee amended to $${fmtMoney(current.total)}` : status === 'Completed - Confirmed' ? `Final fee confirmed at $${fmtMoney(current.total)}` : `Fee kept at $${fmtMoney(current.total)}`}
           </div>
-          <FeeBreakdown split={current} paidFlags={paidFlags} />
+          <FeeBreakdown split={readOnly ? { ...current, refundOwed: 0 } : current} paidFlags={paidFlags} />
         </div>
       )}
 
@@ -1001,7 +1065,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
               ? 'Confirm the fee before Client decision 1 goes out — that email quotes these figures.'
               : 'Confirm the implementation fee before Client decision 2 — only the implementation fee can still move.'}
           </div>
-          {current && <FeeBreakdown split={current} paidFlags={paidFlags} />}
+          {current && <FeeBreakdown split={readOnly ? { ...current, refundOwed: 0 } : current} paidFlags={paidFlags} />}
           {mode === 'amend' && (
             <div style={{ marginTop: '10px' }}>
               <label style={{ display: 'block', fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>New total fee</label>
@@ -1017,16 +1081,26 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
               <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '4px' }}>
                 {stage === 'tax4' && amendToCents(plan?.initial_retainer_amount) > 0
                   ? 'At $31,000 or more the 50:50 split is re-derived from the new total; the initial retainer is already paid, so only the final retainer and the implementation fee move. Below $31,000 the plan is two payments: the initial retainer already paid becomes the whole retainer and the rest is the implementation fee (it converts back if amended to $31,000 or more).'
-                  : 'The retainer is already paid, so the whole change lands on the implementation fee.'}
+                  : preview?.refundOwed > 0
+                    ? 'The retainer is already paid, so the implementation fee drops to $0.00 and the rest is recorded as a refund owed (see below).'
+                    : 'The retainer is already paid, so the whole change lands on the implementation fee.'}
               </div>
               {preview?.converts && (
                 <div style={{ fontSize: '12px', color: '#e06717', fontWeight: 600, marginTop: '6px' }}>
                   Converts to 2 payments: the ${fmtMoney((amendToCents(plan?.initial_retainer_amount)) / 100)} initial retainer already paid becomes the full retainer — no final retainer will be collected, and Client decision 1 releases the revenue share immediately.
                 </div>
               )}
-              {preview?.split?.implementation === 0 && (
+              {preview?.split?.implementation === 0 && !(preview?.refundOwed > 0) && (
                 <div style={{ fontSize: '12px', color: '#e06717', fontWeight: 600, marginTop: '6px' }}>
                   The retainer already paid covers the whole fee: no implementation fee will be collected, and nothing further is due from the client.
+                </div>
+              )}
+              {preview?.refundOwed > 0 && (
+                <div style={{ fontSize: '12px', color: 'var(--vfo-ink)', marginTop: '6px', padding: '8px 10px', borderRadius: '8px', background: 'rgba(224,103,23,0.08)', border: '1px solid rgba(224,103,23,0.35)', lineHeight: 1.55 }}>
+                  <b style={{ color: '#e06717' }}>Below the ${fmtMoney(preview.split.retainer)} already collected — nothing is refunded now.</b>
+                  <div>• The implementation fee becomes $0.00: the client is never charged again.</div>
+                  <div>• ${fmtMoney(preview.refundOwed)} is recorded as a refund OWED to the client. It is only refunded when Jake presses "Issue refund and credit note" on the Pricing &amp; revenue split card, once the final fee is confirmed.</div>
+                  <div>• Revenue shares settle on the final ${fmtMoney(preview.split.total)}.</div>
                 </div>
               )}
               {preview?.error && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '12px', marginTop: '6px' }}>{preview.error}</div>}
@@ -1050,7 +1124,12 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
       {submitError && (
         <div style={{ marginLeft: '18px', marginBottom: '10px', color: '#e74c3c', fontWeight: 500, fontSize: '12px' }}>{submitError}</div>
       )}
-      {revisedPending && !mirror && (
+      {revisedPending && !mirror && amendToCents(plan?.fee_reduction_refund_amount) > 0 && (
+        <div style={{ marginLeft: '18px', marginBottom: '10px', color: 'var(--vfo-muted)', fontSize: '11px' }}>
+          The revised invoice will go out with the credit note when the refund owed is issued from the Pricing &amp; revenue split card.
+        </div>
+      )}
+      {revisedPending && !mirror && !(amendToCents(plan?.fee_reduction_refund_amount) > 0) && (
         <div style={{ marginLeft: '18px', marginBottom: '10px', color: 'var(--vfo-muted)', fontSize: '11px' }}>
           A revised invoice (same number, original and revised fee shown) will be drafted into the original invoice email thread when the {stage === 'tax4' ? 'Client decision 1' : 'implementation decision'} email is sent.
         </div>
@@ -2953,7 +3032,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     'Proceed': '#1b9254',
     'Proceed with tax planning': '#1b9254', 'Stop tax planning': '#e74c3c',
     // The two answers the 'Amend fee' / 'Amend implementation fee' steps store.
-    'Completed - Kept': '#1b9254', 'Completed - Amended': '#1b9254',
+    'Completed - Kept': '#1b9254', 'Completed - Amended': '#1b9254', 'Completed - Confirmed': '#1b9254',
   }
 
   function formatDate(d) {

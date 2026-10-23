@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../../lib/api'
+import { formatDate } from '../../../lib/dates'
 import { HELD_SUSPENDED_NOTE, HELD_PAUSED_NOTE, HELD_ARREARS_NOTE } from '../shareLegState'
-import { licenceDisbursementFor, isThreePaymentPlan } from '../taxShared'
+import { licenceDisbursementFor, isThreePaymentPlan, feeArrangementBaseFor, revshareBaseFor, retainerShareGrossFor, retainerRemainderFor, feeReductionOwedFor } from '../taxShared'
 
 // Pricing + revenue-split summary for a tax plan, sitting directly under the Tax Plan
 // hero. ADMIN (VFOS/ERT) SURFACE ONLY — the caller gates it out of the member and
@@ -46,6 +47,9 @@ const HELD_MEMBER = ['Held - Member Suspended', 'Held - Member Paused', 'Held - 
 const money = v => parseFloat(String(v ?? '0').replace(/[,$]/g, '')) || 0
 const round2 = x => Math.round(x * 100) / 100
 const fmt = n => `$${(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+// For the one figure that can legitimately be negative (VFO handing back retainer it
+// held, on a fee arrangement plan): "−$1,666.68", never "$-1,666.68".
+const fmtSigned = n => ((n || 0) < 0 ? `−${fmt(Math.abs(n))}` : fmt(n))
 
 // Short human label for a leg's payout status. Null/blank means the payment hasn't
 // reached its payout yet, which reads better as nothing than as "pending".
@@ -72,6 +76,11 @@ function noteColor(status) {
   return 'var(--vfo-muted)'
 }
 
+// Fee arrangement accent — the same orange as the Refund on Stop chip.
+const ARR_TEXT = '#e06717'
+const ARR_BG = 'rgba(224,103,23,0.08)'
+const ARR_BORDER = 'rgba(224,103,23,0.35)'
+
 const label = { fontSize: '11px', color: 'var(--vfo-muted)' }
 const value = { fontSize: '13px', color: 'var(--vfo-ink)', fontWeight: 600 }
 const inputStyle = { width: '100%', padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }
@@ -96,15 +105,46 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   const [refundBusy, setRefundBusy] = useState(false)
   const [refundErr, setRefundErr] = useState('')
   const [refundOk, setRefundOk] = useState('')
+  // Fee arrangement editor (superadmin) — tax_set_fee_arrangement.
+  const [arrEditing, setArrEditing] = useState(false)
+  const [arrDraft, setArrDraft] = useState({})
+  const [arrBusy, setArrBusy] = useState(false)
+  const [arrErr, setArrErr] = useState('')
+  // The refund of a final fee set below what was collected (superadmin).
+  const [feeRefundBusy, setFeeRefundBusy] = useState(false)
+  const [feeRefundErr, setFeeRefundErr] = useState('')
+  const [feeRefundMsg, setFeeRefundMsg] = useState('')
 
   const retAmt = money(plan?.retainer_amount)
   // Client portal licence (unit 4): the retainer legs split retainer - disbursement and
   // the disbursement is its own payee, VFO Portal (a row below; NOT in VFO Services'
   // residual) — the same rule as the payout engine, via the mirror in taxShared.jsx.
   const retLicence = licenceDisbursementFor(plan, 'retainer')
-  const retShareBase = Math.max(retAmt - retLicence, 0)
+  const retShareBase = revshareBaseFor(plan, 'retainer', retAmt)
   const implAmt = money(plan?.implementation_amount)
+  const implShareBase = revshareBaseFor(plan, 'implementation', implAmt)
   const totalFee = money(plan?.total_fee) > 0 ? money(plan?.total_fee) : retAmt + implAmt
+
+  // Fee arrangement (superadmin, 2026-10-23): while on, a payment with an agreed base
+  // pays its revenue share on that figure and the rest stays with VFO Services, held
+  // pending the final fee — the same rule as the payout engine (taxShared mirror).
+  const arrOn = plan?.fee_arrangement_active === true
+  const retAgreed = feeArrangementBaseFor(plan, 'retainer')
+  const implAgreed = feeArrangementBaseFor(plan, 'implementation')
+  // A final fee below what was collected (2026-10-23): the refund owed is recorded
+  // by the Amend fee step and only refunded by the superadmin's button below.
+  const refundOwed = feeReductionOwedFor(plan)
+  const refundIssued = plan?.fee_reduction_refund_status === 'succeeded' || plan?.fee_reduction_refund_status === 'pending'
+  const refundInProgress = plan?.fee_reduction_refund_status === 'processing'
+  // A full retainer refund at Client decision 1 stopped the plan — nothing separate
+  // is owed any more.
+  const planRefundedInFull = plan?.refund_status === 'succeeded'
+  const retGross = retainerShareGrossFor(plan, retAmt)
+  // The part of the kept retainer the retainer payout does not share; it is paid with
+  // the implementation leg so every party ends at its share of the final fee.
+  const retRemainder = retainerRemainderFor(plan)
+  const retHeld = Math.max(retAmt - retGross, 0)
+  const implHeld = implAgreed == null ? 0 : Math.max(implAmt - Math.min(implAgreed, implAmt), 0)
 
   // 3-payment shape (revised fee process, >= $31,000): the retainer is COLLECTED as an
   // initial + a final payment, but its revenue share pays out ONCE, when the final
@@ -138,6 +178,10 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   const scale = basisIsImpl && implAmt > 0 ? totalFee / implAmt : 1
 
   const chargeInFlight = plan?.implementation_charge_status === 'succeeded' || plan?.implementation_charge_status === 'processing'
+  const implNotCharged = implAmt > 0 && !chargeInFlight && !plan?.implementation_cancelled_at
+  // A $0 implementation whose shares were settled at the client's Proceed (fee
+  // arrangement, 2026-10-23): locked like a charged one, but nothing was charged.
+  const implSettledNoCharge = !!plan?.implementation_settlement_at && implAmt === 0
   const implSettled = TERMINAL.includes(plan?.implementation_rev_paid) || TERMINAL.includes(plan?.implementation_planner_paid)
   const locked = chargeInFlight || implSettled
   // The editor and tax_update_split both know three legs only, and the handler refuses
@@ -146,7 +190,9 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   // button says so instead of walking the operator into a red sum they can only "fix" by
   // handing VFO the partner's dollars. Teaching both sides the fourth leg is a backend
   // change, deliberately out of scope for this display fix.
-  const canEdit = isSuperadmin && !readOnly && hasPricing && !locked && !hasStrategic
+  // Hidden while a fee arrangement is on: the arrangement is the agreed picture, and a
+  // split edit underneath it would change what the agreed figures pay without saying so.
+  const canEdit = isSuperadmin && !readOnly && hasPricing && !locked && !hasStrategic && !arrOn
 
   // What the client's Refund click would return. The captured base mirrors
   // refund.ts: the initial retainer on a 3-payment plan, the retainer otherwise.
@@ -185,6 +231,79 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
       setRefundBusy(false)
     }
   }
+
+  // A payment's agreed base is frozen once any of its legs has paid out — the money
+  // moved on the old figure (the handler refuses the same change with a 409).
+  const retLegsPaid = [plan?.retainer_rev_paid, plan?.retainer_planner_paid, plan?.retainer_strat_paid].some(s => TERMINAL.includes(s))
+  const implLegsPaid = [plan?.implementation_rev_paid, plan?.implementation_planner_paid, plan?.implementation_strat_paid].some(s => TERMINAL.includes(s))
+  const canSetArrangement = isSuperadmin && !readOnly && hasPricing
+
+  function openArrangement() {
+    setArrDraft({
+      active: arrOn || !plan?.fee_arrangement_set_at,
+      note: plan?.fee_arrangement_note || '',
+      retainer_base: plan?.fee_arrangement_retainer_base != null ? money(plan.fee_arrangement_retainer_base).toFixed(2) : '',
+      implementation_base: plan?.fee_arrangement_implementation_base != null ? money(plan.fee_arrangement_implementation_base).toFixed(2) : '',
+      client_note: plan?.fee_arrangement_client_note || '',
+      note_tax4: plan?.fee_arrangement_note_tax4 === true,
+      note_tax5: plan?.fee_arrangement_note_tax5 === true,
+    })
+    setArrErr('')
+    setArrEditing(true)
+  }
+
+  async function saveArrangement() {
+    setArrBusy(true)
+    setArrErr('')
+    try {
+      const res = await callApi('tax_set_fee_arrangement', { tax_plan_id: plan.id, ...arrDraft })
+      if (res?.error) { setArrErr(res.error); return }
+      setArrEditing(false)
+      if (onSaved) await onSaved()
+    } catch (e) {
+      setArrErr(e?.message || 'Save failed')
+    } finally {
+      setArrBusy(false)
+    }
+  }
+
+  // Issue (or finish) the fee-reduction refund: Stripe refund, credit note, revised
+  // invoice and the client email (Draft). Re-runnable — each stage is skipped once
+  // done, and the refund itself can never be issued twice.
+  async function issueFeeRefund(byHand = false) {
+    const who = plan?.client_name || 'the client'
+    const question = refundIssued
+      ? 'Finish the credit note, revised invoice and client email?'
+      : byHand
+        ? `Record that ${fmt(refundOwed)} was refunded to ${who} OUTSIDE the portal, and create the credit note? Nothing is sent to Stripe.`
+        : `Refund ${fmt(refundOwed)} to ${who} now, and create the credit note? This cannot be undone.`
+    if (!window.confirm(question)) return
+    setFeeRefundBusy(true)
+    setFeeRefundErr('')
+    setFeeRefundMsg('')
+    try {
+      const res = await callApi('tax_issue_fee_reduction_refund', { tax_plan_id: plan.id, ...(byHand ? { by_hand: true } : {}) })
+      if (res?.error) setFeeRefundErr(res.error)
+      else setFeeRefundMsg(`Refund ${res?.refund_status === 'pending' ? 'sent (bank refund — settles in a few days)' : 'issued'} · credit note ${res?.credit_note_number || ''} · client email drafted in Gmail for review.`)
+      if (onSaved) await onSaved()
+    } catch (e) {
+      setFeeRefundErr(e?.message || 'Refund failed')
+    } finally {
+      setFeeRefundBusy(false)
+    }
+  }
+
+  // What the draft would pay, so the superadmin sees the figures before saving.
+  const draftPreview = (kind, payment) => {
+    const raw = arrDraft[`${kind}_base`]
+    if (!arrDraft.active || raw == null || String(raw).trim() === '' || !(payment > 0)) return null
+    const b = revshareBaseFor({ ...plan, fee_arrangement_active: true, [`fee_arrangement_${kind}_base`]: raw }, kind, payment)
+    const m = noShareDraft(kind, 'rev') ? 0 : portion(storedMember, b)
+    const p = noShareDraft(kind, 'planner') ? 0 : portion(storedPlanner, b)
+    const s = noShareDraft(kind, 'strat') ? 0 : portion(storedStrat, b)
+    return { member: m, planner: p, strat: s, vfo: round2(payment - (kind === 'retainer' ? retLicence : 0) - m - p - s) }
+  }
+  const noShareDraft = (kind, leg) => plan?.[`${kind}_${leg}_paid`] === 'N/A — No Share Due'
 
   // Seed the form from the stored values, converted back into the active base.
   useEffect(() => {
@@ -239,7 +358,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   // to the payment. Identical to the configured vfos_share whenever all legs are live.
   const legAmt = (stored, status, payment) => (noShare(status) ? 0 : portion(stored, payment))
   const retVfos = round2(retAmt - retLicence - legAmt(storedMember, plan?.retainer_rev_paid, retShareBase) - legAmt(storedPlanner, plan?.retainer_planner_paid, retShareBase) - legAmt(storedStrat, plan?.retainer_strat_paid, retShareBase))
-  const implVfos = round2(implAmt - legAmt(storedMember, plan?.implementation_rev_paid, implAmt) - legAmt(storedPlanner, plan?.implementation_planner_paid, implAmt) - legAmt(storedStrat, plan?.implementation_strat_paid, implAmt))
+  const implVfos = round2(implAmt - legAmt(storedMember, plan?.implementation_rev_paid, implShareBase) - legAmt(storedPlanner, plan?.implementation_planner_paid, implShareBase) - legAmt(storedStrat, plan?.implementation_strat_paid, implShareBase))
 
   // Display order (Jake, 2026-09-28, every plan): VFO Services, Member, Tax planner,
   // Strategic partner, VFO Portal. Order is display-only — VFO Services is still the
@@ -290,20 +409,28 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
 
   return (
     <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', padding: '14px 18px', marginBottom: '10px', fontFamily: 'Inter, sans-serif' }}>
-      <div onClick={() => setExpanded(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Pricing &amp; revenue split</span>
+      {/* A fee arrangement adds chips; keep them and the chevron on the one header
+          row (the summary text gives way instead). Every other plan is unchanged. */}
+      <div onClick={() => setExpanded(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexWrap: arrOn ? 'nowrap' : 'wrap' }}>
+        <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px', ...(arrOn ? { whiteSpace: 'nowrap', flexShrink: 0 } : {}) }}>Pricing &amp; revenue split</span>
         <span style={{ flex: 1 }} />
-        <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>
+        <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', ...(arrOn ? { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : {}) }}>
           {hasPricing ? `${fmt(totalFee)} · ${plan?.split_type || 'no split set'}` : 'No pricing entered yet'}
         </span>
         {plan?.legacy_source && (
           <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Migrated</span>
         )}
         {locked && hasPricing && (
-          <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.3)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Locked — charged</span>
+          <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.3)', color: 'var(--vfo-success-text)', fontWeight: 600, ...(arrOn ? { whiteSpace: 'nowrap', flexShrink: 0 } : {}) }}>{implSettledNoCharge ? 'Locked — settled' : 'Locked — charged'}</span>
         )}
         {refundOverride > 0 && !refunded && (
           <span title="A Refund click at Client decision 1 returns this amount instead of the full retainer" style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.12)', border: '1px solid rgba(224,103,23,0.35)', color: '#e06717', fontWeight: 600 }}>Refund on Stop: {fmt(refundOverride)}</span>
+        )}
+        {refundOwed > 0 && !planRefundedInFull && (
+          <span title={refundIssued ? 'The refund for the reduced fee has been issued' : 'The final fee was set below what was collected — the refund has NOT been issued'} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: refundIssued ? 'var(--vfo-tint)' : 'rgba(224,103,23,0.12)', border: `1px solid ${refundIssued ? 'var(--vfo-border-chip)' : ARR_BORDER}`, color: refundIssued ? 'var(--vfo-muted)' : ARR_TEXT, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{refundIssued ? `Refunded ${fmt(refundOwed)}` : `Refund owed ${fmt(refundOwed)}`}</span>
+        )}
+        {arrOn && (
+          <span title="This plan has an agreed fee arrangement — see the box below" style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.12)', border: `1px solid ${ARR_BORDER}`, color: ARR_TEXT, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>Fee arrangement</span>
         )}
         {refunded && (
           <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', fontWeight: 600 }}>Refunded {fmt(money(plan?.refund_amount))}</span>
@@ -320,6 +447,87 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
           No tax planner allocated. {chargeInFlight
             ? `Their ${fmt(portion(storedPlanner, implAmt))} share is being held — allocate a planner and it pays out immediately.`
             : `Their ${fmt(portion(storedPlanner, implAmt))} share will be held when the implementation is charged, and paid as soon as you allocate one.`}
+        </div>
+      )}
+
+      {/* Outside the fold too: the agreed picture must be read before anything on this
+          plan is acted on. */}
+      {arrOn && !arrEditing && (
+        <div style={{ marginTop: '9px', padding: '10px 14px', borderRadius: '8px', background: ARR_BG, border: `1px solid ${ARR_BORDER}`, fontSize: '12px', color: 'var(--vfo-ink)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+            <span style={{ fontWeight: 700, color: ARR_TEXT }}>Agreed fee arrangement</span>
+            <span style={{ flex: 1 }} />
+            {canSetArrangement && (
+              <button onClick={() => { setExpanded(true); openArrangement() }} style={{ padding: '3px 10px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', border: `1px solid ${ARR_BORDER}`, background: 'transparent', color: ARR_TEXT, fontWeight: 600 }}>Edit</button>
+            )}
+          </div>
+          {plan?.fee_arrangement_note && <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{plan.fee_arrangement_note}</div>}
+          <div style={{ marginTop: '6px', lineHeight: 1.55 }}>
+            {retAgreed != null && (
+              <div>• Retainer revenue share {retLegsPaid ? 'was paid' : 'is paid'} on {fmt(retAmt - retHeld)}{retHeld > 0
+                ? (refundOwed > 0 || plan?.fee_amended_at_tax5
+                  ? `, not the ${fmt(retAmt)} received. Of the other ${fmt(retHeld)}: ${[retRemainder > 0 && `${fmt(retRemainder)} is shared at the implementation`, refundOwed > 0 && `${fmt(refundOwed)} is ${refundIssued ? 'refunded' : 'owed back'} to the client`].filter(Boolean).join(' and ')}`
+                  : `, not the ${fmt(retAmt)} received — ${fmt(retHeld)} held by VFO Services pending the final fee`)
+                : ''}.</div>
+            )}
+            {implAgreed != null && (
+              <div>• Implementation revenue share {implLegsPaid ? 'was paid' : 'is paid'} on {fmt(implAmt - implHeld)}{implHeld > 0 ? `, not the ${fmt(implAmt)} charged — ${fmt(implHeld)} held by VFO Services` : ''}.</div>
+            )}
+            {implNotCharged && <div>• The implementation fee ({fmt(implAmt)}) is not changed by this — amend it before the implementation decision goes out.</div>}
+            <div>• Client sentence: {plan?.fee_arrangement_client_note && (plan?.fee_arrangement_note_tax4 || plan?.fee_arrangement_note_tax5)
+              ? `added to the ${[plan?.fee_arrangement_note_tax4 && 'Client decision 1 email', plan?.fee_arrangement_note_tax5 && 'implementation decision email'].filter(Boolean).join(' and the ')}.`
+              : 'not added to any email.'}</div>
+          </div>
+          {plan?.fee_arrangement_client_note && (plan?.fee_arrangement_note_tax4 || plan?.fee_arrangement_note_tax5) && (
+            <div style={{ marginTop: '6px', padding: '6px 10px', borderLeft: `3px solid ${ARR_BORDER}`, color: 'var(--vfo-muted)', whiteSpace: 'pre-wrap', fontStyle: 'italic' }}>{plan.fee_arrangement_client_note}</div>
+          )}
+          {plan?.fee_arrangement_set_at && (
+            <div style={{ marginTop: '6px', fontSize: '10px', color: 'var(--vfo-muted)' }}>
+              Set by {plan?.fee_arrangement_set_by || 'an admin'} on {formatDate(plan.fee_arrangement_set_at)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Outside the fold: money owed back to a client must never be missed. */}
+      {refundOwed > 0 && planRefundedInFull && (
+        <div style={{ marginTop: '9px', fontSize: '11px', color: 'var(--vfo-muted)' }}>
+          The retainer was refunded in full at Client decision 1, so the {fmt(refundOwed)} recorded as owed for the reduced fee no longer applies.
+        </div>
+      )}
+      {refundOwed > 0 && !planRefundedInFull && (
+        <div style={{ marginTop: '9px', padding: '10px 14px', borderRadius: '8px', background: refundIssued ? 'var(--vfo-tint)' : ARR_BG, border: `1px solid ${refundIssued ? 'var(--vfo-border-chip)' : ARR_BORDER}`, fontSize: '12px', color: 'var(--vfo-ink)', lineHeight: 1.55 }}>
+          {!refundIssued ? (
+            <>
+              <div style={{ fontWeight: 700, color: ARR_TEXT }}>Refund owed to the client: {fmt(refundOwed)} — not issued</div>
+              <div>The final fee was set to {fmt(totalFee)}, below the {fmt(retAmt)} collected. The money stays with VFO until the final fee is confirmed; nothing is refunded until the button below is pressed.</div>
+              {plan?.fee_reduction_refund_status === 'failed' && <div style={{ color: '#e74c3c', fontWeight: 600 }}>The last refund attempt failed — check the bell before trying again. Pressing the button again never repeats a refund that already went through.</div>}
+              {refundInProgress && <div style={{ fontWeight: 600 }}>A refund is being issued right now — reload in a minute.</div>}
+              {!refundInProgress && !plan?.fee_amended_at_tax5 && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>The button works once the final fee has been entered at the Tax 5 "Amend implementation fee" step.</div>}
+            </>
+          ) : (
+            <>
+              <div style={{ fontWeight: 700 }}>Refunded {fmt(refundOwed)}{plan?.fee_reduction_refunded_at ? ` on ${formatDate(plan.fee_reduction_refunded_at)}` : ''}{plan?.fee_reduction_refunded_by ? ` by ${plan.fee_reduction_refunded_by}` : ''}{plan?.fee_reduction_refund_status === 'pending' ? ' (bank refund settling)' : ''}</div>
+              <div>
+                {plan?.fee_reduction_credit_note_number ? `Credit note ${plan.fee_reduction_credit_note_number}` : 'Credit note not created yet'}
+                {' · '}
+                {plan?.fee_reduction_email_sent_at ? `client email drafted ${formatDate(plan.fee_reduction_email_sent_at)}` : 'client email not drafted yet'}
+                {plan?.fee_reduction_refund_ids && plan.fee_reduction_refund_ids !== 'by hand' ? ` · Stripe ${plan.fee_reduction_refund_ids}` : plan?.fee_reduction_refund_ids === 'by hand' ? ' · refunded by hand' : ''}
+              </div>
+            </>
+          )}
+          {isSuperadmin && !readOnly && !refundInProgress && (!refundIssued || !plan?.fee_reduction_credit_note_drive_id || !plan?.fee_reduction_email_sent_at) && (
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+              <button disabled={feeRefundBusy} onClick={() => issueFeeRefund(false)} style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '11px', cursor: feeRefundBusy ? 'not-allowed' : 'pointer', border: `1px solid ${ARR_BORDER}`, background: 'rgba(224,103,23,0.12)', color: ARR_TEXT, fontWeight: 700 }}>
+                {feeRefundBusy ? 'Working…' : refundIssued ? 'Finish credit note and email' : 'Issue refund and credit note'}
+              </button>
+              {!refundIssued && (
+                <button disabled={feeRefundBusy} onClick={() => issueFeeRefund(true)} style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '11px', cursor: feeRefundBusy ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Mark refunded by hand</button>
+              )}
+            </div>
+          )}
+          {feeRefundErr && <div style={{ marginTop: '6px', fontSize: '11px', color: '#e74c3c' }}>{feeRefundErr}</div>}
+          {feeRefundMsg && <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--vfo-success-text)' }}>{feeRefundMsg}</div>}
         </div>
       )}
 
@@ -351,13 +559,15 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
                 {plan?.implementation_charge_status === 'succeeded' ? 'Charged'
                   : plan?.implementation_charge_status === 'processing' ? 'Charge in progress'
                     : plan?.implementation_charge_status === 'declined' ? 'Charge declined — pay link sent'
-                      : 'Not yet charged'}
+                      : implSettledNoCharge || (arrOn && implAmt === 0) ? 'No payment due' : 'Not yet charged'}
               </div>
+              {arrOn && implNotCharged && <div style={{ fontSize: '10px', color: ARR_TEXT, fontWeight: 600 }}>Fee under review — amend before the implementation decision</div>}
             </div>
             <div>
               <div style={label}>Total fee</div>
               <div style={value}>{fmt(totalFee)}</div>
               <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>{plan?.split_type || 'No split type set'}{threePayment ? ' · 3 payments' : ''}</div>
+              {refundOwed > 0 && <div style={{ fontSize: '10px', color: ARR_TEXT, fontWeight: 600 }}>{refundIssued ? `Refunded ${fmt(refundOwed)}` : `Refund owed ${fmt(refundOwed)} — not issued`}</div>}
             </div>
           </div>
 
@@ -372,12 +582,23 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
                       <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                         Final retainer {fmt(finalAmt)}
                         <div style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>pays the split on the full {fmt(retAmt)} retainer</div>
+                        {retHeld > 0 && <div style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: ARR_TEXT }}>shares on {fmt(retGross)}{retAgreed != null ? ' by agreement' : ' kept'}</div>}
                       </th>
                     </>
                   ) : (
-                    <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }}>Retainer {fmt(retAmt)}</th>
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+                      Retainer {fmt(retAmt)}
+                      {retHeld > 0 && <div style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: ARR_TEXT }}>shares on {fmt(retGross)}{retAgreed != null ? ' by agreement' : ' kept'}</div>}
+                    </th>
                   )}
-                  <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }}>Implementation {fmt(implAmt)}</th>
+                  <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+                    Implementation {fmt(implAmt)}
+                    {retRemainder > 0
+                      ? <div style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: ARR_TEXT }}>{implAmt > 0 ? `shares on ${fmt(implShareBase)} incl. ${fmt(retRemainder)} held back from the retainer` : `shares on the ${fmt(retRemainder)} held back from the retainer`}</div>
+                      : implHeld > 0
+                        ? <div style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: ARR_TEXT }}>shares on {fmt(implAmt - implHeld)} by agreement</div>
+                        : arrOn && implNotCharged && <div style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: ARR_TEXT }}>fee under review — may change</div>}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -399,10 +620,14 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
                       <div style={{ fontSize: '10px', color: retainerIsHistoric ? 'var(--vfo-muted)' : noteColor(r.retStatus) }}>
                         {retainerIsHistoric ? 'settled on old system' : legNote(r.retStatus)}
                       </div>
+                      {r.key === 'vfos' && retRemainder > 0 && !retainerIsHistoric && <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>incl. {fmt(retRemainder)} shared with the implementation</div>}
+                      {r.key === 'vfos' && refundOwed > 0 && !retainerIsHistoric && <div style={{ fontSize: '10px', color: ARR_TEXT }}>incl. {fmt(refundOwed)} {refundIssued ? 'refunded to the client' : 'refund owed to the client'}</div>}
                     </td>
                     <td style={{ padding: '7px 8px', textAlign: 'right', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                      {noShare(r.implStatus) || r.key === 'portal' ? '—' : fmt(r.key === 'vfos' ? implVfos : portion(r.stored, implAmt))}
+                      {noShare(r.implStatus) || r.key === 'portal' ? '—' : r.key === 'vfos' ? fmtSigned(implVfos) : fmt(portion(r.stored, implShareBase))}
                       {legNote(r.implStatus) && <div style={{ fontSize: '10px', color: noteColor(r.implStatus) }}>{legNote(r.implStatus)}</div>}
+                      {r.key === 'vfos' && implHeld > 0 && <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>incl. {fmt(implHeld)} held pending final fee</div>}
+                      {r.key === 'vfos' && retRemainder > 0 && implVfos < 0 && <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>paid out of the retainer held back</div>}
                     </td>
                   </tr>
                 ))}
@@ -425,6 +650,74 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
               </div>
               {refundErr && <div style={{ marginTop: '6px', fontSize: '11px', color: '#e74c3c' }}>{refundErr}</div>}
               {refundOk && <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--vfo-success-text)' }}>{refundOk}</div>}
+            </div>
+          )}
+
+          {canSetArrangement && !arrEditing && !arrOn && !locked && (
+            <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <button onClick={openArrangement} style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', border: `1px solid ${ARR_BORDER}`, background: 'transparent', color: ARR_TEXT, fontWeight: 600 }}>
+                {plan?.fee_arrangement_set_at ? 'Turn fee arrangement back on' : 'Set up fee arrangement'}
+              </button>
+              <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>For an agreed fee change: pay the revenue share on an agreed figure and tell the client in their decision email.</span>
+            </div>
+          )}
+
+          {arrEditing && (
+            <div style={{ marginTop: '12px', padding: '12px 14px', borderRadius: '10px', background: ARR_BG, border: `1px solid ${ARR_BORDER}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <span style={{ fontWeight: 700, fontSize: '12px', color: ARR_TEXT }}>Fee arrangement</span>
+                <span style={{ flex: 1 }} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--vfo-ink)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={!!arrDraft.active} onChange={e => setArrDraft(d => ({ ...d, active: e.target.checked }))} />
+                  Arrangement on
+                </label>
+              </div>
+              {!arrDraft.active && (
+                <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginBottom: '8px' }}>Off: every payment's revenue share is worked out on the amount received again, and no sentence is added to any email. Shares already paid stay as they are.</div>
+              )}
+
+              <div style={{ ...label, marginBottom: '3px' }}>What has been agreed (internal — shown on this card)</div>
+              <textarea value={arrDraft.note || ''} onChange={e => setArrDraft(d => ({ ...d, note: e.target.value }))} rows={4} placeholder="What was agreed with the client and by whom: the fee now expected, what VFO is holding and until when, and how revenue shares are paid in the meantime." style={{ ...inputStyle, resize: 'vertical', marginBottom: '10px' }} />
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px', marginBottom: '6px' }}>
+                {[['retainer', retAmt, retLegsPaid, 'Retainer'], ['implementation', implAmt, implLegsPaid, 'Implementation']].map(([kind, payment, paid, title]) => {
+                  const pv = draftPreview(kind, payment)
+                  return (
+                    <div key={kind}>
+                      <div style={{ ...label, marginBottom: '3px' }}>{title} revenue share worked out on ($)</div>
+                      <input value={arrDraft[`${kind}_base`] || ''} onChange={e => setArrDraft(d => ({ ...d, [`${kind}_base`]: e.target.value }))} disabled={paid} inputMode="decimal" placeholder={`blank = the full ${fmt(payment)}`} style={paid ? readonlyInput : inputStyle} />
+                      <div style={{ fontSize: '10px', color: 'var(--vfo-muted)', marginTop: '3px' }}>
+                        {paid ? `Locked — the ${title.toLowerCase()} revenue share has already been paid.`
+                          : pv ? `Pays member ${fmt(pv.member)} · planner ${fmt(pv.planner)}${hasStrategic ? ` · partner ${fmt(pv.strat)}` : ''} · VFO keeps ${fmt(pv.vfo)}`
+                            : kind === 'retainer' ? 'Blank = shares on the full retainer.' : 'Blank = normal: shares on the implementation payment plus anything the retainer held back, so everyone ends at their share of the final fee.'}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div style={{ ...label, marginTop: '8px', marginBottom: '3px' }}>Client sentence (goes after the first sentence of the email)</div>
+              <textarea value={arrDraft.client_note || ''} onChange={e => setArrDraft(d => ({ ...d, client_note: e.target.value }))} rows={3} placeholder="The sentence the client reads in their decision email, e.g. the fee now expected and that VFO will hold the payment already made until the final fee is confirmed." style={{ ...inputStyle, resize: 'vertical' }} />
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '6px' }}>
+                {[['note_tax4', 'Client decision 1 email (Tax 4)', plan?.post_review_decision_email_sent_at], ['note_tax5', 'Implementation decision email (Tax 5)', plan?.implementation_decision_email_sent_at]].map(([key, text, sentAt]) => (
+                  <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--vfo-ink)', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!arrDraft[key]} onChange={e => setArrDraft(d => ({ ...d, [key]: e.target.checked }))} />
+                    {text}{sentAt ? <span style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>(already sent {formatDate(sentAt)})</span> : null}
+                  </label>
+                ))}
+              </div>
+
+              {arrErr && <div style={{ marginTop: '8px', fontSize: '11px', color: '#e74c3c' }}>{arrErr}</div>}
+              <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+                <button disabled={arrBusy} onClick={saveArrangement} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '11px', cursor: arrBusy ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>{arrBusy ? 'Saving…' : 'Save arrangement'}</button>
+                <button disabled={arrBusy} onClick={() => setArrEditing(false)} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {arrOn && isSuperadmin && !readOnly && hasPricing && !locked && !hasStrategic && (
+            <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--vfo-muted)' }}>
+              Edit split is hidden while the fee arrangement is on. Turn the arrangement off first if the split itself needs correcting.
             </div>
           )}
 

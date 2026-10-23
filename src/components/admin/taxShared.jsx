@@ -74,6 +74,60 @@ export function licenceDisbursementFor(plan, paymentKind) {
   return d > 0 ? d : 0
 }
 
+// Fee arrangement + final fee below what was collected (2026-10-23) — the MIRROR of
+// utils/client-portal-licence.ts (keep them identical). RETAINER: the retainer
+// received, capped at the money VFO keeps (less fee_reduction_refund_amount) and, while
+// an arrangement is on, at its agreed retainer base. IMPLEMENTATION: the payment
+// (capped at an agreed implementation base) PLUS the part of the kept retainer the
+// retainer payout did not share, so every party ends at its share of the final fee.
+// An ordinary plan gets exactly the old maths.
+export function feeArrangementBaseFor(plan, paymentKind) {
+  if (plan?.fee_arrangement_active !== true) return null
+  const raw = paymentKind === 'retainer' ? plan?.fee_arrangement_retainer_base
+    : paymentKind === 'implementation' ? plan?.fee_arrangement_implementation_base : null
+  if (raw == null || String(raw).trim() === '') return null
+  const n = parseFloat(String(raw).replace(/[,$]/g, ''))
+  return Number.isFinite(n) && n >= 0 ? n : null
+}
+
+export function feeReductionOwedFor(plan) {
+  const n = parseNum(plan?.fee_reduction_refund_amount)
+  return n > 0 ? n : 0
+}
+
+export function retainerShareGrossFor(plan, payment) {
+  // Once the retainer payout has run on an arrangement plan, the figure it used is
+  // stamped and is the answer from then on (mirrors the backend).
+  const paidOn = plan?.retainer_share_gross_paid
+  if (paidOn != null && String(paidOn).trim() !== '') return Math.max(Math.min(parseNum(paidOn), payment), 0)
+  let gross = payment
+  const owed = feeReductionOwedFor(plan)
+  if (owed > 0) gross = Math.min(gross, Math.max(parseNum(plan?.retainer_amount) - owed, 0))
+  const agreed = feeArrangementBaseFor(plan, 'retainer')
+  if (agreed != null) gross = Math.min(gross, agreed)
+  return Math.max(gross, 0)
+}
+
+export function retainerRemainderFor(plan) {
+  const retainer = parseNum(plan?.retainer_amount)
+  if (retainer <= 0) return 0
+  const kept = Math.max(retainer - feeReductionOwedFor(plan), 0)
+  return Math.round(Math.max(kept - retainerShareGrossFor(plan, retainer), 0) * 100) / 100
+}
+
+function shareGrossFor(plan, paymentKind, payment) {
+  if (paymentKind === 'retainer') return retainerShareGrossFor(plan, payment)
+  if (paymentKind === 'implementation') {
+    const agreed = feeArrangementBaseFor(plan, 'implementation')
+    return (agreed == null ? payment : Math.min(agreed, payment)) + retainerRemainderFor(plan)
+  }
+  return payment
+}
+
+export function revshareBaseFor(plan, paymentKind, payment) {
+  return Math.max(shareGrossFor(plan, paymentKind, payment) - licenceDisbursementFor(plan, paymentKind), 0)
+}
+
 function sharePortion(shareRaw, total, amount) {
   if (!(shareRaw > 0)) return 0
   const p = total > 0 ? (shareRaw / total) * amount : shareRaw / 2
@@ -102,7 +156,8 @@ export function clearedTaxPayments(rows) {
     const plannerPortion = (amt) => sharePortion(plannerRaw, total, amt)
     const retainerIsHistoric = !!r.legacy_source && r.retainer_rev_paid === 'N/A — No Share Due'
     const retLicence = licenceDisbursementFor(r, 'retainer')
-    const retShareBase = Math.max(ret - retLicence, 0)
+    const retShareBase = revshareBaseFor(r, 'retainer', ret)
+    const implShareBase = revshareBaseFor(r, 'implementation', imp)
     const base = {
       clientName: r.client_name || `Client #${r.client_id}`,
       clientId: r.client_id,
@@ -210,12 +265,16 @@ export function clearedTaxPayments(rows) {
     if (PAID.has(r.implementation_charge_status) && imp > 0) {
       const clearedAt = r.implementation_charge_date || r.implementation_confirmation_email_sent_at
       if (clearedAt) {
-        const mp = memberPortion(imp)
-        const sp = stratPer(imp)
-        const pp = plannerPortion(imp)
+        const mp = memberPortion(implShareBase)
+        const sp = stratPer(implShareBase)
+        const pp = plannerPortion(implShareBase)
+        // With a retainer remainder (a fee arrangement held part of the retainer back)
+        // this payout also shares money VFO took in on the retainer row, so VFO's
+        // figure here may be negative — clamping it would hide that (#465).
+        const vfosImp = retainerRemainderFor(r) > 0 ? Math.round((imp - mp - sp - pp) * 100) / 100 : Math.max(imp - mp - sp - pp, 0)
         out.push({
           id: `${r.id}-imp`, kind: 'Implementation', clearedAt, amount: imp, member: mp, strategic: sp, planner: pp,
-          vfos: Math.max(imp - mp - sp - pp, 0), status: r.implementation_charge_status,
+          vfos: vfosImp, status: r.implementation_charge_status,
           memberState: legState(r.implementation_rev_paid, { revShare: r.implementation_rev_share, paymentStatus: r.implementation_charge_status }),
           plannerState: plannerStateFor(pp, r.implementation_planner_paid, r.implementation_charge_status),
           strategicState: sp > 0 ? legState(r.implementation_strat_paid, { paymentStatus: r.implementation_charge_status }) : null,
@@ -224,6 +283,26 @@ export function clearedTaxPayments(rows) {
           ...base,
         })
       }
+    }
+
+    // A $0 implementation that still settled shares on the final fee (2026-10-23):
+    // the part of the kept retainer the retainer payout held back, paid at the
+    // client's Tax 5 Proceed. No money came in, so the row is $0 and VFO's figure is
+    // what it hands on out of the retainer it already took in.
+    if (r.implementation_settlement_at && !(imp > 0)) {
+      const mp = memberPortion(implShareBase)
+      const sp = stratPer(implShareBase)
+      const pp = plannerPortion(implShareBase)
+      out.push({
+        id: `${r.id}-settle`, kind: 'Final fee settlement', clearedAt: r.implementation_settlement_at, amount: 0, member: mp, strategic: sp, planner: pp,
+        vfos: Math.round((0 - mp - sp - pp) * 100) / 100, status: 'succeeded',
+        memberState: legState(r.implementation_rev_paid, { revShare: r.implementation_rev_share, paymentStatus: 'succeeded' }),
+        plannerState: plannerStateFor(pp, r.implementation_planner_paid, 'succeeded'),
+        strategicState: sp > 0 ? legState(r.implementation_strat_paid, { paymentStatus: 'succeeded' }) : null,
+        vfosState: vfosStateFor('succeeded'),
+        paymentNote: 'No payment — shares on the final fee',
+        ...base,
+      })
     }
   }
   return out
