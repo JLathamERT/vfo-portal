@@ -16,7 +16,7 @@ import ListFilterButton, { matchesFilter, sortMembers, SortSelect, MEMBER_SORT_O
 import { MemberProfileDetailsSkeleton, Skeleton, SkeletonText } from '../shared/Skeleton'
 import { TrackHero, HeroAvatar, ListHeader } from '../shared/TrackKit'
 import ExportButton from '../shared/ExportButton'
-import { splitName } from '../../lib/exportXlsx'
+import { splitName, exportDate } from '../../lib/exportXlsx'
 import { VisibilityBadge, noteTint } from '../shared/NoteVisibility'
 import ImageCropModal from './ImageCropModal'
 import { MemberNameLink } from '../shared/personLinks'
@@ -300,8 +300,10 @@ export function FeatureTabDropdown({ label, isActive, options, onSelect }) {
 //                      profile view (e.g. ['revenue_decision'] for accountants)
 // Export columns for the three member search pages. A member with no profile
 // first/last name falls back to splitting the display name. Status reads blank
-// as Active, exactly as the Status filter does.
+// as Active, exactly as the Status filter does. `default: false` columns start
+// unticked in the Export window.
 const memberFirstLast = (m) => (m.first_name || m.last_name) ? [m.first_name || '', m.last_name || ''] : splitName(m.name)
+const memberStanding = (m) => [m.suspended && 'Suspended', m.paused && 'Paused', m.membership_arrears && 'In Arrears'].filter(Boolean).join(', ')
 const MEMBER_EXPORT_COLUMNS = [
   { header: '#', value: m => m.plugin_member_number },
   { header: 'First Name', value: m => memberFirstLast(m)[0] },
@@ -309,7 +311,22 @@ const MEMBER_EXPORT_COLUMNS = [
   { header: 'Status', value: m => m.elite_status || 'Active' },
   { header: 'Email', value: m => m.email || '' },
   { header: 'Member Type', value: m => m.member_type || '' },
+  { header: 'Full Name', value: m => m.name || '', default: false },
+  { header: 'MSM', value: m => (m.assigned_msm || '').trim(), default: false },
+  { header: 'Model', value: m => m.advisor_model || '', default: false },
+  { header: 'Standing', value: memberStanding, default: false },
+  { header: 'Join Date', value: m => exportDate(m.join_date), default: false },
+  { header: 'Leave Date', value: m => exportDate(m.leave_date), default: false },
+  { header: 'VFO Certified', value: m => exportDate(m.vfo_certified_date), default: false },
+  { header: 'VFO Accredited', value: m => exportDate(m.vfo_accredited_date), default: false },
+  { header: 'Trading Name', value: m => m.trading_name || '', default: false },
+  { header: 'Website', value: m => m.website_url || '', default: false },
+  { header: 'Introduced By #', value: m => m.introduced_by_member_number || '', default: false },
 ]
+// Filter-only label for a member with no `assigned_msm` (the same sentinel as
+// Member Overview's): nothing stores it, and '' cannot be an option because
+// matchesFilter reads an empty selection as no filter.
+const UNASSIGNED_MSM = 'Unassigned'
 
 function MemberDirectoryView({
   displayMembers,
@@ -390,6 +407,10 @@ function MemberDirectoryView({
   const [memberSearch, setMemberSearch] = useState('')
   const [listFilter, setListFilter] = useState({ status: ['Active'] })
   const [listSort, setListSort] = useState('number_asc')
+  // MSM options come from the members on this list (`assigned_msm` is free text,
+  // there is no roster); the names sort first, then Unassigned.
+  const msmNames = [...new Set(displayMembers.map(m => (m.assigned_msm || '').trim()).filter(Boolean))].sort()
+  const msmFilterOptions = displayMembers.some(m => !(m.assigned_msm || '').trim()) ? [...msmNames, UNASSIGNED_MSM] : msmNames
   const filterGroups = [
     { key: 'status', label: 'Status', options: ['Active', 'Lost', 'Removed'], get: m => m.elite_status || 'Active' },
     ...(showModel ? [{ key: 'model', label: 'Model', options: ['New Model', 'Legacy Model'], get: m => m.advisor_model || '' }] : []),
@@ -400,6 +421,7 @@ function MemberDirectoryView({
     // VFO Certified / Accredited are date columns; presence = the credential is held.
     // Hidden for strategic members (they don't carry these credentials).
     ...(showCredential ? [{ key: 'credential', label: 'VFO Credential', options: ['VFO Certified', 'VFO Accredited'], get: m => { const f = []; if (m.vfo_certified_date) f.push('VFO Certified'); if (m.vfo_accredited_date) f.push('VFO Accredited'); return f } }] : []),
+    ...(msmFilterOptions.length ? [{ key: 'msm', label: 'MSM', options: msmFilterOptions, get: m => (m.assigned_msm || '').trim() || UNASSIGNED_MSM }] : []),
   ]
 
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
@@ -428,7 +450,7 @@ function MemberDirectoryView({
 
       {activeTab === 'search' && !selectedMember && (
         <>
-          <ListHeader title={listTitle} count={filteredMembers.length} action={<ExportButton title={listTitle} columns={MEMBER_EXPORT_COLUMNS} rows={sortMembers(filteredMembers, listSort)} />} />
+          <ListHeader title={listTitle} count={filteredMembers.length} action={<ExportButton title={listTitle} columns={MEMBER_EXPORT_COLUMNS} rows={sortMembers(searched, listSort)} filterGroups={filterGroups} filterValue={listFilter} />} />
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
             <input type="search" name="search" autoComplete="off" placeholder="Search by name or number..." style={inputStyle} onChange={e => setMemberSearch(e.target.value.toLowerCase())} value={memberSearch} />
             <ListFilterButton groups={filterGroups} value={listFilter} onChange={setListFilter} />

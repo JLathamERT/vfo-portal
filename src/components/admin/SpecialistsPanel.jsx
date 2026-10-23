@@ -12,13 +12,21 @@ import ListFilterButton, { matchesFilter, sortByJoin, SortSelect } from './ListF
 import ImageCropModal from './ImageCropModal'
 import { formatDate } from '../../lib/dates'
 import ExportButton from '../shared/ExportButton'
-import { splitName } from '../../lib/exportXlsx'
+import { splitName, exportDate } from '../../lib/exportXlsx'
 
-const SPECIALIST_EXPORT_COLUMNS = [
+// `default: false` columns start unticked in the Export window.
+const specialistExportColumns = (ecoMap) => [
   { header: 'First Name', value: e => splitName(e.name)[0] },
   { header: 'Last Name', value: e => splitName(e.name)[1] },
   { header: 'Status', value: e => e.status || 'Active' },
   { header: 'Email', value: e => e.email || '' },
+  { header: 'Full Name', value: e => e.name || '', default: false },
+  { header: 'Ecosystems', value: e => (ecoMap[e.id] || []).join(', '), default: false },
+  { header: 'Background Check', value: e => e.background_check || '', default: false },
+  { header: 'VFO Accredited', value: e => e.vfo_accredited ? 'Yes' : '', default: false },
+  { header: 'Personal Email', value: e => e.personal_email || '', default: false },
+  { header: 'Join Date', value: e => exportDate(e.join_date), default: false },
+  { header: 'Leave Date', value: e => exportDate(e.leave_date), default: false },
 ]
 
 const ECOSYSTEMS = ['Tax Planning', 'Business Advisory', 'Legal Services', 'Risk Mitigation', 'Wealth Management', 'Member Services']
@@ -174,8 +182,10 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
     { key: 'status', label: 'Status', options: ['Active', 'Lost', 'Removed'], get: e => e.status || 'Active' },
     { key: 'ecosystem', label: 'Ecosystem', options: ECOSYSTEMS, get: e => ecoMap[e.id] || [] },
   ]
-  // The search list exactly as rendered — shared by the rows and the Export button.
-  const visibleExperts = sortByJoin((editSearch ? (allExperts || []).filter(e => e.name.toLowerCase().includes(editSearch)) : (allExperts || [])).filter(e => matchesFilter(e, specFilterGroups, specFilter)), specSort)
+  // The search list as searched + sorted; the rows add the filters, the Export
+  // window takes the filters itself (pre-set to these).
+  const searchedExperts = sortByJoin(editSearch ? (allExperts || []).filter(e => e.name.toLowerCase().includes(editSearch)) : (allExperts || []), specSort)
+  const visibleExperts = searchedExperts.filter(e => matchesFilter(e, specFilterGroups, specFilter))
 
   // Deep-link: /admin?...&expert=<id> opens that specialist's detail in the Search
   // Specialists view — on Edit for the Stage 5 onboarding links, on the read-only
@@ -637,7 +647,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
         <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em', fontSize: '22px', color: 'var(--vfo-ink)' }}>
           {activeTab === 'add' ? 'Add Specialist' : 'Search Specialists'}
         </div>
-        {activeTab === 'edit' && !selectedExpert && <ExportButton title="Specialists" columns={SPECIALIST_EXPORT_COLUMNS} rows={visibleExperts} />}
+        {activeTab === 'edit' && !selectedExpert && <ExportButton title="Specialists" columns={specialistExportColumns(ecoMap)} rows={searchedExperts} filterGroups={specFilterGroups} filterValue={specFilter} />}
       </div>
 
       {/* Add tab */}
