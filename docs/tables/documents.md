@@ -161,7 +161,7 @@ Subjects: 289 / 290 `VFO Services - Tax Planning Deposit Processing - [Client Na
 | id | template_name | Recipients copied from | Drafted by | Tokens |
 |---|---|---|---|---|
 | **293** | `TAX_readyfortax3\|Rapid` | `TAX_readyfortax3\|Yes` (16) | `automation_TAX_readyfortax3` decision `confirm_rapid` | as the Yes row, no meeting date |
-| **294** | `TAX_decision_rapid` | `TAX_decision_undecided` (18) | `automation_TAX_decision` decision `Rapid` (agreement PDF attached) | `[VIDEO]` `[PRESENTATION_LINK]` `[BUTTONS]` |
+| **294** | `TAX_decision_rapid` | `TAX_decision_undecided` (18) | `automation_TAX_decision` decision `Rapid` (agreement PDF attached) | `[VIDEO]` `[PRESENTATION_LINK]` (the *View the presentation* button, directly under the video — 2026-10-23) `[BUTTONS]` |
 | **295** | `TAX_decision_rapid (member signing/paying on clients behalf)` | its member twin (126) | the same, member paying | the same |
 | **296** | `TAX_rapid_question_reply` | `TAX_decision_undecided` (18) | `tax_rapid_question_reply` | `[QUESTION]` `[ANSWER]` `[VIDEO_LINK]` `[BUTTONS]` |
 | **297** | `TAX_rapid_question_reply (member signing/paying on clients behalf)` | its member twin (126) | the same, member paying | the same |
