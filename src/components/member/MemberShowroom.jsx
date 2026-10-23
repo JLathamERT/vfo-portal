@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
-import { detailEntries, entryLabel, DB_FIELDS, REVENUE_SHARE_KEY } from '../shared/specialistDetails'
+import { detailEntries, entryLabel, DB_FIELDS, REVENUE_SHARE_KEY, CLIENT_HIDDEN_FIELDS } from '../shared/specialistDetails'
 import { callApi } from '../../lib/api'
 
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
@@ -95,11 +95,12 @@ function BackgroundCheckBadge({ value, large = false }) {
 // `showRevenueShare` gates the Revenue Share section to admins and members
 // (Jake, 2026-09-22); the client and specialist showroom payloads also have the
 // column stripped server-side, so on those surfaces it is absent as well as hidden.
-function DetailsAndBenefits({ entries, showRevenueShare }) {
+// `clientView` (the client portal only) also drops CLIENT_HIDDEN_FIELDS.
+function DetailsAndBenefits({ entries, showRevenueShare, clientView }) {
   const [active, setActive] = useState(0)
   const idx = Math.min(active, entries.length - 1)
   const c = entries[idx].content
-  const fields = DB_FIELDS.filter(([k]) => String(c[k] || '').trim() !== '')
+  const fields = DB_FIELDS.filter(([k]) => String(c[k] || '').trim() !== '' && !(clientView && CLIENT_HIDDEN_FIELDS.includes(k)))
   const revenueShare = showRevenueShare ? String(c[REVENUE_SHARE_KEY] || '').trim() : ''
 
   return (
@@ -215,7 +216,7 @@ function IntroRequestButton({ expertId, introRequest }) {
   )
 }
 
-function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = false, introRequest = null }) {
+function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = false, introRequest = null, clientView = false }) {
   const [showDetails, setShowDetails] = useState(false)
   // useLayoutEffect (not useEffect) so the scroll lock applies BEFORE the browser
   // paints the modal — otherwise the background reflow lands a frame late and the
@@ -243,7 +244,7 @@ function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = 
   }, [onClose])
 
   const bio = (expert.long_bio || '').replace(/\r\n/g, '\n')
-  const entries = detailEntries(expert, expert.categories)
+  const entries = detailEntries(expert, expert.categories, clientView ? CLIENT_HIDDEN_FIELDS : [])
   return (
     <div className="vfo-sr-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="vfo-sr-modal">
@@ -269,7 +270,7 @@ function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = 
               Details &amp; Benefits
               <span className="vfo-sr-db-caret">{showDetails ? '▲' : '▼'}</span>
             </button>
-            {showDetails && <DetailsAndBenefits entries={entries} showRevenueShare={showRevenueShare} />}
+            {showDetails && <DetailsAndBenefits entries={entries} showRevenueShare={showRevenueShare} clientView={clientView} />}
           </div>
         )}
         {showVault && <ShowroomVault expertId={expert.id} />}
@@ -280,7 +281,7 @@ function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = 
   )
 }
 
-export default function MemberShowroom({ experts = [], exclusions = [], ecoMap = {}, showMemberServices = false, showRevenueShare = false, showVault = false, introRequest = null }) {
+export default function MemberShowroom({ experts = [], exclusions = [], ecoMap = {}, showMemberServices = false, showRevenueShare = false, showVault = false, introRequest = null, clientView = false }) {
   const [activeFilter, setActiveFilter] = useState('All')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
@@ -349,7 +350,7 @@ export default function MemberShowroom({ experts = [], exclusions = [], ecoMap =
         )}
       </div>
 
-      {selected && <ShowroomModal expert={selected} onClose={() => setSelected(null)} showRevenueShare={showRevenueShare} showVault={showVault} introRequest={introRequest} />}
+      {selected && <ShowroomModal expert={selected} onClose={() => setSelected(null)} showRevenueShare={showRevenueShare} showVault={showVault} introRequest={introRequest} clientView={clientView} />}
     </div>
   )
 }

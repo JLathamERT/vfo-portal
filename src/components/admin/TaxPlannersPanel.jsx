@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom'
 import { ClientNameLink, clientPagePath } from '../shared/personLinks'
 import { formatDate } from '../../lib/dates'
 import ExportButton from '../shared/ExportButton'
+import { exportDate } from '../../lib/exportXlsx'
 
 const STATUS_COLORS = { Active: '#1b9254', Lost: '#e74c3c', Removed: 'var(--vfo-muted)' }
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
@@ -26,6 +27,11 @@ const PLANNER_EXPORT_COLUMNS = [
   { header: 'Status', value: p => p.status || 'Active' },
   { header: 'Email', value: p => p.email || '' },
   { header: 'Partnership', value: p => p.member_type || '' },
+  { header: 'Role', value: p => p.planner_role || 'Tax Planner', default: false },
+  { header: 'Certifications', value: p => (Array.isArray(p.certifications) ? p.certifications : []).join(', '), default: false },
+  { header: 'Website', value: p => p.website_url || '', default: false },
+  { header: 'Join Date', value: p => exportDate(p.join_date), default: false },
+  { header: 'Leave Date', value: p => exportDate(p.leave_date), default: false },
 ]
 const fullName = (p) => `${p.first_name || ''} ${p.last_name || ''}`.trim() || '(unnamed)'
 
@@ -430,18 +436,17 @@ export default function TaxPlannersPanel({ section }) {
         // Filter (name / email / member_type match — email is searchable but not
         // shown in the row) then sort, exactly once, so the header count and the
         // empty-state agree with what's rendered.
-        const filteredPlanners = sortByJoin(
-          planners
-            .filter(p => !search || fullName(p).toLowerCase().includes(search) || (p.email || '').toLowerCase().includes(search) || (p.member_type || '').toLowerCase().includes(search) || roleOf(p).toLowerCase().includes(search))
-            .filter(p => matchesFilter(p, listFilterGroups, listFilter)),
+        const searchedPlanners = sortByJoin(
+          planners.filter(p => !search || fullName(p).toLowerCase().includes(search) || (p.email || '').toLowerCase().includes(search) || (p.member_type || '').toLowerCase().includes(search) || roleOf(p).toLowerCase().includes(search)),
           listSort
         )
+        const filteredPlanners = searchedPlanners.filter(p => matchesFilter(p, listFilterGroups, listFilter))
         return (
         <>
           {editStatus && (
             <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: editStatusType === 'success' ? 'rgba(27,146,84,0.1)' : 'rgba(231,76,60,0.1)', color: editStatusType === 'success' ? 'var(--vfo-success-text)' : '#e74c3c', border: `1px solid ${editStatusType === 'success' ? 'rgba(27,146,84,0.3)' : 'rgba(231,76,60,0.3)'}` }}>{editStatus}</div>
           )}
-          <ListHeader title="Tax Planners" count={filteredPlanners.length} action={<ExportButton title="Tax Planners" columns={PLANNER_EXPORT_COLUMNS} rows={filteredPlanners} />} />
+          <ListHeader title="Tax Planners" count={filteredPlanners.length} action={<ExportButton title="Tax Planners" columns={PLANNER_EXPORT_COLUMNS} rows={searchedPlanners} filterGroups={listFilterGroups} filterValue={listFilter} />} />
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
             <input type="search" name="search" autoComplete="off" placeholder="Search by name or type..." style={inputStyle} onChange={e => setSearch(e.target.value.toLowerCase())} value={search} />
             <ListFilterButton groups={listFilterGroups} value={listFilter} onChange={setListFilter} />

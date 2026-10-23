@@ -22,6 +22,11 @@ export const DB_FIELDS = [
 // absent there — the display gate is the belt, the payload strip is the braces.
 export const REVENUE_SHARE_KEY = 'D&B_revenue_share'
 
+// Details & Benefits fields the CLIENT portal never shows (Jake, 2026-10-23);
+// the specialist portal, members and admins keep them. Also stripped from the
+// client showroom payload server-side (utils/expert-redaction.ts).
+export const CLIENT_HIDDEN_FIELDS = ['D&B_getting_started']
+
 const KEYS = [...DB_FIELDS.map(([k]) => k), REVENUE_SHARE_KEY]
 
 function pick(src) {
@@ -30,12 +35,13 @@ function pick(src) {
   return out
 }
 
-const hasAny = content => KEYS.some(k => String(content[k] || '').trim() !== '')
+const hasAny = (content, omit = []) => KEYS.some(k => !omit.includes(k) && String(content[k] || '').trim() !== '')
 
 // One entry per ecosystem the specialist serves, with empty ones dropped.
 // Returns [] when there is nothing to show — callers use that to hide the
-// button entirely rather than opening onto a blank panel.
-export function detailEntries(expert, categories = []) {
+// button entirely rather than opening onto a blank panel. `omit` = keys the
+// caller will not render, so an entry holding only those counts as empty.
+export function detailEntries(expert, categories = [], omit = []) {
   const stored = expert && expert.ecosystem_content
   const names = [...new Set(categories || [])]
   let entries
@@ -47,7 +53,7 @@ export function detailEntries(expert, categories = []) {
     entries = names.map((eco, i) => ({ eco, content: i === 0 ? pick(expert) : pick(null) }))
   }
   if (entries.length === 0) entries = [{ eco: '', content: pick(expert) }]
-  return entries.filter(en => hasAny(en.content))
+  return entries.filter(en => hasAny(en.content, omit))
 }
 
 // Chip label for an entry — bare ecosystem name, or "<eco> #n" when the

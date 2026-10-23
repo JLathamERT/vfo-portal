@@ -74,12 +74,23 @@ function colName(i) {
   return s
 }
 
+// A row may instead be a group heading (`exportHeading(text)`): one bold cell in
+// column A, left out of the column-width sums so a long heading never widens A.
+const HEADING = Symbol('exportHeading')
+export const exportHeading = (text) => ({ [HEADING]: String(text) })
+
 function sheetXml(columns, rows) {
-  const table = [columns.map(c => c.header), ...rows.map(r => columns.map(c => { const v = c.value(r); return v == null ? '' : String(v) }))]
-  const widths = columns.map((_, ci) => Math.min(60, Math.max(8, ...table.map(r => r[ci].length)) + 2))
+  const table = [
+    { bold: true, cells: columns.map(c => c.header) },
+    ...rows.map(r => r && r[HEADING] != null
+      ? { bold: true, heading: true, cells: [r[HEADING]] }
+      : { cells: columns.map(c => { const v = c.value(r); return v == null ? '' : String(v) }) }),
+  ]
+  const sized = table.filter(r => !r.heading)
+  const widths = columns.map((_, ci) => Math.min(60, Math.max(8, ...sized.map(r => r.cells[ci].length)) + 2))
   const cols = widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')
-  const body = table.map((r, ri) => `<row r="${ri + 1}">${r.map((v, ci) =>
-    `<c r="${colName(ci)}${ri + 1}" t="inlineStr"${ri === 0 ? ' s="1"' : ''}><is><t xml:space="preserve">${xmlEscape(v)}</t></is></c>`).join('')}</row>`).join('')
+  const body = table.map((r, ri) => `<row r="${ri + 1}">${r.cells.map((v, ci) =>
+    `<c r="${colName(ci)}${ri + 1}" t="inlineStr"${r.bold ? ' s="1"' : ''}><is><t xml:space="preserve">${xmlEscape(v)}</t></is></c>`).join('')}</row>`).join('')
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${cols}</cols><sheetData>${body}</sheetData></worksheet>`
 }
@@ -114,6 +125,12 @@ export function exportFilename(title, ext = 'xlsx') {
   const d = new Date()
   const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   return `${String(title).replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${ymd}.${ext}`
+}
+
+// A stored date ('YYYY-MM-DD' or an ISO timestamp) as MM/DD/YYYY; blank stays blank.
+export function exportDate(v) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || ''))
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : ''
 }
 
 // First/last for a record that may hold only a single full name: split at the
