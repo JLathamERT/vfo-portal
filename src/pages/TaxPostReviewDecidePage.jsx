@@ -98,8 +98,8 @@ function getConfirm(decision) {
   if (decision === 'Refund') {
     return {
       title: 'Please confirm your decision',
-      message: "You're about to request a refund of your retainer. This will end your Tax Planning Engagement.",
-      buttonLabel: 'Confirm — refund my retainer',
+      message: "You're about to request a refund of your retainer. A member of our team will contact you to confirm before anything is refunded.",
+      buttonLabel: 'Confirm — request a refund',
       buttonColor: '#ef4444',
     }
   }
@@ -131,7 +131,9 @@ function getView(status, decision, error) {
     return { icon: '⚠️', color: '#ef4444', title: 'Something Went Wrong', message: error || 'An unexpected error occurred. Please contact us.' }
   }
   if (decision === 'Refund') {
-    return { icon: '✓', color: '#16a34a', title: 'Refund Requested', message: 'Thank you — your refund request has been received and is being processed. You will receive a confirmation email shortly.' }
+    // A request only (2026-10-23): the team confirms it with the client before
+    // anything is refunded, so this page promises neither a refund nor an email.
+    return { icon: '✓', color: '#16a34a', title: 'Refund Requested', message: 'Thank you — we have received your refund request. A member of our team will contact you to confirm it before any refund is made.' }
   }
   return { icon: '✓', color: '#16a34a', title: 'Thank You — Moving Forward', message: "We're delighted to continue with your Tax Planning Engagement. Our team will be in touch with next steps shortly." }
 }
