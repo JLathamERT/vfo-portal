@@ -181,7 +181,7 @@ export default function ClientPortal() {
       {tab === 'showroom' && (
         showroomLoading
           ? <ShowroomSkeleton />
-          : <MemberShowroom experts={showroom.experts} exclusions={showroom.exclusions} ecoMap={showroom.ecoMap} introRequest={introRequest} />
+          : <MemberShowroom experts={showroom.experts} exclusions={showroom.exclusions} ecoMap={showroom.ecoMap} introRequest={introRequest} clientView />
       )}
       {tab === 'plan' && planAllowed && (
         <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
