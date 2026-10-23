@@ -84,6 +84,8 @@ UPDATE client_tax_plans SET
   tax_decision=NULL, tax_final_decision=NULL, ready_for_tax3_decision=NULL,
   retainer_amount=NULL, retainer_status=NULL, stripe_customer_id=NULL,
   post_review_client_decision=NULL, implementation_final_decision=NULL,
+  post_review_client_decision_at=NULL, post_review_client_decision_ip=NULL, post_review_client_decision_ua=NULL,
+  post_review_refund_confirmed_at=NULL, post_review_refund_confirmed_by=NULL,  -- 2026-10-23 refund-request columns
   status='live'
   /* …and the rest of the flow fields; see the session reset script for the full column list… */
 WHERE id = <TAX_PLAN_ID>;
