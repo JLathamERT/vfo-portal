@@ -182,6 +182,11 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   // A $0 implementation whose shares were settled at the client's Proceed (fee
   // arrangement, 2026-10-23): locked like a charged one, but nothing was charged.
   const implSettledNoCharge = !!plan?.implementation_settlement_at && implAmt === 0
+  // While a fee arrangement waits for its final fee, the implementation split is a
+  // "what if the fee stayed as invoiced" — so no figures are shown until the final
+  // fee is entered at Tax 5 or the implementation is charged / settled (Jake).
+  const implPending = arrOn && !plan?.fee_amended_at_tax5 && !chargeInFlight && !plan?.implementation_settlement_at
+    && !TERMINAL.includes(plan?.implementation_rev_paid) && !TERMINAL.includes(plan?.implementation_planner_paid)
   const implSettled = TERMINAL.includes(plan?.implementation_rev_paid) || TERMINAL.includes(plan?.implementation_planner_paid)
   const locked = chargeInFlight || implSettled
   // The editor and tax_update_split both know three legs only, and the handler refuses
@@ -593,7 +598,9 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
                   )}
                   <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                     Implementation {fmt(implAmt)}
-                    {retRemainder > 0
+                    {implPending
+                      ? <div style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: ARR_TEXT }}>shares set when the final fee is entered at Tax 5</div>
+                      : retRemainder > 0
                       ? <div style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: ARR_TEXT }}>{implAmt > 0 ? `shares on ${fmt(implShareBase)} incl. ${fmt(retRemainder)} held back from the retainer` : `shares on the ${fmt(retRemainder)} held back from the retainer`}</div>
                       : implHeld > 0
                         ? <div style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: ARR_TEXT }}>shares on {fmt(implAmt - implHeld)} by agreement</div>
@@ -620,14 +627,14 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
                       <div style={{ fontSize: '10px', color: retainerIsHistoric ? 'var(--vfo-muted)' : noteColor(r.retStatus) }}>
                         {retainerIsHistoric ? 'settled on old system' : legNote(r.retStatus)}
                       </div>
-                      {r.key === 'vfos' && retRemainder > 0 && !retainerIsHistoric && <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>incl. {fmt(retRemainder)} shared with the implementation</div>}
+                      {r.key === 'vfos' && retRemainder > 0 && !retainerIsHistoric && <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>incl. {fmt(retRemainder)} {implPending ? 'held pending the final fee' : 'shared with the implementation'}</div>}
                       {r.key === 'vfos' && refundOwed > 0 && !retainerIsHistoric && <div style={{ fontSize: '10px', color: ARR_TEXT }}>incl. {fmt(refundOwed)} {refundIssued ? 'refunded to the client' : 'refund owed to the client'}</div>}
                     </td>
                     <td style={{ padding: '7px 8px', textAlign: 'right', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                      {noShare(r.implStatus) || r.key === 'portal' ? '—' : r.key === 'vfos' ? fmtSigned(implVfos) : fmt(portion(r.stored, implShareBase))}
+                      {implPending || noShare(r.implStatus) || r.key === 'portal' ? '—' : r.key === 'vfos' ? fmtSigned(implVfos) : fmt(portion(r.stored, implShareBase))}
                       {legNote(r.implStatus) && <div style={{ fontSize: '10px', color: noteColor(r.implStatus) }}>{legNote(r.implStatus)}</div>}
                       {r.key === 'vfos' && implHeld > 0 && <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>incl. {fmt(implHeld)} held pending final fee</div>}
-                      {r.key === 'vfos' && retRemainder > 0 && implVfos < 0 && <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>paid out of the retainer held back</div>}
+                      {r.key === 'vfos' && !implPending && retRemainder > 0 && implVfos < 0 && <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>paid out of the retainer held back</div>}
                     </td>
                   </tr>
                 ))}
