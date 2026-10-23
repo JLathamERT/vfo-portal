@@ -104,6 +104,7 @@
 > mismatch left in the two 2026-08-26 areas: **Payment Failure Alerts lists 20 of its 21 live rules** (as of 2026-09-23, migration-derived) —
 > `FAILURE_tax_planner_share` ("Tax planner revshare transfer failed (Jake)", action-required) has
 > never been written up here.
+> **2026-10-23:** `FAILURE_tax_fee_reduction_refund` (Payment Failure Alerts, sort 55, Jake, action-required) added — the fee-reduction refund button failed, or a bank refund of it bounced; not yet in the table below (this file still needs regenerating).
 >
 > **The two 2026-09-12 rows, neither with a section below:** `90 Day Plan` **2 → 3** — new
 > **`TRAINING_member_phase_completed`** (sort 42, `default_recipients ["ASSIGNED_MSM"]`, dismissible

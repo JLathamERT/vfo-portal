@@ -413,6 +413,7 @@ Every money-movement failure routes an alert to Jake's bell via `utils/notify-ja
 - **`customer.subscription.updated` / `.deleted`** — Specialist $99/mo license past_due/canceled → "consider revoking access" alert (routed by `lic_subscription_id`); auto-clears + restores `lic_payment_status` on return to active.
 - **`charge.dispute.created` / `.closed`** — chargeback alert (action-required); close clears the opened alert, then posts the won/lost outcome.
 - **`charge.refunded`** + **`charge.refund.updated` / `refund.updated` / `refund.failed`** — tracks every refund (incl. Stripe-Dashboard-issued) and alerts on a failed refund.
+  - Since 2026-10-23 a refund tagged `metadata.refund_kind=fee_reduction` (the tax fee-reduction refund button) also updates `client_tax_plans.fee_reduction_refund_status` (`utils/fee-reduction-refund-status.ts`): `succeeded` once every refund of it settled, `failed` + an action-required bell on a bounce. **Needs `refund.updated` + `refund.failed` subscribed on the VFO Services endpoint** (#662).
 - **`transfer.reversed`** — a rev-share Connect transfer reversed/clawed back.
 - Catch-all `console.log("Stripe webhook event:", event.type)` logs every event for observability.
 

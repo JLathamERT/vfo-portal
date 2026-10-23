@@ -309,6 +309,22 @@ The audit row records `new_final_retainer` as **null** on a conversion (the fina
 
 ---
 
+## Fee arrangement + a final fee below what was collected *(2026-10-23, v1032-v1035)*
+
+**Why.** Vang plan 51 (2026-10-22): the $20,000 fee is expected to drop to $5,000 (may rise), VFO holds the whole $10,000 retainer until the plan is implemented, and only $2,500 is shared now; the accounting (credit note + refund) waits for the final fee (Evan + Paul). Jake wanted it reusable and managed in the portal.
+
+**The switch (per plan, superadmin).** Pricing & revenue split card → *Set up fee arrangement* (`tax_set_fee_arrangement`): *What has been agreed* (internal), *Retainer / Implementation revenue share worked out on ($)* (optional), *Client sentence* + the Client decision 1 / implementation decision tick boxes. Off = the plan behaves exactly as before 2026-10-23 (proven by replay on live plan shapes, #661).
+
+**The share rule (`utils/client-portal-licence.ts`, mirror `taxShared.jsx`).** Retainer leg: the retainer, capped at what VFO keeps (less a refund owed) and at the agreed figure — stamped as `retainer_share_gross_paid` at the payout (#659). Implementation leg: the payment (capped at an agreed figure) PLUS the kept retainer the retainer leg did not share (`retainerRemainderFor`), so each party ends at its share of the FINAL fee. Licence comes off the retainer as always. Every payout, retry, ledger and card reads this one helper.
+
+**The Amend steps on an arrangement plan.** Jake (superadmin) only, both stages (403 otherwise, in `amend-fee.ts` and `save-task.ts`). Tax 4: Keep the fee while the final fee is unknown. Tax 5: Keep is refused — the final fee must be typed; an unchanged total is recorded as `Completed - Confirmed` with no stamp (no amendment sentence, no duplicate invoice). A total BELOW what was collected is allowed only here: implementation $0, `fee_reduction_refund_amount` = the difference, nothing refunded; refused if retainer shares already paid on more than the new fee keeps, or once the refund is out. The revised-invoice chain skips (silently) while a refund is owed.
+
+**Tax 5 Proceed with a $0 implementation.** The remainder pays out then (when the implementation share is usually paid): `implement-final-decision.ts` claims `implementation_settlement_at` (+ `implementation_rev_share='Pending'` so the sweep retries) and chains `automation_TAX_revshare` (implementation). No charge.
+
+**The refund + credit note — only on Jake's button** (`tax_issue_fee_reduction_refund`), once Client decision 1 is answered and the Tax 5 fee is entered: Stripe refund of the amount owed (final charge first on 3-payment), `CN-<clientRef>-NNNN` + the revised invoice (credit row) to Drive, ONE Draft email (330 / 331, Cc incl. planner + team member) in the original thread. Claim + Stripe read make it safe to press twice (#660); a bank refund settles / bounces through the webhook (#662). The Step 4 Refund (`refund.ts`) subtracts an issued reduction refund.
+
+**Not built / decided:** a DECLINED implementation never shares the held-back remainder (stays with VFO) — open decision (Jake).
+
 ## Negotiated partial refund — `refund_override_amount` *(2026-09-15, v848)*
 
 The Client decision 1 **Refund** click refunds the captured retainer base — `retainer_amount` on a 2-payment / legacy plan, `initial_retainer_amount` on a 3-payment plan. When VFO agrees a **partial** refund instead (first case: Lana Hurdle 59073-009 / plan 107, $4,500 retainer, implementation amended to $0, agreed refund on Stop = $2,250), the superadmin sets **`client_tax_plans.refund_override_amount`** from the **Pricing & revenue split** card at the top of the Tax tab (*Refund override ($)* box, Save / Clear; every admin sees an orange **Refund on Stop: $X** chip once set, and a grey **Refunded $X** chip after). Writer: `tax_set_refund_override` (`SUPERADMIN_ONLY_ACTIONS` + `ADMIN_ONLY_ACTIONS`, in-handler `isSuperadmin`; 409 once the plan is refunded or the retainer rev-share has paid, 400 above the captured base).
