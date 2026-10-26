@@ -7,6 +7,7 @@ import {
   validateTaxIntakeAnswers,
   normalizeTaxIntakeAnswers,
   numberTaxIntakeQuestions,
+  formatTaxIntakeMoneyInput,
 } from './taxIntakeQuestions'
 import PhoneInput from '../shared/PhoneInput'
 import { cleanText, formatPersonName } from '../../lib/formatters'
@@ -235,6 +236,14 @@ export default function TaxIntakeForm({
       return <PhoneInput value={val} disabled={locked} onChange={v => set(q.id, v)}
         style={{ ...inputStyle, opacity: locked ? 0.65 : 1, cursor: locked ? 'not-allowed' : 'text' }} />
     }
+    // A money box shows commas as it is typed (2026-10-26); the server strips them.
+    if (q.type === 'money') {
+      return (
+        <input type="text" inputMode="decimal" value={formatTaxIntakeMoneyInput(val)} disabled={locked}
+          onChange={e => set(q.id, formatTaxIntakeMoneyInput(e.target.value))} placeholder="$"
+          style={{ ...inputStyle, opacity: locked ? 0.65 : 1, cursor: locked ? 'not-allowed' : 'text' }} />
+      )
+    }
     return (
       <input
         type="text"
@@ -242,7 +251,6 @@ export default function TaxIntakeForm({
         disabled={locked}
         onChange={e => set(q.id, e.target.value)}
         onBlur={q.format === 'name' && !locked ? () => set(q.id, formatPersonName(val)) : undefined}
-        placeholder={q.type === 'money' ? '$' : ''}
         style={{ ...inputStyle, opacity: locked ? 0.65 : 1, cursor: locked ? 'not-allowed' : 'text' }}
       />
     )

@@ -36,6 +36,10 @@ const LONG_TIMEOUT_ACTIONS = {
   // waived finalize (client + plan + confirmation Gmail) or drafts the deposit
   // link Gmail before answering. A WRITE — never auto-retried.
   tax_diagnostic_confirm: 30000,
+  // The Tax Planning Form card's Download PDF: an html2pdf render with up to two
+  // spaced retries on a refusal (utils/html2pdf.ts). Writes nothing, but is not a
+  // load_* name, so it is never auto-retried.
+  tax_intake_pdf: 45000,
 }
 // tax_direct_* are the member-callable twins of automation_TAX_* (unit 2 phase
 // 5) and chain the same external services, so they share the slow-write tier.
