@@ -531,6 +531,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
   const [savingPf, setSavingPf] = useState(false)
   const [pfSaved, setPfSaved] = useState(false)
   const [statusSaved, setStatusSaved] = useState(false)
+  const [statusNote, setStatusNote] = useState(null)
 
   async function updateNote(noteId, visibility) {
     if (!editNoteText.trim()) return
@@ -560,15 +561,36 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
   }
   const statusColors = { active: '#1b9254', pending: '#e06717', lost: '#e74c3c' }
 
+  // Lost stops every automatic payment for the client (backend utils/client-lost.ts):
+  // remaining MAP 1 / tax payments are cancelled and the plans stopped. Going back
+  // to Active restarts nothing, so the admin confirms first.
   async function updateStatus(newStatus) {
+    const prev = status
+    if (newStatus === 'lost' && prev !== 'lost') {
+      const name = `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'this client'
+      const ok = window.confirm(`Set ${name} to Lost?\n\nThis stops every automatic payment for this client. Their remaining Holistic (MAP 1) and Tax Planning payments are cancelled and their plans are stopped, so no charge, payment link or payment reminder can reach them. Payments already collected are not touched.\n\nSetting them back to Active later does NOT restart any payment.`)
+      if (!ok) return
+    }
     setStatus(newStatus)
     setSaving(true)
+    setStatusNote(null)
     try {
-      await callApi('msm_update_client', { client_id: client.id, status: newStatus, first_name: client.first_name, last_name: client.last_name, email: client.email, phone: client.phone })
+      const res = await callApi('msm_update_client', { client_id: client.id, status: newStatus, first_name: client.first_name, last_name: client.last_name, email: client.email, phone: client.phone })
       setStatusSaved(true)
       setTimeout(() => setStatusSaved(false), 3000)
+      if (res?.lost) {
+        const cancelled = [...(res.lost.map1 || []), ...(res.lost.tax || [])].reduce((n, r) => n + (r.cancelled?.length || 0), 0)
+        const stopped = [...(res.lost.map1 || []), ...(res.lost.tax || [])].filter(r => r.stopped).length
+        setStatusNote(res.lost.errors?.length
+          ? { tone: 'error', text: `Lost saved, but some payments could not be closed: ${res.lost.errors.join('; ')}. No charge will be taken while the client is Lost.` }
+          : { tone: 'ok', text: `Automatic payments stopped — ${cancelled} scheduled payment${cancelled === 1 ? '' : 's'} cancelled, ${stopped} plan${stopped === 1 ? '' : 's'} stopped.` })
+      }
       onUpdate()
-    } catch (err) { console.error(err) }
+    } catch (err) {
+      console.error(err)
+      setStatus(prev)
+      setStatusNote({ tone: 'error', text: `Status not saved: ${err.message || 'request failed'}` })
+    }
     finally { setSaving(false) }
   }
 
@@ -620,6 +642,8 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                   {statusSaved && <span style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600' }}>Saved!</span>}
                 </div>
             }
+            {!readOnly && statusNote && <div style={{ marginTop: '8px', fontSize: '13px', color: statusNote.tone === 'error' ? '#e74c3c' : 'var(--vfo-success-text)' }}>{statusNote.text}</div>}
+            {!readOnly && !statusNote && status === 'lost' && <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--vfo-muted)' }}>Lost — automatic payments are stopped for this client.</div>}
           </div>
         </div>
         <div style={{ flex: '1 1 300px', minWidth: '260px', display: 'flex' }}>
