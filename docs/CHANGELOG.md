@@ -27,6 +27,8 @@
 
 **Doc fix.** The hub said the backend's CORS allows only 5173 / 5174; `constants/allowed-origins.ts` also allows 5175 / 5176.
 
+**Shipped.** Merged edge `d388876` (#316) and react `5c1fe3d3` (#525); v1045 was already live and byte-identical to merged main (not redeployed); frontend published from merged main as `live-264-lost-client-no-charge` (`index-B8BsWhr0.js`, live site verified); tags `backend-good-2026-10-26-v1045` + `live-264-lost-client-no-charge` pushed. Superseded hub stamps: live `v1044` → `v1045`, `backend-good-2026-10-26-v1044` → `-v1045`, `live-263-addl-info-form-edit` → `live-264-lost-client-no-charge`.
+
 ## 2026-10-26 — Additional-info history, the Rapid reminder's video button, Tax Planning Form Download PDF + Edit, commas in money boxes
 
 Branch `claude/vfo-session-starter-78270d` (edge) / `claude/vfo-session-starter-295f56` (react), ONE chat. `vfo-admin-api` **v1042** (upload logging + Rapid button) → **v1043** (PDF + edit actions) → **v1044** (PDF page margins), all deployed from the branch with `--use-docker`; action count **614 → 616**; migration `20261026120000_tax_intake_answer_edits.sql` (one nullable column on the deny-all `tax_intake_requests`, advisor GREEN at the exact baseline — a confirmation).
