@@ -144,6 +144,27 @@ export function numberTaxIntakeQuestions(questions, answers, offset = 0, keepAns
   return out
 }
 
+// Editing a submitted form (tax_intake_edit, 2026-10-26): who completed it, the
+// client's name / email / phone / state and the member + introducer fields are
+// never edited; every other live question is. Mirrored from the server file,
+// which refuses the same list.
+export const TAX_INTAKE_EDIT_LOCKED = ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9"];
+
+export function taxIntakeQuestionEditable(q) {
+  return q.type !== "derived" && !q.hidden && !q.retired && !TAX_INTAKE_EDIT_LOCKED.includes(q.id);
+}
+
+// FE only (2026-10-26): a money box shows commas as it is typed — digits and
+// one decimal point kept, "1200000" -> "1,200,000". The server strips the
+// commas again (normalizeTaxIntakeMoney), so the stored answer is unchanged.
+export function formatTaxIntakeMoneyInput(v) {
+  const s = String(v ?? "").replace(/[^\d.]/g, "")
+  const dot = s.indexOf(".")
+  const whole = (dot === -1 ? s : s.slice(0, dot)).replace(/^0+(?=\d)/, "")
+  const cents = dot === -1 ? "" : "." + s.slice(dot + 1).replace(/\./g, "").slice(0, 2)
+  return whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + cents
+}
+
 export const TAX_INTAKE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // The two message templates. Used on BOTH sides, so FE and BE messages are

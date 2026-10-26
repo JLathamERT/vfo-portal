@@ -13,7 +13,7 @@ import { CONFIRMATION_CARD_SKIP } from '../../../lib/confirmationStatus'
 import { formatDate as formatFullDate } from '../../../lib/dates'
 import { makeTaxPlanRules, KNOWN_FEE_PROCESS_VERSIONS, isNewFeeProcess, AMEND_FEE_CODE, AMEND_FEE_TAX5_CODE, isAmendStepTask, amendStage, DEPOSIT_NA_STATUS, phaseBadgeToken, phaseShortLabel, implRevShareDone, IMPL_REV_NO_SHARE } from './taxPlanRules'
 import { TAX_DISPLAY_NAMES, taxDisplayName } from '../../shared/taxDisplayNames'
-import { numberTaxIntakeQuestions } from '../../member/taxIntakeQuestions'
+import { numberTaxIntakeQuestions, TAX_INTAKE_QUESTIONS, taxIntakeQuestionEditable, taxIntakeQuestionShown, formatTaxIntakeMoneyInput } from '../../member/taxIntakeQuestions'
 import { readable } from '../../shared/readableColor'
 import { retainerShareGrossFor } from '../taxShared'
 
@@ -2526,11 +2526,72 @@ function TaxRouteCard({ rapid, canSwitch, busy, onChange }) {
   )
 }
 
+// The "Additional information required" exchange split into one round per
+// request: each round holds the replies / uploads that arrived after it and
+// before the next request, so three asks read as three complete histories
+// rather than one request row, one received row and every reply lumped together
+// (Eyal Raab plan 230, 2026-10-26). Replies older than the first STORED request
+// belong to a request sent before additional_info_requests existed (v801) and
+// get their own round with no text. A plan with no stored request at all is one
+// round. `receivedAt` (the plan's single received stamp) only fills the LATEST
+// round, and only when nothing logged arrived — an upload before 2026-10-26 left
+// no entry, just the stamp.
+function additionalInfoRounds(requests, responses, requestedAt, receivedAt) {
+  const t = (v) => Date.parse(v || '') || 0
+  const byAt = (a, b) => t(a.at) - t(b.at)
+  const asks = requests.filter(r => r && r.at).sort(byAt)
+  const replies = responses.filter(r => r && r.at).sort(byAt)
+  const rounds = []
+  if (asks.length === 0) {
+    if (!requestedAt && replies.length === 0) return []
+    rounds.push({ at: requestedAt || null, text: null, replies })
+  } else {
+    const early = replies.filter(r => t(r.at) < t(asks[0].at))
+    if (early.length > 0) rounds.push({ at: null, text: null, replies: early })
+    asks.forEach((a, i) => {
+      const next = asks[i + 1]
+      rounds.push({ at: a.at, text: a.text || null, replies: replies.filter(r => t(r.at) >= t(a.at) && (!next || t(r.at) < t(next.at))) })
+    })
+  }
+  const last = rounds[rounds.length - 1]
+  if (last.replies.length === 0 && receivedAt && t(receivedAt) >= t(last.at)) last.receivedAt = receivedAt
+  return rounds
+}
+
 // is no form — every pre-2026-09-17 plan, and every case an admin started by hand.
-function TaxIntakeCard({ intake, questions }) {
+// A stored money answer is bare digits; shown with $ and commas. Anything else
+// (an older hand-typed value) is shown as stored.
+const INTAKE_DEFS = Object.fromEntries(TAX_INTAKE_QUESTIONS.map(q => [q.id, q]))
+function intakeAnswerText(id, raw) {
+  const s = String(raw ?? '').trim()
+  return INTAKE_DEFS[id]?.type === 'money' && /^\d+(\.\d+)?$/.test(s) ? `$${formatTaxIntakeMoneyInput(s)}` : s
+}
+const intakeStamp = (at) => {
+  const d = new Date(at || '')
+  return isNaN(d.getTime()) ? '' : d.toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+// The Export button's look (shared/ExportButton.jsx) as a square icon-only
+// button, for the card's two header buttons (Jake, 2026-10-26).
+const intakeToolBtn = (enabled) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', padding: 0, borderRadius: '7px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: enabled ? 'var(--vfo-ink)' : 'var(--vfo-muted)', fontSize: '11.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: enabled ? 'pointer' : 'default', whiteSpace: 'nowrap' })
+
+// The Tax Planning Form card (2026-10-26: + Download PDF for everyone who sees
+// the card, + Edit for admins and the plan's allocated Tax Planner / Team Member).
+// Edit opens every editable answer in the form's own input (same choices, money
+// with commas); the client's identity / contact / state and the member fields stay
+// read-only (TAX_INTAKE_EDIT_LOCKED, mirrored server-side). A changed answer
+// carries an "Edited" chip that opens its history (who, when, from, to).
+function TaxIntakeCard({ intake, questions, clientId, planId, canEdit = false, onSaved }) {
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState({})
+  const [saving, setSaving] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [error, setError] = useState('')
+  const [historyOpen, setHistoryOpen] = useState({})
   if (!intake) return null
 
+  const answers = intake.answers || {}
+  const edits = Array.isArray(intake.answer_edits) ? intake.answer_edits : []
   const submitted = intake.created_at ? formatFullDate(intake.created_at) : ''
   // Which of the two intake routes produced this form (unit 1b). 'client' means
   // the member emailed a tokened link and the client filled it in and paid.
@@ -2539,27 +2600,178 @@ function TaxIntakeCard({ intake, questions }) {
   const completedBy = byClient
     ? `Completed by the client via link on ${linkDate}`
     : 'Completed by the member'
+
+  const inputStyle = { padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12.5px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+
+  function startEdit(e) {
+    e.stopPropagation()
+    const d = {}
+    for (const q of TAX_INTAKE_QUESTIONS) {
+      if (!taxIntakeQuestionEditable(q)) continue
+      const v = String(answers[q.id] ?? '')
+      d[q.id] = q.type === 'money' ? formatTaxIntakeMoneyInput(v) : v
+    }
+    setDraft(d)
+    setError('')
+    setEditing(true)
+    setOpen(true)
+  }
+
+  async function save() {
+    // Only the answers that changed, and never a follow-up the edit hid (the
+    // server clears those itself).
+    const merged = { ...answers, ...draft }
+    const changes = {}
+    for (const q of TAX_INTAKE_QUESTIONS) {
+      if (!taxIntakeQuestionEditable(q) || !(q.id in draft)) continue
+      if (q.parentId && !taxIntakeQuestionShown(q, merged)) continue
+      const next = q.type === 'money' ? String(draft[q.id] ?? '').replace(/[$,\s]/g, '') : String(draft[q.id] ?? '').trim()
+      if (next !== String(answers[q.id] ?? '').trim()) changes[q.id] = next
+    }
+    const hidesFollowUp = TAX_INTAKE_QUESTIONS.some(q => q.parentId && !taxIntakeQuestionShown(q, merged) && String(answers[q.id] ?? '') !== '')
+    if (Object.keys(changes).length === 0 && !hidesFollowUp) { setEditing(false); return }
+    setSaving(true)
+    setError('')
+    try {
+      const res = await callApi('tax_intake_edit', { client_id: clientId, tax_plan_id: planId, intake_id: intake.id, answers: changes })
+      if (res?.error) { setError(res.error); return }
+      onSaved?.(res.answers || answers, res.answer_edits || edits)
+      setEditing(false)
+    } catch (err) {
+      setError(err?.message || 'Could not save the changes — please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function downloadPdf(e) {
+    e.stopPropagation()
+    // Opened in the click itself so a popup blocker allows it; filled when the
+    // PDF arrives. With no window (blocked anyway) the file is downloaded instead.
+    const win = window.open('', '_blank')
+    if (win) win.document.write('<p style="font-family:Arial,sans-serif;padding:24px;color:#44557a">Preparing the Tax Planning Form PDF…</p>')
+    setDownloading(true)
+    setError('')
+    try {
+      const res = await callApi('tax_intake_pdf', { client_id: clientId, tax_plan_id: planId })
+      if (res?.error || !res?.pdf_base64) throw new Error(res?.error || 'The PDF could not be created')
+      const bin = atob(res.pdf_base64)
+      const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
+      if (win) win.location.href = url
+      else {
+        const a = document.createElement('a')
+        a.href = url
+        a.download = res.filename || 'Tax Planning Form.pdf'
+        a.click()
+      }
+    } catch (err) {
+      if (win) win.close()
+      setError(err?.message || 'The PDF could not be created — please try again.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const merged = editing ? { ...answers, ...draft } : answers
+  const rows = numberTaxIntakeQuestions(questions || [], merged, 0, true)
+    .filter(({ q }) => !(editing && INTAKE_DEFS[q.id]?.parentId && !taxIntakeQuestionShown(INTAKE_DEFS[q.id], merged)))
+
+  function editInput(def) {
+    const val = draft[def.id] ?? ''
+    const setVal = (v) => setDraft(d => ({ ...d, [def.id]: v }))
+    if (def.type === 'radio') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {def.options.map(opt => (
+            <label key={opt} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '12px', color: 'var(--vfo-ink)', cursor: 'pointer', lineHeight: 1.45 }}>
+              <input type="radio" name={`edit_${intake.id}_${def.id}`} checked={val === opt} onChange={() => setVal(opt)} disabled={saving} style={{ marginTop: '2px', flexShrink: 0 }} />
+              <span>{opt}</span>
+            </label>
+          ))}
+        </div>
+      )
+    }
+    if (def.type === 'select') {
+      return (
+        <select value={val} onChange={e => setVal(e.target.value)} disabled={saving} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
+          <option value="">-- Select --</option>
+          {def.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+        </select>
+      )
+    }
+    if (def.type === 'textarea') return <textarea value={val} onChange={e => setVal(e.target.value)} rows={3} disabled={saving} style={{ ...inputStyle, resize: 'vertical' }} />
+    if (def.type === 'money') return <input type="text" inputMode="decimal" placeholder="$" value={val} onChange={e => setVal(formatTaxIntakeMoneyInput(e.target.value))} disabled={saving} style={inputStyle} />
+    return <input type="text" value={val} onChange={e => setVal(e.target.value)} disabled={saving} style={inputStyle} />
+  }
+
   return (
     <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden' }}>
-      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer' }}>
+      <div onClick={() => { if (!editing) setOpen(o => !o) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '14px 18px', cursor: editing ? 'default' : 'pointer', flexWrap: 'wrap' }}>
         <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tax Planning Form</span>
+        {/* Download / Edit are icon-only buttons on the header row, shown only
+            while the form is open (Jake, 2026-10-26); the title is the label. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {open && (
+            <>
+              <button type="button" onClick={downloadPdf} disabled={downloading} title={downloading ? 'Preparing the PDF…' : 'Download PDF'} aria-label="Download PDF" style={intakeToolBtn(!downloading)}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M5 21h14" /></svg>
+              </button>
+              {canEdit && !editing && (
+                <button type="button" onClick={startEdit} title="Edit the answers (the client's name, contact details, state and member stay as submitted)" aria-label="Edit" style={intakeToolBtn(true)}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                </button>
+              )}
+            </>
+          )}
           <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{completedBy}</span>
           {submitted && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Submitted {submitted}</span>}
-          <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
+          {!editing && <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
         </div>
       </div>
+      {error && <div style={{ margin: '0 18px 10px', fontSize: '12px', color: '#d93025' }}>{error}</div>}
       {open && (
         <div style={{ borderTop: '1px solid var(--vfo-border)', padding: '14px 18px' }}>
-          {numberTaxIntakeQuestions(questions || [], intake.answers || {}, 0, true).map(({ q, num }, i, all) => {
-            const val = intake.answers?.[q.id]
+          {rows.map(({ q, num }, i, all) => {
+            const def = INTAKE_DEFS[q.id] || q
+            const val = intakeAnswerText(q.id, answers[q.id])
+            const qEdits = edits.filter(e => e?.q === q.id)
+            const histOpen = !!historyOpen[q.id]
+            const editable = editing && taxIntakeQuestionEditable(def)
             return (
-              <div key={q.id} style={{ display: 'flex', gap: '12px', padding: '6px 0', borderBottom: i === all.length - 1 ? 'none' : '1px solid var(--vfo-border-soft)', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flex: '1 1 300px', lineHeight: 1.5 }}>{num}. {q.label}</span>
-                <span style={{ fontSize: '12px', color: val ? 'var(--vfo-ink)' : 'var(--vfo-muted)', flex: '1 1 240px', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '—'}</span>
+              <div key={q.id} style={{ padding: '6px 0', borderBottom: i === all.length - 1 ? 'none' : '1px solid var(--vfo-border-soft)' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flex: '1 1 300px', lineHeight: 1.5 }}>{num}. {q.label}</span>
+                  <span style={{ flex: '1 1 240px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    {editable
+                      ? <span style={{ flex: 1 }}>{editInput(def)}</span>
+                      : <span style={{ flex: 1, fontSize: '12px', color: val ? 'var(--vfo-ink)' : 'var(--vfo-muted)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{val || '—'}</span>}
+                    {qEdits.length > 0 && (
+                      <button type="button" onClick={() => setHistoryOpen(h => ({ ...h, [q.id]: !h[q.id] }))} title="Show what changed"
+                        style={{ ...chipStyle('#b26a00'), cursor: 'pointer', fontFamily: 'Inter, sans-serif', flexShrink: 0 }}>Edited</button>
+                    )}
+                  </span>
+                </div>
+                {histOpen && (
+                  <div style={{ margin: '6px 0 2px', padding: '8px 12px', borderRadius: '8px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-chip)' }}>
+                    {qEdits.slice().reverse().map((e, k) => (
+                      <div key={k} style={{ fontSize: '11.5px', color: 'var(--vfo-ink)', lineHeight: 1.5, padding: '2px 0' }}>
+                        <span style={{ color: 'var(--vfo-muted)' }}>{intakeStamp(e.at)} — {e.by}{e.role ? ` (${e.role})` : ''}:</span>{' '}
+                        changed <b>{intakeAnswerText(q.id, e.from) || '—'}</b> to <b>{intakeAnswerText(q.id, e.to) || '—'}</b>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}
+          {editing && (
+            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button type="button" onClick={() => { setEditing(false); setError('') }} disabled={saving} style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '12.5px', cursor: saving ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
+              <button type="button" onClick={save} disabled={saving} style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '12.5px', cursor: saving ? 'not-allowed' : 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.18)', color: '#0095ff', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>{saving ? 'Saving…' : 'Save changes'}</button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -2629,6 +2841,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   // Only a Team Member may edit the allocation step from the portal, so this
   // starts null and FAILS CLOSED: an unidentified caller gets the read-only view.
   const [plannerSelfRole, setPlannerSelfRole] = useState(null)
+  // The portal caller's own tax_planners id (same payload, self_id): the Tax
+  // Planning Form's Edit shows only to the plan's allocated Tax Planner or Team
+  // Member. Null = no Edit (the server refuses anyone else regardless).
+  const [plannerSelfId, setPlannerSelfId] = useState(null)
 
   // Known-value substitutions for the email previews (see StepEmailsChip).
   // Reactive to the selected client; empty values are omitted so those tokens
@@ -2669,8 +2885,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           setTaxPlanners(Array.isArray(res?.group) ? res.group : [])
           setTaxGroups([])
           setPlannerSelfRole(res?.self_role || null)
+          setPlannerSelfId(res?.self_id != null ? Number(res.self_id) : null)
         })
-        .catch(() => { setTaxPlanners([]); setTaxGroups([]); setPlannerSelfRole(null) })
+        .catch(() => { setTaxPlanners([]); setTaxGroups([]); setPlannerSelfRole(null); setPlannerSelfId(null) })
       return
     }
     loadCachedAction('tax_planners_load')
@@ -5426,15 +5643,15 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       const requestedAt = livePlan?.additional_info_requested_at
       const receivedAt = livePlan?.additional_info_received_at
       const done = !!receivedAt
-      // Written replies from the /tax-upload page (oldest first, as appended
-      // server-side). Either a written reply or an upload stamps receivedAt.
+      // What came back from the /tax-upload page, oldest first as appended
+      // server-side: { text, at } for a written reply, { file, via, at } for an
+      // upload (logged since 2026-10-26; earlier uploads left only receivedAt).
       const responses = Array.isArray(livePlan?.additional_info_responses) ? livePlan.additional_info_responses : []
-      const respKey = `addinfo_resp_${task.id}`
       // What was ASKED, appended once per send by request-additional-info.ts.
       // Requests sent before that column existed are NULL and cannot be
-      // recovered, so those rows simply carry no view chip.
+      // recovered, so those rounds show no question text.
       const requests = Array.isArray(livePlan?.additional_info_requests) ? livePlan.additional_info_requests : []
-      const reqKey = `addinfo_req_${task.id}`
+      const rounds = additionalInfoRounds(requests, responses, requestedAt, receivedAt)
       const clientFull = client ? `${client.first_name || ''} ${client.last_name || ''}`.trim() : ''
       const clientFirst = clientFull ? clientFull.split(/\s+/)[0] : ''
       const draft = declineDrafts[task.id] || {}
@@ -5458,50 +5675,61 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           setDraft({ sending: false })
         }
       }
-      const aiStep = (label, isGreen, at = null) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isGreen ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${isGreen ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-          <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
-          {isGreen && <span style={{ ...chipStyle('#1b9254'), marginLeft: 'auto' }}>Done</span>}
-          {isGreen && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
-        </div>
-      )
-      // A transcript panel — the asks, or the client's written replies. One
-      // shape for both so the question and the answer read as a pair; newest
-      // first, matching the standalone Client explanation panel it replaced.
-      const entryPanel = (entries) => (
+      // The exchange as a history: for EVERY request, in order, the same three
+      // rows — Request email sent to client / Additional information received /
+      // Client explanation — holding only what came back after that request and
+      // before the next one (additionalInfoRounds). A View button is the whole
+      // affordance; the rows themselves are not clickable.
+      const aiViewBtn = { padding: '3px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, fontFamily: 'Inter, sans-serif' }
+      const entryPanel = (entries, render) => (
         <div style={{ marginLeft: '14px', marginBottom: '8px', padding: '12px 14px', background: 'var(--vfo-card)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
-          {entries.slice().reverse().map((r, i) => (
-            <div key={i} style={{ marginBottom: i === entries.length - 1 ? 0 : '10px' }}>
+          {entries.map((r, k) => (
+            <div key={k} style={{ marginBottom: k === entries.length - 1 ? 0 : '10px' }}>
               <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginBottom: '4px' }}>{formatStamp(r?.at)}</div>
-              <div style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', whiteSpace: 'pre-wrap' }}>{r?.text || '—'}</div>
+              <div style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', whiteSpace: 'pre-wrap' }}>{render(r)}</div>
             </div>
           ))}
         </div>
       )
-      // Expandable variant of aiStep: `expand` = { key, noun, panel }. The BUTTON
-      // is the whole affordance — no caret, and the row itself is not clickable,
-      // so there is exactly one way to open it. Kept separate from aiStep above
-      // so the two plain sub-steps stay byte-identical to the Request Tax
-      // Returns block.
-      const aiViewBtn = { padding: '3px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, fontFamily: 'Inter, sans-serif' }
-      const aiStepExpandable = (label, isGreen, at, expand) => {
-        const open = !!expanded[expand.key]
+      const aiRow = (label, isGreen, at, expand = null) => {
+        const open = !!(expand && expanded[expand.key])
         return (
           <div style={{ borderBottom: '1px solid var(--vfo-border-soft)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0' }}>
               <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isGreen ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${isGreen ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
               <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
               <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                <button
-                  type="button"
-                  onClick={() => setExpanded(prev => ({ ...prev, [expand.key]: !prev[expand.key] }))}
-                  style={aiViewBtn}>{open ? 'Hide' : 'View'} {expand.noun}</button>
+                {expand && (
+                  <button type="button" onClick={() => setExpanded(prev => ({ ...prev, [expand.key]: !prev[expand.key] }))} style={aiViewBtn}>{open ? 'Hide' : 'View'} {expand.noun}</button>
+                )}
                 {isGreen && <span style={chipStyle('#1b9254')}>Done</span>}
                 {isGreen && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{fmtMMDD(at)}</span>}
               </span>
             </div>
             {open && expand.panel}
+          </div>
+        )
+      }
+      const roundRows = (round, i) => {
+        const hasFile = round.replies.some(r => r.file)
+        const hasText = round.replies.some(r => !r.file)
+        // Received = the latest thing back after this request; a pre-2026-10-26
+        // upload left only the plan's received stamp, which counts for the
+        // latest request alone. One row whatever came back (Jake, 2026-10-26:
+        // a separate explanation row read as still waiting when a file was all
+        // that was needed), labelled with what it was.
+        const receivedOn = round.replies[round.replies.length - 1]?.at || round.receivedAt || null
+        const kind = hasFile && hasText ? 'file + written reply' : hasFile ? 'file' : hasText ? 'written reply' : null
+        const key = `addinfo_${task.id}_${i}`
+        return (
+          <div key={key} style={{ marginTop: i === 0 ? 0 : '10px' }}>
+            {rounds.length > 1 && <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '2px 0' }}>Request {i + 1}</div>}
+            {aiRow('Request email sent to client', true, round.at,
+              round.text ? { key: `${key}_req`, noun: 'request', panel: entryPanel([{ at: round.at, text: round.text }], r => r.text) } : null)}
+            {aiRow(<>Additional information received{kind && <span style={{ color: 'var(--vfo-muted)' }}> — {kind}</span>}</>, !!receivedOn, receivedOn,
+              round.replies.length > 0
+                ? { key: `${key}_reply`, noun: 'reply', panel: entryPanel(round.replies, r => r.file ? `Uploaded a file: ${r.file} (saved to the client's Vault)` : `Wrote: ${r.text || '—'}`) }
+                : null)}
           </div>
         )
       }
@@ -5571,12 +5799,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                     <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1, fontWeight: '600' }}>{AUTO_STEP_LABEL}</span>
                   </div>
                   <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
-                    {requests.length > 0
-                      ? aiStepExpandable('Request email sent to client', !!requestedAt, requestedAt, { key: reqKey, noun: 'request', panel: entryPanel(requests) })
-                      : aiStep('Request email sent to client', !!requestedAt, requestedAt)}
-                    {aiStep('Additional information received', !!receivedAt, receivedAt)}
-                    {responses.length > 0
-                      && aiStepExpandable('Client explanation', true, responses[responses.length - 1]?.at, { key: respKey, noun: 'reply', panel: entryPanel(responses) })}
+                    {rounds.map(roundRows)}
                   </div>
                 </div>
               )}
@@ -5654,7 +5877,18 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           Tax Planning Route, Pricing & revenue split. The personal form link
           (admin view only, 2026-10-09) sits above the form it collects. */}
       {!readOnly && !plannerMode && !directMode && plan.program_id !== 4 && taxIntakeLoaded && !taxIntake && <PersonalTaxFormLink taxPlanId={plan.id} />}
-      <TaxIntakeCard intake={taxIntake} questions={taxIntakeQuestions} />
+      <TaxIntakeCard
+        intake={taxIntake}
+        questions={taxIntakeQuestions}
+        clientId={clientId}
+        planId={plan.id}
+        // Edit: admins, and in the planner portal only the plan's allocated Tax
+        // Planner or Team Member (the server re-checks both). Members never.
+        canEdit={plannerMode
+          ? plannerSelfId != null && (Number(livePlan?.tax_planner_id) === plannerSelfId || Number(livePlan?.tax_team_member_id) === plannerSelfId)
+          : !readOnly}
+        onSaved={(answers, answerEdits) => setTaxIntake(prev => prev ? { ...prev, answers, answer_edits: answerEdits } : prev)}
+      />
 
       <TaxRouteCard
         rapid={!!(livePlan || plan)?.rapid_route}
