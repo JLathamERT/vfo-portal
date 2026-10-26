@@ -8,6 +8,25 @@
 
 ---
 
+## 2026-10-26 (b) — A Lost client is never charged (`claude/vfo-session-starter-ced46e` edge / `-c73204` react)
+
+**Why.** Melissa Cruts (client 92, `90385-001`) asked Evan to cancel on 2026-08-06 (note 93 / 425). Her MAP 1 row 102 stayed `live` with P3 / P4 scheduled, so the 03:00 charge sweep raised P3 on 2026-10-22; it declined and her failure email (the Resend of 2026-10-22) asked her to set up payment. She wrote back that she had stopped. Nothing that charges a client read `clients.status` (#670). Jake: the mechanism for stopping a CLIENT's payments is the profile's Client Status dropdown; Lost stops every automatic payment — Holistic and tax — and nothing else changes for members, specialists or onboarding.
+
+**What shipped.** `vfo-admin-api` **v1045** (from the branch, `--use-docker`, smoke **5/5 vs v1045** — Jake), action count 616 unmoved, no migration, no new table.
+- `utils/client-lost.ts` — `closeLostClientEngagements` (run by `msm_update_client` on the status CHANGE to `'lost'`: every not-fully-paid MAP 1 row and tax plan gets the "Cancel all remaining payments" close + `status='stopped'`; tax plans `status` only, never `tax_stopped_at`), `isClientLost` / `lostClientIds` (throw on a read error so money callers refuse), `LOST_CLIENT_MESSAGE`. The reply carries `lost: { map1, tax, errors }`.
+- `utils/cancel-remaining-payments.ts` — the per-row rules of `payments_cancel_remaining` moved out verbatim (`map1CancelPlan`, `taxCancelPlan`), shared by the button and the Lost close.
+- Guards: `contract-chargescheduled-sweep.ts` (per-run lost set; unreadable = no charges that night), `tax/charge-final-retainer.ts`, `tax/charge-implementation.ts`, `tax/postreview-client-decision.ts`, `tax/implement-final-decision.ts`, the load + checkout pairs of `/pay` (`contract-load-payment` / `contract-stripe-checkout`), `/tax-pay` (`tax/load-payment` / `tax/stripe-checkout`), `/pip-pay` (`msm/pip-load-payment` / `pip-stripe-checkout`), `/connect-card` (`migration/connect-load` / `connect-checkout`), and the Payment Continuation set-up ladder in `contract-check-reminder-sweep.ts`.
+- **A stopped tax plan is never chased:** the 19 reminder / stall loops below the business-hours gate of `tax/revshare-sweep.ts` read `liveOnly()` (per-run stopped-plan set; unreadable = no ladders that run), and `tax/presentation-sweep.ts` filters `status='live'`. This also silenced six plans already stopped with an open ladder (67, 102, 106, 113, 130, 180).
+- Frontend `ClientDetail.jsx`: a confirm on Lost (what stops; back to Active restarts nothing), the result line (*"Automatic payments stopped — N scheduled payments cancelled, M plans stopped"*, or the close errors), a standing *"Lost — automatic payments are stopped"* line, and a failed status save now reverts the dropdown and says so (it used to swallow the error).
+
+**Decisions (Jake).** Only Lost (not Pending); back to Active re-opens nothing; Lost stops the tax plan (its reminders end); the member-paid $25 CIQ licence keeps billing.
+
+**Proof.** `deno check` 0, build exit 0 (49 pages), advisor not re-run (no DB change). **LIVE-PROVEN** (Jake, dev server on 5175 vs v1045, fixture client 408 `59524-004` with MAP 1 row 151 and tax plan 298, all DELETED after): confirm + Cancel kept Active; Lost cancelled P2 (declined) / P3 / P4 + the final retainer + implementation and stopped both (rows read back); `/pay`, `/tax-pay` and the Client decision 1 green button showed the closed message with `post_review_client_decision` still NULL and 0 bells; back to Active changed nothing. The charge sweep's own Lost skip is code-only (a hand run would charge every real due client).
+
+**Data.** Melissa Cruts row 102: P3 `declined` → `cancelled`, P4 (2027-01-21) → `cancelled`, row `stopped`. Ekansh Bhatnagar plan 103 (already stopped): implementation ($2,000, never charged) → `cancelled`. Both by guarded SQL mirroring the close. **Not closed:** six live plans of clients already Lost before v1045 (MAP 1 130 Fredric Moses — P3/P4 already cancelled; tax 100 Moses, 90 Dave Clark, 101 Babasola Adeleye, 170 Carlton Taliaferro, 184 Ryan Shuler) — the guard protects them; whether to stop them is Jake's call.
+
+**Doc fix.** The hub said the backend's CORS allows only 5173 / 5174; `constants/allowed-origins.ts` also allows 5175 / 5176.
+
 ## 2026-10-26 — Additional-info history, the Rapid reminder's video button, Tax Planning Form Download PDF + Edit, commas in money boxes
 
 Branch `claude/vfo-session-starter-78270d` (edge) / `claude/vfo-session-starter-295f56` (react), ONE chat. `vfo-admin-api` **v1042** (upload logging + Rapid button) → **v1043** (PDF + edit actions) → **v1044** (PDF page margins), all deployed from the branch with `--use-docker`; action count **614 → 616**; migration `20261026120000_tax_intake_answer_edits.sql` (one nullable column on the deny-all `tax_intake_requests`, advisor GREEN at the exact baseline — a confirmation).

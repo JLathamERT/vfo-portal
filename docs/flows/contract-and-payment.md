@@ -393,7 +393,15 @@ For each payment cycle (P1 for one-time, P1+P2+P3+P4 for quarterly), the row sho
 - **Cancelled-but-COLLECTED hardening.** If money nevertheless arrives on a slot VFO already cancelled — the charge was raised before the cancel landed, or Stripe redelivers (#327) — the `payment_intent.succeeded` P2–P4 branch still records `succeeded`, the receipt and the revenue share, **because the money did move**, and additionally raises the action-required bell `FAILURE_map1_cancelled_installment_collected` (rule row seeded live, to Jake). See [stripe-webhook.md](stripe-webhook.md) Sub-branch B1.
 - **Concurrency** with the 03:00 sweep is accepted by design (its window is minutes a night); the update is still guarded per column — only slots that read cancellable at load time are written.
 
-**LIVE-TESTED on the MAP 1 side ONLY** — client 149 (`pipeline_map1` 130), payments 3 and 4 cancelled for real (chips, tally, the button disappearing once nothing is left to close, persistence), a negative check on an all-paid client, and no button on the member / specialist / global tabs. **The entire Tax half is code-only** — see [tax-fee-process.md](tax-fee-process.md).
+**LIVE-TESTED on the MAP 1 side ONLY** — client 149 (`pipeline_map1` 130), payments 3 and 4 cancelled for real (chips, tally, the button disappearing once nothing is left to close, persistence), a negative check on an all-paid client, and no button on the member / specialist / global tabs. **The entire Tax half is code-only** — see [tax-fee-process.md](tax-fee-process.md). *(2026-10-26: the Tax half ran for real through the Lost close below, on fixture plan 298.)*
+
+The per-row rules now live in `utils/cancel-remaining-payments.ts` (`map1CancelPlan` / `taxCancelPlan`), shared with the Lost close — behaviour unchanged.
+
+---
+
+## Step 10⅞ — the client is set to Lost *(v: 2026-10-26, v1045)*
+
+Choosing **Lost** on the client profile's **Client Status** dropdown (admin only; a confirm dialog names what stops) runs the Step 10¾ close on **every** MAP 1 row and tax plan of the client that is not fully paid, and sets each one `status='stopped'`; from then on the charge sweep, the tax charges and every client pay link refuse that client. Going back to Active re-opens nothing. Full description: [../architecture/07-server-chains.md](../architecture/07-server-chains.md) *A Lost client is never charged*. **LIVE-PROVEN** 2026-10-26 (Jake, fixture client 408, deleted after): the confirm + Cancel, P2 (declined) / P3 / P4 and the tax final retainer + implementation cancelled, both plans stopped, `/pay`, `/tax-pay` and the Client decision 1 button showing the closed message with nothing recorded, back to Active changing nothing.
 
 ---
 
@@ -406,7 +414,7 @@ The counterpart to Step 10¾ and **not to be confused with it**: cancelling clos
 1. **Display.** The MAP 1 track header renders a **Live/Stopped toggle** (`ClientTrackViewV2.jsx`), and `actions/clients/overview-map1.ts` reports the track closed. Two changes there: `track_status` is now `pd.status` (it was hard-coded `null`), and `closedReason` gained a precedence rule — **a recorded decline still reads *"Client declined"***, because that says *why*; plain *"Stopped"* is what is left for a row VFO closed by hand.
 2. **Sweep silencing.** The **six** reminder-ladder queries in `contract-revshare-sweep.ts` — c14 decision, c17 signing, pay1 payment, each in a client-email tier and a PF-bell tier — filter `.eq("status","live")`.
 
-**MONEY IS DELIBERATELY UNAFFECTED, and the line runs through the middle of one handler.** In that same `contract-revshare-sweep.ts`, the **rev-share candidate loop, the strategic-partner retry and the PIP held-release are NOT filtered**. `contract-chargescheduled-sweep.ts` (Step 10½) and `contract-check-reminder-sweep.ts` (Step 10⅔b) were **never opened**. A signed client who owes money keeps being charged and chased for it after a stop — if the intent is to stop *collecting*, use **Cancel all remaining payments** (Step 10¾), which is entirely independent of this column.
+**MONEY IS DELIBERATELY UNAFFECTED, and the line runs through the middle of one handler.** In that same `contract-revshare-sweep.ts`, the **rev-share candidate loop, the strategic-partner retry and the PIP held-release are NOT filtered**. `contract-chargescheduled-sweep.ts` (Step 10½) and `contract-check-reminder-sweep.ts` (Step 10⅔b) were **never opened**. A signed client who owes money keeps being charged and chased for it after a stop — if the intent is to stop *collecting*, use **Cancel all remaining payments** (Step 10¾), which is entirely independent of this column, or set the CLIENT to **Lost** (Step 10⅞), which does both.
 
 **`NOT NULL DEFAULT 'live'` is load-bearing** — the filters are `.eq`, and PostgREST `.neq` silently drops NULL rows (#437), so a nullable column would have hidden every legacy row from its own ladders.
 
