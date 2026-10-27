@@ -4933,8 +4933,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       async function sendDepositRefund() {
         const trimmed = reason.trim()
         const confirmText = depositWaived
-          ? 'Stop tax planning for this client and draft the email?\n\nThe plan is closed and an email is drafted to the client carrying your reason(s). No deposit was taken, so no money moves. Cannot be undone.'
-          : 'Refund the deposit via Stripe and draft the decline email?\n\nThis refunds the saved PaymentIntent in full and drafts an email to the client including your reason(s). Cannot be undone.'
+          ? 'Stop tax planning for this client and email them?\n\nThe plan is closed and an email is sent to the client carrying your reason(s). No deposit was taken, so no money moves. Cannot be undone.'
+          : 'Refund the deposit via Stripe and email the client?\n\nThis refunds the saved PaymentIntent in full and sends an email to the client including your reason(s). Cannot be undone.'
         if (!confirm(confirmText)) return
         setRefundReasonDrafts(d => ({ ...d, [task.id]: { ...(d[task.id] || {}), sending: true } }))
         const res = await callApi(act(depositWaived ? 'automation_TAX_stopnodeposit' : 'automation_TAX_depositrefund'), { tax_plan_id: plan.id, reason: trimmed })
@@ -5395,7 +5395,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                 )}
               </div>
             )}
-          {autoStep('Refund processed and confirmation email drafted', refundDone, { chip: refundChip, at: refundDate })}
+          {autoStep('Refund processed and confirmation email sent', refundDone, { chip: refundChip, at: refundDate })}
         </>
       )
 
@@ -5421,7 +5421,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)', marginBottom: '8px' }}>
               {adminDecision === 'Stop - Refund' && (
                 <>
-                  {autoStep('Refund processed and confirmation email drafted', refundStatus === 'succeeded', { chip: refundChip, at: refundDate })}
+                  {autoStep('Refund processed and confirmation email sent', refundStatus === 'succeeded', { chip: refundChip, at: refundDate })}
                 </>
               )}
               {adminDecision === 'Continue - Revenue Share' && (

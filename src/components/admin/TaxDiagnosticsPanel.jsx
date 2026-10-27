@@ -93,7 +93,7 @@ function intakeLabel(intake) {
   switch (intake.status) {
     case 'invited': return intake.link_sent_at
       ? `Deposit link sent to ${who}${intake.link_opened_at ? ' (opened)' : ''}`
-      : `Deposit link to ${who} NOT drafted yet (press Retry)`
+      : `Deposit link to ${who} NOT emailed yet (press Retry)`
     // A bank transfer in flight keeps the row 'pending' (a side-column, not a
     // status — 2026-09-23); tax_diagnostic_list selects deposit_processing_at /
     // deposit_failed_at so these two readings are possible.
@@ -340,7 +340,7 @@ function ConfirmBox({ d, members, onChanged }) {
     try {
       const res = await callApi('tax_diagnostic_confirm', { id: d.id, member_number: picked.member_number, deposit_payer: payer })
       const text = res?.waived
-        ? 'Confirmed. The deposit is waived for this member, so the case has been created and the confirmation email drafted.'
+        ? 'Confirmed. The deposit is waived for this member, so the case has been created and the confirmation email sent.'
         : res?.email_drafted
           ? `Confirmed. The deposit link email to the ${payer} has been ${res.email_sent ? 'sent' : 'drafted in Gmail'}.`
           : (res?.email_error || 'Confirmed, but the deposit link email could not be drafted. Press Retry.')
@@ -542,7 +542,7 @@ function LeadBox({ d, members, onChanged }) {
     if (!picked) { setErr('Choose the member this client belongs to.'); return }
     if (!window.confirm(`Create ${clientName} under ${picked.name} (${picked.member_number})? The client has already paid the $500 deposit.`)) return
     run('tax_diagnostic_confirm', { member_number: picked.member_number },
-      () => 'Confirmed. The case has been created and the confirmation email with the deposit invoice and receipt drafted to the client.')
+      () => 'Confirmed. The case has been created and the confirmation email with the deposit invoice and receipt sent to the client.')
   }
   function deny() {
     const reason = window.prompt(`Deny ${clientName}? The $500 deposit is refunded to the client straight away (any card fee is not refunded). Optional reason:`, '')
@@ -745,8 +745,10 @@ function MemberAwaitingBox({ d, onChanged }) {
   async function sendLink() {
     setBusy('send'); setErr(''); setNote('')
     try {
-      await callApi('member_tax_diagnostic_send_pay_link', { intake_id: intakeId })
-      setNote(`We have drafted the payment link email for ${clientName}. It will be sent shortly.`)
+      const res = await callApi('member_tax_diagnostic_send_pay_link', { intake_id: intakeId })
+      setNote(res?.email_sent
+        ? `We have emailed the payment link to ${clientName}.`
+        : `We have prepared the payment link email for ${clientName}. It will be sent shortly.`)
       onChanged?.()
     } catch (e) { setErr(e?.message || 'Could not send the payment link') }
     setBusy('')
@@ -767,7 +769,7 @@ function MemberAwaitingBox({ d, onChanged }) {
       <div style={{ color: '#e06717', fontWeight: 600 }}>
         {memberPays
           ? 'Deposit not paid yet.'
-          : `Deposit not paid yet.${d.intake?.link_sent_at ? ` Payment link email last drafted ${formatDate(d.intake.link_sent_at)}.` : ''}`}
+          : `Deposit not paid yet.${d.intake?.link_sent_at ? ` Payment link email last sent ${formatDate(d.intake.link_sent_at)}.` : ''}`}
       </div>
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
         {memberPays
