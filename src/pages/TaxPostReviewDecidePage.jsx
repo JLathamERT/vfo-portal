@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import TokenShell from '../components/shared/TokenShell'
-import DecisionConfirmCard from '../components/shared/DecisionConfirmCard'
+import DecisionCodeCard from '../components/shared/DecisionCodeCard'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -23,12 +23,9 @@ export default function TaxPostReviewDecidePage() {
     setStatus('confirm')
   }, [])
 
-  function handleConfirm() {
-    setStatus('processing')
-    processDecision()
-  }
-
-  async function processDecision() {
+  // Called with the emailed code. Returns { codeError } to keep the client on the
+  // code screen; every other outcome moves the page to its result view.
+  async function processDecision(code) {
     const token = searchParams.get('token')
     const dec = searchParams.get('decision')
     try {
@@ -39,9 +36,11 @@ export default function TaxPostReviewDecidePage() {
           action: 'automation_TAX_postreviewclientdecision',
           token,
           decision: dec,
+          code,
         }),
       })
       const data = await res.json()
+      if (data.code_error) return { codeError: data.error }
       if (data.existing_decision) {
         setDecision(data.existing_decision)
         setStatus('already_submitted')
@@ -75,7 +74,15 @@ export default function TaxPostReviewDecidePage() {
     const confirm = getConfirm(decision)
     return (
       <TokenShell maxWidth={520}>
-        <DecisionConfirmCard {...confirm} onConfirm={handleConfirm} />
+        <DecisionCodeCard
+          {...confirm}
+          kind="tax_postreview"
+          token={searchParams.get('token')}
+          decision={searchParams.get('decision')}
+          onSubmit={processDecision}
+          onExisting={(d) => { setDecision(d); setStatus('already_submitted') }}
+          onError={(msg) => { setError(msg); setStatus('error') }}
+        />
       </TokenShell>
     )
   }
@@ -98,8 +105,8 @@ function getConfirm(decision) {
   if (decision === 'Refund') {
     return {
       title: 'Please confirm your decision',
-      message: "You're about to request a refund of your retainer. A member of our team will contact you to confirm before anything is refunded.",
-      buttonLabel: 'Confirm — request a refund',
+      message: "You're about to have your retainer refunded. This will end your Tax Planning Engagement.",
+      buttonLabel: 'Confirm — refund my retainer',
       buttonColor: '#ef4444',
     }
   }
@@ -125,15 +132,15 @@ function getView(status, decision, error) {
   // state — this is neither a clean success nor an error the client caused, and
   // the copy deliberately promises no confirmation email.
   if (status === 'refund_pending') {
-    return { icon: '⏳', color: '#e06717', title: 'Refund Request Received', message: 'Your refund request has been received. Our team will review and process it, and will be in touch.' }
+    return { icon: '⏳', color: '#e06717', title: 'Refund Received', message: 'We have received your decision, but your refund could not be completed automatically. Our team will process it and be in touch.' }
   }
   if (status === 'error') {
     return { icon: '⚠️', color: '#ef4444', title: 'Something Went Wrong', message: error || 'An unexpected error occurred. Please contact us.' }
   }
   if (decision === 'Refund') {
-    // A request only (2026-10-23): the team confirms it with the client before
-    // anything is refunded, so this page promises neither a refund nor an email.
-    return { icon: '✓', color: '#16a34a', title: 'Refund Requested', message: 'Thank you — we have received your refund request. A member of our team will contact you to confirm it before any refund is made.' }
+    // The code-confirmed click refunds straight away (2026-10-27); a refund that
+    // did not go through shows refund_pending above instead.
+    return { icon: '✓', color: '#16a34a', title: 'Refund Processed', message: 'Your retainer has been refunded. You will receive a confirmation email shortly.' }
   }
   return { icon: '✓', color: '#16a34a', title: 'Thank You — Moving Forward', message: "We're delighted to continue with your Tax Planning Engagement. Our team will be in touch with next steps shortly." }
 }
