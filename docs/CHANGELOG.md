@@ -8,6 +8,28 @@
 
 ---
 
+## 2026-10-27 (d) — The Tax Diagnostic / Tax Planning Form emails SEND, and the team is off the client and member ones
+
+Branch `claude/tax-diag-emails-send` (edge: migration file only; react: wording), ONE chat (the same chat as (c)). No function code change (`vfo-admin-api` stays **v1050**, action count **617**). Migration `20261027200000_tax_diagnostic_emails_send.sql`, applied via MCP as `tax_diagnostic_emails_send` (data only; advisor GREEN at the exact baseline).
+
+- **Why:** Hal Cromwell tried his new account's Tax Diagnostic tab and sent three form links (intakes 66–68). Each Cc'd Tracy Miller, Tray and Evan and Bcc'd Anton and Paul. Tracy Miller asked why forms were going to Brett and Hal, and asked to be removed. Jake: set the diagnostic emails to Send, and take the team off the ones they do not need.
+- **Decided (Jake):**
+  - All three team Cc's and the Anton / Paul Bcc come off the fourteen client- and member-facing emails: 277, 287, 288, 315, 289–292, 310, 275, 278, 181, 279, 280. MEMBER / CLIENT / ASSIGNED_PF stay, and so do the central member-contact and corporate-lead Cc.
+  - **286** (the team notice) keeps its recipients: To Tracy Miller, Cc Evan, Tray, Paul, Anton.
+  - All fifteen switch to **Send**.
+  - Left alone: **281** `TAX_planner_revshare|deposit` (the planner's share notice, not a diagnostic email) and **313** (retired; nothing sends it).
+- **No code needed for recipients or mode:** every sender reads `to_list` / `cc_list` / `bcc_list` through `resolveTemplateRecipients`, and passes the same `("TAX", template_name)` pair to `gmailDraftFetch` / `deliverRaw`, which send when the row says so (#356 holds for all fifteen).
+- **Frontend wording (#428):** the screens that said an email was "drafted" now say "sent" / "emailed":
+  - the member's *Send link* (`MemberTaxDiagnostic`, `MemberMSMTracking`): "We have emailed the Tax Planning Form link to X";
+  - the admin Tax Diagnostics messages: *NOT emailed yet*, the confirmation sent, and the member *Send payment link*, which now reads the handler's `email_sent` and keeps "prepared … sent shortly" for a Draft fall-back;
+  - *last sent*;
+  - the plan page's Stop / Refund confirm prompts and the "Refund processed and confirmation email sent" step.
+  - `tax_intake_send_link` still returns only `email_drafted`, so that one message assumes 277 is Send. Re-check it if 277 ever goes back to Draft.
+- **Send-mode census:** 55 (2026-10-07) → 56 (template 332 `TAX_decision_code`, 2026-10-27 (b)) → **71** (+15 here).
+- **Tested (Jake, dev server, test member 59524 = sandbox):** *Send link* → intake 69 auto-sent (`send_mode: auto-sent TAX/TAX_intake_link`). The sandbox log line read `would have sent to=[client] cc=[test@member.com] bcc=[]`: member Cc'd, no team. The sandbox reroute keeps only the To line, so the inbox showed no Cc. Intake 69 ("Blah Blahh") was deleted afterwards at Jake's request.
+- **Not exercised after the flip:** a real send of 287 / 288 / 315 (Confirm or *Send payment link*), the ACH emails 289–292, the confirmations 275 / 278, 310, the refunds 181 / 279, and 280. They share the same delivery path, but none has been seen go out as Send.
+- **Noticed, not changed (Jake's call):** 181 / 279 say the refund goes "back on your card" for a bank-transfer payer too; 290 / 292 (client copies) reuse the member wording, so a client reads "your deposit for [their own name]".
+
 ## 2026-10-27 (c) — Every portal usable in a narrow window: collapsing tab bars, a compact phone header, sign-in pages that fit; Hal Cromwell moved onto his Corporate account
 
 Branch `claude/vfo-session-starter-79e115` (react only), ONE chat. No backend change (`vfo-admin-api` stays **v1050**, action count **617**, 19 crons). The edge worktree `-b0aee2` carried only the session's local `.claude/launch.json` and ships nothing.
