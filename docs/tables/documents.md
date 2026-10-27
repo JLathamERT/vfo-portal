@@ -149,7 +149,7 @@ Three body/subject rules from those migrations, each a guarded `replace()` so a 
 
 | id | template_name | To | Cc | When |
 |---|---|---|---|---|
-| **289** | `TAX_deposit_processing` | `MEMBER` | Tracy, Tray | member paid; PaymentIntent `processing` (debit in flight) — *"we have received your bank transfer … 2-4 business days"*; also the `payment_intent.processing` backstop when the submit-time draft never landed |
+| **289** | `TAX_deposit_processing` | `MEMBER` | Tracy, Tray | member paid; PaymentIntent `processing` (debit in flight) — *"we have received your bank transfer … 3-5 business days"*; also the `payment_intent.processing` backstop when the submit-time draft never landed |
 | **290** | `TAX_deposit_processing\|client` | `CLIENT` | `MEMBER`, Tracy, Tray | the same, client paid |
 | **291** | `TAX_deposit_processing\|ach_verify` | `MEMBER` | Tracy, Tray | member paid; PaymentIntent `requires_action` (manual entry, micro-deposits pending, NOTHING debited) — explains the verification code step and that an unverified payment is cancelled after about 10 days, when the original link works again |
 | **292** | `TAX_deposit_processing\|ach_verify\|client` | `CLIENT` | `MEMBER`, Tracy, Tray | the same, client paid |
