@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import TokenShell from '../components/shared/TokenShell'
-import DecisionConfirmCard from '../components/shared/DecisionConfirmCard'
+import DecisionCodeCard from '../components/shared/DecisionCodeCard'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -25,12 +25,9 @@ export default function TaxImplementDecidePage() {
     setStatus('confirm')
   }, [])
 
-  function handleConfirm() {
-    setStatus('processing')
-    processDecision()
-  }
-
-  async function processDecision() {
+  // Called with the emailed code. Returns { codeError } to keep the client on the
+  // code screen; every other outcome moves the page to its result view.
+  async function processDecision(code) {
     const token = searchParams.get('token')
     const dec = searchParams.get('decision')
 
@@ -42,9 +39,11 @@ export default function TaxImplementDecidePage() {
           action: 'automation_TAX_implementfinaldecision',
           token,
           decision: dec,
+          code,
         }),
       })
       const data = await res.json()
+      if (data.code_error) return { codeError: data.error }
 
       if (data.existing_decision) {
         setDecision(data.existing_decision)
@@ -69,7 +68,15 @@ export default function TaxImplementDecidePage() {
     const confirm = getConfirm(decision)
     return (
       <TokenShell maxWidth={520}>
-        <DecisionConfirmCard {...confirm} onConfirm={handleConfirm} />
+        <DecisionCodeCard
+          {...confirm}
+          kind="tax_implement"
+          token={searchParams.get('token')}
+          decision={searchParams.get('decision')}
+          onSubmit={processDecision}
+          onExisting={(d) => { setDecision(d); setStatus('already_submitted') }}
+          onError={(msg) => { setError(msg); setStatus('error') }}
+        />
       </TokenShell>
     )
   }
