@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-10-27 (e) — Tax deposit emails: refund wording fits bank payers; client copies stop naming the client
+
+Branch `claude/tax-email-wording` (edge: migration file; react: docs), ONE chat (the same as (c) and (d)). Data only: migration `20261027210000_tax_deposit_email_wording.sql`, applied via MCP as `tax_deposit_email_wording`. No code, no deploy. Copy shown to and approved by Jake before it was applied.
+
+- **181 / 279 (deposit refunded):** "You should see the funds back on your card within the next few days." becomes "You should see the funds back on the card or bank account you paid with within 5-10 business days." The refund handler does not know the payment method, so the line covers both.
+- **290 / 292 (bank transfer, CLIENT copies):** "…for the $500 Tax Planning Deposit for [Client Name]." becomes "…for your $500 Tax Planning Deposit.". The member copies 289 / 291 keep "for [Client Name]", which is right there.
+- **310 (lead paid):** found while checking, with the same fault. "…your $500 Tax Planning Deposit for [Client Name]." becomes "…your $500 Tax Planning Deposit."
+- All five already SEND (2026-10-27 (d)), so the new wording was live on apply. Verified by reading the rows back.
+- Docs: `flows/tax-intake.md` (also corrected the stale "2-4 business days" for 289/290 to 3-5), `tables/documents.md` (the same stale figure), the hub's (Q) line.
+
 ## 2026-10-27 (d) — The Tax Diagnostic / Tax Planning Form emails SEND, and the team is off the client and member ones
 
 Branch `claude/tax-diag-emails-send` (edge: migration file only; react: wording), ONE chat (the same chat as (c)). No function code change (`vfo-admin-api` stays **v1050**, action count **617**). Migration `20261027200000_tax_diagnostic_emails_send.sql`, applied via MCP as `tax_diagnostic_emails_send` (data only; advisor GREEN at the exact baseline).
