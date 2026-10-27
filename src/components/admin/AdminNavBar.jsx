@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import CollapsibleNavBar from '../shared/CollapsibleNavBar'
 
 // The admin nav bar (Advisors ▾ … More ▾), moved out of AdminPortal.jsx on
 // 2026-10-20 so the client page draws the very same bar. AdminPortal routes a
@@ -245,6 +246,21 @@ const accountingSubmenus = [
 
 const MORE_TABS = ['member_overview', 'client_overview', 'growth_credits', 'faq_editor', 'tax_diagnostics', 'feature_switches', 'automation', 'accounting']
 
+// The five key tabs, for the narrow-window menu and its current-tab label.
+const KEY_TABS = [
+  ['advisors', 'Advisors', advisorsDropdownItems],
+  ['accountants', 'Accountants', accountantsDropdownItems],
+  ['strategic', 'Strategic Members', strategicDropdownItems],
+  ['specialists', 'Specialists', specialistsDropdownItems],
+  ['taxplanners', 'Tax Planners', taxPlannersDropdownItems],
+]
+const ADMIN_TAB_LABELS = {
+  ...Object.fromEntries(KEY_TABS.map(([key, label]) => [key, label])),
+  member_overview: 'Member Overview', client_overview: 'Client Overview', growth_credits: 'Growth Credits',
+  faq_editor: 'FAQ Editor', tax_diagnostics: 'Tax Diagnostics', feature_switches: 'Feature Switches',
+  automation: 'Automation & Config', accounting: 'Accounting',
+}
+
 // The three superadmin-managed "other" tabs. A non-superadmin admin sees one only
 // if Jake granted it (session.allowed_tabs). Superadmin sees all.
 export const canSeeAdminTab = (session, key) => !!session?.is_superadmin || (session?.allowed_tabs || []).includes(key)
@@ -283,14 +299,31 @@ export default function AdminNavBar({ session, activeTab, onSelect }) {
     if (key.startsWith('__')) return onSelect(key.slice(2), null)
   }
 
+  // The same entries as the dropdowns, for the narrow-window menu. The admin bar
+  // knows the tab but not the section, so a key tab's whole group is marked.
+  const moreOption = opt => opt.submenu
+    ? { key: opt.key, label: opt.label, options: opt.submenu.map(moreOption) }
+    : { key: opt.key, label: opt.label, active: opt.key === '__' + activeTab, onSelect: () => selectMoreOption(opt.key) }
+  const menuItems = [
+    ...KEY_TABS.map(([tab, label, dropdownItems]) => ({
+      key: tab, label, active: activeTab === tab,
+      options: dropdownItems.flatMap(item => item.options).map(o => ({ key: o.key, label: o.label, onSelect: () => onSelect(tab, o.key) })),
+    })),
+    ...(moreDropdownItems.length > 0 ? [{
+      key: 'more', label: 'More',
+      options: moreDropdownItems.flatMap(item => item.submenu
+        ? [{ key: item.key, label: item.submenuLabel, active: activeTab === (item.key === 'more_auto' ? 'automation' : 'accounting'), options: item.submenu.map(moreOption) }]
+        : item.options.map(moreOption)),
+    }] : []),
+  ]
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--vfo-border)', padding: '0 24px', background: 'var(--vfo-card)', boxShadow: '0 2px 8px rgba(20,45,95,0.04)' }}>
-      {/* Key tabs — the four primary member/specialist directories. */}
-      <NavDropdown label="Advisors" items={advisorsDropdownItems} onSelect={k => onSelect('advisors', k)} isActive={activeTab === 'advisors'} />
-      <NavDropdown label="Accountants" items={accountantsDropdownItems} onSelect={k => onSelect('accountants', k)} isActive={activeTab === 'accountants'} />
-      <NavDropdown label="Strategic Members" items={strategicDropdownItems} onSelect={k => onSelect('strategic', k)} isActive={activeTab === 'strategic'} />
-      <NavDropdown label="Specialists" items={specialistsDropdownItems} onSelect={k => onSelect('specialists', k)} isActive={activeTab === 'specialists'} />
-      <NavDropdown label="Tax Planners" items={taxPlannersDropdownItems} onSelect={k => onSelect('taxplanners', k)} isActive={activeTab === 'taxplanners'} />
+    <CollapsibleNavBar items={menuItems} currentLabel={ADMIN_TAB_LABELS[activeTab]}
+      barStyle={{ boxShadow: '0 2px 8px rgba(20,45,95,0.04)' }} rowStyle={{ alignItems: 'center' }}>
+      {/* Key tabs — the five primary member/specialist directories. */}
+      {KEY_TABS.map(([tab, label, dropdownItems]) => (
+        <NavDropdown key={tab} label={label} items={dropdownItems} onSelect={k => onSelect(tab, k)} isActive={activeTab === tab} />
+      ))}
 
       {/* Secondary "other" tabs — muted, access-gated, behind a faint divider. */}
       {moreDropdownItems.length > 0 && (
@@ -298,7 +331,7 @@ export default function AdminNavBar({ session, activeTab, onSelect }) {
           <NavDropdown label="More" muted items={moreDropdownItems} onSelect={selectMoreOption} isActive={MORE_TABS.includes(activeTab)} />
         </div>
       )}
-    </div>
+    </CollapsibleNavBar>
   )
 }
 

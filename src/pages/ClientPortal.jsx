@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { getSession, clearSession, callApi, getLastSeen, setLastSeen } from '../lib/api'
 import ClientVault from '../components/client/ClientVault'
 import MemberShowroom from '../components/member/MemberShowroom'
-import VfoWordmark from '../components/shared/VfoWordmark'
+import CollapsibleNavBar from '../components/shared/CollapsibleNavBar'
+import PortalHeader from '../components/shared/PortalHeader'
 import ChangePasswordCard from '../components/shared/ChangePasswordCard'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { usePortalTheme } from '../lib/theme'
@@ -129,25 +130,23 @@ export default function ClientPortal() {
     }
   }
   const introRequest = introRequested ? { requested: introRequested, onRequest: requestIntroduction } : null
+  const navTabs = [['showroom', 'Showroom'], ...(planAllowed ? [['plan', 'My One Page Plan']] : []), ...(vaultAllowed ? [['vault', 'Vault']] : [])]
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
-        <VfoWordmark size={17} light onClick={() => chooseTab(licensingOn ? 'home' : 'showroom')} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.88)', fontWeight: 500, whiteSpace: 'nowrap', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.name || session.email}</span>
-          <button onClick={() => chooseTab('settings')} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: tab === 'settings' ? 'rgba(255,255,255,0.18)' : 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Settings</button>
-          <button onClick={signOut} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Sign Out</button>
-        </div>
-      </div>
-
-      {tab !== 'settings' && (
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', padding: '0 24px', background: 'var(--vfo-card)', position: 'relative', zIndex: 100 }}>
-          {[['showroom', 'Showroom'], ...(planAllowed ? [['plan', 'My One Page Plan']] : []), ...(vaultAllowed ? [['vault', 'Vault']] : [])].map(([key, label]) => (
-            <button key={key} onClick={() => chooseTab(key)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: tab === key ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: tab === key ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: tab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>{label}</button>
-          ))}
-        </div>
-      )}
+      <PortalHeader name={session.name || session.email} showBell={false} onTitleClick={() => chooseTab(licensingOn ? 'home' : 'showroom')} actions={[
+        { key: 'settings', label: 'Settings', active: tab === 'settings', onClick: () => chooseTab('settings') },
+        { key: 'signout', label: 'Sign Out', onClick: signOut },
+      ]}>
+        {tab !== 'settings' && (
+          <CollapsibleNavBar items={navTabs.map(([key, label]) => ({ key, label, active: tab === key, onSelect: () => chooseTab(key) }))}
+            currentLabel={Object.fromEntries(navTabs)[tab]}>
+            {navTabs.map(([key, label]) => (
+              <button key={key} onClick={() => chooseTab(key)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: tab === key ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: tab === key ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: tab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>{label}</button>
+            ))}
+          </CollapsibleNavBar>
+        )}
+      </PortalHeader>
 
       {tab === 'home' && (
         <div style={{ textAlign: 'center', padding: '60px 24px 0' }}>

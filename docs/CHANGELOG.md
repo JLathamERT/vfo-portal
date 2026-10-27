@@ -8,6 +8,46 @@
 
 ---
 
+## 2026-10-27 (c) — Every portal usable in a narrow window: collapsing tab bars, a compact phone header, sign-in pages that fit; Hal Cromwell moved onto his Corporate account
+
+Branch `claude/vfo-session-starter-79e115` (react only), ONE chat. No backend change (`vfo-admin-api` stays **v1050**, action count **617**, 19 crons). The edge worktree `-b0aee2` carried only the session's local `.claude/launch.json` and ships nothing.
+
+**1. Hal Cromwell (data only, via MCP, no code).** Tracy asked whether Hal's move from Catalyst to Corporate Member had wiped his Growth Credits. It had not. Hal had **three** member rows on `hal@lls-cpa.com`:
+- **58083**, Catalyst, set Lost 2026-10-20. It held 33.25 GC (moved from PPP), less 10 for the Corporate membership.
+- **90089-TA1**, Team Member from the 2026-06-18 migration (Jake did not know it existed). Sam Freitas sent its login set-up 2026-10-09, and it held Hal's ONLY login.
+- **90089-C1**, Corporate Member, created 2026-10-26. Tracy re-added 33.25 and deducted 10 again on 2026-10-27, so the credits and the membership fee were counted twice.
+
+A login set-up for C1 would have failed: `member_logins_email_key` makes the email unique, and `login-setup/submit.ts` INSERTs for a new `subject_ref` (#677). Done:
+- `member_logins` id 91 re-pointed TA1 → C1 (same password; his open session followed at once, because `middleware/auth.ts` resolves `member_number` from the email per request).
+- Client 417 (Dilipkumar Naik, added by Hal that afternoon) moved to C1, ref `90089-TA1-001` → `90089-C1-001`.
+- `client_ciqs` 87 → C1; `trading_name` copied to C1; vault drop link `vault_upload_tokens` 44 → C1.
+- A text-column census found nothing else on TA1 but the record, a completed set-up token and its widget settings.
+
+Jake then deducted 23.25 from 58083 and set TA1 Lost. Hal then used Tax Diagnostic → Send link from C1 three times (intakes 66–68: John Dewitt ×2 at two addresses, himself at `hal@carplang.com`). The drafts were sent by Jake as-is, and all three links were opened within seconds at 19:34 UTC; none paid.
+
+**2. Narrow windows — the tab bars.** A member could not find **Vault**: on a smaller screen the member tab row ran past the right edge and `body { overflow-x: clip }` (#639) cut it off with no scroll (#676).
+- A first fix (`flexWrap: 'wrap'`, a second row) worked but Jake disliked two rows and asked for the Lululemon pattern.
+- **NEW `src/components/shared/CollapsibleNavBar.jsx`**: the full row stays rendered (hidden when collapsed) and is MEASURED against the bar on a `ResizeObserver`. When it stops fitting, the bar shows the current tab + **Menu ≡**, which slides in a right-hand panel (portalled to `body`, z 1000; Esc / × / the dark area close it).
+- Every group folds the same way, the bar's dropdowns included (Jake: some open and some folded "seems strange"). The active entry's groups open on their own. The list remounts on EVERY open (a `visit` counter, bumped in a layout effect), so it starts at the top with nothing left expanded (Jake asked twice).
+- Used by `MemberNavBar`, `AdminNavBar` (key tabs + More ▸ Automation / Accounting ▸ Members… with the same `selectMoreOption` routing), `PlannerNavBar`, and the client + specialist portals' bars (the specialist unread badge is carried into the panel).
+
+**3. Narrow windows — the header.**
+- `PortalHeader` goes **compact** when its bar overflows: no name, and each action becomes a round icon button (gear / sign-out / pencil for Admin Editor; label in `title` + `aria-label`). It returns to normal once the width it needed is back.
+- `ClientPortal`, `SpecialistPortal` and `PlannerMemberView` now draw `PortalHeader` instead of their own copy (client + specialist `showBell={false}`). The client / specialist tab bar therefore now sticks with the header like the other portals.
+- `NotificationBell`'s panel pins full-width under the header below 600px wide (it ran off the left edge).
+
+**4. Narrow windows — the sign-in pages.**
+- `AuthShell` (all five `/<portal>/login` pages + `/forgot-password`) swaps the brand panel for a slim wordmark strip below 800px wide.
+- `RolePicker` goes compact under `(max-width: 640px), (max-height: 620px)`: no intro paragraph, a smaller heading, tiles and footer.
+- NEW `src/lib/useMediaQuery.js`. Measured with no scroll either way at 500×520, 375×667, 390×844, 360×640 and 1280×720; the tax planner sign-in is the tallest.
+
+**Tested:**
+- Jake, on his dev server: the member collapse + panel, the admin and member headers ("pretty much good"), the folding groups, the sign-in pages ("looks good").
+- Claude in the browser pane: every component on its own at several widths. The pane does not repaint while hidden (no `requestAnimationFrame`), so `ResizeObserver` never fires there (#678). Measuring was proved by re-mounting at each width, and every drawer route was checked against `onSelect`.
+- NOT clicked by anyone: the client, specialist and tax planner portals' collapsed bars and compact headers (logged in), the bell panel at phone width, and `PlannerMemberView`.
+
+**Parked by Jake:** most pages INSIDE the portals are still a mess on a phone: about 11 `<table>`s, ~39 multi-column grids and ~17 large `minWidth`s, about 36 of them in `components/admin`. Jake: "we'll leave it for now". A New-task card (*Phone-friendly layouts across the portals*) carries the brief.
+
 ## 2026-10-27 (b) — Emailed money decisions need a code from the recipient's inbox; public money handlers are server-only; a client's coded Refund refunds again
 
 Branch `claude/vfo-session-starter-5ef240` (edge) / `claude/vfo-session-starter-7bfaab` (react), ONE chat. `vfo-admin-api` **v1045 → v1050**, every one from the branch with `--use-docker` (Jake ran each deploy): v1046 the decision codes, v1047 the three Tax money handlers locked, v1048 eight more, v1049 the immediate refund, v1050 a bell wording fix. Action count **616 → 617** (+ `decision_code_send`, PUBLIC). Migration `20261027120000_decision_codes.sql` (applied via MCP as `decision_codes`): the `decision_codes` table (RLS deny-all) + template **332** `TAX` / `TAX_decision_code` (`send_mode=true`). Frontend **PUBLISHED from the branch** before merge (`index-J3DWc_GW.js`), with Jake's boss's go-ahead.

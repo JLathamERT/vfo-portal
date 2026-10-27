@@ -5,8 +5,7 @@ import { usePortalTheme } from '../lib/theme'
 import { MemberProfileDetailsSkeleton } from '../components/shared/Skeleton'
 import { TrackHero, HeroAvatar } from '../components/shared/TrackKit'
 import { VisibilityBadge, noteTint } from '../components/shared/NoteVisibility'
-import VfoWordmark from '../components/shared/VfoWordmark'
-import NotificationBell from '../components/NotificationBell'
+import PortalHeader from '../components/shared/PortalHeader'
 import vfoCertifiedSeal from '../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../assets/vfo-accredited-emblem.png'
 import { formatDate } from '../lib/dates'
@@ -78,18 +77,10 @@ export default function PlannerMemberView() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
-        <VfoWordmark size={17} light onClick={() => { sessionStorage.removeItem('taxPlannerActiveTab'); navigate('/tax-planner') }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <NotificationBell />
-          <span style={{ color: 'rgba(255,255,255,0.88)', fontSize: '14px', fontWeight: 500, whiteSpace: 'nowrap', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session?.name || ''}</span>
-          <button onClick={() => { sessionStorage.setItem('taxPlannerActiveTab', 'settings'); navigate('/tax-planner') }}
-            style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            Settings
-          </button>
-          <button onClick={() => { sessionStorage.clear(); navigate('/tax-planner/login') }} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Sign Out</button>
-        </div>
-      </div>
+      <PortalHeader name={session?.name || ''} onTitleClick={() => { sessionStorage.removeItem('taxPlannerActiveTab'); navigate('/tax-planner') }} actions={[
+        { key: 'settings', label: 'Settings', onClick: () => { sessionStorage.setItem('taxPlannerActiveTab', 'settings'); navigate('/tax-planner') } },
+        { key: 'signout', label: 'Sign Out', onClick: () => { sessionStorage.clear(); navigate('/tax-planner/login') } },
+      ]} />
 
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
         <button onClick={handleBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>{backLabel}</button>
