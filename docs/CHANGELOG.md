@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-10-27 — PFT accountants stranded at "Sent to Accountant Onboarding: Pending" (`claude/vfo-session-starter-cd01e5` react only)
+
+**Trigger:** Rachael / Sarah (email *Follow Up: VFO Portal and Enyi Kanu*, 2026-10-27) — George Nwabukwu and George Oluwaboro (Enyi Kanu's accountants, member 59111) showed *Sent to Accountant Onboarding: Pending* but were in no Accountant Onboarding list; Joe Apanisile was not in the portal at all.
+
+**Cause (#671):** Jake moved these accountants over from the old system in Jul / Aug with the decision step's "Complete - NO EMAIL" buttons (#243), which wrote the confirmed status but by design created no `accountant_onboarding` record. A decided step shows only its pill and Phase 6 is display-only, so nothing could ever finish the handoff. Four accountants were in that state: George Nwabukwu (170), George Oluwaboro (165), Santonya Jones (275) — plus Daliah Bui (99), who is NOT a backfill: her real decision email on 2026-07-17 created a record that was later deleted (the FK nulls the link).
+
+**Code (vfo-react, `PFTEngagementTrack.jsx`):** the decision-step NO-EMAIL row, `fireNoEmail` and `handleDecisionNoEmail` are deleted — the decision email (and Undecided, which delegates to it) is now the only way to write a confirmed status, and it always creates the handoff. `DecisionHistory` hides the *"Confirmation email sent with the need another meeting? choice"* row (and counts the Automated steps as complete) when an onboarding record exists but no follow-up email was ever sent — the real flow stamps both together, so only migrated accountants are affected. The Meeting-step NO-EMAIL buttons stay hidden but kept.
+
+**Data (live, SQL via MCP, no emails):** George Nwabukwu → `accountant_onboarding` 38, Santonya Jones → 39 (both VFO FT, `onboarding_team_member` Evan Anderson, `pft_engagement` row created + linked, no FT token so no reminder ladder); Nwabukwu's Meeting 2 / Meeting 3 confirmation steps (tasks 57 / 64) inserted as `Complete` dated 05/13 and 06/08. Not touched: Oluwaboro (placeholder email `george@pleasefix.com` — waiting on the real one), Daliah Bui (deleted record — Jake to decide), Joe Apanisile and the FT-vs-Associate question (Tray / Rachael).
+
+**Verified:** build clean (49 route pages); Jake click-tested Nwabukwu + Santonya in the dev server (Phase 6 green, View onboarding opens, the email row gone). No backend, schema, cron or template change; action count 616 unchanged; `boldsign-webhook` untouched.
+
 ## 2026-10-26 (b) — A Lost client is never charged (`claude/vfo-session-starter-ced46e` edge / `-c73204` react)
 
 **Why.** Melissa Cruts (client 92, `90385-001`) asked Evan to cancel on 2026-08-06 (note 93 / 425). Her MAP 1 row 102 stayed `live` with P3 / P4 scheduled, so the 03:00 charge sweep raised P3 on 2026-10-22; it declined and her failure email (the Resend of 2026-10-22) asked her to set up payment. She wrote back that she had stopped. Nothing that charges a client read `clients.status` (#670). Jake: the mechanism for stopping a CLIENT's payments is the profile's Client Status dropdown; Lost stops every automatic payment — Holistic and tax — and nothing else changes for members, specialists or onboarding.
