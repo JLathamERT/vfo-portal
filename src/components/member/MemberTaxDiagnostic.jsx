@@ -43,7 +43,7 @@ export default function MemberTaxDiagnostic({ member }) {
   // Same wording as MemberClientsView.finishIntake (the MSM Tax Planning tab).
   function finish(res) {
     setDoneMessage(res?.link_sent_to
-      ? `We have drafted the Tax Planning Form link for ${res.link_sent_to}. It will be sent shortly.`
+      ? `We have emailed the Tax Planning Form link to ${res.link_sent_to}.`
       : res?.tax_plan_id
         ? 'Client created. We have emailed you a confirmation.'
         : 'Thank you — your Tax Planning Form has been received.')

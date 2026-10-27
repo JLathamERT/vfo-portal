@@ -861,7 +861,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     // tax_plan_id comes back only from the WAIVED new-client path; link_sent_to is
     // the "send my client a link" route, where nothing exists yet at all.
     setDoneMessage(res?.link_sent_to
-      ? `We have drafted the Tax Planning Form link for ${res.link_sent_to}. It will be sent shortly.`
+      ? `We have emailed the Tax Planning Form link to ${res.link_sent_to}.`
       : res?.tax_plan_id
         ? 'Client created. We have emailed you a confirmation.'
         : 'Thank you — your Tax Planning Form has been received.')
