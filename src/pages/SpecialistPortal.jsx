@@ -4,9 +4,10 @@ import { callApi, getSession, clearSession, getLastSeen, setLastSeen } from '../
 import SpecialistVault from '../components/specialist/SpecialistVault'
 import SpecialistShared from '../components/specialist/SpecialistShared'
 import ChangePasswordCard from '../components/shared/ChangePasswordCard'
+import CollapsibleNavBar from '../components/shared/CollapsibleNavBar'
+import PortalHeader from '../components/shared/PortalHeader'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { usePortalTheme } from '../lib/theme'
-import VfoWordmark from '../components/shared/VfoWordmark'
 import MemberShowroom from '../components/member/MemberShowroom'
 import { ShowroomSkeleton } from '../components/shared/Skeleton'
 
@@ -70,27 +71,25 @@ export default function SpecialistPortal() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '58px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,41,115,0.25)' }}>
-        <VfoWordmark size={17} light onClick={() => setTab('showroom')} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.88)', fontWeight: 500, whiteSpace: 'nowrap', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.name || session.email}</span>
-          <button onClick={() => setTab('settings')} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: tab === 'settings' ? 'rgba(255,255,255,0.18)' : 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Settings</button>
-          <button onClick={signOut} style={{ padding: '6px 16px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.32)', background: 'transparent', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Sign Out</button>
-        </div>
-      </div>
-
-      {tab !== 'settings' && (
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', padding: '0 24px', background: 'var(--vfo-card)', position: 'relative', zIndex: 100 }}>
-          {TABS.map(([key, label]) => (
-            <button key={key} onClick={() => setTab(key)} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: tab === key ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: tab === key ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: tab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-              {label}
-              {key === 'shared' && unread > 0 && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '18px', height: '18px', padding: '0 5px', borderRadius: '999px', background: '#e74c3c', color: '#fff', fontSize: '11px', fontWeight: 700 }}>{unread}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
+      <PortalHeader name={session.name || session.email} showBell={false} onTitleClick={() => setTab('showroom')} actions={[
+        { key: 'settings', label: 'Settings', active: tab === 'settings', onClick: () => setTab('settings') },
+        { key: 'signout', label: 'Sign Out', onClick: signOut },
+      ]}>
+        {tab !== 'settings' && (
+          <CollapsibleNavBar
+            items={TABS.map(([key, label]) => ({ key, label, active: tab === key, badge: key === 'shared' ? unread : 0, onSelect: () => setTab(key) }))}
+            currentLabel={Object.fromEntries(TABS)[tab]} currentBadge={tab === 'shared' ? unread : 0}>
+            {TABS.map(([key, label]) => (
+              <button key={key} onClick={() => setTab(key)} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: tab === key ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: tab === key ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: tab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+                {label}
+                {key === 'shared' && unread > 0 && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '18px', height: '18px', padding: '0 5px', borderRadius: '999px', background: '#e74c3c', color: '#fff', fontSize: '11px', fontWeight: 700 }}>{unread}</span>
+                )}
+              </button>
+            ))}
+          </CollapsibleNavBar>
+        )}
+      </PortalHeader>
 
       {loadError && (
         <div style={{ maxWidth: '880px', margin: '20px auto 0', padding: '0 24px' }}>

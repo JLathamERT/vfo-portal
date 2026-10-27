@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import CollapsibleNavBar from '../shared/CollapsibleNavBar'
 import { callApi, loadCachedData, loadCachedAction, getLastSeen } from '../../lib/api'
 
 // The member portal's tab bar, moved out of MemberPortal.jsx on 2026-10-20 so the
@@ -96,13 +97,28 @@ export default function MemberNavBar({ activeTab, onSelect, programs = [], websi
       {label}
     </button>
   )
+
+  const flatTabs = ['client_overview', 'tax_diagnostic', 'specialists', 'showroom', 'website', 'growthplan', 'ciq', 'gc', 'vault'].filter(tab => tab !== 'website' || websiteEnabled)
+  const tabLabel = key => ({ client_overview: 'Client Overview', tax_diagnostic: 'Tax Diagnostic', profile_edit: 'Edit Profile' })[key] || MEMBER_TAB_LABELS[key] || ''
+  const profileOptions = [{ key: 'profile', label: 'Profile' }, { key: 'profile_edit', label: 'Edit Profile' }]
+  const msmOptions = [
+    { key: 'msm_home', label: 'MSM Home' },
+    ...programs.map(p => ({ key: PROGRAM_KEYS[p.name], label: p.name })).filter(o => o.key)
+  ]
+  const pick = o => ({ key: o.key, label: o.label, active: activeTab === o.key, onSelect: () => onSelect(o.key) })
+  const menuItems = [
+    { key: 'profile_group', label: 'Profile', options: profileOptions.map(pick) },
+    { key: 'msm_group', label: 'MSM', options: msmOptions.map(pick) },
+    ...flatTabs.map(key => pick({ key, label: tabLabel(key) })),
+  ]
+
   return (
-    <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', padding: '0 24px', background: 'var(--vfo-card)' }}>
+    <CollapsibleNavBar items={menuItems} currentLabel={tabLabel(activeTab)}>
       <NavDropdown
         label="Profile"
         isActive={activeTab === 'profile' || activeTab === 'profile_edit'}
         activeTab={activeTab}
-        options={[{ key: 'profile', label: 'Profile' }, { key: 'profile_edit', label: 'Edit Profile' }]}
+        options={profileOptions}
         onSelect={onSelect}
         onLabelClick={() => onSelect('profile')}
       />
@@ -110,16 +126,11 @@ export default function MemberNavBar({ activeTab, onSelect, programs = [], websi
         label="MSM"
         isActive={activeTab === 'msm_home' || !!activeTab?.startsWith('msm_')}
         activeTab={activeTab}
-        options={[
-          { key: 'msm_home', label: 'MSM Home' },
-          ...programs.map(p => ({ key: PROGRAM_KEYS[p.name], label: p.name })).filter(o => o.key)
-        ]}
+        options={msmOptions}
         onSelect={onSelect}
       />
-      {tabBtn('client_overview', 'Client Overview')}
-      {/* Every member, no switch (2026-10-14) — see MemberTaxDiagnostic. */}
-      {tabBtn('tax_diagnostic', 'Tax Diagnostic')}
-      {['specialists', 'showroom', 'website', 'growthplan', 'ciq', 'gc', 'vault'].filter(tab => tab !== 'website' || websiteEnabled).map(tab => tabBtn(tab, MEMBER_TAB_LABELS[tab]))}
-    </div>
+      {/* Tax Diagnostic: every member, no switch (2026-10-14) — see MemberTaxDiagnostic. */}
+      {flatTabs.map(tab => tabBtn(tab, tabLabel(tab)))}
+    </CollapsibleNavBar>
   )
 }

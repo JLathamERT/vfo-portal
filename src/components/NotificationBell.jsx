@@ -125,9 +125,13 @@ export default function NotificationBell() {
 
       {open && (
         <div style={{
-          position: 'absolute', top: '100%', right: 0, marginTop: '8px',
+          // On a phone the panel, anchored to the bell's right edge, ran off the
+          // left of the screen: pin it under the header, full width, instead.
+          ...(window.innerWidth < 600
+            ? { position: 'fixed', top: '64px', left: '16px', right: '16px' }
+            : { position: 'absolute', top: '100%', right: 0, marginTop: '8px', width: '480px', maxWidth: 'calc(100vw - 32px)' }),
           background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-strong)',
-          borderRadius: '10px', width: '480px', maxWidth: 'calc(100vw - 32px)', maxHeight: '420px', overflowY: 'auto',
+          borderRadius: '10px', maxHeight: '420px', overflowY: 'auto',
           zIndex: 300, boxShadow: '0 8px 32px rgba(20,45,95,0.25)'
         }}>
           <div style={{
