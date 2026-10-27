@@ -109,12 +109,16 @@ The tracker's **Accountant decision confirmation email** step shows four buttons
 *"Which options should the accountant see?"* → **VFO FT or No** (`options=ft_no`) / **VFO FT, VFO Associate or No**
 (`options=ft_associate_no`) / Cancel.**
 
-**Admin backfill — "Complete - NO EMAIL:"** (2026-07-17, gotcha #243; **HIDDEN since 2026-09-14** behind `SHOW_NO_EMAIL_BACKFILL=false`): a second row (VFO FT / VFO Associate /
-No, solid-green) writes the REAL outcome status (`VFO FT confirmed` / `VFO Associate confirmed` / `No confirmed`)
-via `msm_save_client_task` so the matching Phase-6 track reveals, but sends NO email AND does **not** create the
-`accountant_onboarding` handoff record (that only happens in `automation_PFT_decisionemail` above) — so the AI
-PC Admin history line "Accountant Onboarding record created" stays correctly un-done. For migrating existing
-accountants without spamming them. Frontend-only; PFT-only (`PFTEngagementTrack.jsx`'s `DecisionStep`).
+**Admin backfill — "Complete - NO EMAIL:" — REMOVED 2026-10-27** (was 2026-07-17, gotcha #243; hidden from
+2026-09-14). It wrote the outcome status (`VFO FT confirmed` / `VFO Associate confirmed`) with NO email and NO
+`accountant_onboarding` record, and a decided step shows only its pill — so every accountant it touched was
+stranded at Phase 6 *"Sent to Accountant Onboarding: Pending"* with nothing to click. The code is deleted from
+`DecisionStep`, leaving `automation_PFT_decisionemail` (and the Undecided path that delegates to it) as the ONLY
+writers of a confirmed status, both of which create the handoff. The two stranded accountants (George Nwabukwu
+170 → onboarding 38, Santonya Jones 275 → 39) were linked by hand; George Oluwaboro (165, placeholder email) and
+Daliah Bui (99, her handoff record was created by the real email on 2026-07-17 and later DELETED — the FK is
+`ON DELETE SET NULL`) were left as-is pending a decision. The Meeting-step NO-EMAIL buttons stay hidden but kept —
+they only mark a meeting done and cannot strand a handoff.
 
 `automation_PFT_decisionemail`:
 - **vfo_ft** — drafts `PFT_decision_vfo_ft` with **two recipient buttons** ("I Don't Need Another Meeting -
@@ -153,6 +157,8 @@ delegate fails so the link can be retried. The sweep's 2-business-day re-send re
 An **AI PC Admin** history block (rendered under the decision step, styled like the Tax 5 AI PC Admin cascade)
 derives the full timeline from `pft_engagement`: undecided email sent → client's path choice → onboarding
 created → confirmation email sent → client's another-meeting response (plus reminder / PF-notified rows).
+**(2026-10-27, #671)** When an onboarding record exists but `ft_email_sent_at` is null (an accountant moved over
+from the old system and linked by hand), the confirmation-email row is hidden and the block counts as complete.
 
 **2026-08-12 (v734) — the reminder / PF-notified rows changed in two ways that matter here.** (1) They are now **conditional on their own column being stamped** (`<stall>_reminder_sent_at` / `<stall>_pf_notified_at`); they previously rendered **always**, which showed a chase history on engagements that never stalled. (2) `PFTEngagementTrack.jsx` **dropped its extra `!decResp` / `!ftResp` guards**, so the rows now **survive the client's response** instead of disappearing the moment the accountant replies — the whole point of a paper trail is that it outlives the thing it was chasing. The PF-notified row (the 4-business-day tier) additionally carries an indented **"Reached out?"** checkbox saving through `automation_stall_ack` (`pipeline:'pft'`, `stall` ∈ `discovery` / `ft` / `decision` → `<stall>_pf_ack_at`), hidden in `readOnly`. Every row also shows a non-editable MM/DD date. **No live PFT data existed to click-test**, so these paths were verified by diff + build only. Gotcha **#381**.
 
