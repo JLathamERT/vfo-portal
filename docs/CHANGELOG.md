@@ -25,7 +25,7 @@ Branch `claude/vfo-session-starter-999b7b` (react only, TWO chats; the edge work
 
 **Tested.** Jake on `/phone-preview` in his Chrome: every member tab, the client + specialist portals, the admin / planner notice and the all-size status colours on desktop. Claude in the pane at 390 / 360 wide with the audit, and at 1280 for desktop, on every changed screen. Build exit 0, 49 route pages (the preview route is not among them). **Not seen with real data (59524 has none):** GC History rows, an opened submitted Tax Diagnostic card, coaching meetings with rows. **Not laid out yet:** the member's client page `/member/client/:id` and the emailed link pages — hub OWED. Test member 59524 was set to Removed for testing and is Active again.
 
-**Ship.** Frontend only — no backend, migration or data change (`vfo-admin-api` v1054, 618 actions, unmoved).
+**Ship.** Frontend only — no backend, migration or data change (`vfo-admin-api` v1054, 618 actions, unmoved). Merged (react `4e1b708b` #544), published from merged main as `live-271-phone-layouts` (`index-CS3W2BPo.js`, live site verified; `/phone-preview` 404 in production), tag pushed.
 
 ## 2026-10-28 (d) — The Standard portal is now the Premium portal
 
