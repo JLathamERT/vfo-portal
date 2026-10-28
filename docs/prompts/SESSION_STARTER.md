@@ -1,5 +1,5 @@
 <!-- CANONICAL COPY of the VFO session starter prompt. The owner pastes this file's
-     contents at the top of every AI chat. Edit here, then re-copy. Last updated: 2026-10-02 (vfo-admin-api deploys use --use-docker, #574). -->
+     contents at the top of every AI chat. Edit here, then re-copy. Last updated: 2026-10-28 (phone layouts: check phone + desktop width, hand over the /phone-preview link; the worktree hook trap covers BOTH repos, #686). -->
 
 # VFO SESSION STARTER
 
@@ -94,6 +94,7 @@ If you violate this rule, you must:
 - Default to writing no comments in code; only add when WHY is non-obvious
 - Tests don't exist — verify manually via curl smoke tests + frontend click-through
 - **After every phase that touches user-facing behavior, stop and hand back to the user for manual click-through testing before proceeding.** Provide a clear numbered test script — exactly what to click, what URL to open, what to look for. Do not proceed to the next phase until the user confirms the test passed. The user does the testing, not Claude.
+- **Phone layouts (2026-10-28).** The member, client and specialist portals have phone layouts and the desktop must stay byte-identical. Any UI change is checked in the browser pane at phone width (390x844 and 360x780) AND at desktop width (1280x800 — the pane's own "desktop" is ~500px wide, which is a PHONE, #687): run `phoneAudit`, screenshot every screen / sub-tab / opened state, and follow the rules in `architecture/02-frontend-shell.md` *Phone layouts*. My phone testing is zero-setup: give me the `Phone preview` link the dev server prints, beside the dev URL.
 - **No half checks.** When verifying a multi-branch handler (happy path / failure path / pending path / idempotency), exercise every branch before declaring complete.
 - Pipeline smoke gate. After any vfo-admin-api deploy, or after editing shared routing/dispatch/webhook/auth code (router/dispatch.ts, router/webhooks.ts, index.ts, middleware/auth.ts, shared utils/), run scripts/smoke-pipelines.ps1 and confirm all 5 pipelines (MAP 1, Tax, Advisor, Accountant, PIP) return PASS. Set $env:VFO_SMOKE_TOKEN (or VFO_SMOKE_EMAIL/VFO_SMOKE_PASSCODE) first. Skip for frontend-only, doc-only, or isolated single-handler changes. This is a wiring check only — it does not replace deno check or manual click-through of the specific change.
 - **Execute SQL for the user via Supabase MCP.** Don't paste SQL with "run this for me" — call `mcp__...__execute_sql` or `apply_migration` directly.
@@ -138,7 +139,7 @@ Never branch from local `main` without fetching first — local `main` is not au
 Branch name must be specific to this chat (e.g. `claude/<descriptor>` matching the chat's purpose). Both repos use the same branch name so they can be tracked together. Never reuse an existing worktree from a prior chat. If the chat opens inside a pre-existing worktree from a prior session, STOP and propose creating new ones — do not edit in the old worktree.
 git worktree add .claude/worktrees/<chat-branch> -b <chat-branch> main
 
-**EXCEPTION — a CONTINUING chat.** If my task text below starts with `CONTINUING` (a handoff from an earlier chat on the same piece of work), do the OPPOSITE: do **not** create anything. Reuse the exact branch and worktree paths the handoff names, confirm they exist via `git worktree list`, run the 2b freshness check on them, and say which paths you are continuing in. Creating a second branch for work that already has one splits the change across two PRs — that is the failure this exception exists to prevent. Everything else in this prompt applies unchanged. **Known tooling trap (2026-09-21):** the app auto-opens the chat inside a FRESH edge worktree on its own branch, and the Edit/Write tools then refuse any path in a DIFFERENT edge worktree ("belongs to a different worktree"). Do not edit the auto-created one — it is the wrong branch. For edge-repo edits in a CONTINUING chat use an exact-match replace script through Bash (refuse on ≠1 match, preserve CRLF/LF), or hand the edit to a subagent; the react worktree is unaffected. Say so at startup so I can open the next chat from the right worktree.
+**EXCEPTION — a CONTINUING chat.** If my task text below starts with `CONTINUING` (a handoff from an earlier chat on the same piece of work), do the OPPOSITE: do **not** create anything. Reuse the exact branch and worktree paths the handoff names, confirm they exist via `git worktree list`, run the 2b freshness check on them, and say which paths you are continuing in. Creating a second branch for work that already has one splits the change across two PRs — that is the failure this exception exists to prevent. Everything else in this prompt applies unchanged. **Known tooling trap (2026-09-21, widened 2026-10-28, #686):** the app auto-opens the chat inside FRESH worktrees on their own branches — in BOTH repos — and the Edit/Write tools then refuse any path in a DIFFERENT worktree ("belongs to a different worktree"), the react worktree included. Do not edit the auto-created ones — they are the wrong branch. In a CONTINUING chat edit through an exact-match replace script via Bash (refuse on ≠1 match, preserve CRLF/LF; keep the scripts in the session scratchpad). Say so at startup so I can open the next chat FROM the branch's worktree.
 
 ### 2b. Verify worktree freshness (auto-created worktrees especially)
 If the chat opened inside worktrees that already exist (the app sometimes creates them before the chat starts, cut from LOCAL main which may be stale), run in EACH worktree:
@@ -151,6 +152,8 @@ Run `git worktree list` in each repo and explicitly state the worktree path you 
 
 ### 4. Start the dev server
 cd C:\vfo-react\.claude\worktrees\<chat-branch>; npm run dev
+
+It prints `Phone preview: http://localhost:<port>/phone-preview` under the dev URL — give me both.
 
 NO `VITE_API_URL` override. This hits the real Supabase project (`ejpsprsmhpufwogbmxjv`), real database, real Gmail drafts, real Stripe sandbox — and the user logs in with THEIR real credentials. Never run `supabase functions serve`, never run `supabase start` (local Docker Postgres), never set `$env:VITE_API_URL=http://127.0.0.1:...`. There is no "test login" — `dev@local.test` / `dev2026` is a seeded local-only fake and must not be offered.
 
