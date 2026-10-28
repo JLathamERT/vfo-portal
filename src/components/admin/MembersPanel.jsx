@@ -888,6 +888,41 @@ function AddStrategicGroupForm({ onGroupsChange }) {
   )
 }
 
+// The admin's "Switch on Direct for this member" tick box on the Tax Planning
+// card (2026-10-28, any admin). Ticking needs 2/2 qualifying clients (the server
+// refuses it otherwise); unticking is always allowed and stops only NEW Direct
+// cases. Writes through member_tax_direct_set, which logs who clicked.
+function DirectApprovalControl({ standing, memberNumber, memberName, onChange }) {
+  const [busy, setBusy] = useState(false)
+  const on = !!standing?.approved
+  const locked = !on && !standing?.ready
+  async function toggle() {
+    if (busy || locked) return
+    const next = !on
+    const question = next
+      ? `Switch on Direct to Tax Planning for ${memberName}?
+
+They will be able to choose "I run this case (Direct)" when they add a tax client.`
+      : `Switch off Direct to Tax Planning for ${memberName}?
+
+They will no longer be able to start new Direct cases. Direct cases already running carry on.`
+    if (!window.confirm(question)) return
+    setBusy(true)
+    try {
+      const res = await callApi('member_tax_direct_set', { member_number: memberNumber, approved: next })
+      if (res?.standing) onChange(res.standing)
+    } catch (err) {
+      window.alert(err?.message || 'Something went wrong')
+    } finally { setBusy(false) }
+  }
+  return (
+    <input type="checkbox" checked={on} disabled={locked || busy} onChange={toggle}
+      title={locked ? 'Available once they reach 2/2' : on ? 'Untick to switch Direct off' : 'Switch on Direct for this member'}
+      aria-label="Switch on Direct for this member"
+      style={{ width: '16px', height: '16px', margin: '2px 0 0', flexShrink: 0, cursor: locked || busy ? 'not-allowed' : 'pointer' }} />
+  )
+}
+
 function MemberProfile({ member, allMembers, onDataChange, activeSection, hiddenFields = [], typeOptionsOverride = null, onOpenMember, memberConnections = [] }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -1174,6 +1209,14 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               profile={profile}
               memberNumber={member.plugin_member_number}
               directEligibility={directEligibility}
+              directControl={directEligibility ? (
+                <DirectApprovalControl
+                  standing={directEligibility}
+                  memberNumber={member.plugin_member_number}
+                  memberName={member.name || [profile.first_name, profile.last_name].filter(Boolean).join(' ') || member.plugin_member_number}
+                  onChange={setDirectEligibility}
+                />
+              ) : null}
               hideRevenueDecision={hiddenFields.includes('revenue_decision')}
               onOpenMember={onOpenMember}
               styles={{ sectionStyle, cardTitle }}

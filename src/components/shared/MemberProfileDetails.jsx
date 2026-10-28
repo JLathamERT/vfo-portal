@@ -7,8 +7,9 @@ import { logoUrl } from './logoPng'
 // (Details tab) and the member's own Profile tab so the two always mirror.
 // Order: Member Details (+ Certifications) / Revenue Details (+ Tax Planning,
 // which also shows the two branding CHOICES) / Branding (the logo alone) /
-// Network / Bio. Every value comes off `profile` (the member_profile_load row). The admin passes `payoutSlot` (its Stripe controls)
-// and `onOpenMember` (clickable names); the member gets a read-only status line.
+// Network / Bio. Every value comes off `profile` (the member_profile_load row). The admin passes `payoutSlot` (its Stripe controls),
+// `directControl` (the Direct to Tax Planning tick box) and `onOpenMember`
+// (clickable names); the member gets read-only status lines.
 //
 // Network is ONE full-width card whose people sit in a responsive grid, so a
 // long introductions / connections / corporate list grows sideways first
@@ -91,8 +92,47 @@ export function PayoutStatusLine({ status }) {
 
 // people: { introducedBy, introducerOf[], connections[], corporate[] } — each
 // person is { name, number, member_type, chip? }.
+// Direct to Tax Planning on the Tax Planning card (2026-10-28): 2 qualifying
+// clients make a member READY; an admin's tick (directControl, admin only)
+// switches it on. `standing` is member_profile_load's direct_eligibility.
+export function directCountLabel(count) {
+  const n = Number(count) || 0
+  return n > 2 ? `${n} qualifying clients` : `${n}/2 qualifying clients`
+}
+
+const standingNote = { fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 500, marginTop: '3px' }
+const standingCount = { fontSize: '12.5px', color: 'var(--vfo-muted)', fontWeight: 500 }
+
+// One plain line — the state, then the count muted after a dot — plus a second
+// only once switched on (who / since when). The admin's tick box (`control`)
+// sits to the left of it.
+function DirectStanding({ standing, admin, control }) {
+  const count = <span style={standingCount}> · {directCountLabel(standing.qualifying_count)}</span>
+  let line
+  let note = null
+  if (standing.approved) {
+    line = <>On{admin && count}</>
+    note = admin
+      ? `By ${standing.approved_by || 'a VFO admin'}, ${formatDate(standing.approved_at)}`
+      : standing.feature_released === false ? 'Opens when Direct is released' : `Since ${formatDate(standing.approved_at)}`
+  } else if (standing.ready) {
+    line = <>{admin ? 'Needs approval' : 'Awaiting approval'}{count}</>
+  } else {
+    line = <>Not yet eligible{count}</>
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '9px' }}>
+      {control}
+      <div>
+        {line}
+        {note && <div style={standingNote}>{note}</div>}
+      </div>
+    </div>
+  )
+}
+
 export default function MemberProfileDetails({
-  profile, memberNumber, directEligibility, hideRevenueDecision = false,
+  profile, memberNumber, directEligibility, directControl, hideRevenueDecision = false,
   payoutSlot, people = {}, onOpenMember, styles,
 }) {
   const { sectionStyle, cardTitle } = styles
@@ -170,10 +210,7 @@ export default function MemberProfileDetails({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '18px' }}>
               {directEligibility && (
                 <Field label="Direct to Tax Planning">
-                  {directEligibility.eligible ? 'Eligible' : 'Not yet eligible'}
-                  <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 500, marginLeft: '6px' }}>
-                    ({directEligibility.qualifying_count} of 2 qualifying clients{directEligibility.feature_released === false ? ', not released yet' : ''})
-                  </span>
+                  <DirectStanding standing={directEligibility} admin={!!directControl} control={directControl} />
                 </Field>
               )}
               <Field label="Logo on ROI presentations">{profile.logo_image ? (profile.logo_enabled ? 'On' : 'Off') : '—'}</Field>

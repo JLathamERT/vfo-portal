@@ -358,13 +358,17 @@ export default function TaxIntakeForm({
               })}
             </div>
           )
+          // 2 qualifying clients make a member READY; the VFO team's tick on their
+          // profile switches Direct on (2026-10-28).
           const directNote = !eligibility
-            ? 'Direct (run the case yourself) is available once you have 2 qualifying tax clients.'
+            ? 'Direct (run the case yourself) is available once you have 2 qualifying tax clients and the VFO team switches it on.'
             : directOff
               ? 'Direct (run the case yourself) is not available for your account yet.'
               : directOk
-                ? `Direct is available because you have ${eligibility.qualifying_count} qualifying tax clients.`
-                : `Direct (run the case yourself) becomes available once you have 2 qualifying tax clients — you have ${eligibility.qualifying_count}.`
+                ? 'Direct is switched on for your account.'
+                : eligibility.direct_ready
+                  ? `You have ${eligibility.qualifying_count > 2 ? eligibility.qualifying_count : '2/2'} qualifying tax clients. Direct is waiting for the VFO team to switch it on.`
+                  : `Direct (run the case yourself) becomes available once you have 2 qualifying tax clients and the VFO team switches it on — you have ${eligibility.qualifying_count}.`
           // The route question shows only while the member's tax_direct switch is
           // on (Jake 2026-10-14); otherwise every case is classic and only the
           // fill question is asked.
