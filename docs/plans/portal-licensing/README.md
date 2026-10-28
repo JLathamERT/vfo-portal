@@ -59,9 +59,11 @@ An annual licence is a **disbursement**: the $300 comes off the fee before it is
 | **L1** | **Tax licence** (= DIRECT unit 4) | $300/yr disbursement | `portal_licensing` (EXISTS — it also carries the new tax agreement) | **SHIPPED 2026-09-28** (backend v921, dark behind the switch, Test member only; flow [flows/tax-planning.md](../../flows/tax-planning.md#client-portal-licence-direct-unit-4--portal-licensing-l1-2026-09-28)); still owed: the $300 TRANSFER to a VFO Portal Stripe account (display only today) |
 | L2 | Basic client portal: member sends the portal link + Showroom introduction button | $0 | `client_basic_portal` | **SHIPPED 2026-10-09** (backend v953 → v955, dark behind the switch, Test member only; decisions 7-16; flow [flows/client-portal.md](../../flows/client-portal.md)) |
 | L3 | Holistic licence | $300/yr disbursement | `holistic_licence` | planned — ON HOLD behind L5 (decision 17); open question whether VFOS-led Holistic carries the licence at all (decision 18) |
-| L4 | CIQ licence (Basic vs Standard for a CIQ client; member self-drive) | $0 or $25/month | `ciq_licence` | **build plan written 2026-10-16** (below; decisions 35-48, decision 38 still open) — no code yet |
+| **L4** | **CIQ licence** (Basic vs Premium for a CIQ client; member self-drive) | $0 or $25/month | `ciq_licence` | **SHIPPED 2026-10-16** (v1009 + `live-245-ciq-licence`, dark behind the switch, Test member only; decisions 35-62, decision 38 still open; flow [flows/ciq-licence.md](../../flows/ciq-licence.md)) |
 | **L5** | **Mirrored joint clients** (connected advisor ↔ accountant, and one-off cases) | $0 (Q4 deck) | `mirrored_clients` | **SHIPPED 2026-10-12** (backend v959 → v963, dark behind the switch, Test member only; the member Client Overview tab ships with no switch; decisions 19-34; flow [flows/client-mirroring.md](../../flows/client-mirroring.md)) |
-| L6 | VFO Associate + Financial Collaborator portals | $0 / $25/month + their existing fees via the portal | `associate_fc_portal` | planned — Jake: NOT being worked on yet |
+| L6 | **Member portal tiers** — Tier 1 (VFO Associates, Financial Collaborators and the other types in decision 68) vs Tier 2 (today's portal); Tier 3 (Fusion) not yet | — (no money; the tier comes from the member type) | `member_tiers` | **NEXT — decided 2026-10-28 (decisions 68-71)**, build plan in the build chat; build together with L8 |
+| L6b | **Connected VFO Associate $25/month portal licence** (+ the $145 membership for unconnected Associates / FCs if not already billed) | $25/month (accountant or connected advisor pays) | — (decide) | **AFTER L6, its own chat** — decision 72; open questions in §3 L6b |
+| L8 | **Client "My Progress" tab** — a Premium client sees their case progress | $0 (part of Premium) | `client_case_progress` | **NEXT — decided 2026-10-28 (decisions 63-67)**, build together with L6 |
 | L7 | Portal suspension rules by member tier | — | `portal_suspension` | planned |
 | — | Catalyst v Fusion structure, member-direct Holistic / PFT ("DIY"), Accredited benefits | — | — | LATER — Jake: not being worked on yet |
 
@@ -322,7 +324,21 @@ Gates: `deno check` 0 · action count 567 → 569 · build exit 0 · advisor STR
 
 **Rollback:** switch off (partners lose every mirror at once, owners lose the tab); Supabase version revert; `git revert` the squash; the table is additive. Phase 0 is not switch-gated — its rollback is a version revert.
 
-### L6 — VFO Associate and Financial Collaborator portals (NOT being worked on yet — Jake)
+### L6 — Member portal tiers: Tier 1 (decided 2026-10-28 — build next, with L8)
+
+**Source:** the member PDF "Changes coming to ERT & the VFO Portal" (Downloads, read 2026-10-28) page 2 — *Financial Collaborators & VFO Associates: VFO Portal - Tier 1; Catalyst Advisors & VFO Fast Track Accountants: Tier 2; Fusion Advisors & Advanced Accountants: Tier 3* — and page 6 (Tier 1 = give clients the VFO Showroom + mirror joint cases with connected members).
+
+**Decided (Jake, decisions 68-71):**
+- **The tier comes from `members.member_type`** — no money, no upgrade, no new admin field. **Tier 1:** `Financial Collaborator`, `VFO Associate (Advisor)`, `VFO Associate (Direct)`, `Team Member`, `Action Coach`, `Tax Plan IQ` (every strategic-partner type), `VFO Reconciliation (Free)`, `Survey #1` / `#2` / `#3`, `FAC Historic`, `Free Legacy TBM`. **Tier 2:** every other type — Catalyst family, VFO FT / Implementation types, Accelerator, Plus, Corporate Member, Free Corporate Member (+ Legacy) and, until Tier 3 exists, the Fusion family (Fusion, Fusion A, Fusion A - I/M, Free Fusion, Legacy Fusion, Advanced). **Tier 3** (Fusion) is not built. A type added later must be classified — one shared list, both repos.
+- **A Tier 1 member keeps ONLY:** Profile, **Clients** (Client Overview — their own clients, Add client, Send portal access, Client Mirroring, and the cases mirrored TO them) and **Showroom** (+ Settings). **Hidden:** CIQ, Vault, Programs / 90 Day Plan, Tax Diagnostic, Specialists, Growth Plan, Growth Credits, Website plugin. A hidden tab's actions must also be REFUSED server-side for a Tier 1 caller (a hidden tab is not a gate, #353).
+- **A Tier 1 member's clients:** unchanged — a client who pays for tax planning still gets the 12-month Premium tax licence; there is no $25 CIQ route (CIQ is hidden).
+- **Switch `member_tiers`** (keyed on the member). **Testing:** by changing Test member 59524's `member_type` — 59524 is `VFO Reconciliation (Free)`, i.e. Tier 1 as soon as the switch is on; change it to e.g. Catalyst to see Tier 2.
+
+### L6b — Connected VFO Associate $25/month portal licence (AFTER L6, its own chat — decision 72)
+
+**Source:** the member PDF page 6 — **connected Associate:** membership $0 (discounted by $145/month) and the **accountant pays a VFO Portal licence of $25/month** (*"Connected Advisor can choose to pay for Accountant if prefer"*); **unconnected Associate** and **Financial Collaborator:** **$145/month** membership. All Tier 1; the PDF names no upgrade above Tier 1. **Open (ask before building):** (C1) is the $145 already billed today (Membership Fees / contract), so only the connected Associates' $25 is new? (C2) the connection = the Associate's existing "connected member" field? (C3) who pays — an admin setting "paid by: accountant / connected advisor", or the advisor chooses in their portal? (C4) billed through the existing Membership Fees system or its own subscription like the client $25? (C5) Stripe account — VFO Services "VFO Portal" (decision 36) or ERT like membership? (C6) card fee 2.9% + $0.30 / bank none? (C7) start date (e.g. 2027-01-01) and the setup-link email at switch-on? (C8) a missed payment = the existing arrears handling until L7? (C9) does it replace anything an Associate pays today by contract?
+
+### L6 (earlier notes) — VFO Associate and Financial Collaborator portals
 
 **What (sheet VFO ASSOCIATE + FINANCIAL COLLABORATOR tabs; deck slides 62-64, 69-73):**
 - **VFO Associate (accountant):** membership $25/month when connected to an advisor member (the connected member pays), $145/month direct — charged **through the portal** once onboarded (today by contract, month to month; the contract needs reviewing for portal access). They get the **Basic member portal**: VFO Showroom with the specialist-introduction button (Tracy notified), mirrored joint clients (L5), and loading their own clients + sending them the Basic client portal (L2). No CIQ, no Vault, no training.
@@ -336,6 +352,18 @@ Gates: `deno check` 0 · action count 567 → 569 · build exit 0 · advisor STR
   - **Financial Collaborator:** Basic = $99/month; Standard = +$25 → **$124/month**.
   - The upgrade request is to a **6-month** VFO Fast Track Accountant Implementation (Associate) or Catalyst Implementation (FC), with direct access to the sales team.
   - (LATER, member-led PFT) a $0 licence to run PFT; an accountant joining VFO Fast Track gets a $4,000 annual membership discount (the member's gift) and a free Standard portal.
+
+### L8 — Client "My Progress" tab (decided 2026-10-28 — build next, with L6)
+
+**Source:** §2.1 (Premium = Showroom + Vault + "case progress in summary"; L1 question 5 is now answered) and the member PDF pages 3 + 5 ("client tracking … see progress on the cases", "case tracking").
+
+**Decided (Jake, decisions 63-67):**
+- **Premium clients only** (a tax licence, a paid $25 CIQ month, Holistic once L3 exists). Basic = Showroom only, unchanged.
+- **What it shows = the mirrored-member view of the member's own client screen** (L5): every program, step and status exactly as the member sees it, **no buttons, money blanked, and NO notes** (shared or internal). Jake may scale it down later — build the full view first.
+- **Layout = the member's client page:** a **Holistic** client gets the program tabs / dropdown sections the member sees — MAP 1, each Regular priority, Tax, PIP — only those the client has; a **Tax Planning** client gets Tax only. Tax plans are listed exactly as the member's list (one per plan / year).
+- **Completed and stopped plans stay visible.**
+- **Tab "My Progress"** in the client portal (beside Showroom / My One Page Plan / Vault). **Own switch `client_case_progress`**, keyed on the client's OWNER, shown inside the **VFO Client Portal** card; Test member only first.
+- **Security:** a client action reads only `auth.callerClientId` (never a body id, #310 spirit), reuses the L5 money mask (`utils/mirror-mask.ts`, #602 — keys kept, values blanked) and strips every notes payload.
 
 ### L7 — Portal suspension rules (deck slides 79-82)
 
@@ -424,3 +452,13 @@ Each of these, when it is picked up, becomes a unit here with its own switch.
 | 60 | **L4 (SUPERSEDES decision 40's "stops at once"):** a client on a PAID $25 month who pays a tax retainer finishes that month; the $25 stops at the month end (no further charge, nothing refunded) and the tax year starts that day. A $25 that is past due, still clearing or with a payment page open stops at once and the tax year starts today. Email 322 reworded ([COVERED FROM] + a code-built stop sentence). | 10-22 |
 | 61 | `TAX_client_portal_login` (300) is Cc'd to the member, the PF, Tracy and Tray and Bcc'd to Paul + Anton on BOTH variants — accepted knowing everyone copied holds the set-up link until the client uses one. | 10-22 |
 | 62 | **L5 (SUPERSEDES decisions 20 and 33's CIQ / ERT exclusions):** the mirrored member sees the client's CIQs exactly as the owner does, read-only, and the Vault's ERT/VFOS Documentation section too (fees in those documents accepted). | 10-22 |
+| 63 | **L8 (answers L1 question 5):** a client sees their case progress only on the **Premium** portal (tax licence, paid $25 CIQ month, Holistic once L3 exists); Basic stays Showroom only. | 10-28 |
+| 64 | L8: the client sees the **mirrored-member view** of the member's client screen — every program, step and status, no buttons, money blanked — **minus all notes**. Full view first; Jake may scale it down later. | 10-28 |
+| 65 | L8: same layout as the member's client page — Holistic = MAP 1 / Regular priorities / Tax / PIP sections the client has; Tax Planning = Tax only; tax plans listed as the member's list. | 10-28 |
+| 66 | L8: completed AND stopped plans stay visible to the client. | 10-28 |
+| 67 | L8: tab **"My Progress"**; own switch `client_case_progress` (owner-keyed), shown in the VFO Client Portal card; Test member only first. | 10-28 |
+| 68 | **L6 (supersedes the L6 "Basic member portal" bullets):** the member tier comes from `member_type` only. Tier 1 = Financial Collaborator, VFO Associate (Advisor / Direct), Team Member, Action Coach, Tax Plan IQ (every strategic-partner type), VFO Reconciliation (Free), Survey #1-3, FAC Historic, Free Legacy TBM; Tier 2 = every other type (Fusion family too until Tier 3 exists); Tier 3 not built. | 10-28 |
+| 69 | L6: a Tier 1 member keeps only **Profile, Clients (incl. cases mirrored to them) and Showroom**; CIQ, Vault, Programs / 90 Day Plan, Tax Diagnostic, Specialists, Growth Plan, Growth Credits and the Website plugin are hidden AND refused server-side. | 10-28 |
+| 70 | L6: a Tier 1 member's clients are unchanged — tax planning still brings the Premium tax licence; no $25 CIQ route (CIQ hidden). | 10-28 |
+| 71 | L6: **no money** for tiers and no upgrades — the tier is set only by the member type; switch `member_tiers`; tested by changing 59524's member type (it starts as Tier 1). | 10-28 |
+| 72 | **L6b (its own later chat):** per the member PDF, a connected VFO Associate pays a **$25/month VFO Portal licence** (the connected advisor may pay it instead) with a $0 membership; unconnected Associates and FCs pay $145/month; all Tier 1. The FC $99 vs $145 conflict (decision 44) is settled by the PDF: **$145**. Questions C1-C9 in §3 L6b. | 10-28 |
