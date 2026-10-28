@@ -8,6 +8,24 @@
 
 ---
 
+## 2026-10-28 — Specialist revenue emails use the current work email; every email subject ends with the person's name
+
+Branch `claude/specrev-current-email` (edge code + migration file; react docs), the same chat as 2026-10-27 (c)–(e). `vfo-admin-api` **v1050 → v1051** (from the branch, `--use-docker`), action count **617** unchanged, smoke **5/5 vs v1051** (Jake). Migration `20261028120000_email_subjects_end_with_name.sql` (data only), applied via MCP as `email_subjects_end_with_name` AFTER the deploy; advisor GREEN at baseline.
+
+- **Why (1):** Carson Grover's specialist invoice and receipt (request 57, $1,375 ACH, cleared 2026-10-28) was drafted To `cgrover@wealthig.com`, though his specialist record (expert 6146) now holds his assistant `brittany@wealthig.com`. A SpecRev request or recurring plan COPIES `experts.email` into `specialist_email` when it is created (Tracy created 57 on 2026-10-20); every later email read that copy. Jake edited the draft by hand.
+- **Built (1):** NEW `utils/specialist-current-email.ts` `currentSpecialistEmail(supabase, expertId, stored)` reads `experts.email` at SEND time, falling back to the stored copy only when there is no expert id, no email or a failed read. Used by the five later emails:
+  - the payment confirmation / verify-bank email (`confirmation-email.ts`);
+  - the invoice + receipt (`invoice-receipt.ts`), whose PDFs print the current address too;
+  - the 48-hour payment reminder and the recurring set-up reminder (`payout-sweep.ts`). The recurring query's explicit select gained `expert_id` (#448);
+  - the recurring set-up confirmation (`recurring-confirmation-email.ts`).
+  - The request send and recurring create already read the live row (#680).
+- **Why (2):** the same email's subject ("VFO Services - Invoice and Receipt") named nobody. Jake: every subject ends " - <full name of the person it is for>", and a revenue-share confirmation names the person RECEIVING the share.
+- **Audit:** 314 templates. 208 already ended with a name token. About 75 name the person before a bracket or suffix (`- [Client Name] ([Member Name])`, `- [Kind Label]`, `Payment [X] of [Y]`), and about 20 name them mid-subject; those were left alone. **32 named nobody** and were fixed.
+- **Built (2):** NEW `utils/subject-name.ts` `withSubjectName(subject, token, name)` fills the token, or drops the whole " - [token]" ending when no name is on file, and flattens line breaks (the subject is a header). Wired into the 17 senders whose subject did not already take a name: SpecRev request / bank-transfer / confirmation / verify / invoice / reminder / recurring setup / confirmation / reminder ([Specialist Name]); share confirmation / money-mapping / connect set-up incl. its "Reminder:" copy ([Recipient Name] = the share's recipient); bg-check request + the sweep reminder key; member / specialist connect set-up; payment-continuation link + both reminder senders ([Client Name], also when the member pays); card update ([Name]); manual Connect payment ([Recipient Name]); login set-up ([Name]); decision code ([Recipient Name], selects gained `last_name`). Tokens that already worked: `[SPECIALIST_NAME]` (licence continuation), `[Member Name]` (GC membership), `[NAME]` (password reset), `[Client Name]` (PIP receipt, tax form link), `[Company]` (group payout set-up; no person on file, so the group's name).
+- **Order:** the code deployed first and the subjects were applied after, so no email could show a raw token. A plain hyphen throughout, because some senders write the Subject header raw.
+- **Tested:** `deno check` 0; the helper on 6 cases (name, blank, null, a CR/LF name, a `$1` name, no token); all 32 rows read back with the token at the end; no function errors after the deploy; smoke 5/5.
+- **Not exercised:** no real email with a new subject has gone out yet. Most fire on a payment or a nightly sweep.
+
 ## 2026-10-27 (e) — Tax deposit emails: refund wording fits bank payers; client copies stop naming the client
 
 Branch `claude/tax-email-wording` (edge: migration file; react: docs), ONE chat (the same as (c) and (d)). Data only: migration `20261027210000_tax_deposit_email_wording.sql`, applied via MCP as `tax_deposit_email_wording`. No code, no deploy. Copy shown to and approved by Jake before it was applied.
