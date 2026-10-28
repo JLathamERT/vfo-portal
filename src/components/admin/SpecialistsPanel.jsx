@@ -35,7 +35,7 @@ const ECOSYSTEMS = ['Tax Planning', 'Business Advisory', 'Legal Services', 'Risk
 const MEMBER_SERVICES = 'Member Services'
 // The Tax section (shared, one set per person) only surfaces under this ecosystem.
 const TAX_ECOSYSTEM = 'Tax Planning'
-const STATUS_COLORS = { Active: '#1b9254', Lost: '#e74c3c', Removed: 'var(--vfo-muted)' }
+import { STATUS_COLORS } from '../shared/statusColors'
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
 const HEADSHOT_BASE = 'https://biz-diagnostic.com/Uploads/ExpertPhotos/'
 
@@ -853,7 +853,7 @@ function SpecialistProfileView({ expert, ecos: ecosProp, connectBusy = false, co
             </div>
             {c.short_bio && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '6px' }}>{c.short_bio}</div>}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap', fontSize: '12.5px', color: 'var(--vfo-muted)' }}>
-              {expert.top_of_t && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e06717', flexShrink: 0 }} />Top of the T</span>}
+              {expert.top_of_t && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e06717', flexShrink: 0 }} />Top of the T</span>}
               {expert.top_of_t && expert.background_check && <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>}
               {expert.background_check && <span>Background check: {expert.background_check}</span>}
             </div>

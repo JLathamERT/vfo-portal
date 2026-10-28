@@ -149,7 +149,7 @@ export default function ClientPortal() {
       </PortalHeader>
 
       {tab === 'home' && (
-        <div style={{ textAlign: 'center', padding: '60px 24px 0' }}>
+        <div style={{ textAlign: 'center', padding: '60px var(--vfo-gutter) 0' }}>
           <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2.5px', marginBottom: '10px' }}>Welcome back</p>
           <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.02em', fontSize: '38px', color: 'var(--vfo-heading)', margin: 0 }}>{session.name || session.email}</p>
           <div style={{ width: '46px', height: '4px', borderRadius: '99px', background: '#fb895a', margin: '18px auto 0' }} />
@@ -168,7 +168,7 @@ export default function ClientPortal() {
       )}
 
       {loadError && (
-        <div style={{ maxWidth: '880px', margin: '20px auto 0', padding: '0 24px' }}>
+        <div style={{ maxWidth: '880px', margin: '20px auto 0', padding: '0 var(--vfo-gutter)' }}>
           <div style={{ background: 'rgba(217,48,37,0.10)', border: '1px solid rgba(217,48,37,0.32)', borderRadius: '12px', padding: '14px 16px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#d93025', marginBottom: '6px' }}>We couldn't load your portal</div>
             <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', wordBreak: 'break-word' }}>{loadError}</div>
@@ -183,7 +183,7 @@ export default function ClientPortal() {
           : <MemberShowroom experts={showroom.experts} exclusions={showroom.exclusions} ecoMap={showroom.ecoMap} introRequest={introRequest} clientView />
       )}
       {tab === 'plan' && planAllowed && (
-        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
+        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
           {!plan
             ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)', fontSize: '14px' }}>Loading your plan…</div>
             : plan.error
@@ -192,12 +192,12 @@ export default function ClientPortal() {
         </div>
       )}
       {tab === 'vault' && vaultAllowed && (
-        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
+        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
           <ClientVault />
         </div>
       )}
       {tab === 'settings' && (
-        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
+        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
           <ChangePasswordCard action="client_update_login" />
           <div style={{ maxWidth: '460px', margin: '20px auto 0' }}>
             <AppearanceCard />

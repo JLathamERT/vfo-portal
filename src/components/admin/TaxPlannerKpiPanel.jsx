@@ -9,7 +9,7 @@ import { KpiHero, SplitDonut, BreakdownRows, BreakdownCard } from './KpiKit'
 const LENSES = [
   { key: 'active', label: 'Active', color: '#1b9254', desc: 'of total' },
   { key: 'lost', label: 'Lost', color: '#e74c3c', desc: 'of total' },
-  { key: 'removed', label: 'Removed', color: '#9fb1d6', desc: 'of total' },
+  { key: 'removed', label: 'Removed', color: '#9b1c1c', desc: 'of total' },
   { key: 'all', label: 'Total', color: '#125ecc', desc: 'incl. lost & removed' },
 ]
 

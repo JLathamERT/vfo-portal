@@ -18,7 +18,7 @@ import { formatDate } from '../../lib/dates'
 import ExportButton from '../shared/ExportButton'
 import { exportDate } from '../../lib/exportXlsx'
 
-const STATUS_COLORS = { Active: '#1b9254', Lost: '#e74c3c', Removed: 'var(--vfo-muted)' }
+import { STATUS_COLORS, statusColor } from '../shared/statusColors'
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
 
 const PLANNER_EXPORT_COLUMNS = [
@@ -462,7 +462,7 @@ export default function TaxPlannersPanel({ section }) {
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border-soft)'}>
                 <span style={{ fontSize: '14px', color: 'var(--vfo-ink)', fontWeight: 600, width: '220px', flexShrink: 0 }}>{plannerDisplayName(planner)}</span>
                 <span style={{ width: '90px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-ink)' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: planner.status === 'Active' ? '#1b9254' : planner.status === 'Lost' ? '#e74c3c' : 'var(--vfo-faint)' }} />
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: statusColor(planner.status) }} />
                   {planner.status || '—'}
                 </span>
                 <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', width: '160px', flexShrink: 0 }}>{planner.member_type || '—'}</span>

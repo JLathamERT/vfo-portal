@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 // Purely presentational track-view kit — progress hero + phase badges.
 // No API calls, no state, no business logic: callers pass display data only.
@@ -80,13 +81,17 @@ export function HeroAvatar({ src, name, size = 60 }) {
 // `accent={false}` drops the gradient strip; omitting `title` turns the card
 // into a pure progress card (counter shown in the title slot) — use these for
 // nested cards so stacked heroes don't repeat the same treatment.
+// Phone: no phase stepper - a dozen phases ran ~1,100px wide and were cut off,
+// it is not tappable, and the bar + the phase list below already say where the
+// track is (2026-10-28).
 export function TrackHero({ eyebrow, title, meta, action, completed, total, unitLabel = 'tasks completed', steps, accent = true, avatar = null }) {
+  const isPhone = useIsPhone()
   const hasBar = typeof total === 'number' && total > 0
   const pct = hasBar ? Math.round(completed / total * 100) : 0
   return (
-    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', marginBottom: '20px', overflow: 'hidden' }}>
+    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', marginBottom: isPhone ? '14px' : '20px', overflow: 'hidden' }}>
       {accent && <div style={{ height: '4px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 55%, #0a85e8 100%)' }} />}
-      <div style={{ padding: '18px 22px 16px' }}>
+      <div style={{ padding: isPhone ? '14px 16px' : '18px 22px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: '200px', flex: 1 }}>
             {avatar}
@@ -118,7 +123,7 @@ export function TrackHero({ eyebrow, title, meta, action, completed, total, unit
             <div style={{ width: `${pct}%`, height: '100%', borderRadius: '999px', background: 'linear-gradient(90deg, #125ecc 0%, #0a85e8 100%)', transition: 'width 0.3s' }} />
           </div>
         )}
-        {steps && steps.length > 0 && <PhaseStepper steps={steps} />}
+        {steps && steps.length > 0 && !isPhone && <PhaseStepper steps={steps} />}
       </div>
     </div>
   )

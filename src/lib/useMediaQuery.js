@@ -12,3 +12,13 @@ export function useMediaQuery(query) {
   }, [query])
   return matches
 }
+
+// The one phone breakpoint, for a layout that must change SHAPE on a phone (a
+// table that becomes cards, a pair of columns that stacks). Prefer layouts that
+// reflow on their own (flexWrap, auto-fit grids, minWidth: 0) and reach for this
+// only where they cannot.
+export const PHONE_QUERY = '(max-width: 640px)'
+
+export function useIsPhone() {
+  return useMediaQuery(PHONE_QUERY)
+}

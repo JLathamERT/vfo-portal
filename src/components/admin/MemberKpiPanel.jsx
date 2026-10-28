@@ -51,7 +51,7 @@ const LENSES = [
   { key: 'paused', label: 'Paused', color: '#e06717', desc: 'of active', sub: true },
   { key: 'arrears', label: 'In Arrears', color: '#b45309', desc: 'of active', sub: true },
   { key: 'lost', label: 'Lost', color: '#e74c3c', desc: 'of total' },
-  { key: 'removed', label: 'Removed', color: '#9fb1d6', desc: 'of total' },
+  { key: 'removed', label: 'Removed', color: '#9b1c1c', desc: 'of total' },
   { key: 'all', label: 'Total', color: '#125ecc', desc: 'incl. lost & removed' },
 ]
 

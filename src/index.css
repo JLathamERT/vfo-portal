@@ -112,6 +112,21 @@
   --vfo-success-text-2: #5fd99a;
 }
 
+/* Phone spacing (2026-10-28). Page side margins and card padding read these
+   in inline styles - padding: '28px var(--vfo-gutter)' - so every page slims
+   down on a phone with no per-page code. Width matches PHONE_QUERY in
+   src/lib/useMediaQuery.js. */
+:root {
+  --vfo-gutter: 24px;
+  --vfo-card-pad: 24px;
+}
+@media (max-width: 640px) {
+  :root {
+    --vfo-gutter: 14px;
+    --vfo-card-pad: 16px;
+  }
+}
+
 /* Always reserve the scrollbar track so the page doesn't shift sideways
    between short pages (no scrollbar) and long pages (scrollbar). */
 html {

@@ -76,7 +76,7 @@ function NavDrawer({ open, onClose, items }) {
   return createPortal(
     <div aria-hidden={!open} style={{ position: 'fixed', inset: 0, zIndex: 1000, pointerEvents: open ? 'auto' : 'none', fontFamily: 'Inter, sans-serif' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(8,20,45,0.45)', opacity: open ? 1 : 0, transition: 'opacity 0.2s ease' }} />
-      <nav role="dialog" aria-label="Menu" style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'min(360px, 88vw)', background: 'var(--vfo-card)', boxShadow: '-14px 0 36px rgba(20,45,95,0.18)', transform: open ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.25s ease', display: 'flex', flexDirection: 'column' }}>
+      <nav role="dialog" aria-label="Menu" style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'min(360px, 88vw)', background: 'var(--vfo-card)', boxShadow: '-14px 0 36px rgba(20,45,95,0.18)', transform: open ? 'translateX(0)' : 'translateX(calc(100% + 60px))', transition: 'transform 0.25s ease', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px 16px 4px' }}>
           <button onClick={onClose} aria-label="Close menu" style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', background: 'var(--vfo-tint)', color: 'var(--vfo-ink)', fontSize: '18px', lineHeight: 1, cursor: 'pointer' }}>×</button>
         </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { callApi, getSession } from '../../lib/api'
 import { wistiaEmbedUrl } from '../shared/wistia'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 // The member portal Help button: a fixed blue circle bottom-right on every
 // /member page (mounted once from App.jsx via MemberHelpMount, so it follows
@@ -34,6 +35,7 @@ export default function MemberHelpButton() {
   const [expandedId, setExpandedId] = useState(null)
   const [fullDoc, setFullDoc] = useState(null)   // { url, name } shown full-screen
   const [narrow, setNarrow] = useState(() => window.innerWidth < 560)
+  const isPhone = useIsPhone()
 
   useEffect(() => {
     const onResize = () => setNarrow(window.innerWidth < 560)
@@ -83,11 +85,13 @@ export default function MemberHelpButton() {
 
   function toggle(id) { setExpandedId(expandedId === id ? null : id) }
 
+  // Smaller and tucked into the corner on a phone, where the full-size button
+  // sat over the page's own content.
   const fabStyle = {
-    position: 'fixed', right: '24px', bottom: '24px', zIndex: 900,
-    width: '56px', height: '56px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+    position: 'fixed', right: isPhone ? '12px' : '24px', bottom: isPhone ? '12px' : '24px', zIndex: 900,
+    width: isPhone ? '42px' : '56px', height: isPhone ? '42px' : '56px', borderRadius: '50%', border: 'none', cursor: 'pointer',
     background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff',
-    boxShadow: '0 6px 20px rgba(18,94,204,0.40)', fontSize: open ? '22px' : '26px', fontWeight: 700,
+    boxShadow: isPhone ? '0 4px 12px rgba(18,94,204,0.35)' : '0 6px 20px rgba(18,94,204,0.40)', fontSize: isPhone ? (open ? '18px' : '20px') : (open ? '22px' : '26px'), fontWeight: 700,
     fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center',
     transition: 'transform 120ms ease, box-shadow 120ms ease',
   }
