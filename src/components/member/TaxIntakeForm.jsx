@@ -11,6 +11,7 @@ import {
 } from './taxIntakeQuestions'
 import PhoneInput from '../shared/PhoneInput'
 import { cleanText, formatPersonName } from '../../lib/formatters'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 // The VFO Tax Planning intake form (q1-q39).
 //
@@ -64,6 +65,7 @@ export default function TaxIntakeForm({
   // style page heading above the form: drop the eyebrow, smaller step titles.
   pageHeading = false,
 }) {
+  const isPhone = useIsPhone()
   const [step, setStep] = useState(() => (publicMode ? 'form' : 'choose'))
   const [answers, setAnswers] = useState(() => {
     const seed = {}
@@ -104,7 +106,7 @@ export default function TaxIntakeForm({
     return () => { live = false }
   }, [publicMode, member?.member_number])
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: isPhone ? 'var(--vfo-card-pad)' : '24px', marginBottom: '20px' }
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
   const labelStyle = { fontSize: '12.5px', fontWeight: 600, color: 'var(--vfo-ink)', display: 'block', marginBottom: '6px', lineHeight: 1.45 }
   const noteStyle = { fontSize: '11.5px', color: 'var(--vfo-muted)', lineHeight: 1.55, marginTop: '-2px', marginBottom: '8px' }
@@ -306,15 +308,19 @@ export default function TaxIntakeForm({
     // Who RUNS the case, asked on both routes and decided here — the client is
     // never asked. Shown only to a member the server says is eligible; when the
     // feature is off for them, nothing about Direct is shown at all.
+    // phoneTitle: a phone draws each toggle's two options on one line (the long
+    // titles wrapped to two lines each); the sentence under the toggle explains.
     const routeOptions = [
       {
         key: 'classic',
         title: 'VFO Services runs this case',
+        phoneTitle: 'VFO Services runs it',
         body: 'Our tax planning team and your VFO team run every step; you follow along.',
       },
       {
         key: 'direct',
         title: 'I run this case (Direct)',
+        phoneTitle: 'I run it (Direct)',
         body: "You run the steps our VFO team normally runs; the tax planning team's steps stay with them. You act as the Planning Facilitator for this client.",
       },
     ]
@@ -331,8 +337,8 @@ export default function TaxIntakeForm({
             clicked, so a choice placed under them could never be made. */}
         {(() => {
           const fillOptions = [
-            { key: 'form', title: 'Complete the form for my client', body: `You answer the Tax Planning Form now${depositRequired === false ? '' : ' and pay the deposit'}. The client is created as soon as you are done.` },
-            { key: 'link', title: 'Send my client a link', body: `We email your client the Tax Planning Form${depositRequired === false ? '' : ', and they pay the deposit'}. You only need their name and email address.` },
+            { key: 'form', title: 'Complete the form for my client', phoneTitle: 'Fill it in now', body: `You answer the Tax Planning Form now${depositRequired === false ? '' : ' and pay the deposit'}. The client is created as soon as you are done.` },
+            { key: 'link', title: 'Send my client a link', phoneTitle: 'Send my client a link', body: `We email your client the Tax Planning Form${depositRequired === false ? '' : ', and they pay the deposit'}. You only need their name and email address.` },
           ]
           // Both questions render at once. Direct starts DISABLED (grey) and only
           // lights up once eligibility confirms it, so nothing appears late or
@@ -352,7 +358,7 @@ export default function TaxIntakeForm({
                 return (
                   <button key={opt.key} type="button" role="radio" aria-checked={value === opt.key} aria-disabled={disabled}
                     onClick={() => { if (!disabled) onChange(opt.key) }} style={pillStyle(value === opt.key, disabled)}>
-                    {opt.title}
+                    {isPhone ? opt.phoneTitle : opt.title}
                   </button>
                 )
               })}
@@ -393,11 +399,11 @@ export default function TaxIntakeForm({
         })()}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '32px' }}>
           <button type="button" onClick={() => { setErrors([]); setStep(fillMode) }}
-            style={{ padding: '10px 22px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: 'none', background: '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
+            style={{ padding: isPhone ? '8px 18px' : '10px 22px', borderRadius: '999px', fontSize: isPhone ? '12.5px' : '13px', fontWeight: 600, cursor: 'pointer', border: 'none', background: '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
             Continue
           </button>
           <button type="button" onClick={onCancel}
-            style={{ padding: '10px 20px', borderRadius: '999px', fontSize: '13px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
+            style={{ padding: isPhone ? '8px 16px' : '10px 20px', borderRadius: '999px', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
             Cancel
           </button>
         </div>

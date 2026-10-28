@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { callApi } from '../../lib/api'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 const PRESET_FONTS = ['Playfair Display','Lora','Merriweather','Raleway','Montserrat','Open Sans','Poppins','Cormorant Garamond','Libre Baskerville','Source Serif Pro']
 
@@ -25,6 +26,7 @@ export default function MemberWebsitePlugin({ member, onDataChange, readOnly = f
   const [fontSearch, setFontSearch] = useState('')
   const [fontResults, setFontResults] = useState([])
   const fontSearchTimer = useRef(null)
+  const isPhone = useIsPhone()
 
   function update(key, val) { setSettings(p => ({ ...p, [key]: val })); setDirty(true) }
 
@@ -69,7 +71,9 @@ export default function MemberWebsitePlugin({ member, onDataChange, readOnly = f
   const subTabStyle = (active) => ({
     padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px'
   })
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  // Phone: the shared card padding (24px inside the page gutter doubled up), and
+  // the smaller buttons - Display Mode's "Filter Buttons" broke onto two lines.
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: isPhone ? 'var(--vfo-card-pad)' : '24px', marginBottom: isPhone ? '14px' : '20px' }
   const rowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)' }
   const inputStyle = { width: '90px', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif' }
 
@@ -184,7 +188,7 @@ export default function MemberWebsitePlugin({ member, onDataChange, readOnly = f
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>14</span>
-                <input type="range" min={14} max={22} value={settings.widget_font_size} onChange={e => update('widget_font_size', parseInt(e.target.value))} style={{ width: '140px', accentColor: '#125ecc', cursor: 'pointer' }} />
+                <input type="range" min={14} max={22} value={settings.widget_font_size} onChange={e => update('widget_font_size', parseInt(e.target.value))} style={{ width: isPhone ? '110px' : '140px', accentColor: '#125ecc', cursor: 'pointer' }} />
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>22</span>
               </div>
             </div>
@@ -193,11 +197,11 @@ export default function MemberWebsitePlugin({ member, onDataChange, readOnly = f
                 <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>Display Mode</div>
                 <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>How specialists are organized</div>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {[['filter', 'Filter Buttons'], ['grouped', 'Grouped']].map(([val, label]) => (
+              <div style={{ display: 'flex', gap: isPhone ? '6px' : '8px', flexShrink: 0 }}>
+                {[['filter', 'Filter Buttons', 'Filters'], ['grouped', 'Grouped', 'Grouped']].map(([val, label, phoneLabel]) => (
                   <button key={val} onClick={() => update('display_mode', val)}
-                    style={{ padding: '6px 14px', borderRadius: '6px', border: `1px solid ${settings.display_mode === val ? 'var(--vfo-accent-text)' : 'var(--vfo-border-strong)'}`, background: settings.display_mode === val ? 'rgba(18,94,204,0.08)' : 'transparent', color: settings.display_mode === val ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>
-                    {label}
+                    style={{ padding: isPhone ? '5px 11px' : '6px 14px', borderRadius: '6px', border: `1px solid ${settings.display_mode === val ? 'var(--vfo-accent-text)' : 'var(--vfo-border-strong)'}`, background: settings.display_mode === val ? 'rgba(18,94,204,0.08)' : 'transparent', color: settings.display_mode === val ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    {isPhone ? phoneLabel : label}
                   </button>
                 ))}
               </div>
@@ -226,7 +230,7 @@ export default function MemberWebsitePlugin({ member, onDataChange, readOnly = f
           <div>
             <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Embed Code</div>
             <p style={{ color: '#5a8ab5', fontSize: '14px', marginBottom: '12px', textAlign: 'left' }}>Copy this code and paste it into an HTML widget on your website.</p>
-            <pre style={{ background: '#16264a', padding: '16px', borderRadius: '8px', color: '#cdd9ea', fontSize: '13px', overflowX: 'auto', whiteSpace: 'pre-wrap', fontFamily: 'monospace', margin: '0 0 12px', textAlign: 'left' }}>{embedCode}</pre>
+            <pre style={{ background: '#16264a', padding: isPhone ? '12px' : '16px', borderRadius: '8px', color: '#cdd9ea', fontSize: isPhone ? '12px' : '13px', overflowX: 'auto', whiteSpace: 'pre-wrap', ...(isPhone ? { wordBreak: 'break-all' } : {}), fontFamily: 'monospace', margin: '0 0 12px', textAlign: 'left' }}>{embedCode}</pre>
             <button onClick={(e) => { navigator.clipboard.writeText(embedCode); const btn = e.currentTarget; btn.textContent = '✓ Copied!'; btn.style.background = 'rgba(39,174,96,0.15)'; setTimeout(() => { btn.textContent = 'Copy Code'; btn.style.background = 'transparent'; }, 2000) }}
               style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid rgba(39,174,96,0.3)', background: 'transparent', color: '#27ae60', fontSize: '13px', cursor: 'pointer' }}>
               Copy Code
@@ -236,7 +240,7 @@ export default function MemberWebsitePlugin({ member, onDataChange, readOnly = f
       )}
 
       {appearanceTab === 'preview' && (
-        <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }}>
+        <div style={sectionStyle}>
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Live Preview</div>
           {dirty && <div style={{ fontSize: '13px', color: '#b08d26', marginBottom: '12px' }}>Save your changes first to see them in the preview.</div>}
           <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--vfo-border)' }}>
@@ -261,7 +265,7 @@ export default function MemberWebsitePlugin({ member, onDataChange, readOnly = f
       {appearanceTab !== 'preview' && (
         <div style={{ position: 'sticky', bottom: 0, background: 'var(--vfo-page)', borderTop: '1px solid var(--vfo-border)', padding: '16px 0', display: 'flex', alignItems: 'center', gap: '16px' }}>
           {dirty && <span style={{ fontSize: '13px', color: '#b08d26' }}>You have unsaved changes</span>}
-          <button onClick={save} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Save Changes</button>
+          <button onClick={save} style={{ padding: isPhone ? '8px 20px' : '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer' }}>Save Changes</button>
           {status && <span style={{ color: statusType === 'success' ? '#27ae60' : '#d93025', fontSize: '13px' }}>{status}</span>}
         </div>
       )}

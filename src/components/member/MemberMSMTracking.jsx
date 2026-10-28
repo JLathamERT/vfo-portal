@@ -56,8 +56,13 @@ const PROGRAMS = [
 // programName narrows to one program (e.g. the Advanced Coaching home);
 // emptyText renders an empty card instead of hiding the card entirely.
 function MemberProgramNotes({ memberNumber, sectionStyle, programName = null, title = 'Program Notes', emptyText = null }) {
+  const isPhone = useIsPhone()
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
+  // Phone: the title sits closer to its rows, an empty card says so in one plain
+  // line (not a padded, centred block), and a note scoped to this page's own
+  // program drops the program pill that repeats the page header.
+  const titleStyle = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
 
   // Read-only for the member: a re-visit draws the last notes before the first
   // paint, then refreshes them.
@@ -76,7 +81,7 @@ function MemberProgramNotes({ memberNumber, sectionStyle, programName = null, ti
 
   if (loading) return (
     <div style={sectionStyle}>
-      <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>{title}</div>
+      <div style={titleStyle}>{title}</div>
       <Skeleton width="90%" height={14} style={{ marginBottom: '8px' }} />
       <Skeleton width="70%" height={14} />
     </div>
@@ -85,23 +90,23 @@ function MemberProgramNotes({ memberNumber, sectionStyle, programName = null, ti
     if (!emptyText) return null
     return (
       <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>{title}</div>
-        <div style={{ textAlign: 'center', padding: '24px', color: 'var(--vfo-faint)', fontSize: '13px' }}>{emptyText}</div>
+        <div style={titleStyle}>{title}</div>
+        <div style={isPhone ? { color: 'var(--vfo-muted)', fontSize: '14px' } : { textAlign: 'center', padding: '24px', color: 'var(--vfo-faint)', fontSize: '13px' }}>{emptyText}</div>
       </div>
     )
   }
 
   return (
     <div style={sectionStyle}>
-      <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>{title}</div>
+      <div style={titleStyle}>{title}</div>
       {notes.map(note => (
         <div key={note.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
           <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
-            <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
-            <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatFullDate(note.created_at)}</span>
-            {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.program_name}</span>}
+            <span style={{ fontSize: isPhone ? '12px' : '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
+            <span style={{ fontSize: isPhone ? '12px' : '11px', color: 'var(--vfo-muted)' }}>·</span>
+            <span style={{ fontSize: isPhone ? '12px' : '11px', color: 'var(--vfo-muted)' }}>{formatFullDate(note.created_at)}</span>
+            {note.program_name && !(isPhone && programName) && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.program_name}</span>}
           </div>
         </div>
       ))}
@@ -1267,11 +1272,13 @@ function VideoTask({ task, statusNode, errorNode, isTouched, isPositive, statusC
 }
 
 function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
+  const isPhone = useIsPhone()
   const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedMeeting, setExpandedMeeting] = useState(null)
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: isPhone ? '14px' : '20px' }
+  const labelStyle = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
 
   useEffect(() => { loadMeetings() }, [enrollment.id])
 
@@ -1288,11 +1295,17 @@ function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
   const scheduledMeetings = meetings.filter(m => m.status === 'scheduled').sort((a, b) => a.meeting_date.localeCompare(b.meeting_date))
   const nextScheduled = scheduledMeetings[0]
 
-  if (loading) return <CoachingMeetingsSkeleton />
+  if (loading) return <CoachingMeetingsSkeleton hero={!isPhone} />
+
+  // Phone (2026-10-28): no hero card - it repeated the program header just above
+  // it. Its two counts sit on the history card's title line (titled just History,
+  // under the Meetings tab, so they fit on one line at 360), and a row drops its
+  // pill because the card's own title already says Upcoming / History.
+  const countDot = (color) => <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0 }} />
 
   return (
     <div>
-      <TrackHero
+      {!isPhone && <TrackHero
         eyebrow={eyebrow}
         title="Coaching Meetings"
         meta={<>
@@ -1301,22 +1314,32 @@ function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0095ff', flexShrink: 0 }} />{scheduledMeetings.length} scheduled</span>
           {nextScheduled && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Next meeting {formatFullDate(nextScheduled.meeting_date)}</span></>}
         </>}
-      />
+      />}
 
       {scheduledMeetings.length > 0 && (
         <div style={sectionStyle}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Upcoming</div>
+          <div style={labelStyle}>Upcoming</div>
           {scheduledMeetings.map(m => (
             <div key={m.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatFullDate(m.meeting_date)}</span>
-              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>Scheduled</span>
+              {!isPhone && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>Scheduled</span>}
             </div>
           ))}
         </div>
       )}
 
       <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Meeting History</div>
+        {isPhone ? (
+          <div style={{ ...labelStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <span>History</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', fontSize: '12.5px', textTransform: 'none', letterSpacing: 0 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>{countDot('#1b9254')}{completedMeetings.length} completed</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>{countDot('#0095ff')}{scheduledMeetings.length} scheduled</span>
+            </span>
+          </div>
+        ) : (
+          <div style={labelStyle}>Meeting History</div>
+        )}
         {completedMeetings.length === 0
           ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No meetings completed yet.</p>
           : completedMeetings.map(m => (
@@ -1325,11 +1348,11 @@ function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', cursor: m.notes ? 'pointer' : 'default' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatFullDate(m.meeting_date)}</span>
-                  <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>
+                  {!isPhone && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>}
                 </div>
                 {m.notes && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>has notes</span>
+                    <span style={{ fontSize: isPhone ? '12.5px' : '11px', color: 'var(--vfo-muted)' }}>{isPhone ? 'Notes' : 'has notes'}</span>
                     <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: expandedMeeting === m.id ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
                   </div>
                 )}
@@ -1348,10 +1371,12 @@ function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
 }
 
 function MemberCoachingRenewal({ enrollment }) {
+  const isPhone = useIsPhone()
   const [renewals, setRenewals] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: isPhone ? '14px' : '20px' }
+  const labelStyle = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
 
   useEffect(() => { loadRenewals() }, [enrollment.id])
 
@@ -1383,8 +1408,49 @@ function MemberCoachingRenewal({ enrollment }) {
 
   const actionColors = { renewed: '#1b9254', cancelled: '#e74c3c' }
 
-  if (loading) return <CoachingRenewalSkeleton />
+  if (loading) return <CoachingRenewalSkeleton phone={isPhone} />
 
+  const endsText = !nextDate ? '' : daysUntilRenewal !== null && daysUntilRenewal < 0 ? `Overdue ${Math.abs(daysUntilRenewal)} days` : `Ends ${formatFullDate(nextDate)}${daysUntilRenewal !== null ? ` (${daysUntilRenewal} days)` : ''}`
+
+  // Phone (2026-10-28): no hero card - it repeated the program name and joined
+  // date shown just above it. The rest reads as label / value rows, and a history
+  // row is one line: date on the left, the action as dot + text on the right.
+  if (isPhone) {
+    const row = (label, value, last = false) => (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '9px 0', borderBottom: last ? 'none' : '1px solid var(--vfo-tint)' }}>
+        <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>{label}</span>
+        <span style={{ fontSize: '14px', color: 'var(--vfo-ink)', textAlign: 'right' }}>{value}</span>
+      </div>
+    )
+    return (
+      <div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>Membership</div>
+          {row('Status', <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor, flexShrink: 0 }} />{currentStatus}</span>)}
+          {row('Period', currentPeriod, !nextDate)}
+          {nextDate && row(daysUntilRenewal !== null && daysUntilRenewal < 0 ? 'Renewal' : 'Ends', <span style={{ fontWeight: 600, color: renewalUrgency }}>{daysUntilRenewal !== null && daysUntilRenewal < 0 ? `Overdue ${Math.abs(daysUntilRenewal)} days` : `${formatFullDate(nextDate)}${daysUntilRenewal !== null ? ` (${daysUntilRenewal} days)` : ''}`}</span>, true)}
+        </div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>History</div>
+          {renewals.length === 0
+            ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', margin: '4px 0' }}>No renewals recorded yet.</p>
+            : renewals.map(r => (
+              <div key={r.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatFullDate(r.action_date)}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: 'var(--vfo-muted)', textTransform: 'capitalize' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: actionColors[r.action] || 'var(--vfo-faint)', flexShrink: 0 }} />
+                    {r.action}{r.period_label ? ` · ${r.period_label}` : ''}
+                  </span>
+                </div>
+                {r.notes && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{r.notes}</div>}
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -1397,7 +1463,7 @@ function MemberCoachingRenewal({ enrollment }) {
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor, flexShrink: 0 }} />{currentStatus}</span>
           <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>
           <span>{currentPeriod}</span>
-          {nextDate && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ fontWeight: 600, color: renewalUrgency }}>{daysUntilRenewal !== null && daysUntilRenewal < 0 ? `Overdue ${Math.abs(daysUntilRenewal)} days` : `Ends ${formatFullDate(nextDate)}${daysUntilRenewal !== null ? ` (${daysUntilRenewal} days)` : ''}`}</span></>}
+          {nextDate && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ fontWeight: 600, color: renewalUrgency }}>{endsText}</span></>}
         </>}
       />
 

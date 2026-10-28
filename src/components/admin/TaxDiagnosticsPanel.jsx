@@ -5,6 +5,8 @@ import { formatDate, formatDateTime } from '../../lib/dates'
 import { TAX_INTAKE_QUESTIONS, numberTaxIntakeQuestions } from '../member/taxIntakeQuestions'
 import CopyLink from '../shared/CopyLink'
 import { readable } from '../shared/readableColor'
+import { useIsPhone } from '../../lib/useMediaQuery'
+import { statusPillStyle } from '../shared/statusColors'
 
 // Tax Diagnostics — the queue of public /tax-diagnostic submissions (grantable
 // tab `tax_diagnostics`, backend TAB_ACTIONS.tax_diagnostics).
@@ -249,25 +251,52 @@ export function DiagnosticCard({ d, members, open, onToggle, onChanged, card, me
     : null
   const label = { fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginBottom: '3px' }
   const value = { fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }
+  const isPhone = useIsPhone()
+  // The line under the name, one fact per part (joined with dots on a computer,
+  // one per line on a phone).
+  const metaParts = memberMode
+    ? [`Submitted ${formatDateTime(d.created_at)}`, isHolisticForm(d) ? 'Existing client (no deposit)' : null, d.completed_by === 'member' ? 'Completed by you' : 'Completed by your client (your link)']
+    : portal
+      ? isHolisticForm(d)
+        ? [`Submitted ${formatDateTime(d.created_at)}`, 'Existing client (no deposit)', d.completed_by === 'member' ? 'Completed by the member' : 'Completed by the client']
+        : [`Submitted ${formatDateTime(d.created_at)}`, 'Via the member portal', d.completed_by === 'member' ? 'Completed by the member' : "Completed by the client (member's link)"]
+      : [`Submitted ${formatDateTime(d.created_at)}`, d.completed_by === 'member' ? 'Completed by a VFO member' : 'Completed by the client', `Referred by: ${referrerText(d)}`]
+  const nameNode = clientProfileUrl
+    ? <a href={clientProfileUrl} onClick={e => { e.preventDefault(); e.stopPropagation(); navigate(clientProfileUrl) }}
+        title="Open client profile" style={{ color: 'var(--vfo-link)', textDecoration: 'underline' }}>{clientName}</a>
+    : clientName
 
   return (
     <div id={`diag-${cardKey(d)}`} style={card}>
+      {/* Phone: one balanced row - name + status pill over one fact per line on
+          the left, a small round open / close button on the right (the chip and a
+          labelled Open button wrapped onto a lopsided second row). */}
+      {isPhone ? (
+        <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', minWidth: 0 }}>{nameNode}</span>
+              <span style={statusPillStyle(chip.color)}>{chip.label}</span>
+            </div>
+            <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '3px', lineHeight: 1.5 }}>
+              {metaParts.filter(Boolean).map((p, i) => <div key={i}>{p}</div>)}
+            </div>
+          </div>
+          <span role="button" aria-label={open ? 'Hide' : 'Open'} title={open ? 'Hide' : 'Open'}
+            style={{ width: '30px', height: '30px', flexShrink: 0, borderRadius: '50%', border: '1px solid var(--vfo-border-strong)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vfo-accent-text)' }}>
+            <svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true" style={{ transition: 'transform 0.15s', transform: open ? 'rotate(180deg)' : 'none' }}>
+              <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        </div>
+      ) : (
       <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', cursor: 'pointer' }}>
         <div style={{ flex: '1 1 260px' }}>
           <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
-            {clientProfileUrl
-              ? <a href={clientProfileUrl} onClick={e => { e.preventDefault(); e.stopPropagation(); navigate(clientProfileUrl) }}
-                  title="Open client profile" style={{ color: 'var(--vfo-link)', textDecoration: 'underline' }}>{clientName}</a>
-              : clientName}
+            {nameNode}
           </div>
           <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '3px', lineHeight: 1.55 }}>
-            {memberMode
-              ? <>Submitted {formatDateTime(d.created_at)} · {isHolisticForm(d) ? 'Existing client (no deposit) · ' : ''}{d.completed_by === 'member' ? 'Completed by you' : 'Completed by your client (your link)'}</>
-              : portal
-              ? isHolisticForm(d)
-                ? <>Submitted {formatDateTime(d.created_at)} · Existing client (no deposit) · {d.completed_by === 'member' ? 'Completed by the member' : 'Completed by the client'}</>
-                : <>Submitted {formatDateTime(d.created_at)} · Via the member portal · {d.completed_by === 'member' ? 'Completed by the member' : "Completed by the client (member's link)"}</>
-              : <>Submitted {formatDateTime(d.created_at)} · {d.completed_by === 'member' ? 'Completed by a VFO member' : 'Completed by the client'} · Referred by: {referrerText(d)}</>}
+            {metaParts.filter(Boolean).join(' · ')}
           </div>
         </div>
         <span style={{ padding: '4px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, color: readable(chip.color), background: chip.color + '1a' }}>{chip.label}</span>
@@ -278,6 +307,7 @@ export function DiagnosticCard({ d, members, open, onToggle, onChanged, card, me
           </svg>
         </span>
       </div>
+      )}
 
       {open && (
         <div style={{ marginTop: '18px', borderTop: '1px solid var(--vfo-border-soft)', paddingTop: '18px' }}>

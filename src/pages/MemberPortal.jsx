@@ -34,6 +34,7 @@ export default function MemberPortal() {
   const navigate = useNavigate()
   const session = getSession()
   usePortalTheme()
+  const isPhone = useIsPhone()
   const [activeTab, setActiveTab] = useState(() => {
     const qs = new URLSearchParams(window.location.search)
     // Land returning Stripe buyers (/member?gc_success=1) on the GC Marketplace.
@@ -126,7 +127,9 @@ export default function MemberPortal() {
   const orderedEnabledPrograms = orderMemberPrograms(allPrograms, enabledPrograms, features)
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
+    // Phone: room under the page for the floating Help (?) button, which sat
+    // over a page's last button (MemberHelpButton, bottom-right).
+    <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', ...(isPhone ? { paddingBottom: '64px' } : {}) }}>
       <PortalHeader name={session.name} onTitleClick={handleTitleClick} actions={[
         { key: 'settings', label: 'Settings', onClick: () => { setShowSettings(true); setActiveTab(null) } },
         { key: 'signout', label: 'Sign Out', onClick: signOut },
@@ -345,6 +348,7 @@ function MemberSpecialists({ member, allExperts, exclusions, ecoMap = {}, onData
   const [dirty, setDirty] = useState(false)
   const [status, setStatus] = useState('')
   const [statusType, setStatusType] = useState('success')
+  const isPhone = useIsPhone()
 
   const enabledCount = regularExperts.filter(e => enabled[e.id]).length
   const filtered = search ? regularExperts.filter(e => e.name.toLowerCase().includes(search.toLowerCase())) : regularExperts
@@ -371,14 +375,17 @@ function MemberSpecialists({ member, allExperts, exclusions, ecoMap = {}, onData
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'var(--vfo-gutter) var(--vfo-gutter) 0' }}>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginBottom: '20px', fontStyle: 'italic' }}>Changes here affect which specialists appear in your VFO Showroom and, if enabled, your Website Plugin.</p>
-      <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
+      {/* Phone: the two big counters become one line beside the Enable / Disable
+          buttons, under the search - one balanced row, not a block of numbers. */}
+      {!isPhone && <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
         <div><div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--vfo-ink)' }}>{enabledCount}</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', letterSpacing: '1px' }}>ENABLED</div></div>
         <div><div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--vfo-ink)' }}>{regularExperts.length}</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', letterSpacing: '1px' }}>TOTAL</div></div>
-      </div>
+      </div>}
       <input type="search" name="search" autoComplete="off" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search specialists..." style={{ ...inputStyle, marginBottom: '12px' }} />
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-        <button onClick={enableAll} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Enable All</button>
-        <button onClick={disableAll} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Disable All</button>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
+        {isPhone && <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginRight: 'auto' }}><strong style={{ color: 'var(--vfo-ink)', fontWeight: 600 }}>{enabledCount}</strong> of {regularExperts.length} enabled</span>}
+        <button onClick={enableAll} style={{ padding: isPhone ? '5px 12px' : '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer' }}>Enable All</button>
+        <button onClick={disableAll} style={{ padding: isPhone ? '5px 12px' : '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer' }}>Disable All</button>
       </div>
       <div style={{ marginBottom: '8px' }}>
         {filtered.map(expert => (
@@ -421,7 +428,7 @@ function MemberSpecialists({ member, allExperts, exclusions, ecoMap = {}, onData
       )}
       <div style={{ position: 'sticky', bottom: 0, background: 'var(--vfo-page)', borderTop: '1px solid var(--vfo-border)', padding: '16px 0', display: 'flex', alignItems: 'center', gap: '16px' }}>
         {dirty && <span style={{ fontSize: '13px', color: '#b08d26', fontWeight: 500 }}>You have unsaved changes</span>}
-        <button onClick={save} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Save Changes</button>
+        <button onClick={save} style={{ padding: isPhone ? '8px 20px' : '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer' }}>Save Changes</button>
         {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px' }}>{status}</span>}
       </div>
     </div>
@@ -553,6 +560,7 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
 }
 
 function MemberSettings({ session }) {
+  const isPhone = useIsPhone()
   const [email, setEmail] = useState(session.email || '')
   const [newPasscode, setNewPasscode] = useState('')
   const [confirmPasscode, setConfirmPasscode] = useState('')
@@ -582,7 +590,8 @@ function MemberSettings({ session }) {
           <label style={labelStyle}>Email</label>
           <input value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
         </div>
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+        {/* Phone: the two passcode boxes stack (side by side, their hints were cut off). */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexDirection: isPhone ? 'column' : 'row' }}>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>New Passcode</label>
             <input value={newPasscode} onChange={e => setNewPasscode(e.target.value)} placeholder="Leave blank to keep current" style={inputStyle} />
@@ -592,7 +601,7 @@ function MemberSettings({ session }) {
             <input value={confirmPasscode} onChange={e => setConfirmPasscode(e.target.value)} placeholder="Confirm new passcode" style={inputStyle} />
           </div>
         </div>
-        <button onClick={update} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Update</button>
+        <button onClick={update} style={{ padding: isPhone ? '8px 20px' : '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer' }}>Update</button>
         {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
       </div>
       <AppearanceCard />

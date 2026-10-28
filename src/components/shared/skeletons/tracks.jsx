@@ -214,8 +214,9 @@ export function ClientsListSkeleton({ rows = 3, addButtonLabel = 'Add Client' })
   )
 }
 
-// Advanced Coaching — Meetings tab: hero stats + upcoming + history cards.
-export function CoachingMeetingsSkeleton({ upcomingRows = 2, historyRows = 3 }) {
+// Advanced Coaching — Meetings tab: hero stats + upcoming + history cards
+// (`hero={false}` on a phone, where the counts sit on the history card).
+export function CoachingMeetingsSkeleton({ upcomingRows = 2, historyRows = 3, hero = true }) {
   const meetingRow = (i) => (
     <div key={i} style={{ padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)', display: 'flex', alignItems: 'center', gap: '12px' }}>
       <Skeleton width={90} height={14} />
@@ -224,7 +225,7 @@ export function CoachingMeetingsSkeleton({ upcomingRows = 2, historyRows = 3 }) 
   )
   return (
     <div>
-      <HeroSkeleton stats={3} action={false} />
+      {hero && <HeroSkeleton stats={3} action={false} />}
       <CardShell>
         <Skeleton width={80} height={12} style={{ marginBottom: '16px' }} />
         {Array.from({ length: upcomingRows }).map((_, i) => meetingRow(i))}
@@ -237,10 +238,22 @@ export function CoachingMeetingsSkeleton({ upcomingRows = 2, historyRows = 3 }) 
   )
 }
 
-// Advanced Coaching — Renewal tab: stat card + renewal history.
-export function CoachingRenewalSkeleton({ historyRows = 2 }) {
+// Advanced Coaching — Renewal tab: stat card + renewal history (`phone`: the
+// stat card is three label / value rows, as the phone tab draws it).
+export function CoachingRenewalSkeleton({ historyRows = 2, phone = false }) {
   return (
     <div>
+      {phone ? (
+        <CardShell pad="var(--vfo-card-pad)">
+          <Skeleton width={90} height={12} style={{ marginBottom: '8px' }} />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} style={{ padding: '9px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Skeleton width={60} height={13} />
+              <Skeleton width={100} height={14} />
+            </div>
+          ))}
+        </CardShell>
+      ) : (
       <CardShell>
         <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
           {Array.from({ length: 5 }).map((_, i) => (
@@ -251,6 +264,7 @@ export function CoachingRenewalSkeleton({ historyRows = 2 }) {
           ))}
         </div>
       </CardShell>
+      )}
       <CardShell>
         <Skeleton width={130} height={12} style={{ marginBottom: '16px' }} />
         {Array.from({ length: historyRows }).map((_, i) => (

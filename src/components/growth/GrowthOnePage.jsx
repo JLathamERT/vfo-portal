@@ -5,6 +5,7 @@ import { NAVY, INK, MUTED, BLUE, inputStyle, cardStyle, accentStrip, GrowthNeed,
 import { orderOnePage, displayNumbers } from './grouping'
 import AddActionForm from './AddActionForm'
 import GrowthAddPriority from './GrowthAddPriority'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 // Accountability progress statuses + their dot colors (light dots — yellow,
 // light green — carry a `dark` flag so the matrix number stays navy/legible).
@@ -49,6 +50,7 @@ function fmtDueDate(d) {
 
 export default function GrowthOnePage({ memberNumber, bundle, reload, onNavigate, role = 'admin', variant }) {
   const isAdmin = role === 'admin'
+  const isPhone = useIsPhone()
   const score = bundle.score
   const [acctMode, setAcctMode] = useState(!!score?.accountability_mode)
   const [dues, setDues] = useState(() => seedField(bundle, 'due_date'))
@@ -157,10 +159,12 @@ export default function GrowthOnePage({ memberNumber, bundle, reload, onNavigate
       {/* Value / Effort matrix */}
       <div style={cardStyle}>
         <div style={accentStrip} />
-        <div style={{ padding: '20px' }}>
+        {/* Phone: the matrix fits the screen (narrow label column, tighter cells)
+            instead of a 540px box scrolling sideways. */}
+        <div style={{ padding: isPhone ? '14px' : '20px' }}>
           <div style={{ overflowX: 'auto' }}>
-            <div style={{ minWidth: '540px' }}>
-              <Matrix items={ordered} acct={acctMode} statuses={statuses} />
+            <div style={{ minWidth: isPhone ? 0 : '540px' }}>
+              <Matrix items={ordered} acct={acctMode} statuses={statuses} phone={isPhone} />
             </div>
           </div>
           {acctMode && (
@@ -220,25 +224,25 @@ function Toggle({ on, onClick }) {
 
 // The Value/Effort matrix keeps its designed colors in BOTH themes (Jake's call,
 // 2026-07-02) — every color in this box is a fixed literal on purpose.
-function Matrix({ items, acct, statuses }) {
-  const cols = '120px repeat(3, 1fr)'
+function Matrix({ items, acct, statuses, phone = false }) {
+  const cols = phone ? '62px repeat(3, 1fr)' : '120px repeat(3, 1fr)'
   const last = VALUE_ROWS.length - 1
   return (
     <div style={{ border: '1px solid #d6e0ee', borderRadius: '12px', overflow: 'hidden' }}>
       <div style={{ display: 'grid', gridTemplateColumns: cols, background: '#ffffff' }}>
         <div style={{ borderBottom: '1px solid #e9eef8' }} />
         {EFFORT_COLS.map(c => (
-          <div key={c.key} style={{ ...colHeader, borderBottom: '1px solid #e9eef8' }}>{c.label}</div>
+          <div key={c.key} style={{ ...colHeader, ...(phone ? { padding: '8px 4px', letterSpacing: 0 } : {}), borderBottom: '1px solid #e9eef8' }}>{c.label}</div>
         ))}
       </div>
       {VALUE_ROWS.map((vr, ri) => (
         <div key={vr.key} style={{ display: 'grid', gridTemplateColumns: cols }}>
-          <div style={{ ...rowHeader, background: '#ffffff', borderBottom: ri < last ? '1px solid #e9eef8' : 'none' }}>{vr.label}</div>
+          <div style={{ ...rowHeader, ...(phone ? { padding: '0 8px' } : {}), background: '#ffffff', borderBottom: ri < last ? '1px solid #e9eef8' : 'none' }}>{vr.label}</div>
           {EFFORT_COLS.map((ec, ci) => {
             const cellItems = items.filter(a => (a.value_level || 'medium') === vr.key && (a.effort_level || 'medium') === ec.key)
             return (
-              <div key={ec.key} style={{ ...matrixCell, background: cellBg(vr.key, ec.key), borderLeft: ci === 0 ? '1px solid #e9eef8' : '1px solid rgba(255,255,255,0.5)', borderBottom: ri < last ? '1px solid rgba(255,255,255,0.5)' : 'none' }}>
-                {cellItems.map(a => <MatrixDot key={a.id} num={a.num} color={acct ? STATUS_COLOR[statuses[a.id]] : undefined} dark={acct ? STATUS_DARK[statuses[a.id]] : false} />)}
+              <div key={ec.key} style={{ ...matrixCell, ...(phone ? { minHeight: '64px', padding: '6px', gap: '4px' } : {}), background: cellBg(vr.key, ec.key), borderLeft: ci === 0 ? '1px solid #e9eef8' : '1px solid rgba(255,255,255,0.5)', borderBottom: ri < last ? '1px solid rgba(255,255,255,0.5)' : 'none' }}>
+                {cellItems.map(a => <MatrixDot key={a.id} num={a.num} color={acct ? STATUS_COLOR[statuses[a.id]] : undefined} dark={acct ? STATUS_DARK[statuses[a.id]] : false} small={phone} />)}
               </div>
             )
           })}
@@ -251,35 +255,47 @@ function Matrix({ items, acct, statuses }) {
 // Dots must stand out on any quadrant shade. White fill (navy number, faint navy
 // ring) by default; under Accountability Mode the fill becomes the bright status
 // color with a white ring so it still pops on the blue cells.
-function MatrixDot({ num, color, dark }) {
+// `small` (phone): a 22px dot, so three fit across a cell instead of two.
+function MatrixDot({ num, color, dark, small = false }) {
   const filled = !!color
   // Decimal sub-task labels (e.g. "1.1", "12.3") are longer than a single digit —
   // shrink the font so they stay inside the 34px dot.
   const len = String(num).length
-  const dotFont = len >= 4 ? '10px' : len === 3 ? '12px' : '14px'
+  const dotFont = small
+    ? (len >= 4 ? '7.5px' : len === 3 ? '8.5px' : '11px')
+    : (len >= 4 ? '10px' : len === 3 ? '12px' : '14px')
   return (
     <div style={{
-      width: '34px', height: '34px', borderRadius: '50%',
+      width: small ? '22px' : '34px', height: small ? '22px' : '34px', borderRadius: '50%', flexShrink: 0,
       background: color || '#ffffff',
       color: filled ? (dark ? NAVY : '#ffffff') : NAVY,
       fontWeight: 800, fontSize: dotFont, fontFamily: 'Inter, sans-serif',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      border: filled ? '2px solid #ffffff' : '2px solid rgba(0,41,115,0.18)',
-      boxShadow: '0 2px 8px rgba(0,20,60,0.40)',
+      border: filled ? `${small ? 1.5 : 2}px solid #ffffff` : `${small ? 1.5 : 2}px solid rgba(0,41,115,0.18)`,
+      boxShadow: small ? '0 1px 4px rgba(0,20,60,0.40)' : '0 2px 8px rgba(0,20,60,0.40)',
     }}>{num}</div>
   )
 }
 
 function ActionTable({ title, rows, acct, isAdmin, canEdit, dues, statuses, onDue, onStatus, onDelete, onAddSubtask, onSaveField, namePool, adminSet }) {
   const colCount = 4 + (acct ? 2 : 0)
+  const isPhone = useIsPhone()
   return (
     <div style={cardStyle}>
       <div style={accentStrip} />
-      <div style={{ padding: '16px 20px' }}>
+      <div style={{ padding: isPhone ? '14px' : '16px 20px' }}>
         <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)', marginBottom: rows.length ? '10px' : 0 }}>{title}</div>
         {rows.length === 0
           ? <div style={{ fontSize: '12.5px', color: MUTED }}>None.</div>
-          : (
+          : isPhone ? (
+            // Phone: one block per action - the text gets the full width (the
+            // table squeezed it into a 110px column), the rest as label / value rows.
+            <div>
+              {rows.map((a, i) => (
+                <PhoneActionItem key={a.id} a={a} acct={acct} isAdmin={isAdmin} canEdit={canEdit} dues={dues} statuses={statuses} onDue={onDue} onStatus={onStatus} onDelete={onDelete} onAddSubtask={onAddSubtask} onSaveField={onSaveField} namePool={namePool} adminSet={adminSet} last={i === rows.length - 1} />
+              ))}
+            </div>
+          ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: acct ? '760px' : '480px' }}>
                 <thead>
@@ -360,6 +376,58 @@ function ActionRow({ a, acct, isAdmin, canEdit, dues, statuses, onDue, onStatus,
         </tr>
       )}
     </>
+  )
+}
+
+function PhoneActionItem({ a, acct, isAdmin, canEdit, dues, statuses, onDue, onStatus, onDelete, onAddSubtask, onSaveField, namePool, adminSet, last }) {
+  const [adding, setAdding] = useState(false)
+  const [owned, setOwned] = useState(a.owned_by || '')
+  const [assisted, setAssisted] = useState(a.assisted_by || '')
+  const field = (label, node, wide = false) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '6px' }}>
+      <span style={{ fontSize: '12px', color: MUTED, flexShrink: 0 }}>{label}</span>
+      <div style={{ minWidth: 0, width: wide ? '62%' : 'auto', fontSize: '13px', color: INK, textAlign: 'right' }}>{node}</div>
+    </div>
+  )
+  return (
+    <div style={{ display: 'flex', gap: '10px', padding: '10px 0', borderBottom: last ? 'none' : '1px solid var(--vfo-tint)' }}>
+      <span style={{ fontWeight: 700, color: 'var(--vfo-heading)', fontSize: '13px', minWidth: '22px', lineHeight: 1.45 }}>{a.num}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '13.5px', color: INK, lineHeight: 1.45 }}>
+          {a.isSub && <span style={{ color: 'var(--vfo-faint)', marginRight: '5px' }}>↳</span>}{a.action_text}
+          {a.is_custom && canEdit && onDelete && <button onClick={() => onDelete(a.id)} title="Remove custom priority" aria-label="Remove custom priority" style={{ marginLeft: '8px', background: 'none', border: 'none', color: '#c2502f', cursor: 'pointer', fontSize: '14px', fontWeight: 700, padding: 0, lineHeight: 1 }}>×</button>}
+        </div>
+        {a.isSub && a.parentText && <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '2px' }}>sub-task of: {a.parentText}</div>}
+        {field('Owned by', canEdit
+          ? <NameCombo value={owned} onChange={setOwned} onCommit={v => { if ((a.owned_by || '') !== v) onSaveField(a.id, { owned_by: v }) }} people={namePool} adminSet={adminSet} placeholder="Type or pick a name" />
+          : (a.owned_by || '—'), canEdit)}
+        {field('Assisted by', canEdit
+          ? <NameCombo value={assisted} onChange={setAssisted} onCommit={v => { if ((a.assisted_by || '') !== v) onSaveField(a.id, { assisted_by: v }) }} people={namePool} adminSet={adminSet} placeholder="Type or pick a name" />
+          : (a.assisted_by || '—'), canEdit)}
+        {acct && field('Update by', isAdmin
+          ? <input type="date" value={dues[a.id] || ''} onChange={e => onDue(a.id, e.target.value)} style={{ ...inputStyle, padding: '5px 8px', fontSize: '12px' }} />
+          : <span style={{ color: dues[a.id] ? INK : 'var(--vfo-faint)' }}>{dues[a.id] ? fmtDueDate(dues[a.id]) : '—'}</span>, isAdmin)}
+        {acct && field('Progress', (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0, background: STATUS_COLOR[statuses[a.id]] || '#cdd8ea' }} />
+            <select value={statuses[a.id] || ''} onChange={e => onStatus(a.id, e.target.value)} style={{ ...inputStyle, padding: '5px 8px', fontSize: '12px', width: '100%' }}>
+              <option value="">— Not set —</option>
+              {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        ), true)}
+        {!a.isSub && canEdit && onAddSubtask && (
+          <div style={{ marginTop: '8px' }}>
+            <button onClick={() => setAdding(v => !v)} style={{ background: 'none', border: 'none', color: BLUE, cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>{adding ? '× Cancel sub-task' : '+ Add sub-task'}</button>
+          </div>
+        )}
+        {adding && (
+          <div style={{ marginTop: '8px' }}>
+            <AddActionForm idKey={'sub' + a.id} submitLabel="Add sub-task" placeholder="Describe the sub-task…" onCancel={() => setAdding(false)} onSubmit={async (f) => { await onAddSubtask(a.id, f); setAdding(false) }} />
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

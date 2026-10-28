@@ -199,7 +199,9 @@ export default function MemberHelpButton() {
         </div>
       )}
 
-      <button
+      {/* Narrow: the open panel is a bottom sheet with its own close button, and
+          the floating one sat over its list - so it hides while the sheet is open. */}
+      {!(open && narrow) && <button
         onClick={() => setOpen(o => !o)}
         aria-label={open ? 'Close help' : 'Open help'}
         title="Help"
@@ -208,7 +210,7 @@ export default function MemberHelpButton() {
         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
       >
         {open ? '×' : '?'}
-      </button>
+      </button>}
     </>
   )
 }

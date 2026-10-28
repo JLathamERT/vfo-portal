@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import TaxIntakeForm from './TaxIntakeForm'
 import { DiagnosticCard } from '../admin/TaxDiagnosticsPanel'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 // The member portal's Tax Diagnostic tab (2026-10-14) — open to EVERY member, no
 // feature switch. Two views:
@@ -16,12 +17,15 @@ import { DiagnosticCard } from '../admin/TaxDiagnosticsPanel'
 //     memberMode — read-only, newest first.
 // Laid out like Client Overview (2026-10-14, Jake): its eyebrow + heading and
 // its pill buttons, opening on Submitted Diagnostics.
+// Phone: the shorter labels, so both pills and the round Refresh button sit on
+// one row (the long ones wrapped into two lopsided rows).
 const VIEWS = [
-  { key: 'submitted', label: 'Submitted Diagnostics' },
-  { key: 'start', label: 'Start a Tax Diagnostic' },
+  { key: 'submitted', label: 'Submitted Diagnostics', phoneLabel: 'Submitted' },
+  { key: 'start', label: 'Start a Tax Diagnostic', phoneLabel: 'Start new' },
 ]
 
 export default function MemberTaxDiagnostic({ member }) {
+  const isPhone = useIsPhone()
   const [view, setView] = useState('submitted')
   const [formKey, setFormKey] = useState(0)
   const [doneMessage, setDoneMessage] = useState('')
@@ -55,11 +59,11 @@ export default function MemberTaxDiagnostic({ member }) {
     setFormKey(k => k + 1)
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
-  const card = { ...sectionStyle, marginBottom: '20px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: isPhone ? 'var(--vfo-card-pad)' : '24px', marginBottom: '16px' }
+  const card = { ...sectionStyle, marginBottom: isPhone ? '12px' : '20px' }
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
+    <div style={{ padding: isPhone ? '16px var(--vfo-gutter)' : '24px', maxWidth: '1500px', margin: '0 auto' }}>
       <div style={{ marginBottom: '18px' }}>
         <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>VFO Tax Planning</p>
         <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '4px 0 0' }}>Tax Diagnostic</h2>
@@ -68,10 +72,16 @@ export default function MemberTaxDiagnostic({ member }) {
         {VIEWS.map(v => (
           <button key={v.key} type="button" onClick={() => { setView(v.key); if (v.key === 'submitted') loadForms() }}
             style={{ padding: '7px 16px', borderRadius: '999px', border: '1px solid ' + (view === v.key ? '#125ecc' : 'var(--vfo-border-strong)'), background: view === v.key ? '#125ecc' : 'var(--vfo-input)', color: view === v.key ? '#fff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-            {v.label}{v.key === 'submitted' && forms ? ` (${forms.length})` : ''}
+            {isPhone ? v.phoneLabel : v.label}{v.key === 'submitted' && forms ? ` (${forms.length})` : ''}
           </button>
         ))}
-        {view === 'submitted' && (
+        {view === 'submitted' && isPhone && (
+          <button type="button" onClick={loadForms} title="Refresh" aria-label="Refresh"
+            style={{ marginLeft: 'auto', width: '32px', height: '32px', padding: 0, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px solid var(--vfo-accent-text)', background: 'rgba(18,94,204,0.08)', color: 'var(--vfo-accent-text)' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><polyline points="21 3 21 9 15 9" /></svg>
+          </button>
+        )}
+        {view === 'submitted' && !isPhone && (
           <button type="button" onClick={loadForms}
             style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid var(--vfo-accent-text)', background: 'rgba(18,94,204,0.08)', color: 'var(--vfo-accent-text)', fontFamily: 'Inter, sans-serif' }}>
             Refresh
@@ -98,7 +108,7 @@ export default function MemberTaxDiagnostic({ member }) {
           {loadError && <div style={{ ...card, color: '#d93025', fontSize: '13px' }}>{loadError}</div>}
           {!forms && !loadError && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>Loading...</div>}
           {forms && forms.length === 0 && (
-            <div style={{ ...card, fontSize: '13px', color: 'var(--vfo-muted)' }}>No Tax Diagnostics submitted yet.</div>
+            <div style={{ ...card, fontSize: isPhone ? '14px' : '13px', color: 'var(--vfo-muted)' }}>No Tax Diagnostics submitted yet.</div>
           )}
           {(forms || []).map(d => (
             <DiagnosticCard key={d.key} d={d} members={[]} card={card} memberMode

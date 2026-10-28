@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton } from '../shared/Skeleton'
 import { GCServicesView, GCTransactionHistory } from '../shared/GCMarketplaceViews'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 // Mirrors the server's GC_PACKAGES in actions/gc/create-checkout.ts — display only;
 // the checkout price is always re-derived server-side from the credit amount.
@@ -16,6 +17,7 @@ const GC_PACKAGES = [1, 10, 20, 50].map(amount => {
 const gcMoney = (n) => '$' + Number(n).toLocaleString('en-US')
 
 export default function MemberGCMarketplace({ memberNumber }) {
+  const isPhone = useIsPhone()
   const [gcTab, setGcTab] = useState('dashboard')
   const [balance, setBalance] = useState(null)
   const [transactions, setTransactions] = useState(null)
@@ -134,6 +136,29 @@ export default function MemberGCMarketplace({ memberNumber }) {
       {gcTab === 'dashboard' && (
         <>
           {banner && <div style={{ background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.4)', color: 'var(--vfo-success-text)', fontWeight: 500, padding: '14px 20px', borderRadius: '10px', fontSize: '14px', marginBottom: '20px', textAlign: 'left' }}>{banner}</div>}
+          {/* Phone: ONE card - the balance with Buy Credits beside it, then the two
+              stats as label / value rows (two half-width cards squeezed them). */}
+          {isPhone ? (
+            <div style={{ ...sectionStyle, padding: 'var(--vfo-card-pad)', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '8px' }}>
+                <div>
+                  <div style={{ color: 'var(--vfo-muted)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>Credit Balance</div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em', fontSize: '32px', color: 'var(--vfo-ink)', lineHeight: 1.15, minHeight: '37px' }}>
+                    {balance === null ? <Skeleton width={70} height={30} /> : balance}
+                  </div>
+                </div>
+                <button onClick={() => { setBuyPkg(null); setShowBuyModal(true) }} style={{ padding: '8px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Buy Credits</button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid var(--vfo-tint)' }}>
+                <span style={{ color: 'var(--vfo-muted)', fontSize: '13px' }}>Total Transactions</span>
+                {transactions === null ? <Skeleton width={30} height={14} /> : <span style={{ color: 'var(--vfo-ink)', fontWeight: '600' }}>{transactions.length}</span>}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 0', borderTop: '1px solid var(--vfo-tint)' }}>
+                <span style={{ color: 'var(--vfo-muted)', fontSize: '13px' }}>Total Redeemed</span>
+                {totalRedeemed === null ? <Skeleton width={30} height={14} /> : <span style={{ color: 'var(--vfo-ink)', fontWeight: '600' }}>{totalRedeemed}</span>}
+              </div>
+            </div>
+          ) : (
           <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
             <div style={{ ...sectionStyle, flex: 1, textAlign: 'center' }}>
               <p style={{ color: 'var(--vfo-muted)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Credit Balance</p>
@@ -154,6 +179,7 @@ export default function MemberGCMarketplace({ memberNumber }) {
               </div>
             </div>
           </div>
+          )}
           {showBuyModal && !buyPkg && (
             <div style={sectionStyle}>
               <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Buy Credits</div>
