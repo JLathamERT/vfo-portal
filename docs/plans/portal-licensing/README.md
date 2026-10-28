@@ -1,5 +1,7 @@
 # VFO Portal Licensing — the whole-system plan
 
+> **Renamed 2026-10-28 (Jake): the *Standard* portal is now shown everywhere as the *Premium* portal** (screens, emails 319-323, Stripe descriptions + product name, invoice / receipt PDFs). This plan keeps the original word; the stored tier value is still `standard`. *Basic* is unchanged.
+
 Written 2026-09-28 (Jake, in the Feature Switches chat). **This file is the plan of record for the portal licensing system as a whole.** The FIRST unit, the tax licence, is also DIRECT to Tax Planning unit 4 and its detailed pre-work lives in [../direct-tax-planning/README.md](../direct-tax-planning/README.md) §9; everything after it is planned here. The hub carries only live state.
 
 **Sources.** Paul's licensing spreadsheet, cell dump: [../direct-tax-planning/licensing-structure-sheet-dump.txt](../direct-tax-planning/licensing-structure-sheet-dump.txt) (tabs: Portal License, VFO ASSOCIATE, FINANCIAL COLLABORATOR, CATALYST V FUSION, ACCREDITED). Paul's deck "PL - Q4 Update: VFO Portal" (Jake's Downloads, not in the repo), slides 41-82: the Q4 theme is **members driving the portal with their clients**, aimed "largely in place by mid-October 2026", and "all 5 areas will involve some form of Member / Client licence". Where this file and those sources disagree, ask Jake — the sources are drafts, this file records his decisions.

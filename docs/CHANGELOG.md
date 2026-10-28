@@ -8,6 +8,22 @@
 
 ---
 
+## 2026-10-28 (d) — The Standard portal is now the Premium portal
+
+Branch `claude/premium-portal-rename` (both repos), the same chat as (b). Jake: rename *Standard Portal* to *Premium Portal* everywhere a person reads it; *Basic Portal* stays.
+
+**What changed (wording only).**
+- Screens: the Feature Switches *VFO Client Portal* card + Details, the member's CLIENT PORTAL card (headings, *Turn on Premium portal*, confirm, status lines, the *Update payment method* warning), `/portal-license-pay` (title *VFO Portal - Premium Client Portal*, line *VFO Portal Premium Licence*, thank-you), the CIQ tab's MSM toggle note, `OnePagePlanView` comment.
+- Backend: new subscriptions' Stripe description `VFO Portal - Premium portal - <client>` and Checkout line `VFO Portal - Premium client portal - <client>`; invoice / receipt PDF line `VFO Portal - Premium client portal licence - <client>`; the Payments ledger and missing-documents label *Premium portal licence*; member-facing errors; the tax hand-over `[STOP SENTENCE]`; the two `FAILURE_ciq_licence` bell titles (*Premium portal: …*); every comment that names the tier.
+- Stripe product `vfo_portal_ciq_licence` → *VFO Portal - Premium Portal client license* (Jake's wording, "CIQ" dropped). The product is made once per account + mode with a fixed id, so the constant only names a NEW product: `ensureCiqProduct` now renames an existing product whose name differs on its next use (a failed rename is logged, never blocks the subscription) — #683. The SANDBOX product was renamed by hand through the API the same day; the live one renames on its next use.
+- Data: migration `20261028140000_premium_portal_wording.sql` — emails 319-323 (subjects + bodies; 0 *Standard* left, 13 *Premium*), the `FAILURE_ciq_licence` rule label, the `ciq_licence` flag note.
+
+**Not changed, on purpose.** The stored tier value `standard` (`client_portal_licenses.tier`, `ClientPortalTier`) and every check on it — renaming it would break every licence test and the 6 existing rows (#382 / #540: rename the display, never the stored name; `client-basic-portal.ts` now says so beside the type). Unrelated *standard*: Standard Coaching, "the standard presentation" in tax / contract emails, "Standard Fee" in the member agreements, Stripe's "Standard" account type, and the TPOM Additional Benefits slide ("saving against standard VFO Portal Membership" = the regular price). Already-issued PDFs, the 1 existing subscription's Stripe description, and history in CHANGELOG / GOTCHAS. The portal-licensing plan keeps its wording under a rename note at the top.
+
+**Ship.** `vfo-admin-api` **v1054** from the branch (`--use-docker`, deployed over v1053 = merged #322, which the branch was cut from), action count 618 unmoved, `deno check` 0, build exit 0 (49 pages), advisor GREEN, smoke **5/5 vs v1054** (Jake).
+
+**Tested (Jake, dev server vs v1054).** The Feature Switches card + Details, the Email Editor's 319-323, the member's CLIENT PORTAL card on Test Client 62 (59524), the Payments label. **Not seen yet:** a real Premium email (all five Draft), a new subscription's Stripe description and Checkout line, a new invoice / receipt PDF, the live product rename.
+
 ## 2026-10-28 (c) — Only the booked payment can fail a Tax retainer or MAP 1 first payment
 
 Branch `claude/vfo-session-starter-5ef240` (edge) / `docs/booked-payment-v1053` (react, docs only). Gotcha #682.

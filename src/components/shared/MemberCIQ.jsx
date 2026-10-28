@@ -1576,7 +1576,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             <div>
               <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{ciqLicenceOn ? 'Member drives CIQ (training complete)' : 'Allow Member to Start New CIQs'}</div>
               <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{ciqLicenceOn
-                ? 'Turn on once the MSM is satisfied the CIQ training is complete. The member then runs their own CIQs and chooses, per client, the free Basic portal or the $25/month Standard portal. When off, they can still view existing CIQs but can\'t create new ones.'
+                ? 'Turn on once the MSM is satisfied the CIQ training is complete. The member then runs their own CIQs and chooses, per client, the free Basic portal or the $25/month Premium portal. When off, they can still view existing CIQs but can\'t create new ones.'
                 : 'When on, the member can start new CIQs on their own. When off, they can still view existing CIQs but can\'t create new ones.'}</div>
             </div>
             <div onClick={() => setLocalCiqEnabled(!localCiqEnabled)}
