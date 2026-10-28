@@ -2,6 +2,7 @@ import vfoCertifiedSeal from '../../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../../assets/vfo-accredited-emblem.png'
 import { formatDate } from '../../lib/dates'
 import { logoUrl } from './logoPng'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 // The member profile's read-only body, shared by the admin member profile
 // (Details tab) and the member's own Profile tab so the two always mirror.
@@ -136,6 +137,12 @@ export default function MemberProfileDetails({
   payoutSlot, people = {}, onOpenMember, styles,
 }) {
   const { sectionStyle, cardTitle } = styles
+  // Phone: the certification seals shrink - at full size they filled the card.
+  const isPhone = useIsPhone()
+  const seal = { width: isPhone ? '44px' : '76px', height: isPhone ? '44px' : '76px', flexShrink: 0 }
+  const sealTitle = isPhone ? '16px' : '19px'
+  // Phone: two short fields side by side instead of one long column.
+  const fieldGrid = isPhone ? { ...grid, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '16px' } : grid
   const lost = profile.elite_status === 'Lost' || profile.elite_status === 'Removed'
   const hasCerts = profile.vfo_certified_date || profile.vfo_accredited_date
   const introducedBy = people.introducedBy ? [people.introducedBy] : []
@@ -153,7 +160,7 @@ export default function MemberProfileDetails({
         <div style={col('420px', '300px')}>
           <div style={card}>
             <div style={cardTitle}>Member Details</div>
-            <div style={grid}>
+            <div style={fieldGrid}>
               <Field label="Join Date">{profile.join_date ? formatDate(profile.join_date) : '—'}</Field>
               {lost && <Field label="Leave Date">{profile.leave_date ? formatDate(profile.leave_date) : '—'}</Field>}
               <Field label="Renewal Date">{profile.membership_renewal_date ? formatDate(profile.membership_renewal_date) : '—'}</Field>
@@ -172,17 +179,17 @@ export default function MemberProfileDetails({
           <div style={col('260px', '240px')}>
             <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
               <div style={cardTitle}>Certifications</div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-evenly', gap: '18px' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-evenly', gap: isPhone ? '12px' : '18px' }}>
                 {profile.vfo_certified_date && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-                    <img src={vfoCertifiedSeal} alt="" style={{ width: '76px', height: '76px', flexShrink: 0 }} />
-                    <div><div style={{ fontSize: '19px', color: '#b08d26', fontWeight: 700 }}>VFO Certified</div><div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{formatDate(profile.vfo_certified_date)}</div></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isPhone ? '12px' : '18px' }}>
+                    <img src={vfoCertifiedSeal} alt="" style={seal} />
+                    <div><div style={{ fontSize: sealTitle, color: '#b08d26', fontWeight: 700 }}>VFO Certified</div><div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{formatDate(profile.vfo_certified_date)}</div></div>
                   </div>
                 )}
                 {profile.vfo_accredited_date && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-                    <img src={vfoAccreditedSeal} alt="" style={{ width: '76px', height: '76px', flexShrink: 0 }} />
-                    <div><div style={{ fontSize: '19px', color: 'var(--vfo-muted)', fontWeight: 700 }}>VFO Accredited</div><div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{formatDate(profile.vfo_accredited_date)}</div></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isPhone ? '12px' : '18px' }}>
+                    <img src={vfoAccreditedSeal} alt="" style={seal} />
+                    <div><div style={{ fontSize: sealTitle, color: 'var(--vfo-muted)', fontWeight: 700 }}>VFO Accredited</div><div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{formatDate(profile.vfo_accredited_date)}</div></div>
                   </div>
                 )}
               </div>
@@ -195,7 +202,7 @@ export default function MemberProfileDetails({
         <div style={col('420px', '300px')}>
           <div style={card}>
             <div style={cardTitle}>Revenue Details</div>
-            <div style={grid}>
+            <div style={fieldGrid}>
               {!hideRevenueDecision && <Field label="Revenue Decision">{profile.revenue_decision || '—'}</Field>}
               <Field label="Eligible for Credit Note">{profile.credit_note_eligible === false ? 'No' : 'Yes'}</Field>
             </div>

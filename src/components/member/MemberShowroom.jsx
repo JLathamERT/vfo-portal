@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
 import { detailEntries, entryLabel, DB_FIELDS, REVENUE_SHARE_KEY, CLIENT_HIDDEN_FIELDS } from '../shared/specialistDetails'
 import { callApi } from '../../lib/api'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
 const HEADSHOT_FALLBACK = 'https://biz-diagnostic.com/img/expert/'
@@ -284,6 +285,7 @@ function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = 
 export default function MemberShowroom({ experts = [], exclusions = [], ecoMap = {}, showMemberServices = false, showRevenueShare = false, showVault = false, introRequest = null, clientView = false }) {
   const [activeFilter, setActiveFilter] = useState('All')
   const [search, setSearch] = useState('')
+  const isPhone = useIsPhone()
   const [selected, setSelected] = useState(null)
 
   // In-portal the showroom follows the portal theme; the CSS template appends
@@ -322,13 +324,26 @@ export default function MemberShowroom({ experts = [], exclusions = [], ecoMap =
           <input type="search" name="search" autoComplete="off" className="vfo-sr-search" placeholder="Search specialists..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
-        <div className="vfo-sr-filters">
-          {filterCats.map(cat => (
-            <button key={cat} className={'vfo-sr-filter-btn' + (cat === activeFilter ? ' vfo-sr-active' : '')} onClick={() => setActiveFilter(cat)}>{cat}</button>
-          ))}
-        </div>
+        {/* Phone: the category pills (seven of them, wrapping all over the place)
+            become ONE row - the count on the left, a category dropdown on the right. */}
+        {isPhone ? (
+          <div className="vfo-sr-phonebar">
+            <p className="vfo-sr-count">{filtered.length} SPECIALIST{filtered.length !== 1 ? 'S' : ''}</p>
+            <select className="vfo-sr-cat" aria-label="Category" value={activeFilter} onChange={e => setActiveFilter(e.target.value)}>
+              {filterCats.map(cat => <option key={cat} value={cat}>{cat === 'All' ? 'All categories' : cat}</option>)}
+            </select>
+          </div>
+        ) : (
+          <>
+            <div className="vfo-sr-filters">
+              {filterCats.map(cat => (
+                <button key={cat} className={'vfo-sr-filter-btn' + (cat === activeFilter ? ' vfo-sr-active' : '')} onClick={() => setActiveFilter(cat)}>{cat}</button>
+              ))}
+            </div>
 
-        <p className="vfo-sr-count">{filtered.length} SPECIALIST{filtered.length !== 1 ? 'S' : ''}</p>
+            <p className="vfo-sr-count">{filtered.length} SPECIALIST{filtered.length !== 1 ? 'S' : ''}</p>
+          </>
+        )}
 
         {filtered.length === 0 ? (
           <div className="vfo-sr-empty">No specialists match your search.</div>
@@ -414,5 +429,28 @@ function showroomCss(s, scale) {
     .vfo-sr-modal-bio { font-size: ${r(15)}px; line-height: 1.8; white-space: pre-wrap; font-weight: 300; color: ${s.card_text_color}d9; }
     @keyframes vfoSrFadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
     @media (max-width: 640px) { .vfo-sr-container { padding: 20px 14px 36px; } .vfo-sr-grid { grid-template-columns: 1fr; gap: 14px; } .vfo-sr-modal { padding: 22px; } .vfo-sr-overlay { padding: 12px; } .vfo-sr-modal-header { flex-direction: column; text-align: center; } .vfo-sr-modal-name { font-size: 22px; } .vfo-sr-modal-avatar { width: 96px; height: 96px; } .vfo-sr-modal-namerow { justify-content: center; } .vfo-sr-search-wrap { max-width: 100%; } .vfo-sr-filters { gap: 6px; } }
+    /* Phone (2026-10-28): a compact search, the count + a category dropdown on one
+       row (.vfo-sr-phonebar, drawn only on a phone in place of the pills), and each
+       specialist as one row - photo on the left, name + tagline beside it, the
+       background-check badge under them - instead of a tall centred card (66 of
+       them ran ~14,000px). */
+    .vfo-sr-phonebar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .vfo-sr-phonebar .vfo-sr-count { margin: 0; text-align: left; font-size: 12px; }
+    .vfo-sr-cat { min-width: 0; max-width: 62%; padding: 7px 10px; border-radius: 10px; border: 1px solid ${s.text_color}33; background: ${s.text_color}08; color: ${s.text_color}; font-size: 13px; font-weight: 600; font-family: "DM Sans", sans-serif; cursor: pointer; }
+    .vfo-sr-cat option { color: #0d1b36; background: #ffffff; }
+    @media (max-width: 640px) {
+      .vfo-sr-container { padding: 16px 14px 36px; }
+      .vfo-sr-search-wrap { margin-bottom: 12px; }
+      .vfo-sr-search { padding: 10px 14px 10px 38px; font-size: 14px; border-width: 1px; border-radius: 10px; }
+      .vfo-sr-search-icon { left: 14px; }
+      .vfo-sr-grid { gap: 10px; }
+      .vfo-sr-card { padding: 12px 14px; border-radius: 14px; }
+      .vfo-sr-card-header { display: grid; grid-template-columns: 52px 1fr; column-gap: 12px; row-gap: 6px; align-items: center; text-align: left; }
+      .vfo-sr-card-header > :nth-child(2) { min-width: 0; }
+      .vfo-sr-card-header > :nth-child(3) { grid-column: 2; justify-self: start; }
+      .vfo-sr-avatar { width: 52px; height: 52px; margin: 0; grid-row: span 2; align-self: start; }
+      .vfo-sr-card-name { font-size: 16px; }
+      .vfo-sr-card-tagline { font-size: 12.5px; margin-top: 2px; min-height: 0; }
+    }
   `
 }

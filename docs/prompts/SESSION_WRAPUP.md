@@ -1,5 +1,5 @@
 <!-- CANONICAL COPY of the VFO session wrap-up prompt. The owner pastes this file's
-     contents once when the work is SHIPPING (not at the end of every chat). Edit here, then re-copy. Last updated: 2026-10-02 (vfo-admin-api deploys use --use-docker, #574). -->
+     contents once when the work is SHIPPING (not at the end of every chat). Edit here, then re-copy. Last updated: 2026-10-28 (frontend gate checks phone + desktop width). -->
 
 # SESSION WRAP-UP — HUB UPDATE + STALENESS AUDIT + COMMIT (run once at session end)
 
@@ -55,7 +55,7 @@ If this session changed how sessions should START, HAND OFF or END — a new req
 - git status — only intended files; NO stray edits to main-checkout files
 - Backend changed? deno check (baseline count+kinds must match the hub) + action-count parity — **the count must match the hub's DERIVE block expectation**
 - DB / policy / function changed? Run get_advisors (type security) → must be GREEN (only the intentional deny-all INFO + pg_net WARN allowed). A new rls_disabled_in_public / sensitive_columns_exposed (ERROR) or rls_policy_always_true (WARN) = a table regressed to anon-reachable → STOP and fix. (SECURITY INVARIANTS)
-- Frontend changed? Visual smoke on affected pages; DevTools Network targets the right backend
+- Frontend changed? Visual smoke on affected pages at phone width (390) AND desktop width (1280 — the browser pane's own "desktop" is a phone, #687); the desktop is byte-identical unless the change says otherwise; DevTools Network targets the right backend
 - Pipeline smoke gate (scripts/smoke-pipelines.ps1, all 5 PASS) after any vfo-admin-api deploy OR after editing shared routing/dispatch/webhook/auth/shared-utils. Skip for frontend/doc-only. **It must be green against the version being SHIPPED** — if the branch deployed more than once, a run against the earlier version does not count; re-run it or put it in OWED by name and version (Part 1A rule 5).
 - Hub line count ≤ 250 (Part 1A rule 7) — a failing count blocks the commit
 

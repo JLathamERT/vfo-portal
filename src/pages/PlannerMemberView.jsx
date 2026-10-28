@@ -9,6 +9,7 @@ import PortalHeader from '../components/shared/PortalHeader'
 import vfoCertifiedSeal from '../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../assets/vfo-accredited-emblem.png'
 import { formatDate } from '../lib/dates'
+import { statusColor } from '../components/shared/statusColors'
 
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
 const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:\/\//i.test(s) ? 'https://' + s : s }
@@ -58,7 +59,7 @@ export default function PlannerMemberView() {
   const countChip = { fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }
   const introChip = { fontSize: '11px', padding: '2px 9px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.25)' }
   const initials = (name) => (name || '').split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
-  const metaDot = (color, label) => <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0 }} />{label}</span></>
+  const metaDot = (color, label) => <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0 }} />{label}</span></>
 
   // Same row shape as the admin Connections / Corporate Members / Introducer Of
   // lists, with the name as plain text.
@@ -104,7 +105,7 @@ export default function PlannerMemberView() {
                 <>
                   <span style={{ fontFamily: 'monospace' }}>{profile.member_number}</span>
                   {profile.member_type && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>{profile.member_type}</span></>}
-                  {profile.elite_status && metaDot(profile.elite_status === 'Active' ? '#1b9254' : profile.elite_status === 'Lost' ? '#e74c3c' : 'var(--vfo-faint)', profile.elite_status)}
+                  {profile.elite_status && metaDot(statusColor(profile.elite_status), profile.elite_status)}
                   {profile.paused && metaDot('#e06717', 'Paused')}
                   {profile.suspended && metaDot('#e74c3c', 'Suspended')}
                   {profile.membership_arrears && metaDot('#b45309', 'In Arrears')}

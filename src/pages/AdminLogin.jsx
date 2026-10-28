@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, setSession } from '../lib/api'
 import AuthShell from '../components/shared/AuthShell'
+import { PhoneNoticeGate } from '../components/shared/PhoneNotReady'
 
 const inputStyle = { width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px' }
 const labelStyle = { display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.8px' }
@@ -44,6 +45,7 @@ export default function AdminLogin() {
 
   return (
     <AuthShell>
+      <PhoneNoticeGate portal="admin">
       <p style={{ fontSize: '11.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2.5px', margin: '0 0 10px' }}>VFOS / ERT Portal</p>
       <h2 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--vfo-heading)', marginTop: 0, marginBottom: '8px', fontSize: '28px' }}>Sign in</h2>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', marginBottom: '28px' }}>Welcome back — enter your admin credentials.</p>
@@ -61,6 +63,7 @@ export default function AdminLogin() {
       </form>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginTop: '20px', textAlign: 'center' }}>Are you a Tax Planner? <span style={{ color: '#0a85e8', fontWeight: 600, cursor: 'pointer' }} onClick={()=>navigate('/tax-planner/login')}>Sign in here</span></p>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginTop: '10px', textAlign: 'center', cursor: 'pointer' }} onClick={()=>navigate('/')}>← Back to portal selection</p>
+      </PhoneNoticeGate>
     </AuthShell>
   )
 }

@@ -96,6 +96,10 @@ const PortalLicensePayPage = lazyPage(() => import('./pages/PortalLicensePayPage
 const MembershipMeetingPage = lazyPage(() => import('./pages/MembershipMeetingPage'))
 const OnboardingMeetingPage = lazyPage(() => import('./pages/OnboardingMeetingPage'))
 import { MemberHelpMount } from './components/member/MemberHelpButton'
+import { PhoneNoticeMount } from './components/shared/PhoneNotReady'
+// Dev server only: the portal in phone-sized frames. A production build drops
+// this branch, so neither the route nor the file is ever published.
+const PhonePreview = import.meta.env.DEV ? lazy(() => import('./dev/PhonePreview')) : null
 
 export default function App() {
   return (
@@ -156,10 +160,12 @@ export default function App() {
       <Route path="/tax-planner/member/:memberNumber" element={<PlannerMemberView />} />
       <Route path="/specialist-ddc-help" element={<SpecialistDdcHelpPage />} />
       <Route path="/specialist-revshare-final" element={<SpecialistRevShareFinalPage />} />
+      {PhonePreview && <Route path="/phone-preview" element={<PhonePreview />} />}
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
     </Suspense>
     <MemberHelpMount />
+    <PhoneNoticeMount />
     </>
   )
 }

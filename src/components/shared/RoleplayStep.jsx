@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { readable } from './readableColor'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 // 90 Day Plan — the Proactive Facilitator Roleplay step (Holistic + Partnership
 // Fast Track, end of "MSM 5 Activity"). MSM-driven, laid out like the tax
@@ -58,6 +59,7 @@ function fmtTime(hhmm) {
 const whenLabel = (a) => `${fmtDate(a.scheduled_date)} ${fmtTime(a.scheduled_time)} ${a.scheduled_timezone || ''}`.trim()
 
 export default function RoleplayStep({ task, enrollmentId, programId, inGroup, readOnly = false, onProgressChange }) {
+  const isPhone = useIsPhone()
   const [roleplay, setRoleplay] = useState(null)
   const [attempts, setAttempts] = useState([])
   const [loaded, setLoaded] = useState(false)
@@ -126,10 +128,11 @@ export default function RoleplayStep({ task, enrollmentId, programId, inGroup, r
     </div>
   )
 
+  // Phone: the label gives way (wraps) so the chip stays on its row.
   const subRow = (key, label, right, stamp, dot) => (
     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', marginLeft: '18px', borderTop: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: dot || 'transparent', flexShrink: 0, border: `1px solid ${dot || 'var(--vfo-border-mid)'}` }} />
-      <span style={{ fontSize: '12.5px', color: 'var(--vfo-ink)', flex: 1, minWidth: '150px' }}>{label}</span>
+      <span style={{ fontSize: '12.5px', color: 'var(--vfo-ink)', flex: 1, minWidth: isPhone ? 0 : '150px' }}>{label}</span>
       {right}
       <span style={stampStyle}>{stamp}</span>
     </div>
@@ -141,7 +144,9 @@ export default function RoleplayStep({ task, enrollmentId, programId, inGroup, r
     const editing = form?.attemptId === a.id
     const dateRight = editing ? dateForm : (
       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={greenChip}>{a.confirmation_kind === 'rescheduled' ? 'Rescheduled' : 'Confirmation sent'} — {whenLabel(a)}</span>
+        {isPhone
+          ? <span style={greenChip} title={a.confirmation_kind === 'rescheduled' ? 'Rescheduled' : 'Confirmation sent'}>{whenLabel(a)}</span>
+          : <span style={greenChip}>{a.confirmation_kind === 'rescheduled' ? 'Rescheduled' : 'Confirmation sent'} — {whenLabel(a)}</span>}
         {!readOnly && isLatest && !a.outcome && (
           <button disabled={busy} onClick={() => setForm({ attemptId: a.id, date: a.scheduled_date, time: String(a.scheduled_time || '').slice(0, 5), tz: a.scheduled_timezone || 'ET' })} style={tdCancel} title="Pick a new date/time and send the rescheduled confirmation email.">Reschedule</button>
         )}
@@ -196,16 +201,31 @@ export default function RoleplayStep({ task, enrollmentId, programId, inGroup, r
     </div>
   )
 
+  // Phone: the intro email gets its own "Intro email | Sent | date" row under the
+  // name, like the date and outcome rows, instead of a long chip wrapping
+  // under the step name.
+  const introRow = isPhone && loaded
+    ? subRow('intro', 'Intro email', introSent
+      ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={greenChip} title={VARIANT_LABEL[roleplay.intro_variant] || ''}>Sent</span>
+          {!readOnly && !latest && (INTRO_BUTTONS[programId] || []).map(b => (
+            <button key={b.variant} disabled={busy} onClick={() => sendIntro(b.variant, b.label.replace('Send', 'Resend'))} style={tdCancel}>{b.label.replace('Send', 'Resend')}</button>
+          ))}
+        </div>
+      : introRight, fmtStamp(roleplay?.intro_sent_at), introSent ? BLUE : null)
+    : null
+
   return (
     <div style={{ padding: '8px 0', borderBottom: inGroup ? 'none' : '1px solid var(--vfo-tint)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: stepColor || 'transparent', flexShrink: 0, border: `1.5px solid ${stepColor || 'var(--vfo-border-mid)'}` }} />
-        <span style={{ fontSize: '14px', color: latest?.outcome === 'completed' ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1, minWidth: '150px' }}>{task.name}</span>
-        {introRight}
-        <span style={stampStyle}>{fmtStamp(roleplay?.intro_sent_at)}</span>
+        <span style={{ fontSize: '14px', color: latest?.outcome === 'completed' ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1, minWidth: isPhone ? 0 : '150px' }}>{task.name}</span>
+        {!isPhone && introRight}
+        {!isPhone && <span style={stampStyle}>{fmtStamp(roleplay?.intro_sent_at)}</span>}
       </div>
-      {(attempts.length > 0 || pendingRow) && (
+      {(introRow || attempts.length > 0 || pendingRow) && (
         <div style={{ marginTop: '6px' }}>
+          {introRow}
           {attemptRows}
           {pendingRow}
         </div>

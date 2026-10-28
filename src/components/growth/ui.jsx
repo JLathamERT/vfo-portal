@@ -1,6 +1,7 @@
 // Shared style tokens + tiny atoms for the Growth Plan views (portal vibe).
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 export const NAVY = '#002973', BLUE = '#125ecc', INK = 'var(--vfo-ink)', MUTED = 'var(--vfo-muted)'
 export const GREEN = '#1b9254', AMBER = '#e06717', GREY = 'var(--vfo-muted)'
@@ -16,19 +17,21 @@ export const pillGhost = { padding: '11px 20px', borderRadius: '999px', border: 
 
 // Rounded pill tab switcher used by the member Growth Plan tabs and the admin
 // One Page Plan "Add Priorities" switcher. `tabs` = [{ key, label }].
+// Phone: smaller pills, so the three member tabs sit on one row.
 export function GrowthTabs({ tabs, active, onChange }) {
+  const isPhone = useIsPhone()
   return (
-    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: isPhone ? '6px' : '8px', flexWrap: 'wrap' }}>
       {tabs.map(t => {
         const on = active === t.key
         return (
           <button key={t.key} onClick={() => onChange(t.key)} style={{
-            padding: '8px 18px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-            fontSize: '13px', fontWeight: on ? 700 : 600,
+            padding: isPhone ? '6px 12px' : '8px 18px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+            fontSize: isPhone ? '12px' : '13px', fontWeight: on ? 700 : 600, whiteSpace: 'nowrap',
             border: on ? 'none' : '1px solid var(--vfo-border-strong)',
             background: on ? 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)' : '#fff',
             color: on ? '#fff' : MUTED,
-          }}>{t.label}</button>
+          }}>{isPhone && t.phoneLabel ? t.phoneLabel : t.label}</button>
         )
       })}
     </div>

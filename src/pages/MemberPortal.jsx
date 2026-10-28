@@ -15,6 +15,8 @@ import MemberNavBar, { orderMemberPrograms } from '../components/member/MemberNa
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { HeroAvatar } from '../components/shared/TrackKit'
 import { usePortalTheme } from '../lib/theme'
+import { useIsPhone } from '../lib/useMediaQuery'
+import { statusColor } from '../components/shared/statusColors'
 
 const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
 // Prepend https:// to a bare domain so member website links resolve as absolute.
@@ -32,6 +34,7 @@ export default function MemberPortal() {
   const navigate = useNavigate()
   const session = getSession()
   usePortalTheme()
+  const isPhone = useIsPhone()
   const [activeTab, setActiveTab] = useState(() => {
     const qs = new URLSearchParams(window.location.search)
     // Land returning Stripe buyers (/member?gc_success=1) on the GC Marketplace.
@@ -124,7 +127,9 @@ export default function MemberPortal() {
   const orderedEnabledPrograms = orderMemberPrograms(allPrograms, enabledPrograms, features)
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
+    // Phone: room under the page for the floating Help (?) button, which sat
+    // over a page's last button (MemberHelpButton, bottom-right).
+    <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', ...(isPhone ? { paddingBottom: '64px' } : {}) }}>
       <PortalHeader name={session.name} onTitleClick={handleTitleClick} actions={[
         { key: 'settings', label: 'Settings', onClick: () => { setShowSettings(true); setActiveTab(null) } },
         { key: 'signout', label: 'Sign Out', onClick: signOut },
@@ -139,7 +144,7 @@ export default function MemberPortal() {
       {!showSettings && (
         <>
           {loadError && (
-            <div style={{ maxWidth: '980px', margin: '20px auto 0', padding: '0 24px' }}>
+            <div style={{ maxWidth: '980px', margin: '20px auto 0', padding: '0 var(--vfo-gutter)' }}>
               <div style={{ background: 'rgba(217,48,37,0.10)', border: '1px solid rgba(217,48,37,0.32)', borderRadius: '12px', padding: '14px 16px' }}>
                 <div style={{ fontSize: '14px', fontWeight: 700, color: '#d93025', marginBottom: '6px' }}>We couldn't load your portal</div>
                 <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', wordBreak: 'break-word' }}>{loadError}</div>
@@ -167,12 +172,12 @@ export default function MemberPortal() {
           )}
           {!loading && activeTab === 'showroom' && <MemberShowroom experts={allExperts} exclusions={exclusions} ecoMap={ecoMap} showMemberServices showRevenueShare showVault />}
           {!loading && activeTab === 'website' && memberData && memberData.website_enabled && (
-            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
               <MemberWebsitePlugin member={memberData} onDataChange={loadData} />
             </div>
           )}
           {!loading && activeTab === 'ciq' && (
-            <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
+            <div style={{ maxWidth: '900px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
               <MemberCIQ memberNumber={session.member_number} memberName={session.name || session.member_number} ciqEnabled={session.ciq_enabled} ciqVfosManaged={session.ciq_vfos_managed} isAdmin={false} />
             </div>
           )}
@@ -182,12 +187,12 @@ export default function MemberPortal() {
               : <ComingSoon title="Growth Plan" />
           )}
           {!loading && activeTab === 'gc' && (
-            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
               <MemberGCMarketplace memberNumber={session.member_number} />
             </div>
           )}
           {!loading && activeTab === 'vault' && (
-            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
               <MemberVault memberNumber={session.member_number} />
             </div>
           )}
@@ -250,19 +255,19 @@ function MemberEditProfile({ member, onSaved }) {
     finally { setSaving(false) }
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
   const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
   const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
 
-  if (loadError) return <div style={{ maxWidth: '980px', margin: '0 auto', padding: '24px' }}><div style={sectionStyle}><div style={{ color: '#d93025', fontSize: '13px' }}>{loadError}</div></div></div>
+  if (loadError) return <div style={{ maxWidth: '980px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}><div style={sectionStyle}><div style={{ color: '#d93025', fontSize: '13px' }}>{loadError}</div></div></div>
   if (!row) return <MemberEditProfileSkeleton />
 
   const currentPhoto = photoPreview || (row.headshot_image ? HEADSHOT_SUPABASE + encodeURIComponent(row.headshot_image) : null)
   const initials = `${row.first_name || ''} ${row.last_name || ''}`.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
 
   return (
-    <div style={{ maxWidth: '980px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: '980px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
       <div style={sectionStyle}>
         <div style={cardTitle}>Profile Picture</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
@@ -343,6 +348,7 @@ function MemberSpecialists({ member, allExperts, exclusions, ecoMap = {}, onData
   const [dirty, setDirty] = useState(false)
   const [status, setStatus] = useState('')
   const [statusType, setStatusType] = useState('success')
+  const isPhone = useIsPhone()
 
   const enabledCount = regularExperts.filter(e => enabled[e.id]).length
   const filtered = search ? regularExperts.filter(e => e.name.toLowerCase().includes(search.toLowerCase())) : regularExperts
@@ -367,16 +373,19 @@ function MemberSpecialists({ member, allExperts, exclusions, ecoMap = {}, onData
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px 24px 0' }}>
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'var(--vfo-gutter) var(--vfo-gutter) 0' }}>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginBottom: '20px', fontStyle: 'italic' }}>Changes here affect which specialists appear in your VFO Showroom and, if enabled, your Website Plugin.</p>
-      <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
+      {/* Phone: the two big counters become one line beside the Enable / Disable
+          buttons, under the search - one balanced row, not a block of numbers. */}
+      {!isPhone && <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
         <div><div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--vfo-ink)' }}>{enabledCount}</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', letterSpacing: '1px' }}>ENABLED</div></div>
         <div><div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--vfo-ink)' }}>{regularExperts.length}</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', letterSpacing: '1px' }}>TOTAL</div></div>
-      </div>
+      </div>}
       <input type="search" name="search" autoComplete="off" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search specialists..." style={{ ...inputStyle, marginBottom: '12px' }} />
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-        <button onClick={enableAll} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Enable All</button>
-        <button onClick={disableAll} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Disable All</button>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
+        {isPhone && <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginRight: 'auto' }}><strong style={{ color: 'var(--vfo-ink)', fontWeight: 600 }}>{enabledCount}</strong> of {regularExperts.length} enabled</span>}
+        <button onClick={enableAll} style={{ padding: isPhone ? '5px 12px' : '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer' }}>Enable All</button>
+        <button onClick={disableAll} style={{ padding: isPhone ? '5px 12px' : '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer' }}>Disable All</button>
       </div>
       <div style={{ marginBottom: '8px' }}>
         {filtered.map(expert => (
@@ -419,7 +428,7 @@ function MemberSpecialists({ member, allExperts, exclusions, ecoMap = {}, onData
       )}
       <div style={{ position: 'sticky', bottom: 0, background: 'var(--vfo-page)', borderTop: '1px solid var(--vfo-border)', padding: '16px 0', display: 'flex', alignItems: 'center', gap: '16px' }}>
         {dirty && <span style={{ fontSize: '13px', color: '#b08d26', fontWeight: 500 }}>You have unsaved changes</span>}
-        <button onClick={save} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Save Changes</button>
+        <button onClick={save} style={{ padding: isPhone ? '8px 20px' : '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer' }}>Save Changes</button>
         {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px' }}>{status}</span>}
       </div>
     </div>
@@ -427,6 +436,7 @@ function MemberSpecialists({ member, allExperts, exclusions, ecoMap = {}, onData
 }
 
 function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
+  const isPhone = useIsPhone()
   // The member's own Stripe Connect setup state — a tag, never the account id
   // (member_my_connect_status is session-scoped and strips it).
   const [connectStatus, setConnectStatus] = useState(null)
@@ -478,7 +488,7 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
   // Mirrors the admin-side member profile (MembersPanel MemberProfile):
   // hero header with headshot + status meta, short facts side by side, then
   // full-width long-form (bio).
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
   const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
   const fieldLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-faint)', textTransform: 'uppercase' }
   const fieldValue = { fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: 600, marginTop: '5px' }
@@ -486,7 +496,6 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
   // and uncategorized members keep it. Mirrors the admin-side hiddenFields.
   const isAccountant = member.member_category === 'accountant'
   const isAdvisor = member.member_category === 'advisor'
-  const statusColors = { Active: '#1b9254', Lost: '#e74c3c', Removed: '#e74c3c' }
   const hasCerts = member.vfo_certified_date || member.vfo_accredited_date
   const headshotSrc = member.headshot_image ? HEADSHOT_SUPABASE + encodeURIComponent(member.headshot_image) : null
   // Corporate members name their lead member in the identity line. Plain text
@@ -495,26 +504,39 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
   const leadName = findLeadMember(allMembers, member)?.name
 
   return (
-    <div style={{ maxWidth: '980px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: '980px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
       {/* Profile header */}
       <div style={{ ...sectionStyle, padding: 0, overflow: 'hidden' }}>
         <div style={{ height: '4px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 55%, #0a85e8 100%)' }} />
-        <div style={{ padding: '22px 24px', display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
-          <HeroAvatar src={headshotSrc} name={member.name} size={64} />
-          <div style={{ minWidth: '200px', flex: 1 }}>
+        {/* The status reads like the number and type beside it (same size and
+            colour, its dot carries the colour). Phone: two set lines - number +
+            status, then the type - instead of one line that wraps wherever the
+            width runs out (2026-10-28). */}
+        <div style={{ padding: isPhone ? '16px' : '22px 24px', display: 'flex', alignItems: 'center', gap: isPhone ? '14px' : '18px', flexWrap: isPhone ? 'nowrap' : 'wrap' }}>
+          <HeroAvatar src={headshotSrc} name={member.name} size={isPhone ? 48 : 64} />
+          <div style={{ minWidth: isPhone ? 0 : '200px', flex: 1 }}>
             <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>Member Profile</div>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '24px', color: 'var(--vfo-heading)', lineHeight: 1.15 }}>{member.name}</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: 'monospace' }}>{member.member_number}</span>
-              {member.member_type && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>{member.member_type}{leadNumber && ` - ${leadName || leadNumber}`}</span></>}
-              {member.elite_status && (
-                <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[member.elite_status] || 'var(--vfo-faint)', flexShrink: 0 }} />
+            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: isPhone ? '21px' : '24px', color: 'var(--vfo-heading)', lineHeight: 1.15 }}>{member.name}</div>
+            {(() => {
+              const sep = <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>
+              const number = <span style={{ fontFamily: 'monospace' }}>{member.member_number}</span>
+              const type = member.member_type && <span>{member.member_type}{leadNumber && ` - ${leadName || leadNumber}`}</span>
+              const status = member.elite_status && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor(member.elite_status), flexShrink: 0 }} />
                   {member.elite_status}
-                </span></>
-              )}
-            </div>
+                </span>
+              )
+              const line = { fontSize: '12.5px', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }
+              return isPhone ? (
+                <>
+                  <div style={{ ...line, marginTop: '6px' }}>{number}{status && <>{sep}{status}</>}</div>
+                  {type && <div style={{ ...line, marginTop: '3px' }}>{type}</div>}
+                </>
+              ) : (
+                <div style={{ ...line, marginTop: '6px' }}>{number}{type && <>{sep}{type}</>}{status && <>{sep}{status}</>}</div>
+              )
+            })()}
           </div>
         </div>
       </div>
@@ -538,6 +560,7 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
 }
 
 function MemberSettings({ session }) {
+  const isPhone = useIsPhone()
   const [email, setEmail] = useState(session.email || '')
   const [newPasscode, setNewPasscode] = useState('')
   const [confirmPasscode, setConfirmPasscode] = useState('')
@@ -555,19 +578,20 @@ function MemberSettings({ session }) {
     } catch (err) { showStatus('error', err.message) }
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
   const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
 
   return (
-    <div style={{ maxWidth: '500px', margin: '0 auto', padding: '32px 24px' }}>
+    <div style={{ maxWidth: '500px', margin: '0 auto', padding: '32px var(--vfo-gutter)' }}>
       <div style={sectionStyle}>
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Account Settings</div>
         <div style={{ marginBottom: '12px' }}>
           <label style={labelStyle}>Email</label>
           <input value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
         </div>
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+        {/* Phone: the two passcode boxes stack (side by side, their hints were cut off). */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexDirection: isPhone ? 'column' : 'row' }}>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>New Passcode</label>
             <input value={newPasscode} onChange={e => setNewPasscode(e.target.value)} placeholder="Leave blank to keep current" style={inputStyle} />
@@ -577,7 +601,7 @@ function MemberSettings({ session }) {
             <input value={confirmPasscode} onChange={e => setConfirmPasscode(e.target.value)} placeholder="Confirm new passcode" style={inputStyle} />
           </div>
         </div>
-        <button onClick={update} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Update</button>
+        <button onClick={update} style={{ padding: isPhone ? '8px 20px' : '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer' }}>Update</button>
         {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
       </div>
       <AppearanceCard />

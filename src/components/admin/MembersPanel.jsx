@@ -42,6 +42,7 @@ import { cleanText, formatPersonName } from '../../lib/formatters'
 import PhoneInput from '../shared/PhoneInput'
 import MemberBrandingCard from '../shared/MemberBrandingCard'
 import MemberProfileDetails from '../shared/MemberProfileDetails'
+import { STATUS_COLORS, statusColor } from '../shared/statusColors'
 
 // Members carrying the "VFO Reconciliation (Free)" type that ANY admin may still
 // open. 59524 is the standing sandbox-forced Test Member (#251) — it holds that
@@ -466,7 +467,7 @@ function MemberDirectoryView({
                 <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', width: '70px', flexShrink: 0, fontFamily: 'monospace' }}>{m.plugin_member_number}</span>
                 <span style={{ fontSize: '14px', color: 'var(--vfo-ink)', fontWeight: 600, width: '200px', flexShrink: 0 }}>{m.name}</span>
                 <span style={{ width: '80px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-ink)' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: m.elite_status === 'Active' ? '#1b9254' : m.elite_status === 'Lost' ? '#e74c3c' : 'var(--vfo-faint)' }} />
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: statusColor(m.elite_status) }} />
                   {m.elite_status || '—'}
                 </span>
                 <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', width: '160px', flexShrink: 0 }}>{m.member_type || '—'}</span>
@@ -505,11 +506,11 @@ function MemberDirectoryView({
               <>
                 <span style={{ fontFamily: 'monospace' }}>{selectedMember.plugin_member_number}</span>
                 {selectedMember.member_type && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>{selectedMember.member_type}{heroLeadNumber && <> - <MemberNameLink memberNumber={heroLeadNumber}>{heroLeadName || heroLeadNumber}</MemberNameLink></>}</span></>}
-                {selectedMember.elite_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: selectedMember.elite_status === 'Active' ? '#1b9254' : selectedMember.elite_status === 'Lost' ? '#e74c3c' : 'var(--vfo-faint)', flexShrink: 0 }} />{selectedMember.elite_status}</span></>}
-                {engagementMeta(selectedMember.engagement_level) && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: engagementMeta(selectedMember.engagement_level).color, flexShrink: 0 }} />{engagementMeta(selectedMember.engagement_level).label}</span></>}
-                {selectedMember.paused && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e06717', flexShrink: 0 }} />Paused</span></>}
-                {selectedMember.suspended && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e74c3c', flexShrink: 0 }} />Suspended</span></>}
-                {selectedMember.membership_arrears && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#b45309', flexShrink: 0 }} />In Arrears</span></>}
+                {selectedMember.elite_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor(selectedMember.elite_status), flexShrink: 0 }} />{selectedMember.elite_status}</span></>}
+                {engagementMeta(selectedMember.engagement_level) && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: engagementMeta(selectedMember.engagement_level).color, flexShrink: 0 }} />{engagementMeta(selectedMember.engagement_level).label}</span></>}
+                {selectedMember.paused && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e06717', flexShrink: 0 }} />Paused</span></>}
+                {selectedMember.suspended && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e74c3c', flexShrink: 0 }} />Suspended</span></>}
+                {selectedMember.membership_arrears && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#b45309', flexShrink: 0 }} />In Arrears</span></>}
               </>
             }
           />
@@ -1136,7 +1137,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
   // Strategic members pick their "type" from the DB-driven group list (passed in
   // as typeOptionsOverride); advisors/accountants use their hardcoded tier lists.
   const typeOptions = (typeOptionsOverride && typeOptionsOverride.length) ? typeOptionsOverride : (isAccountant ? ACCOUNTANT_TYPES : MEMBER_TYPES)
-  const statusColors = { Active: '#1b9254', Lost: '#e74c3c', Removed: 'var(--vfo-muted)' }
+  const statusColors = STATUS_COLORS
 
   if (loading) return <MemberProfileDetailsSkeleton />
   if (!profile) return null

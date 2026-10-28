@@ -7,6 +7,8 @@ import { MemberNameLink } from '../shared/personLinks'
 import { taxDisplayName } from '../shared/taxDisplayNames'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import AddClientForm from '../shared/AddClientForm'
+import { useIsPhone } from '../../lib/useMediaQuery'
+import { STATUS_COLORS, statusPillStyle } from '../shared/statusColors'
 
 // Client Overview — a mirror of Member Overview, but oriented around clients and
 // their program tracks. Four sub-tabs, each lazily loaded from the backend
@@ -109,6 +111,37 @@ function clientStatusColors(status) {
 
 const dot = (color) => ({ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: color, display: 'inline-block' })
 
+// The phone card's status pill (statusPillStyle takes a hex).
+const STATUS_HEX = { active: '#1b9254', pending: '#e06717', lost: '#e74c3c', removed: STATUS_COLORS.Removed }
+
+// Member mode on a phone (2026-10-28): the Clients / Accountants lists as the
+// phone list card - name, then ref + status on the left, the programs (one per
+// line) on the right, chevron at the far right, the whole card opening the
+// profile. No PF or CIQ count on a phone (Jake: simpler, squeeze less in).
+function MemberClientCard({ c, onOpen }) {
+  const programs = c.programs || []
+  return (
+    <div onClick={onOpen} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '12px 14px', marginBottom: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '14px', alignItems: 'start' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-ink)', lineHeight: 1.3 }}>{c.name || '—'}</div>
+          {c.mirrored_from && <div style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 600, marginTop: '2px' }}>Mirrored from {c.mirrored_from}</div>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '3px' }}>
+            {c.client_ref && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{c.client_ref}</span>}
+            {c.status && <span style={statusPillStyle(STATUS_HEX[String(c.status).toLowerCase()])}>{capitalize(c.status)}</span>}
+          </div>
+        </div>
+        <div style={{ minWidth: 0, fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.45, paddingTop: '1px' }}>
+          {programs.length
+            ? programs.map(p => <div key={p.id}>{programLabel(p.name)}</div>)
+            : <div style={{ color: 'var(--vfo-faint)' }}>No program yet</div>}
+        </div>
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--vfo-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><polyline points="9 6 15 12 9 18" /></svg>
+    </div>
+  )
+}
+
 // Both multi-line cells (Next action / Owner) use this line box so a two-way fork
 // reads across as two aligned pairs.
 const line = { lineHeight: '17px', padding: '1px 0' }
@@ -143,6 +176,7 @@ function readSection(key, sections) {
 // the member's tax_intake switch ("Members add clients").
 export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddClient = false }) {
   const navigate = useNavigate()
+  const isPhone = useIsPhone()
   const memberMode = mode === 'member'
   const sections = memberMode ? MEMBER_SECTIONS : SECTIONS
   const sectionKey = memberMode ? MEMBER_SECTION_KEY : CLIENT_OVERVIEW_SECTION_KEY
@@ -328,7 +362,8 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
     }
   }
 
-  const wrap = { padding: '24px', maxWidth: '1500px', margin: '0 auto' }
+  const wrap = { padding: isPhone ? '16px var(--vfo-gutter)' : '24px', maxWidth: '1500px', margin: '0 auto' }
+  const phoneCards = isPhone && memberMode && isList
   const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
 
   return (
@@ -340,7 +375,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
         </div>
         {memberMode && canAddClient && activeSection === 'clients' && !showAddClient && (
           <button type="button" onClick={() => { setAddedMessage(''); setShowAddClient(true) }}
-            style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            style={{ padding: isPhone ? '6px 14px' : '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             + Add Client
           </button>
         )}
@@ -363,14 +398,24 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
       </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <input type="search" name="search" autoComplete="off" placeholder="Search by client, ref, number, or name..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...sel, flex: 1, minWidth: '240px', background: 'var(--vfo-input)' }} />
+        {/* Phone: the search takes its own row (its hint read in full), Filters + sort share the next. */}
+        <input type="search" name="search" autoComplete="off" placeholder={isPhone ? 'Search by name or ref...' : 'Search by client, ref, number, or name...'} value={search} onChange={e => setSearch(e.target.value)} style={{ ...sel, flex: isPhone ? '1 1 100%' : 1, minWidth: isPhone ? 0 : '240px', background: 'var(--vfo-input)' }} />
         <ListFilterButton groups={filterGroups} value={listFilter} onChange={setListFilter} />
         <SortSelect value={listSort} onChange={v => { setListSort(v); resetColSort() }} options={CLIENT_SORT_OPTIONS} />
       </div>
 
       {error && <div style={{ padding: '10px 14px', marginBottom: '12px', background: 'rgba(231,76,60,0.1)', border: '1px solid rgba(231,76,60,0.3)', borderRadius: '8px', color: '#c0392b', fontSize: '13px' }}>Could not load this section: {error}</div>}
 
-      {isLoading ? <ClientOverviewSkeleton /> : (
+      {isLoading ? <ClientOverviewSkeleton /> : phoneCards ? (
+        <div>
+          {rows.length === 0 && !error && (
+            <div style={{ padding: '12px 2px', color: 'var(--vfo-muted)', fontSize: '14px' }}>
+              {clients.length === 0 ? (activeSection === 'accountants' ? 'No accountants yet.' : 'No clients yet.') : 'No clients match the current filters.'}
+            </div>
+          )}
+          {rows.map(({ client: c }) => <MemberClientCard key={c.id} c={c} onOpen={() => openProfile(c, {})} />)}
+        </div>
+      ) : (
         <div style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
           <div style={{ minWidth: (memberMode ? MEMBER_MIN_WIDTH_BY_SECTION : MIN_WIDTH_BY_SECTION)[activeSection] }}>
             <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>

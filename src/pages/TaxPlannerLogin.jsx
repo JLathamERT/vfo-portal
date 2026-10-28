@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { callApi, setSession } from '../lib/api'
 import AuthShell from '../components/shared/AuthShell'
+import { PhoneNoticeGate } from '../components/shared/PhoneNotReady'
 import LoginError from '../components/shared/LoginError'
 
 const inputStyle = { width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px' }
@@ -43,6 +44,7 @@ export default function TaxPlannerLogin() {
 
   return (
     <AuthShell>
+      <PhoneNoticeGate portal="tax_planner">
       <p style={{ fontSize: '11.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2.5px', margin: '0 0 10px' }}>Tax Planner Portal</p>
       <h2 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--vfo-heading)', marginTop: 0, marginBottom: '8px', fontSize: '28px' }}>Sign in</h2>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', marginBottom: '28px' }}>Welcome back — enter your tax planner credentials.</p>
@@ -62,6 +64,7 @@ export default function TaxPlannerLogin() {
       <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginTop: '20px', textAlign: 'center', cursor: 'pointer' }} onClick={()=>navigate('/forgot-password?type=tax_planner')}>Forgot passcode?</p>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginTop: '10px', textAlign: 'center', cursor: 'pointer' }} onClick={()=>navigate('/admin/login')}>← Back to VFOS/ERT sign in</p>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginTop: '10px', textAlign: 'center', cursor: 'pointer' }} onClick={()=>navigate('/')}>← Back to portal selection</p>
+      </PhoneNoticeGate>
     </AuthShell>
   )
 }

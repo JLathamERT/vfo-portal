@@ -92,7 +92,7 @@ export default function SpecialistPortal() {
       </PortalHeader>
 
       {loadError && (
-        <div style={{ maxWidth: '880px', margin: '20px auto 0', padding: '0 24px' }}>
+        <div style={{ maxWidth: '880px', margin: '20px auto 0', padding: '0 var(--vfo-gutter)' }}>
           <div style={{ background: 'rgba(217,48,37,0.10)', border: '1px solid rgba(217,48,37,0.32)', borderRadius: '12px', padding: '14px 16px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#d93025', marginBottom: '6px' }}>We couldn't load your portal</div>
             <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', wordBreak: 'break-word' }}>{loadError}</div>
@@ -107,17 +107,17 @@ export default function SpecialistPortal() {
           : <ShowroomSkeleton />
       )}
       {tab === 'vault' && (
-        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
+        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
           <SpecialistVault />
         </div>
       )}
       {tab === 'shared' && (
-        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
+        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
           <SpecialistShared onUnreadChange={refreshUnread} />
         </div>
       )}
       {tab === 'settings' && (
-        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
+        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
           <ChangePasswordCard action="specialist_update_login" />
           <div style={{ maxWidth: '460px', margin: '20px auto 0' }}>
             <AppearanceCard />

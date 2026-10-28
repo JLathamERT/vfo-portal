@@ -5,6 +5,11 @@ import { HubGrid, HubCard, HubBanner } from './HubKit'
 import { formatDate } from '../../lib/dates'
 import { readable } from './readableColor'
 import AddClientForm from './AddClientForm'
+import { useIsPhone } from '../../lib/useMediaQuery'
+import { statusPillStyle } from './statusColors'
+import EmailText from './EmailText'
+
+const PhoneChevron = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--vfo-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><polyline points="9 6 15 12 9 18" /></svg>
 
 // `client` (2026-10-20): the client page's CIQ tab passes its client
 // ({ id, first_name, last_name, client_ref, email }) and the list is locked to
@@ -17,6 +22,7 @@ import AddClientForm from './AddClientForm'
 // the server refuses every CIQ write to them regardless.
 export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true, ciqVfosManaged = true, isAdmin = false, client: lockedClient = null, readOnly = false }) {
   const [ciqs, setCiqs] = useState([])
+  const isPhone = useIsPhone()
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [addMode, setAddMode] = useState(null)
@@ -213,8 +219,31 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   }
 
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: isPhone ? 'var(--vfo-card-pad)' : '24px', marginBottom: isPhone ? '14px' : '20px' }
   const statusColors = { draft: '#e06717', completed: '#1b9254' }
+  // The "← CIQ Menu" pill on every CIQ view - smaller and never wrapping on a
+  // phone, where it sat squeezed beside a two-line title.
+  // Phone: a rating-grid row (tax interest, risk concern, legal interest) as the
+  // area's name over its options as small pills - the four radio columns cut the
+  // last options off (tax: 4 x 100px in an overflow-hidden box) or squeezed the
+  // name into ~80px. "Concern" is dropped from the risk pills to keep them short.
+  const phoneRatingRow = (area, levels, key) => (
+    <div key={area} style={{ padding: '10px 12px', borderTop: '1px solid var(--vfo-border-soft)' }}>
+      <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', fontWeight: 600, marginBottom: '6px' }}>{area}</div>
+      <div role="radiogroup" aria-label={area} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+        {levels.map(level => {
+          const on = answers[key] === level
+          return (
+            <button key={level} type="button" role="radio" aria-checked={on} onClick={() => setAnswers(a => ({ ...a, [key]: level }))}
+              style={{ padding: '4px 9px', borderRadius: '999px', fontSize: '12px', fontWeight: on ? 700 : 500, cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: `1px solid ${on ? '#0095ff' : 'var(--vfo-border-strong)'}`, background: on ? 'rgba(0,149,255,0.12)' : 'transparent', color: on ? 'var(--vfo-ink)' : 'var(--vfo-muted)' }}>
+              {level.replace(/ Concern$/, '')}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+  const ciqMenuBtn = { display: 'inline-flex', alignItems: 'center', gap: '7px', padding: isPhone ? '6px 12px' : '8px 16px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: isPhone ? '12px' : '12.5px', fontWeight: 700, cursor: 'pointer', boxShadow: 'var(--vfo-shadow-card)', whiteSpace: 'nowrap', flexShrink: 0 }
 
   const filteredClients = clientSearch
     ? allClients.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(clientSearch.toLowerCase()) || c.client_ref?.toLowerCase().includes(clientSearch.toLowerCase()))
@@ -469,12 +498,12 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
 
       return (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isPhone ? 'flex-start' : 'center', gap: '12px', marginBottom: isPhone ? '16px' : '24px' }}>
             <div>
-              <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--vfo-ink)' }}>Prioritize Opportunities — {client?.first_name} {client?.last_name}</div>
+              <div style={{ fontSize: isPhone ? '17px' : '20px', fontWeight: '600', color: 'var(--vfo-ink)' }}>Prioritize Opportunities — {client?.first_name} {client?.last_name}</div>
               <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client?.client_ref}</div>
             </div>
-            <button onClick={() => setCiqView('chooser')} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '8px 16px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', boxShadow: 'var(--vfo-shadow-card)' }}>← CIQ Menu</button>
+            <button onClick={() => setCiqView('chooser')} style={ciqMenuBtn}>← CIQ Menu</button>
           </div>
 
           <fieldset disabled={readOnly} style={viewOnlyFrame}>
@@ -486,7 +515,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
               <div style={{ background: 'rgba(0,149,255,0.15)', padding: '10px 14px', borderRadius: '10px 10px 0 0', border: '1px solid var(--vfo-border)', borderBottom: 'none' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{sectionName}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Notes</div>
+                  {!isPhone && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Notes</div>}
                 </div>
               </div>
               <div style={{ border: '1px solid var(--vfo-border)', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
@@ -499,6 +528,30 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                       <div style={{ fontSize: '12px', fontWeight: '600', color: '#0095ff', textAlign: 'center' }}>{item.subsection}</div>
                     </div>
                   )}
+                  {isPhone ? (
+                    // Phone: name on top, its value on the left of the next line
+                    // with Drop / Park / Prioritize as small pills on the right,
+                    // then the notes full width - the three columns had squeezed
+                    // the name into ~70px.
+                    <div key={item.key} style={{ padding: '10px 12px', borderTop: idx > 0 && !showSubHeader ? '1px solid #f2f5fa' : 'none' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{item.label}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{item.sublabel || item.value || ''}</span>
+                        <span role="radiogroup" style={{ display: 'inline-flex', gap: '4px' }}>
+                          {['drop', 'park', 'prioritize'].map(d => {
+                            const on = getPriority(item.key) === d
+                            return (
+                              <button key={d} type="button" role="radio" aria-checked={on} onClick={() => setPriorityDecision(item, d)}
+                                style={{ padding: '4px 9px', borderRadius: '999px', fontSize: '12px', fontWeight: on ? 700 : 500, cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: `1px solid ${on ? decisionColors[d] : 'var(--vfo-border-strong)'}`, background: 'transparent', color: on ? decisionColors[d] : 'var(--vfo-muted)' }}>
+                                {d.charAt(0).toUpperCase() + d.slice(1)}
+                              </button>
+                            )
+                          })}
+                        </span>
+                      </div>
+                      <textarea value={getNote(item.key)} onChange={e => setPriorityNote(item, e.target.value)} rows={1} placeholder="Add notes..." style={{ ...inputStyle, fontSize: '13px', resize: 'vertical', minHeight: '36px', marginTop: '8px' }} />
+                    </div>
+                  ) : (
                   <div key={item.key} style={{ display: 'flex', gap: '0', borderTop: idx > 0 && !showSubHeader ? '1px solid #f2f5fa' : 'none' }}>
                     {/* Label + Value */}
                     <div style={{ flex: '1 1 180px', padding: '12px 14px', borderRight: '1px solid var(--vfo-border-soft)' }}>
@@ -519,6 +572,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                       <textarea value={getNote(item.key)} onChange={e => setPriorityNote(item, e.target.value)} rows={2} placeholder="Add notes..." style={{ ...inputStyle, fontSize: '12px', resize: 'vertical', height: '100%', minHeight: '60px' }} />
                     </div>
                   </div>
+                  )}
                   </>)
                 })}
               </div>
@@ -527,9 +581,9 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           })}
           </fieldset>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '24px' }}>
-            <button onClick={() => setCiqView('chooser')} style={{ padding: '12px 28px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer' }}>← Back</button>
-            {!readOnly && <button onClick={async () => { await savePriorities(); try { await callApi('ciq_complete_priorities', { ciq_id: activeCiq.id }); setActiveCiq(prev => ({ ...prev, priorities_completed_at: new Date().toISOString() })) } catch(e) { console.error(e) }; setCiqView('onePagePlan') }} disabled={saving} style={{ padding: '12px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save & Continue to One Page Plan →'}</button>}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: isPhone ? '8px' : '12px', marginTop: isPhone ? '16px' : '24px' }}>
+            <button onClick={() => setCiqView('chooser')} style={{ padding: isPhone ? '9px 14px' : '12px 28px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>← Back</button>
+            {!readOnly && <button onClick={async () => { await savePriorities(); try { await callApi('ciq_complete_priorities', { ciq_id: activeCiq.id }); setActiveCiq(prev => ({ ...prev, priorities_completed_at: new Date().toISOString() })) } catch(e) { console.error(e) }; setCiqView('onePagePlan') }} disabled={saving} style={{ padding: isPhone ? '9px 14px' : '12px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '13px' : '14px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : isPhone ? 'Save & Continue →' : 'Save & Continue to One Page Plan →'}</button>}
           </div>
         </div>
       )
@@ -619,7 +673,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
               <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--vfo-ink)' }}>One Page Plan for {client?.first_name} {client?.last_name} <span style={{ fontSize: '14px', fontWeight: '400', color: 'var(--vfo-muted)' }}>working with {memberName || memberNumber}</span></div>
               {localCiqVfosManaged && <div style={{ fontSize: '13px', color: '#0095ff', fontWeight: 500, marginTop: '4px' }}>Powered by VFO Services</div>}
             </div>
-            <button onClick={() => { setCiqView('chooser'); setSelectedSnapshot(null); setOppSubTab('latest') }} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '8px 16px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', boxShadow: 'var(--vfo-shadow-card)' }}>← CIQ Menu</button>
+            <button onClick={() => { setCiqView('chooser'); setSelectedSnapshot(null); setOppSubTab('latest') }} style={ciqMenuBtn}>← CIQ Menu</button>
           </div>
 
           {/* Sub tabs */}
@@ -753,7 +807,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
               <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--vfo-ink)' }}>CIQ Report — {client?.first_name} {client?.last_name}</div>
               <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client?.client_ref} · Completed {formatDate(activeCiq.completed_at) || 'just now'}</div>
             </div>
-            <button onClick={() => { setShowReport(false); setCiqView('chooser') }} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '8px 16px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', boxShadow: 'var(--vfo-shadow-card)' }}>← CIQ Menu</button>
+            <button onClick={() => { setShowReport(false); setCiqView('chooser') }} style={ciqMenuBtn}>← CIQ Menu</button>
           </div>
 
           {/* Client Information */}
@@ -866,9 +920,9 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           </div>
 
           {/* Bottom actions */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '24px' }}>
-            <button onClick={() => { setShowReport(false); setCiqView('chooser') }} style={{ padding: '12px 28px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer' }}>← Back</button>
-            <button onClick={() => { setCiqView('prioritize'); setShowReport(false) }} style={{ padding: '12px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Continue to Prioritize Opportunities →</button>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: isPhone ? '8px' : '12px', marginTop: isPhone ? '16px' : '24px' }}>
+            <button onClick={() => { setShowReport(false); setCiqView('chooser') }} style={{ padding: isPhone ? '9px 14px' : '12px 28px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>← Back</button>
+            <button onClick={() => { setCiqView('prioritize'); setShowReport(false) }} style={{ padding: isPhone ? '9px 14px' : '12px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer' }}>{isPhone ? 'Continue to Prioritize →' : 'Continue to Prioritize Opportunities →'}</button>
           </div>
         </div>
       )
@@ -886,11 +940,19 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client?.client_ref} · {client?.email}</div>
           </div>
           {activeCiq.status === 'completed' && (
-            <button onClick={() => { setCiqView('chooser'); setActiveSection('intro') }} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '8px 16px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', boxShadow: 'var(--vfo-shadow-card)' }}>← CIQ Menu</button>
+            <button onClick={() => { setCiqView('chooser'); setActiveSection('intro') }} style={ciqMenuBtn}>← CIQ Menu</button>
           )}
         </div>
 
-        {/* Section nav */}
+        {/* Section nav. Phone: one dropdown - nine pills wrapped into five rows. */}
+        {isPhone ? (
+          <select aria-label="Section" value={activeSection} onChange={e => setActiveSection(e.target.value)}
+            style={{ ...inputStyle, marginBottom: '16px', fontWeight: 600 }}>
+            {CIQ_SECTIONS.map((sec, i) => (
+              <option key={sec.key} value={sec.key}>{sec.noNumber ? sec.label : `${CIQ_SECTIONS.filter((s, j) => j < i && !s.noNumber).length + 1}. ${sec.label}`}</option>
+            ))}
+          </select>
+        ) : (
         <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', flexWrap: 'wrap' }}>
           {CIQ_SECTIONS.map((sec, i) => (
             <button key={sec.key} onClick={() => setActiveSection(sec.key)}
@@ -899,6 +961,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             </button>
           ))}
         </div>
+        )}
 
         {activeCiq.status === 'completed' && (
           <div style={{ padding: '10px 16px', borderRadius: '8px', background: 'rgba(27,146,84,0.1)', border: '1px solid rgba(27,146,84,0.3)', color: 'var(--vfo-success-text)', fontWeight: 500, fontSize: '13px', marginBottom: '20px' }}>✓ This CIQ has been completed</div>
@@ -1200,7 +1263,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                   <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Please rate your level of interest in the following areas of tax planning *</label>
                   <div style={{ border: '1px solid var(--vfo-border)', borderRadius: '8px', overflow: 'hidden' }}>
                     {/* Header row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr repeat(4, 100px)', background: 'var(--vfo-tint)', padding: '10px 14px', gap: '4px' }}>
+                    <div style={{ display: isPhone ? 'none' : 'grid', gridTemplateColumns: '1fr repeat(4, 100px)', background: 'var(--vfo-tint)', padding: '10px 14px', gap: '4px' }}>
                       <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}></div>
                       {interestLevels.map(level => (
                         <div key={level} style={{ fontSize: '11px', color: 'var(--vfo-muted)', textAlign: 'center' }}>{level}</div>
@@ -1210,7 +1273,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                     {taxAreas.map(area => {
                       const key = `tax_interest_${area.toLowerCase().replace(/[\s\/]/g, '_')}`
                       return (
-                        <div key={area} style={{ display: 'grid', gridTemplateColumns: '1fr repeat(4, 100px)', padding: '10px 14px', borderTop: '1px solid var(--vfo-border-soft)', gap: '4px', alignItems: 'center' }}>
+                        isPhone ? phoneRatingRow(area, interestLevels, key) : <div key={area} style={{ display: 'grid', gridTemplateColumns: '1fr repeat(4, 100px)', padding: '10px 14px', borderTop: '1px solid var(--vfo-border-soft)', gap: '4px', alignItems: 'center' }}>
                           <div style={{ fontSize: '13px', color: 'var(--vfo-ink)' }}>{area}</div>
                           {interestLevels.map(level => (
                             <div key={level} style={{ display: 'flex', justifyContent: 'center' }}>
@@ -1258,7 +1321,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             <div style={{ marginBottom: '24px' }}>
               <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>{title}</label>
               <div style={{ border: '1px solid var(--vfo-border)', borderRadius: '8px', overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr repeat(4, 1fr)', background: 'var(--vfo-tint)', padding: '10px 14px', gap: '4px' }}>
+                <div style={{ display: isPhone ? 'none' : 'grid', gridTemplateColumns: '1.5fr repeat(4, 1fr)', background: 'var(--vfo-tint)', padding: '10px 14px', gap: '4px' }}>
                   <div />
                   {concernLevels.map(level => (
                     <div key={level} style={{ fontSize: '11px', color: 'var(--vfo-muted)', textAlign: 'center' }}>{level}</div>
@@ -1267,7 +1330,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                 {areas.map(area => {
                   const key = `${keyPrefix}_${area.toLowerCase().replace(/[\s\/\(\)]/g, '_')}`
                   return (
-                    <div key={area} style={{ display: 'grid', gridTemplateColumns: '1.5fr repeat(4, 1fr)', padding: '10px 14px', borderTop: '1px solid var(--vfo-border-soft)', gap: '4px', alignItems: 'center' }}>
+                    isPhone ? phoneRatingRow(area, concernLevels, key) : <div key={area} style={{ display: 'grid', gridTemplateColumns: '1.5fr repeat(4, 1fr)', padding: '10px 14px', borderTop: '1px solid var(--vfo-border-soft)', gap: '4px', alignItems: 'center' }}>
                       <div style={{ fontSize: '13px', color: 'var(--vfo-ink)' }}>{area}</div>
                       {concernLevels.map(level => (
                         <div key={level} style={{ display: 'flex', justifyContent: 'center' }}>
@@ -1377,7 +1440,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             <div style={{ marginBottom: '24px' }}>
               <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>{title}</label>
               <div style={{ border: '1px solid var(--vfo-border)', borderRadius: '8px', overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr repeat(4, 1fr)', background: 'var(--vfo-tint)', padding: '10px 14px', gap: '4px' }}>
+                <div style={{ display: isPhone ? 'none' : 'grid', gridTemplateColumns: '1.5fr repeat(4, 1fr)', background: 'var(--vfo-tint)', padding: '10px 14px', gap: '4px' }}>
                   <div />
                   {interestLevels.map(level => (
                     <div key={level} style={{ fontSize: '11px', color: 'var(--vfo-muted)', textAlign: 'center' }}>{level}</div>
@@ -1386,7 +1449,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                 {areas.map(area => {
                   const key = `${keyPrefix}_${area.toLowerCase().replace(/[\s\/\(\)]/g, '_')}`
                   return (
-                    <div key={area} style={{ display: 'grid', gridTemplateColumns: '1.5fr repeat(4, 1fr)', padding: '10px 14px', borderTop: '1px solid var(--vfo-border-soft)', gap: '4px', alignItems: 'center' }}>
+                    isPhone ? phoneRatingRow(area, interestLevels, key) : <div key={area} style={{ display: 'grid', gridTemplateColumns: '1.5fr repeat(4, 1fr)', padding: '10px 14px', borderTop: '1px solid var(--vfo-border-soft)', gap: '4px', alignItems: 'center' }}>
                       <div style={{ fontSize: '13px', color: 'var(--vfo-ink)' }}>{area}</div>
                       {interestLevels.map(level => (
                         <div key={level} style={{ display: 'flex', justifyContent: 'center' }}>
@@ -1511,6 +1574,22 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   // member's list) falls back to the client list.
   const selectedClient = selectedClientId != null ? (byClient[selectedClientId] || null) : null
 
+  // Phone (2026-10-28): one CIQ as one balanced row - its dates one per line on
+  // the left, the status pill + a chevron on the right (the whole row opens it) -
+  // not a pill, two dates and "View / Edit →" squeezed into one line.
+  const phoneCiqRow = (ciq) => (
+    <div key={ciq.id} onClick={() => openCiq(ciq)}
+      style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', marginBottom: '6px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '10px', cursor: 'pointer' }}>
+      <div style={{ flex: 1, minWidth: 0, fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.5 }}>
+        <div>Started {formatDate(ciq.created_at)}</div>
+        {ciq.completed_at && <div>Completed {formatDate(ciq.completed_at)}</div>}
+      </div>
+      <span style={statusPillStyle(statusColors[ciq.status])}>{ciq.status === 'draft' ? 'Draft' : 'Completed'}</span>
+      <PhoneChevron />
+    </div>
+  )
+  const newCiqButton = { padding: isPhone ? '6px 14px' : '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '12.5px' : '13px' }
+
   // The client page's CIQ tab: this one client's CIQs, even when there are none.
   if (lockedClient) {
     const clientCiqs = ciqs.filter(c => String(c.client_id) === String(lockedClient.id))
@@ -1526,7 +1605,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>{clientCiqs.length} questionnaire{clientCiqs.length !== 1 ? 's' : ''}</div>
           {canStart && (
-            <button disabled={startingCiq} onClick={startForClient} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: startingCiq ? 'not-allowed' : 'pointer', opacity: startingCiq ? 0.7 : 1 }}>{startingCiq ? 'Starting…' : '+ Start New CIQ'}</button>
+            <button disabled={startingCiq} onClick={startForClient} style={{ ...newCiqButton, cursor: startingCiq ? 'not-allowed' : 'pointer', opacity: startingCiq ? 0.7 : 1 }}>{startingCiq ? 'Starting…' : '+ Start New CIQ'}</button>
           )}
         </div>
         {addStatus && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', margin: '0 0 12px' }}>{addStatus}</p>}
@@ -1538,7 +1617,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             <div style={{ textAlign: 'center', padding: '24px', color: 'var(--vfo-muted)', fontSize: '13px' }}>
               {canStart ? `${lockedClient.first_name} has no CIQs yet. Click "+ Start New CIQ" to begin.` : readOnly ? `${lockedClient.first_name} has no CIQs yet.` : `${lockedClient.first_name} has no CIQs yet. Your VFO Services representative will start one.`}
             </div>
-          ) : clientCiqs.map(ciq => (
+          ) : clientCiqs.map(ciq => isPhone ? phoneCiqRow(ciq) : (
             <div key={ciq.id}
               onClick={() => openCiq(ciq)}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', cursor: 'pointer' }}>
@@ -1565,7 +1644,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           )}
         </div>
         {(isAdmin || localCiqEnabled) && (
-          <button onClick={() => { setShowAdd(!showAdd); setAddMode(null); setAddStatus('') }} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>+ Start New CIQ</button>
+          <button onClick={() => { setShowAdd(!showAdd); setAddMode(null); setAddStatus('') }} style={{ ...newCiqButton, cursor: 'pointer' }}>+ Start New CIQ</button>
         )}
       </div>
 
@@ -1606,8 +1685,8 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
         <div style={{ ...sectionStyle, marginBottom: '20px' }}>
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Start New CIQ</div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={() => selectAddMode('existing')} style={{ flex: 1, padding: '20px', borderRadius: '8px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.08)', color: '#0095ff', fontWeight: 500, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Existing Client</button>
-            <button onClick={() => selectAddMode('new')} style={{ flex: 1, padding: '20px', borderRadius: '8px', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.08)', color: 'var(--vfo-success-text)', fontWeight: 500, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>New Client</button>
+            <button onClick={() => selectAddMode('existing')} style={{ flex: 1, padding: isPhone ? '14px' : '20px', borderRadius: '8px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.08)', color: '#0095ff', fontWeight: 500, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Existing Client</button>
+            <button onClick={() => selectAddMode('new')} style={{ flex: 1, padding: isPhone ? '14px' : '20px', borderRadius: '8px', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.08)', color: 'var(--vfo-success-text)', fontWeight: 500, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>New Client</button>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
             <button onClick={() => { setShowAdd(false); setAddMode(null) }} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
@@ -1656,7 +1735,31 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
       {/* Level 1: every client with a CIQ. Level 2: one client's CIQs. */}
       {ciqs.length === 0 && !showAdd
         ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>{(isAdmin || localCiqEnabled) ? 'No CIQs yet. Click "Start New CIQ" to begin.' : 'No CIQs yet. Your VFO Services representative will start one for you.'}</div>
-        : selectedClient == null ? (
+        : selectedClient == null ? isPhone ? (
+          // Phone: the list card pattern, straight on the page (a card of cards
+          // doubled the padding) - name + ref | email + CIQ count, chevron.
+          <div>
+            {Object.values(byClient).map(({ client, ciqs: clientCiqs }) => {
+              const done = clientCiqs.filter(c => c.status === 'completed').length
+              return (
+                <div key={client?.id} onClick={() => setSelectedClientId(client?.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', marginBottom: '10px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', cursor: 'pointer' }}>
+                  <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '14px', alignItems: 'start' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-ink)', lineHeight: 1.3 }}>{client?.first_name} {client?.last_name}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px', whiteSpace: 'nowrap' }}>{client?.client_ref}</div>
+                    </div>
+                    <div style={{ minWidth: 0, fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.45, paddingTop: '1px' }}>
+                      {client?.email && <div><EmailText email={client.email} /></div>}
+                      <div>{clientCiqs.length} CIQ{clientCiqs.length !== 1 ? 's' : ''}{done ? ` · ${done} completed` : ''}</div>
+                    </div>
+                  </div>
+                  <PhoneChevron />
+                </div>
+              )
+            })}
+          </div>
+        ) : (
           <div style={sectionStyle}>
             {Object.values(byClient).map(({ client, ciqs: clientCiqs }) => {
               const done = clientCiqs.filter(c => c.status === 'completed').length
@@ -1683,7 +1786,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
             </div>
             <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: contactsMap[client?.id]?.length > 0 ? '4px' : '16px' }}>{client?.client_ref} · {client?.email}</div>
             {contactsMap[client?.id]?.length > 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '16px', fontStyle: 'italic' }}>with {contactsMap[client.id].map(c => `${c.first_name} ${c.last_name}`).join(', ')}</div>}
-            {clientCiqs.map(ciq => (
+            {clientCiqs.map(ciq => isPhone ? phoneCiqRow(ciq) : (
               <div key={ciq.id}
                 onClick={() => openCiq(ciq)}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', cursor: 'pointer' }}

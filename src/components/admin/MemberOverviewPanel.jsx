@@ -5,6 +5,7 @@ import ListFilterButton, { matchesFilter, sortMembers, SortSelect, MEMBER_SORT_O
 import { formatDate } from '../../lib/dates'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { readable } from '../shared/readableColor'
+import { STATUS_COLORS } from '../shared/statusColors'
 
 // Member Overview — one unified list of every member (advisor / accountant /
 // strategic) with at-a-glance columns, an expandable client drill-down, a
@@ -234,7 +235,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
                   <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{m.member_type || '—'}</span>
                   <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--vfo-muted)' }}>{m.join_date ? formatDate(m.join_date) : '—'}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 600, background: m.elite_status === 'Active' ? 'rgba(27,146,84,0.13)' : m.elite_status === 'Lost' ? 'rgba(231,76,60,0.13)' : 'var(--vfo-tint)', color: m.elite_status === 'Active' ? 'var(--vfo-success-text)' : m.elite_status === 'Lost' ? '#e74c3c' : 'var(--vfo-muted)' }}>{m.elite_status || 'Active'}</span>
+                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 600, background: m.elite_status === 'Active' ? 'rgba(27,146,84,0.13)' : m.elite_status === 'Lost' ? 'rgba(231,76,60,0.13)' : m.elite_status === 'Removed' ? 'rgba(155,28,28,0.13)' : 'var(--vfo-tint)', color: m.elite_status === 'Active' ? 'var(--vfo-success-text)' : m.elite_status === 'Lost' ? '#e74c3c' : m.elite_status === 'Removed' ? STATUS_COLORS.Removed : 'var(--vfo-muted)' }}>{m.elite_status || 'Active'}</span>
                     {m.suspended && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(231,76,60,0.13)', color: '#e74c3c' }}>SUSP</span>}
                     {m.paused && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(224,103,23,0.14)', color: '#e06717' }}>PAUSE</span>}
                     {m.membership_arrears && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(180,83,9,0.14)', color: '#b45309' }}>ARREARS</span>}

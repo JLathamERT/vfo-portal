@@ -27,6 +27,7 @@ import PlannerNavBar from '../components/tax-planner/PlannerNavBar'
 import { formatDate } from '../lib/dates'
 import { cleanText, formatPersonName, phoneIncomplete, nameHasTwoPeople, TWO_PEOPLE_MESSAGE, TWO_PEOPLE_CONTACT_MESSAGE } from '../lib/formatters'
 import PhoneInput from '../components/shared/PhoneInput'
+import { useIsPhone } from '../lib/useMediaQuery'
 
 // Program names as programs.name holds them (single client profile tab strip).
 const HOLISTIC = 'VFO Holistic Planning'
@@ -111,6 +112,7 @@ export default function ClientDetail() {
 
   // Back URL — prefer state passed via navigate, fallback to admin
   const isMember = location.pathname.startsWith('/member')
+  const isPhone = useIsPhone()
   // Tax-planner portal viewer: same ClientDetail component, reached from the
   // planner's own client list. Never an admin — sees a stripped, view/edit-tax
   // surface only.
@@ -327,7 +329,8 @@ export default function ClientDetail() {
   if (isPlanner ? (!session || session.role !== 'tax_planner') : !session) return null
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
+    // Phone, member: room under the page for the floating Help (?) button.
+    <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', ...(isPhone && isMember ? { paddingBottom: '64px' } : {}) }}>
       {/* The same bar AND nav bar as the portal this page belongs to (2026-10-20):
           a nav pick is stored the way that portal stores it, then the portal opens on it. */}
       <PortalHeader
@@ -387,7 +390,7 @@ export default function ClientDetail() {
                   : program && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ color: '#0095ff', fontWeight: 500 }}>{program.name}</span></>}
                 {client?.member_name && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Member: <MemberNameLink memberNumber={client.member_number}>{client.member_name}</MemberNameLink></span></>}
                 {contacts?.length > 0 && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ fontStyle: 'italic' }}>with {contacts.map(c => `${c.first_name} ${c.last_name}`).join(', ')}</span></>}
-                {client?.status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors2[client?.status] || 'var(--vfo-faint)', flexShrink: 0 }} />{client.status.charAt(0).toUpperCase() + client.status.slice(1)}</span></>}
+                {client?.status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors2[client?.status] || 'var(--vfo-faint)', flexShrink: 0 }} />{client.status.charAt(0).toUpperCase() + client.status.slice(1)}</span></>}
               </>
             }
           />

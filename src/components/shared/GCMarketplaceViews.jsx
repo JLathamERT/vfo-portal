@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton } from './Skeleton'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 // The member-facing Growth Credits Services and History views, shared verbatim
 // between the member portal (MemberGCMarketplace) and the admin per-member GC
@@ -20,7 +21,7 @@ function formatServiceDetails(description) {
   return parts.map((part, i) => part.trim() ? `<div style="margin-bottom:8px;text-align:left;"><span style="color:var(--vfo-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">${labels[i] || ''}</span><div style="color:#44557a;font-size:13px;margin-top:2px;">${escapeHtml(part.trim())}</div></div>` : '').join('')
 }
 
-const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }
 const bannerStyle = { background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.4)', color: 'var(--vfo-success-text)', fontWeight: 500, padding: '14px 20px', borderRadius: '10px', fontSize: '14px', marginBottom: '20px', textAlign: 'left' }
 // The hosts funnel failures through showBanner('Error: ...'), so the prefix is
 // the discriminator the historical single green banner never had.
@@ -154,6 +155,7 @@ export function GCServicesView({
   const [servicesLoaded, setServicesLoaded] = useState(false)
   const [subscriptions, setSubscriptions] = useState([])
   const [openDetails, setOpenDetails] = useState({})
+  const isPhone = useIsPhone()
   const [confirmService, setConfirmService] = useState(null)
   const [redeeming, setRedeeming] = useState(false)
   const [cancelTarget, setCancelTarget] = useState(null)
@@ -320,6 +322,49 @@ export function GCServicesView({
           {catMap[cat].map(svc => {
             const sub = liveSubByService[svc.id]
             const noun = intervalNoun(svc.billing_interval)
+            const short = balance !== null && balance < svc.credit_cost
+            // Phone (2026-10-28): one balanced row per service - the name over its
+            // cost (and a subscription's status) on the left; a small round Details
+            // button and one fixed-size Redeem (or Cancel) on the right. The wrapped
+            // layout put Details and Redeem in a different place on every row.
+            if (isPhone) return (
+              <div key={svc.id} style={{ paddingBottom: '12px', borderBottom: '1px solid var(--vfo-border-soft)', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: 'var(--vfo-ink)', fontSize: '14px', lineHeight: 1.35 }}>{svc.name}</div>
+                    <div style={{ color: 'var(--vfo-muted)', fontSize: '12.5px', marginTop: '2px' }}>
+                      <strong style={{ color: 'var(--vfo-ink)', fontWeight: 700 }}>{svc.credit_cost}</strong> {noun ? `credits / ${noun}` : 'credits'}
+                    </div>
+                    {sub && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '5px' }}>
+                        {sub.status === 'active'
+                          ? <span style={{ ...pillBase, background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)' }}>Renews {fmtDate(sub.next_charge_date)}</span>
+                          : <span style={{ ...pillBase, background: 'rgba(176,141,38,0.15)', color: '#b08d26' }}>On hold - add credits</span>}
+                        {adminMode && <button onClick={() => { setRescheduleTarget({ sub, svc }); setRescheduleDate(subIntervalLocal(sub.next_charge_date, svc.billing_interval)) }} style={rescheduleBtnStyle}>Edit date</button>}
+                      </div>
+                    )}
+                  </div>
+                  {svc.description && (
+                    <button onClick={() => toggleDetails(svc.id)} title={openDetails[svc.id] ? 'Hide details' : 'Details'} aria-label={openDetails[svc.id] ? 'Hide details' : 'Details'} aria-expanded={!!openDetails[svc.id]}
+                      style={{ width: '30px', height: '30px', flexShrink: 0, borderRadius: '50%', border: '1px solid var(--vfo-border-mid)', background: openDetails[svc.id] ? 'var(--vfo-tint)' : 'transparent', color: 'var(--vfo-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><line x1="12" y1="11" x2="12" y2="16" /><line x1="12" y1="7.5" x2="12" y2="7.5" /></svg>
+                    </button>
+                  )}
+                  {sub ? (
+                    <button onClick={() => setCancelTarget({ sub, svc })} style={{ ...cancelBtnStyle, width: '74px', padding: '6px 0', fontSize: '12px', flexShrink: 0 }}>Cancel</button>
+                  ) : (
+                    <button onClick={() => setConfirmService(svc)} title={short ? 'Not enough credits' : undefined}
+                      style={{ width: '74px', padding: '6px 0', flexShrink: 0, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', ...(short
+                        ? { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-muted)' }
+                        : { background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff' }) }}>Redeem</button>
+                  )}
+                </div>
+                {openDetails[svc.id] && (
+                  <div style={{ marginTop: '10px', padding: '12px', background: 'var(--vfo-tint)', borderRadius: '8px', textAlign: 'left' }}
+                    dangerouslySetInnerHTML={{ __html: formatServiceDetails(svc.description) }} />
+                )}
+              </div>
+            )
             return (
               <div key={svc.id} style={{ paddingBottom: '14px', borderBottom: '1px solid var(--vfo-border-soft)', marginBottom: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>

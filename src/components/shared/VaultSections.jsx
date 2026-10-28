@@ -3,8 +3,27 @@ import { callApi, getSession, getLastSeen, setLastSeen } from '../../lib/api'
 import { fileSizeError } from '../../lib/fileUpload'
 import { VaultRowsSkeleton } from './Skeleton'
 import RequestDocsButton from './RequestDocsButton'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 const ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,image/*,application/pdf'
+
+// Phone rows: one line per file - name over size, then two round icon buttons.
+// No file icon: on a phone, room goes to the name, not to decoration.
+const SVG = { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
+function EyeIcon() {
+  return <svg {...SVG}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+}
+function TrashIcon() {
+  return <svg {...SVG}><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>
+}
+function IconButton({ label, tone, onClick, children }) {
+  const colours = tone === 'remove' ? { color: '#e74c3c', background: 'rgba(231,76,60,0.08)' } : { color: '#0a85e8', background: 'rgba(0,149,255,0.10)' }
+  return (
+    <button onClick={onClick} title={label} aria-label={label} style={{ ...colours, width: '30px', height: '30px', borderRadius: '50%', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, padding: 0 }}>
+      {children}
+    </button>
+  )
+}
 
 // The standard two-section vault layout, shared by the client, specialist and
 // member vaults so they all look identical. Callers can override `sections`
@@ -50,6 +69,9 @@ export default function VaultSections({ actions, params = {}, sections = DEFAULT
   const [moving, setMoving] = useState(false)
   const paramsKey = JSON.stringify(params)
   const canMove = !!moveContext && !!getSession()?.is_ert_manager
+  // On a phone a row is two lines - the whole file name, then size + buttons -
+  // or the name was cut to three letters beside them.
+  const isPhone = useIsPhone()
 
   const SECTION_LABELS = { sensitive: 'Tax Documents', general: 'General Documentation', ert: 'ERT/VFOS Documentation', showroom: 'Showroom Documents' }
 
@@ -156,7 +178,7 @@ Add ${files.length === 1 ? `"${files[0].name}"` : `these ${files.length} files`}
       {sections.map(sec => (
         <div
           key={sec.key}
-          style={{ background: dragOverKey === sec.key && dragItem?.section !== sec.key ? 'rgba(0,149,255,0.06)' : 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '12px', padding: '22px', marginBottom: '20px', outline: dragOverKey === sec.key && dragItem?.section !== sec.key ? '2px dashed #0095ff' : 'none', outlineOffset: '-4px' }}
+          style={{ background: dragOverKey === sec.key && dragItem?.section !== sec.key ? 'rgba(0,149,255,0.06)' : 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '12px', padding: isPhone ? '16px' : '22px', marginBottom: '20px', outline: dragOverKey === sec.key && dragItem?.section !== sec.key ? '2px dashed #0095ff' : 'none', outlineOffset: '-4px' }}
           onDragOver={canMove && dragItem && dragItem.section !== sec.key ? (e => { e.preventDefault(); setDragOverKey(sec.key) }) : undefined}
           onDragLeave={canMove ? (() => setDragOverKey(k => k === sec.key ? null : k)) : undefined}
           onDrop={canMove && dragItem ? (e => {
@@ -195,17 +217,32 @@ Add ${files.length === 1 ? `"${files[0].name}"` : `these ${files.length} files`}
                   draggable={canMove}
                   onDragStart={canMove ? (e => { e.dataTransfer.effectAllowed = 'move'; setDragItem({ section: sec.key, file: f }) }) : undefined}
                   onDragEnd={canMove ? (() => { setDragItem(null); setDragOverKey(null) }) : undefined}
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', marginBottom: '8px', opacity: dragItem?.file?.path === f.path ? 0.45 : 1 }}
+                  style={isPhone
+                    ? { display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 10px 10px 12px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px', marginBottom: '8px', opacity: dragItem?.file?.path === f.path ? 0.45 : 1 }
+                    : { display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', marginBottom: '8px', opacity: dragItem?.file?.path === f.path ? 0.45 : 1 }}
                 >
                   {canMove && (
                     <span title="Drag to move this document to another section" style={{ fontSize: '14px', color: 'var(--vfo-muted)', cursor: 'grab', flexShrink: 0, lineHeight: 1, userSelect: 'none' }}>⠿</span>
                   )}
-                  <span style={{ flexShrink: 0 }}>📄</span>
-                  <span title={f.name} style={{ fontSize: '13px', color: 'var(--vfo-ink-2)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-                  <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>{fmtSize(f.size)}</span>
-                  <button onClick={() => view(sec, f.path)} style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>View</button>
-                  {!sec.readOnly && (
-                    <button onClick={() => remove(sec, f.path)} style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.1)', color: '#e74c3c', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Remove</button>
+                  {isPhone ? (
+                    <>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div title={f.name} style={{ fontSize: '13.5px', fontWeight: 500, color: 'var(--vfo-ink)', lineHeight: 1.35, overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{f.name}</div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{fmtSize(f.size)}</div>
+                      </div>
+                      <IconButton label={`View ${f.name}`} tone="view" onClick={() => view(sec, f.path)}><EyeIcon /></IconButton>
+                      {!sec.readOnly && <IconButton label={`Remove ${f.name}`} tone="remove" onClick={() => remove(sec, f.path)}><TrashIcon /></IconButton>}
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ flexShrink: 0 }}>📄</span>
+                      <span title={f.name} style={{ fontSize: '13px', color: 'var(--vfo-ink-2)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>{fmtSize(f.size)}</span>
+                      <button onClick={() => view(sec, f.path)} style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>View</button>
+                      {!sec.readOnly && (
+                        <button onClick={() => remove(sec, f.path)} style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.1)', color: '#e74c3c', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Remove</button>
+                      )}
+                    </>
                   )}
                 </div>
               ))}

@@ -12,6 +12,9 @@ import { formatDate as formatFullDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
 import PhoneInput from '../shared/PhoneInput'
 import { cleanText, formatPersonName } from '../../lib/formatters'
+import { useIsPhone } from '../../lib/useMediaQuery'
+import { statusPillStyle } from '../shared/statusColors'
+import EmailText from '../shared/EmailText'
 
 // Group a phase's tasks so each section header owns the contiguous sub-steps beneath it,
 // letting the UI enclose the group and keep following standalone tasks visually separate.
@@ -53,8 +56,13 @@ const PROGRAMS = [
 // programName narrows to one program (e.g. the Advanced Coaching home);
 // emptyText renders an empty card instead of hiding the card entirely.
 function MemberProgramNotes({ memberNumber, sectionStyle, programName = null, title = 'Program Notes', emptyText = null }) {
+  const isPhone = useIsPhone()
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
+  // Phone: the title sits closer to its rows, an empty card says so in one plain
+  // line (not a padded, centred block), and a note scoped to this page's own
+  // program drops the program pill that repeats the page header.
+  const titleStyle = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
 
   // Read-only for the member: a re-visit draws the last notes before the first
   // paint, then refreshes them.
@@ -73,7 +81,7 @@ function MemberProgramNotes({ memberNumber, sectionStyle, programName = null, ti
 
   if (loading) return (
     <div style={sectionStyle}>
-      <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>{title}</div>
+      <div style={titleStyle}>{title}</div>
       <Skeleton width="90%" height={14} style={{ marginBottom: '8px' }} />
       <Skeleton width="70%" height={14} />
     </div>
@@ -82,23 +90,23 @@ function MemberProgramNotes({ memberNumber, sectionStyle, programName = null, ti
     if (!emptyText) return null
     return (
       <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>{title}</div>
-        <div style={{ textAlign: 'center', padding: '24px', color: 'var(--vfo-faint)', fontSize: '13px' }}>{emptyText}</div>
+        <div style={titleStyle}>{title}</div>
+        <div style={isPhone ? { color: 'var(--vfo-muted)', fontSize: '14px' } : { textAlign: 'center', padding: '24px', color: 'var(--vfo-faint)', fontSize: '13px' }}>{emptyText}</div>
       </div>
     )
   }
 
   return (
     <div style={sectionStyle}>
-      <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>{title}</div>
+      <div style={titleStyle}>{title}</div>
       {notes.map(note => (
         <div key={note.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
           <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
-            <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
-            <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatFullDate(note.created_at)}</span>
-            {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.program_name}</span>}
+            <span style={{ fontSize: isPhone ? '12px' : '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
+            <span style={{ fontSize: isPhone ? '12px' : '11px', color: 'var(--vfo-muted)' }}>·</span>
+            <span style={{ fontSize: isPhone ? '12px' : '11px', color: 'var(--vfo-muted)' }}>{formatFullDate(note.created_at)}</span>
+            {note.program_name && !(isPhone && programName) && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.program_name}</span>}
           </div>
         </div>
       ))}
@@ -117,6 +125,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
   // Coaching-meeting counts keyed by program name — coaching meetings live in
   // coaching_meetings (per enrollment), not member_meetings.
   const [coachingCounts, setCoachingCounts] = useState({})
+  const isPhone = useIsPhone()
 
   // Coming back to this tab in the same session draws the last snapshot at once
   // and refreshes it in the background.
@@ -220,7 +229,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 
   const taxIntakeEnabled = features.tax_intake === true
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }
 
   const msmCount = meetings.filter(m => m.meeting_type === 'MSM Meeting').length
   const advancedCount = coachingCounts['Advanced Coaching'] || 0
@@ -236,9 +245,9 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
       (activeTab === 'msm_holistic' || activeTab === 'msm_partnership') ? <TrainingTrackSkeleton /> :
       <TrainingTrackSkeleton phaseCount={3} rowsPerPhase={3} />
     return (
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
         <Skeleton width={240} height={28} style={{ marginBottom: '20px' }} />
-        <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }}>
+        <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }}>
           <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <Skeleton width={90} height={11} />
@@ -270,15 +279,26 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
     : null
 
   if (activeTab === 'msm_home') {
+    const summary = [['MSM Meetings', msmCount], ['Advanced Meetings', advancedCount], ['Standard Meetings', standardCount], ['VFO 90 Day Plan', vfo90Count], ['PFT 90 Day Plan', pft90Count]]
+    const homeSection = isPhone ? { ...sectionStyle, padding: '14px 16px', marginBottom: '12px' } : sectionStyle
+    const homeLabel = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
     return (
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
-        <div style={sectionStyle}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Assigned MSM</div>
-          <div style={{ fontSize: '16px', color: 'var(--vfo-ink)', fontWeight: '600' }}>{member.assigned_msm || '—'}</div>
-        </div>
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: isPhone ? '16px var(--vfo-gutter)' : '24px' }}>
+        {/* Phone: one row - label left, name right - instead of a card for one name. */}
+        {isPhone ? (
+          <div style={{ ...homeSection, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Assigned MSM</span>
+            <span style={{ fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: 600, textAlign: 'right' }}>{member.assigned_msm || '—'}</span>
+          </div>
+        ) : (
+          <div style={sectionStyle}>
+            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Assigned MSM</div>
+            <div style={{ fontSize: '16px', color: 'var(--vfo-ink)', fontWeight: '600' }}>{member.assigned_msm || '—'}</div>
+          </div>
+        )}
 
-        <div style={sectionStyle}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Your Programs</div>
+        <div style={homeSection}>
+          <div style={homeLabel}>Your Programs</div>
           {PROGRAMS.map(p => {
             const dbProgram = programs.find(prog => prog.name === p.name)
             if (!dbProgram) return null
@@ -296,20 +316,28 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
           {enabledPrograms.length === 0 && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No programs enabled yet.</p>}
         </div>
 
-        <div style={sectionStyle}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Meeting Summary</div>
-          <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
-            {[['MSM Meetings', msmCount], ['Advanced Meetings', advancedCount], ['Standard Meetings', standardCount], ['VFO 90 Day Plan', vfo90Count], ['PFT 90 Day Plan', pft90Count]].map(([label, count]) => (
-              <div key={label} style={{ textAlign: 'center' }}>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)' }}>{count}</div>
-                <div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '3px', textTransform: 'uppercase' }}>{label}</div>
-              </div>
-            ))}
-          </div>
+        <div style={homeSection}>
+          <div style={homeLabel}>Meeting Summary</div>
+          {/* Phone: a list, count on the right - five big numbers wrapped into an uneven grid. */}
+          {isPhone ? summary.map(([label, count], i) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: i < summary.length - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
+              <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{label}</span>
+              <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--vfo-heading)' }}>{count}</span>
+            </div>
+          )) : (
+            <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+              {summary.map(([label, count]) => (
+                <div key={label} style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)' }}>{count}</div>
+                  <div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '3px', textTransform: 'uppercase' }}>{label}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div style={sectionStyle}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Meeting History</div>
+        <div style={homeSection}>
+          <div style={homeLabel}>Meeting History</div>
           {meetings.length === 0
             ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No meetings logged yet.</p>
             : meetings.map(m => (
@@ -347,7 +375,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
     const enrollment = getEnrollment(p.name)
 
     return (
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
         {(!enrollment && !isTaxBypass)
           ? <>
               <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em', fontSize: '22px', color: 'var(--vfo-ink)', marginBottom: '20px' }}>{p.name}</div>
@@ -367,6 +395,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 
 
 function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged = null, taxIntakeEnabled = false }) {
+  const isPhone = useIsPhone()
   const isCoaching = program.name === 'Advanced Coaching'
   const isStandard = program.name === 'Standard Coaching'
   // Standard Coaching mirrors Advanced Coaching minus the Renewal tab.
@@ -384,7 +413,7 @@ function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged 
   const didMountRef = useRef(false)
   useEffect(() => { if (didMountRef.current) setActiveTab(defaultTab); else didMountRef.current = true }, [program.id])
   const tabStyle = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' })
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }
   const statusColors = { 'On Fast Track': '#1b9254', 'Paused Fast Track': '#e06717', 'Lost/Removed': '#e74c3c', 'Revert to Legacy': 'var(--vfo-muted)', 'Active': '#1b9254' }
 
   return (
@@ -394,10 +423,11 @@ function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged 
         <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>{program.name}</div>
         <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span>Joined {enrollment?.date_enrolled ? formatFullDate(enrollment.date_enrolled) : '—'}</span>
-          {!isCoachingLike && enrollment?.program_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[enrollment.program_status] || 'var(--vfo-faint)', flexShrink: 0 }} />{enrollment?.program_status}</span></>}
+          {!isCoachingLike && enrollment?.program_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[enrollment.program_status] || 'var(--vfo-faint)', flexShrink: 0 }} />{enrollment?.program_status}</span></>}
         </div>
       </div>
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px' }}>
+      {/* Phone: a tab bar holding ONE tab (Tax Planning's Clients) does nothing - drop it. */}
+      <div style={isPhone && program.name === 'VFO Tax Planning' && !isStandard && !isCoaching ? { display: 'none' } : { display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px' }}>
         {isStandard ? (
           <>
             <button style={tabStyle(activeTab === 'home')} onClick={() => setActiveTab('home')}>Home</button>
@@ -438,6 +468,7 @@ function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged 
 }
 
 function MemberTrainingView({ enrollment, program }) {
+  const isPhone = useIsPhone()
   const [phases, setPhases] = useState([])
   const [progress, setProgress] = useState({})
   const [loading, setLoading] = useState(true)
@@ -515,7 +546,7 @@ function MemberTrainingView({ enrollment, program }) {
     finally { setLoading(false) }
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
   const statusColors = { Completed: '#1b9254', 'Have Watched': '#1b9254', 'In Progress': '#e06717', 'Will Watch': '#e06717', Outstanding: 'var(--vfo-muted)', 'N/A': 'var(--vfo-muted)', Pending: '#e74c3c', Stopped: '#e74c3c' }
   const statusBg = { Completed: 'rgba(27,146,84,0.15)', 'Have Watched': 'rgba(27,146,84,0.15)', 'In Progress': 'rgba(251,137,90,0.15)', 'Will Watch': 'rgba(251,137,90,0.15)', Outstanding: 'rgba(91,107,140,0.15)', 'N/A': 'rgba(91,107,140,0.15)', Pending: 'rgba(231,76,60,0.15)', Stopped: 'rgba(231,76,60,0.15)' }
   // Positive values are open-ended per program ("3 to Call", "Built - 45%", "Type 2 ...")
@@ -554,7 +585,7 @@ function MemberTrainingView({ enrollment, program }) {
         const isReview = phase.name.includes('Review')
         const isExpanded = expanded[phase.id]
         return (
-        <div key={phase.id} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px', marginTop: isReview ? '-6px' : '0', marginLeft: isReview ? '20px' : '0', borderTopLeftRadius: isReview ? '0' : '12px' }}>
+        <div key={phase.id} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px', marginTop: isReview ? '-6px' : '0', marginLeft: isReview ? '20px' : '0', borderTopLeftRadius: isReview ? '0' : '12px' }}>
           <div onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: isExpanded ? '16px' : '0' }}>
             <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>{phase.name}{isReview && <span style={{ fontSize: '10px', color: 'var(--vfo-muted)', marginLeft: '8px', textTransform: 'none', fontWeight: '400', letterSpacing: '0' }}>checkpoint</span>}</span>
             <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
@@ -611,7 +642,7 @@ function MemberTrainingView({ enrollment, program }) {
               )
             }
             return groupTasks(phase.program_training_tasks).map(node => node.kind === 'group' ? (
-              <div key={`sec-${node.section.id}`} style={{ margin: '12px 0', padding: '4px 16px 8px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px' }}>
+              <div key={`sec-${node.section.id}`} style={{ margin: '12px 0', padding: isPhone ? '4px 10px 6px' : '4px 16px 8px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px' }}>
                 <div style={{ padding: '8px 0 6px' }}>
                   <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{node.section.name}</span>
                 </div>
@@ -792,6 +823,7 @@ function TrackerEntryCard({ entry, onRemove }) {
 }
 
 function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged = null, taxIntakeEnabled = false }) {
+  const isPhone = useIsPhone()
   const navigate = useNavigate()
   const isPFT = program?.name === 'Partnership Fast Track'
   // Every intake surface below — the Add button, the two deep links, the form
@@ -870,7 +902,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     onEnrollmentsChanged?.()
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
   const statusColors = { pending: '#e06717', active: '#1b9254', declined: '#e74c3c' }
 
   if (intakeOn && mode === 'form') return (
@@ -898,7 +930,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '20px', width: '100%' }}>
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', paddingLeft: '24px' }}>
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', paddingLeft: isPhone ? '4px' : '24px' }}>
           <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>TOTAL</div></div>
           <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.filter(c => c.status === 'active').length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>ACTIVE</div></div>
         </div>
@@ -912,7 +944,34 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
 
       {clients.length === 0
         ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No {isPFT ? 'accountants' : 'clients'} added yet.</div>
-        : clients.map(client => (
+        : clients.map(client => isPhone ? (
+          // Phone: name on its own line with a chevron (the whole card opens the
+          // client), then number + status, then contact details - not one squeezed
+          // line where the number broke in half and "Active" ran into "View".
+          <div key={client.id} style={{ ...sectionStyle, padding: '12px 14px', marginBottom: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
+            onClick={() => navigate(`/member/client/${client.id}`, { state: { enrollment_id: enrollment?.id } })}>
+            {/* The phone list-card pattern: two equal halves side by side -
+                identity (name, then number + status) | contact (email, then phone). */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '14px', alignItems: 'start' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-ink)', lineHeight: 1.3 }}>{client.first_name} {client.last_name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '3px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{client.client_ref}</span>
+                    {client.status && <span style={statusPillStyle(statusColors[client.status])}>{client.status.charAt(0).toUpperCase() + client.status.slice(1)}</span>}
+                    {intakeOn && client.pf_member_number && String(client.pf_member_number) === String(member?.member_number) && <DirectPill />}
+                  </div>
+                </div>
+                <div style={{ minWidth: 0, fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.45, paddingTop: '1px' }}>
+                  {client.email && <div><EmailText email={client.email} /></div>}
+                  {client.phone && <div>{client.phone}</div>}
+                </div>
+              </div>
+              {contactsMap[client.id]?.length > 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px', fontStyle: 'italic' }}>with {contactsMap[client.id].map(c => `${c.first_name} ${c.last_name}`).join(', ')}</div>}
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--vfo-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><polyline points="9 6 15 12 9 18" /></svg>
+          </div>
+        ) : (
           <div key={client.id} style={{ ...sectionStyle, cursor: 'pointer' }}
             onClick={() => navigate(`/member/client/${client.id}`, { state: { enrollment_id: enrollment?.id } })}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
@@ -922,7 +981,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{client.first_name} {client.last_name}</span>
                   <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{client.client_ref}</span>
-                  {client.status && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[client.status] || 'var(--vfo-faint)', flexShrink: 0 }} />{client.status.charAt(0).toUpperCase() + client.status.slice(1)}</span>}
+                  {client.status && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[client.status] || 'var(--vfo-faint)', flexShrink: 0 }} />{client.status.charAt(0).toUpperCase() + client.status.slice(1)}</span>}
                   {intakeOn && client.pf_member_number && String(client.pf_member_number) === String(member?.member_number) && <DirectPill />}
                 </div>
                 {(client.email || client.phone) && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client.email}{client.email && client.phone ? ' · ' : ''}{client.phone}</div>}
@@ -1112,6 +1171,7 @@ function MemberClientTrackView({ client, program }) {
 // Have Watched / Will Watch on the caller-supplied status select (statusNode).
 function VideoTask({ task, statusNode, errorNode, isTouched, isPositive, statusColor }) {
   const [showVideo, setShowVideo] = useState(false)
+  const isPhone = useIsPhone()
   const playerRef = useRef(null)
   const containerId = `yt-player-${task.id}`
 
@@ -1148,6 +1208,39 @@ function VideoTask({ task, statusNode, errorNode, isTouched, isPositive, statusC
 
   
 
+  // Phone: one row like every other task - a round play button where the status
+  // dot sits (the status select already carries the colour), the name (also
+  // tappable), then the status - not a second row holding a Watch Video button.
+  if (isPhone) {
+    const toggle = () => setShowVideo(!showVideo)
+    return (
+      <div style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: showVideo ? '10px' : '0' }}>
+          <button onClick={toggle} aria-label={showVideo ? `Hide video: ${task.name}` : `Play video: ${task.name}`} title={showVideo ? 'Hide video' : 'Play video'}
+            style={{ width: '30px', height: '30px', borderRadius: '50%', border: 'none', flexShrink: 0, padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: showVideo ? 'rgba(231,76,60,0.12)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: showVideo ? '#e74c3c' : '#fff', boxShadow: showVideo ? 'none' : '0 2px 6px rgba(18,94,204,0.3)' }}>
+            {showVideo
+              ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+              : <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ marginLeft: '2px' }}><path d="M7 4.5v15l13-7.5z" /></svg>}
+          </button>
+          <span onClick={toggle} style={{ flex: 1, minWidth: 0, cursor: 'pointer', fontSize: '14px', color: isPositive ? 'var(--vfo-muted)' : 'var(--vfo-ink)' }}>{task.name}</span>
+          {statusNode}
+        </div>
+        {errorNode}
+        {showVideo && (
+          <div style={{ borderRadius: '8px', overflow: 'hidden' }}>
+            {isEmbed ? (
+              <div style={{ position: 'relative', paddingTop: '56.25%' }}>
+                <iframe src={url} title={task.name} allow="autoplay; fullscreen" allowFullScreen frameBorder="0" scrolling="no" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }} />
+              </div>
+            ) : (
+              <div id={containerId} />
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: showVideo ? '12px' : '0', flexWrap: 'wrap' }}>
@@ -1179,11 +1272,13 @@ function VideoTask({ task, statusNode, errorNode, isTouched, isPositive, statusC
 }
 
 function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
+  const isPhone = useIsPhone()
   const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedMeeting, setExpandedMeeting] = useState(null)
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: isPhone ? '14px' : '20px' }
+  const labelStyle = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
 
   useEffect(() => { loadMeetings() }, [enrollment.id])
 
@@ -1200,35 +1295,51 @@ function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
   const scheduledMeetings = meetings.filter(m => m.status === 'scheduled').sort((a, b) => a.meeting_date.localeCompare(b.meeting_date))
   const nextScheduled = scheduledMeetings[0]
 
-  if (loading) return <CoachingMeetingsSkeleton />
+  if (loading) return <CoachingMeetingsSkeleton hero={!isPhone} />
+
+  // Phone (2026-10-28): no hero card - it repeated the program header just above
+  // it. Its two counts sit on the history card's title line (titled just History,
+  // under the Meetings tab, so they fit on one line at 360), and a row drops its
+  // pill because the card's own title already says Upcoming / History.
+  const countDot = (color) => <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0 }} />
 
   return (
     <div>
-      <TrackHero
+      {!isPhone && <TrackHero
         eyebrow={eyebrow}
         title="Coaching Meetings"
         meta={<>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1b9254', flexShrink: 0 }} />{completedMeetings.length} completed</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1b9254', flexShrink: 0 }} />{completedMeetings.length} completed</span>
           <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0095ff', flexShrink: 0 }} />{scheduledMeetings.length} scheduled</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0095ff', flexShrink: 0 }} />{scheduledMeetings.length} scheduled</span>
           {nextScheduled && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Next meeting {formatFullDate(nextScheduled.meeting_date)}</span></>}
         </>}
-      />
+      />}
 
       {scheduledMeetings.length > 0 && (
         <div style={sectionStyle}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Upcoming</div>
+          <div style={labelStyle}>Upcoming</div>
           {scheduledMeetings.map(m => (
             <div key={m.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatFullDate(m.meeting_date)}</span>
-              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>Scheduled</span>
+              {!isPhone && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>Scheduled</span>}
             </div>
           ))}
         </div>
       )}
 
       <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Meeting History</div>
+        {isPhone ? (
+          <div style={{ ...labelStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <span>History</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', fontSize: '12.5px', textTransform: 'none', letterSpacing: 0 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>{countDot('#1b9254')}{completedMeetings.length} completed</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>{countDot('#0095ff')}{scheduledMeetings.length} scheduled</span>
+            </span>
+          </div>
+        ) : (
+          <div style={labelStyle}>Meeting History</div>
+        )}
         {completedMeetings.length === 0
           ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No meetings completed yet.</p>
           : completedMeetings.map(m => (
@@ -1237,11 +1348,11 @@ function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', cursor: m.notes ? 'pointer' : 'default' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatFullDate(m.meeting_date)}</span>
-                  <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>
+                  {!isPhone && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>}
                 </div>
                 {m.notes && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>has notes</span>
+                    <span style={{ fontSize: isPhone ? '12.5px' : '11px', color: 'var(--vfo-muted)' }}>{isPhone ? 'Notes' : 'has notes'}</span>
                     <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: expandedMeeting === m.id ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
                   </div>
                 )}
@@ -1260,10 +1371,12 @@ function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
 }
 
 function MemberCoachingRenewal({ enrollment }) {
+  const isPhone = useIsPhone()
   const [renewals, setRenewals] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: isPhone ? '14px' : '20px' }
+  const labelStyle = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
 
   useEffect(() => { loadRenewals() }, [enrollment.id])
 
@@ -1295,8 +1408,49 @@ function MemberCoachingRenewal({ enrollment }) {
 
   const actionColors = { renewed: '#1b9254', cancelled: '#e74c3c' }
 
-  if (loading) return <CoachingRenewalSkeleton />
+  if (loading) return <CoachingRenewalSkeleton phone={isPhone} />
 
+  const endsText = !nextDate ? '' : daysUntilRenewal !== null && daysUntilRenewal < 0 ? `Overdue ${Math.abs(daysUntilRenewal)} days` : `Ends ${formatFullDate(nextDate)}${daysUntilRenewal !== null ? ` (${daysUntilRenewal} days)` : ''}`
+
+  // Phone (2026-10-28): no hero card - it repeated the program name and joined
+  // date shown just above it. The rest reads as label / value rows, and a history
+  // row is one line: date on the left, the action as dot + text on the right.
+  if (isPhone) {
+    const row = (label, value, last = false) => (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '9px 0', borderBottom: last ? 'none' : '1px solid var(--vfo-tint)' }}>
+        <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>{label}</span>
+        <span style={{ fontSize: '14px', color: 'var(--vfo-ink)', textAlign: 'right' }}>{value}</span>
+      </div>
+    )
+    return (
+      <div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>Membership</div>
+          {row('Status', <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor, flexShrink: 0 }} />{currentStatus}</span>)}
+          {row('Period', currentPeriod, !nextDate)}
+          {nextDate && row(daysUntilRenewal !== null && daysUntilRenewal < 0 ? 'Renewal' : 'Ends', <span style={{ fontWeight: 600, color: renewalUrgency }}>{daysUntilRenewal !== null && daysUntilRenewal < 0 ? `Overdue ${Math.abs(daysUntilRenewal)} days` : `${formatFullDate(nextDate)}${daysUntilRenewal !== null ? ` (${daysUntilRenewal} days)` : ''}`}</span>, true)}
+        </div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>History</div>
+          {renewals.length === 0
+            ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', margin: '4px 0' }}>No renewals recorded yet.</p>
+            : renewals.map(r => (
+              <div key={r.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatFullDate(r.action_date)}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: 'var(--vfo-muted)', textTransform: 'capitalize' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: actionColors[r.action] || 'var(--vfo-faint)', flexShrink: 0 }} />
+                    {r.action}{r.period_label ? ` · ${r.period_label}` : ''}
+                  </span>
+                </div>
+                {r.notes && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{r.notes}</div>}
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -1306,10 +1460,10 @@ function MemberCoachingRenewal({ enrollment }) {
         meta={<>
           <span>Joined {joinDate || '—'}</span>
           <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor, flexShrink: 0 }} />{currentStatus}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor, flexShrink: 0 }} />{currentStatus}</span>
           <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>
           <span>{currentPeriod}</span>
-          {nextDate && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ fontWeight: 600, color: renewalUrgency }}>{daysUntilRenewal !== null && daysUntilRenewal < 0 ? `Overdue ${Math.abs(daysUntilRenewal)} days` : `Ends ${formatFullDate(nextDate)}${daysUntilRenewal !== null ? ` (${daysUntilRenewal} days)` : ''}`}</span></>}
+          {nextDate && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ fontWeight: 600, color: renewalUrgency }}>{endsText}</span></>}
         </>}
       />
 
