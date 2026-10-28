@@ -74,7 +74,7 @@ Email **322** `MEMBER_ciq_licence_superseded` where a subscription was billing: 
 
 ## Security
 
-Every member action sits in NO gate list and is fenced in-handler: member caller only (admins read, never write), `denyIfNotOwnClient` on `auth.callerMemberNumber` (a mirrored member is refused, #601), then both switches. `client_ciq_plan_load` is in `CLIENT_ALLOWED_ACTIONS` and reads only `auth.callerClientId`. The two tables are RLS deny-all. Probe: `scripts/probe-l4-ciq-licence.ps1` (writes nothing).
+Every member action sits in NO gate list and is fenced in-handler: member caller only (admins read, never write), `denyIfNotOwnClient` on `auth.callerMemberNumber` (a mirrored member is refused, #601), then both switches. `client_ciq_plan_load` is in `CLIENT_ALLOWED_ACTIONS` and reads only `auth.callerClientId`. **Since 2026-10-28 (portal licensing L6) a TIER 1 member cannot give a client the Premium portal:** `member_ciq_licence_start` / `_stop` / `_resume` and `member_portal_billing_update_card` are in `MEMBER_TIER2_ACTIONS` (403 while `member_tiers` is on for them) and the member card's $25 section is hidden on their own clients. The two tables are RLS deny-all. Probe: `scripts/probe-l4-ciq-licence.ps1` (writes nothing).
 
 ## Owed at go-live
 
