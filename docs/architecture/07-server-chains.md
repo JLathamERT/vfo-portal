@@ -194,7 +194,7 @@ Admin-sent, any-amount, one-time links from Accounting → Specialists → VFO S
 - **Generic resolvers skip it:** the `async_payment_failed` resolver has an explicit `isBgRequestMetadata(md)` no-op arm (without it the fresh customer would raise the *"unmapped Stripe customer"* Jake bell), and the PaymentIntent first-payment resolver's condition gained `!isBgRequest`. The onboarding bg branches (`SPECIALIST_ONBOARDING`, `bg_stripe_customer_id`) and SpecRev (`VFO_SPECIALIST_REVENUE`) key on other pipeline values and are untouched.
 - Purchase-email policy (#287) at the CALL SITE: card → invoice/receipt only; ACH → confirmation at submit + documents at settle. Both targets also latch internally (atomic claim of `confirmation_email_sent_at` / `invoice_email_sent_at`, released on failure — for the invoice/receipt also when the PDF render or the draft THROWS) so redelivery cannot double-send (#327). Hand-firing either target needs an admin-portal session (`login_type` `admin` or legacy NULL, #425) when there is no service-role bearer.
 
-### VFO Portal CIQ licence — the $25/month Standard portal (portal licensing L4, 2026-10-16) *(v: 2026-10-16)*
+### VFO Portal CIQ licence — the $25/month Premium portal (portal licensing L4, 2026-10-16) *(v: 2026-10-16)*
 
 One subscription per client on ONE member billing customer (`member_portal_billing`, `ciq_licence_subscriptions`). Full flow: [../flows/ciq-licence.md](../flows/ciq-licence.md).
 
