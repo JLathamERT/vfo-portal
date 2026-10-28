@@ -8,6 +8,24 @@
 
 ---
 
+## 2026-10-28 (c) — Only the booked payment can fail a Tax retainer or MAP 1 first payment
+
+Branch `claude/vfo-session-starter-5ef240` (edge) / `docs/booked-payment-v1053` (react, docs only). Gotcha #682.
+
+**Why.** Jake got *Payment FAILED — Herbert Carroll (Tax retainer)* (notification 3739). Herb (plan 192, $4,000) had opened `/tax-pay`, left it, and paid by manually entered bank details on a second page (`pi_3UUuazRw…`, *Incomplete* in Stripe, awaiting micro-deposits). Stripe cancelled the abandoned page's PI 24h later; the webhook resolved it by customer and flipped the real `'processing'` retainer to `'failed'`. Left there, the clearing payment would not have been booked (the settle branch needs `'processing'`).
+
+**What it does now.**
+- `resolveStripeFirstPaymentFailure` returns `storedPaymentIntentId`; the generic first-payment arm ignores a cancel / failure for any other PI (`… is not the booked payment … — ignored`). Tax implementation and final-retainer late-ACH arms compare their stored PI the same way.
+- MAP 1 payment 1 now stores its PI: NEW `pipeline_map1.pay1_payment_intent_id` (migration `20261028150000`, applied via MCP before the deploy), written by the `checkout.session.completed` MAP 1 branch. Rows with no stored PI keep the old behaviour; none was in flight at ship (0 MAP 1 P1 `'processing'`, 0 Tax `'processing'` without a PI).
+
+**Repair.** Plan 192 `retainer_status` `'failed'` → `'processing'` by SQL (guarded on the stored PI) after Jake confirmed the PI in Stripe. Census: no other Tax retainer or MAP 1 P1 sat at `'failed'`.
+
+**Ship.** `vfo-admin-api` **v1053** from the edge branch (`--use-docker`), `deno check` 0, no new action (618). Edge branch first synced with main (took main's copies of the two #317 files; the branch was identical to the #317 squash).
+
+**Not exercised (code-only).** No abandoned-page cancel has arrived since the deploy; the MAP 1 store runs on the next real MAP 1 first payment. Herb's clearing (or his ~10-day micro-deposit expiry) is the first live proof on plan 192.
+
+**Noticed, not changed.** A card declined and then retried successfully on the SAME Checkout page may still mark a never-booked row `'failed'` via `payment_intent.payment_failed`, and the completed branches only book a row whose status is NULL. Unconfirmed; left for Jake.
+
 ## 2026-10-28 (b) — Direct to Tax Planning needs an admin's tick; reaching 2/2 bells Jake + Tracy
 
 Branch `claude/vfo-session-starter-b282b2` (edge) / `claude/vfo-session-starter-3ff987` (react), ONE chat. Decision 56 in [plans/direct-tax-planning/README.md](plans/direct-tax-planning/README.md), amending decision 2 ("computed rule only, no admin override").
