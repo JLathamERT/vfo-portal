@@ -38,7 +38,7 @@ export function useMemberNavData(session, enabled = true) {
   const memberNumber = session?.member_number
   const [nav, setNav] = useState(() => {
     const snap = enabled && memberNumber ? getLastSeen(`memberportal:${memberNumber}`) : null
-    return snap ? fromLoads(snap.data, snap.progData, snap.enabledData, memberNumber) : { programs: [], websiteEnabled: false }
+    return snap ? fromLoads(snap.data, snap.progData, snap.enabledData, memberNumber) : { programs: [], websiteEnabled: false, tier1: false }
   })
   useEffect(() => {
     if (!enabled || !memberNumber) return
@@ -58,6 +58,8 @@ function fromLoads(data, progData, enabledData, memberNumber) {
   return {
     programs: orderMemberPrograms(progData?.programs, enabledData?.enabled, enabledData?.features),
     websiteEnabled: !!me?.website_enabled,
+    // L6: sent only while member_tiers is on for this member.
+    tier1: enabledData?.features?.member_tier === 1,
   }
 }
 
@@ -91,14 +93,21 @@ function NavDropdown({ label, isActive, options, activeTab, onSelect, onLabelCli
   )
 }
 
-export default function MemberNavBar({ activeTab, onSelect, programs = [], websiteEnabled = false }) {
+// Portal licensing L6 (2026-10-28): the tabs a TIER 1 member keeps (Profile ▾ is
+// always drawn). Every other tab is hidden, and its actions are refused server-side
+// (MEMBER_TIER2_ACTIONS) - this list is only what the bar draws.
+export const TIER1_TABS = ['profile', 'profile_edit', 'client_overview', 'showroom']
+
+export default function MemberNavBar({ activeTab, onSelect, programs = [], websiteEnabled = false, tier1 = false }) {
   const tabBtn = (key, label) => (
     <button key={key} onClick={() => onSelect(key)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === key ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: activeTab === key ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
       {label}
     </button>
   )
 
-  const flatTabs = ['client_overview', 'tax_diagnostic', 'specialists', 'showroom', 'website', 'growthplan', 'ciq', 'gc', 'vault'].filter(tab => tab !== 'website' || websiteEnabled)
+  const flatTabs = ['client_overview', 'tax_diagnostic', 'specialists', 'showroom', 'website', 'growthplan', 'ciq', 'gc', 'vault']
+    .filter(tab => tab !== 'website' || websiteEnabled)
+    .filter(tab => !tier1 || TIER1_TABS.includes(tab))
   const tabLabel = key => ({ client_overview: 'Client Overview', tax_diagnostic: 'Tax Diagnostic', profile_edit: 'Edit Profile' })[key] || MEMBER_TAB_LABELS[key] || ''
   const profileOptions = [{ key: 'profile', label: 'Profile' }, { key: 'profile_edit', label: 'Edit Profile' }]
   const msmOptions = [
@@ -108,7 +117,7 @@ export default function MemberNavBar({ activeTab, onSelect, programs = [], websi
   const pick = o => ({ key: o.key, label: o.label, active: activeTab === o.key, onSelect: () => onSelect(o.key) })
   const menuItems = [
     { key: 'profile_group', label: 'Profile', options: profileOptions.map(pick) },
-    { key: 'msm_group', label: 'MSM', options: msmOptions.map(pick) },
+    ...(tier1 ? [] : [{ key: 'msm_group', label: 'MSM', options: msmOptions.map(pick) }]),
     ...flatTabs.map(key => pick({ key, label: tabLabel(key) })),
   ]
 
@@ -122,13 +131,15 @@ export default function MemberNavBar({ activeTab, onSelect, programs = [], websi
         onSelect={onSelect}
         onLabelClick={() => onSelect('profile')}
       />
-      <NavDropdown
-        label="MSM"
-        isActive={activeTab === 'msm_home' || !!activeTab?.startsWith('msm_')}
-        activeTab={activeTab}
-        options={msmOptions}
-        onSelect={onSelect}
-      />
+      {!tier1 && (
+        <NavDropdown
+          label="MSM"
+          isActive={activeTab === 'msm_home' || !!activeTab?.startsWith('msm_')}
+          activeTab={activeTab}
+          options={msmOptions}
+          onSelect={onSelect}
+        />
+      )}
       {/* Tax Diagnostic: every member, no switch (2026-10-14) — see MemberTaxDiagnostic. */}
       {flatTabs.map(tab => tabBtn(tab, tabLabel(tab)))}
     </CollapsibleNavBar>

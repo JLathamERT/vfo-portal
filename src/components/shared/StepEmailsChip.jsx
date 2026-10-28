@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { loadCachedAction } from '../../lib/api'
+import { loadCachedAction, getSession } from '../../lib/api'
 import { TEMPLATE_META, ROLE_LABELS } from './templateMeta'
 
 const MEMBER_TWIN_SUFFIX = ' (member signing/paying on clients behalf)'
@@ -102,7 +102,13 @@ function EmailCard({ headerLabel, name, row, normCtx }) {
 
 // Tiny inline "Emails (N)" tag that opens a centered mini-window listing every
 // email a step can send. Mount it directly next to the step/label text.
-export default function StepEmailsChip({ pipeline, templates, label = 'Emails', context, title = 'Emails for this step' }) {
+// A client's My Progress tab (portal licensing L8) never lists the team's emails.
+export default function StepEmailsChip(props) {
+  if (getSession()?.role === 'client') return null
+  return <StepEmailsChipInner {...props} />
+}
+
+function StepEmailsChipInner({ pipeline, templates, label = 'Emails', context, title = 'Emails for this step' }) {
   const [open, setOpen] = useState(false)
   const [rows, setRows] = useState(null)
   const [status, setStatus] = useState('idle')

@@ -27,6 +27,7 @@ import PlannerNavBar from '../components/tax-planner/PlannerNavBar'
 import { formatDate } from '../lib/dates'
 import { cleanText, formatPersonName, phoneIncomplete, nameHasTwoPeople, TWO_PEOPLE_MESSAGE, TWO_PEOPLE_CONTACT_MESSAGE } from '../lib/formatters'
 import PhoneInput from '../components/shared/PhoneInput'
+import ClientTabDropdown from '../components/shared/ClientTabDropdown'
 import { useIsPhone } from '../lib/useMediaQuery'
 
 // Program names as programs.name holds them (single client profile tab strip).
@@ -44,34 +45,6 @@ const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 8
 const CONTACT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // Muted read-only marker shown wherever contacts are listed without controls.
 const ccBadgeStyle = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.4px', color: 'var(--vfo-muted)', border: '1px solid var(--vfo-border-chip)', background: 'var(--vfo-tint)', borderRadius: '999px', padding: '2px 9px', whiteSpace: 'nowrap' }
-
-function ClientTabDropdown({ label, isActive, options, onSelect }) {
-  // Opens and closes instantly (Jake, 2026-10-19): a close delay left two menus
-  // open at once when moving between neighbouring tabs. The menu sits flush under
-  // the button inside this wrapper, so the pointer never leaves it on the way down.
-  const [open, setOpen] = useState(false)
-  function handleMouseEnter() { setOpen(true) }
-  function handleMouseLeave() { setOpen(false) }
-  return (
-    <div style={{ position: 'relative' }} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <button style={{ padding: '7px 10px 7px 12px', background: isActive ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: isActive ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: isActive ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
-        {label}<span style={{ fontSize: '9px', opacity: 0.6 }}>▾</span>
-      </button>
-      {open && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '160px', zIndex: 200, padding: '4px 0', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
-          {options.map(opt => (
-            <button key={opt.key} onClick={() => { onSelect(opt.key); setOpen(false) }}
-              style={{ display: 'block', width: '100%', padding: '8px 16px', background: 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 export default function ClientDetail() {
   const { clientId } = useParams()
@@ -123,12 +96,17 @@ export default function ClientDetail() {
   // (clients.pf_member_number, stamped by the intake finalize), so they run the
   // tax plan themselves and manage its contacts and notes. Compared against the
   // SESSION member number; the backend re-proves it on every write.
-  const isDirect = isMember && !mirror && !!client?.pf_member_number && String(client.pf_member_number) === String(session?.member_number ?? '')
   const isMirror = isMember && !!mirror
   // The portal tab this page was opened from, highlighted in the shared nav bar.
   const [portalNavTab] = useState(() => { try { return sessionStorage.getItem(isMember ? 'memberActiveTab' : isPlanner ? 'taxPlannerActiveTab' : 'adminActiveTab') || null } catch { return null } })
   // The member nav bar's program list + Website tab, as MemberPortal loads them.
   const memberNav = useMemberNavData(session, isMember)
+  // Portal licensing L6 (decisions 79-81): a Tier 1 member views their OWN client -
+  // no Direct case, no CIQ, no Vault upload, no $25 Premium portal; Send portal
+  // access and Client Mirroring stay. A client mirrored to them is the mirror view.
+  // The server refuses each of these (MEMBER_TIER2_ACTIONS); this only hides them.
+  const tier1Own = isMember && !isMirror && memberNav.tier1
+  const isDirect = isMember && !mirror && !tier1Own && !!client?.pf_member_number && String(client.pf_member_number) === String(session?.member_number ?? '')
 
   // Program sub-tabs (PFT / MAP 1 / Regular / Tax / PIP) are locked on the admin
   // side until a PF is assigned to this client (set on the Profile tab). Members
@@ -358,7 +336,7 @@ export default function ClientDetail() {
           { key: 'signout', label: 'Sign Out', onClick: () => { sessionStorage.clear(); navigate(isMember ? '/member/login' : isPlanner ? '/tax-planner/login' : '/admin/login') } },
         ]}>
         {isAdmin && <AdminNavBar session={session} activeTab={portalNavTab} onSelect={(tab, section) => { openAdminSection(tab, section); navigate('/admin') }} />}
-        {isMember && <MemberNavBar activeTab={portalNavTab} onSelect={key => { sessionStorage.setItem('memberActiveTab', key); navigate('/member') }} programs={memberNav.programs} websiteEnabled={memberNav.websiteEnabled} />}
+        {isMember && <MemberNavBar activeTab={portalNavTab} onSelect={key => { sessionStorage.setItem('memberActiveTab', key); navigate('/member') }} programs={memberNav.programs} websiteEnabled={memberNav.websiteEnabled} tier1={memberNav.tier1} />}
         {isPlanner && <PlannerNavBar activeTab={portalNavTab} onSelect={key => { sessionStorage.setItem('taxPlannerActiveTab', key); navigate('/tax-planner') }} />}
       </PortalHeader>
 
@@ -428,8 +406,9 @@ export default function ClientDetail() {
               {isMember
                 ? <>
                     <button style={tabStyle(activeTab === 'home')} onClick={() => setActiveTab('home')}>Profile</button>
-                    {/* A mirrored member sees the CIQs too, read-only (2026-10-22). */}
-                    <button style={tabStyle(activeTab === 'ciq')} onClick={() => setActiveTab('ciq')}>CIQ</button>
+                    {/* A mirrored member sees the CIQs too, read-only (2026-10-22); a Tier 1
+                        member has none on their own clients (L6, decision 80). */}
+                    {!tier1Own && <button style={tabStyle(activeTab === 'ciq')} onClick={() => setActiveTab('ciq')}>CIQ</button>}
                     <button style={tabStyle(activeTab === 'vault')} onClick={() => setActiveTab('vault')}>Vault</button>
                   </>
                 : <ClientTabDropdown label="Profile" isActive={activeTab === 'home' || activeTab === 'details' || activeTab === 'vault' || activeTab === 'ciq' || activeTab === 'payments' || activeTab === 'settings' || activeTab === 'continuation'} options={[{key:'home',label:'Profile'},{key:'details',label:'Edit Profile'},{key:'vault',label:'Vault'},...(client?.member_number ? [{key:'ciq',label:'CIQ'}] : []),{key:'payments',label:'Payments'},{key:'settings',label:'Settings'},...(session?.is_superadmin ? [{key:'continuation',label:'Payment Continuation'}] : [])]} onSelect={handleTabSelect} />
@@ -479,7 +458,7 @@ export default function ClientDetail() {
           <>
             {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
             {activeTab === 'home' && (isMember || isAdmin) && portalAccess !== undefined && client && (
-              <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} readOnly={isAdmin} />
+              <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={tier1Own ? null : ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} readOnly={isAdmin} />
             )}
             {activeTab === 'home' && (isMember || isAdmin) && client && (
               <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} />
@@ -487,7 +466,7 @@ export default function ClientDetail() {
             {/* This client's CIQs, inside the profile (2026-10-20). The list loads by
                 the OWNING member (a member caller's number is forced server-side). */}
             {/* A mirrored member (2026-10-22) sees the client's CIQs read-only, exactly as the owner does. */}
-            {activeTab === 'ciq' && client?.member_number && (isAdmin || isMember) && (
+            {activeTab === 'ciq' && client?.member_number && (isAdmin || isMember) && !tier1Own && (
               <MemberCIQ key={`ciq-${client.id}`} memberNumber={isMember && !isMirror ? session.member_number : client.member_number} memberName={client.member_name || client.member_number}
                 ciqEnabled={isMember ? session.ciq_enabled : true} ciqVfosManaged={isMember ? session.ciq_vfos_managed : true} isAdmin={isAdmin} client={client} readOnly={isMirror} />
             )}
@@ -506,7 +485,7 @@ export default function ClientDetail() {
             {/* memberMode is its own flag, not a relaxed readOnly: a member gets
                 view on all three sections + add on the two client-owned ones,
                 and never share / delete / request-docs / drag-to-move. */}
-            {activeTab === 'vault' && (isAdmin || isPlanner || isMember) && <ClientVaultTab clientId={parseInt(clientId)} sectionStyle={sectionStyle} specialists={specialists} readOnly={isPlanner || isMirror} allowUpload={isPlanner} memberMode={isMember} recipientName={`${client?.first_name || ''} ${client?.last_name || ''}`.trim() || undefined} recipientFirst={client?.first_name || undefined} />}
+            {activeTab === 'vault' && (isAdmin || isPlanner || isMember) && <ClientVaultTab clientId={parseInt(clientId)} sectionStyle={sectionStyle} specialists={specialists} readOnly={isPlanner || isMirror || tier1Own} allowUpload={isPlanner} memberMode={isMember} recipientName={`${client?.first_name || ''} ${client?.last_name || ''}`.trim() || undefined} recipientFirst={client?.first_name || undefined} />}
             {activeTab === 'payments' && isAdmin && <ClientPaymentsTab clientId={parseInt(clientId)} sectionStyle={sectionStyle} />}
             {activeTab === 'settings' && isAdmin && (
               <div style={sectionStyle}>

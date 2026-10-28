@@ -40,6 +40,7 @@ const LONG_TIMEOUT_ACTIONS = {
   // spaced retries on a refusal (utils/html2pdf.ts). Writes nothing, but is not a
   // load_* name, so it is never auto-retried.
   tax_intake_pdf: 45000,
+  client_progress_tax_intake_pdf: 45000,
 }
 // tax_direct_* are the member-callable twins of automation_TAX_* (unit 2 phase
 // 5) and chain the same external services, so they share the slow-write tier.
@@ -73,9 +74,24 @@ let writeCount = 0
 const cachedReadActions = new Set()
 export function getWriteCount() { return writeCount }
 
+// Portal licensing L8 (2026-10-28): a CLIENT session's My Progress tab draws the
+// member client screen's own track tabs, whose reads a client may not call. Each
+// one goes to its client twin, client_progress_<read> - fenced server-side to the
+// session's client, money masked, notes removed (utils/client-case-progress.ts).
+// Every other name, and every other role, passes through unchanged.
+const CLIENT_PROGRESS_READS = new Set([
+  'msm_load_client_home', 'msm_load_client_track', 'msm_load_client_progress', 'member_load_pipeline',
+  'msm_load_priority_tracks', 'msm_load_priority_progress', 'msm_load_regular_phases', 'msm_load_pip_phases',
+  'tax_load_plans', 'tax_load_progress', 'tax_load_specialists', 'tax_intake_load', 'tax_intake_pdf',
+])
+function routedAction(action, session) {
+  return session?.role === 'client' && CLIENT_PROGRESS_READS.has(action) ? `client_progress_${action}` : action
+}
+
 export async function callApi(action, payload = {}, retries = 3) {
-  if (!isReadAction(action) && !cachedReadActions.has(action)) writeCount++
   const session = JSON.parse(sessionStorage.getItem('vfo_session') || 'null')
+  action = routedAction(action, session)
+  if (!isReadAction(action) && !cachedReadActions.has(action)) writeCount++
   for (let attempt = 1; attempt <= retries; attempt++) {
     let res = null
     let timedOut = false
