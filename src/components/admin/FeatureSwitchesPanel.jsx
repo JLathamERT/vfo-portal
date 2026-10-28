@@ -32,6 +32,16 @@ const CARDS = [
     ],
     off: 'The old tax agreement and TPOM presentation. Members cannot send portal access, there are no licences and no $25 charges, and every client keeps Showroom + Vault as today.',
     note: 'Keyed on the client\'s member. Applies to agreements sent, decks generated and retainers paid after the switch — nothing already sent or paid changes.',
+    // Inside this card but flipped on their own (portal licensing L8, decision 73).
+    subSwitches: [
+      {
+        key: 'client_case_progress',
+        title: 'My Progress tab',
+        on: 'A Premium client gets a "My Progress" tab in their portal: the case progress their member sees on the client page — every program, step and status (MAP 1, Regular Priorities, Tax Priorities and PIP Meetings for a Holistic client; Tax Planning for a Tax Planning client), completed and stopped plans included. Read-only, every amount blanked, no notes.',
+        off: 'No My Progress tab. The client portal is exactly as the switch above leaves it.',
+        note: 'Its own switch, keyed on the client\'s member. Only Premium clients see the tab, so the switch above must be on too.',
+      },
+    ],
     details: [
       ['Tax agreement + TPOM presentation', [
         'Tax agreement: the collaborating-team sentence at the end of the opening paragraph ("In this case your collaborating team are [Tax Planning Group] and [Member\'s company or name] and VFO Services.").',
@@ -81,6 +91,18 @@ const CARDS = [
         'The other member sees MAP 1 / Holistic, Tax Planning (with the form answers), PIP and Regular priorities, the shared notes, the Client Vault (view and download) and the Additional Contacts — and can change nothing. Revenue share is not affected.',
       ]],
     ],
+  },
+  {
+    id: 'member_tiers',
+    keys: ['member_tiers'],
+    title: 'Member portal tiers',
+    on: [
+      [null, 'Tier 1 members (VFO Associates, Financial Collaborators, Team Members, VFO Reconciliation (Free), Survey #1-3, FAC Historic, Free Legacy TBM) see only Profile, Client Overview and Showroom.'],
+      [null, 'On Client Overview they view their own clients and the clients mirrored to them, add clients, Send portal access and mirror their clients to other members. They cannot edit a client, upload to its Vault, give it the $25 Premium portal or use CIQ on it (a client mirrored to them keeps its read-only CIQ).'],
+      [null, 'Every other tab (MSM / 90 Day Plan, CIQ, Vault, Tax Diagnostic, Specialists, Growth Plan, GC Marketplace, Website Plugin) is hidden, and refused if reached another way.'],
+    ],
+    off: 'Every member sees the full portal, as today.',
+    note: 'Keyed on the member. The tier comes from the member type alone - every other type (Catalyst, Fusion, VFO FT, Corporate, Accelerator, Plus, Implementation, and every strategic-partner type such as Action Coach and Tax Plan IQ) is Tier 2 and unchanged. Nothing is charged or deleted. To test: Test member only, then set the test member\'s type (VFO Reconciliation (Free) = Tier 1; Catalyst = Tier 2).',
   },
   {
     id: 'tax_intake',
@@ -159,7 +181,7 @@ export default function FeatureSwitchesPanel() {
   // Every card on screen: the CARDS whose keys the backend knows, then any other
   // visible switch on its own (a switch added later without a card still shows).
   const byKey = Object.fromEntries(switches.map(s => [s.key, s]))
-  const carded = new Set(CARDS.flatMap(c => c.keys))
+  const carded = new Set(CARDS.flatMap(c => [...c.keys, ...(c.subSwitches || []).map(s => s.key)]))
   const cards = [
     ...CARDS.map(c => ({ ...c, rows: c.keys.map(k => byKey[k]).filter(Boolean) })).filter(c => c.rows.length > 0),
     ...switches.filter(s => !carded.has(s.key) && !HIDDEN_SWITCHES.includes(s.key))
@@ -190,6 +212,47 @@ export default function FeatureSwitchesPanel() {
     }
   }
 
+  // The three positions + status line for one set of rows (a card, or a sub-switch
+  // inside a card, which flips only its own row).
+  function renderControl(card) {
+    const modes = [...new Set(card.rows.map(r => r.mode))]
+    const current = modes.length === 1 ? modes[0] : 'mixed'
+    const positions = card.rows.every(r => r.member_scoped) ? POSITIONS : POSITIONS.filter(p => p.mode !== 'test')
+    const busy = busyCard === card.id
+    const missing = card.rows.filter(r => !r.exists)
+    const last = card.rows.filter(r => r.updated_at).sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))[0]
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '18px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'inline-flex', border: '1px solid var(--vfo-border-strong)', borderRadius: '8px', overflow: 'hidden' }}>
+          {positions.map(p => {
+            const active = current === p.mode
+            return (
+              <button
+                key={p.mode}
+                onClick={() => setMode(card, p.mode, current)}
+                disabled={busy || missing.length > 0}
+                style={{
+                  padding: '8px 16px', border: 'none', borderRight: '1px solid var(--vfo-border-strong)',
+                  background: active ? MODE_PILL[p.mode].color : 'transparent',
+                  color: active ? '#fff' : 'var(--vfo-ink)', fontWeight: active ? 700 : 500, fontSize: '13px',
+                  cursor: busy || active ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif',
+                }}
+              >{p.label}</button>
+            )
+          })}
+        </div>
+        {busy && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Saving…</span>}
+        {current === 'mixed' && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Its parts are set differently — choose a position to line them up.</span>}
+        {missing.length > 0 && <span style={{ fontSize: '12px', color: '#e74c3c' }}>No database row yet for {missing.map(r => r.key).join(', ')} — it reads as off.</span>}
+        {last && (
+          <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>
+            Last changed {fmtWhen(last.updated_at)}{last.updated_by ? ` by ${last.updated_by}` : ''}
+          </span>
+        )}
+      </div>
+    )
+  }
+
   const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
   const labelStyle = { fontSize: '12px', color: 'var(--vfo-faint)', textTransform: 'uppercase', letterSpacing: '0.6px', margin: '14px 0 6px', fontWeight: 600 }
   const listStyle = { margin: 0, paddingLeft: '20px', fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.55 }
@@ -208,11 +271,10 @@ export default function FeatureSwitchesPanel() {
         const modes = [...new Set(card.rows.map(r => r.mode))]
         const current = modes.length === 1 ? modes[0] : 'mixed'
         const pill = MODE_PILL[current] || MODE_PILL.off
-        const positions = card.rows.every(r => r.member_scoped) ? POSITIONS : POSITIONS.filter(p => p.mode !== 'test')
-        const busy = busyCard === card.id
-        const missing = card.rows.filter(r => !r.exists)
-        const last = card.rows.filter(r => r.updated_at).sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))[0]
         const detailsOpen = !!openDetails[card.id]
+        const subs = (card.subSwitches || [])
+          .map(s => ({ ...s, id: `${card.id}:${s.key}`, title: `${card.title} - ${s.title}`, label: s.title, rows: [byKey[s.key]].filter(Boolean) }))
+          .filter(s => s.rows.length > 0)
         return (
           <div key={card.id} style={cardStyle}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
@@ -255,34 +317,26 @@ export default function FeatureSwitchesPanel() {
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '18px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'inline-flex', border: '1px solid var(--vfo-border-strong)', borderRadius: '8px', overflow: 'hidden' }}>
-                {positions.map(p => {
-                  const active = current === p.mode
-                  return (
-                    <button
-                      key={p.mode}
-                      onClick={() => setMode(card, p.mode, current)}
-                      disabled={busy || missing.length > 0}
-                      style={{
-                        padding: '8px 16px', border: 'none', borderRight: '1px solid var(--vfo-border-strong)',
-                        background: active ? MODE_PILL[p.mode].color : 'transparent',
-                        color: active ? '#fff' : 'var(--vfo-ink)', fontWeight: active ? 700 : 500, fontSize: '13px',
-                        cursor: busy || active ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif',
-                      }}
-                    >{p.label}</button>
-                  )
-                })}
-              </div>
-              {busy && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Saving…</span>}
-              {current === 'mixed' && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Its parts are set differently — choose a position to line them up.</span>}
-              {missing.length > 0 && <span style={{ fontSize: '12px', color: '#e74c3c' }}>No database row yet for {missing.map(r => r.key).join(', ')} — it reads as off.</span>}
-              {last && (
-                <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>
-                  Last changed {fmtWhen(last.updated_at)}{last.updated_by ? ` by ${last.updated_by}` : ''}
-                </span>
-              )}
-            </div>
+            {renderControl(card)}
+
+            {subs.map(sub => {
+              const subMode = sub.rows[0].mode
+              const subPill = MODE_PILL[subMode] || MODE_PILL.off
+              return (
+                <div key={sub.id} style={{ borderTop: '1px solid var(--vfo-border-soft)', marginTop: '20px', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)' }}>{sub.label}</div>
+                    <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.6px', color: '#fff', background: subPill.color, borderRadius: '999px', padding: '4px 12px' }}>{subPill.label}</span>
+                  </div>
+                  <div style={labelStyle}>Switched on</div>
+                  <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.55 }}>{sub.on}</div>
+                  <div style={labelStyle}>Switched off</div>
+                  <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.55 }}>{sub.off}</div>
+                  {sub.note && <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '10px' }}>{sub.note}</div>}
+                  {renderControl(sub)}
+                </div>
+              )
+            })}
           </div>
         )
       })}

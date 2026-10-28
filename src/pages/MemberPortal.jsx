@@ -11,7 +11,7 @@ import ClientOverviewPanel from '../components/admin/ClientOverviewPanel'
 import MemberShowroom from '../components/member/MemberShowroom'
 import MemberGrowthPlan from '../components/member/MemberGrowthPlan'
 import PortalHeader from '../components/shared/PortalHeader'
-import MemberNavBar, { orderMemberPrograms } from '../components/member/MemberNavBar'
+import MemberNavBar, { orderMemberPrograms, TIER1_TABS } from '../components/member/MemberNavBar'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { HeroAvatar } from '../components/shared/TrackKit'
 import { usePortalTheme } from '../lib/theme'
@@ -77,6 +77,12 @@ export default function MemberPortal() {
     else sessionStorage.removeItem('memberActiveTab')
   }, [activeTab])
 
+  // Portal licensing L6: a Tier 1 member landing on a hidden tab (remembered, or a
+  // deep link such as ?gc_success=1 / ?intake=) is put on Profile instead.
+  useEffect(() => {
+    if (features.member_tier === 1 && activeTab && !TIER1_TABS.includes(activeTab)) setActiveTab('profile')
+  }, [features, activeTab])
+
   async function loadData(quiet) {
     try {
       // loadData re-runs after saves (onDataChange) — clear any prior banner first.
@@ -125,6 +131,8 @@ export default function MemberPortal() {
 
   const taxIntakeEnabled = features.tax_intake === true
   const orderedEnabledPrograms = orderMemberPrograms(allPrograms, enabledPrograms, features)
+  // Portal licensing L6: sent only while member_tiers is on for this member.
+  const tier1 = features.member_tier === 1
 
   return (
     // Phone: room under the page for the floating Help (?) button, which sat
@@ -136,7 +144,7 @@ export default function MemberPortal() {
       ]}>
         {/* The bell inside: the member's rows are scoped server-side to their own
             login email - never the 'admin'/'all' broadcasts (#259). */}
-        {!showSettings && <MemberNavBar activeTab={activeTab} onSelect={setActiveTab} programs={orderedEnabledPrograms} websiteEnabled={!!memberData?.website_enabled} />}
+        {!showSettings && <MemberNavBar activeTab={activeTab} onSelect={setActiveTab} programs={orderedEnabledPrograms} websiteEnabled={!!memberData?.website_enabled} tier1={tier1} />}
       </PortalHeader>
 
       {showSettings && <MemberSettings session={session} />}

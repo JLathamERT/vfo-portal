@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useLayoutEffect } from 'react'
+import { useEffect, useRef, useState, useLayoutEffect, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getSession, clearSession, callApi, getLastSeen, setLastSeen } from '../lib/api'
 import ClientVault from '../components/client/ClientVault'
@@ -8,8 +8,12 @@ import PortalHeader from '../components/shared/PortalHeader'
 import ChangePasswordCard from '../components/shared/ChangePasswordCard'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { usePortalTheme } from '../lib/theme'
-import { ShowroomSkeleton } from '../components/shared/Skeleton'
+import { lazyPage } from '../lib/lazyPage'
+import { ShowroomSkeleton, PhaseListSkeleton } from '../components/shared/Skeleton'
 import OnePagePlanView from '../components/shared/OnePagePlanView'
+// Portal licensing L8: My Progress pulls in the member screen's track tabs, so it is
+// its own chunk, loaded only when a Premium client opens the tab.
+const ClientProgressTab = lazyPage(() => import('../components/client/ClientProgressTab'))
 
 function fmtLicenceDate(iso) {
   const [y, m, d] = String(iso).slice(0, 10).split('-')
@@ -47,6 +51,10 @@ export default function ClientPortal() {
   // sent only while ciq_licence is on), a snapshot can only take it away.
   const [planAllowed, setPlanAllowed] = useState(false)
   const [plan, setPlan] = useState(null)
+  // Portal licensing L8: the My Progress tab — granted the same way again: only the
+  // LIVE answer may show it (case_progress === true, sent only while
+  // client_case_progress is on and the client is Premium).
+  const [progressAllowed, setProgressAllowed] = useState(false)
 
   useEffect(() => {
     if (!session || session.role !== 'client') navigate('/client/login')
@@ -78,6 +86,9 @@ export default function ClientPortal() {
       const planOn = data.ciq_plan === true
       if (live || !planOn) setPlanAllowed(planOn)
       if (!planOn) setTab(t => (t === 'plan' ? 'showroom' : t))
+      const progressOn = data.case_progress === true
+      if (live || !progressOn) setProgressAllowed(progressOn)
+      if (!progressOn) setTab(t => (t === 'progress' ? 'showroom' : t))
       if (Array.isArray(data.intro_requests)) {
         const map = {}
         data.intro_requests.forEach(r => { map[r.expert_id] = r.requested_at })
@@ -130,7 +141,7 @@ export default function ClientPortal() {
     }
   }
   const introRequest = introRequested ? { requested: introRequested, onRequest: requestIntroduction } : null
-  const navTabs = [['showroom', 'Showroom'], ...(planAllowed ? [['plan', 'My One Page Plan']] : []), ...(vaultAllowed ? [['vault', 'Vault']] : [])]
+  const navTabs = [['showroom', 'Showroom'], ...(progressAllowed ? [['progress', 'My Progress']] : []), ...(planAllowed ? [['plan', 'My One Page Plan']] : []), ...(vaultAllowed ? [['vault', 'Vault']] : [])]
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
@@ -181,6 +192,11 @@ export default function ClientPortal() {
         showroomLoading
           ? <ShowroomSkeleton />
           : <MemberShowroom experts={showroom.experts} exclusions={showroom.exclusions} ecoMap={showroom.ecoMap} introRequest={introRequest} clientView />
+      )}
+      {tab === 'progress' && progressAllowed && (
+        <Suspense fallback={<div style={{ maxWidth: '980px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}><PhaseListSkeleton phases={6} rowsPerPhase={2} /></div>}>
+          <ClientProgressTab specialists={showroom?.experts || []} />
+        </Suspense>
       )}
       {tab === 'plan' && planAllowed && (
         <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
