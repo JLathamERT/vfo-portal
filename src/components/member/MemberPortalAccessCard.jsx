@@ -10,7 +10,7 @@ import { formatDate } from '../../lib/dates'
 // (decision 9).
 //
 // Portal licensing L4 (2026-10-16): when msm_load_client_home also carries
-// ciq_licence (ciq_licence switch on), the card gains the "Standard portal -
+// ciq_licence (ciq_licence switch on), the card gains the "Premium portal -
 // $25/month" line - turn on / turn off / keep it on, and (Phase 4) Change / Update
 // payment method. Every rule is the server's (member_ciq_licence_*,
 // member_portal_billing_update_card); the copy never claims a payment the row
@@ -102,7 +102,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
   }
 
   async function licenceAction(action, extra = {}) {
-    if (action === 'member_ciq_licence_stop' && !window.confirm(`Turn off the Standard portal for ${client.first_name || 'this client'}? It stays on until the end of the month you have paid for, then they go back to the Basic portal.`)) return
+    if (action === 'member_ciq_licence_stop' && !window.confirm(`Turn off the Premium portal for ${client.first_name || 'this client'}? It stays on until the end of the month you have paid for, then they go back to the Basic portal.`)) return
     setLicBusy(true); setLicError(null)
     try {
       const d = await callApi(action, { client_id: client.id, ...extra })
@@ -142,7 +142,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
 
       {lic && (
         <div style={{ marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '6px' }}>{lic.state === 'covered' || lic.state === 'handover' ? 'Standard portal' : 'Standard portal - $25/month'}</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '6px' }}>{lic.state === 'covered' || lic.state === 'handover' ? 'Premium portal' : 'Premium portal - $25/month'}</div>
           {syncing ? (
             <p style={{ fontSize: '13px', color: 'var(--vfo-ink)', margin: '0 0 12px', lineHeight: 1.6, display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span aria-hidden="true" style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid var(--vfo-border-strong)', borderTopColor: '#125ecc', display: 'inline-block', animation: 'vfoSpin 0.8s linear infinite', flexShrink: 0 }} />
@@ -151,16 +151,16 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
             </p>
           ) : (
           <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 12px', lineHeight: 1.6 }}>
-            {lic.state === 'covered' && <>Included with {fullName}'s tax planning until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.covered_until)}</strong> - no charge. {readOnly ? 'The member' : 'You'} can turn on the $25/month Standard portal after that date if {readOnly ? 'they want' : 'you want'} {fullName} to keep it.</>}
+            {lic.state === 'covered' && <>Included with {fullName}'s tax planning until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.covered_until)}</strong> - no charge. {readOnly ? 'The member' : 'You'} can turn on the $25/month Premium portal after that date if {readOnly ? 'they want' : 'you want'} {fullName} to keep it.</>}
             {lic.state === 'basic' && (readOnly
-              ? <>{first} is on the Basic portal (Showroom only). The member has not turned on the $25/month Standard portal.</>
-              : <>{first} is on the Basic portal (Showroom only). The Standard portal adds their One Page Plan and Client Vault. It is charged to you monthly; {first} never sees the cost.</>)}
+              ? <>{first} is on the Basic portal (Showroom only). The member has not turned on the $25/month Premium portal.</>
+              : <>{first} is on the Basic portal (Showroom only). The Premium portal adds their One Page Plan and Client Vault. It is charged to you monthly; {first} never sees the cost.</>)}
             {lic.state === 'processing' && (lic.payment_method_type === 'ach'
-              ? <>{readOnly ? "The member's" : 'Your'} bank payment is processing{method}. {first} gets the Standard portal once it clears, usually 3-5 business days.</>
+              ? <>{readOnly ? "The member's" : 'Your'} bank payment is processing{method}. {first} gets the Premium portal once it clears, usually 3-5 business days.</>
               : <>{readOnly ? "The member's" : 'Your'} payment is being confirmed.</>)}
-            {lic.state === 'active' && <>The Standard portal is on{lic.period_end ? <>. Renews <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong></> : ''}{method}.</>}
-            {lic.state === 'ending' && <>The Standard portal is on until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong>, then {first} goes back to the Basic portal.</>}
-            {lic.state === 'handover' && <>The $25/month Standard portal runs to the end of the month already paid, <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong>, then stops - no further charge. From then it is included with {fullName}'s tax planning until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.covered_until)}</strong>.</>}
+            {lic.state === 'active' && <>The Premium portal is on{lic.period_end ? <>. Renews <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong></> : ''}{method}.</>}
+            {lic.state === 'ending' && <>The Premium portal is on until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong>, then {first} goes back to the Basic portal.</>}
+            {lic.state === 'handover' && <>The $25/month Premium portal runs to the end of the month already paid, <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong>, then stops - no further charge. From then it is included with {fullName}'s tax planning until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.covered_until)}</strong>.</>}
             {lic.state === 'past_due' && <>The last payment failed{method}. {first} is on the Basic portal until it goes through. Stripe is retrying{readOnly ? '.' : '; update your payment method to fix it now.'}</>}
           </p>
           )}
@@ -172,7 +172,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
               {lic.state === 'basic' && (
                 <button onClick={() => licenceAction('member_ciq_licence_start')} disabled={licBusy || !hasLogin} style={{ ...btn, opacity: hasLogin ? 1 : 0.55, cursor: licBusy || !hasLogin ? 'not-allowed' : 'pointer' }}
                   title={hasLogin ? undefined : 'Send portal access first'}>
-                  {licBusy ? 'Working…' : 'Turn on Standard portal'}
+                  {licBusy ? 'Working…' : 'Turn on Premium portal'}
                 </button>
               )}
               {lic.state === 'past_due' && canChangeMethod && !showPay && (
@@ -207,10 +207,10 @@ const money = (n) => `$${Number(n || 0).toFixed(2)}`
 
 // The member picks the method HERE, before Stripe, so the warning can say exactly
 // what changes (Jake, 2026-10-16): a payment method change moves ALL of the
-// member's Standard portal subscriptions, and each is re-priced to that method.
+// member's Premium portal subscriptions, and each is re-priced to that method.
 function PaymentMethodPanel({ lic, payMethod, setPayMethod, busy, onCancel, onContinue, btn, ghost }) {
   const count = lic.subscription_count || 0
-  const subs = `${count} Standard portal subscription${count === 1 ? '' : 's'}`
+  const subs = `${count} Premium portal subscription${count === 1 ? '' : 's'}`
   const current = lic.payment_method_type
   const option = (m, title, sub) => {
     const on = payMethod === m
@@ -231,7 +231,7 @@ function PaymentMethodPanel({ lic, payMethod, setPayMethod, busy, onCancel, onCo
     const overdue = lic.past_due_count || 0
     warning = (
       <div style={{ marginTop: '12px', padding: '12px 14px', borderRadius: '10px', background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.45)', fontSize: '13px', lineHeight: 1.6, color: 'var(--vfo-ink)' }}>
-        <strong>{switching ? `Switching to ${label} changes the payment method on ALL of your Standard portal subscriptions.` : 'This changes the payment method on ALL of your Standard portal subscriptions.'}</strong>
+        <strong>{switching ? `Switching to ${label} changes the payment method on ALL of your Premium portal subscriptions.` : 'This changes the payment method on ALL of your Premium portal subscriptions.'}</strong>
         {' '}It affects <strong>{subs}</strong>, and all of them will be charged <strong>{money(amt)} a month</strong> from now on{switching ? ' because of the payment method change' : ''}
         {payMethod === 'card' ? ' (the $25.00 licence plus the 2.9% + $0.30 card fee).' : ' (no card fee on a bank account).'}
         {overdue > 0 && (switching

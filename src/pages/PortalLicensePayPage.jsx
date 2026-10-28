@@ -5,7 +5,7 @@ import TokenShell from '../components/shared/TokenShell'
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
 // /portal-license-pay (portal licensing L4, 2026-10-16): the card-or-bank choice
-// page for a member's $25/month Standard client portal (CIQ licence) - a copy of
+// page for a member's $25/month Premium client portal (CIQ licence) - a copy of
 // the /specialist-pay?kind=license page (Jake: "copy EXACTLY how it's done
 // everywhere else"). The token row is the whole credential; the page sends the
 // token and the chosen method and nothing else. Stripe returns the member to their
@@ -85,7 +85,7 @@ export default function PortalLicensePayPage() {
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
         </div>
         <h1 style={titleStyle}>Already set up</h1>
-        <p style={subtitleStyle}>The Standard portal for {data.client_name} is already set up. <a href={backHref} style={{ color: 'var(--vfo-link)' }}>Back to {data.client_first}</a></p>
+        <p style={subtitleStyle}>The Premium portal for {data.client_name} is already set up. <a href={backHref} style={{ color: 'var(--vfo-link)' }}>Back to {data.client_first}</a></p>
       </div>
     </TokenShell>
   )
@@ -96,7 +96,7 @@ export default function PortalLicensePayPage() {
   const cardFeeApplies = data.card_fee_applies === true
   const cardFee = cardFeeApplies ? Math.round(((baseAmount + 0.30) / (1 - 0.029) - baseAmount) * 100) / 100 : 0
   const cardTotal = Math.round((baseAmount + cardFee) * 100) / 100
-  const lineLabel = 'VFO Portal Standard Licence'
+  const lineLabel = 'VFO Portal Premium Licence'
   const amtSuffix = '/mo'
 
   return (
@@ -105,7 +105,7 @@ export default function PortalLicensePayPage() {
         <div style={{ ...iconCircleStyle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
           <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
         </div>
-        <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>VFO Portal - Standard Client Portal</h1>
+        <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>VFO Portal - Premium Client Portal</h1>
         <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: '12px' }}>Choose your preferred payment method</p>
         <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: returnedCanceled ? '16px' : '32px', fontSize: '13px', color: 'var(--vfo-muted)' }}>
           ${formatMoney(baseAmount)}/month recurring · {data.client_name}
@@ -121,7 +121,7 @@ export default function PortalLicensePayPage() {
             { label: lineLabel, value: `$${formatMoney(baseAmount)}`, valueColor: 'var(--vfo-ink-2)' },
             { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
           ]}
-          footer={`Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. The first payment takes 3-5 business days to clear; ${data.client_first} gets the Standard portal once it has. Renews automatically each month.`}
+          footer={`Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. The first payment takes 3-5 business days to clear; ${data.client_first} gets the Premium portal once it has. Renews automatically each month.`}
         />
 
         <div style={dividerStyle}>— or —</div>
@@ -137,7 +137,7 @@ export default function PortalLicensePayPage() {
               ? { label: 'Card Processing Fee (2.9% + $0.30)', value: `$${formatMoney(cardFee)}`, valueColor: 'var(--vfo-ink-2)' }
               : { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
           ]}
-          footer={`Charged immediately and automatically each month. ${data.client_first} gets the Standard portal straight away.`}
+          footer={`Charged immediately and automatically each month. ${data.client_first} gets the Premium portal straight away.`}
         />
 
         <p style={securityNoteStyle}>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 // Portal licensing L4 (2026-10-16, decision 41): the READ-ONLY One Page Plan —
-// what a Standard client sees on their portal's My Plan tab. (The member client
+// what a Premium client sees on their portal's My Plan tab. (The member client
 // screen's copy and member_mirrored_ciq_plan_load were retired 2026-10-20 - that
 // screen has a CIQ tab now.) It draws the payload of
 // client_ciq_plan_load (utils/ciq-plan-view.ts):
