@@ -4,6 +4,8 @@ import { fileSizeError } from '../../lib/fileUpload'
 import { VaultRowsSkeleton } from '../shared/Skeleton'
 import RequestDocsButton from '../shared/RequestDocsButton'
 import VaultDropLink from '../shared/VaultDropLink'
+import { EyeIcon, TrashIcon, IconButton } from '../shared/VaultSections'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 // Deliberately duplicated from TaxPrioritiesTab's LockedIcon rather than shared:
 // that file is under active end-to-end test and must not be touched, and a nine
@@ -42,6 +44,7 @@ const fmtSize = (n) => n == null ? '' : n < 1024 ? `${n} B` : n < 1048576 ? `${(
 // call through the three member_client_vault_* actions, which are confined
 // server-side by denyIfNotOwnClient.
 export default function ClientVaultTab({ clientId, sectionStyle, specialists = [], readOnly = false, allowUpload = false, memberMode = false, recipientName, recipientFirst }) {
+  const isPhone = useIsPhone()
   const [sensitive, setSensitive] = useState([])
   const [canView, setCanView] = useState(false)
   // Strictly narrower than canView: an assigned PF may OPEN this client's tax
@@ -422,11 +425,24 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
                       draggable={canMove && sec.canWrite !== false}
                       onDragStart={canMove && sec.canWrite !== false ? (e => { e.dataTransfer.effectAllowed = 'move'; setDragItem({ section: sec.key, file: f }) }) : undefined}
                       onDragEnd={canMove ? (() => { setDragItem(null); setDragOverKey(null) }) : undefined}
-                      style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: open ? '8px 8px 0 0' : '8px', opacity: dragItem?.file?.path === f.path ? 0.45 : 1 }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: isPhone ? '10px 10px 10px 12px' : '10px 14px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: open ? '8px 8px 0 0' : '8px', opacity: dragItem?.file?.path === f.path ? 0.45 : 1 }}
                     >
                       {canMove && sec.canWrite !== false && (
                         <span title="Drag to move this document to another section" style={{ fontSize: '14px', color: 'var(--vfo-muted)', cursor: 'grab', flexShrink: 0, lineHeight: 1, userSelect: 'none' }}>⠿</span>
                       )}
+                      {/* Phone: the member Vault's row (VaultSections) - the name over its
+                          size, never cut short, round icon buttons, no file icon (2026-10-28). */}
+                      {isPhone ? (
+                        <>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div title={f.name} style={{ fontSize: '13.5px', fontWeight: 500, color: 'var(--vfo-ink)', lineHeight: 1.35, overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{f.name}</div>
+                            <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{fmtSize(f.size)}{!sec.canManage && ' · Locked'}</div>
+                          </div>
+                          {sec.canManage && <IconButton label={`View ${f.name}`} tone="view" onClick={() => view(sec, f.path)}><EyeIcon /></IconButton>}
+                          {sec.canManage && !readOnly && !memberMode && !sec.noShare && sec.canWrite !== false && <button onClick={() => toggleShare(sec.bucket, f.path)} style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(18,94,204,0.4)', background: open ? 'rgba(18,94,204,0.22)' : 'rgba(18,94,204,0.1)', color: 'var(--vfo-accent-text)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Share</button>}
+                          {sec.canManage && !readOnly && !memberMode && sec.canWrite !== false && <IconButton label={`Delete ${f.name}`} tone="remove" onClick={() => remove(sec, f.path)}><TrashIcon /></IconButton>}
+                        </>
+                      ) : (<>
                       <span style={{ fontSize: '14px', flexShrink: 0 }}>{sec.canManage ? '📄' : '🔒'}</span>
                       <span title={f.name} style={{ fontSize: '13px', color: 'var(--vfo-ink-2)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
                       <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>{fmtSize(f.size)}</span>
@@ -439,6 +455,7 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
                       ) : (
                         <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', fontStyle: 'italic', flexShrink: 0 }}>locked</span>
                       )}
+                      </>)}
                     </div>
                     {open && (
                       <div style={{ padding: '12px 14px', background: '#f7faff', border: '1px solid var(--vfo-tint-deep)', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>

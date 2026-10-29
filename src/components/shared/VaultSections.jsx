@@ -10,13 +10,13 @@ const ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,image/*,application/p
 // Phone rows: one line per file - name over size, then two round icon buttons.
 // No file icon: on a phone, room goes to the name, not to decoration.
 const SVG = { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
-function EyeIcon() {
+export function EyeIcon() {
   return <svg {...SVG}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
 }
-function TrashIcon() {
+export function TrashIcon() {
   return <svg {...SVG}><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>
 }
-function IconButton({ label, tone, onClick, children }) {
+export function IconButton({ label, tone, onClick, children }) {
   const colours = tone === 'remove' ? { color: '#e74c3c', background: 'rgba(231,76,60,0.08)' } : { color: '#0a85e8', background: 'rgba(0,149,255,0.10)' }
   return (
     <button onClick={onClick} title={label} aria-label={label} style={{ ...colours, width: '30px', height: '30px', borderRadius: '50%', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, padding: 0 }}>

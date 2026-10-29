@@ -29,6 +29,7 @@ import { cleanText, formatPersonName, phoneIncomplete, nameHasTwoPeople, TWO_PEO
 import PhoneInput from '../components/shared/PhoneInput'
 import ClientTabDropdown from '../components/shared/ClientTabDropdown'
 import { useIsPhone } from '../lib/useMediaQuery'
+import EmailText from '../components/shared/EmailText'
 
 // Program names as programs.name holds them (single client profile tab strip).
 const HOLISTIC = 'VFO Holistic Planning'
@@ -296,7 +297,7 @@ export default function ClientDetail() {
     setActiveTab(key)
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: isPhone ? '14px' : '20px' }
   const tabStyle = (active) => ({ padding: '7px 12px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' })
   const statusColors2 = { active: '#1b9254', pending: '#e06717', lost: '#e74c3c' }
 
@@ -340,7 +341,7 @@ export default function ClientDetail() {
         {isPlanner && <PlannerNavBar activeTab={portalNavTab} onSelect={key => { sessionStorage.setItem('taxPlannerActiveTab', key); navigate('/tax-planner') }} />}
       </PortalHeader>
 
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
         <button onClick={handleBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>{backLabel}</button>
 
         {/* Client header */}
@@ -355,6 +356,41 @@ export default function ClientDetail() {
               <Skeleton width={70} height={20} style={{ borderRadius: '4px' }} />
             </div>
           </div>
+        ) : isPhone ? (
+          // Phone: the member Profile header exactly (MemberPortal, 2026-10-28) -
+          // number + status on one line, then the programs, then the member and
+          // any contacts, each its own muted line. No initials circle: clients
+          // have no photo (Jake).
+          <div style={{ ...sectionStyle, padding: 0, overflow: 'hidden' }}>
+            <div style={{ height: '4px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 55%, #0a85e8 100%)' }} />
+            <div style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>{isMirror ? 'Mirrored client' : 'Clients'}</div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '21px', color: 'var(--vfo-heading)', lineHeight: 1.15 }}>{client ? `${client.first_name} ${client.last_name}` : 'Client'}</div>
+                {(() => {
+                  const line = { fontSize: '12.5px', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }
+                  const programNames = (programs || (program ? [program] : [])).map(p => p.name)
+                  return (
+                    <>
+                      <div style={{ ...line, marginTop: '6px' }}>
+                        <span style={{ fontFamily: 'monospace' }}>{client?.client_ref}</span>
+                        {client?.status && <>
+                          <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors2[client.status] || 'var(--vfo-faint)', flexShrink: 0 }} />
+                            {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
+                          </span>
+                        </>}
+                      </div>
+                      {programNames.length > 0 && <div style={{ ...line, marginTop: '3px' }}>{programNames.join(' · ')}</div>}
+                      {client?.member_name && !isMember && <div style={{ ...line, marginTop: '3px' }}>Member: <MemberNameLink memberNumber={client.member_number}>{client.member_name}</MemberNameLink></div>}
+                      {contacts?.length > 0 && <div style={{ ...line, marginTop: '3px', fontStyle: 'italic' }}>with {contacts.map(c => `${c.first_name} ${c.last_name}`).join(', ')}</div>}
+                    </>
+                  )
+                })()}
+              </div>
+            </div>
+          </div>
         ) : (
           <TrackHero
             eyebrow={isMirror ? 'Mirrored client' : 'Clients'}
@@ -366,7 +402,8 @@ export default function ClientDetail() {
                 {programs
                   ? programs.map(p => <Fragment key={p.id}><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ color: '#0095ff', fontWeight: 500 }}>{p.name}</span></Fragment>)
                   : program && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ color: '#0095ff', fontWeight: 500 }}>{program.name}</span></>}
-                {client?.member_name && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Member: <MemberNameLink memberNumber={client.member_number}>{client.member_name}</MemberNameLink></span></>}
+                {/* A member never needs their own name here (Jake, 2026-10-28); admins keep it. */}
+                {client?.member_name && !isMember && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Member:<MemberNameLink memberNumber={client.member_number}>{client.member_name}</MemberNameLink></span></>}
                 {contacts?.length > 0 && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ fontStyle: 'italic' }}>with {contacts.map(c => `${c.first_name} ${c.last_name}`).join(', ')}</span></>}
                 {client?.status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors2[client?.status] || 'var(--vfo-faint)', flexShrink: 0 }} />{client.status.charAt(0).toUpperCase() + client.status.slice(1)}</span></>}
               </>
@@ -374,8 +411,9 @@ export default function ClientDetail() {
           />
         )}
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px', gap: '4px', paddingBottom: '10px' }}>
+        {/* Tabs - on a phone they wrap onto a second row rather than run off the
+            edge (a Holistic + Tax + PFT client has six). */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: isPhone ? '16px' : '24px', gap: '4px', paddingBottom: '10px', ...(isPhone ? { flexWrap: 'wrap', rowGap: '6px' } : {}) }}>
           {loading ? (
             <>
               <Skeleton width={70} height={20} />
@@ -505,6 +543,7 @@ export default function ClientDetail() {
 }
 
 function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, sectionStyle, readOnly = false, plannerMode = false, directMode = false, notes = [], onNotesChange, program }) {
+  const isPhone = useIsPhone()
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [editNoteText, setEditNoteText] = useState('')
   const [status, setStatus] = useState(client?.status || 'pending')
@@ -579,28 +618,44 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
   const fieldLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-faint)', textTransform: 'uppercase' }
   const fieldValue = { fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: 600, marginTop: '5px', wordBreak: 'break-word' }
   const initials = (first, last) => `${(first || '')[0] || ''}${(last || '')[0] || ''}`.toUpperCase()
+  // Phone, read-only (a member): ONE card of label / value rows. The status is
+  // already beside the client's number in the hero, and a card holding only the
+  // PF's name was a card for one value (2026-10-28).
+  const phoneRows = isPhone && readOnly
+  const pfText = client?.pf_member_number ? `${client?.assigned_pf || '—'} (Member — Direct)` : (client?.assigned_pf || '—')
 
   return (
     <div>
       {/* Contact info — full width across the top. */}
       <div style={sectionStyle}>
         <div style={cardTitle}>Contact Info</div>
+        {phoneRows ? (
+          <div>
+            {[['Email', client?.email ? <EmailText email={client.email} /> : '—'], ['Phone', client?.phone || '—'], ['Proactive Facilitator', pfText]].map(([label, value], i) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', padding: '9px 0', borderTop: i ? '1px solid var(--vfo-tint)' : 'none' }}>
+                <span style={{ ...fieldLabel, flexShrink: 0 }}>{label}</span>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--vfo-ink)', textAlign: 'right', minWidth: 0 }}>{value}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '18px 24px' }}>
           <div><div style={fieldLabel}>Email</div><div style={fieldValue}>{client?.email || '—'}</div></div>
           <div><div style={fieldLabel}>Phone</div><div style={fieldValue}>{client?.phone || '—'}</div></div>
         </div>
-        {readOnly && !directMode && contacts?.length > 0 && <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--vfo-tint)' }}>
+        )}
+        {readOnly && !directMode && contacts?.length > 0 && <div style={{ marginTop: phoneRows ? '10px' : '18px', paddingTop: phoneRows ? '12px' : '16px', borderTop: '1px solid var(--vfo-tint)' }}>
           <div style={{ ...fieldLabel, marginBottom: '10px' }}>Additional Contacts</div>
           {contacts.map((c, i) => (
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: i < contacts.length - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
-              <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '11px', flexShrink: 0 }}>{initials(c.first_name, c.last_name)}</div>
+              {!isPhone && <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '11px', flexShrink: 0 }}>{initials(c.first_name, c.last_name)}</div>}
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <span>{c.first_name} {c.last_name}</span>
                   {c.cc_on_emails && <span style={ccBadgeStyle}>Cc'd on client emails</span>}
                   {c.use_in_greeting && <span style={ccBadgeStyle}>Included in greeting</span>}
                 </div>
-                {c.email && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '1px' }}>{c.email}</div>}
+                {c.email && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '1px' }}>{isPhone ? <EmailText email={c.email} /> : c.email}</div>}
               </div>
             </div>
           ))}
@@ -608,7 +663,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
       </div>
 
       {/* Status + assigned PF — side by side. */}
-      <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', flexWrap: 'wrap' }}>
+      {!phoneRows && <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 300px', minWidth: '260px', display: 'flex' }}>
           <div style={{ ...sectionStyle, flex: 1 }}>
             <div style={cardTitle}>Client Status</div>
@@ -651,7 +706,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
             }
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Admins manage Additional Contacts right here on the Profile tab;
           members/planners get the read-only list in Contact Info instead. A
