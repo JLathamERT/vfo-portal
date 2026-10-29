@@ -65,7 +65,7 @@ export default function PortalLicensePayPage() {
   if (status === 'error') return (
     <TokenShell maxWidth={520}>
       <div style={messageCardStyle}>
-        <div style={{ ...iconCircleStyle, background: '#ef444420' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>⚠️</span></div>
+        <div className="vfo-statusicon" style={{ ...iconCircleStyle, background: '#ef444420' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>⚠️</span></div>
         <h1 style={titleStyle}>Payment Error</h1>
         <p style={subtitleStyle}>{error}</p>
       </div>
@@ -81,7 +81,7 @@ export default function PortalLicensePayPage() {
   if (data.already) return (
     <TokenShell maxWidth={520}>
       <div style={messageCardStyle}>
-        <div style={{ ...iconCircleStyle, background: 'rgba(34,197,94,0.15)' }}>
+        <div className="vfo-statusicon" style={{ ...iconCircleStyle, background: 'rgba(34,197,94,0.15)' }}>
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
         </div>
         <h1 style={titleStyle}>Already set up</h1>
@@ -102,7 +102,7 @@ export default function PortalLicensePayPage() {
   return (
     <TokenShell>
       <div style={pageContainerStyle}>
-        <div style={{ ...iconCircleStyle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
+        <div className="vfo-statusicon" style={{ ...iconCircleStyle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
           <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
         </div>
         <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>VFO Portal - Premium Client Portal</h1>
@@ -153,7 +153,7 @@ export default function PortalLicensePayPage() {
 
 function OptionCard({ isHovered, onHover, onLeave, onClick, title, badgeText, badgeClass, amount, breakdown, footer, suffix = '' }) {
   return (
-    <div onClick={onClick} onMouseEnter={onHover} onMouseLeave={onLeave}
+    <div className="vfo-paycard" onClick={onClick} onMouseEnter={onHover} onMouseLeave={onLeave}
       style={{ ...optionCardStyle, borderColor: isHovered ? '#0095ff' : 'var(--vfo-border)', background: isHovered ? 'rgba(0,149,255,0.05)' : 'transparent' }}>
       <div style={optionHeaderStyle}>
         <span style={optionTitleStyle}>{title}</span>

@@ -128,7 +128,8 @@
 }
 
 /* Phone step rows (2026-10-28, restacked 2026-10-29). The program tracks' step
-   rows (TaxPrioritiesTab, PFTEngagementTrack: dot, .vfo-stepname, chips,
+   rows (TaxPrioritiesTab, PFTEngagementTrack, ClientTrackViewV2 (MAP 1),
+   RegularPrioritiesTab, PipMeetingsTab: dot, .vfo-stepname, chips,
    .vfo-stepdate) are inline-styled one-liners. On a phone every step reads the
    same way, one item per line: the step name, then its status / what was picked,
    then the date. The owner tags (VFOS, Tax Team, ...) are hidden there - no room,
@@ -151,6 +152,10 @@
   div:has(> .vfo-substepname) {
     grid-template-columns: 14px minmax(0, 1fr) auto;
   }
+  /* A checklist row leads with a 16px checkbox, not a dot. */
+  div:has(> .vfo-stepcheck) {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+  }
   div:has(> .vfo-stepname) > *,
   div:has(> .vfo-substepname) > * {
     grid-column: 2;
@@ -161,7 +166,8 @@
     grid-column: 1;
     grid-row: 1;
   }
-  div:has(> .vfo-stepname) > .vfo-steparrow {
+  div:has(> .vfo-stepname) > .vfo-steparrow,
+  div:has(> .vfo-substepname) > .vfo-steparrow {
     grid-column: 3;
     grid-row: 1;
     margin-left: 8px !important;
@@ -183,6 +189,31 @@
      nothing reads below 11px. */
   .vfo-track [style*="font-size: 10px"] {
     font-size: 11px !important;
+  }
+  /* The emailed link pages (TokenShell). Their styles are module consts copied
+     page to page, so these hooks carry the phone rules: the big round status
+     icon is decoration (the title says the same thing), a labelled button is
+     13px, and a payment option card drops its 28px desktop padding. */
+  .vfo-statusicon {
+    display: none !important;
+  }
+  .vfo-tokenbtn {
+    font-size: 13px !important;
+    padding: 10px 20px !important;
+  }
+  .vfo-paycard {
+    padding: 16px !important;
+  }
+  .vfo-paycard > :first-child {
+    gap: 8px;
+  }
+  /* Two method tiles (update-card) sit side by side, not stacked. */
+  .vfo-tilegrid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .vfo-tile {
+    padding: 12px 8px !important;
   }
 }
 

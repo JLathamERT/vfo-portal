@@ -6,6 +6,8 @@ import { TrackHero, PhaseBadge, ListHeader } from '../../shared/TrackKit'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
+import { useIsPhone } from '../../../lib/useMediaQuery'
+import { statusPillStyle } from '../../shared/statusColors'
 
 const REGULAR_PRIORITIES = [
   "Business Growth", "Business Exit", "Business Advisory",
@@ -149,11 +151,11 @@ function Map4ConfirmStep({ trackId, task, p, track, onDone, emailCtx }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-      <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}<span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="REGULAR" title={task.name} templates={[{ name: 'REGULAR_map4confirm', when: 'If date confirmed / not confirmed' }, { name: 'REGULAR_map4declined', when: 'If the client declined' }]} context={confirmCtx} /></span></span>
+      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}<span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="REGULAR" title={task.name} templates={[{ name: 'REGULAR_map4confirm', when: 'If date confirmed / not confirmed' }, { name: 'REGULAR_map4declined', when: 'If the client declined' }]} context={confirmCtx} /></span></span>
       {isDone
         ? rescheduling
           ? dateForm(() => setRescheduling(false))
-          : <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+          : <div className="vfo-stepchips" style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
               <button onClick={openReschedule} style={cancelBtn}>Reschedule</button>
             </div>
@@ -165,7 +167,7 @@ function Map4ConfirmStep({ trackId, task, p, track, onDone, emailCtx }) {
               <button onClick={() => fire('declined')} disabled={!!pending} style={{ ...redBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'declined' ? 'Sending…' : 'Meeting declined - email client'}</button>
             </div>
       }
-      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{isDone && p.completed_date ? fmtDate(p.completed_date) : ''}</span>
+      <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? fmtDate(p.completed_date) : ''}</span>
     </div>
   )
 }
@@ -181,6 +183,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
   const [enteredDate, setEnteredDate] = useState(track.map4_meeting_date || '')
   const [pending, setPending] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
+  const isPhone = useIsPhone()
   const [stallAckAt, setStallAckAt] = useState(track.map4_stall_ack_at || null)
   // useState only seeds on mount — without this the checkbox keeps its stale
   // value after the parent reloads the tracks (every other stall copy re-syncs).
@@ -234,9 +237,9 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
   const autoStep = (label, done, at = null) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-      <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
+      <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
       <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', marginLeft: 'auto', ...(done ? { background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 } : { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }) }}>{done ? 'Done' : 'Awaiting'}</span>
-      {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
+      {done && at && <span className="vfo-stepdate" style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
     </div>
   )
 
@@ -260,7 +263,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
     <div style={{ padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: enteredDate ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${enteredDate ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-        <span style={{ fontSize: '13px', color: enteredDate ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}<span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="REGULAR" title={task.name} templates={[{ name: 'REGULAR_map4followup', when: 'Automatic — follow-up with the form link, 2 days after the meeting' }, { name: 'REGULAR_map4reminder', when: 'Automatic reminder if the form is not completed' }]} context={followupCtx} /></span></span>
+        <span className="vfo-stepname" style={{ fontSize: '13px', color: enteredDate ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}<span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="REGULAR" title={task.name} templates={[{ name: 'REGULAR_map4followup', when: 'Automatic — follow-up with the form link, 2 days after the meeting' }, { name: 'REGULAR_map4reminder', when: 'Automatic reminder if the form is not completed' }]} context={followupCtx} /></span></span>
         {showDate
           ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} />
@@ -268,7 +271,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
               <button onClick={() => !pending && setShowDate(false)} disabled={pending} style={cancelBtn}>Cancel</button>
             </div>
           : enteredDate
-            ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+            ? <div className="vfo-stepchips" style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', border: '1px solid rgba(27,146,84,0.3)' }}>MAP 4 meeting: {fmtLong(enteredDate)}</span>
                 {/* Saving a different date re-arms the follow-up ladder (the backend
                     clears the sent/reminder/stall stamps), so it re-drafts. */}
@@ -276,28 +279,28 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
               </div>
             : <button onClick={() => setShowDate(true)} style={greenBtn}>Enter date of MAP 4 meeting</button>
         }
-        <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{p.completed_date ? fmtDate(p.completed_date) : ''}</span>
+        <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{p.completed_date ? fmtDate(p.completed_date) : ''}</span>
       </div>
 
       {enteredDate && (
         <div style={{ padding: '8px 0 2px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: aipcDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${aipcDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1, fontWeight: '600' }}>Automated steps</span>
+            <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1, fontWeight: '600' }}>Automated steps</span>
           </div>
-          <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
+          <div style={{ marginLeft: isPhone ? 0 : '18px', padding: isPhone ? '8px 10px' : '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
             {autoStep('MAP 4 follow-up email sent', emailSent, followupSentAt)}
             {reminderStep(reminderSentAt)}
             {pfNotifiedStep(stallNotifiedAt)}
             <div>
               <div onClick={() => formDone && setFormOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', cursor: formDone ? 'pointer' : 'default' }}>
                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: formDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${formDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>MAP 4 form completed</span>
+                <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>MAP 4 form completed</span>
                 {formDone
                   ? <>
                       <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
-                      {track.map4_form_submitted_at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(track.map4_form_submitted_at)}</span>}
-                      <span style={{ color: 'var(--vfo-muted)', fontSize: '9px', transform: formOpen ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
+                      {track.map4_form_submitted_at && <span className="vfo-stepdate" style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(track.map4_form_submitted_at)}</span>}
+                      <span className="vfo-steparrow" style={{ color: 'var(--vfo-muted)', fontSize: '9px', transform: formOpen ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
                     </>
                   : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', marginLeft: 'auto' }}>Awaiting</span>}
               </div>
@@ -328,6 +331,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
   const [completedPhases, setCompletedPhases] = useState({})
   const [trackStatus, setTrackStatus] = useState(track.status || 'live')
   const [togglingStatus, setTogglingStatus] = useState(false)
+  const isPhone = useIsPhone()
 
   async function toggleTrackStatus() {
     const newStatus = trackStatus === 'live' ? 'stopped' : 'live'
@@ -420,7 +424,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
   const completedTasks = phases.reduce((s, phase) => s + countedPhaseTasks(phase).filter(t => localProgress[t.id]?.status).length, 0)
 
   return (
-    <div>
+    <div className="vfo-track">
       <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Priorities</button>
       <TrackHero
         eyebrow="Regular Priority"
@@ -477,7 +481,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
             {!readOnly && expanded[`notes_${phase.id}`] && <PhaseNotesPanel clientId={clientId} phaseName={phase.name} tabName="Regular Priorities" programName="VFO Holistic Planning" notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
 
             {isExpanded && (
-              <div style={{ borderTop: `1px solid ${borderColor}`, padding: '12px 18px' }}>
+              <div style={{ borderTop: `1px solid ${borderColor}`, padding: isPhone ? '12px 14px' : '12px 18px' }}>
                 {tasks.map(task => {
                   const p = localProgress[task.id] || {}
                   const isDone = !!p.status
@@ -486,28 +490,28 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                   if (task.status_options === 'auto') return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                      <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
+                      <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
                       <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: isDone ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', color: isDone ? 'var(--vfo-success-text)' : 'var(--vfo-muted)', border: `1px solid ${isDone ? 'rgba(27,146,84,0.3)' : 'var(--vfo-border)'}` }}>{isDone ? 'Completed' : 'Not completed'}</span>
-                      {isDone && p.completed_date && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
+                      {isDone && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
                     </div>
                   )
 
                   if (readOnly) return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-                      <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                       {isDone
                         ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
                         : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
                       }
-                      {isDone && p.completed_date && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
+                      {isDone && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
                     </div>
                   )
 
                   if (task.status_options === 'enter_details') return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                      <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                       {isDone
                         ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>
                         : <button onClick={() => saveTask(task.id, 'Completed', p.completed_date)} style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600 }}>Enter details</button>
@@ -562,7 +566,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                       <div key={task.id} style={{ borderBottom: '1px solid var(--vfo-border-soft)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-                          <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                          <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                           <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
                             <option value="">-- Select --</option>
                             {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
@@ -577,7 +581,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                             return (
                               <div key={ct.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
                                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: cDone ? cColor : 'transparent', flexShrink: 0, border: `1px solid ${cDone ? cColor : 'var(--vfo-border-mid)'}` }} />
-                                <span style={{ fontSize: '12px', color: cDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{ct.name}</span>
+                                <span className="vfo-substepname" style={{ fontSize: '12px', color: cDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{ct.name}</span>
                                 <select value={cp.status || ''} onChange={e => saveTask(ct.id, e.target.value, cp.completed_date)} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '120px', fontSize: '11px', borderColor: cDone ? `${cColor}66` : 'var(--vfo-border-strong)', color: cDone ? readable(cColor) : 'var(--vfo-ink)' }}>
                                   <option value="">-- Select --</option>
                                   {(ct.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
@@ -595,7 +599,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                   return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap', opacity: isGreyedOut ? 0.3 : 1, pointerEvents: isGreyedOut ? 'none' : 'auto' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-                      <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                       <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
                         <option value="">-- Select --</option>
                         {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
@@ -628,6 +632,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
   const [addStatus, setAddStatus] = useState('')
   const [regularEnabled, setRegularEnabled] = useState(false)
   const autoSelectedRef = useRef(false)
+  const isPhone = useIsPhone()
 
   // True while the list on screen is the last-seen snapshot and the quiet refresh
   // has not landed yet: nothing may open a track off snapshot data, because the
@@ -767,6 +772,38 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
   const stateColors = { 'not started': 'var(--vfo-muted)', 'in progress': '#0095ff', 'completed': '#1b9254' }
+  const statePillHex = { 'not started': null, 'in progress': '#0095ff', 'completed': '#1b9254' }
+
+  // A priority's title (the Custom rename edits it in place). `extra` styles it
+  // for the phone card; the desktop row passes nothing.
+  function renderTitle(track, extra) {
+    return renameDrafts[track.id] !== undefined ? (
+      // Inline in the title text: the input wears the title's own font
+      // and grows with what is typed, so only an underline shows it.
+      <div onClick={e => e.stopPropagation()} style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)', marginBottom: '4px', ...extra }}>
+        {track.priority_name} (Custom - <input
+          autoFocus
+          value={renameDrafts[track.id]}
+          onChange={e => setRenameDrafts(p => ({ ...p, [track.id]: e.target.value }))}
+          onBlur={() => saveRename(track)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); e.target.blur() }
+            if (e.key === 'Escape') { e.preventDefault(); clearRename(track.id) }
+          }}
+          maxLength={80}
+          style={{ font: 'inherit', color: 'inherit', background: 'transparent', border: 'none', borderBottom: '1.5px solid #0095ff', outline: 'none', padding: 0, margin: 0, width: `${Math.max(renameDrafts[track.id].length, 3) + 1}ch`, maxWidth: '100%' }}
+        />)
+      </div>
+    ) : (
+      <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)', marginBottom: '4px', ...extra }}>
+        {track.priority_name}{track.specialist_name ? ` (${track.specialist_name})` : ''}
+        {!readOnly && isCustomSpec(track) && (
+          <span onClick={e => { e.stopPropagation(); setRenameDrafts(p => ({ ...p, [track.id]: track.specialist_name.replace(/^Custom - /, '') })) }}
+            title="Edit the typed name" style={{ fontSize: '11px', fontWeight: 500, color: '#0095ff', cursor: 'pointer', marginLeft: '8px' }}>Edit</span>
+        )}
+      </div>
+    )
+  }
 
   // Known-value substitutions for the email previews (see StepEmailsChip).
   // Reactive to the selected client; empty values are omitted so those tokens
@@ -861,38 +898,31 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
           {priorityTracks.map(track => {
             const state = getTrackState(track)
             const stateColor = stateColors[state]
+            // Phone: the Tax plan list's card - title with the Live / Stopped and
+            // state pills, the date under it, a chevron instead of "View".
+            if (isPhone) return (
+              <div key={track.id} onClick={() => snapPending ? setPendingOpenId(track.id) : setSelectedTrack(track)}
+                style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '12px 14px', marginBottom: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                    {renderTitle(track, { marginBottom: 0, lineHeight: 1.3, minWidth: 0 })}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                      <span style={statusPillStyle(track.status === 'stopped' ? '#e74c3c' : '#1b9254')}>{track.status === 'stopped' ? 'Stopped' : 'Live'}</span>
+                      {track.status !== 'stopped' && <span style={{ ...statusPillStyle(statePillHex[state]), textTransform: 'capitalize' }}>{state}</span>}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px' }}>{new Date(track.created_at).toLocaleDateString()}</div>
+                </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--vfo-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><polyline points="9 6 15 12 9 18" /></svg>
+              </div>
+            )
             return (
               <div key={track.id} onClick={() => snapPending ? setPendingOpenId(track.id) : setSelectedTrack(track)}
                 style={{ ...sectionStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>
                 <div>
-                  {renameDrafts[track.id] !== undefined ? (
-                    // Inline in the title text: the input wears the title's own font
-                    // and grows with what is typed, so only an underline shows it.
-                    <div onClick={e => e.stopPropagation()} style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)', marginBottom: '4px' }}>
-                      {track.priority_name} (Custom - <input
-                        autoFocus
-                        value={renameDrafts[track.id]}
-                        onChange={e => setRenameDrafts(p => ({ ...p, [track.id]: e.target.value }))}
-                        onBlur={() => saveRename(track)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') { e.preventDefault(); e.target.blur() }
-                          if (e.key === 'Escape') { e.preventDefault(); clearRename(track.id) }
-                        }}
-                        maxLength={80}
-                        style={{ font: 'inherit', color: 'inherit', background: 'transparent', border: 'none', borderBottom: '1.5px solid #0095ff', outline: 'none', padding: 0, margin: 0, width: `${Math.max(renameDrafts[track.id].length, 3) + 1}ch`, maxWidth: '100%' }}
-                      />)
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)', marginBottom: '4px' }}>
-                      {track.priority_name}{track.specialist_name ? ` (${track.specialist_name})` : ''}
-                      {!readOnly && isCustomSpec(track) && (
-                        <span onClick={e => { e.stopPropagation(); setRenameDrafts(p => ({ ...p, [track.id]: track.specialist_name.replace(/^Custom - /, '') })) }}
-                          title="Edit the typed name" style={{ fontSize: '11px', fontWeight: 500, color: '#0095ff', cursor: 'pointer', marginLeft: '8px' }}>Edit</span>
-                      )}
-                    </div>
-                  )}
+                  {renderTitle(track)}
                   <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{new Date(track.created_at).toLocaleDateString()}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

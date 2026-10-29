@@ -91,7 +91,7 @@ export default function TaxPostReviewDecidePage() {
   return (
     <TokenShell maxWidth={520}>
       <div style={cardStyle}>
-        <div style={{ ...iconCircleStyle, background: view.color + '20' }}>
+        <div className="vfo-statusicon" style={{ ...iconCircleStyle, background: view.color + '20' }}>
           <span style={{ fontSize: '32px', lineHeight: 1 }}>{view.icon}</span>
         </div>
         <h1 style={titleStyle}>{view.title}</h1>

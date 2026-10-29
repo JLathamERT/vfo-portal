@@ -77,7 +77,7 @@ export default function TaxDepositPayPage() {
   if (status === 'error') return (
     <TokenShell maxWidth={520}>
       <div style={messageCardStyle}>
-        <div style={{ ...iconCircleStyle, background: '#ef444420', color: '#ef4444', fontSize: '30px', fontWeight: 800 }}>!</div>
+        <div className="vfo-statusicon" style={{ ...iconCircleStyle, background: '#ef444420', color: '#ef4444', fontSize: '30px', fontWeight: 800 }}>!</div>
         <h1 style={titleStyle}>Payment Error</h1>
         <p style={subtitleStyle}>{error}</p>
       </div>
@@ -133,7 +133,7 @@ export default function TaxDepositPayPage() {
       <div style={messageCardStyle}>
         <h1 style={titleStyle}>No deposit needed</h1>
         <p style={{ ...subtitleStyle, marginBottom: '24px' }}>The Tax Planning Deposit is not needed for {clientName || 'this client'}. Please continue to complete the request.</p>
-        <button type="button" onClick={() => handleChoice('card')} style={continueButtonStyle}>Continue</button>
+        <button type="button" className="vfo-tokenbtn" onClick={() => handleChoice('card')} style={continueButtonStyle}>Continue</button>
       </div>
     </TokenShell>
   )
@@ -149,7 +149,7 @@ export default function TaxDepositPayPage() {
   return (
     <TokenShell>
       <div style={pageContainerStyle}>
-        <div style={{ ...iconCircleStyle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
+        <div className="vfo-statusicon" style={{ ...iconCircleStyle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
           <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
         </div>
         <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>VFO Tax Planning Deposit</h1>
@@ -208,7 +208,7 @@ function Message({ tone, title, message }) {
   const green = tone === 'green'
   return (
     <div style={messageCardStyle}>
-      <div style={{ ...iconCircleStyle, background: green ? 'rgba(34,197,94,0.15)' : 'rgba(100,116,139,0.15)' }}>
+      <div className="vfo-statusicon" style={{ ...iconCircleStyle, background: green ? 'rgba(34,197,94,0.15)' : 'rgba(100,116,139,0.15)' }}>
         {green
           ? <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
           : <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>}
@@ -222,6 +222,7 @@ function Message({ tone, title, message }) {
 function OptionCard({ isHovered, onHover, onLeave, onClick, title, badgeText, badgeClass, amount, breakdown, footer }) {
   return (
     <div
+      className="vfo-paycard"
       onClick={onClick}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}

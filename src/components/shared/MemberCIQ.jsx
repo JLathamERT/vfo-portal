@@ -688,7 +688,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           {oppSubTab === 'latest' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Plan Completed on {planDate}</div>
+                <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Plan Completed on {formatDate(planDate)}</div>
                 {!readOnly && <div onClick={toggleProgressMode} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                   <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', fontWeight: 500 }}>Update Progress</span>
                   <div style={{ width: '44px', height: '24px', borderRadius: '12px', background: activeCiq.accountability_mode ? '#125ecc' : 'var(--vfo-border-strong)', position: 'relative', flexShrink: 0 }}>
@@ -721,7 +721,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
               )}
 
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
-                <button onClick={() => { setCiqView('chooser'); setSelectedSnapshot(null) }} style={{ padding: '12px 28px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer' }}>← Back</button>
+                <button onClick={() => { setCiqView('chooser'); setSelectedSnapshot(null) }} style={{ padding: isPhone ? '9px 14px' : '12px 28px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer' }}>← Back</button>
               </div>
             </div>
           )}
@@ -764,7 +764,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
                           <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatDate(snap.saved_at)} at {snap.saved_at?.split('T')[1]?.substring(0, 5)}</div>
                           <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Saved by {snap.saved_by}</div>
                         </div>
-                        <span style={{ color: '#0095ff', fontWeight: 600, fontSize: '12px' }}>View →</span>
+                        {isPhone ? <PhoneChevron /> : <span style={{ color: '#0095ff', fontWeight: 600, fontSize: '12px' }}>View →</span>}
                       </div>
                     ))
                   }

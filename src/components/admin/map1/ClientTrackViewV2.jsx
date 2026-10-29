@@ -12,6 +12,7 @@ import Map1PricingSplitCard from './Map1PricingSplitCard'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
+import { useIsPhone } from '../../../lib/useMediaQuery'
 
 // The Initial Contact "Who is completing the tracking…" gate step. When it is
 // NOT set to "Member" (unset or "VFOS"), the other steps in the phase are inert
@@ -133,11 +134,11 @@ function PipConfirmStep({ clientId, task, p, meeting, readOnly, onDone, emailCtx
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-      <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}{!readOnly && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MAP 1" display="modal" title={task.name} templates={[{ name: 'PIP_meeting_confirm', when: 'If date confirmed / not confirmed' }, { name: 'PIP_meeting_declined', when: 'If the client declined the meeting' }]} context={emailCtx} /></span>}</span>
+      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}{!readOnly && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MAP 1" display="modal" title={task.name} templates={[{ name: 'PIP_meeting_confirm', when: 'If date confirmed / not confirmed' }, { name: 'PIP_meeting_declined', when: 'If the client declined the meeting' }]} context={emailCtx} /></span>}</span>
       {isDone
         ? rescheduling
           ? dateForm(() => setRescheduling(false))
-          : <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+          : <div className="vfo-stepchips" style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
               {!readOnly && <button onClick={openReschedule} style={cancelBtn}>Reschedule</button>}
             </div>
@@ -151,7 +152,7 @@ function PipConfirmStep({ clientId, task, p, meeting, readOnly, onDone, emailCtx
                 <button onClick={() => fire('declined')} disabled={!!pending} style={{ ...redBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'declined' ? 'Sending…' : 'Meeting declined - email client'}</button>
               </div>
       }
-      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{isDone && p.completed_date ? fmtDate(p.completed_date) : ''}</span>
+      <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? fmtDate(p.completed_date) : ''}</span>
     </div>
   )
 }
@@ -170,6 +171,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
   const [trackStatus, setTrackStatus] = useState('live')
   const [togglingStatus, setTogglingStatus] = useState(false)
   const navigate = useNavigate()
+  const isPhone = useIsPhone()
 
   const snapKey = `map1track:${clientId}:${programId ?? ''}:${readOnly ? 'member' : 'admin'}`
 
@@ -444,7 +446,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
   }, 0)
 
   return (
-    <div>
+    <div className="vfo-track">
       <TrackHero
         eyebrow="VFO Holistic Planning"
         title="MAP 1 — Engagement Process"
@@ -519,7 +521,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
 
             {/* Phase body */}
             {isExpanded && (
-              <div style={{ borderTop: `1px solid ${borderColor}`, padding: '12px 18px' }}>
+              <div style={{ borderTop: `1px solid ${borderColor}`, padding: isPhone ? '12px 14px' : '12px 18px' }}>
 
 {phase.name === 'MAP 1 - PC Admin' && (() => {
                   const pipDecisionTask = phases.find(ph => ph.name === 'MAP 1 - PIP Follow Up')?.program_client_tasks?.find(t => t.name === 'PIP Follow Up decision')
@@ -585,15 +587,15 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                     return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: (done || na) ? '#1b9254' : showPending ? '#e06717' : 'transparent', flexShrink: 0, border: `1px solid ${(done || na) ? '#1b9254' : showPending ? '#e06717' : 'var(--vfo-border-mid)'}` }} />
-                      <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
+                      <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
                       {!readOnly && emailTpls && <StepEmailsChip pipeline="MAP 1" display="modal" title={label} templates={emailTpls} context={emailCtx} />}
-                      <span style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+                      <span className="vfo-stepchips" style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
                         {done && tag && !na && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{tag}</span>}
                         {showPending
                           ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>{typeof pending === 'string' ? pending : 'Pending — ACH clearing'}</span>
                           : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: (done || na) ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: (done || na) ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: (done || na) ? 'var(--vfo-success-text)' : 'var(--vfo-muted)' }}>{na ? 'N/A' : (done ? 'Done' : 'Not completed')}</span>}
                       </span>
-                      {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
+                      {done && at && <span className="vfo-stepdate" style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
                     </div>
                     )
                   }
@@ -622,7 +624,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                   const yesSteps = null
 
                   return (
-                    <div style={{ padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
+                    <div style={{ padding: isPhone ? '8px 10px' : '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                         <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Decision:</span>
                         <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${decisionColor}22`, color: readable(decisionColor), border: `1px solid ${decisionColor}44` }}>{decisionLabel}</span>
@@ -683,8 +685,8 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                                         <div style={{ cursor: mirror ? 'default' : 'pointer' }} onClick={() => { if (!mirror) setExpanded(prev => ({ ...prev, pricing_details: !prev.pricing_details })) }}>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                                             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#1b9254', flexShrink: 0, border: '1px solid #1b9254' }} />
-                                            <span style={{ fontSize: '12px', color: 'var(--vfo-ink)', fontWeight: 600 }}>PF completed pricing</span>
-                                            {!mirror && <span style={{ fontSize: '10px', color: 'var(--vfo-muted)', marginLeft: '4px', transform: expanded.pricing_details ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
+                                            <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)', fontWeight: 600 }}>PF completed pricing</span>
+                                            {!mirror && <span className="vfo-steparrow" style={{ fontSize: '10px', color: 'var(--vfo-muted)', marginLeft: '4px', transform: expanded.pricing_details ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
                                             <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
                                           </div>
                                         </div>
@@ -761,17 +763,17 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                   if (ownerTask && !isTrackingOwnerTask(task) && progress[ownerTask.id]?.status !== 'Member') return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', opacity: 0.35, pointerEvents: 'none' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
-                      <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>—</span>
+                      <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
+                      <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isPhone ? '' : '—'}</span>
                     </div>
                   )
 
                   if (task.status_options === 'auto') return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1b9254', flexShrink: 0 }} />
-                      <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
+                      <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
                       <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
-                      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>
+                      <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>
                     </div>
                   )
 
@@ -780,7 +782,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                     return (
                       <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: dateVal ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${dateVal ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                        <span style={{ fontSize: '13px', color: dateVal ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                        <span className="vfo-stepname" style={{ fontSize: '13px', color: dateVal ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                         {readOnly
                           ? (dateVal
                               ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: '#1b925422', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid #1b925444' }}>{formatDate(dateVal)}</span>
@@ -800,12 +802,12 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                     return (
                       <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', opacity: isGreyedOut2 ? 0.3 : 1 }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-                        <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                        <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                         {isDone
                           ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
                           : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
                         }
-                        <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
+                        <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
                       </div>
                     )
                   }
@@ -827,7 +829,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                     <div key={task.id}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-                        <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                        <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                         <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
                           <option value="">-- Select --</option>
                           {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
@@ -845,11 +847,11 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                   if (isPCAdmin) return (
                     <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', opacity: isGreyedOut ? 0.3 : 1 }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                      <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                       <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: isDone ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', color: isDone ? 'var(--vfo-success-text)' : 'var(--vfo-muted)', border: `1px solid ${isDone ? 'rgba(27,146,84,0.3)' : 'var(--vfo-border)'}` }}>
                         {isDone ? 'Completed' : 'Not completed'}
                       </span>
-                      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
+                      <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
                     </div>
                   )
 
@@ -860,9 +862,9 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                       return (
                         <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: dc, flexShrink: 0 }} />
-                          <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
+                          <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
                           <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${dc}22`, color: readable(dc), border: `1px solid ${dc}44` }}>{dl}</span>
-                          <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>
+                          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>
                         </div>
                       )
                     }
@@ -870,9 +872,9 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                       return (
                         <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
-                          <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                          <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                           <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
-                          <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}></span>
+                          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}></span>
                         </div>
                       )
                     }
@@ -886,7 +888,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                       <div key={task.id} style={{ borderBottom: '1px solid var(--vfo-border-soft)', padding: '7px 0' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: isDone ? 'pointer' : 'default', flexWrap: 'wrap' }} onClick={() => isDone && setExpanded(prev => ({ ...prev, [formExpandKey]: !prev[formExpandKey] }))}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? dc : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? dc : 'var(--vfo-border-mid)'}` }} />
-                          <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}{!readOnly && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MAP 1" display="modal" title={task.name} templates={[
+                          <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}{!readOnly && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MAP 1" display="modal" title={task.name} templates={[
                             { name: 'CONTRACT_agreementsent|Yes', when: 'If Yes — congratulations + agreement signing link' },
                             { name: 'PCADMIN_followup|Undecided', when: 'If Undecided — options email to the client' },
                             { name: 'PCADMIN_followup|No', when: 'If No — decline email' },
@@ -894,8 +896,8 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                             { name: 'CONTRACT_pcadmin_undecided_reminder', when: 'Automatic reminder if the Undecided email gets no response (2 business days)' },
                           ]} context={emailCtx} /></span>}</span>
                           {isDone && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${dc}22`, color: readable(dc), border: `1px solid ${dc}44` }}>{dl}</span>}
-                          <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
-                          {isDone && <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isFormShown ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
+                          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
+                          {isDone && <span className="vfo-steparrow" style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isFormShown ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
                         </div>
                         {isFormShown && (
                           <PIPDecisionForm
@@ -920,12 +922,13 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
                       {isCiqStep
                         ? <span
+                            className="vfo-stepname"
                             title="Open this client's CIQ"
                             onClick={() => navigate(`/admin/client/${clientId}?tab=ciq&_n=${Date.now()}`)}
                             onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }}
                             onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}
                             style={{ fontSize: '13px', color: '#0095ff', flex: 1, cursor: 'pointer' }}>{task.name}</span>
-                        : <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                        : <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                       }
                       <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
                         <option value="">-- Select --</option>

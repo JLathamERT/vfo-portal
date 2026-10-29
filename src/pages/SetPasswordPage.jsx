@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { TokenFormSkeleton } from '../components/shared/Skeleton'
+import { useIsPhone } from '../lib/useMediaQuery'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -29,6 +30,9 @@ export default function SetPasswordPage() {
   const [passcode, setPasscode] = useState('')
   const [confirm, setConfirm] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Phone: the message sits on the page gutter, not 32px inside it as well.
+  const isPhone = useIsPhone()
+  const messageCard = isPhone ? { ...messageCardStyle, padding: '24px 0' } : messageCardStyle
 
   useEffect(() => {
     const token = searchParams.get('token')
@@ -78,7 +82,7 @@ export default function SetPasswordPage() {
   )
   if (status === 'error') return (
     <div style={containerStyle}>
-      <div style={messageCardStyle}>
+      <div style={messageCard}>
         <h1 style={titleStyle}>Setup Link Error</h1>
         <p style={subtitleStyle}>{error}</p>
       </div>
@@ -86,10 +90,10 @@ export default function SetPasswordPage() {
   )
   if (status === 'already_setup') return (
     <div style={containerStyle}>
-      <div style={messageCardStyle}>
+      <div style={messageCard}>
         <h1 style={titleStyle}>Login Already Set Up</h1>
         <p style={subtitleStyle}>You already have a login for the {portal.label.toLowerCase()} portal. Click below to sign in.</p>
-        <button onClick={() => navigate(portal.login)} style={primaryButtonStyle}>Go to Login</button>
+        <button className="vfo-tokenbtn" onClick={() => navigate(portal.login)} style={primaryButtonStyle}>Go to Login</button>
       </div>
     </div>
   )
@@ -106,7 +110,7 @@ export default function SetPasswordPage() {
           <label style={{ ...labelStyle, marginTop: '16px' }}>Confirm Passcode</label>
           <input id="confirm-password" name="confirm-password" value={confirm} onChange={e => setConfirm(e.target.value)} type="password" autoComplete="new-password" required minLength={6} style={inputStyle} />
           {error && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '12px', marginBottom: 0 }}>{error}</p>}
-          <button type="submit" disabled={submitting} style={{ ...primaryButtonStyle, marginTop: '24px', opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>{submitting ? 'Setting up…' : 'Set up my login'}</button>
+          <button type="submit" className="vfo-tokenbtn" disabled={submitting} style={{ ...primaryButtonStyle, marginTop: '24px', opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>{submitting ? 'Setting up…' : 'Set up my login'}</button>
         </form>
         <p style={securityNoteStyle}>After setup, you'll be taken to the {portal.label.toLowerCase()} login page to sign in with your new passcode.</p>
       </div>
