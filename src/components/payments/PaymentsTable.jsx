@@ -86,6 +86,13 @@ export function fmtMethod(method, last4) {
   return last4 ? `${m} ••${last4}` : m
 }
 
+// "Charge saved card ••6205" / "Charge saved bank ••1777" — the button text and the
+// confirm dialog share it.
+export function chargeSavedLabel(cs) {
+  const what = cs?.method === 'ach' ? 'bank' : 'card'
+  return `Charge saved ${what}${cs?.last4 ? ` ••${cs.last4}` : ''}`
+}
+
 export function StatusPill({ status, count }) {
   const s = STATUS[status] || STATUS.unpaid
   return (
@@ -162,9 +169,15 @@ function Tag({ children, fg = 'var(--vfo-muted)', bg = 'var(--vfo-tint)' }) {
 // onCancelGroup      — (groupKey, groupLabel) => void. Required alongside the array;
 //                      the parent owns the confirm dialog, the API call and reload.
 // cancelBusyKey      — group key currently in flight, so its button can disable.
+// onChargeSaved      — (row) => void. Renders "Charge saved card" on a FAILED Tax
+//                      implementation / final retainer row the server marked
+//                      chargeable (row.chargeSaved). Omit and no charge control is
+//                      ever rendered. The parent owns the confirm, the call and reload.
+// chargeBusyKey      — row key currently being charged, so its button can disable.
 export default function PaymentsTable({
   rows = [], emptyText = 'No payments recorded yet.', buckets = null,
   cancellableGroups = null, onCancelGroup = null, cancelBusyKey = null,
+  onChargeSaved = null, chargeBusyKey = null,
 }) {
   const [filter, setFilter] = useState('All')   // payment-type (category) filter
   const [ptype, setPtype] = useState('All')      // person-type filter (global admin page only)
@@ -347,6 +360,23 @@ export default function PaymentsTable({
                 </>
               )}
               {r.revShare.status ? <> — <strong>{r.revShare.status}</strong></> : ''}
+            </div>
+          )}
+          {onChargeSaved && r.chargeSaved && (
+            <div style={{ marginTop: '8px' }}>
+              <button
+                onClick={e => { e.stopPropagation(); onChargeSaved(r) }}
+                disabled={chargeBusyKey === r.key}
+                style={{
+                  background: chargeBusyKey === r.key ? '#8fb3e6' : '#125ecc', color: '#ffffff',
+                  border: 'none', borderRadius: '8px', padding: '7px 13px', fontSize: '12px', fontWeight: 700,
+                  fontFamily: 'Inter, sans-serif', cursor: chargeBusyKey === r.key ? 'default' : 'pointer',
+                }}
+              >
+                {chargeBusyKey === r.key
+                  ? 'Charging…'
+                  : `${chargeSavedLabel(r.chargeSaved)} — ${fmtMoney(r.chargeSaved.amount)}`}
+              </button>
             </div>
           )}
         </td>
