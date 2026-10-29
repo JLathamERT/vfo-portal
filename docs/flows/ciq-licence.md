@@ -70,6 +70,8 @@ Email **322** `MEMBER_ciq_licence_superseded` where a subscription was billing: 
 | 322 | `MEMBER_ciq_licence_superseded` | a new tax licence takes over a billing $25 (hand-over at the paid month's end, or stopped now) |
 | 323 | `MEMBER_ciq_licence_payment_failed_reminder` | 2 business days after 321, still unpaid |
 
+**My Progress in the Premium list (2026-10-29, Jake).** 319's *"…on the Premium VFO client portal: [PROGRESS_ITEM]their One Page Plan, their Client Vault and the VFO Showroom"* and 320's *"(…[PROGRESS_ITEM]their One Page Plan and Client Vault)"* (migration `20261029130000`): `progressItem()` (`utils/ciq-licence.ts`) fills *"My Progress, "* only while `client_case_progress` is on for the member, else nothing. The member card's Basic line follows the same rule — *"The Premium portal adds My Progress, their One Page Plan and Client Vault"* — through `ciq_licence.progress_tab`, set inside `ciqLicenceView` so every action reply carries it. 321 / 323 (*"files are kept"*) are unchanged.
+
 **Bells:** only `FAILURE_ciq_licence` (Jake — a Stripe refusal on supersede or a method move) and the reused `FAILURE_ach_first_payment` (a paid month whose INV/REC numbers could not be reserved). Nothing to the member or the team.
 
 ## Security
