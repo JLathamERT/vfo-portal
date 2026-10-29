@@ -100,6 +100,7 @@ export function gcActorLabel(tx) {
 }
 
 export function GCTransactionHistory({ transactions }) {
+  const isPhone = useIsPhone()
   return (
     <div style={sectionStyle}>
       <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Transaction History</div>
@@ -115,6 +116,28 @@ export function GCTransactionHistory({ transactions }) {
         ))
         : transactions.length === 0
         ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No transactions yet.</p>
+        // Phone (2026-10-29): the six fixed columns need ~640px and cut off Type,
+        // Credits and Balance, so a row is the house balanced row - description
+        // over date + by on the left, type + credits over the balance on the right.
+        : isPhone
+        ? transactions.map(tx => {
+          const by = gcActorLabel(tx)
+          return (
+            <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
+              <div style={{ minWidth: 0, textAlign: 'left' }}>
+                <div style={{ color: 'var(--vfo-ink)', fontSize: '14px' }}>{tx.description || tx.type}</div>
+                <div style={{ color: 'var(--vfo-muted)', fontSize: '12.5px', marginTop: '2px' }}>{new Date(tx.created_at).toLocaleDateString()}{by !== '—' ? ` · ${by}` : ''}</div>
+              </div>
+              <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {gcTypeChip(tx)}
+                  <span style={{ ...TX_NUM, color: tx.amount > 0 ? 'var(--vfo-success-text)' : '#d93025' }}>{tx.amount > 0 ? '+' : ''}{tx.amount}</span>
+                </div>
+                <span style={{ color: 'var(--vfo-muted)', fontSize: '12px' }}>Balance {tx.balance_after}</span>
+              </div>
+            </div>
+          )
+        })
         : <>
           <div style={{ ...TX_GRID, padding: '0 0 8px', borderBottom: '1px solid var(--vfo-tint)', fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             <span>Description</span>
