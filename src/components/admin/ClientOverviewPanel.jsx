@@ -122,7 +122,8 @@ function MemberClientCard({ c, onOpen }) {
   const programs = c.programs || []
   return (
     <div onClick={onOpen} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '12px 14px', marginBottom: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '14px', alignItems: 'start' }}>
+      {/* The programs sit centred against the name block (Jake, 2026-10-28). */}
+      <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '14px', alignItems: 'center' }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-ink)', lineHeight: 1.3 }}>{c.name || '—'}</div>
           {c.mirrored_from && <div style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 600, marginTop: '2px' }}>Mirrored from {c.mirrored_from}</div>}
@@ -131,7 +132,7 @@ function MemberClientCard({ c, onOpen }) {
             {c.status && <span style={statusPillStyle(STATUS_HEX[String(c.status).toLowerCase()])}>{capitalize(c.status)}</span>}
           </div>
         </div>
-        <div style={{ minWidth: 0, fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.45, paddingTop: '1px' }}>
+        <div style={{ minWidth: 0, fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.45 }}>
           {programs.length
             ? programs.map(p => <div key={p.id}>{programLabel(p.name)}</div>)
             : <div style={{ color: 'var(--vfo-faint)' }}>No program yet</div>}

@@ -83,7 +83,8 @@ export function HeroAvatar({ src, name, size = 60 }) {
 // nested cards so stacked heroes don't repeat the same treatment.
 // Phone: no phase stepper - a dozen phases ran ~1,100px wide and were cut off,
 // it is not tappable, and the bar + the phase list below already say where the
-// track is (2026-10-28).
+// track is (2026-10-28). Also on a phone the % stays on the title's line (it had
+// wrapped onto a row of its own) and the 'n / m tasks' caption sits under the bar.
 export function TrackHero({ eyebrow, title, meta, action, completed, total, unitLabel = 'tasks completed', steps, accent = true, avatar = null }) {
   const isPhone = useIsPhone()
   const hasBar = typeof total === 'number' && total > 0
@@ -92,8 +93,8 @@ export function TrackHero({ eyebrow, title, meta, action, completed, total, unit
     <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', marginBottom: isPhone ? '14px' : '20px', overflow: 'hidden' }}>
       {accent && <div style={{ height: '4px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 55%, #0a85e8 100%)' }} />}
       <div style={{ padding: isPhone ? '14px 16px' : '18px 22px 16px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: '200px', flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: isPhone ? '12px' : '16px', flexWrap: isPhone && !action ? 'nowrap' : 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: isPhone ? 0 : '200px', flex: 1 }}>
             {avatar}
             <div style={{ minWidth: 0, flex: 1 }}>
             {eyebrow && <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '5px' }}>{eyebrow}</div>}
@@ -112,7 +113,7 @@ export function TrackHero({ eyebrow, title, meta, action, completed, total, unit
             {hasBar && (
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-primary)', lineHeight: 1 }}>{pct}%</div>
-                {title && <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.7px', color: 'var(--vfo-muted)', marginTop: '5px', textTransform: 'uppercase' }}>{completed} / {total} {unitLabel}</div>}
+                {title && !isPhone && <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.7px', color: 'var(--vfo-muted)', marginTop: '5px', textTransform: 'uppercase' }}>{completed} / {total} {unitLabel}</div>}
               </div>
             )}
             {action}
@@ -123,6 +124,7 @@ export function TrackHero({ eyebrow, title, meta, action, completed, total, unit
             <div style={{ width: `${pct}%`, height: '100%', borderRadius: '999px', background: 'linear-gradient(90deg, #125ecc 0%, #0a85e8 100%)', transition: 'width 0.3s' }} />
           </div>
         )}
+        {hasBar && title && isPhone && <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.7px', color: 'var(--vfo-muted)', marginTop: '6px', textTransform: 'uppercase' }}>{completed} / {total} {unitLabel}</div>}
         {steps && steps.length > 0 && !isPhone && <PhaseStepper steps={steps} />}
       </div>
     </div>

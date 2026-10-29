@@ -127,6 +127,65 @@
   }
 }
 
+/* Phone step rows (2026-10-28, restacked 2026-10-29). The program tracks' step
+   rows (TaxPrioritiesTab, PFTEngagementTrack: dot, .vfo-stepname, chips,
+   .vfo-stepdate) are inline-styled one-liners. On a phone every step reads the
+   same way, one item per line: the step name, then its status / what was picked,
+   then the date. The owner tags (VFOS, Tax Team, ...) are hidden there - no room,
+   and they blurred into the status chips (Jake, 2026-10-29). A grid: the dot in a
+   gutter on the name's line, every other item in the column after it, an expand
+   arrow at the name's right. !important because the row styles are inline. */
+@media (max-width: 640px) {
+  .vfo-ownerchip {
+    display: none !important;
+  }
+  div:has(> .vfo-stepname),
+  div:has(> .vfo-substepname) {
+    display: grid !important;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    column-gap: 0 !important;
+    row-gap: 4px !important;
+    justify-items: start;
+  }
+  /* The automated sub-steps' dot is 6px with an 8px gap, not 8px + 10px. */
+  div:has(> .vfo-substepname) {
+    grid-template-columns: 14px minmax(0, 1fr) auto;
+  }
+  div:has(> .vfo-stepname) > *,
+  div:has(> .vfo-substepname) > * {
+    grid-column: 2;
+    margin-left: 0 !important;
+  }
+  div:has(> .vfo-stepname) > :first-child:not(.vfo-stepname),
+  div:has(> .vfo-substepname) > :first-child:not(.vfo-substepname) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  div:has(> .vfo-stepname) > .vfo-steparrow {
+    grid-column: 3;
+    grid-row: 1;
+    margin-left: 8px !important;
+  }
+  .vfo-stepchips {
+    min-width: 0 !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+  }
+  .vfo-stepdate {
+    width: auto !important;
+    text-align: left !important;
+  }
+  .vfo-stepdate:empty {
+    display: none !important;
+  }
+  /* A track's chips (owner, status, route) are 10px inline; on a phone
+     nothing reads below 11px. */
+  .vfo-track [style*="font-size: 10px"] {
+    font-size: 11px !important;
+  }
+}
+
 /* Always reserve the scrollbar track so the page doesn't shift sideways
    between short pages (no scrollbar) and long pages (scrollbar). */
 html {

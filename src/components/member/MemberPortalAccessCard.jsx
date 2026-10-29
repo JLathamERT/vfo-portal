@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { formatDate } from '../../lib/dates'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 // Portal licensing L2: the member's "Send portal access" on one of their clients.
 // Rendered only when msm_load_client_home carries portal_access, i.e. while the
@@ -18,6 +19,7 @@ import { formatDate } from '../../lib/dates'
 // re-reads the server on its own.
 // readOnly = the admin view (decision 6: admins see the state, never change it).
 export default function MemberPortalAccessCard({ client, portalAccess, onSent, ciqLicence, sectionStyle, cardTitle, readOnly = false }) {
+  const isPhone = useIsPhone()
   const [access, setAccess] = useState(portalAccess)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -115,8 +117,9 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
     setLicBusy(false)
   }
 
-  const btn = { padding: '10px 24px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif' }
-  const ghost = { padding: '9px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '13px', fontWeight: 600, cursor: licBusy ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif' }
+  // Smaller buttons on a phone (2026-10-28).
+  const btn = { padding: isPhone ? '8px 16px' : '10px 24px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '13px' : '14px', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif' }
+  const ghost = { padding: isPhone ? '7px 14px' : '9px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: isPhone ? '12.5px' : '13px', fontWeight: 600, cursor: licBusy ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif' }
   const first = client?.first_name || 'your client'
   const fullName = `${client?.first_name || ''} ${client?.last_name || ''}`.trim() || 'your client'
   const your = readOnly ? "the member's" : 'your'

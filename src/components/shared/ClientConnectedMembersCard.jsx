@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { formatDate } from '../../lib/dates'
+import { useIsPhone } from '../../lib/useMediaQuery'
 
 // Portal licensing L5: the CLIENT MIRRORING card on a client (member Profile tab
 // and the admin client Profile tab). member_client_connections_load decides what
@@ -10,6 +11,7 @@ import { formatDate } from '../../lib/dates'
 // only "you are connected" + Leave. Every rule is enforced by the handlers - this
 // card only draws them.
 export default function ClientConnectedMembersCard({ clientId, sectionStyle, cardTitle, onLeft }) {
+  const isPhone = useIsPhone()
   const [state, setState] = useState(null)
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState(null)
@@ -94,8 +96,39 @@ export default function ClientConnectedMembersCard({ clientId, sectionStyle, car
     <button style={dangerBtn} disabled={!!busy} onClick={() => setConfirmRemove(c.member_number)}>{leaving ? 'Leave' : 'Stop mirroring'}</button>
   )
 
+  // Phone (2026-10-28): the name + its chip on one line, the grey "Mirrored …"
+  // line under it with a small round stop button at its right; the
+  // "Stop mirroring? Yes / No" confirm drops to its own line under the row.
+  // While the confirm is open the stop button keeps its place unseen, so
+  // nothing around it moves (Jake, 2026-10-29).
+  const stopIcon = (c, leaving) => {
+    const open = confirmRemove === c.member_number
+    return (
+      <button style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid rgba(231,76,60,0.35)', background: 'var(--vfo-input)', color: '#c0392b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, padding: 0, visibility: open ? 'hidden' : 'visible' }}
+        disabled={!!busy || open} onClick={() => setConfirmRemove(c.member_number)} title={leaving ? 'Leave' : 'Stop mirroring'} aria-label={leaving ? 'Leave' : 'Stop mirroring'}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+      </button>
+    )
+  }
+  const phoneConfirm = (c, leaving) => confirmRemove === c.member_number && (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>{removeControls(c, leaving)}</div>
+  )
+
   if (state.viewer === 'connected') {
     const mine = state.connections?.[0]
+    if (isPhone) return (
+      <div style={sectionStyle}>
+        <div style={cardTitle}>Client Mirroring</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.5 }}>
+            {state.owner?.name || 'This client\'s member'} has mirrored this client to you{mine?.connected_at ? ` since ${formatDate(mine.connected_at)}` : ''}. You can view this client's case, but not change it.
+          </span>
+          {mine && stopIcon(mine, true)}
+        </div>
+        {mine && phoneConfirm(mine, true)}
+        {error && <p style={{ fontSize: '13px', marginTop: '12px', marginBottom: 0, color: '#d93025' }}>{error}</p>}
+      </div>
+    )
     return (
       <div style={sectionStyle}>
         <div style={cardTitle}>Client Mirroring</div>
@@ -119,7 +152,19 @@ export default function ClientConnectedMembersCard({ clientId, sectionStyle, car
       <p style={{ ...muted, margin: '0 0 8px' }}>Mirroring lets another member view this client's case on their own portal. They cannot change anything and never see fees or payments.</p>
 
       {connections.length === 0 && <div style={{ ...muted, padding: '8px 0' }}>This client is not mirrored to any member.</div>}
-      {connections.map(c => (
+      {connections.map(c => isPhone ? (
+        <div key={c.member_number} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--vfo-ink)' }}>{c.name}</span>
+            <span style={{ ...chip(c.source === 'one_off'), marginLeft: 0 }}>{c.source === 'one_off' ? 'One-off connection' : 'Existing connection'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <span style={{ ...muted, minWidth: 0 }}>Mirrored {formatDate(c.connected_at)}{c.connected_by_name ? ` by ${c.connected_by_name}` : ''}</span>
+            {stopIcon(c, false)}
+          </div>
+          {phoneConfirm(c, false)}
+        </div>
+      ) : (
         <div key={c.member_number} style={row}>
           <span style={{ fontSize: '13px', color: 'var(--vfo-ink)' }}>
             <span style={{ fontWeight: 600 }}>{c.name}</span>
@@ -152,11 +197,21 @@ export default function ClientConnectedMembersCard({ clientId, sectionStyle, car
             {!searching && results.length === 0 && <div style={{ ...muted, padding: '8px 0' }}>No active members match.</div>}
             {results.map(m => (
               <div key={m.member_number} style={row}>
+                {isPhone ? (
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--vfo-ink)' }}>{m.name}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '3px' }}>
+                      <span style={muted}>#{m.member_number}</span>
+                      {m.partner && <span style={{ ...chip(false), marginLeft: 0 }}>Existing connection</span>}
+                    </span>
+                  </span>
+                ) : (
                 <span style={{ fontSize: '13px', color: 'var(--vfo-ink)' }}>
                   <span style={{ fontWeight: 600 }}>{m.name}</span>
                   <span style={{ ...muted, marginLeft: '8px' }}>#{m.member_number}</span>
                   {m.partner && <span style={chip(false)}>Existing connection</span>}
                 </span>
+                )}
                 <button style={primaryBtn} disabled={!!busy} onClick={() => connect(m.member_number)}>{busy === `add:${m.member_number}` ? 'Mirroring…' : 'Mirror'}</button>
               </div>
             ))}

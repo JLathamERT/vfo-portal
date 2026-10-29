@@ -7,6 +7,7 @@ import { TrackHero, PhaseBadge } from '../../shared/TrackKit'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
+import { useIsPhone } from '../../../lib/useMediaQuery'
 
 // Read-only per-step email previews (see StepEmailsChip). Meeting 1 uses the
 // member-declined variant; Meetings 2/3 use the ERT/VFOS-declined variant.
@@ -254,7 +255,7 @@ function MeetingStep({ task, meeting, p, readOnly, client, onSend, onCompleteNoE
     <div style={{ borderBottom: '1px solid var(--vfo-border-soft)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
         <Dot done={isDone} color={statusColor} />
-        <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}{!readOnly && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline={PFT_PIPELINE} title={task.name} templates={meeting === 1 ? PFT_MEETING1_EMAILS : PFT_MEETING23_EMAILS} context={pftMeetingCtx(client, meeting)} /></span>}</span>
+        <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}{!readOnly && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline={PFT_PIPELINE} title={task.name} templates={meeting === 1 ? PFT_MEETING1_EMAILS : PFT_MEETING23_EMAILS} context={pftMeetingCtx(client, meeting)} /></span>}</span>
         {showDate && !readOnly
           ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inputStyle }} />
@@ -296,7 +297,7 @@ function MeetingStep({ task, meeting, p, readOnly, client, onSend, onCompleteNoE
                   </div>
         }
         {readOnly
-          ? <span style={dateSpanStyle}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
+          ? <span className="vfo-stepdate" style={dateSpanStyle}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
           : <StepDate value={isDone ? (p.completed_date || '') : ''} onChange={onDate} disabled={!!pending} />
         }
       </div>
@@ -342,7 +343,7 @@ function GateStep({ task, p, readOnly, onChoose }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
       <Dot done={isDone} color={statusColor} />
-      <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
       {isDone
         ? <StatusPill status={p.status} color={statusColor} />
         : readOnly
@@ -372,7 +373,7 @@ function DecisionStep({ task, p, readOnly, client, onChoose, onDate }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
       <Dot done={isDone} color={statusColor} />
-      <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}{!readOnly && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline={PFT_PIPELINE} title={task.name} templates={PFT_DECISION_EMAILS} context={pftNameCtx(client)} /></span>}</span>
+      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}{!readOnly && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline={PFT_PIPELINE} title={task.name} templates={PFT_DECISION_EMAILS} context={pftNameCtx(client)} /></span>}</span>
       {isDone
         ? <StatusPill status={p.status} color={statusColor} />
         : readOnly
@@ -392,7 +393,7 @@ function DecisionStep({ task, p, readOnly, client, onChoose, onDate }) {
             </div>
       }
       {readOnly
-        ? <span style={dateSpanStyle}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
+        ? <span className="vfo-stepdate" style={dateSpanStyle}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
         : <StepDate value={isDone ? (p.completed_date || '') : ''} onChange={onDate} disabled={!!pending} />
       }
     </div>
@@ -404,7 +405,7 @@ function autoStep(label, done, at = null) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-      <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
+      <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
       {done
         ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
         : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', marginLeft: 'auto' }}>Not completed</span>}
@@ -442,6 +443,8 @@ function StallAckRow({ pipeline, id, stall, ackAt, onAck }) {
 // in that email, the follow-up confirmation email, and what they clicked in its
 // "need another meeting?" choice. Mirrors the Tax 5 AI PC Admin cascade.
 function DecisionHistory({ eng, decStatus, onboarding, readOnly, onAck }) {
+  // Phone: the box sits flush under the step instead of indented (no double padding).
+  const isPhone = useIsPhone()
   const decEmailSent = !!eng?.decision_email_sent_at
   const decResp = eng?.decision_response || null              // vfo_ft | vfo_associate | no (Undecided email click)
   const ftEmailSent = !!eng?.ft_email_sent_at
@@ -475,9 +478,9 @@ function DecisionHistory({ eng, decStatus, onboarding, readOnly, onAck }) {
     <div style={{ padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: complete ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${complete ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-        <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1, fontWeight: '600' }}>Automated steps</span>
+        <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1, fontWeight: '600' }}>Automated steps</span>
       </div>
-      <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
+      <div style={{ marginLeft: isPhone ? 0 : '18px', padding: isPhone ? '8px 10px' : '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
         {decEmailSent && (
           <>
             {autoStep(`Undecided — decision email sent to client (${UNDECIDED_OPTION_LABELS[eng?.decision_options] || UNDECIDED_OPTION_LABELS.ft_associate_no})`, true, eng?.decision_email_sent_at)}
@@ -512,7 +515,7 @@ function GenericTask({ task, p, readOnly, saving, onSelect, onDate }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
       <Dot done={isDone} color={statusColor} />
-      <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
       {readOnly
         ? (isDone ? <StatusPill status={p.status} color={statusColor} /> : <NotStarted />)
         : <select value={p.status || ''} onChange={e => onSelect(e.target.value)} disabled={saving} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
@@ -521,7 +524,7 @@ function GenericTask({ task, p, readOnly, saving, onSelect, onDate }) {
           </select>
       }
       {readOnly
-        ? <span style={dateSpanStyle}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
+        ? <span className="vfo-stepdate" style={dateSpanStyle}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
         : <StepDate value={isDone ? (p.completed_date || '') : ''} onChange={onDate} disabled={saving} />
       }
     </div>
@@ -537,14 +540,14 @@ function Phase6Indicators({ onboarding, onOpen, readOnly }) {
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
         <Dot done={handed} color="#1b9254" />
-        <span style={{ fontSize: '13px', color: handed ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>Sent to Accountant Onboarding</span>
+        <span className="vfo-stepname" style={{ fontSize: '13px', color: handed ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>Sent to Accountant Onboarding</span>
         {handed
           ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
           : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Pending</span>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
         <Dot done={false} color="#0095ff" />
-        <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>Accountant onboarding progress</span>
+        <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>Accountant onboarding progress</span>
         {handed
           ? <>
               <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{onboarding.stage_label}</span>
@@ -807,8 +810,8 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, not
       return (
         <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', opacity: 0.35, pointerEvents: 'none' }}>
           <Dot done={false} color="var(--vfo-muted)" />
-          <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
-          <span style={dateSpanStyle}>—</span>
+          <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
+          <span className="vfo-stepdate" style={dateSpanStyle}>—</span>
         </div>
       )
     }
@@ -836,7 +839,7 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, not
               return (
                 <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
                   <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: qDone ? qColor : 'transparent', flexShrink: 0, border: `1px solid ${qDone ? qColor : 'var(--vfo-border-mid)'}` }} />
-                  <span style={{ fontSize: '12px', color: qDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{q.name}</span>
+                  <span className="vfo-substepname" style={{ fontSize: '12px', color: qDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{q.name}</span>
                   {readOnly
                     ? (qDone ? <StatusPill status={qp.status} color={qColor} /> : <NotStarted />)
                     : <select value={qp.status || ''} onChange={e => saveTask(q.id, e.target.value, qp.completed_date)} disabled={saving[q.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '100px', fontSize: '11px', borderColor: qDone ? `${qColor}66` : 'var(--vfo-border-strong)', color: qDone ? readable(qColor) : 'var(--vfo-ink)' }}>
@@ -845,7 +848,7 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, not
                       </select>
                   }
                   {readOnly
-                    ? <span style={dateSpanStyle}>{qDone && qp.completed_date ? formatDate(qp.completed_date) : ''}</span>
+                    ? <span className="vfo-stepdate" style={dateSpanStyle}>{qDone && qp.completed_date ? formatDate(qp.completed_date) : ''}</span>
                     : <StepDate value={qDone ? (qp.completed_date || '') : ''} onChange={d => saveTask(q.id, qp.status, d)} disabled={saving[q.id]} />
                   }
                 </div>
@@ -853,7 +856,7 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, not
             })}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', marginTop: '4px' }}>
               <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: a11Val ? a11Color : 'transparent', flexShrink: 0, border: `1px solid ${a11Val ? a11Color : 'var(--vfo-border-mid)'}` }} />
-              <span style={{ fontSize: '12px', color: 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+              <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
               <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${a11Color}22`, color: readable(a11Color), border: `1px solid ${a11Color}44`, fontWeight: '600' }}>{a11Val || 'Pending'}</span>
             </div>
           </div>
@@ -893,7 +896,8 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, not
   }
 
   return (
-    <div>
+    // vfo-track: the phone-only step rows + text floor in index.css.
+    <div className="vfo-track">
       <TrackHero
         eyebrow="Partnership Fast Track"
         title="Engagement Process"
