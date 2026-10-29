@@ -77,7 +77,7 @@ export default function UpdateCardPage() {
   if (status === 'error') return (
     <TokenShell maxWidth={520}>
       <div style={{ textAlign: 'center', padding: '12px 0' }}>
-        <div style={{ ...iconCircle, background: '#ef444420' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>⚠️</span></div>
+        <div className="vfo-statusicon" style={{ ...iconCircle, background: '#ef444420' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>⚠️</span></div>
         <h1 style={titleStyle}>Something went wrong</h1>
         <p style={subtitleStyle}>{error}</p>
       </div>
@@ -89,7 +89,7 @@ export default function UpdateCardPage() {
   return (
     <TokenShell maxWidth={560}>
       <div style={{ width: '100%' }}>
-        <div style={{ ...iconCircle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
+        <div className="vfo-statusicon" style={{ ...iconCircle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
           <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
         </div>
         <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '6px' }}>Update Payment Method</h1>
@@ -133,7 +133,7 @@ function EngagementCard({ engagement, onChoose }) {
     ? `${e.current_method === 'ach' ? 'Bank' : 'Card'}${e.current_last4 ? ` ••${e.current_last4}` : ''}`
     : 'None on file'
   return (
-    <div style={cardStyle}>
+    <div className="vfo-paycard" style={cardStyle}>
       <div style={cardHeaderStyle}>
         <span style={cardTitleStyle}>{e.label}</span>
         <span style={currentPillStyle} title="Payment method currently on file">{currentPill}</span>
@@ -141,7 +141,7 @@ function EngagementCard({ engagement, onChoose }) {
       {e.for_client_name && (
         <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '-8px', marginBottom: '14px' }}>For {e.for_client_name}</div>
       )}
-      <div style={tileGridStyle}>
+      <div className="vfo-tilegrid" style={tileGridStyle}>
         <MethodTile title="Credit / Debit Card" subtitle="Switch to a new card" onClick={() => onChoose(e, 'card')} />
         <MethodTile title="Bank Account (ACH)" subtitle="Switch to a bank transfer" onClick={() => onChoose(e, 'ach')} />
       </div>
@@ -156,6 +156,7 @@ function MethodTile({ title, subtitle, onClick }) {
   return (
     <button
       type="button"
+      className="vfo-tile"
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}

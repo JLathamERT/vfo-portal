@@ -107,6 +107,9 @@ export default function TaxIntakeForm({
   }, [publicMode, member?.member_number])
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: isPhone ? 'var(--vfo-card-pad)' : '24px', marginBottom: '20px' }
+  // A public page already draws the form inside its own card (TokenShell): on a
+  // phone the question groups lose their frame rather than nest a second card.
+  const questionsStyle = publicMode && isPhone ? { marginBottom: '20px' } : sectionStyle
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
   const labelStyle = { fontSize: '12.5px', fontWeight: 600, color: 'var(--vfo-ink)', display: 'block', marginBottom: '6px', lineHeight: 1.45 }
   const noteStyle = { fontSize: '11.5px', color: 'var(--vfo-muted)', lineHeight: 1.55, marginTop: '-2px', marginBottom: '8px' }
@@ -476,9 +479,9 @@ export default function TaxIntakeForm({
       {errorBox}
       {failBox}
 
-      {prelude && <div style={sectionStyle}>{prelude}</div>}
+      {prelude && <div style={questionsStyle}>{prelude}</div>}
 
-      <div style={sectionStyle}>
+      <div style={questionsStyle}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px 28px' }}>
           {numberTaxIntakeQuestions(visible, answers, numberOffset).map(({ q, num }) => (
             <div key={q.id} style={q.type === 'textarea' ? { gridColumn: '1 / -1' } : undefined}>

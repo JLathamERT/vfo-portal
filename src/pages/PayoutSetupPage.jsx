@@ -67,7 +67,7 @@ export default function PayoutSetupPage() {
   if (status === 'complete') return (
     <TokenShell maxWidth={520}>
       <div style={cardStyle}>
-        <div style={{ ...iconCircleStyle, background: 'rgba(34,197,94,0.15)', color: 'var(--vfo-success-text-2)' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>✓</span></div>
+        <div className="vfo-statusicon" style={{ ...iconCircleStyle, background: 'rgba(34,197,94,0.15)', color: 'var(--vfo-success-text-2)' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>✓</span></div>
         <h1 style={titleStyle}>You're all set</h1>
         <p style={subtitleStyle}>Your payout details are complete and verified by Stripe. Payments to you can now be sent. You can close this page.</p>
       </div>
@@ -77,7 +77,7 @@ export default function PayoutSetupPage() {
   if (status === 'verifying') return (
     <TokenShell maxWidth={520}>
       <div style={cardStyle}>
-        <div style={{ ...iconCircleStyle, background: 'rgba(0,149,255,0.12)' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>⏳</span></div>
+        <div className="vfo-statusicon" style={{ ...iconCircleStyle, background: 'rgba(0,149,255,0.12)' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>⏳</span></div>
         <h1 style={titleStyle}>Submitted — Stripe is verifying your details</h1>
         <p style={subtitleStyle}>You have entered everything Stripe asked for. Stripe is now checking it, which usually takes a few minutes and occasionally a day or two. If Stripe needs anything else, open the link in your setup email again.</p>
       </div>
@@ -87,7 +87,7 @@ export default function PayoutSetupPage() {
   if (status === 'incomplete') return (
     <TokenShell maxWidth={520}>
       <div style={cardStyle}>
-        <div style={{ ...iconCircleStyle, background: 'rgba(214,158,46,0.15)', color: '#b7791f' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>!</span></div>
+        <div className="vfo-statusicon" style={{ ...iconCircleStyle, background: 'rgba(214,158,46,0.15)', color: '#b7791f' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>!</span></div>
         <h1 style={titleStyle}>Setup not finished yet</h1>
         <p style={subtitleStyle}>Your payout setup with Stripe is not complete, so payments cannot be sent to you yet.{missing.length > 0 ? ' Stripe still needs:' : ''}</p>
         {missing.length > 0 && (
@@ -95,7 +95,7 @@ export default function PayoutSetupPage() {
             {missing.map(m => <li key={m} style={{ padding: '3px 0' }}>{m}</li>)}
           </ul>
         )}
-        <button type="button" onClick={() => go(token)} style={buttonStyle}>Continue setup</button>
+        <button type="button" className="vfo-tokenbtn" onClick={() => go(token)} style={buttonStyle}>Continue setup</button>
         <p style={tipStyle}>
           <strong>Tip:</strong> at the bank account step, if signing in to your bank fails or Stripe says you have tried too many times, choose <strong>"Enter bank details manually"</strong> and type your routing and account numbers instead. Then click through to the final screen and accept Stripe's terms to finish.
         </p>

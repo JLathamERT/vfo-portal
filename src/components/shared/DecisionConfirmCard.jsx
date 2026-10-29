@@ -3,13 +3,13 @@
 export default function DecisionConfirmCard({ title, message, buttonLabel, buttonColor, onConfirm }) {
   return (
     <div style={cardStyle}>
-      <div style={{ ...iconCircleStyle, background: buttonColor + '20' }}>
+      <div className="vfo-statusicon" style={{ ...iconCircleStyle, background: buttonColor + '20' }}>
         <span style={{ fontSize: '32px', lineHeight: 1, fontWeight: 700, color: buttonColor }}>?</span>
       </div>
       <h1 style={titleStyle}>{title}</h1>
       <p style={messageStyle}>{message}</p>
       <p style={footerStyle}>Your response has not been recorded yet. If you did not mean to open this link, you can simply close this page and nothing will be submitted.</p>
-      <button type="button" onClick={onConfirm} style={{ ...buttonStyle, background: buttonColor }}>{buttonLabel}</button>
+      <button type="button" className="vfo-tokenbtn" onClick={onConfirm} style={{ ...buttonStyle, background: buttonColor }}>{buttonLabel}</button>
     </div>
   )
 }

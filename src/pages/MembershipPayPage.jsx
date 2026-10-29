@@ -79,7 +79,7 @@ export default function MembershipPayPage() {
   if (status === 'error') return (
     <TokenShell maxWidth={520}>
       <div style={messageCard}>
-        <div style={{ ...iconCircle, background: '#ef444420' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>⚠️</span></div>
+        <div className="vfo-statusicon" style={{ ...iconCircle, background: '#ef444420' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>⚠️</span></div>
         <h1 style={title}>Something went wrong</h1>
         <p style={subtitle}>{error}</p>
       </div>
@@ -89,7 +89,7 @@ export default function MembershipPayPage() {
   if (status === 'success') return (
     <TokenShell maxWidth={520}>
       <div style={messageCard}>
-        <div style={{ ...iconCircle, background: 'rgba(34,197,94,0.15)' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>✓</span></div>
+        <div className="vfo-statusicon" style={{ ...iconCircle, background: 'rgba(34,197,94,0.15)' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>✓</span></div>
         <h1 style={title}>You're all set</h1>
         <p style={subtitle}>
           Thank you — your payment method is saved securely with Stripe, and if a payment was due today it has been submitted
@@ -103,7 +103,7 @@ export default function MembershipPayPage() {
   if (status === 'canceled') return (
     <TokenShell maxWidth={520}>
       <div style={messageCard}>
-        <div style={{ ...iconCircle, background: 'rgba(107,114,128,0.15)' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>ℹ️</span></div>
+        <div className="vfo-statusicon" style={{ ...iconCircle, background: 'rgba(107,114,128,0.15)' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>ℹ️</span></div>
         <h1 style={title}>Plan no longer active</h1>
         <p style={subtitle}>This membership plan has been canceled. If you think this is a mistake, please contact VFO Services.</p>
       </div>
@@ -123,7 +123,7 @@ export default function MembershipPayPage() {
     return (
     <TokenShell>
       <div style={{ width: '100%' }}>
-        <div style={{ ...iconCircle, width: '64px', height: '64px', background: owedToday ? 'rgba(180,83,9,0.15)' : 'rgba(0,149,255,0.15)' }}>
+        <div className="vfo-statusicon" style={{ ...iconCircle, width: '64px', height: '64px', background: owedToday ? 'rgba(180,83,9,0.15)' : 'rgba(0,149,255,0.15)' }}>
           <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
         </div>
         <h1 style={{ ...title, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>{owedToday ? 'Update Your Payment Method & Pay Now' : 'Update Your Payment Method'}</h1>
@@ -183,7 +183,7 @@ export default function MembershipPayPage() {
   return (
     <TokenShell>
       <div style={{ width: '100%' }}>
-        <div style={{ ...iconCircle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
+        <div className="vfo-statusicon" style={{ ...iconCircle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
           <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
         </div>
         <h1 style={{ ...title, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>Set Up Your Membership Payment</h1>
@@ -253,7 +253,7 @@ export default function MembershipPayPage() {
 
 function OptionCard({ isHovered, onHover, onLeave, onClick, title: t, badgeText, badgeClass, amount, cadence, breakdown, footer }) {
   return (
-    <div onClick={onClick} onMouseEnter={onHover} onMouseLeave={onLeave}
+    <div className="vfo-paycard" onClick={onClick} onMouseEnter={onHover} onMouseLeave={onLeave}
       style={{ ...optionCard, borderColor: isHovered ? '#0095ff' : 'var(--vfo-border)', background: isHovered ? 'rgba(0,149,255,0.05)' : 'transparent' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{t}</span>

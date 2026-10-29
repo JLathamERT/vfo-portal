@@ -61,7 +61,7 @@ export default function PayPage() {
   if (status === 'error') return (
     <TokenShell maxWidth={520}>
       <div style={messageCardStyle}>
-        <div style={{ ...iconCircleStyle, background: '#ef444420' }}>
+        <div className="vfo-statusicon" style={{ ...iconCircleStyle, background: '#ef444420' }}>
           <span style={{ fontSize: '28px', lineHeight: 1 }}>⚠️</span>
         </div>
         <h1 style={titleStyle}>Payment Error</h1>
@@ -85,7 +85,7 @@ export default function PayPage() {
   return (
     <TokenShell>
       <div style={pageContainerStyle}>
-        <div style={{ ...iconCircleStyle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
+        <div className="vfo-statusicon" style={{ ...iconCircleStyle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
           <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
         </div>
         <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>VFO Services Payment</h1>
@@ -144,6 +144,7 @@ export default function PayPage() {
 function OptionCard({ isHovered, onHover, onLeave, onClick, title, badgeText, badgeClass, amount, breakdown, footer }) {
   return (
     <div
+      className="vfo-paycard"
       onClick={onClick}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}

@@ -154,6 +154,7 @@ export default function ConnectCardPage() {
 function OptionCard({ isHovered, onHover, onLeave, onClick, title, badgeText, badgeClass, amount, breakdown, footer }) {
   return (
     <div
+      className="vfo-paycard"
       onClick={onClick}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}

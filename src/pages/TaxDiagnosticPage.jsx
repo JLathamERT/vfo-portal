@@ -402,7 +402,7 @@ function MemberPicker({ value, inputStyle, onPick, onClear }) {
 function Message({ icon, color, title, message }) {
   return (
     <div style={{ textAlign: 'center', padding: '12px 0' }}>
-      <div style={{ width: '72px', height: '72px', borderRadius: '50%', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '20' }}>
+      <div className="vfo-statusicon" style={{ width: '72px', height: '72px', borderRadius: '50%', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '20' }}>
         <span style={{ fontSize: '32px', lineHeight: 1 }}>{icon}</span>
       </div>
       <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: '21px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--vfo-heading)', margin: '0 0 12px' }}>{title}</h1>

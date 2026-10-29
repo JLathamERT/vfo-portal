@@ -65,13 +65,13 @@ export default function DecisionCodeCard({ kind, token, decision, title, message
   if (stage === 'intro') {
     return (
       <div style={cardStyle}>
-        <div style={{ ...iconCircleStyle, background: buttonColor + '20' }}>
+        <div className="vfo-statusicon" style={{ ...iconCircleStyle, background: buttonColor + '20' }}>
           <span style={{ fontSize: '32px', lineHeight: 1, fontWeight: 700, color: buttonColor }}>?</span>
         </div>
         <h1 style={titleStyle}>{title}</h1>
         <p style={messageStyle}>{message}</p>
         <p style={footerStyle}>To keep your engagement secure, we will email you a code to confirm this decision. Nothing is recorded until you enter that code. If you did not mean to open this link, you can simply close this page.</p>
-        <button type="button" onClick={sendCode} disabled={busy} style={{ ...buttonStyle, background: buttonColor, opacity: busy ? 0.7 : 1 }}>
+        <button type="button" className="vfo-tokenbtn" onClick={sendCode} disabled={busy} style={{ ...buttonStyle, background: buttonColor, opacity: busy ? 0.7 : 1 }}>
           {busy ? 'Sending your code…' : 'Email me a code'}
         </button>
       </div>
@@ -80,7 +80,7 @@ export default function DecisionCodeCard({ kind, token, decision, title, message
 
   return (
     <form style={cardStyle} onSubmit={submit}>
-      <div style={{ ...iconCircleStyle, background: buttonColor + '20' }}>
+      <div className="vfo-statusicon" style={{ ...iconCircleStyle, background: buttonColor + '20' }}>
         <span style={{ fontSize: '28px', lineHeight: 1, fontWeight: 700, color: buttonColor }}>@</span>
       </div>
       <h1 style={titleStyle}>Check your email</h1>
@@ -101,7 +101,7 @@ export default function DecisionCodeCard({ kind, token, decision, title, message
       />
       {err && <p style={errStyle}>{err}</p>}
       {info && !err && <p style={footerStyle}>{info}</p>}
-      <button type="submit" disabled={busy || code.length !== 6} style={{ ...buttonStyle, background: buttonColor, opacity: busy || code.length !== 6 ? 0.6 : 1 }}>
+      <button type="submit" className="vfo-tokenbtn" disabled={busy || code.length !== 6} style={{ ...buttonStyle, background: buttonColor, opacity: busy || code.length !== 6 ? 0.6 : 1 }}>
         {busy ? 'Confirming… please keep this page open' : buttonLabel}
       </button>
       <p style={footerStyle}>

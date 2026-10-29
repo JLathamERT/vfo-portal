@@ -1359,7 +1359,7 @@ function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
               </div>
               {expandedMeeting === m.id && m.notes && (
                 <div style={{ padding: '0 0 12px 0' }}>
-                  <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: '1.5', margin: 0 }}>{m.notes}</p>
+                  <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: '1.5', margin: 0, ...(isPhone ? { overflowWrap: 'anywhere' } : {}) }}>{m.notes}</p>
                 </div>
               )}
             </div>
@@ -1443,7 +1443,7 @@ function MemberCoachingRenewal({ enrollment }) {
                     {r.action}{r.period_label ? ` · ${r.period_label}` : ''}
                   </span>
                 </div>
-                {r.notes && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{r.notes}</div>}
+                {r.notes && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '4px', overflowWrap: 'anywhere' }}>{r.notes}</div>}
               </div>
             ))
           }
