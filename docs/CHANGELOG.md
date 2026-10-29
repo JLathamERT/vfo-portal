@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-10-29 (e) — The Premium portal's list of what it adds names My Progress (member card, emails 319 / 320)
+
+Branches edge / react `claude/premium-card-progress` (the same chat as (d), straight after it shipped). Jake saw the member's Client Portal card still read *"The Premium portal adds their One Page Plan and Client Vault"* with no mention of My Progress (portal licensing L8). Same rule as email 300 in (d): name the tab only while the client would see it.
+
+- **Edge:** `ciqLicenceView` returns `progress_tab` (`client_case_progress` on for the member) — inside the view, so `msm_load_client_home` and the three `member_ciq_licence_*` replies all carry it; `progressItem()` fills a new `[PROGRESS_ITEM]` (*"My Progress, "* or nothing) in 320 (`sendCiqAchConfirmation`) and 319 (`ciq-invoice-receipt.ts`).
+- **Migration `20261029130000`** (DATA ONLY, wording approved by Jake, both still Draft, idempotent `replace`): 319 *"…on the Premium VFO client portal: [PROGRESS_ITEM]their One Page Plan, their Client Vault and the VFO Showroom"*, 320 *"(…[PROGRESS_ITEM]their One Page Plan and Client Vault)"*. Applied AFTER the deploy (#695). 321 / 323 (*"files are kept"*) unchanged.
+- **React:** the card's Basic line *"The Premium portal adds My Progress, their One Page Plan and Client Vault"* (`lic.progress_tab`, else the old line); the Feature Switches Premium line mentions My Progress (its own switch).
+- **Checked:** deno check 0, action count 632, dev server compiles both files. Jake asked to wrap up straight away, so the card's new line was NOT clicked before the merge (it needs the backend flag) — OWED after the deploy.
+
+---
+
 ## 2026-10-29 (d) — The Premium portal rename's leftovers: the client Home line, the $25 PDFs, the tax login email (with its tab bullets)
 
 Branches react `claude/client-banner-premium` / edge `claude/premium-wording-leftovers` (one chat, the L8 + L6 chat continued). Jake saw the client Home line still read *"Your VFO client portal membership is active until …"* after the 2026-10-28 rename and asked for a sweep. Every place below means the PREMIUM licence only (the client Home `licence` key is `clientLicenceStatus`, Premium rows only; email 300 is drafted only when a paid tax retainer grants the 12-month Premium licence). Generic "client portal" wording that Basic clients also read stays: email 311 *"[Member] has set up your VFO client portal"*, email 312, the client login page, the login-block buttons, and the tax agreement / TPOM *"Free VFO Portal Membership"*.
