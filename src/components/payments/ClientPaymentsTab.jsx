@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { callApi, getSession } from '../../lib/api'
 import { Skeleton } from '../shared/Skeleton'
-import PaymentsTable, { parseGroupKey } from './PaymentsTable'
+import PaymentsTable, { parseGroupKey, chargeSavedLabel, fmtMoney } from './PaymentsTable'
 import PaymentsHeader from './PaymentsHeader'
 
 // Read-only Payments tab for a client (admin view). Aggregates their MAP 1, Tax and
@@ -15,15 +15,47 @@ import PaymentsHeader from './PaymentsHeader'
 // deliberately out of scope. Superadmin gate mirrors PaymentsHeader.jsx:14 — the
 // server re-checks it (payments_cancel_remaining is in SUPERADMIN_ONLY_ACTIONS);
 // this is only about what a non-superadmin is shown.
+//
+// A second superadmin write, the same way: "Charge saved card" on a FAILED Tax
+// implementation / final retainer row the server marked chargeable (row.chargeSaved).
+// It re-runs the existing charge on the card or bank the client has since saved
+// (payments_charge_saved_card, also in SUPERADMIN_ONLY_ACTIONS).
 export default function ClientPaymentsTab({ clientId, sectionStyle }) {
   const isSuper = getSession()?.is_superadmin
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [cancelBusyKey, setCancelBusyKey] = useState(null)
-  const [cancelMsg, setCancelMsg] = useState(null)   // { tone, text }
+  const [cancelMsg, setCancelMsg] = useState(null)   // { tone, text } — shared by both buttons
+  const [chargeBusyKey, setChargeBusyKey] = useState(null)
 
   useEffect(() => { load() }, [clientId])
+
+  async function chargeSaved(row) {
+    const cs = row.chargeSaved
+    if (!cs) return
+    const what = `${chargeSavedLabel(cs).replace(/^Charge s/, 'S')} for ${fmtMoney(cs.amount)}`
+    if (!window.confirm(`Charge the ${row.label}?\n\n${what}.\n\nThis takes the money now.`)) return
+    setChargeBusyKey(row.key); setCancelMsg(null)
+    try {
+      const d = await callApi('payments_charge_saved_card', {
+        client_id: clientId,
+        row_id: cs.planId,
+        slot: cs.slot,
+      })
+      setCancelMsg(d?.status === 'processing'
+        ? { tone: 'success', text: `${row.label}: bank payment of ${fmtMoney(cs.amount)} started. It shows as Processing until it clears (a few business days).` }
+        : { tone: 'success', text: `${row.label}: ${fmtMoney(cs.amount)} charged. The receipt follows automatically.` })
+      await load()
+    } catch (e) {
+      // A fresh decline lands here too; the server has already belled and drafted
+      // the usual /tax-pay email, so the reload shows the row as Failed again.
+      setCancelMsg({ tone: 'warn', text: e?.message || 'Could not charge the saved card.' })
+      await load()
+    } finally {
+      setChargeBusyKey(null)
+    }
+  }
 
   // groupKey is 'map1-<id>' / 'tax-<id>' — the row_id the server needs is in it.
   async function cancelGroup(groupKey, groupLabel) {
@@ -109,6 +141,8 @@ export default function ClientPaymentsTab({ clientId, sectionStyle }) {
         cancellableGroups={isSuper ? ['map1', 'tax'] : null}
         onCancelGroup={isSuper ? cancelGroup : null}
         cancelBusyKey={cancelBusyKey}
+        onChargeSaved={isSuper ? chargeSaved : null}
+        chargeBusyKey={chargeBusyKey}
       />
     </div>
   )
