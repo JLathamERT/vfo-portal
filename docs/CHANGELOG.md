@@ -8,6 +8,22 @@
 
 ---
 
+## 2026-10-29 (b) — "Charge saved card": a superadmin retry for a failed Tax implementation / final retainer charge
+
+Branches `claude/charge-saved-card` (edge, from `4f96865`) and `claude/charge-saved-card` (react, from `0237e73b`), one chat. It follows the first real uses of the emailed decision codes (v1050): Dale Svatik (plan 151) and Lenny Genna (plan 188) both chose Proceed on the implementation email with a code, and both charges went to `manual_required` because neither plan had a card saved. Dale paid through the fallback `/tax-pay` link. Lenny finished his setup link five minutes after his click (card ••6205), but nothing re-fires a failed charge (#692), so the $8,500 sat uncharged. Jake chose a button over sending Lenny a second pay link.
+
+**Built:**
+- **Edge** — `payments_charge_saved_card` (`actions/payments/charge-saved-card.ts`), in `SUPERADMIN_ONLY_ACTIONS` and the admin-only list. Body `{client_id, row_id, slot: 'impl' | 'fret'}`. It re-checks one shared rule, `utils/tax-charge-saved.ts chargeSavedRefusal` (the slot is `declined` / `auth_required` / `manual_required`; `default_payment_method_id` is set; the client's own decision consents: implementation Proceed / Confirmed / Yes, final retainer Confirmed / Proceed), takes a 1-per-2-minutes `public_rate_hits` bucket per slot, then makes the SAME service-role chain call the client's click makes. Receipts, revenue share, the Stripe Idempotency-Key and the failure bell + `/tax-pay` draft are all unchanged. The charge handlers stay service-role-only (#673).
+- **Edge** — `normalize.ts buildTaxRows` puts `chargeSaved {slot, planId, amount, method, last4}` on a final retainer / implementation row only when the same rule allows it; `amount` is the base grossed up 2.9% + $0.30 on a card unless `card_fee_waived`.
+- **React** — `PaymentsTable` renders a blue *Charge saved card ••NNNN — $X* button on such a row when the caller passes `onChargeSaved`; only `ClientPaymentsTab` does, and only for a superadmin. It confirms, calls the action, shows the result and reloads.
+
+**Checked:** `deno check` clean; `vite build` exit 0. **Live proof:** Jake clicked it on Lenny Genna's plan 188 on 2026-10-29: `implementation_charge_status` succeeded (`pi_3UVtkCRwdhysCa6F0W7pAqD4`, $8,500 on card ••6205, fee waived), receipt `REC-59457-001-0003` sent 13:52 UTC, the *cleared to proceed* bell fired, `implementation_rev_paid` Money Mapping.
+
+**Shipped:** `vfo-admin-api` v1058 (deployed from the edge branch before the commit, at Jake's go-ahead) and `npm run deploy` (vfoportal.com serving `ClientDetail-BYr9sjh9.js` with the button). Not yet merged or tagged at the time of writing.
+
+**Not done (OWED):** a final-retainer (`fret`) use of the button; a retry on a *declined* card (the Idempotency-Key is per plan + method + day, so a same-day retry on the same card returns Stripe's cached decline).
+
+---
 ## 2026-10-29 — Phone layouts for the member's client page (header, Profile, Vault, Tax Planning, Partnership Fast Track)
 
 Branch `claude/vfo-session-starter-5bc5ab` (react only, ONE chat across 2026-10-28/29; the edge worktree `-e66b76` was never touched — no backend change, v1057 and 631 actions unmoved). It follows `live-271-phone-layouts` (2026-10-28 (e)), whose OWED named the member's client page and the emailed link pages; this branch did the first half of the client page. Jake: start with the member's client page; phone only, desktop byte-identical; the admin and tax planner portals stay PARKED and nothing admin-only changes (members have no Payments tab — their money sits inside the program cards). Jake said to skip the in-profile CIQ tab for now: 59524 is a Tier 1 member while `member_tiers` is on, so its own clients show none.
