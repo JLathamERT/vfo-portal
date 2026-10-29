@@ -141,7 +141,8 @@ export default function ClientPortal() {
     }
   }
   const introRequest = introRequested ? { requested: introRequested, onRequest: requestIntroduction } : null
-  const navTabs = [['showroom', 'Showroom'], ...(progressAllowed ? [['progress', 'My Progress']] : []), ...(planAllowed ? [['plan', 'My One Page Plan']] : []), ...(vaultAllowed ? [['vault', 'Vault']] : [])]
+  // Tab order (Jake, 2026-10-29): Showroom, My One Page Plan, My Progress, Vault.
+  const navTabs = [['showroom', 'Showroom'], ...(planAllowed ? [['plan', 'My One Page Plan']] : []), ...(progressAllowed ? [['progress', 'My Progress']] : []), ...(vaultAllowed ? [['vault', 'Vault']] : [])]
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
