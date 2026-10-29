@@ -8,6 +8,14 @@
 
 ---
 
+## 2026-10-29 (f) — The client portal's tabs: Showroom, My One Page Plan, My Progress, Vault
+
+Branch `claude/client-tab-order` (react only, the same chat as (d) / (e)). Jake asked for the client portal's tab order Showroom, My One Page Plan, My Progress, Vault; `ClientPortal.jsx`'s `navTabs` had My Progress before the plan since L8. One line; each tab still appears only when its own rule allows it (Premium + `ciq_licence` for the plan, + `client_case_progress` for My Progress, the Vault rule). The lists of what Premium includes (email 300, the member card, emails 319 / 320) still name My Progress first - Jake was offered the same order there and left them.
+
+**Tested by Jake** the real way: Test Client 62 was Basic after the (d) reset, so he turned the $25 Premium on from the member card (sandbox card) - licence 35 (10/29-11/29), `INV-CIQ-59524-001-0002` / `REC-CIQ-59524-001-0002` filed in 59524's docs by v1060 (the new *Premium Portal Licence* header, not opened), email 319 drafted at 17:00 UTC (its My Progress line not read), subscription 7 then set to end (`ending`) - and checked the tabs as the client. This also discharges (e)'s card OWED: the card's My Progress line was in front of him when he turned it on.
+
+---
+
 ## 2026-10-29 (e) — The Premium portal's list of what it adds names My Progress (member card, emails 319 / 320)
 
 Branches edge / react `claude/premium-card-progress` (the same chat as (d), straight after it shipped). Jake saw the member's Client Portal card still read *"The Premium portal adds their One Page Plan and Client Vault"* with no mention of My Progress (portal licensing L8). Same rule as email 300 in (d): name the tab only while the client would see it.
