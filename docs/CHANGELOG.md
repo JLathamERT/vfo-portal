@@ -24,6 +24,8 @@ Branch `claude/vfo-session-starter-b244df` (react only, TWO chats on 2026-10-29:
 
 **Not done (OWED):** Jake has not clicked the two chat-2 fixes himself (GC History at phone width is reachable through the admin member GC tab; the member coaching view needs a member sign-in); no link page has rendered a REAL row; the fifteen `TokenShell` pages with no hooks (advisor / accountant / PFT / PIP / specialist / SpecRev pay + decide, `/decide`, `/membership-meeting`, `/tax-question`, `/tax-upload`, `/vault-upload`) get only the shell's phone padding; never open `/payout-setup` without `done=1` when testing (it mints a live Stripe link). **Decision owed (Jake):** coaching meeting notes lose their line breaks at EVERY size (a desktop change to fix — the Tax Diagnostic answers already use `pre-wrap`).
 
+**Shipped:** merged as react `0d08c42d` (#553, tree identical to the branch head `0b4d5128`); `npm run deploy` from merged main at Jake's "deploy" — vfoportal.com serves `index-DeM3cca_.js` + `index-BBbfKYQp.css` (the new hooks present), `/member/login`, `/admin/login`, `/pay`, `/update-card` 200; tag `live-275-phone-holistic-linkpages` pushed. No backend deploy (v1058 unchanged).
+
 **Also:** the hub's action count is re-derived **632** — it still read 631 (`6 + 625 = 631`: 618 → 631 = the 13 `client_progress_*` twins of portal licensing L8) after v1058 added `payments_charge_saved_card` (2026-10-29 (b)).
 
 ---
