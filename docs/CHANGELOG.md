@@ -14,6 +14,8 @@ Branch `claude/client-tab-order` (react only, the same chat as (d) / (e)). Jake 
 
 **Tested by Jake** the real way: Test Client 62 was Basic after the (d) reset, so he turned the $25 Premium on from the member card (sandbox card) - licence 35 (10/29-11/29), `INV-CIQ-59524-001-0002` / `REC-CIQ-59524-001-0002` filed in 59524's docs by v1060 (the new *Premium Portal Licence* header, not opened), email 319 drafted at 17:00 UTC (its My Progress line not read), subscription 7 then set to end (`ending`) - and checked the tabs as the client. This also discharges (e)'s card OWED: the card's My Progress line was in front of him when he turned it on.
 
+**Shipped:** merged (react `67d2763a` #560); `npm run deploy` from merged main → `live-278-client-tab-order` (`index-CdqIyNo4.js`, live within ~40 s; the live `ClientPortal` chunk carries the new order); tag pushed. No backend deploy (v1060 unchanged).
+
 ---
 
 ## 2026-10-29 (e) — The Premium portal's list of what it adds names My Progress (member card, emails 319 / 320)
