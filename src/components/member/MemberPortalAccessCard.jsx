@@ -157,7 +157,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
             {lic.state === 'covered' && <>Included with {fullName}'s tax planning until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.covered_until)}</strong> - no charge. {readOnly ? 'The member' : 'You'} can turn on the $25/month Premium portal after that date if {readOnly ? 'they want' : 'you want'} {fullName} to keep it.</>}
             {lic.state === 'basic' && (readOnly
               ? <>{first} is on the Basic portal (Showroom only). The member has not turned on the $25/month Premium portal.</>
-              : <>{first} is on the Basic portal (Showroom only). The Premium portal adds their One Page Plan and Client Vault. It is charged to you monthly; {first} never sees the cost.</>)}
+              : <>{first} is on the Basic portal (Showroom only). The Premium portal adds {lic.progress_tab ? 'My Progress, their One Page Plan' : 'their One Page Plan'} and Client Vault. It is charged to you monthly; {first} never sees the cost.</>)}
             {lic.state === 'processing' && (lic.payment_method_type === 'ach'
               ? <>{readOnly ? "The member's" : 'Your'} bank payment is processing{method}. {first} gets the Premium portal once it clears, usually 3-5 business days.</>
               : <>{readOnly ? "The member's" : 'Your'} payment is being confirmed.</>)}

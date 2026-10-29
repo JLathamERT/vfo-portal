@@ -27,7 +27,7 @@ const CARDS = [
     on: [
       ['Tax agreement + TPOM presentation', 'both gain the "Additional Benefits" wording (12 months free portal membership, discounted future tax planning), and the agreement names the client\'s collaborating team.'],
       ['Basic portal, $0 a month', 'members can send any client portal access. The client sees the Showroom and can ask for specialist introductions.'],
-      ['Premium portal, $25 a month', 'adds the Client Vault and the client\'s One Page Plan. Members turn it on per client and pay monthly by card or bank.'],
+      ['Premium portal, $25 a month', 'adds the Client Vault, the client\'s One Page Plan and, while its own switch is on, My Progress. Members turn it on per client and pay monthly by card or bank.'],
       ['Tax clients', 'a paid tax retainer gives the client the Premium portal free for 12 months, with a login email. $300 of the retainer goes to VFO Portal before the revenue share; a refund takes the portal away.'],
     ],
     off: 'The old tax agreement and TPOM presentation. Members cannot send portal access, there are no licences and no $25 charges, and every client keeps Showroom + Vault as today.',
