@@ -376,7 +376,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
     { key: 'member', name: 'Member', stored: storedMember, retStatus: plan?.retainer_rev_paid, implStatus: plan?.implementation_rev_paid },
     { key: 'planner', name: plannerName ? `Tax planner — ${plannerName}` : 'Tax planner', stored: storedPlanner, retStatus: plan?.retainer_planner_paid, implStatus: plan?.implementation_planner_paid },
     ...(hasStrategic ? [{ key: 'strat', name: 'Strategic partner', stored: storedStrat, retStatus: plan?.retainer_strat_paid, implStatus: plan?.implementation_strat_paid }] : []),
-    ...(retLicence > 0 ? [{ key: 'portal', name: 'VFO Portal (client portal licence)', stored: 0, retStatus: null, implStatus: null }] : []),
+    ...(retLicence > 0 ? [{ key: 'portal', name: 'VFO Portal (Premium portal licence)', stored: 0, retStatus: null, implStatus: null }] : []),
   ]
 
   const plannerUnallocated = storedPlanner > 0 && plan?.tax_planner_id == null

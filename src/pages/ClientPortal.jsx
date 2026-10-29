@@ -167,12 +167,12 @@ export default function ClientPortal() {
           {licence && (
             <p style={{ fontSize: '14px', color: 'var(--vfo-muted)', marginTop: '28px' }}>
               {licence.status === 'active' && licence.monthly
-                ? <>Your VFO client portal membership is active.</>
+                ? <>Your VFO Premium portal membership is active.</>
                 : licence.status === 'active'
-                ? <>Your VFO client portal membership is active until <strong style={{ color: 'var(--vfo-ink)' }}>{fmtLicenceDate(licence.ends_on)}</strong>.</>
+                ? <>Your VFO Premium portal membership is active until <strong style={{ color: 'var(--vfo-ink)' }}>{fmtLicenceDate(licence.ends_on)}</strong>.</>
                 : licence.status === 'expired'
-                  ? <>Your VFO client portal membership ended on <strong style={{ color: 'var(--vfo-ink)' }}>{fmtLicenceDate(licence.ends_on)}</strong>.</>
-                  : <>Your VFO client portal membership has ended.</>}
+                  ? <>Your VFO Premium portal membership ended on <strong style={{ color: 'var(--vfo-ink)' }}>{fmtLicenceDate(licence.ends_on)}</strong>.</>
+                  : <>Your VFO Premium portal membership has ended.</>}
             </p>
           )}
         </div>
