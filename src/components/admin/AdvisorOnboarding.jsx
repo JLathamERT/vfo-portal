@@ -13,7 +13,7 @@ import OnboardingExtraMeetingCard from './OnboardingExtraMeetingCard'
 import StepEmailsChip from '../shared/StepEmailsChip'
 import { MemberNameLink } from '../shared/personLinks'
 import { formatDate as formatFullDate } from '../../lib/dates'
-import { stage1Lock, createMemberLock } from './onboardingOrder'
+import { stage1Lock, createMemberLock, isTier1Onboarding, FC_ADVISOR_TYPE } from './onboardingOrder'
 import { readable } from '../shared/readableColor'
 
 const STAGE_NAMES = ['', 'Preliminary Meeting', 'PC Admin', 'Add New Advisor']
@@ -57,6 +57,25 @@ const ADVISOR_INVOICE_EMAILS = [
 const ADVISOR_LOGIN_EMAILS = [
   { name: 'ADVISOR_login_setup', when: 'Portal login setup email' },
 ]
+// The Financial Collaborator path (portal licensing L6b) sends its own versions.
+const ADVISOR_TIER1_DECISION_EMAILS = [
+  { name: 'ADVISOR_undecided|tier1', when: 'If Undecided — decision email with buttons and the sample Financial Collaborator Agreement' },
+  ...ADVISOR_DECISION_EMAILS.slice(1),
+]
+const ADVISOR_TIER1_AGREEMENT_EMAILS = [
+  { name: 'ADVISOR_agreement_sent|tier1', when: 'Automatic — Financial Collaborator Agreement signing link (sent on Yes)' },
+  { name: 'ADVISOR_signing_reminder|tier1', when: 'Automatic reminder if unsigned (2 business days)' },
+]
+const ADVISOR_TIER1_PAYMENT_LINK_EMAILS = [
+  { name: 'ADVISOR_payment_link|tier1', when: 'Automatic — first month payment link' },
+  { name: 'ADVISOR_payment_reminder|tier1', when: 'Automatic reminder if unpaid (2 business days)' },
+]
+const ADVISOR_TIER1_CONFIRMATION_EMAILS = [
+  { name: 'ADVISOR_payment_confirmation|tier1', when: 'If paid by bank transfer (ACH) — bank confirmation' },
+]
+const ADVISOR_TIER1_INVOICE_EMAILS = [
+  { name: 'ADVISOR_invoice_receipt|tier1', when: 'Automatic — first month invoice + receipt' },
+]
 
 // The two per-program implementation prices. `col` is the stored column,
 // `body` the request field — only the committed one is ever sent.
@@ -94,6 +113,7 @@ export default function AdvisorOnboarding() {
   const [newFirst, setNewFirst] = useState('')
   const [newLast, setNewLast] = useState('')
   const [newEmail, setNewEmail] = useState('')
+  const [newAdvisorType, setNewAdvisorType] = useState('')
   const [creating, setCreating] = useState(false)
   const [showCompleted, setShowCompleted] = useState(false)
   const [showStopped, setShowStopped] = useState(false)
@@ -130,10 +150,15 @@ export default function AdvisorOnboarding() {
         last_name: newLast.trim(),
         email: newEmail.trim() || null,
         created_by: session?.name || 'Admin',
+        ...(newAdvisorType ? { advisor_type: newAdvisorType } : {}),
       })
-      setNewFirst(''); setNewLast(''); setNewEmail(''); setShowNew(false)
+      setNewFirst(''); setNewLast(''); setNewEmail(''); setNewAdvisorType(''); setShowNew(false)
       await loadList()
-    } catch (err) { console.error(err) }
+    } catch (err) {
+      console.error(err)
+      // The server refuses a Financial Collaborator while its switch is off.
+      if (newAdvisorType) alert('Error: ' + err.message)
+    }
     finally { setCreating(false) }
   }
 
@@ -170,9 +195,16 @@ export default function AdvisorOnboarding() {
               <input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Work email address" style={inputStyle} />
             </div>
           </div>
+          <div style={{ marginBottom: '12px', maxWidth: '320px' }}>
+            <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Advisor Type</label>
+            <select value={newAdvisorType} onChange={e => setNewAdvisorType(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)', cursor: 'pointer' }}>
+              <option value="">Catalyst Advisor</option>
+              <option value={FC_ADVISOR_TYPE}>Financial Collaborator</option>
+            </select>
+          </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={createNew} disabled={creating || !newFirst.trim() || !newLast.trim() || !newEmail.trim()} style={{ padding: '8px 20px', borderRadius: '8px', background: creating ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '13px', cursor: creating ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>{creating ? 'Creating...' : 'Create'}</button>
-            <button onClick={() => { setShowNew(false); setNewFirst(''); setNewLast(''); setNewEmail('') }} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
+            <button onClick={() => { setShowNew(false); setNewFirst(''); setNewLast(''); setNewEmail(''); setNewAdvisorType('') }} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
           </div>
         </div>
       )}
@@ -462,6 +494,10 @@ function OnboardingDetail({ id, onBack }) {
     </div>
   )
 
+  // A Financial Collaborator (portal licensing L6b): no deposit, no implementation
+  // value; the first month is paid on this onboarding before Create.
+  const tier1 = isTier1Onboarding(ob, 'advisor')
+
   // Known-value substitutions for the email previews (see StepEmailsChip).
   // Backend tokens: [Advisor Name] = full name, [Advisor First] = first name.
   const emailCtx = (() => {
@@ -470,6 +506,7 @@ function OnboardingDetail({ id, onBack }) {
     if (full) ctx['Advisor Name'] = full
     const first = (ob.first_name || '').trim() || full.split(/\s+/)[0]
     if (first) ctx['Advisor First'] = first
+    if (tier1) ctx['Membership Name'] = 'Financial Collaborator Membership'
     return ctx
   })()
 
@@ -482,7 +519,8 @@ function OnboardingDetail({ id, onBack }) {
   // The implementation values become the per-program prices on the agreement
   // and the charge, so the decision can't be sent until both are set.
   const bothValuesSet = Number(ob.implementation_value_vfo_ft) > 0 && Number(ob.implementation_value_pft) > 0
-  const decisionBlocked = !ob.onboarding_team_member || !bothValuesSet
+  const valuesNeeded = !tier1 && !bothValuesSet
+  const decisionBlocked = !ob.onboarding_team_member || valuesNeeded
 
   // Stage 1 runs strictly in order (onboardingOrder.js): every step stays locked
   // until each step above it is done, the deposit counting only once its
@@ -701,21 +739,22 @@ function OnboardingDetail({ id, onBack }) {
           Deposit of ${fmtMoney(depositPaid)} {ob.deposit_status === 'processing' ? 'pending (ACH clearing)' : `received ${formatDate(ob.deposit_completed_at)}`}{!priced ? ' · balance calculated at countersign' : balance > 0 ? ` · balance due $${fmtMoney(balance)}` : ' · nothing further due'}
         </div>
       )}
-      <AutoRow label="Engagement agreement created and sent for signing" done={!!ob.agreement_sent_at} date={ob.agreement_sent_at} emails={ADVISOR_AGREEMENT_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
+      <AutoRow label="Engagement agreement created and sent for signing" done={!!ob.agreement_sent_at} date={ob.agreement_sent_at} emails={tier1 ? ADVISOR_TIER1_AGREEMENT_EMAILS : ADVISOR_AGREEMENT_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
       <StallRows ob={ob} setOb={setOb} stall="signing" />
       {emRequested && emStage === 'signing' && emCard}
       <AutoRow label="Engagement agreement signed" done={!!ob.agreement_signed_by_advisor_at} date={ob.agreement_signed_by_advisor_at} tag={withTags ? [ob.selected_vfo_ft && 'VFO FT', ob.selected_pft && 'PFT', ob.selected_corporate && 'CM'] : undefined} />
       <AutoRow label="Engagement agreement signed by CEO" done={!!ob.agreement_signed_by_ceo_at} date={ob.agreement_signed_by_ceo_at} emails={ADVISOR_CEO_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
       {showPaymentLinkRow && (
         <>
-          <AutoRow label="Payment link sent (ACH or Card choice)" done={!!ob.payment_link_sent_at} date={ob.payment_link_sent_at} emails={ADVISOR_PAYMENT_LINK_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
+          <AutoRow label="Payment link sent (ACH or Card choice)" done={!!ob.payment_link_sent_at} date={ob.payment_link_sent_at} emails={tier1 ? ADVISOR_TIER1_PAYMENT_LINK_EMAILS : ADVISOR_PAYMENT_LINK_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
+          {tier1 && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '2px 0 4px 14px' }}>First month of the Financial Collaborator membership: $145 (Membership Fee $120 + VFO Portal Licence $25). Membership Fees charges month 2 onwards on the same card or bank account.</div>}
           <StallRows ob={ob} setOb={setOb} stall="payment" />
         </>
       )}
       {emRequested && emStage === 'payment' && emCard}
       {/* The ACH confirmation email no longer gets its own row — preview it here. */}
       {!depositCoversAll && (
-        <AutoRow label={depositPaid > 0 ? 'Remaining payment collected after deposit' : 'Payment collected'} done={ob.payment_status === 'succeeded'} pending={ob.payment_status === 'processing'} date={ob.payment_completed_at} tag={withTags ? (ob.payment_method_type ? ob.payment_method_type.toUpperCase() : null) : undefined} emails={ADVISOR_CONFIRMATION_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
+        <AutoRow label={depositPaid > 0 ? 'Remaining payment collected after deposit' : 'Payment collected'} done={ob.payment_status === 'succeeded'} pending={ob.payment_status === 'processing'} date={ob.payment_completed_at} tag={withTags ? (ob.payment_method_type ? ob.payment_method_type.toUpperCase() : null) : undefined} emails={tier1 ? ADVISOR_TIER1_CONFIRMATION_EMAILS : ADVISOR_CONFIRMATION_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
       )}
       {!depositCoversAll && depositPaid > 0 && balanceStatus === 'awaiting_deposit' && (
         <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '2px 0 4px 14px' }}>Waiting for the deposit to clear before charging the balance</div>
@@ -726,7 +765,7 @@ function OnboardingDetail({ id, onBack }) {
       {depositCoversAll && (
         <AutoRow label="Deposit covered the full onboarding payment" done={ob.payment_status === 'succeeded'} date={ob.payment_completed_at} />
       )}
-      <AutoRow label="Invoice and receipt created and emailed to client" done={!!ob.invoice_sent_at} date={ob.invoice_sent_at} emails={ADVISOR_INVOICE_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
+      <AutoRow label="Invoice and receipt created and emailed to client" done={!!ob.invoice_sent_at} date={ob.invoice_sent_at} emails={tier1 ? ADVISOR_TIER1_INVOICE_EMAILS : ADVISOR_INVOICE_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
     </>
   )
 
@@ -738,6 +777,7 @@ function OnboardingDetail({ id, onBack }) {
         title={`${ob.first_name} ${ob.last_name}`}
         meta={
           <>
+            {tier1 && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>Financial Collaborator</span>}
             <span>{ob.email || 'No email'} · Started {formatFullDate(ob.created_at) || ''}</span>
             {ob.member_number && <button onClick={() => navigate(`/admin?member=${encodeURIComponent(ob.member_number)}&_n=${Date.now()}`)} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', padding: 0, whiteSpace: 'nowrap' }}>Open member profile →</button>}
           </>
@@ -775,8 +815,8 @@ function OnboardingDetail({ id, onBack }) {
           locked={!prelimStatus && !!lockFor('prelim')} lockedHint={lockFor('prelim')}>
           <select value={prelimSelectValue} onChange={e => savePrelimMeeting(e.target.value)} disabled={saving || depositSent} title={depositSent ? 'A deposit link has already been sent' : undefined} style={{ ...selectStyle, color: 'var(--vfo-ink)' }}>
             <option value="">-- Select --</option>
-            <option value={PRELIM_SEND_DEPOSIT}>{PRELIM_SEND_DEPOSIT}</option>
-            <option value={PRELIM_NO_DEPOSIT}>{PRELIM_NO_DEPOSIT}</option>
+            {(!tier1 || prelimStatus === PRELIM_SEND_DEPOSIT) && <option value={PRELIM_SEND_DEPOSIT}>{PRELIM_SEND_DEPOSIT}</option>}
+            <option value={PRELIM_NO_DEPOSIT}>{tier1 ? 'Completed' : PRELIM_NO_DEPOSIT}</option>
             <option value="No Show">No Show</option>
             {/* "Request no meeting" is written only by the PFT accountant fast track
                 (pft/ft-response.ts); advisors never take that path, so the option is
@@ -784,7 +824,7 @@ function OnboardingDetail({ id, onBack }) {
             {prelimStatus === 'Request no meeting' && <option value="Request no meeting">Requested no meeting</option>}
           </select>
         </Row>
-        {prelimStatus === PRELIM_SEND_DEPOSIT && (
+        {!tier1 && prelimStatus === PRELIM_SEND_DEPOSIT && (
           <>
             <Row label="Deposit" done={depositSent} date={depositRefunded ? ob.deposit_refund_date : ob.deposit_email_sent_at} emails={ADVISOR_DEPOSIT_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx}
               locked={!depositSent && !!lockFor('deposit')} lockedHint={lockFor('deposit')}>
@@ -795,14 +835,14 @@ function OnboardingDetail({ id, onBack }) {
             {depositCascade}
           </>
         )}
-        <Row label="Implementation value (including deposit)" done={bothValuesSet} date={ob.implementation_value_at} onDateChange={d => saveStepDate('implementation_value_at', d)} saving={saving}
+        {!tier1 && <Row label="Implementation value (including deposit)" done={bothValuesSet} date={ob.implementation_value_at} onDateChange={d => saveStepDate('implementation_value_at', d)} saving={saving}
           locked={!bothValuesSet && !!lockFor('impl')} lockedHint={lockFor('impl')}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {implField('vfo_ft')}
             {implField('pft')}
           </span>
-        </Row>
-        <Row label="Preliminary Meeting Decision" done={!!decision} date={ob.prelim_meeting_decision_at} emails={ADVISOR_DECISION_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} onDateChange={d => saveStepDate('prelim_meeting_decision_at', d)} saving={saving}
+        </Row>}
+        <Row label="Preliminary Meeting Decision" done={!!decision} date={ob.prelim_meeting_decision_at} emails={tier1 ? ADVISOR_TIER1_DECISION_EMAILS : ADVISOR_DECISION_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} onDateChange={d => saveStepDate('prelim_meeting_decision_at', d)} saving={saving}
           locked={!decision && !!lockFor('decision')} lockedHint={lockFor('decision')}>
           {decision ? (
             <span style={pillStyle(decision === 'Yes' ? '#1b9254' : decision === 'No' ? '#e74c3c' : '#e06717')}>{decision}</span>
@@ -813,7 +853,7 @@ function OnboardingDetail({ id, onBack }) {
               <button onClick={() => saveDecision('Undecided')} disabled={!!pendingDecision || decisionBlocked} style={{ ...pendingBtn('#e06717', pendingDecision, 'Undecided'), cursor: decisionBlocked ? 'not-allowed' : 'pointer' }}>{pendingDecision === 'Undecided' ? 'Sending…' : 'Undecided'}</button>
               <button onClick={() => saveDecision('No')} disabled={!!pendingDecision || decisionBlocked} style={{ ...pendingBtn('#e74c3c', pendingDecision, 'No'), cursor: decisionBlocked ? 'not-allowed' : 'pointer' }}>{pendingDecision === 'No' ? 'Sending…' : 'No'}</button>
             </div>
-            {decisionBlocked && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', fontStyle: 'italic', marginTop: '4px' }}>{!ob.onboarding_team_member && !bothValuesSet ? 'Select a team member and enter both implementation values above to enable the decision.' : !ob.onboarding_team_member ? 'Select a team member above to enable the decision.' : 'Enter both implementation values above to enable the decision.'}</div>}
+            {decisionBlocked && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', fontStyle: 'italic', marginTop: '4px' }}>{!ob.onboarding_team_member && valuesNeeded ? 'Select a team member and enter both implementation values above to enable the decision.' : !ob.onboarding_team_member ? 'Select a team member above to enable the decision.' : 'Enter both implementation values above to enable the decision.'}</div>}
             </>
           )}
         </Row>
@@ -864,7 +904,9 @@ function OnboardingDetail({ id, onBack }) {
           <>
             <AutoRow label="Advisor created" done={true} date={ob.member_created_at} emails={ADVISOR_LOGIN_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
             <div style={{ marginLeft: '14px', paddingLeft: '12px', marginTop: '6px', borderLeft: '1px solid var(--vfo-tint-deep)', fontSize: '12px', color: 'var(--vfo-muted)' }}>
-              Member number: <span style={{ color: 'var(--vfo-ink)', fontFamily: 'monospace' }}>{ob.member_number}</span> &middot; Implementation &middot; New Model &middot; Money Mapping
+              Member number: <span style={{ color: 'var(--vfo-ink)', fontFamily: 'monospace' }}>{ob.member_number}</span> &middot; {tier1
+                ? <>Financial Collaborator &middot; Legacy Model &middot; Money Mapping &middot; $145 a month through Membership Fees</>
+                : <>Implementation &middot; New Model &middot; Money Mapping</>}
             </div>
           </>
         ) : (

@@ -1,4 +1,4 @@
-import { useEffect, useState, useLayoutEffect } from 'react'
+import { useEffect, useState, useLayoutEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { getSession, clearSession, loadCachedData, hasCachedData, getLastSeen, setLastSeen } from '../lib/api'
 import { usePortalTheme } from '../lib/theme'
@@ -111,6 +111,9 @@ export default function AdminPortal() {
   const [showSettings, setShowSettings] = useState(false)
   const [allExperts, setAllExperts] = useState([])
   const [allMembers, setAllMembers] = useState([])
+  // A ?member= link to someone created since the list loaded (e.g. Create on an
+  // onboarding) refreshes the list once instead of silently doing nothing.
+  const memberLinkRefreshRef = useRef(null)
   const [memberConnections, setMemberConnections] = useState([])
   const [allExclusionMap, setAllExclusionMap] = useState({})
   const [ecoMap, setEcoMap] = useState({})
@@ -162,6 +165,9 @@ export default function AdminPortal() {
         const origin = PROFILE_ORIGIN_TABS.includes(params.get('origin')) ? params.get('origin') : null
         openMemberProfile(m, params.get('feature') || 'profile_details', origin)
         navigate('/admin', { replace: true }) // strip params so manual nav isn't re-hijacked
+      } else if (memberLinkRefreshRef.current !== memberNum) {
+        memberLinkRefreshRef.current = memberNum
+        loadAllData()
       }
       return
     }

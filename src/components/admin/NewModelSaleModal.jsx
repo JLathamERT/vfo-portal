@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { loadCachedData } from '../../lib/api'
+import { isTier1Onboarding, isConnectedAssociate, tier1AdvisorPays } from './onboardingOrder'
 
 // ── Team-member name list for the three dropdowns (closer / setter / introduced-by).
 // One shared list for all three. Edit this array (then redeploy) to add/remove names.
@@ -56,6 +57,10 @@ const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'bloc
 // the existing create-member action (now also drafting the team notification email).
 export default function NewModelSaleModal({ ob, kind, submitting, onClose, onConfirm }) {
   const isAcct = kind === 'accountant'
+  // A VFO Associate / Financial Collaborator (portal licensing L6b) is a monthly
+  // membership; the summary matches the team email the server drafts for it.
+  const tier1 = isTier1Onboarding(ob, isAcct ? 'accountant' : 'advisor')
+  const connected = tier1 && isAcct && isConnectedAssociate(ob)
   const [companyName, setCompanyName] = useState('')
   const [website, setWebsite] = useState('')
   const [msm, setMsm] = useState('n/a')
@@ -74,11 +79,17 @@ export default function NewModelSaleModal({ ob, kind, submitting, onClose, onCon
   }, [])
 
   const memberName = `${ob.first_name || ''} ${ob.last_name || ''}`.trim() || 'n/a'
-  const agreementName = isAcct
+  const agreementName = tier1
+    ? (!isAcct ? 'Financial Collaborator Agreement' : connected ? 'VFO Associate Agreement (Connected)' : 'VFO Associate Agreement (Direct)')
+    : isAcct
     ? (ob.accountant_partnership === 'Accountant Partnership' ? 'Accountant Implementation Agreement (Advisor)' : 'Accountant Implementation Agreement (Direct)')
     : 'Advisor Implementation Agreement'
-  const selectedPlans = buildPlans(ob, isAcct)
-  const paymentPlan = (ob.payment_amount != null && Number(ob.payment_amount) > 0)
+  const selectedPlans = !tier1 ? buildPlans(ob, isAcct)
+    : connected
+      ? `$25 a month VFO Portal licence${tier1AdvisorPays(ob, 'accountant') && ob.cc_advisor_name ? ` - paid by ${ob.cc_advisor_name}` : ''}`
+      : '$145 a month, month to month ($120 ERT membership + $25 VFO Portal licence)'
+  const paymentPlan = tier1 ? 'First month paid'
+    : (ob.payment_amount != null && Number(ob.payment_amount) > 0)
     ? `1 payment of $${Number(ob.payment_amount).toLocaleString('en-US')}`
     : 'n/a'
 
@@ -124,7 +135,7 @@ export default function NewModelSaleModal({ ob, kind, submitting, onClose, onCon
   return (
     <div onClick={() => { if (!submitting) onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(16,24,40,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: '0 12px 40px rgba(20,45,95,0.25)', padding: '24px', width: '100%', maxWidth: '540px', maxHeight: '90vh', overflowY: 'auto', fontFamily: 'Inter, sans-serif' }}>
-        <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--vfo-ink)', marginBottom: '4px' }}>New Model Sale</div>
+        <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--vfo-ink)', marginBottom: '4px' }}>{tier1 ? (isAcct ? 'New VFO Associate' : 'New Financial Collaborator') : 'New Model Sale'}</div>
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginBottom: '16px' }}>
           Fill in the details below. On confirm, the {isAcct ? 'accountant' : 'advisor'} is created and the team notification email is drafted.
         </div>
@@ -132,7 +143,7 @@ export default function NewModelSaleModal({ ob, kind, submitting, onClose, onCon
         <div style={{ background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', borderRadius: '10px', padding: '12px 14px', marginBottom: '18px', fontSize: '12.5px', color: 'var(--vfo-ink)', lineHeight: 1.7 }}>
           <div><strong>{memberName}</strong>{ob.member_number ? <span style={{ color: 'var(--vfo-muted)', fontFamily: 'monospace', marginLeft: '8px' }}>#{ob.member_number}</span> : null}</div>
           <div style={{ color: 'var(--vfo-muted)' }}>{agreementName} — {selectedPlans}</div>
-          <div style={{ color: 'var(--vfo-muted)' }}>{paymentPlan} · Invoice {ob.invoice_number || 'n/a'} · 6-month transition {formatLong(ob.renewal_date)}</div>
+          <div style={{ color: 'var(--vfo-muted)' }}>{paymentPlan} · Invoice {ob.invoice_number || 'n/a'}{tier1 ? ' · Membership Fees from month 2' : <> · 6-month transition {formatLong(ob.renewal_date)}</>}</div>
         </div>
 
         <div style={{ marginBottom: '14px' }}>

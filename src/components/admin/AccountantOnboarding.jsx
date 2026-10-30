@@ -13,7 +13,7 @@ import OnboardingExtraMeetingCard from './OnboardingExtraMeetingCard'
 import StepEmailsChip from '../shared/StepEmailsChip'
 import { MemberNameLink } from '../shared/personLinks'
 import { formatDate as formatFullDate } from '../../lib/dates'
-import { stage1Lock, createMemberLock } from './onboardingOrder'
+import { stage1Lock, createMemberLock, isTier1Onboarding, isConnectedAssociate, tier1MonthlyFee, tier1AdvisorPays } from './onboardingOrder'
 import { readable } from '../shared/readableColor'
 
 const STAGE_NAMES = ['', 'Preliminary Meeting', 'PC Admin', 'Add New Accountant']
@@ -57,6 +57,32 @@ const ACCOUNTANT_INVOICE_EMAILS = [
 const ACCOUNTANT_LOGIN_EMAILS = [
   { name: 'ACCOUNTANT_login_setup', when: 'Portal login setup email' },
 ]
+// The VFO Associate path (portal licensing L6b) sends its own versions; when the
+// connected advisor pays the licence, the money emails are the advisor-pays ones.
+const ACCOUNTANT_TIER1_DECISION_EMAILS = [
+  { name: 'ACCOUNTANT_undecided|tier1', when: 'If Undecided — decision email with buttons and the sample VFO Associate Agreement' },
+  ...ACCOUNTANT_DECISION_EMAILS.slice(1),
+]
+const ACCOUNTANT_TIER1_AGREEMENT_EMAILS = [
+  { name: 'ACCOUNTANT_agreement_sent|tier1', when: 'Automatic — VFO Associate Agreement signing link (sent on Yes)' },
+  { name: 'ACCOUNTANT_signing_reminder|tier1', when: 'Automatic reminder if unsigned (2 business days)' },
+]
+function accountantTier1MoneyEmails(advisorPays) {
+  const s = advisorPays ? '|tier1_advisor_pays' : '|tier1'
+  const to = advisorPays ? ' (to the connected advisor, accountant Cc)' : ''
+  return {
+    paymentLink: [
+      { name: `ACCOUNTANT_payment_link${s}`, when: `Automatic — first month payment link${to}` },
+      { name: `ACCOUNTANT_payment_reminder${s}`, when: `Automatic reminder if unpaid (2 business days)${to}` },
+    ],
+    confirmation: [
+      { name: `ACCOUNTANT_payment_confirmation${s}`, when: `If paid by bank transfer (ACH) — bank confirmation${to}` },
+    ],
+    invoice: [
+      { name: `ACCOUNTANT_invoice_receipt${s}`, when: `Automatic — first month invoice + receipt${to}` },
+    ],
+  }
+}
 
 // Rows written before the outcome was split into deposit/no-deposit carry the
 // bare 'Completed' — it means "no deposit", so it displays and gates as that.
@@ -206,7 +232,7 @@ export default function AccountantOnboarding() {
         const stopped = onboardings.filter(o => classify(o) === 'stopped')
 
         const renderRow = (ob, variant) => {
-          const stage = ob.member_created_at ? 3 : ob.accountant_type === 'VFO Associate' ? 3 : ob.prelim_meeting_decision ? 2 : 1
+          const stage = ob.member_created_at ? 3 : (ob.accountant_type === 'VFO Associate' && !isTier1Onboarding(ob, 'accountant')) ? 3 : ob.prelim_meeting_decision ? 2 : 1
           const isDone = variant === 'completed'
           const isStopped = variant === 'stopped'
           const stageColor = isStopped ? '#e74c3c' : isDone ? '#1b9254' : '#0095ff'
@@ -284,6 +310,8 @@ function OnboardingDetail({ id, onBack }) {
   const [depositBuf, setDepositBuf] = useState('')
   const [depositBusy, setDepositBusy] = useState(false)
   const [refundDraft, setRefundDraft] = useState({ open: false, reason: '', sending: false })
+  const [licenceDraft, setLicenceDraft] = useState('accountant')
+  const [savingLicence, setSavingLicence] = useState(false)
 
   useEffect(() => { loadDetail() }, [id])
 
@@ -305,11 +333,11 @@ function OnboardingDetail({ id, onBack }) {
       setOb(data.onboarding)
       // Default a fully-done stage to collapsed, computed ONCE per loaded
       // onboarding so later manual toggles and live setOb updates aren't
-      // overwritten. Mirrors stage1State/stage2State/stage3State below; VFO
-      // Associate skips stages 1 & 2, which stay collapsed.
+      // overwritten. Mirrors stage1State/stage2State/stage3State below; a VFO
+      // Associate on today's path skips stages 1 & 2, which stay collapsed.
       const row = data.onboarding
       const dec = row.prelim_meeting_decision
-      const isAssociate = row.accountant_type === 'VFO Associate'
+      const isAssociate = row.accountant_type === 'VFO Associate' && !isTier1Onboarding(row, 'accountant')
       const fin = row.final_decision || (dec === 'Yes' ? 'Yes' : dec === 'No' ? 'No' : null)
       const yes = fin === 'Yes'
       const no = fin === 'No'
@@ -351,6 +379,15 @@ function OnboardingDetail({ id, onBack }) {
       if (res?.onboarding) setOb(res.onboarding)
     } catch (err) { console.error(err); alert('Error: ' + err.message) }
     finally { setSavingCc(false) }
+  }
+
+  async function saveLicencePaidBy(licence_paid_by) {
+    setSavingLicence(true)
+    try {
+      const res = await callApi('save_accountant_licence_paid_by', { onboarding_id: id, licence_paid_by })
+      if (res?.onboarding) setOb(res.onboarding)
+    } catch (err) { console.error(err); alert('Error: ' + err.message) }
+    finally { setSavingLicence(false) }
   }
 
   async function saveTeamMember(name) {
@@ -468,6 +505,9 @@ function OnboardingDetail({ id, onBack }) {
     </div>
   )
 
+  // A new VFO Associate on the Tier 1 path (portal licensing L6b) runs every stage.
+  const tier1 = isTier1Onboarding(ob, 'accountant')
+
   // Known-value substitutions for the email previews (see StepEmailsChip).
   // Backend tokens: [Accountant Name] = full name, [Accountant First] = first.
   const emailCtx = (() => {
@@ -476,12 +516,22 @@ function OnboardingDetail({ id, onBack }) {
     if (full) ctx['Accountant Name'] = full
     const first = (ob.first_name || '').trim() || full.split(/\s+/)[0]
     if (first) ctx['Accountant First'] = first
+    if (tier1) {
+      ctx['Membership Name'] = 'VFO Associate Membership'
+      if (ob.cc_advisor_name) ctx['Advisor Name'] = ob.cc_advisor_name
+    }
     return ctx
   })()
 
   const decision = ob.prelim_meeting_decision
-  // VFO Associate accountants pay nothing and sign nothing — skip Stage 1 & 2.
-  const isAssociate = ob.accountant_type === 'VFO Associate'
+  // A VFO Associate on today's path pays nothing and signs nothing — skip Stage 1 & 2.
+  const isAssociate = ob.accountant_type === 'VFO Associate' && !tier1
+  const tier1Emails = tier1 ? accountantTier1MoneyEmails(tier1AdvisorPays(ob, 'accountant')) : null
+  const tier1Fee = tier1 ? tier1MonthlyFee(ob, 'accountant') : 0
+  const tier1FirstMonthNote = !tier1 ? null
+    : tier1Fee === 25
+      ? `First month of the VFO Portal licence: $25${tier1AdvisorPays(ob, 'accountant') ? `, paid by ${ob.cc_advisor_name || 'the connected advisor'} (the link goes to them)` : ''}. Membership Fees charges month 2 onwards on the same card or bank account.`
+      : 'First month of the VFO Associate membership: $145 (Membership Fee $120 + VFO Portal Licence $25). Membership Fees charges month 2 onwards on the same card or bank account.'
   const finalDec = ob.final_decision || (decision === 'Yes' ? 'Yes' : decision === 'No' ? 'No' : null)
   const yesPath = finalDec === 'Yes'
   const noPath = finalDec === 'No'
@@ -547,6 +597,21 @@ function OnboardingDetail({ id, onBack }) {
       <AutoRow label="10-minute reminder sent" done={!!ob.meeting_reminder_10m_sent_at} date={ob.meeting_reminder_10m_sent_at} />
     </div>
   ) : null
+
+  // Who pays a connected Associate's $25 VFO Portal licence. Accountant is
+  // preselected but nothing is stored until Save; fixed once the agreement is sent.
+  const licencePayerLabel = (v) => v === 'advisor' ? `Connected Advisor${ob.cc_advisor_name ? ` - ${ob.cc_advisor_name}` : ''}` : 'Accountant'
+  const licencePaidByControl = ob.agreement_sent_at ? (
+    <span style={neutralPillStyle} title="Fixed once the agreement is sent">{licencePayerLabel(ob.licence_paid_by || 'accountant')}</span>
+  ) : (
+    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <select value={ob.licence_paid_by || licenceDraft} onChange={e => { if (ob.licence_paid_by) saveLicencePaidBy(e.target.value); else setLicenceDraft(e.target.value) }} disabled={savingLicence} style={{ ...selectStyle, color: 'var(--vfo-ink)' }}>
+        <option value="accountant">{licencePayerLabel('accountant')}</option>
+        <option value="advisor" disabled={!ob.cc_advisor_member_number}>{licencePayerLabel('advisor')}</option>
+      </select>
+      {!ob.licence_paid_by && <button disabled={savingLicence} onClick={() => saveLicencePaidBy(licenceDraft)} style={{ ...tdGreen, cursor: savingLicence ? 'not-allowed' : 'pointer', opacity: savingLicence ? 0.6 : 1 }}>{savingLicence ? 'Saving...' : 'Save'}</button>}
+    </div>
+  )
 
   // Membership deposit: only ever offered on the "send deposit" outcome, and the
   // amount is typed once — the row turns into a chip the moment the link goes out.
@@ -681,21 +746,22 @@ function OnboardingDetail({ id, onBack }) {
           Deposit of ${fmtMoney(depositPaid)} {ob.deposit_status === 'processing' ? 'pending (ACH clearing)' : `received ${formatDate(ob.deposit_completed_at)}`}{!priced ? ' · balance calculated at countersign' : balance > 0 ? ` · balance due $${fmtMoney(balance)}` : ' · nothing further due'}
         </div>
       )}
-      <AutoRow label="Engagement agreement created and sent for signing" done={!!ob.agreement_sent_at} date={ob.agreement_sent_at} emails={ACCOUNTANT_AGREEMENT_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} />
+      <AutoRow label="Engagement agreement created and sent for signing" done={!!ob.agreement_sent_at} date={ob.agreement_sent_at} emails={tier1 ? ACCOUNTANT_TIER1_AGREEMENT_EMAILS : ACCOUNTANT_AGREEMENT_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} />
       <StallRows ob={ob} setOb={setOb} stall="signing" />
       {emRequested && emStage === 'signing' && emCard}
       <AutoRow label="Engagement agreement signed" done={!!ob.agreement_signed_by_accountant_at} date={ob.agreement_signed_by_accountant_at} tag={withTags ? [ob.selected_vfo_ft && 'VFO FT', ob.selected_pft && 'PFT', ob.selected_corporate && 'CM'] : undefined} />
       <AutoRow label="Engagement agreement signed by CEO" done={!!ob.agreement_signed_by_ceo_at} date={ob.agreement_signed_by_ceo_at} emails={ACCOUNTANT_CEO_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} />
       {showPaymentLinkRow && (
         <>
-          <AutoRow label="Payment link sent (ACH or Card choice)" done={!!ob.payment_link_sent_at} date={ob.payment_link_sent_at} emails={ACCOUNTANT_PAYMENT_LINK_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} />
+          <AutoRow label="Payment link sent (ACH or Card choice)" done={!!ob.payment_link_sent_at} date={ob.payment_link_sent_at} emails={tier1Emails ? tier1Emails.paymentLink : ACCOUNTANT_PAYMENT_LINK_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} />
+          {tier1 && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '2px 0 4px 14px' }}>{tier1FirstMonthNote}</div>}
           <StallRows ob={ob} setOb={setOb} stall="payment" />
         </>
       )}
       {emRequested && emStage === 'payment' && emCard}
       {/* The ACH confirmation email no longer gets its own row — preview it here. */}
       {!depositCoversAll && (
-        <AutoRow label={depositPaid > 0 ? 'Remaining payment collected after deposit' : 'Payment collected'} done={ob.payment_status === 'succeeded'} pending={ob.payment_status === 'processing'} date={ob.payment_completed_at} tag={withTags ? (ob.payment_method_type ? ob.payment_method_type.toUpperCase() : null) : undefined} emails={ACCOUNTANT_CONFIRMATION_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} />
+        <AutoRow label={depositPaid > 0 ? 'Remaining payment collected after deposit' : 'Payment collected'} done={ob.payment_status === 'succeeded'} pending={ob.payment_status === 'processing'} date={ob.payment_completed_at} tag={withTags ? (ob.payment_method_type ? ob.payment_method_type.toUpperCase() : null) : undefined} emails={tier1Emails ? tier1Emails.confirmation : ACCOUNTANT_CONFIRMATION_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} />
       )}
       {!depositCoversAll && depositPaid > 0 && balanceStatus === 'awaiting_deposit' && (
         <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '2px 0 4px 14px' }}>Waiting for the deposit to clear before charging the balance</div>
@@ -706,7 +772,7 @@ function OnboardingDetail({ id, onBack }) {
       {depositCoversAll && (
         <AutoRow label="Deposit covered the full onboarding payment" done={ob.payment_status === 'succeeded'} date={ob.payment_completed_at} />
       )}
-      <AutoRow label="Invoice and receipt created and emailed to client" done={!!ob.invoice_sent_at} date={ob.invoice_sent_at} emails={ACCOUNTANT_INVOICE_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} />
+      <AutoRow label="Invoice and receipt created and emailed to client" done={!!ob.invoice_sent_at} date={ob.invoice_sent_at} emails={tier1Emails ? tier1Emails.invoice : ACCOUNTANT_INVOICE_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} />
     </>
   )
 
@@ -758,8 +824,8 @@ function OnboardingDetail({ id, onBack }) {
           locked={!prelimStatus && !!lockFor('prelim')} lockedHint={lockFor('prelim')}>
           <select value={prelimSelectValue} onChange={e => savePrelimMeeting(e.target.value)} disabled={saving || depositSent} title={depositSent ? 'A deposit link has already been sent' : undefined} style={{ ...selectStyle, color: 'var(--vfo-ink)' }}>
             <option value="">-- Select --</option>
-            <option value={PRELIM_SEND_DEPOSIT}>{PRELIM_SEND_DEPOSIT}</option>
-            <option value={PRELIM_NO_DEPOSIT}>{PRELIM_NO_DEPOSIT}</option>
+            {(!tier1 || prelimStatus === PRELIM_SEND_DEPOSIT) && <option value={PRELIM_SEND_DEPOSIT}>{PRELIM_SEND_DEPOSIT}</option>}
+            <option value={PRELIM_NO_DEPOSIT}>{tier1 ? 'Completed' : PRELIM_NO_DEPOSIT}</option>
             <option value="No Show">No Show</option>
             <option value="Request no meeting">Requested no meeting</option>
           </select>
@@ -786,7 +852,13 @@ function OnboardingDetail({ id, onBack }) {
             />
           </Row>
         )}
-        {prelimStatus === PRELIM_SEND_DEPOSIT && (
+        {tier1 && ob.accountant_partnership === 'Accountant Partnership' && (
+          <Row label="VFO Portal licence paid by" done={!!ob.licence_paid_by}
+            locked={!ob.licence_paid_by && !!lockFor('licence_paid_by')} lockedHint={lockFor('licence_paid_by')}>
+            {licencePaidByControl}
+          </Row>
+        )}
+        {!tier1 && prelimStatus === PRELIM_SEND_DEPOSIT && (
           <>
             <Row label="Deposit" done={depositSent} date={depositRefunded ? ob.deposit_refund_date : ob.deposit_email_sent_at} emails={ACCOUNTANT_DEPOSIT_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx}
               locked={!depositSent && !!lockFor('deposit')} lockedHint={lockFor('deposit')}>
@@ -797,7 +869,7 @@ function OnboardingDetail({ id, onBack }) {
             {depositCascade}
           </>
         )}
-        <Row label="Preliminary Meeting Decision" done={!!decision} date={ob.prelim_meeting_decision_at} emails={ACCOUNTANT_DECISION_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} onDateChange={d => saveStepDate('prelim_meeting_decision_at', d)} saving={saving}
+        <Row label="Preliminary Meeting Decision" done={!!decision} date={ob.prelim_meeting_decision_at} emails={tier1 ? ACCOUNTANT_TIER1_DECISION_EMAILS : ACCOUNTANT_DECISION_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} onDateChange={d => saveStepDate('prelim_meeting_decision_at', d)} saving={saving}
           locked={!decision && !!lockFor('decision')} lockedHint={lockFor('decision')}>
           {decision ? (
             <span style={pillStyle(decision === 'Yes' ? '#1b9254' : decision === 'No' ? '#e74c3c' : '#e06717')}>{decision}</span>
@@ -856,7 +928,9 @@ function OnboardingDetail({ id, onBack }) {
           <>
             <AutoRow label="Accountant created" done={true} date={ob.member_created_at} emails={ACCOUNTANT_LOGIN_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} />
             <div style={{ marginLeft: '14px', paddingLeft: '12px', marginTop: '6px', borderLeft: '1px solid var(--vfo-tint-deep)', fontSize: '12px', color: 'var(--vfo-muted)' }}>
-              Member number: <span style={{ color: 'var(--vfo-ink)', fontFamily: 'monospace' }}>{ob.member_number}</span> &middot; Implementation &middot; New Model
+              Member number: <span style={{ color: 'var(--vfo-ink)', fontFamily: 'monospace' }}>{ob.member_number}</span> &middot; {tier1
+                ? <>{isConnectedAssociate(ob) ? 'VFO Associate (Advisor)' : 'VFO Associate (Direct)'} &middot; Legacy Model &middot; ${tier1Fee} a month through Membership Fees</>
+                : <>Implementation &middot; New Model</>}
             </div>
           </>
         ) : (
