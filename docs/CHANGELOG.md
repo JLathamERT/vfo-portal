@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-10-30 (c) — VFO Associate / Financial Collaborator onboarding + member portal tiers GO LIVE; the live ERT -> VFO Services link
+
+Branches edge `claude/vfo-session-starter-baa921` / react `claude/vfo-session-starter-e9be4a`. Jake: "i want it fully on and i want the switch removed from feature switches" (decision 107 in [plans/portal-licensing/README.md](plans/portal-licensing/README.md)).
+
+- **Live link (no code).** Anton Anderson cleared ERT's identity check; ERT's Connect review confirmed (buyers purchase from ERT, sellers paid out individually). ERT live client id `ca_UTEvHxrca2iV45Vem297Y7RNfXnZ4nZ4`, *OAuth for Stripe Dashboard accounts* ON, redirect `https://vfoportal.com/`. VFO Services (aipc@vfo-services.com) authorized `read_write`; Jake exchanged the code with a temporary ERT live secret key (typed into a hidden prompt, then deleted) -> `acct_1SDSZzRwdhysCa6F`, `livemode` true. Jake set `VFOS_CONNECT_ACCOUNT_ID`; its digest matches the id. No live row was waiting (`vfos_licence_transfer_status` all null).
+- **Data (MCP, before the deploy).** Templates 333-356 `send_mode` true (24 rows). `portal_feature_flags` `tier1_onboarding` + `member_tiers` `enabled_for_all = true`, `member_numbers = '{}'` — live at once; 369 existing Tier 1-type members (173 VFO Associate (Advisor), 53 Survey #3, 42 VFO Reconciliation (Free), 33 Survey #2, 19 Team Member, 15 Survey #1, 14 Financial Collaborator, 9 VFO Associate (Direct), 8 Free Legacy TBM, 6 FAC Historic) now see Profile / Client Overview / Showroom only.
+- **Switches removed (code).** `utils/tier1-onboarding.ts` `tier1FlowStamp()` stamps every new Associate / FC onboarding (no flag read; callers `accountant/create`, `advisor/create` — its "not switched on" refusal is gone — and `pft/decision-email`). `utils/member-tier.ts` reads the member type alone. Both keys left `FEATURE_SWITCHES` (feature_switches_save now refuses them) and their cards left `FeatureSwitchesPanel.jsx`. The two flag rows STAY (`true`) so a rollback to code that still reads them stays On.
+- **Test-email rule removed (Jake: "just wipe the jlatham@elitert.com email rule").** `TEST_ONBOARDING_EMAILS`, `isTestOnboardingEmail`, `isTier1TestMember` and `loadTier1TestMemberNumbers` are gone: `loadSandboxConfigForOnboarding` returns the pipeline's global config (kept as the one entry point), `loadSandboxConfigForMember` forces sandbox for Test Member 59524 only, the membership sweep's test-plan check is 59524 only, and the six deposit-confirmation / deposit-refund / login-setup sends draft only when `isSandbox`. No member or onboarding carried that email at the time. To test an Associate / FC onboarding now, turn the pipeline's own sandbox toggle on.
+- **OWED.** The first live $25 transfer (ERT -> Transfers -> VFO Services) once a real Associate / FC month is paid; the L6b untested list stands (ACH month 1, month 2+, pass 3c organic run, failure bell); a refunded month's $25 is reversed by hand on ERT.
+
 ## 2026-10-30 (b) — Tax Diagnostic paid by ACH creates the client profile at submit
 
 Branches edge `claude/ach-profile-at-submit` (`eab8a38`) / react `claude/ach-profile-at-submit` (`30f40e16`). Jake: a bank-transfer deposit made the team wait 3-5 business days for the profile, and someone hand-made one in the meantime (Guillermo Tilaiyatzi, Larry Stalcup).
