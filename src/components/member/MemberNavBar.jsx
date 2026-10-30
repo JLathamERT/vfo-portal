@@ -58,7 +58,7 @@ function fromLoads(data, progData, enabledData, memberNumber) {
   return {
     programs: orderMemberPrograms(progData?.programs, enabledData?.enabled, enabledData?.features),
     websiteEnabled: !!me?.website_enabled,
-    // L6: sent only while member_tiers is on for this member.
+    // L6: the member tier, from the member type.
     tier1: enabledData?.features?.member_tier === 1,
   }
 }

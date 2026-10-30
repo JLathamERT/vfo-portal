@@ -131,7 +131,7 @@ export default function MemberPortal() {
 
   const taxIntakeEnabled = features.tax_intake === true
   const orderedEnabledPrograms = orderMemberPrograms(allPrograms, enabledPrograms, features)
-  // Portal licensing L6: sent only while member_tiers is on for this member.
+  // Portal licensing L6: the member tier, from the member type.
   const tier1 = features.member_tier === 1
 
   return (
