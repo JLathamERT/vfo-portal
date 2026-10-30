@@ -93,50 +93,6 @@ const CARDS = [
     ],
   },
   {
-    id: 'member_tiers',
-    keys: ['member_tiers'],
-    title: 'Member portal tiers',
-    on: [
-      [null, 'Tier 1 members (VFO Associates, Financial Collaborators, Team Members, VFO Reconciliation (Free), Survey #1-3, FAC Historic, Free Legacy TBM) see only Profile, Client Overview and Showroom.'],
-      [null, 'On Client Overview they view their own clients and the clients mirrored to them, add clients, Send portal access and mirror their clients to other members. They cannot edit a client, upload to its Vault, give it the $25 Premium portal or use CIQ on it (a client mirrored to them keeps its read-only CIQ).'],
-      [null, 'Every other tab (MSM / 90 Day Plan, CIQ, Vault, Tax Diagnostic, Specialists, Growth Plan, GC Marketplace, Website Plugin) is hidden, and refused if reached another way.'],
-    ],
-    off: 'Every member sees the full portal, as today.',
-    note: 'Keyed on the member. The tier comes from the member type alone - every other type (Catalyst, Fusion, VFO FT, Corporate, Accelerator, Plus, Implementation, and every strategic-partner type such as Action Coach and Tax Plan IQ) is Tier 2 and unchanged. Nothing is charged or deleted. To test: Test member only, then set the test member\'s type (VFO Reconciliation (Free) = Tier 1; Catalyst = Tier 2).',
-  },
-  {
-    id: 'tier1_onboarding',
-    keys: ['tier1_onboarding'],
-    title: 'VFO Associate & Financial Collaborator onboarding',
-    // An onboarding has no member yet: the backend reads "Test member only" as
-    // "only onboardings whose email is on TEST_ONBOARDING_EMAILS".
-    testConfirm: 'OFF for everyone except new onboardings whose email is on the test list (Jake\'s own address).',
-    on: [
-      [null, 'A new VFO Associate onboarding goes through Stages 1-3 like a VFO FT accountant: the VFO Associate Agreement (Direct or Connected), signing, the CEO countersign, then the first month paid by card or bank before Create & Send Setup Link.'],
-      [null, 'New Onboarding in Advisor Onboarding can start a Financial Collaborator, on the same path with the Financial Collaborator Agreement.'],
-      [null, 'Once created they pay monthly in Membership Fees: $145 a month ($120 membership + $25 VFO Portal licence), or the $25 VFO Portal licence alone for a connected VFO Associate, which the connected advisor can pay instead. Month to month, ended with 30 days\' notice.'],
-    ],
-    off: 'Today\'s screens: a VFO Associate onboarding skips Stages 1-2 and there is no Financial Collaborator option. Onboardings already on the new path carry on.',
-    note: 'Keyed on the onboarding, not a member: an onboarding is put on the new path when it is created and keeps it. Test member only = only new onboardings whose email is on the test list (Jake\'s own address); those onboardings and the members they become run in sandbox. Existing VFO Associate and Financial Collaborator members are not billed or changed.',
-    details: [
-      ['The onboarding', [
-        'Stage 1: Team Member, Meeting Reminder, Preliminary Meeting, then for a VFO Associate Direct or Advisor Partnership, CC Connected Advisor and "VFO Portal licence paid by" (Accountant or Connected Advisor, connected only), then the decision. No deposit and no implementation value.',
-        'Stage 2: the agreement is sent, signed and countersigned by the CEO.',
-        'The first month is paid on the onboarding at the payment link (card or bank), with an invoice and receipt showing Membership Fee $120.00 and VFO Portal Licence $25.00 (connected: VFO Portal Licence $25.00 only). When the connected advisor pays, the link and the documents go to the advisor with the accountant Cc\'d.',
-        'Create & Send Setup Link stays locked until that payment is booked (a bank payment: until it clears). Create gives the member number, the type VFO Associate (Direct), VFO Associate (Advisor) or Financial Collaborator, the VFO Portal login, and the team email.',
-      ]],
-      ['Membership Fees', [
-        'Create makes the monthly plan with month 1 already paid. Month 2 is charged one month after month 1, on the same card or bank, on the same day each month (the last day of a shorter month).',
-        'A card adds 2.9% + $0.30 ($149.64 / $26.06); a bank adds nothing. Every charge marks the $25 VFO Portal licence in Stripe and on the payment row.',
-        'The plan shows "End membership (30 days\' notice)" instead of Pause and Terminate: payments due before the end date are still collected, later ones are cancelled, no termination fee, and the member gets an End of Membership Confirmation email.',
-        'No renewal notice, no next year\'s terms: after twelve months it carries on at the same price with no email. A missed month uses the usual arrears handling.',
-      ]],
-      ['Emails', [
-        'The VFO Associate / Financial Collaborator versions of the onboarding and Membership Fees emails, and the two team emails, are listed in the Email Editor and are Drafts until switched to Send.',
-      ]],
-    ],
-  },
-  {
     id: 'tax_intake',
     keys: ['tax_intake'],
     title: 'Members add clients',
