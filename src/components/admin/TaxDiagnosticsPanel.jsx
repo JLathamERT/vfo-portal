@@ -246,7 +246,9 @@ export function DiagnosticCard({ d, members, open, onToggle, onChanged, card, me
   const answers = d.answers || {}
   const navigate = useNavigate()
   // Linked only once the diagnostic is an OFFICIAL client (the case was created).
-  const clientProfileUrl = d.intake?.status === 'completed' && d.intake?.client_id
+  // A bank-transfer deposit's case exists while it still clears (2026-10-30), so
+  // the row is not 'completed' yet but already carries its plan.
+  const clientProfileUrl = (d.intake?.status === 'completed' || !!d.intake?.tax_plan_id) && d.intake?.client_id
     ? (memberMode ? `/member/client/${d.intake.client_id}?program=4&tab=home` : `/admin/client/${d.intake.client_id}?program=4&tab=home`)
     : null
   const label = { fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginBottom: '3px' }
@@ -651,7 +653,8 @@ function DepositTrack({ intake, payer, payFirst = false, createdAt = null, membe
   const isCard = intake.deposit_payment_method_type === 'card'
   const finished = intake.status === 'paid' || intake.status === 'completed'
   const waived = intake.status === 'waived' || (intake.status === 'completed' && intake.deposit_required === false)
-  const clientCreated = intake.status === 'completed' && intake.client_id
+  // Created at submit for a bank transfer (2026-10-30): see clientProfileUrl above.
+  const clientCreated = (intake.status === 'completed' || !!intake.tax_plan_id) && intake.client_id
   const orange = '#e06717'
   const chip = (text, color) => (
     <span style={{ fontSize: '10.5px', padding: '2px 9px', borderRadius: '999px', background: color + '26', border: `1px solid ${color}4d`, color: readable(color), fontWeight: 600, whiteSpace: 'nowrap' }}>{text}</span>

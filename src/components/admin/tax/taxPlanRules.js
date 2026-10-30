@@ -16,6 +16,11 @@ export const amendStage = (t) => (t?.status_options === AMEND_FEE_TAX5_CODE ? 't
 
 // client_tax_progress.status on the Deposit Paid step of a WAIVED intake.
 export const DEPOSIT_NA_STATUS = 'N/A — No Deposit'
+// ...and of a bank-transfer deposit whose case was created at submit (2026-10-30):
+// still clearing, or bounced. Verbatim, both repos (utils/tax-intake-finalize.ts).
+// Any status counts as answered (isTaskStatused), so neither blocks the steps after.
+export const DEPOSIT_PROCESSING_STATUS = 'Processing'
+export const DEPOSIT_FAILED_STATUS = 'Failed'
 
 // The implementation revenue share is finished when the member was emailed — or
 // when the engine recorded the member leg as 'N/A — No Share Due' (a $0 member

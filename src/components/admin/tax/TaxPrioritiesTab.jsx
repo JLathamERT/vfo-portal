@@ -11,7 +11,7 @@ import PricingSplitCard from './PricingSplitCard'
 import PersonalTaxFormLink from './PersonalTaxFormLink'
 import { CONFIRMATION_CARD_SKIP } from '../../../lib/confirmationStatus'
 import { formatDate as formatFullDate } from '../../../lib/dates'
-import { makeTaxPlanRules, KNOWN_FEE_PROCESS_VERSIONS, isNewFeeProcess, AMEND_FEE_CODE, AMEND_FEE_TAX5_CODE, isAmendStepTask, amendStage, DEPOSIT_NA_STATUS, phaseBadgeToken, phaseShortLabel, implRevShareDone, IMPL_REV_NO_SHARE } from './taxPlanRules'
+import { makeTaxPlanRules, KNOWN_FEE_PROCESS_VERSIONS, isNewFeeProcess, AMEND_FEE_CODE, AMEND_FEE_TAX5_CODE, isAmendStepTask, amendStage, DEPOSIT_NA_STATUS, DEPOSIT_PROCESSING_STATUS, DEPOSIT_FAILED_STATUS, phaseBadgeToken, phaseShortLabel, implRevShareDone, IMPL_REV_NO_SHARE } from './taxPlanRules'
 import { TAX_DISPLAY_NAMES, taxDisplayName } from '../../shared/taxDisplayNames'
 import { numberTaxIntakeQuestions, TAX_INTAKE_QUESTIONS, taxIntakeQuestionEditable, taxIntakeQuestionShown, formatTaxIntakeMoneyInput } from '../../member/taxIntakeQuestions'
 import { readable } from '../../shared/readableColor'
@@ -5067,6 +5067,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       // "N/A — No Deposit": nothing to paste, the step is closed.
       const depositWaived = p.status === DEPOSIT_NA_STATUS
       const depositClosed = !!savedPi || depositWaived
+      // A bank-transfer deposit whose case was created at submit: the webhook
+      // writes these two and records the PaymentIntent itself once it settles,
+      // so there is nothing to paste while it clears.
+      const depositClearing = !savedPi && p.status === DEPOSIT_PROCESSING_STATUS
+      const depositBounced = !savedPi && p.status === DEPOSIT_FAILED_STATUS
       const draftVal = depositPiDrafts[task.id]
       const inputVal = draftVal !== undefined ? draftVal : savedPi
       async function saveDepositPi() {
@@ -5089,10 +5094,15 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
           {depositWaived ? (
             <span style={neutralChipStyle} title="No deposit was taken: the member already had two qualifying tax clients">N/A — No Deposit</span>
+          ) : depositClearing ? (
+            <span style={chipStyle('#e06717')} title="Paid by bank transfer. It completes on its own when the transfer settles (usually 3-5 business days).">Processing — bank transfer clearing</span>
           ) : readOnly ? (
-            savedPi && !mirror && <span style={{ ...chipStyle('#1b9254'), fontFamily: 'monospace' }}>{savedPi}</span>
+            depositBounced
+              ? <span style={chipStyle('#d93025')}>Bank transfer failed</span>
+              : savedPi && !mirror && <span style={{ ...chipStyle('#1b9254'), fontFamily: 'monospace' }}>{savedPi}</span>
           ) : (
             <>
+              {depositBounced && <span style={chipStyle('#d93025')} title="The bank transfer did not go through. The payment link works again; paste a PaymentIntent here only if the deposit was paid another way.">Bank transfer failed</span>}
               <input
                 type="text"
                 value={inputVal}
@@ -5107,7 +5117,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           {/* Stamped by the member's own portal intake rather than typed in by
               an admin — the tell is an intake row that carries this plan. */}
           {savedPi && paidViaPortal && <span style={chipStyle('#1b9254')}>Paid via portal</span>}
-          {isDone && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
+          {/* The submit date stays fixed while the transfer clears or after it bounced. */}
+          {isDone && !readOnly && !depositClearing && !depositBounced ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
         </div>
       )
     }
