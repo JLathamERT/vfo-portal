@@ -74,7 +74,7 @@
 > | Growth Credits | 2 | ✗ no section |
 > | Growth Plan | 4 | 2 |
 > | MAP 1 | **18** | **15** |
-> | Membership Fees | 4 | ✗ no section |
+> | **Membership Fees** | **7** | ✗ no section |
 > | Partnership Fast Track | 10 | 8 |
 > | Payment Continuation | 2 | 2 ✓ |
 > | Payment Failure Alerts | **20** | **19** |
@@ -144,6 +144,8 @@
 > a failed payment is the member email 321 + one reminder 323; the two bell rules seeded for it
 > (`CIQ_LICENCE_payment_failed` / `_team`) were deleted by `20261016170000` without ever firing. A paid month whose
 > INV/REC numbers cannot be reserved reuses `FAILURE_ach_first_payment` (Jake). Flow: [flows/ciq-licence.md](flows/ciq-licence.md).
+>
+> **The 2026-10-30 addition (portal licensing L6b), no section below:** `Membership Fees` re-derived live 2026-10-30 (the row above) — new **`TIER1_licence_transfer_failed`** (sort 23, `default_recipients ["jlatham@elitert.com"]`, action-required, no delay; migration `20261030160000`), the same shape as `SPECREV_ert_transfer_failed`: a VFO Associate / Financial Collaborator month's $25 VFO Portal licence could not be transferred ERT → VFO Services (Stripe refused, the ERT key missing, or VFO Services' `transfers` capability inactive). ONE title for the whole feature (*VFO Portal licence transfer to VFO Services FAILED*), linking to `/admin?tab=accounting`; the membership sweep (pass 3c) clears it after a run that sends and fails none. A missing `VFOS_CONNECT_ACCOUNT_ID[_SANDBOX]` is NOT a failure (`awaiting_link`, no bell). Flow: [flows/membership-fees.md](flows/membership-fees.md).
 
 ### MAP 1 (15)
 

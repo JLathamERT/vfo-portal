@@ -36,6 +36,26 @@ Both names are resolved through **`ertConnectAccountEnvName(isSandbox)`** in `co
 
 > **Registry-version note.** Like the four billing secrets before them, writing these two secrets **bumped every edge function's registry version with no code change** — a version jump with an empty diff is expected after a secret write, not a sign of a stray deploy.
 
+### VFO Services is ALSO a connected account OF ERT — the REVERSE link (portal licensing L6b, 2026-10-30)
+
+The link above runs VFO Services (platform) → ERT (connected). L6b needs the opposite direction: a VFO Associate / Financial Collaborator month is charged on **ERT**, and its $25 VFO Portal licence must reach **VFO Services**. A Connect transfer only flows platform → its own connected account, so **ERT is the platform and VFO Services is ERT's connected account** for this one leg. Destination only, money only: `utils/tier1-licence-transfer.ts` (detail: [../architecture/07-server-chains.md](../architecture/07-server-chains.md) *Tier 1 VFO Portal licence leg*).
+
+| Secret | What | Resolved by |
+|---|---|---|
+| `VFOS_CONNECT_ACCOUNT_ID` | VFO Services' connected-account id (`acct_…`) on the **ERT** platform, live — an id, never a key | `vfosConnectAccountEnvName(false)` (`constants/stripe-accounts.ts`) |
+| `VFOS_CONNECT_ACCOUNT_ID_SANDBOX` | Same for sandbox — the stand-in `acct_1UWImVAEdlS0L4GN`, a connected account in the **ERT sandbox** (controller `requirement_collection=stripe`, Express dashboard, `transfers` active); written 2026-10-30 (the v1063 / v47 registry bump, no code) | `vfosConnectAccountEnvName(true)` |
+
+The transfer is paid from ERT's balance with the ERT key of the PLAN's mode (`ERT_STRIPE_SECRET_KEY[_SANDBOX]`). While a mode's id is unset the rows read `awaiting_link` (no bell) and the first sweep after it is set sends everything owed.
+
+**Setup recipe — the same OAuth handshake as 2026-09-11, roles swapped (#698):**
+1. **ERT must first be a Connect platform.** ERT dashboard → Connect → the platform profile — **answered 2026-10-30**: buyers purchase from you · paid out individually · Other · Stripe-hosted onboarding · Express dashboard default (a default for accounts ERT would CREATE only; it does not apply to linking VFO Services' existing account).
+2. **BLOCKED (2026-10-30):** the account representative's (Anton Anderson) identity verification on ERT's Connect checklist, then *Confirm final details* + Stripe's review → only then does ERT get a LIVE Connect `client_id`.
+3. ERT dashboard → Connect → enable OAuth, redirect URI `https://vfoportal.com/`.
+4. **VFO Services authorizes** at `connect.stripe.com/oauth/authorize` (`scope=read_write`, `client_id` = ERT's), signed in as VFO Services.
+5. The returned `code` is exchanged at `connect.stripe.com/oauth/token` with a **TEMPORARY ERT secret key**, expired straight after; the response's `stripe_user_id` is VFO Services' EXISTING account id → secret `VFOS_CONNECT_ACCOUNT_ID` (expect a registry-version bump with no code).
+
+**Sandbox:** there is no sandbox copy of VFO Services, so an ERT-sandbox connected account stands in. A custom-type account was refused until the platform acknowledged requirement-collection responsibilities; it was made with `controller[requirement_collection]=stripe` and finished through an account link. **Not acted on:** ERT's Platform setup page shows a Stripe "destination charges" integration notice unrelated to this leg. **Refunds:** VFO Services' `transfer.reversed` listener never sees a reversal made on ERT, so refunding a Tier 1 month means reversing its $25 transfer by hand.
+
 ### Rule 1 — CONFIG MINTS
 
 **`pipeline_sandbox_config.stripe_account`** (`'vfos'` default, `CHECK IN ('vfos','ert')`) decides which account a **NEW customer or checkout session for that pipeline is minted on**. It is the only place the choice is ever made, so moving a pipeline to ERT is one row edit and affects nothing that already exists. `integrations/sandbox-config.ts` surfaces it as `SandboxConfig.stripeAccount` (already normalized).
@@ -152,6 +172,8 @@ The webhook router uses these fields to pick the right DB table on `checkout.ses
 | **`ERT_STRIPE_WEBHOOK_SECRET_SANDBOX`** | `ert` | HMAC secret verifying **sandbox** ERT webhook signatures | same |
 | **`ERT_CONNECT_ACCOUNT_ID`** | *(platform `vfos`)* | **NEW 2026-09-11.** ERT's **connected-account id** (`acct_…`) on the VFO Services platform — the `destination` of the SpecRev ERT-share transfer (the manual catch-up transfer was removed 2026-10-05). **Not a key, and not an ERT-billing secret** | `ertConnectAccountEnvName(false)` |
 | **`ERT_CONNECT_ACCOUNT_ID_SANDBOX`** | *(platform `vfos`)* | **NEW 2026-09-11.** Same, for sandbox — a **test connected account in the VFO Services sandbox stands in for ERT** | `ertConnectAccountEnvName(true)` |
+| **`VFOS_CONNECT_ACCOUNT_ID`** | *(platform `ert`)* | **NEW 2026-10-30 (L6b).** VFO Services' connected-account id on the **ERT** platform — the destination of the Tier 1 $25 VFO Portal licence transfer. **NOT SET yet** (the live link is owed — *VFO Services is ALSO a connected account OF ERT* above) | `vfosConnectAccountEnvName(false)` |
+| **`VFOS_CONNECT_ACCOUNT_ID_SANDBOX`** | *(platform `ert`)* | **NEW 2026-10-30 (L6b).** Same, for sandbox — the ERT-sandbox stand-in `acct_1UWImVAEdlS0L4GN` | `vfosConnectAccountEnvName(true)` |
 
 Nothing reads these names inline any more where two accounts are possible: **`stripeKeyEnvName(account, isSandbox)`** and **`stripeWebhookSecretEnvName(account, isSandbox)`** in `constants/stripe-accounts.ts` return the NAME, and the caller reads the value.
 

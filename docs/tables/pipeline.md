@@ -215,6 +215,13 @@ ACH deposit was still clearing — released by the deposit's own `payment_intent
 [../flows/partnership-fast-track.md](../flows/partnership-fast-track.md); as of 2026-09-04 it also silences all
 three meeting-reminder tiers and the deposit stall ladder.
 
+**Portal licensing L6b columns (2026-10-30, migrations `20261030120000` + `20261030150000`, additive on both deny-all tables).** Flow: [../flows/advisor-accountant-onboarding.md](../flows/advisor-accountant-onboarding.md) *The Tier 1 path*.
+- `tier1_flow_at` (timestamptz, both) — written ONCE at creation by `tier1FlowStamp` while the `tier1_onboarding` switch lets it; never backfilled. With the type below it is what puts a row on the Tier 1 path (`isTier1Onboarding`).
+- `advisor_onboarding.advisor_type` (text, CHECK NULL or `'Financial Collaborator'`) — NULL = Catalyst, as before.
+- `accountant_onboarding.licence_paid_by` (text, CHECK NULL or `'accountant'` / `'advisor'`) — who pays a connected VFO Associate's $25; NULL = not chosen, no default (#469); written only by `save_accountant_licence_paid_by`.
+- `stripe_payment_method_id` (text, both) — the card / bank saved off-session at the month 1 payment; Membership Fees charges month 2 onwards on it.
+- On a Tier 1 row `payment_amount` is the MONTH ($145 / $25), written at the countersign — still never trust the column DEFAULT 4000 before it (#469).
+
 ---
 
 ## `pipeline_sandbox_config`
