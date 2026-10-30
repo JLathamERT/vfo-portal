@@ -494,6 +494,25 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
   const gcFrom = plan.gc_payer_member_number && plan.gc_payer_member_number !== plan.member_number
     ? `from ${gcPayerName ? `${gcPayerName} (${plan.gc_payer_member_number})` : plan.gc_payer_member_number}`
     : 'from their own account'
+  // A month-to-month VFO Associate / Financial Collaborator plan (portal licensing
+  // L6b): the backend refuses Pause, Terminate and next year's terms on it, and
+  // auto-renew is always on — it ends with 30 days' notice instead.
+  const tier1 = !!plan.tier1_monthly
+  const licence = tier1 ? (Number(allSched.find(r => Number(r.vfo_portal_licence_amount) > 0)?.vfo_portal_licence_amount) || 25) : 0
+  const licenceOnly = tier1 && perPull === licence
+  const payerNumber = tier1 && plan.paid_by_member_number && plan.paid_by_member_number !== plan.member_number ? plan.paid_by_member_number : null
+  const payer = payerNumber ? (allMembers || []).find(x => x.member_number === payerNumber) : null
+  const payerName = [payer?.first_name, payer?.last_name].filter(Boolean).join(' ')
+  const endingOn = tier1 && !closed && plan.ending_on ? plan.ending_on : null
+  // Month to month reads as months, not a 12-month year: the months that have
+  // happened plus the next scheduled one. The later scheduled rows (the rolling
+  // schedule) and rows cancelled by a notice are hidden here only.
+  const nextDue = tier1 ? allSched.find(r => r.kind === 'membership' && r.status === 'scheduled') || null : null
+  const shownSched = tier1
+    ? allSched.filter(r => r === nextDue || (r.status !== 'scheduled' && !(r.status === 'canceled' && String(r.due_date).slice(0, 10) > todayIso())))
+    : sched
+  const tier1PaidCount = tier1 ? allSched.filter(r => r.kind === 'membership' && r.status === 'paid').length : 0
+  const tier1Missed = tier1 && allSched.some(r => r.status === 'missed' || r.status === 'declined')
   // Header hint: any pause marker still dated today or later means the plan is
   // sitting inside (or about to enter) a pause. Deliberately simple — the marker
   // rows are only written by a pause and are removed with it.
@@ -587,6 +606,19 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
     if (!res) return
     if (res.fee_status === 'declined') setMsg({ tone: 'amber', text: `Plan terminated, but the fee charge FAILED: ${res.fee_error || 'declined'}. The declined fee row stays in the grid for follow-up.` })
     setShowTerminate(false)
+    onChanged?.()
+  }
+
+  async function endWithNotice() {
+    const res = await run('membership_end_with_notice', { plan_id: plan.id },
+      `End ${plan.member_name}'s membership with 30 days' notice?\n\nIt ends on ${fmtDate(addDaysIso(todayIso(), 30))}. Payments due on or before that date are still collected; later ones are cancelled. No termination fee.\n\nThe End of Membership Confirmation email goes to the member${payerNumber ? ' (Cc the connected advisor)' : ''}.`)
+    if (!res) return
+    const finalLine = res.final_payment
+      ? `Final payment ${money(res.final_payment.amount_due)} on ${fmtDate(res.final_payment.due_date)}.`
+      : 'No further payments.'
+    setMsg(res.emailed
+      ? { tone: 'success', text: `Notice recorded — the membership ends ${fmtDate(res.ending_on)}. ${finalLine} End of Membership Confirmation email created.` }
+      : { tone: 'amber', text: `Notice recorded — the membership ends ${fmtDate(res.ending_on)}. ${finalLine} The confirmation email could not be created — send it by hand.` })
     onChanged?.()
   }
 
@@ -687,6 +719,8 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
             {plan.transfer && <StatusPill label="Transferred" color={BLUE} />}
             {tracking && <StatusPill label="Old system" color="#6b7280" />}
             {gc && <StatusPill label="Growth Credits" color="#7c3aed" />}
+            {tier1 && <StatusPill label="Month to month" color="#0d9488" />}
+            {endingOn && <StatusPill label={`Ends ${fmtDate(endingOn)}`} color="#e06717" />}
             {openMeeting && <StatusPill label="Meeting requested" color="#e06717" />}
             {m.suspended && <StatusPill label="Suspended" color="#ef4444" />}
             {m.paused && <StatusPill label="Paused" color="#e06717" />}
@@ -702,25 +736,27 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
               : plan.frequency === 'monthly'
               ? `Monthly (${money(perPull)}/mo${plan.charge_day ? ` on the ${ordinal(plan.charge_day)}` : ''})`
               : `Annual (${money(perPull)}/yr)`}
+            {tier1 ? (licenceOnly ? ' · VFO Portal licence only' : ` · incl. ${money(licence)} VFO Portal licence`) : ''}
+            {payerNumber ? ` · Paid by ${payerName ? `${payerName} (${payerNumber})` : payerNumber}, connected advisor` : ''}
             {Number(plan.credit_note) > 0 ? ` · Credit note ${money(plan.credit_note)}` : ''}
             {plan.payment_method_type ? ` · ${plan.payment_method_type === 'ach' ? 'ACH' : 'Card'}${plan.acct_last4 ? ` ••${plan.acct_last4}` : ''}` : ''}
             {plan.next_year_amount ? ` · Next year ${money(plan.next_year_amount)}${Number(plan.next_year_credit_note) > 0 ? ` − ${money(plan.next_year_credit_note)} credit` : ''}${plan.next_year_member_type ? ` · ${plan.next_year_member_type}` : ''}` : ''}
             {plan.sandbox ? ' · Sandbox' : ''}
-            {!plan.auto_renew && !closed ? ' · Auto-renew OFF' : ''}
+            {!plan.auto_renew && !closed && !tier1 ? ' · Auto-renew OFF' : ''}
             {plan.status === 'terminated' && Number(plan.termination_fee) > 0 ? ` · Termination fee ${money(plan.termination_fee)}` : ''}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)' }}>{gc ? `${gcCredits} GC` : money(plan.net_annual)}</div>
-          <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{gc ? 'per year' : 'net / year'}</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)' }}>{gc ? `${gcCredits} GC` : tier1 ? money(perPull) : money(plan.net_annual)}</div>
+          <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{gc ? 'per year' : tier1 ? 'per month' : 'net / year'}</div>
         </div>
         <div style={{ textAlign: 'right', width: '110px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{plan.status === 'setup_pending' ? '—' : fmtDate(plan.renewal_date)}</div>
-          <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>renewal</div>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{plan.status === 'setup_pending' ? '—' : endingOn ? fmtDate(endingOn) : tier1 ? (nextDue ? fmtDate(nextDue.due_date) : '—') : fmtDate(plan.renewal_date)}</div>
+          <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{endingOn ? 'ends' : tier1 ? 'next payment' : 'renewal'}</div>
         </div>
         <div style={{ textAlign: 'right', width: '80px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: missedCount ? '#ef4444' : 'var(--vfo-ink-2)' }}>
-            {payable.length ? `${paidCount}/${payable.length}` : '—'}
+          <div style={{ fontSize: '13px', fontWeight: 600, color: (tier1 ? tier1Missed : missedCount) ? '#ef4444' : 'var(--vfo-ink-2)' }}>
+            {tier1 ? tier1PaidCount : payable.length ? `${paidCount}/${payable.length}` : '—'}
           </div>
           <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>paid</div>
         </div>
@@ -738,7 +774,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
             </div>
           ) : (
             <>
-              {years.length > 1 && (
+              {years.length > 1 && !tier1 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                   <span style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>Membership year</span>
                   <select value={yearIdx === -1 ? years.length - 1 : yearIdx} onChange={e => setYearIdx(Number(e.target.value))}
@@ -753,7 +789,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
               <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
                 <div>Period</div><div>Due date</div><div>Amount</div><div>Credit</div><div>Status</div><div style={{ textAlign: 'right' }}>Payment</div>
               </div>
-              {sched.map(row => {
+              {shownSched.map(row => {
                 // Pause markers ride in the same grid — positioned by due_date
                 // among the real rows — so the paused months read as a band.
                 // They carry no money, so every money cell is a muted dash.
@@ -777,7 +813,14 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                   <div key={row.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: rowBg, borderRadius: '6px' }}>
                     <div style={{ fontWeight: 600 }}>{row.period_label}</div>
                     <div>{fmtDate(row.due_date)}</div>
-                    <div style={{ fontWeight: 600, color: zero && !gc ? 'var(--vfo-faint)' : 'var(--vfo-ink)' }}>{gc && row.kind === 'membership' ? `${gcCredits} GC` : money(row.amount_due)}</div>
+                    <div style={{ fontWeight: 600, color: zero && !gc ? 'var(--vfo-faint)' : 'var(--vfo-ink)' }}>
+                      {gc && row.kind === 'membership' ? `${gcCredits} GC` : money(row.amount_due)}
+                      {Number(row.vfo_portal_licence_amount) > 0 && (
+                        <div style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--vfo-faint)' }}>
+                          {Number(row.amount_due) === Number(row.vfo_portal_licence_amount) ? 'VFO Portal licence' : `incl. ${money(row.vfo_portal_licence_amount)} VFO Portal`}
+                        </div>
+                      )}
+                    </div>
                     <div style={{ color: 'var(--vfo-faint)' }}>{Number(row.credit_applied) > 0 ? money(row.credit_applied) : '—'}</div>
                     <div>
                       {canMarkRows && row.kind === 'membership' ? (
@@ -806,6 +849,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                         ) : '—'
                       ) : row.status === 'paid' || row.status === 'processing' ? (
                         <>
+                          {row.paid_on_onboarding ? 'Paid at onboarding · ' : ''}
                           {row.paid_at ? `${fmtStamp(row.paid_at)} · ` : ''}
                           {row.payment_method_type ? `${row.payment_method_type}${row.acct_last4 ? ` ••${row.acct_last4}` : ''} · ` : ''}
                           {row.stripe_payment_intent_id || ''}
@@ -818,11 +862,23 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
               {!gc && <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '10px 6px 2px', borderTop: '2px solid var(--vfo-border)', marginTop: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
                 <div>Totals</div>
                 <div />
-                <div>{money(sched.reduce((s, r) => s + Number(r.amount_due || 0), 0))}</div>
-                <div>{money(sched.reduce((s, r) => s + Number(r.credit_applied || 0), 0))}</div>
-                <div style={{ color: 'var(--vfo-success-text-2)' }}>{money(sched.filter(r => r.status === 'paid').reduce((s, r) => s + Number(r.amount_due || 0), 0))} paid</div>
+                <div>
+                  {money(shownSched.reduce((s, r) => s + Number(r.amount_due || 0), 0))}
+                  {tier1 && !licenceOnly && (
+                    <div style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--vfo-faint)' }}>
+                      incl. {money(shownSched.reduce((s, r) => s + Number(r.vfo_portal_licence_amount || 0), 0))} VFO Portal
+                    </div>
+                  )}
+                </div>
+                <div>{money(shownSched.reduce((s, r) => s + Number(r.credit_applied || 0), 0))}</div>
+                <div style={{ color: 'var(--vfo-success-text-2)' }}>{money(shownSched.filter(r => r.status === 'paid').reduce((s, r) => s + Number(r.amount_due || 0), 0))} paid</div>
                 <div />
               </div>}
+              {tier1 && !closed && (
+                <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
+                  Bills monthly{plan.charge_day ? ` on the ${ordinal(plan.charge_day)}` : ''} until {endingOn ? fmtDate(endingOn) : 'the membership is ended'}.
+                </div>
+              )}
             </>
           )}
 
@@ -918,23 +974,33 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                       {busy ? 'Working…' : 'Send payment update link'}
                     </button>
                   )}
-                  <button type="button" disabled={busy} style={ghostBtn}
-                    onClick={() => run('membership_plan_cancel', { plan_id: plan.id, mode: plan.auto_renew ? 'auto_renew_off' : 'auto_renew_on' }).then(r => r && onChanged?.())}>
-                    {plan.auto_renew ? 'Turn auto-renew off' : 'Turn auto-renew on'}
-                  </button>
-                  {!gc && (
+                  {!tier1 && (
+                    <button type="button" disabled={busy} style={ghostBtn}
+                      onClick={() => run('membership_plan_cancel', { plan_id: plan.id, mode: plan.auto_renew ? 'auto_renew_off' : 'auto_renew_on' }).then(r => r && onChanged?.())}>
+                      {plan.auto_renew ? 'Turn auto-renew off' : 'Turn auto-renew on'}
+                    </button>
+                  )}
+                  {!gc && !tier1 && (
                     <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowNextYear(v => !v)}>
                       Edit next year's terms
                     </button>
                   )}
-                  {!tracking && !gc && (
+                  {!tracking && !gc && !tier1 && (
                     <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowPause(v => !v)}>
                       Pause Membership Payments
                     </button>
                   )}
-                  <button type="button" disabled={busy} style={dangerBtn} onClick={() => setShowTerminate(v => !v)}>
-                    {tracking ? 'End membership' : 'Terminate member'}
-                  </button>
+                  {!tier1 ? (
+                    <button type="button" disabled={busy} style={dangerBtn} onClick={() => setShowTerminate(v => !v)}>
+                      {tracking ? 'End membership' : 'Terminate member'}
+                    </button>
+                  ) : endingOn ? (
+                    <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Notice given — ends {fmtDate(endingOn)}. Payments due up to then are still collected.</span>
+                  ) : (
+                    <button type="button" disabled={busy} style={dangerBtn} onClick={endWithNotice}>
+                      {busy ? 'Working…' : "End membership (30 days' notice)"}
+                    </button>
+                  )}
                 </>
               )}
               {gc ? (
@@ -944,6 +1010,18 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                 ]} /></span>
               ) : tracking ? (
                 <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>Billed on the old system — no emails are sent and nothing is charged here.</span>
+              ) : tier1 ? (
+                <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MEMBER_MEMBERSHIP_FEES" title="Monthly membership emails" context={emailCtx} templates={payerNumber ? [
+                  { name: 'MEMBERSHIP_receipt_email|monthly|tier1_advisor_pays', when: 'Each month paid — receipt to the connected advisor' },
+                  { name: 'MEMBERSHIP_payment_failed|tier1_advisor_pays', when: 'A month failed — to the connected advisor' },
+                  { name: 'MEMBERSHIP_update_link', when: 'Update payment method link' },
+                  { name: 'MEMBERSHIP_end_of_membership|tier1', when: "End membership (30 days' notice)" },
+                ] : [
+                  { name: 'MEMBERSHIP_receipt_email|monthly|tier1', when: 'Each month paid — receipt' },
+                  { name: 'MEMBERSHIP_payment_failed', when: 'A month failed' },
+                  { name: 'MEMBERSHIP_update_link', when: 'Update payment method link' },
+                  { name: 'MEMBERSHIP_end_of_membership|tier1', when: "End membership (30 days' notice)" },
+                ]} /></span>
               ) : (
                 <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="MEMBER_MEMBERSHIP_FEES" title="Payment link emails" context={emailCtx} templates={[
                   { name: 'MEMBERSHIP_setup_link', when: 'New plan — payment setup link' },

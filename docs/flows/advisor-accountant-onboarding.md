@@ -391,7 +391,7 @@ step is done:
 
 The hint is always the step directly above Create: `Complete "Invoice and receipt created and emailed to client"
 first` — also while there is no Yes decision yet. A declined row reads *"The advisor declined"* / *"The accountant
-declined"*. **VFO Associate accountants are exempt** (they skip Stages 1-2; the lock returns null). The locked
+declined"*. **VFO Associate accountants are exempt** (they skip Stages 1-2; the lock returns null) — **on today's path only**: a Tier 1 Associate (portal licensing L6b, *The Tier 1 path* below) is locked like every other row until month 1 is paid. The locked
 Stage 3 renders a single locked *Create … & Send Setup Link* row with that hint; once `member_created_at` is set
 the lock no longer applies.
 
@@ -407,6 +407,22 @@ BoldSign **redelivers `Completed`**, and the advisor/accountant branch in `route
 `agreement_signed_by_ceo_at: nowIso` unconditionally, re-stamping the signature date on every redelivery. It is
 now `advisor.agreement_signed_by_ceo_at || nowIso` on both pipelines. Gotcha **#470**. `boldsign-webhook`
 itself was NOT touched (still v40).
+
+---
+
+## The Tier 1 path — VFO Associate + Financial Collaborator *(portal licensing L6b, 2026-10-30)*
+
+Plan of record: [../plans/portal-licensing/README.md](../plans/portal-licensing/README.md) §3 L6b + decisions 82-106. Switch `tier1_onboarding` (Feature Switches card *VFO Associate & Financial Collaborator onboarding*).
+
+**Which rows.** `isTier1Onboarding(ob, pipeline)` (`utils/tier1-onboarding.ts`) = `tier1_flow_at` set AND `accountant_type='VFO Associate'` (accountant) / `advisor_type='Financial Collaborator'` (advisor; NULL = Catalyst). The stamp is written ONCE, at creation, by `tier1FlowStamp`: Off — never; Test only (any `member_numbers` on the flag row) — only for an email in `TEST_ONBOARDING_EMAILS` (`constants/test-sandbox.ts`); On for all — always; a failed read — never. Rows created before keep today's path (an unstamped Associate still skips Stages 1-2). A test row, and the member it becomes, is forced to sandbox at every money read. Admins cannot read the switch, so + New Onboarding always offers Financial Collaborator and the server refuses it while the switch is Off (accepted).
+
+**Stage 1** (`utils/onboarding-order.ts` ↔ `onboardingOrder.js`, #594): Team Member → Meeting Reminder → Preliminary Meeting → (Associate: Direct or Advisor Partnership → CC Connected Advisor → **VFO Portal licence paid by** for a connected one) → Decision. No deposit and no implementation value: `prelim-meeting` refuses *Completed - Send Deposit* and advisor `save-implementation-value` refuses an FC (`TIER1_STEP_REFUSAL`). *VFO Portal licence paid by* = `save_accountant_licence_paid_by` (`accountant_onboarding.licence_paid_by`, `accountant` | `advisor`, NULL until chosen — the screen preselects Accountant, nothing defaults it, #469; fixed once the agreement is sent).
+
+**Stage 2.** `send-agreement.ts` (both) picks the active `agreement_templates` row by `service_level` too (`TIER1_SERVICE_LEVEL` `VFO Associate` / `Financial Collaborator`; classic rows `Accountant` / `Advisor`): **35** Associate Direct, **36** Associate Connected, **34** FC. Signing and the CEO countersign run as today. At the countersign `ceo-countersign.ts` writes `payment_amount` = the month (`tier1MonthlyFee`: $145, or $25 for a connected Associate — never the column DEFAULT 4000) and `stripe-customer.ts` mints the customer on ERT and drafts the **month 1** payment link (`<PREFIX>_payment_link|tier1`, or `ACCOUNTANT_payment_link|tier1_advisor_pays` To the advisor with the Associate Cc'd). `/accountant-pay` / `/advisor-pay` show the fee lines; a card adds 2.9% + $0.30 ($149.64 / $26.06), a bank nothing; the card / bank is saved off-session (`stripe_payment_method_id`). The webhook writes no 6-month renewal date for a Tier 1 row and ignores a Checkout session another pipeline minted on the same customer. Invoice + receipt keep the `INV-ACC` / `INV-ADV` numbering (decision 101) with *Membership Fee $120.00* + *VFO Portal Licence $25.00* (connected: the licence line only) — `utils/tier1-onboarding-documents.ts`, `utils/tier1-onboarding-payment.ts`. The stall sweep's payment reminder uses the Tier 1 template; its deposit tiers skip the row.
+
+**Stage 3 — Create** stays locked until month 1 is booked (a bank payment: until it clears; decision 100). Create writes member type `VFO Associate (Direct)` / `VFO Associate (Advisor)` / `Financial Collaborator` (all Tier 1), numbers it with `nextMemberNumber` in the accountant x Legacy / advisor x Legacy bucket (decision 103 — a test Create takes a REAL number, #699), links a connected Associate to its CC advisor (`member_connections`, decision 104), keeps `revenue_decision='Money Mapping'`, drafts team email **339** `new_vfo_associate_member` / **340** `new_financial_collaborator_member` (instead of 155, `utils/new-model-sale-email.ts`), then `createTier1MembershipPlan` — Membership Fees bills from month 2 ([membership-fees.md](membership-fees.md) *VFO Associate / Financial Collaborator plans*) and month 1's $25 is transferred to VFO Services.
+
+**Emails.** Every Tier 1 version is a Draft row (333-338 undecided / agreement sent / signing reminder, 341-352 payment link / reminder / confirmation / invoice-receipt, 339 / 340 team). On a sandbox or test row every onboarding send is `draftOnly` — a `send_mode=true` template (the CEO countersign) would otherwise real-send (#696).
 
 ---
 

@@ -85,6 +85,15 @@ export default function AdvisorPayPage() {
   const isDeposit = data.kind === 'deposit'
   const depositPaid = Number(data.deposit_paid) || 0
   const lineLabel = isDeposit ? 'Membership Deposit' : depositPaid > 0 ? 'Balance Payment' : 'Advisor Onboarding'
+  // A Financial Collaborator's link pays the first month of the membership. The
+  // server's fee lines are shown only when they add up to the amount charged.
+  const tier1 = !isDeposit && data.tier1 === true
+  const feeLines = tier1 && Array.isArray(data.fee_lines)
+    && Math.round(data.fee_lines.reduce((s, l) => s + (Number(l.amount) || 0), 0) * 100) === Math.round(baseAmount * 100)
+    ? data.fee_lines : null
+  const amountRows = feeLines
+    ? feeLines.map(l => ({ label: l.label, value: `$${formatMoney(l.amount)}`, valueColor: 'var(--vfo-ink-2)' }))
+    : [{ label: tier1 ? 'Financial Collaborator Membership - first month' : lineLabel, value: `$${formatMoney(baseAmount)}`, valueColor: 'var(--vfo-ink-2)' }]
 
   return (
     <TokenShell>
@@ -92,7 +101,7 @@ export default function AdvisorPayPage() {
         <div style={{ ...iconCircleStyle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
           <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
         </div>
-        <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>{isDeposit ? 'VFO Advisor Onboarding Deposit' : 'VFO Advisor Onboarding Payment'}</h1>
+        <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>{isDeposit ? 'VFO Advisor Onboarding Deposit' : tier1 ? 'Financial Collaborator Membership Payment' : 'VFO Advisor Onboarding Payment'}</h1>
         <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: '12px' }}>Choose your preferred payment method</p>
         <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: depositPaid > 0 && !isDeposit ? '6px' : '32px', fontSize: '13px', color: 'var(--vfo-muted)' }}>
           {isDeposit ? 'Membership Deposit' : data.selected_plans} · {data.advisor_name}
@@ -113,7 +122,7 @@ export default function AdvisorPayPage() {
           badgeClass="green"
           amount={baseAmount}
           breakdown={[
-            { label: lineLabel, value: `$${formatMoney(baseAmount)}`, valueColor: 'var(--vfo-ink-2)' },
+            ...amountRows,
             { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
           ]}
           footer="Funds transfer directly from your bank account. Takes 3-5 business days to process."
@@ -131,11 +140,17 @@ export default function AdvisorPayPage() {
           badgeClass="blue"
           amount={cardTotal}
           breakdown={[
-            { label: lineLabel, value: `$${formatMoney(baseAmount)}`, valueColor: 'var(--vfo-ink-2)' },
+            ...amountRows,
             { label: 'Card Processing Fee (2.9% + $0.30)', value: `$${formatMoney(cardFee)}`, valueColor: 'var(--vfo-ink-2)' },
           ]}
           footer="Processes immediately. The processing fee covers card transaction costs."
         />
+
+        {tier1 && (
+          <p style={{ ...securityNoteStyle, marginTop: '16px' }}>
+            This is the first month. Payments then continue automatically each month with the same card or bank account, and the membership can be ended at any time with 30 days' notice.
+          </p>
+        )}
 
         <p style={securityNoteStyle}>
           Your payment details are handled securely by Stripe.<br />

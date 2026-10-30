@@ -29,6 +29,8 @@ const SECTIONS = [
   // is an explicit [pipeline, template_name] ref rather than a whole pipeline).
   { key: 'misc', label: 'Miscellaneous', items: [
     ['TEAM', 'new_model_sale'],
+    ['TEAM', 'new_vfo_associate_member'],
+    ['TEAM', 'new_financial_collaborator_member'],
     ['PAYMENTS', 'card_update'],
     ['LOGIN_SETUP', 'MANUAL_login_setup'],
     ['LOGIN_SETUP', 'password_reset'],

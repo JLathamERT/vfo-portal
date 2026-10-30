@@ -23,9 +23,11 @@ export const ENGAGEMENT = [
 ]
 
 // Member types that never belong in the overview (free / historic / survey /
-// team tiers).
+// team tiers). Financial Collaborator came out 2026-10-30 (portal licensing L6b,
+// decision 99: they pay monthly now) — the backend's public-member-directory.ts
+// list changed with it.
 const EXCLUDED_TYPES = new Set([
-  'VFO Reconciliation (Free)', 'FAC Historic', 'Financial Collaborator',
+  'VFO Reconciliation (Free)', 'FAC Historic',
   'Free Legacy TBM', 'Survey #1', 'Survey #2', 'Survey #3', 'Team Member',
 ])
 const ENGAGEMENT_LABELS = ENGAGEMENT.map(e => e.label)
