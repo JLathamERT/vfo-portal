@@ -21,6 +21,7 @@ Read-only schema mapping — column lists, types, defaults, FKs, and which actio
 | [documents.md](documents.md) | `agreement_templates`, `email_templates`, `document_numbers` | BoldSign agreement templates, automation email copy, sequential invoice/receipt numbers |
 | [notifications.md](notifications.md) | `notifications` | In-portal notification feed |
 | [faq.md](faq.md) | `faq_items` | Member Help button content — question + answer / Wistia video, admin-ordered (2026-09-14) |
+| [membership-fees.md](membership-fees.md) | `member_payment_plans`, `member_payment_schedule`, `membership_renewal_meetings`, `member_payment_plan_pauses`, `money_mapping_ledger` | Member membership plans + their payment rows, renewal meetings, pauses, and the Money Mapping balance ledger + `money_mapping_apply_to_row` (2026-10-30) |
 
 ## Conventions used in column tables
 

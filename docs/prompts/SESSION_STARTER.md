@@ -1,5 +1,5 @@
 <!-- CANONICAL COPY of the VFO session starter prompt. The owner pastes this file's
-     contents at the top of every AI chat. Edit here, then re-copy. Last updated: 2026-10-28 (phone layouts: check phone + desktop width, hand over the /phone-preview link; the worktree hook trap covers BOTH repos, #686). -->
+     contents at the top of every AI chat. Edit here, then re-copy. Last updated: 2026-10-31 (the 2b freshness check is re-run before EVERY deploy, mid-chat ones included, #702; 2026-10-28: phone layouts — check phone + desktop width, hand over the /phone-preview link; the worktree hook trap covers BOTH repos, #686). -->
 
 # VFO SESSION STARTER
 
@@ -145,7 +145,7 @@ git worktree add .claude/worktrees/<chat-branch> -b <chat-branch> main
 If the chat opened inside worktrees that already exist (the app sometimes creates them before the chat starts, cut from LOCAL main which may be stale), run in EACH worktree:
 git fetch origin && git rev-list --count HEAD..origin/main
 
-If either repo's count is not 0, STOP before any edits and sync: commit nothing yet, run `git merge origin/main` in that worktree, resolve conflicts, and only then proceed. NEVER edit, test against, or deploy from a worktree that is behind origin/main — a stale react worktree shows old UI in the dev server, and a stale edge worktree would DEPLOY REVERTED CODE over the live function.
+If either repo's count is not 0, STOP before any edits and sync: commit nothing yet, run `git merge origin/main` in that worktree, resolve conflicts, and only then proceed. NEVER edit, test against, or deploy from a worktree that is behind origin/main — a stale react worktree shows old UI in the dev server, and a stale edge worktree would DEPLOY REVERTED CODE over the live function. **This check is per DEPLOY, not per chat:** other PRs merge while you work, so run it again (same command, in the worktree being deployed, `cd` in the same invocation) immediately before EVERY `vfo-admin-api` deploy — mid-chat test deploys included — and merge origin/main first if it is not 0 (gotcha #702: v1070 rolled back two merged PRs on live that way).
 
 ### 3. Confirm worktree paths
 Run `git worktree list` in each repo and explicitly state the worktree path you will edit. Refer back to that path for every edit.
