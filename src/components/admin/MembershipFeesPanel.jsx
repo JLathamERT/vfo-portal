@@ -281,6 +281,11 @@ function SearchSelect({ options, value, onChange, placeholder }) {
 const label = { fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '5px' }
 const input = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', outline: 'none' }
 const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)' }
+// Money Mapping (2026-10-30): the yellow of the Money Mapping statement sheet.
+const MM_COLOR = '#ca8a04'
+const MM_TINT = 'rgba(234,179,8,0.10)'
+const MM_TINT_FULL = 'rgba(234,179,8,0.20)'
+const MM_BORDER = 'rgba(202,138,4,0.35)'
 const primaryBtn = (busy) => ({ padding: '8px 16px', borderRadius: '8px', border: 'none', background: busy ? '#c7d2e4' : `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)`, color: '#fff', fontWeight: 700, fontSize: '13px', cursor: busy ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' })
 const ghostBtn = { padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink-2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }
 const dangerBtn = { padding: '8px 16px', borderRadius: '8px', border: '1px solid #f3c0c0', background: 'var(--vfo-card)', color: '#b91c1c', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }
@@ -476,7 +481,10 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
   const activeYear = years.length ? years[yearIdx === -1 ? years.length - 1 : yearIdx] : null
   const sched = activeYear ? activeYear.rows : []
   const currentRows = years.length ? years[years.length - 1].rows : []
-  const payable = currentRows.filter(r => Number(r.amount_due) > 0 || (plan.paid_with_gc && r.kind === 'membership'))
+  // A row's face value: amount_due is only what the card / bank pays once a Money
+  // Mapping balance has paid part of it (mm_applied, 2026-10-30).
+  const faceOf = r => Number(r.amount_due || 0) + Number(r.mm_applied || 0)
+  const payable = currentRows.filter(r => faceOf(r) > 0 || (plan.paid_with_gc && r.kind === 'membership'))
   const paidCount = payable.filter(r => r.status === 'paid').length
   const missedCount = currentRows.filter(r => r.status === 'missed' || r.status === 'declined').length
   const perPull = Number(plan.per_pull_amount) || 0
@@ -519,6 +527,12 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
   const pausedNow = allSched.some(r => r.kind === 'pause' && String(r.due_date).slice(0, 10) >= todayIso())
   const pauseMonthsNum = /^\d+$/.test(String(pauseMonths).trim()) ? Number(String(pauseMonths).trim()) : NaN
   const pauseMonthsValid = Number.isInteger(pauseMonthsNum) && pauseMonthsNum >= 1 && pauseMonthsNum <= 12
+  // Money Mapping (2026-10-30): pay each payment from the member's Money Mapping
+  // balance first. Not offered on old-system, Growth Credit or month-to-month plans
+  // (the server refuses them too).
+  const mmEligible = !tracking && !gc && !tier1 && !closed
+  const mmOn = !!plan.pay_with_mm
+  const mmBalance = Number(plan.mm_balance) || 0
 
   // Renewal meetings (newest first from the backend). One open request at most.
   const meetings = plan.renewal_meetings || []
@@ -720,6 +734,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
             {tracking && <StatusPill label="Old system" color="#6b7280" />}
             {gc && <StatusPill label="Growth Credits" color="#7c3aed" />}
             {tier1 && <StatusPill label="Month to month" color="#0d9488" />}
+            {mmOn && <StatusPill label="Money Mapping" color={MM_COLOR} />}
             {endingOn && <StatusPill label={`Ends ${fmtDate(endingOn)}`} color="#e06717" />}
             {openMeeting && <StatusPill label="Meeting requested" color="#e06717" />}
             {m.suspended && <StatusPill label="Suspended" color="#ef4444" />}
@@ -740,6 +755,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
             {payerNumber ? ` · Paid by ${payerName ? `${payerName} (${payerNumber})` : payerNumber}, connected advisor` : ''}
             {Number(plan.credit_note) > 0 ? ` · Credit note ${money(plan.credit_note)}` : ''}
             {plan.payment_method_type ? ` · ${plan.payment_method_type === 'ach' ? 'ACH' : 'Card'}${plan.acct_last4 ? ` ••${plan.acct_last4}` : ''}` : ''}
+            {mmEligible && (mmOn || mmBalance > 0) ? ` · Money Mapping balance ${money(mmBalance)}` : ''}
             {plan.next_year_amount ? ` · Next year ${money(plan.next_year_amount)}${Number(plan.next_year_credit_note) > 0 ? ` − ${money(plan.next_year_credit_note)} credit` : ''}${plan.next_year_member_type ? ` · ${plan.next_year_member_type}` : ''}` : ''}
             {plan.sandbox ? ' · Sandbox' : ''}
             {!plan.auto_renew && !closed && !tier1 ? ' · Auto-renew OFF' : ''}
@@ -806,15 +822,20 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                   )
                 }
                 const sMeta = SCHED_STATUS[row.status] || { label: row.status, color: 'var(--vfo-muted)' }
-                const zero = Number(row.amount_due) === 0
-                const rowBg = row.status === 'paid' ? 'rgba(22,163,74,0.07)'
+                const mmPart = Number(row.mm_applied) || 0
+                const zero = faceOf(row) === 0
+                // Paid in full by Money Mapping = the stronger yellow, paid in part = the
+                // lighter one; a missed row stays red whatever Money Mapping already paid.
+                const rowBg = row.status === 'paid' && row.payment_method_type === 'money_mapping' ? MM_TINT_FULL
+                  : row.status === 'paid' && mmPart > 0 ? MM_TINT
+                  : row.status === 'paid' ? 'rgba(22,163,74,0.07)'
                   : (row.status === 'missed' || row.status === 'declined') ? 'rgba(239,68,68,0.07)' : 'transparent'
                 return (
                   <div key={row.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: rowBg, borderRadius: '6px' }}>
                     <div style={{ fontWeight: 600 }}>{row.period_label}</div>
                     <div>{fmtDate(row.due_date)}</div>
                     <div style={{ fontWeight: 600, color: zero && !gc ? 'var(--vfo-faint)' : 'var(--vfo-ink)' }}>
-                      {gc && row.kind === 'membership' ? `${gcCredits} GC` : money(row.amount_due)}
+                      {gc && row.kind === 'membership' ? `${gcCredits} GC` : money(faceOf(row))}
                       {Number(row.vfo_portal_licence_amount) > 0 && (
                         <div style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--vfo-faint)' }}>
                           {Number(row.amount_due) === Number(row.vfo_portal_licence_amount) ? 'VFO Portal licence' : `incl. ${money(row.vfo_portal_licence_amount)} VFO Portal`}
@@ -847,13 +868,18 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                             </span>
                           ) : `${row.paid_at ? `${fmtStamp(row.paid_at)} · ` : ''}Old system`
                         ) : '—'
+                      ) : row.status === 'paid' && row.payment_method_type === 'money_mapping' ? (
+                        `${row.paid_at ? `${fmtStamp(row.paid_at)} · ` : ''}Money Mapping balance`
                       ) : row.status === 'paid' || row.status === 'processing' ? (
-                        <>
-                          {row.paid_on_onboarding ? 'Paid at onboarding · ' : ''}
-                          {row.paid_at ? `${fmtStamp(row.paid_at)} · ` : ''}
-                          {row.payment_method_type ? `${row.payment_method_type}${row.acct_last4 ? ` ••${row.acct_last4}` : ''} · ` : ''}
-                          {row.stripe_payment_intent_id || ''}
-                        </>
+                        // No Stripe payment id here (Jake, 2026-10-31) — it wrapped the column; it stays in Stripe.
+                        [
+                          row.paid_on_onboarding ? 'Paid at onboarding' : '',
+                          row.paid_at ? fmtStamp(row.paid_at) : '',
+                          mmPart > 0 ? `Money Mapping ${money(mmPart)} + ${row.payment_method_type || 'card / bank'} ${money(row.amount_due)}` : '',
+                          row.payment_method_type && !(mmPart > 0) ? `${row.payment_method_type}${row.acct_last4 ? ` ••${row.acct_last4}` : ''}` : '',
+                        ].filter(Boolean).join(' · ') || '—'
+                      ) : mmPart > 0 ? (
+                        `Money Mapping paid ${money(mmPart)} · ${money(row.amount_due)} still due${row.failure_reason ? ` · ${row.failure_reason}` : ''}`
                       ) : (row.failure_reason || '—')}
                     </div>
                   </div>
@@ -863,7 +889,12 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                 <div>Totals</div>
                 <div />
                 <div>
-                  {money(shownSched.reduce((s, r) => s + Number(r.amount_due || 0), 0))}
+                  {money(shownSched.reduce((s, r) => s + faceOf(r), 0))}
+                  {shownSched.some(r => Number(r.mm_applied) > 0) && (
+                    <div style={{ fontSize: '10.5px', fontWeight: 600, color: MM_COLOR }}>
+                      {money(shownSched.reduce((s, r) => s + Number(r.mm_applied || 0), 0))} Money Mapping
+                    </div>
+                  )}
                   {tier1 && !licenceOnly && (
                     <div style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--vfo-faint)' }}>
                       incl. {money(shownSched.reduce((s, r) => s + Number(r.vfo_portal_licence_amount || 0), 0))} VFO Portal
@@ -871,7 +902,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                   )}
                 </div>
                 <div>{money(shownSched.reduce((s, r) => s + Number(r.credit_applied || 0), 0))}</div>
-                <div style={{ color: 'var(--vfo-success-text-2)' }}>{money(shownSched.filter(r => r.status === 'paid').reduce((s, r) => s + Number(r.amount_due || 0), 0))} paid</div>
+                <div style={{ color: 'var(--vfo-success-text-2)' }}>{money(shownSched.filter(r => r.status === 'paid').reduce((s, r) => s + faceOf(r), 0))} paid</div>
                 <div />
               </div>}
               {tier1 && !closed && (
@@ -880,6 +911,30 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                 </div>
               )}
             </>
+          )}
+
+          {mmEligible && (mmOn || mmBalance > 0) && (
+            <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: '10px', background: MM_TINT, border: `1px solid ${MM_BORDER}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '240px' }}>
+                  <div style={{ ...label, color: MM_COLOR, marginBottom: '3px' }}>Money Mapping</div>
+                  <div style={{ fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
+                    Balance <strong>{money(mmBalance)}</strong>
+                    {' · '}{mmOn
+                      ? 'Each payment is taken from this balance first; the card / bank pays what it does not cover.'
+                      : 'Payments are charged to the card / bank — the balance is not used.'}
+                  </div>
+                </div>
+                {isSuperadmin && (
+                  <button type="button" disabled={busy} style={mmOn ? ghostBtn : { ...ghostBtn, border: `1px solid ${MM_COLOR}`, color: MM_COLOR }}
+                    onClick={() => run('membership_mm_set', { plan_id: plan.id, on: !mmOn },
+                      mmOn ? 'Stop paying this membership from Money Mapping? From the next payment the card / bank pays the full amount.' : null)
+                      .then(r => r && onChanged?.())}>
+                    {busy ? 'Working…' : mmOn ? 'Stop paying from Money Mapping' : 'Pay from Money Mapping first'}
+                  </button>
+                )}
+              </div>
+            </div>
           )}
 
           {showMeetings && (
@@ -1189,6 +1244,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
   const [annualAmount, setAnnualAmount] = useState(editPlan ? String(editPlan.annual_amount) : '')
   const [creditNote, setCreditNote] = useState(editPlan && Number(editPlan.credit_note) > 0 ? String(editPlan.credit_note) : '')
   const [creditMemo, setCreditMemo] = useState(editPlan?.credit_note_memo || '')
+  const [payWithMm, setPayWithMm] = useState(!!editPlan?.pay_with_mm)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
   // A Corporate Member's brand-new membership can be paid in Growth Credits
@@ -1431,14 +1487,18 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
         renewal_date: xfer ? xferRenewal : undefined,
         prior_payments_made: xfer && frequency === 'monthly' ? Number(xferPrior) : undefined,
         charge_day: xfer && frequency === 'monthly' ? Number(xferDay) : undefined,
+        pay_with_mm: payWithMm,
       })
       if (!res?.ok) { setMsg({ tone: 'error', text: res?.error || 'Could not save the plan.' }); return }
       if (editPlan) { onSaved?.({ tone: 'success', text: 'Plan updated.' }); return }
       // Create: the plan now exists, so email failure is reported but never
       // reverts the save.
       try {
-        const link = await callApi('membership_send_setup_link', { plan_id: res.plan_id })
-        if (link?.email_skipped) onSaved?.({ tone: 'amber', text: `Plan created — link ready, but the email template isn't seeded yet — send it manually: ${link.setup_link}` })
+        // Paying from Money Mapping: when the balance covers the first payment the
+        // server starts the plan now instead of emailing a setup link.
+        const link = await callApi('membership_send_setup_link', { plan_id: res.plan_id, start_on_mm: payWithMm || undefined })
+        if (link?.started_on_mm) onSaved?.({ tone: link.warning ? 'amber' : 'success', text: link.warning || `Plan started — ${money(link.applied)} taken from Money Mapping for the first payment. The receipt asks ${selected?.first_name || 'them'} to set up a card or bank account.` })
+        else if (link?.email_skipped) onSaved?.({ tone: 'amber', text: `Plan created — link ready, but the email template isn't seeded yet — send it manually: ${link.setup_link}` })
         else if (link?.ok) onSaved?.({ tone: 'success', text: `Plan created — setup email drafted for ${link.to_email}.` })
         else onSaved?.({ tone: 'amber', text: `Plan created, but the setup email failed: ${link?.error || 'unknown error'}. Use "Send setup link" on their plan card to retry.` })
       } catch (e) {
@@ -1569,6 +1629,16 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
             {!useGc && <button type="button" style={chip(frequency === 'monthly')} onClick={() => setFrequency('monthly')}>Monthly</button>}
             <button type="button" style={chip(frequency === 'annual')} onClick={() => setFrequency('annual')}>Annual</button>
           </div>
+          {!useGc && !isTracking && (
+            <div style={{ marginTop: '16px' }}>
+              <div style={label}>Pay from Money Mapping first?</div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button type="button" style={chip(!payWithMm)} onClick={() => setPayWithMm(false)}>No</button>
+                <button type="button" style={chip(payWithMm)} onClick={() => setPayWithMm(true)}>Yes</button>
+              </div>
+              <div style={{ marginTop: '5px', fontSize: '12px', color: 'var(--vfo-ink-3)' }}>Each payment comes from their Money Mapping balance first; the card / bank pays the rest. If the balance covers the first payment, the plan starts as soon as you create it.</div>
+            </div>
+          )}
         </div>
         {mode === 'new' && !useGc && (
           <div>

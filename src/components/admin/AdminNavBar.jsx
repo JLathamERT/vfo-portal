@@ -222,6 +222,7 @@ const accountingSubmenus = [
       { key: 'accountant_onboarding_fees', label: 'Accountant Onboarding' },
       { key: 'accountant_membership_fees', label: 'Accountant Membership Fees' },
       { key: 'gc_accounting', label: 'Growth Credits' },
+      { key: 'mm_accounting', label: 'Money Mapping' },
     ],
   },
   {

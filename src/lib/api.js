@@ -41,6 +41,11 @@ const LONG_TIMEOUT_ACTIONS = {
   // load_* name, so it is never auto-retried.
   tax_intake_pdf: 45000,
   client_progress_tax_intake_pdf: 45000,
+  // A new plan paying from Money Mapping starts on the create click (start_on_mm):
+  // activates the plan, pays today's row from the balance and moves the money to
+  // ERT before answering (the receipt renders in the background). A WRITE — never
+  // auto-retried (a second call finds the plan already started).
+  membership_send_setup_link: 60000,
 }
 // tax_direct_* are the member-callable twins of automation_TAX_* (unit 2 phase
 // 5) and chain the same external services, so they share the slow-write tier.
