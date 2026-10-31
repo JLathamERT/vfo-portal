@@ -47,6 +47,7 @@ import HeldPayoutsPanel from '../components/admin/HeldPayoutsPanel'
 import SpecialistRevenueAutomationPanel from '../components/admin/SpecialistRevenueAutomationPanel'
 import GrowthCreditsPanel from '../components/admin/GrowthCreditsPanel'
 import GrowthCreditsAccountingPanel from '../components/admin/GrowthCreditsAccountingPanel'
+import MoneyMappingAccountingPanel from '../components/admin/MoneyMappingAccountingPanel'
 import ManualConnectPaymentPanel from '../components/admin/ManualConnectPaymentPanel'
 import NotificationsPage from '../components/admin/NotificationsPage'
 import GrowthCreditsRedemptionsPage from '../components/admin/GrowthCreditsRedemptionsPage'
@@ -69,7 +70,7 @@ const ACCOUNTING_SECTIONS = [
   'pip_revenue', 'pip_reconciliation', 'pip_held_payouts',
   'advisor_onboarding_fees', 'advisor_membership_fees',
   'accountant_onboarding_fees', 'accountant_membership_fees',
-  'gc_accounting',
+  'gc_accounting', 'mm_accounting',
 ]
 
 export default function AdminPortal() {
@@ -739,6 +740,9 @@ export default function AdminPortal() {
           )}
           {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'gc_accounting' && (
             <GrowthCreditsAccountingPanel />
+          )}
+          {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'mm_accounting' && (
+            <MoneyMappingAccountingPanel />
           )}
           {activeTab === 'accounting' && (!canSeeTab('accounting') || !ACCOUNTING_SECTIONS.includes(accountingSection)) && (
             <div style={{ maxWidth: '620px', margin: '40px auto', padding: '22px 24px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', color: 'var(--vfo-muted)', fontSize: '13.5px', fontFamily: 'Inter, sans-serif' }}>

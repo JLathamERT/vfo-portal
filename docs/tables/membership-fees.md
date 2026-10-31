@@ -6,6 +6,9 @@
 > **All FOUR tables RLS deny-all (anon probe `*/0`, re-verified on both new tables at creation).**
 > All access via the service-role edge function. Flow:
 > [flows/membership-fees.md](../flows/membership-fees.md).
+> **A FIFTH table, `money_mapping_ledger`, added 2026-10-30** (`20261030170000_money_mapping_ledger.sql`,
+> deny-all in the same migration, anon probe `*/0`) — documented at the bottom of this file;
+> flow [flows/money-mapping.md](../flows/money-mapping.md).
 
 ## member_payment_plans
 
@@ -47,6 +50,7 @@ when checking, so terminate → create-new works).
 | `paid_by_member_number` | text, nullable. Added 2026-10-30 (`20261030150000`). The connected advisor who pays a connected VFO Associate's $25 (emails To them, the Associate Cc'd); NULL = the member pays. Copied from `accountant_onboarding.licence_paid_by` + `cc_advisor_member_number` at Create; never written by a public page |
 | `ending_on` | date, nullable. Added 2026-10-30 (`20261030150000`). Written ONCE by End membership (today ET + 30 days, also `auto_renew=false`): rows due after it are `canceled`; sweep pass 3b terminates the plan once it has passed |
 | `onboarding_ref` | text, nullable, partial UNIQUE index `member_payment_plans_onboarding_ref_key`. Added 2026-10-30 (`20261030150000`). `<pipeline>:<onboarding id>` the plan was made from — Create's idempotency key |
+| `pay_with_mm` | boolean, default false, **nullable on purpose** (a multi-row insert fills a missing key with NULL, #215 — every reader treats NULL as false). Added 2026-10-30 (`20261030170000`). **Pay each due row from the member's Money Mapping balance first**; the card / bank pays the rest. Written by `membership_plan_save` only when the form sends it (the create form's *Pay from Money Mapping first?* No / Yes) and by `membership_mm_set` (the plan card's toggle). Refused on `tracking_only`, `paid_with_gc` and `tier1_monthly` plans (`mmRefusalFor`). A `pay_with_mm` plan may be `active` with NO `default_payment_method_id` (started on its balance at creation) — the sweep, the reminder ladder (`AWAITING_METHOD`) and the setup-link expiry gate all allow for it *(v: 2026-10-31)* |
 
 ## member_payment_schedule
 
@@ -64,7 +68,8 @@ sweep index `(status, due_date)`.
 | `kind` | `'membership'` \| `'termination_fee'` \| **`'pause'`** (added 2026-08-04, `20260804140000` widened the inline CHECK — constraint name `member_payment_schedule_kind_check`, verified against the live catalog). **`'membership'` is the ONLY kind any money consumer reads.** A `'pause'` row is a zero-dollar MARKER (`status='waived'`, `amount_due` 0) standing in for a month skipped during a membership pause; it exists purely so the ledger shows "Paused" months between the real payments. It is invisible to the charge pass, the renewal guard, the $0-waive pass, the invoice/receipt engine, `all-payments-load`, the webhooks, terminate/cancel voids and `send-reminder` **only because every one of them filters `kind='membership'`** — so **ANY NEW READER of this table must filter `kind` or consciously decide what `'pause'` means to it** (gotcha **#332**). It also cannot collide with a real charge on the same date, because the duplicate-charge unique index is PARTIAL on `kind='membership'` (#315/#239) |
 | `status` | `scheduled` → `processing`/`paid` \| `missed`/`declined` (arrears — swept into the next combined charge) \| `waived` \| `canceled` |
 | `stripe_payment_intent_id` | a combined catch-up charge stamps the SAME PI on every row it covered |
-| `paid_at` / `payment_method_type` / `acct_last4` / `failure_reason` | |
+| `paid_at` / `payment_method_type` / `acct_last4` / `failure_reason` | `payment_method_type` adds **`'money_mapping'`** (2026-10-30): the row was paid IN FULL from the Money Mapping balance — no PaymentIntent, `all_payments_load` skips it (no money came in), the panel tints it the stronger yellow |
+| `mm_applied` | numeric(12,2), default 0, nullable (NULL = 0). Added 2026-10-30 (`20261030170000`). **The part of this row paid from the Money Mapping balance.** `amount_due` is then only what is left for the card / bank, so the row's FACE value is `amount_due + mm_applied` — `monthsCoveredByRow`, the receipt lines / totals / next amount and the panel all read the face value. Only writer: `money_mapping_apply_to_row` *(v: 2026-10-31)* |
 | `year_start` / `year_end` | the membership year this row belongs to, stamped at BOTH insert sites (activation + renewal pass). Rows sharing a `year_start` are one year; the earliest `due_date` in the group is the opener that earns an INVOICE. Needed because the renewal pass advances `plan.renewal_date` but leaves `start_date` alone (gotcha #280) |
 | `invoice_number` / `receipt_number` | `INV-<member#>-NNNN` / `REC-<member#>-NNNN`, allocated via `document_numbers.member_payment_plan_id`. The invoice number lives on the year's opening row only |
 | `invoice_vault_path` / `receipt_vault_path` | object paths in the `member-ert-docs` ERT vault bucket (NOT Google Drive) |
@@ -184,3 +189,39 @@ one. Gotcha **#332**.
   the Checkout SESSION carries `payment_kind=membership_arrears_payment` + `row_ids`, the PI carries
   `payment_kind=membership_pull`; `utils/membership-arrears-payment.ts` flips the rows `paid`/`processing`
   with the PI id and stamps `card_processing_fee` — the same columns a sweep pull writes.
+
+## money_mapping_ledger
+
+> **NEW 2026-10-30** (`20261030170000_money_mapping_ledger.sql`). RLS deny-all in the SAME
+> migration (`"Deny all access" … using (false)`), anon probe `Content-Range: */0`, advisor GREEN at
+> the exact baseline. Read / written only by the service-role edge function. Flow:
+> [flows/money-mapping.md](../flows/money-mapping.md). *(v: 2026-10-31)*
+
+A member's **Money Mapping balance = `sum(amount)` of their rows.** Three row types:
+
+| Column | Notes |
+|---|---|
+| `id` | bigserial PK |
+| `member_number` | text NOT NULL. Index `money_mapping_ledger_member_idx (member_number, created_at)` |
+| `entry_type` | CHECK `earned` \| `adjustment` \| `membership`. **earned** = one settled Money Mapping revenue-share leg (MAP 1 / Tax / PIP / SpecRev), written by `syncMoneyMappingEarnings` (`utils/money-mapping.ts`); **adjustment** = an admin's add / deduct on Accounting → Members → Money Mapping (`money_mapping_adjust`), with a reason; **membership** = money spent on a membership row (negative), written ONLY by `money_mapping_apply_to_row` |
+| `amount` | numeric(12,2) NOT NULL, CHECK `<> 0`. Positive = in, negative = spent / deducted. Frozen at write (an earned leg is never re-priced) |
+| `description` | earned: `MAP 1 - <client> - payment i of n`, `Tax Planning - <client> - Retainer`, `PIP Meetings - <client>`, `VFO Specialist Revenue - request #N`; adjustment: the reason (a `set_total` one reads `Balance set to $X - <reason>`); membership: `ERT Membership - <period_label>` |
+| `source_key` | text **UNIQUE** — the write-once key. earned: `map1:<pipeline_map1.id>:p<n>` / `tax:<plan>:<retainer\|implementation>` / `pip:<track>` / `specrev:<line>`; membership: `membership-row-<row>-<cents of mm_applied before>`; adjustment: NULL |
+| `source_pipeline` / `client_id` / `earned_at` | earned rows: `MAP 1` / `Tax` / `PIP` / `Specialist Revenue`, the client (NULL for SpecRev), when the leg settled |
+| `plan_id` / `schedule_row_id` | membership rows: the plan + `member_payment_schedule` row paid |
+| `sandbox` | membership rows: the plan's `sandbox` (picks the Stripe key + ERT account for the transfer) |
+| `created_by` | the admin's NAME (`gcActorFor`, never an email — #577), `System` for earned rows, the actor passed to the RPC (`Membership sweep` / the admin) for membership rows |
+| `created_at` | default now() |
+| `ert_transfer_status` / `ert_transfer_id` / `ert_transfer_sent_at` / `ert_transfer_failed_at` | **membership rows only** — the VFO Services → ERT transfer of the money spent (sweep pass 3d, `utils/money-mapping-transfer.ts` is the only writer). Bare text: NULL (not tried) \| `failed` (not configured / ERT cannot receive / Stripe 4xx — belled `MONEY_MAPPING_ert_transfer_failed`, retried nightly, idempotency key rotated off `_failed_at`) \| `sent` (terminal). Index `money_mapping_ledger_transfer_idx (entry_type, ert_transfer_status)` |
+
+**`money_mapping_apply_to_row(p_row_id bigint, p_actor text default 'Membership sweep')`** returns
+`(applied, amount_due_after, status_after, balance_after)`. plpgsql, **SECURITY INVOKER**,
+`search_path = public, pg_temp`; EXECUTE revoked from `public` / `anon` / `authenticated`, granted
+to `service_role`. One transaction: locks the row (`for update`) and the member
+(`pg_advisory_xact_lock(hashtext('money_mapping:' || member_number))`), refuses anything but a
+`kind='membership'` row in `scheduled` / `missed` / `declined` with `amount_due > 0` on a
+`pay_with_mm` plan, spends `least(max(balance, 0), amount_due)` (so a balance never goes below 0),
+inserts the `membership` ledger row and writes the schedule row: `amount_due` lowered,
+`mm_applied` raised, and when nothing is left `status='paid'`, `paid_at=now()`,
+`payment_method_type='money_mapping'`, `failure_reason=NULL`. Called through
+`applyMoneyMappingToRow` (`utils/money-mapping.ts`), which returns `null` on a database error.

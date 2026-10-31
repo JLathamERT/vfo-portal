@@ -37,7 +37,7 @@ docs/
 │   ├── README.md                     (table index by group)
 │   ├── auth.md                       (admin_sessions, allowed_admins, member_logins)
 │   ├── pipeline.md                   (pipeline_map1 — 143 columns)
-│   ├── membership-fees.md            (member_payment_plans/schedule/pauses + renewal meetings)
+│   ├── membership-fees.md            (member_payment_plans/schedule/pauses + renewal meetings + money_mapping_ledger)
 │   ├── members.md                    (members + plugin settings + history + member_contacts)
 │   ├── clients.md                    (clients + contacts + notes + progress)
 │   ├── ciq.md                        (client_ciqs + answers + priorities + snapshots)
@@ -73,6 +73,7 @@ docs/
 │   ├── partnership-fast-track.md     (PFT accountant engagement track + meeting emails + discovery form + onboarding handoff)
 │   ├── advisor-accountant-onboarding.md (Stage 1 cascade + preliminary-meeting reminder ladder + Membership Deposit + balance charge)
 │   ├── membership-fees.md            (member annual/monthly membership fee billing + renewal / pause / cancel)
+│   ├── money-mapping.md              (Money Mapping balances: earned legs → ledger → paying membership → VFO Services → ERT, 2026-10-30)
 │   ├── payment-method-change.md      (Phase D admin-initiated card/bank change — the only mode:'setup' flow)
 │   ├── notifications.md              (in-portal bell feed)
 │   └── additional-contacts.md        (per-client email Cc + greeting — replaces the old per-form extra_cc)
@@ -114,6 +115,7 @@ docs/
 | Client pays first quarterly payment | [flows/contract-and-payment.md](flows/contract-and-payment.md) (Steps 9-12) → [flows/stripe-webhook.md](flows/stripe-webhook.md) → [integrations/stripe.md](integrations/stripe.md) |
 | Admin changes a client/member/specialist's card or bank on file | [flows/payment-method-change.md](flows/payment-method-change.md) → [integrations/stripe.md](integrations/stripe.md) |
 | Member buys credits | [flows/gift-credits.md](flows/gift-credits.md) → [flows/stripe-webhook.md](flows/stripe-webhook.md#sub-branch-a1--gc-credit-purchase) |
+| A Money Mapping member's balance — what they earned, an admin adjustment, paying their membership from it, the move to ERT | [flows/money-mapping.md](flows/money-mapping.md) → [flows/membership-fees.md](flows/membership-fees.md) → [tables/membership-fees.md](tables/membership-fees.md) |
 | Admin logs in | [architecture/04-auth-and-sessions.md](architecture/04-auth-and-sessions.md) |
 | Member fills out a CIQ | [flows/ciq.md](flows/ciq.md) → [tables/ciq.md](tables/ciq.md) |
 | Member clicks the Help (?) button / admin edits the FAQs | [flows/member-help-faq.md](flows/member-help-faq.md) → [tables/faq.md](tables/faq.md) |

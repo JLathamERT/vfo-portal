@@ -74,7 +74,7 @@
 > | Growth Credits | 2 | ✗ no section |
 > | Growth Plan | 4 | 2 |
 > | MAP 1 | **18** | **15** |
-> | **Membership Fees** | **7** | ✗ no section |
+> | **Membership Fees** | **8** *(7 re-derived live 2026-10-30 + `MONEY_MAPPING_ert_transfer_failed` from migration `20261030170000`, 2026-10-31 — not re-counted live)* | ✗ no section |
 > | Partnership Fast Track | 10 | 8 |
 > | Payment Continuation | 2 | 2 ✓ |
 > | Payment Failure Alerts | **20** | **19** |
@@ -146,6 +146,8 @@
 > INV/REC numbers cannot be reserved reuses `FAILURE_ach_first_payment` (Jake). Flow: [flows/ciq-licence.md](flows/ciq-licence.md).
 >
 > **The 2026-10-30 addition (portal licensing L6b), no section below:** `Membership Fees` re-derived live 2026-10-30 (the row above) — new **`TIER1_licence_transfer_failed`** (sort 23, `default_recipients ["jlatham@elitert.com"]`, action-required, no delay; migration `20261030160000`), the same shape as `SPECREV_ert_transfer_failed`: a VFO Associate / Financial Collaborator month's $25 VFO Portal licence could not be transferred ERT → VFO Services (Stripe refused, the ERT key missing, or VFO Services' `transfers` capability inactive). ONE title for the whole feature (*VFO Portal licence transfer to VFO Services FAILED*), linking to `/admin?tab=accounting`; the membership sweep (pass 3c) clears it after a run that sends and fails none. A missing `VFOS_CONNECT_ACCOUNT_ID[_SANDBOX]` is NOT a failure (`awaiting_link`, no bell). Flow: [flows/membership-fees.md](flows/membership-fees.md).
+>
+> **The 2026-10-30 / 31 addition (Money Mapping), no section below:** new **`MONEY_MAPPING_ert_transfer_failed`** (`Membership Fees`, sort 24, `default_recipients ["jlatham@elitert.com"]`, action-required, no delay, `kind` bell; migration `20261030170000`), the same shape as `TIER1_licence_transfer_failed`: a membership payment paid from a member's Money Mapping balance could not be moved VFO Services → ERT (Stripe refused, the key or `ERT_CONNECT_ACCOUNT_ID[_SANDBOX]` missing, or ERT's `transfers` capability inactive). ONE title (*Money Mapping transfer to ERT FAILED*), link `/admin?tab=accounting`; sweep pass 3d clears it after a run that sends some and fails none. A database error applying the balance in sweep pass 3 reuses **`MEMBERSHIP_charge_failed`** (title *Money Mapping membership payment SKIPPED — <member> (plan N)*). **Emails (pipeline `MEMBER_MEMBERSHIP_FEES`, migration `20261031120000`):** template **357** `MEMBERSHIP_setup_link|money_mapping` (**Send**, To RECIPIENT, Cc Tracy + Tray @vfo-services.com — a new plan's setup link while the member has a balance; same subject as 190) and **358** `MEMBERSHIP_payment_failed|no_method` (**Draft**, To RECIPIENT, Cc tvaldes@, Bcc platham@ + aanderson@ — a Money Mapping plan with no card / bank on file; `[MM Sentence]` built in code); receipts 207 / 353 / 354 subjects end *Payment Receipt - [Member Name]* / *[Advisor Name]* (no receipt number), PIP 60 drops `[Receipt Number]`, 207 and MAP 1 12 (`CONTRACT_invoicereceipt_email|failed`) end at "Best regards,". **Every membership email for Test Member 59524 or a sandbox pipeline is a Draft whatever its Send mode** (`draftOnly`, 2026-10-31). Flows: [flows/money-mapping.md](flows/money-mapping.md), [flows/membership-fees.md](flows/membership-fees.md) *(v: 2026-10-31)*.
 
 ### MAP 1 (15)
 

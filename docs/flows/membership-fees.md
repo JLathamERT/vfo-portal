@@ -835,12 +835,119 @@ Made ONLY by Create on a Tier 1 onboarding ([advisor-accountant-onboarding.md](a
 - **Pass 3c (new):** the $25 transfer backstop (below).
 - **End membership (30 days' notice)** — `membership_end_with_notice` (AUTH + `TAB_ACTIONS.accounting`, `actions/membership/end-with-notice.ts`): claims `ending_on` = today (ET) + 30 days and `auto_renew=false` first (two clicks cannot both run), cancels every scheduled row due after it (rows due on or before are still collected), drafts `MEMBERSHIP_end_of_membership|tier1` with the final-payment line. Refuses a plan that is not `tier1_monthly`, not active, or already ending.
 - **Refused** with `TIER1_PLAN_REFUSAL`: `membership_pause`, `membership_terminate`, `membership_next_year_save`, and `membership_plan_cancel`'s `auto_renew_off` / `auto_renew_on` (`cancel_now` still allowed).
-- Members made from a `TEST_ONBOARDING_EMAILS` onboarding are forced to sandbox in the sweep beside `isTestSandboxMember` (`loadTier1TestMemberNumbers`).
+- ~~Members made from a `TEST_ONBOARDING_EMAILS` onboarding are forced to sandbox in the sweep~~ — **removed 2026-10-30 (c)** with the test-email rule: the sweep's test-plan check is Test Member 59524 only (`isTestSandboxMember`) *(v: 2026-10-31)*.
 - **Panel** (`MembershipFeesPanel.jsx`): a teal `#0d9488` pill, $/month, the next payment, only past months + the next one, *Bills monthly on the Nth until …*, the End membership button; Pause / Terminate / auto-renew / next year hidden.
 
 ### The $25 VFO Portal licence is transferred to VFO Services (decision 106)
 
 After every PAID row with `vfo_portal_licence_amount > 0` on a `tier1_monthly` plan on ERT, `sendTier1LicenceTransfers` (`utils/tier1-licence-transfer.ts`) moves that amount from ERT's balance to **VFO Services, a connected account of ERT** — the SpecRev ERT leg in reverse ([../integrations/stripe.md](../integrations/stripe.md)). Callers: `createTier1MembershipPlan` (month 1), the membership `payment_intent.succeeded` flip in `router/webhooks.ts` (only the rows that event flipped — an ACH pull settling), `settleMembershipArrearsPayment` (`utils/membership-arrears-payment.ts`), and **sweep pass 3c** (the backstop for every path; a card pull paid by the sweep is moved there in the same run; money, so not business-hours gated). `vfos_licence_transfer_status`: NULL → `awaiting_link` (no `VFOS_CONNECT_ACCOUNT_ID[_SANDBOX]` for the mode — retried, no bell) / `failed` (bell `TIER1_licence_transfer_failed` to Jake, action-required, retried nightly) / `sent` (terminal, `_id` + `_sent_at`). The bell clears on a sweep run that sends and fails none. No email, ever. **A refund of a Tier 1 month does NOT reverse its transfer** — reverse it by hand on ERT (`transfer.reversed` is listened to only on VFO Services, so an ERT-side reversal goes unnoticed). Chain detail: [../architecture/07-server-chains.md](../architecture/07-server-chains.md) *Tier 1 VFO Portal licence leg*.
+
+## Paying a membership from Money Mapping *(2026-10-30 / 31, v1067 → v1075, branch `claude/money-mapping-system-517bd1`)*
+
+The balance itself (earnings, admin adjustments, the VFO Services → ERT move) is
+[money-mapping.md](money-mapping.md); this section is what changes for a plan with
+`member_payment_plans.pay_with_mm = true`. **No feature switch — the switch lives on the plan, and
+anyone with a balance may use it** (Jake). Refused (`mmRefusalFor`, `utils/money-mapping.ts`) on
+`tracking_only`, `paid_with_gc` and `tier1_monthly` plans; the panel hides it there too. *(v: 2026-10-31)*
+
+**Turning it on.**
+- **Create** (Set Up Membership → Brand new): *Pay from Money Mapping first?* No / Yes chips under
+  Payment frequency (not shown for GC or Track-on-old-system). `membership_plan_save` writes
+  `pay_with_mm` only when the body carries a boolean, so an older caller can never switch it off.
+- **A live plan:** the plan card's yellow *Money Mapping* box (shown when the plan is on OR the
+  member has a balance; `membership_plans_load` adds `mm_balance` per plan) — *Pay from Money Mapping
+  first* / *Stop paying from Money Mapping* → `membership_mm_set { plan_id, on }`
+  (`actions/membership/money-mapping.ts`; refuses an ended plan; off takes effect from the next
+  payment, money already taken stays taken). The card also shows a *Money Mapping* pill.
+
+**Starting on the create click (`start_on_mm`).** With MM = Yes the panel calls
+`membership_send_setup_link { plan_id, start_on_mm: true }` (api.js gives it 60 s; a WRITE, never
+auto-retried). After the token / customer / mode are stamped, `startPlanOnMoneyMappingIfCovered`
+runs when the plan is `setup_pending`, `pay_with_mm`, eligible, NOT a transfer, `per_pull_amount > 0`
+and the balance (synced first) ≥ the first payment: `activateMembershipPlan` with NO method (the
+year's rows written exactly as a save-only setup writes them), every row due today paid from the
+balance (`payRowsFromMoneyMapping`, receipt chained in the BACKGROUND via `EdgeRuntime.waitUntil`),
+the ERT transfer sent at once (`sendMoneyMappingErtTransfers`), and `setup_email_sent_at` stamped so
+the reminder ladder clocks from now. Reply `{ started_on_mm, applied, rows_paid, setup_link }` (+
+`warning` if today's rows could not be read or paid — tonight's sweep retries). Not covered or not
+eligible → the normal setup email below. **A plan may therefore be `active` with no card or bank.**
+
+**The setup link while the member has a balance** (`mmSetupBalance`, `utils/money-mapping-membership.ts`,
+shared by `membership_setup_load` and `membership_setup_checkout` so the page and Stripe never
+disagree): on a `setup_pending` `pay_with_mm` plan with balance > 0 the link is **save-only**
+(Checkout `mode=setup`, the page says *Nothing is charged today … your Money Mapping balance ($X)
+first*, `money_mapping_balance` in the load reply); a balance read error refuses (500), never falls
+back to charging. The email is template **357** `MEMBERSHIP_setup_link|money_mapping` (same subject
+as 190 so the ladder still finds it; button *Save Your Payment Method*) when the base template is
+`MEMBERSHIP_setup_link`; any other base copy (a transfer's) gets one Money Mapping line after the
+greeting. The active-plan link-expiry gate (setup-load / setup-checkout) applies only when the plan
+HAS a method — a plan started on Money Mapping is still on its first, non-expiring link.
+
+**Sweep pass 3 on a `pay_with_mm` plan** (`actions/membership/sweep.ts`): earnings are synced just
+before the pass; the plan qualifies with `status='active'` alone (no method needed). All the rows
+(arrears + newly due) go through `payRowsFromMoneyMapping` **oldest first**: a row the balance covers
+in full → `paid`, `payment_method_type='money_mapping'`, receipt chained (awaited) with `mm_row_ids`;
+a row covered in part comes back with `amount_due` = what is left. Then, as for every plan, only a
+NEWLY due row is ever charged or failed. Card / bank on file → one PaymentIntent for the rest, its
+Idempotency-Key gaining `-c<cents>` (the amount moves with the balance, #228's key would otherwise
+replay an old amount). **No method on file** → the newly due rows go `missed` with *No card or bank
+account on file — the Money Mapping balance did not cover this payment*, + arrears flag + bell +
+failure email, exactly the declined path. **A database error applying the balance skips the plan for
+the night** (bell `MEMBERSHIP_charge_failed`, title *Money Mapping membership payment SKIPPED — …*) —
+never charge a member who may have a balance. Pass **3d** then moves every spent amount to ERT
+([money-mapping.md](money-mapping.md)). Summary gains `mm_earned_added`, `mm_applied`, `mm_rows_paid`,
+`mm_ert_sent`, `mm_ert_failed`.
+
+**Receipts** (`automation_MEMBERSHIP_invoicereceipt`, `utils/membership-html-templates.ts`) — wording
+approved by Jake 2026-10-30:
+- The handler accepts `mm_row_ids` instead of `payment_intent_id` (rows `paid` by `money_mapping`).
+  Totals use the FACE value (`amount_due + mm_applied`); the card fee applies only to the card part
+  (`cashTotal`).
+- Every receipt on a `pay_with_mm` plan (or one MM helped pay) says how the payment was made, with
+  the balance now: all MM (*…paid from your Money Mapping balance, so nothing was charged to you*;
+  "setting up your membership payment" → "setting up your membership"), split (*$X from your Money
+  Mapping balance and $Y charged to your card ending …*), or — **once**, on the first card / bank
+  payment after one MM helped with — *Your Money Mapping balance has run out …*. The remaining-payments
+  line says *from your Money Mapping balance first, then from your card or bank*.
+- **No method on file** (and a `setup_token`): every receipt adds a warning — the balance will not
+  cover the next payment (its date + amount), or a plain *you have not set up a card or bank account
+  yet* — and a **Set Up Your Payment Method** button (the member's own `/membership-pay` link).
+- The receipt PDF swaps the card-fee box for a yellow **How this payment was made** box (from the
+  balance, charged to the card / bank, the card fee, the balance now).
+- Templates 207 / 353 / 354 subjects → *ERT Membership - Payment Receipt - [Member Name]* /
+  *[Advisor Name]* (no receipt number); 207's body ends at "Best regards," (migration `20261031120000`).
+
+**Failure email** (`utils/membership-payment-failure.ts` for the sweep, `membership_send_reminder`
+for *Send reminder email*): a `pay_with_mm` plan with NO method (and not an advisor-pays Tier 1) →
+template **358** `MEMBERSHIP_payment_failed|no_method` (Draft) with a code-built `[MM Sentence]`
+(what the balance paid, what is left) and the button *Set up payment method & pay now*; a declined
+card / bank on a `pay_with_mm` plan keeps 192 plus one Money Mapping line after the greeting. **Never
+ask a member to reply for a link — the normal setup reminders do it** (Jake).
+
+**Reminder ladder** (`utils/membership-setup-reminder.ts`): both candidate queries use
+`AWAITING_METHOD` = `setup_pending` OR (`active` AND `pay_with_mm` AND `default_payment_method_id`
+IS NULL), so a plan started on Money Mapping is chased (business hours, 2 business days) until a
+method is saved. **Untested live** (OWED).
+
+**Test Member / sandbox emails are always Drafts** (2026-10-31). `draftGmail` / `deliverRaw` /
+`gmailDraftFetch` take `draftOnly`; every membership send site passes it for a sandbox run (Test
+Member 59524 or the pipeline in sandbox): setup link + update link, receipt, failure email, Send
+reminder email, renewal notice, next-year terms, End membership, renewal meeting outcome, the
+confirmation, GC emails, the arrears digest and the setup reminder — whatever the template's Send
+mode.
+
+**Panel** (`MembershipFeesPanel.jsx`): a paid row is tinted yellow — `MM_TINT_FULL` (0.20) when paid
+in full by Money Mapping, `MM_TINT` (0.10) when MM paid part (a missed row stays red); the amount
+column shows the face value; the payment column reads *Money Mapping balance*, *Money Mapping $X +
+card $Y*, or *Money Mapping paid $X · $Y still due*. **The Stripe PaymentIntent id is no longer shown
+there** (Jake — it wrapped the column; it stays in Stripe). The schedule total adds a *$X Money
+Mapping* line. Accounting → Payments (`all_payments_load`) skips a row paid in full by Money Mapping
+and lists only the card / bank part of a split row.
+
+**Not exercised yet:** ACH on an MM plan; annual and transfer plans with MM; a renewal on an MM plan;
+the ladder actually firing for an active MM plan with no method; the sweep-path no-card email itself
+(358 was seen via Send reminder email); the 60 / 12 template edits in a real send; the first real
+member on `pay_with_mm`.
 
 ## NOT built yet (next work)
 

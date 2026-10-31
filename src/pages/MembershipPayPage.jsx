@@ -179,6 +179,9 @@ export default function MembershipPayPage() {
   // method. The member's page stays free of amounts, counts and dates so nothing
   // reads as a charge happening today — the admin preview carries the figures.
   const daySched = !payToday && data.first_charge_date && data.charge_day ? data : null
+  // A plan paying from Money Mapping while the member has a balance: the link
+  // only saves the method; the balance pays first (setup-load's mmSetupBalance).
+  const mmBalance = !payToday && Number(data.money_mapping_balance) > 0 ? Number(data.money_mapping_balance) : 0
 
   return (
     <TokenShell>
@@ -194,6 +197,9 @@ export default function MembershipPayPage() {
           {payToday ? (
             <>Your first payment of <strong>${fmt(base)}</strong> is collected securely today
               {data.frequency === 'monthly' ? <> — then payments run automatically on the same day each month.</> : <> and covers your membership year.</>}</>
+          ) : mmBalance > 0 ? (
+            <><strong>Nothing is charged today.</strong> Your membership payments come from your Money Mapping balance
+              (<strong>${fmt(mmBalance)}</strong>) first. This securely saves your payment method for anything the balance does not cover.</>
           ) : daySched ? (
             <><strong>Nothing is charged today.</strong> This securely saves your payment method — your membership
               payments then continue automatically on the {daySched.charge_day_ordinal} of each month, just as they do now.</>

@@ -22,7 +22,7 @@ It is a **destination only**. No customer, Checkout Session, invoice, subscripti
 | **ERT the billing account** | A second account the portal charges customers on | Its own Stripe account, its own customers + webhooks | `ERT_STRIPE_SECRET_KEY[_SANDBOX]`, `ERT_STRIPE_WEBHOOK_SECRET[_SANDBOX]` |
 | **ERT the connected account** | A payout destination hanging off the VFO Services platform | A connected account **of VFO Services** | `ERT_CONNECT_ACCOUNT_ID[_SANDBOX]` — an `acct_…` **id**, never a key |
 
-**Today it has exactly one user: the SpecRev ERT share leg** (see "Stripe Connect & revenue share" below), which forwards ERT's slice of a specialist's payment out of the VFO Services balance.
+**It has TWO users (v: 2026-10-31): the SpecRev ERT share leg** (see "Stripe Connect & revenue share" below), which forwards ERT's slice of a specialist's payment out of the VFO Services balance, **and the Money Mapping → ERT membership leg** (2026-10-30, *Money Mapping membership payments → ERT* below), which forwards every membership payment a member made from their Money Mapping balance.
 
 **The one-time OAuth setup (done by hand, 2026-09-11) — connecting an EXISTING account, not creating one.** This is the part that is easy to get wrong: there is no "create an account for ERT" step, and doing so would have made a second, empty account. The flow is an authorization handshake between two accounts that already exist:
 
@@ -170,7 +170,7 @@ The webhook router uses these fields to pick the right DB table on `checkout.ses
 | **`ERT_STRIPE_SECRET_KEY_SANDBOX`** | `ert` | Test-mode secret key | `getStripeKeyFor('ert', true)` |
 | **`ERT_STRIPE_WEBHOOK_SECRET`** | `ert` | HMAC secret verifying **live** ERT webhook signatures | same four-candidate verifier |
 | **`ERT_STRIPE_WEBHOOK_SECRET_SANDBOX`** | `ert` | HMAC secret verifying **sandbox** ERT webhook signatures | same |
-| **`ERT_CONNECT_ACCOUNT_ID`** | *(platform `vfos`)* | **NEW 2026-09-11.** ERT's **connected-account id** (`acct_…`) on the VFO Services platform — the `destination` of the SpecRev ERT-share transfer (the manual catch-up transfer was removed 2026-10-05). **Not a key, and not an ERT-billing secret** | `ertConnectAccountEnvName(false)` |
+| **`ERT_CONNECT_ACCOUNT_ID`** | *(platform `vfos`)* | **NEW 2026-09-11.** ERT's **connected-account id** (`acct_…`) on the VFO Services platform — the `destination` of the SpecRev ERT-share transfer and, since 2026-10-30, of the Money Mapping membership transfer (`utils/money-mapping-transfer.ts`) (the manual catch-up transfer was removed 2026-10-05). **Not a key, and not an ERT-billing secret** | `ertConnectAccountEnvName(false)` |
 | **`ERT_CONNECT_ACCOUNT_ID_SANDBOX`** | *(platform `vfos`)* | **NEW 2026-09-11.** Same, for sandbox — a **test connected account in the VFO Services sandbox stands in for ERT** | `ertConnectAccountEnvName(true)` |
 | **`VFOS_CONNECT_ACCOUNT_ID`** | *(platform `ert`)* | **NEW 2026-10-30 (L6b).** VFO Services' connected-account id on the **ERT** platform — the destination of the Tier 1 $25 VFO Portal licence transfer. **NOT SET yet** (the live link is owed — *VFO Services is ALSO a connected account OF ERT* above) | `vfosConnectAccountEnvName(false)` |
 | **`VFOS_CONNECT_ACCOUNT_ID_SANDBOX`** | *(platform `ert`)* | **NEW 2026-10-30 (L6b).** Same, for sandbox — the ERT-sandbox stand-in `acct_1UWImVAEdlS0L4GN` | `vfosConnectAccountEnvName(true)` |
@@ -530,6 +530,22 @@ Note the memo names **the member the share came from**, not ERT — the same rec
 **Probe BEFORE the call — and why the key rotates (2026-09-11, gotcha #489).** Stripe caches the **first** response per `Idempotency-Key` for **24 hours, error bodies included**. A transfer attempted while the destination's `transfers` capability was still inactive therefore poisoned its own key: every retry replayed the identical refusal (observed live on request 37 line 86 — the retry came back with the same `request_log_url`). Two changes fix it. (1) **`connectTransfersActive(ertDestination, STRIPE_KEY)` is probed ONCE per request**, before the ERT loop — the same helper and the same discipline as the member leg. A not-active destination parks every ERT leg of that request `failed` with the bell and makes **no Stripe call at all**, so no key is ever consumed until the money can actually move. (2) **The key rotates once the line already carries a `failed` stamp**, gaining `-r<Date.parse(updated_at)>`. That is safe precisely because `failed` is only stamped **after Stripe returned an error body** — no transfer exists behind it, so a fresh key cannot double-pay. The genuinely dangerous case is the opposite one (a network drop *after* Stripe created the transfer), and it leaves the line `pending` with `updated_at` untouched, so that retry reuses the **original** key and gets the same transfer back. The member leg's key and probe are unchanged.
 
 **Stripe does NOT copy the memo to ERT's side — so the portal stamps it (2026-09-11).** A transfer's `description` and `metadata` live on the **platform's** transfer object; the `py_…` charge Stripe creates on the connected account is born bare. On ERT's own dashboard — the one Jake actually reads — the $4,119.77 catch-up showed Description **"-"** and **"No metadata"** (`py_1UEbptA6agMWAt8dMnI7a5IP`). So after every successful ERT transfer `utils/ert-destination-memo.ts` **`stampErtDestinationPayment`** POSTs `/v1/charges/<transfer.destination_payment>` with the header **`Stripe-Account: <ERT acct>`**, setting the same description and metadata. Acting as ERT is permitted because ERT granted `read_write` when it connected by OAuth. **Best-effort by contract:** the money has already moved by the time it runs, so a failure is cosmetic — it logs one line, returns `false`, and must never change a payout status, raise a bell or abort a run. Live-proven on the $978.68 catch-up (`tr_1UEc2xRwdhysCa6FgnfQHEQ4`).
+
+### Money Mapping membership payments → ERT (2026-10-30) *(v: 2026-10-31)*
+
+A Money Mapping member's revenue-share legs are kept by VFO Services (no transfer — `revenue_decision === "Money Mapping"` above), and since 2026-10-30 the member can spend that balance on their **ERT** membership ([../flows/money-mapping.md](../flows/money-mapping.md)). The money spent is ERT's, so sweep pass 3d (and the create click that starts a plan on its balance) moves each `money_mapping_ledger` `membership` row **from the VFO Services platform balance to ERT's connected account** — the SpecRev ERT route, the same secret:
+
+```
+POST /v1/transfers   (VFO Services key, by the ledger row's sandbox stamp)
+amount: <spent, cents>   currency: usd
+destination: <ERT_CONNECT_ACCOUNT_ID[_SANDBOX]>      # no source_transaction — platform balance, not a charge
+transfer_group: mm-ert-<ledger id>                   # looked up FIRST; an unreversed match = already sent
+description: Money Mapping - ERT Membership - (<member#>) ERT Membership - <period>
+metadata: pipeline=MEMBER_MEMBERSHIP, payment_kind=money_mapping_membership, member_number, ledger_id, plan_id, schedule_row_id
+Idempotency-Key: mm-ert-<ledger id>  (+ -r<failed_at ms> only once the row is 'failed', #489)
+```
+
+Probe `capabilities.transfers` first; the ERT-side memo is stamped after (`stampErtDestinationPayment`). Status on the ledger row: NULL → `sent` / `failed` (bell `MONEY_MAPPING_ert_transfer_failed`, retried nightly); 5xx / 409 / network drop leave it alone. No email. **Proven in sandbox only — the first LIVE transfer is OWED.** A row paid in full from Money Mapping has no PaymentIntent (`payment_method_type='money_mapping'`); a row paid in part has one for the card / bank part only, and its idempotency key carries `-c<cents>` because that amount moves with the balance.
 
 ### Manual "Send funds to ERT" catch-up transfer — REMOVED 2026-10-05
 
