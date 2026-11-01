@@ -151,7 +151,7 @@ The top-level picture. Two repos, one Supabase project, four external integratio
               │  ─── middleware/auth.ts (Token gate) ──────────        │
               │     Reads body.token, looks up admin_sessions.         │
               │     Role: admin / member / client / specialist;        │
-              │     is_superadmin = email == SUPERADMIN_EMAIL.          │
+              │     is_superadmin = admin + isSuperadminEmail(email).  │
               │                                                        │
               │  SUPERADMIN_ONLY_ACTIONS → 403 non-superadmin, then    │
               │  ADMIN_ONLY_ACTIONS → 403 for member callers.          │

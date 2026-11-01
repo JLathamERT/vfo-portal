@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { callApi, getSession } from '../../lib/api'
+import { callApi } from '../../lib/api'
 
-// The three superadmin-managed "other" tabs Jake can grant to another admin.
+// The superadmin-managed "other" tabs a superadmin can grant to another admin.
 // Keys must match the tab keys used by AdminPortal + the backend TAB_ACTIONS map.
 const TAB_OPTIONS = [
   { key: 'member_overview', label: 'Member Overview' },
@@ -23,8 +23,6 @@ export default function AdminEditor({ onBack }) {
   const [statusType, setStatusType] = useState('success')
   const [loading, setLoading] = useState(true)
   const [savingTabs, setSavingTabs] = useState({})   // email -> bool
-
-  const myEmail = (getSession()?.email || '').toLowerCase()
 
   useEffect(() => { loadAdmins() }, [])
 
@@ -105,7 +103,8 @@ export default function AdminEditor({ onBack }) {
         </p>
         {loading && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>Loading...</p>}
         {admins.map(admin => {
-          const isSuper = admin.email.toLowerCase() === myEmail
+          // load_admins marks every email on the backend's superadmin list.
+          const isSuper = admin.is_superadmin === true
           const tabs = admin.allowed_tabs || []
           return (
             <div key={admin.email} style={{ padding: '14px 0', borderBottom: '1px solid var(--vfo-tint)' }}>

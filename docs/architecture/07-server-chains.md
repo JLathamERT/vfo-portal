@@ -462,6 +462,6 @@ Not a chain, but it sits on the path every chain's email takes, so it is invento
 5. If a `tax_planner` can reach the entry point, allowlist **and** guard the entire chain closure (**#257**).
 6. Subscribe any new Stripe event **on all four endpoints (two accounts × two modes)** — VFO Services live/sandbox and ERT live/sandbox — or the handler is dead code for whichever endpoint missed it (2026-09-11, **#485**).
 7. Pick the ladder's time unit explicitly — business days by default (**#396**).
-8. Run the 5-pipeline smoke gate after deploy; it proves wiring only, never chain semantics.
+8. Run the smoke gate (`scripts/smoke-pipelines.ps1`) after deploy; it proves wiring only, never chain semantics.
 9. A Checkout with **no Stripe customer** cannot ride the `stripe_customer_id` cascade — key its branch on the session's own `metadata.payment_kind`, resolve the row by `stripe_checkout_session_id`, and place it **ahead** of the cascade (the 2026-09-17 tax intake deposit is the precedent, **#473**).
 10. Do not append `VFO_SIGNATURE` in a new sender — the delivery layer guarantees it once (see "Delivery-layer footer guard").

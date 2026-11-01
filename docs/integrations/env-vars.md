@@ -92,7 +92,7 @@ This list is observational, not prescriptive — these values currently live in 
 
 | Constant | File | Value |
 |---|---|---|
-| `SUPERADMIN_EMAIL` | `vfo-admin-api/constants/superadmin.ts` | `jlatham@elitert.com` |
+| `SUPERADMIN_EMAILS` (read via `isSuperadminEmail`) | `vfo-admin-api/constants/superadmin.ts` | a list since 2026-11-01 — read the file |
 | CEO email | several `actions/pipeline/*.ts` + `router/webhooks.ts` | `aanderson@elitert.com` |
 | Tracy reconciliation email | `actions/pipeline/contract-revshare.ts` | `tnmiller@elitert.com` |
 | Tracy invoice CC | `actions/pipeline/contract-invoice-receipt.ts` | `tracy@vfo-services.com` |

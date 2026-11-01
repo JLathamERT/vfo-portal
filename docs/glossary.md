@@ -148,7 +148,8 @@ These names/emails appear hardcoded in the codebase:
 | Name | Email | Role |
 |---|---|---|
 | Anton Anderson | `aanderson@elitert.com` | CEO. Hardcoded BoldSign signer 2 + BCC on most automation emails. |
-| Jake Latham | `jlatham@elitert.com` | Superadmin. Hardcoded `SUPERADMIN_EMAIL`. |
+| Jake Latham | `jlatham@elitert.com` | Superadmin (on the `constants/superadmin.ts` list). |
+| Paxton Calareso | `pcalareso@vfo-services.com` | Developer (2026-11). Superadmin (on the `constants/superadmin.ts` list), and on `TAX_VIEWERS` + `isErtManager`. |
 | (named "P. Latham"?) | `platham@elitert.com` | BCC on most automation emails (alongside `aanderson`). |
 | Tracy Miller | `tnmiller@elitert.com` | "VFO Liaison." Recipient of the intro email after payment 1 (sent by `automation_CONTRACT_revshare`). |
 | (Tracy Miller, separate?) | `tracy@vfo-services.com` | CC'd on every `automation_CONTRACT_invoicereceipt` email. **Whether this is the same person as `tnmiller@elitert.com` is not clear from code** — flagged. |

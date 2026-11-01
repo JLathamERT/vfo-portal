@@ -8,6 +8,26 @@
 
 ---
 
+## 2026-11-01 (c) — Two-person workflow, phase 2: the superadmin list, Paxton on the access lists, a 23-check smoke gate — by Jake
+
+Hub OWED (AG) Phase 2. Paxton needs the same superadmin powers as Jake, and the smoke gate only covered five pipeline loaders, so a broken member, client, specialist or planner portal, or a broken emailed-link page, passed it.
+
+- **The superadmin is a list.** `constants/superadmin.ts` was one email (`SUPERADMIN_EMAIL`); it is now `SUPERADMIN_EMAILS` (Jake, Paxton — one line per person) read through `isSuperadminEmail()`. Every permission site reads it: `admin_login`, `middleware/auth.ts` (still an ADMIN-typed session only), the invoice-receipt reissue check, and the four Admin Editor actions — which now use `auth.isSuperadmin` instead of a bare email compare, so a non-admin portal session for a superadmin's address no longer passes them. `delete_admin` / `admin_update_tabs` refuse ANY superadmin row; `load_admins` returns `is_superadmin` per row.
+- **Permission split from recipient (#708).** The "approve Direct" bell (`utils/tax-direct-ready-bell.ts`) used `SUPERADMIN_EMAIL` as Jake's address; it now names Jake directly, so the bell still goes to Jake + Tracy only. No bell or email reads the list.
+- **Paxton on `TAX_VIEWERS` + `isErtManager`** at Jake's word — each list widened on its own; still two separate lists. Comments that named who was on them ("Jake / Tray", "four people") now point at the files.
+- **Admin Editor.** It labelled whoever was VIEWING as "Superadmin · all tabs", so with two superadmins the other one got a Remove button and tab boxes the server refuses; the label now reads each row's `is_superadmin`. The website holds no copy of the list.
+- **`create_admin` refuses an email without "@".** Jake created Paxton's login as `pcalareso`: a login nobody could use and a list entry that never matched. The row was corrected by hand to `pcalareso@vfo-services.com` (passcode kept; no sessions existed on the short email).
+- **Smoke gate** (`scripts/smoke-pipelines.ps1`, same name and one-line command): stops at login unless `is_superadmin`; 18 admin loaders (the seven pipelines incl. Specialist onboarding + PFT, members + specialists, Test Member 59524's profile and CIQ list, Client Overview Tax Planning, Membership Fees, specialist revenue, Growth Credits, Tax Diagnostics, the bell, Feature Switches, Admin Editor); the member / client / specialist / tax-planner login routes sent no passcode (400 — refused before the login throttle is read or written); the update-card page sent a made-up token (404, the PUBLIC dispatch path). Every handler was read for writes and external calls first: `money_mapping_load` (it syncs earnings into the ledger) and `member_payments_load` (Stripe) are deliberately out (#707).
+- **Deploys:** `vfo-admin-api` **v1079** — a test deploy from the branch (0 behind `origin/main`, over v1078 = main's code). No DDL; advisor GREEN at the exact baseline. Action count 637 (unchanged).
+- **Tested (Jake):** smoke 23/23 vs v1078 and vs v1079; the Admin Editor click-through (both superadmin rows labelled, the "@" refusal, Feature Switches) was handed over and Jake then ran the wrap-up. **Not tested:** Paxton's own session, and the Admin Editor at phone width (logic-only change) — hub OWED (AH).
+- **Discharged:** hub OWED (AG) Phase 2.
+
+Superseded hub text — the VERIFICATION GATE smoke row (2026-11-01), verbatim:
+
+> | 5-pipeline smoke gate | any `vfo-admin-api` deploy, or editing shared routing/dispatch/webhook/auth code | 5/5 PASS. Run by a **superadmin** (`constants/superadmin.ts`, the TEAM table) with their own email — the five loaders are `SUPERADMIN_ONLY_ACTIONS`, so any other token reads as a false failure. Wiring check only: it asserts HTTP 200 + no `error`, and proves **nothing** about chain semantics, money math or bells. Skip for frontend-only, doc-only or isolated single-handler changes. |
+
+---
+
 ## 2026-11-01 (b) — Two-person workflow, phase 1: shared team rules, /start /handoff /wrapup, releases from main, one PR per ship — by Jake
 
 Paxton (pcalareso@vfo-services.com) joins as a second developer on his own computer, so the one-person session process was changed so two people can work at the same time without one deploy wiping the other's work. Phase 1 = docs, prompts and one script; no backend or frontend code changed.
