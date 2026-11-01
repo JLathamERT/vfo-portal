@@ -129,5 +129,10 @@ ever.** **Proven in sandbox only** (OWED: the first live one).
 - **Refunds:** none once shares are allocated (decision). A refunded membership row does NOT give
   Money Mapping back and does NOT reverse its ERT transfer — by hand if ever needed.
 - **No member view** of the balance (decision; the receipts state it after each payment).
-- **Not exercised yet:** the ERT transfer in LIVE Stripe; ACH, annual, transfer and renewal plans
-  with MM; the reminder ladder firing for an active MM plan with no method; the first real member.
+- **Tested 2026-11-01** (#705): ACH part payments, annual and transfer plans, a renewal, the reminder
+  ladder for an active MM plan with no method. **Not exercised yet:** the ERT transfer in LIVE Stripe;
+  the first real member.
+- **Records:** a charge Money Mapping paid part of says so in the Stripe description ("Money Mapping
+  paid $X of $Y") and metadata `money_mapping_applied`; the invoice's *Payment Method* reads "Money
+  Mapping balance first[, then …]"; `/membership-pay` on an active MM plan with no method says *Set Up
+  Your Payment Method* with the balance.
