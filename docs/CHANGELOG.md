@@ -8,6 +8,26 @@
 
 ---
 
+## 2026-11-01 — Money Mapping: the untested paths tested, and seven follow-up fixes
+
+Branches edge / react `claude/mm-followups` (one chat, the Money Mapping chat continued; base merged main `32a3de5` / `75b21e63`).
+
+- **Why.** Jake asked why ACH, annual, transfer, renewal and the setup reminder had not been tested (the 10-31 run only walked the monthly card story) and said to test them now, then remove any test code.
+- **Temporary test hook (removed).** `automation_MEMBERSHIP_sweep` took `test_plan_id` (Test Member plans only, refused otherwise): every pass scoped to that plan, the licence transfers and CIQ reminders skipped, the setup ladder scoped via `onlyPlanId`; with `ignore_business_hours` the ladder fired on a Saturday. Lived on a local-only branch, deployed as **v1076** (hook alone, from merged main) and **v1077** (hook patch layered on the follow-ups); never committed to a pushed branch; the final deploy is the follow-ups alone. Gotcha **#705**.
+- **Tested** (Jake, live, Test Member 59524, sandbox Stripe): the setup reminder + Tray's stalled bell for a plan started on Money Mapping; the 30-day renewal notice; the renewal itself (next year's rows, row 1 paid from Money Mapping, *Renewal Invoice and Receipt* with a new invoice — after correcting the test data's `year_start`, see #705); a part payment by **ACH** (Money Mapping $200 + bank $467, processing → settled → split receipt); an **annual** plan started on the create click; a **transfer** plan (setup email, save-only link, row 1 from Money Mapping). The v1070-window re-check found nothing submitted 23:50–00:19 UTC (no tax diagnostics, intake requests, onboardings or membership payments) — discharged.
+- **Fixes (all approved by Jake, click-tested on v1077 with the dev-server page):**
+  1. `/membership-pay` on an active Money Mapping plan with no card / bank says **Set Up Your Payment Method** (not "Update … choose a new payment method") with the balance; `setup-load` returns `has_method` / `pay_with_mm` / `money_mapping_balance`.
+  2. Invoice *Payment Method*: "Money Mapping balance first" / "…, then Credit/Debit Card" / "…, then ACH Bank Transfer" (`invoiceMethodLabel`).
+  3. Setup page when the balance covers only part of payment 1: "Nothing is charged right now. Your first payment of $667.00 comes from your Money Mapping balance ($200.00) first, and the remaining $467.00 is taken from the payment method you save here within a day."
+  4. Stripe description "… (Money Mapping paid $200.00 of $667.00)" + metadata `money_mapping_applied`, on the nightly pull and the pay-now link (`loadPlanArrearsRows` now selects `mm_applied`).
+  5. Payment column "bank ••6789" / "card ••4242" instead of the raw "ach".
+  6. Transfer setup emails: the Money Mapping line after "Nothing is collected today", reworded "Your payments are taken …".
+  7. Receipt warning compares the balance to the renewal payment when no row is left this year (annual plans, a year's last row): "…will not cover your next payment of $8,004.00 on October 15, 2027…".
+- **Still untested:** the ERT transfer in LIVE Stripe; the sweep-path no-card email (358 seen via *Send reminder email*); templates 60 / 12 in a real send; the first real member on `pay_with_mm`.
+- **Test data** wiped after the run (plans 116-121, their rows, document numbers, ledger rows, bells 3914 and the rest); the ledger holds only the 20 real `earned` rows.
+
+---
+
 ## 2026-10-31 — Money Mapping balances, and paying a membership from them (2026-10-30 / 31)
 
 Branches edge `claude/money-mapping-system-517bd1` / react `claude/money-mapping-system-1b6a4e` (one chat, both repos, NOT merged at the time of writing; edge base origin/main `3f23684`, react base `8f2338d8`). Jake: a Money Mapping member's revenue share is kept by VFO Services and never reaches them, so it should become a balance they can spend on their ERT membership. Flow: [flows/money-mapping.md](flows/money-mapping.md) + [flows/membership-fees.md](flows/membership-fees.md) *Paying a membership from Money Mapping*; table [tables/membership-fees.md](tables/membership-fees.md) *money_mapping_ledger*; chains [architecture/07-server-chains.md](architecture/07-server-chains.md) *Money Mapping*.

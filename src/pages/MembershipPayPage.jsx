@@ -120,18 +120,29 @@ export default function MembershipPayPage() {
     const owedCardTotal = owedFee && owedToday ? Math.round((owed + 0.30) / (1 - 0.029) * 100) / 100 : owed
     const owedCardFee = Math.round((owedCardTotal - owed) * 100) / 100
     const owedMonths = Array.isArray(data.arrears_months) ? data.arrears_months.join(', ') : ''
+    // A plan started on Money Mapping with no card / bank saved yet: SET UP, not update.
+    const setUp = data.has_method === false && !!data.pay_with_mm
+    const mmNow = Number(data.money_mapping_balance) > 0 ? Number(data.money_mapping_balance) : 0
+    const verb = setUp ? 'Set Up' : 'Update'
     return (
     <TokenShell>
       <div style={{ width: '100%' }}>
         <div className="vfo-statusicon" style={{ ...iconCircle, width: '64px', height: '64px', background: owedToday ? 'rgba(180,83,9,0.15)' : 'rgba(0,149,255,0.15)' }}>
           <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
         </div>
-        <h1 style={{ ...title, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>{owedToday ? 'Update Your Payment Method & Pay Now' : 'Update Your Payment Method'}</h1>
+        <h1 style={{ ...title, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>{owedToday ? `${verb} Your Payment Method & Pay Now` : `${verb} Your Payment Method`}</h1>
         <p style={{ ...subtitle, textAlign: 'center', marginBottom: '32px' }}>
-          Hi {data.first_name} — choose a new payment method for your membership.
-          {data.current_method ? <> You're currently paying by {data.current_method === 'ach' ? 'bank account' : 'card'}{data.current_last4 ? ` ending ${data.current_last4}` : ''}.</> : null}
+          {setUp ? (
+            <>Hi {data.first_name} — your membership payments come from your Money Mapping balance first
+              {mmNow > 0 ? <> (currently <strong>${fmt(mmNow)}</strong>)</> : null}. Save a card or bank account for anything the balance does not cover.</>
+          ) : (
+            <>Hi {data.first_name} — choose a new payment method for your membership.
+              {data.current_method ? <> You're currently paying by {data.current_method === 'ach' ? 'bank account' : 'card'}{data.current_last4 ? ` ending ${data.current_last4}` : ''}.</> : null}</>
+          )}
           <br />
-          {owedToday ? (
+          {setUp && !owedToday ? (
+            <>Nothing is charged now.</>
+          ) : owedToday ? (
             <>Your outstanding membership payment of <strong>${fmt(owed)}</strong>{owedMonths ? <> for <strong>{owedMonths}</strong></> : null} is collected securely today, and future membership payments use the new method automatically.</>
           ) : (
             <>Nothing is charged now — future membership payments use the new method automatically.</>
@@ -197,9 +208,15 @@ export default function MembershipPayPage() {
           {payToday ? (
             <>Your first payment of <strong>${fmt(base)}</strong> is collected securely today
               {data.frequency === 'monthly' ? <> — then payments run automatically on the same day each month.</> : <> and covers your membership year.</>}</>
+          ) : mmBalance > 0 && !data.transfer && mmBalance < base ? (
+            // The balance covers only part of payment 1: the nightly run takes the rest
+            // from the method saved here (Jake, 2026-11-01).
+            <><strong>Nothing is charged right now.</strong> Your first payment of <strong>${fmt(base)}</strong> comes from your Money Mapping
+              balance (<strong>${fmt(mmBalance)}</strong>) first, and the remaining <strong>${fmt(Math.round((base - mmBalance) * 100) / 100)}</strong> is
+              taken from the payment method you save here within a day.</>
           ) : mmBalance > 0 ? (
-            <><strong>Nothing is charged today.</strong> Your membership payments come from your Money Mapping balance
-              (<strong>${fmt(mmBalance)}</strong>) first. This securely saves your payment method for anything the balance does not cover.</>
+            <><strong>Nothing is charged right now.</strong> Your membership payments come from your Money Mapping balance
+              (<strong>${fmt(mmBalance)}</strong>) first. This saves your payment method for anything the balance does not cover.</>
           ) : daySched ? (
             <><strong>Nothing is charged today.</strong> This securely saves your payment method — your membership
               payments then continue automatically on the {daySched.charge_day_ordinal} of each month, just as they do now.</>
