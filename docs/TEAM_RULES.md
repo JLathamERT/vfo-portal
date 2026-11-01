@@ -4,14 +4,16 @@
 >
 > **"The person"** below = whoever is running this chat: match `git config user.name` against the TEAM table. Every rule applies to every person. A preference that belongs to one person only lives in that person's own Claude memory, not here.
 >
-> Change this file like code — in a worktree, through a PR. Created 2026-11-01 for the two-person workflow from the standing rules of `prompts/SESSION_STARTER.md` and Jake's Claude memory; `#N` = an entry in [GOTCHAS.md](GOTCHAS.md).
+> Change this file like code — in a worktree, through a PR. Created 2026-11-01 for the two-person workflow from the standing rules of `prompts/SESSION_STARTER.md` and Jake's Claude memory; `#N` = an entry in [GOTCHAS.md](GOTCHAS.md). Updated 2026-11-01 (phase 2): the superadmin list, the smoke gate's wording.
 
 ## TEAM
 
 | Name | `git config user.name` | Portal email | Superadmin |
 |---|---|---|---|
 | Jake Latham | `Jake Latham` | jlatham@elitert.com | yes |
-| Paxton | not set yet — add it when his computer is set up | pcalareso@vfo-services.com | no — `constants/superadmin.ts` holds ONE email today |
+| Paxton | not set yet — add it when his computer is set up | pcalareso@vfo-services.com | yes — once his admin login exists (Admin Editor) |
+
+- **Superadmin = on the list in `constants/superadmin.ts`** (edge repo) — one line per person. Adding someone is that line + their admin login + a `vfo-admin-api` deploy; the website reads `is_superadmin` from the server and holds no copy of the list.
 
 - Use the person's portal email wherever a command needs one (the smoke gate, §4) — never their password: always the literal `<password>` they type over.
 - Every CHANGELOG entry ends its heading with who did the work: `— by Jake`, or `— by Jake, Paxton` when several people worked the branch.
@@ -60,7 +62,7 @@
 - **Every approved change ends DEPLOYED, not merged:** backend → `vfo-admin-api` deploy (`--use-docker`, Docker Desktop running, `deno.lock` deleted — #574); frontend → `npm run deploy`, then prove the live site changed (§10); DB schema → migration applied through MCP AND committed as a file (#196); Storage → file uploaded; cron → re-installed. Work spanning both repos needs both deploys, or the final summary says plainly which half is not live.
 - **Smoke gate** (`scripts/smoke-pipelines.ps1`, edge repo) after any `vfo-admin-api` deploy or any edit to shared routing / dispatch / webhook / auth / `utils/`. Hand it over as ONE line with the person's portal email and a literal `<password>` — never a token, never `Read-Host`:
   `& C:\vfo-edge-functions\scripts\smoke-pipelines.ps1 -Email "<the person's portal email>" -Passcode "<password>"`
-  Its loaders are superadmin-only (TEAM table) and it is a wiring check only — it proves nothing about money, emails or bells.
+  It must be run by a superadmin (TEAM table) — it stops at login otherwise — and every check must PASS. It is read-only and a wiring check only (each area and portal answers) — it proves nothing about money, emails or bells.
 
 ## 5. SAVE POINTS (TAGS)
 

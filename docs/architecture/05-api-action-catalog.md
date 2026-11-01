@@ -327,7 +327,7 @@ All dispatched AFTER `middleware/auth.ts::authenticate()` validates body.token. 
 
 | Action | File | R | W | Chains |
 |---|---|---|---|---|
-| `load_admins` | `actions/admins/load.ts` | `allowed_admins` | — | — |
+| `load_admins` | `actions/admins/load.ts` | `allowed_admins` | — | — · superadmin-only in-handler (`auth.isSuperadmin`, since 2026-11-01 — the four admin-management actions used to compare the bare email); each row carries `is_superadmin` (2026-11-01) so the Admin Editor marks every superadmin, not just the viewer; `delete_admin` / `admin_update_tabs` refuse any superadmin row |
 | `create_admin` | `actions/admins/create.ts` | — | `allowed_admins` (salted `passcode_hash`) | — |
 | `delete_admin` | `actions/admins/delete.ts` | — | `allowed_admins` (delete) | — |
 | `admin_update_tabs` | `actions/admins/update-tabs.ts` | — | `allowed_admins.allowed_tabs` (text[], filtered to the grantable set) | Added 2026-07-01. Superadmin-only (in-handler); sets which of the grantable tabs (`GRANTABLE_TABS` = the keys of `TAB_ACTIONS`: accounting / automation / member_overview / client_overview / client_overview_warnings / growth_credits / **faq_editor** since 2026-09-14) an admin may access — see gotcha #167. |
@@ -437,9 +437,9 @@ The read-only-for-owner third vault section. ONE unified admin-only set covers a
 | Action | File | Reads | Writes | Notes |
 |---|---|---|---|---|
 | `admin_ert_list` | `actions/vault/admin-ert.ts` | storage `{entity}-ert-docs` (list by `key`) | — | Any admin. Returns `{ ert: [...] }`. |
-| `admin_ert_upload_url` | `actions/vault/admin-ert.ts` | — | storage `{entity}-ert-docs` (upload) | **NARROWED 2026-08-13 (v736): `isErtManager` ONLY** (Jake/Tray — `constants/ert-access.ts`). Every other admin keeps list + download and gets 403 here. Being in `ADMIN_ONLY_ACTIONS` is no longer sufficient (#385's shape). Signed upload URL. |
+| `admin_ert_upload_url` | `actions/vault/admin-ert.ts` | — | storage `{entity}-ert-docs` (upload) | **NARROWED 2026-08-13 (v736): `isErtManager` ONLY** (`constants/ert-access.ts` — read the file for who). Every other admin keeps list + download and gets 403 here. Being in `ADMIN_ONLY_ACTIONS` is no longer sufficient (#385's shape). Signed upload URL. |
 | `admin_ert_download` | `actions/vault/admin-ert.ts` | storage `{entity}-ert-docs` | — | Any admin. 300s signed download (path prefix-checked). |
-| `admin_ert_delete` | `actions/vault/admin-ert.ts` | — | storage `{entity}-ert-docs` (delete) | **NARROWED 2026-08-13 (v736): `isErtManager` ONLY** (Jake/Tray). The sharper half — signed agreements land in this section automatically and Storage records **no** deleter identity (`owner` is NULL; every write is service-role), so deletion here has no audit trail. 15 admins could reach it before; 2 can now. |
+| `admin_ert_delete` | `actions/vault/admin-ert.ts` | — | storage `{entity}-ert-docs` (delete) | **NARROWED 2026-08-13 (v736): `isErtManager` ONLY** (`constants/ert-access.ts`). The sharper half — signed agreements land in this section automatically and Storage records **no** deleter identity (`owner` is NULL; every write is service-role), so deletion here has no audit trail. 15 admins could reach it before; only the list can now. |
 
 Signed BoldSign agreements are copied into these buckets automatically on sign+pay by `utils/ert-agreement-copy.ts` (hooked into the specialist/advisor/accountant create handlers + the MAP 1 / Tax confirmation-email handlers), named `<VFO-…-Agreement>-First-Last.pdf` via the helper's `name` param. See gotchas #204–#205, #221.
 
