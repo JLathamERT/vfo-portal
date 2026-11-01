@@ -17,7 +17,10 @@ Four parallel automation chains follow the same pattern: **Tax Planning** ([flow
 ```
 docs/
 ├── README.md                         (this file — start here)
-├── SESSION_REFERENCE.md              (the LEAN live-state hub — read in FULL at session start)
+├── TEAM_RULES.md                     (every standing rule for everyone + the TEAM table — read in FULL at session start, before the hub)
+├── ACCESS.md                         (where every login, password and key lives — never a value)
+├── SESSION_REFERENCE.md              (the LEAN live-state hub — read at session start, all but its OPEN / OWED list)
+├── prompts/                          (SESSION_STARTER / SESSION_HANDOFF / SESSION_WRAPUP — run by /start, /handoff, /wrapup)
 ├── CHANGELOG.md                      (archived session-by-session history — newest-first; read on demand)
 ├── GOTCHAS.md                        (full numbered gotcha registry, #1 upward — read on demand; append-only, never renumbered, so the top number moves every session — #487 as of 2026-09-11)
 ├── NOTIFICATION_AUDIT.md             (every bell notification: who/type/timing, editable in Automation → Notification Editor; + gap analysis)
