@@ -24,6 +24,7 @@ Branches edge / react `claude/mm-followups` (one chat, the Money Mapping chat co
   6. Transfer setup emails: the Money Mapping line after "Nothing is collected today", reworded "Your payments are taken …".
   7. Receipt warning compares the balance to the renewal payment when no row is left this year (annual plans, a year's last row): "…will not cover your next payment of $8,004.00 on October 15, 2027…".
 - **Still untested:** the ERT transfer in LIVE Stripe; the sweep-path no-card email (358 seen via *Send reminder email*); templates 60 / 12 in a real send; the first real member on `pay_with_mm`.
+- **Shipped.** Merged edge #332 `e5565c6` / react #570 `fee666bc`; `vfo-admin-api` **v1078** deployed from merged main (the hook gone), page `index-CWSp-jCX.js` (Pages run green); smoke 5/5 vs v1078 (Jake); tags `backend-good-2026-11-01-v1078` + `live-283-mm-followups`. Hub tag lines were *live-282-money-mapping* / *backend-good-2026-10-31-v1075*; DERIVE 1 was *v1075 / v48, smoke 5/5 vs v1075*.
 - **Test data** wiped after the run (plans 116-121, their rows, document numbers, ledger rows, bells 3914 and the rest); the ledger holds only the 20 real `earned` rows.
 
 ---
