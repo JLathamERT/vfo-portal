@@ -875,8 +875,8 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                         [
                           row.paid_on_onboarding ? 'Paid at onboarding' : '',
                           row.paid_at ? fmtStamp(row.paid_at) : '',
-                          mmPart > 0 ? `Money Mapping ${money(mmPart)} + ${row.payment_method_type || 'card / bank'} ${money(row.amount_due)}` : '',
-                          row.payment_method_type && !(mmPart > 0) ? `${row.payment_method_type}${row.acct_last4 ? ` ••${row.acct_last4}` : ''}` : '',
+                          mmPart > 0 ? `Money Mapping ${money(mmPart)} + ${methodWord(row.payment_method_type) || 'card / bank'}${row.acct_last4 ? ` ••${row.acct_last4}` : ''} ${money(row.amount_due)}` : '',
+                          row.payment_method_type && !(mmPart > 0) ? `${methodWord(row.payment_method_type)}${row.acct_last4 ? ` ••${row.acct_last4}` : ''}` : '',
                         ].filter(Boolean).join(' · ') || '—'
                       ) : mmPart > 0 ? (
                         `Money Mapping paid ${money(mmPart)} · ${money(row.amount_due)} still due${row.failure_reason ? ` · ${row.failure_reason}` : ''}`
@@ -1205,6 +1205,11 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
       )}
     </div>
   )
+}
+
+// "bank" reads better than the stored "ach" in the payment column.
+function methodWord(t) {
+  return t === 'ach' ? 'bank' : t
 }
 
 function ordinal(n) {
