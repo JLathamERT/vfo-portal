@@ -48,6 +48,9 @@ export default function TaxUploadPage() {
   // server knows whether there is an open request for additional information.
   // Defaults false so the box never flashes for dropzone-only clients.
   const [allowText, setAllowText] = useState(false)
+  // The additional-info email no longer carries the request, so the page shows
+  // it — and then looks exactly like /tax-question.
+  const [request, setRequest] = useState('')
 
   useEffect(() => {
     if (!token) return
@@ -57,7 +60,7 @@ export default function TaxUploadPage() {
     })
       .then(async r => {
         const d = await r.json()
-        if (r.ok && d.success) setAllowText(!!d.allow_text)
+        if (r.ok && d.success) { setAllowText(!!d.allow_text); setRequest(d.request || '') }
       })
       .catch(() => {})
   }, [token])
@@ -96,7 +99,7 @@ export default function TaxUploadPage() {
 
   return (
     <TokenShell maxWidth={600}>
-      <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 6px', color: 'var(--vfo-heading)' }}>Upload Your Tax Documents</h1>
+      <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 6px', color: 'var(--vfo-heading)' }}>{request ? 'Respond to Your Tax Team' : 'Upload Your Tax Documents'}</h1>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', lineHeight: 1.5, marginBottom: '22px' }}>
         Your documents are stored securely in a private, encrypted vault — only authorized VFO tax staff can open them.
       </p>
@@ -105,6 +108,21 @@ export default function TaxUploadPage() {
         <div style={{ ...card, color: '#e74c3c' }}>This upload link is invalid or missing its token. Please use the link from your email.</div>
       ) : (
         <>
+          {request && (
+            <>
+              <div style={{ marginBottom: '22px' }}>
+                <div style={{ fontSize: '17px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '6px' }}>Our request</div>
+                <p style={{ color: 'var(--vfo-ink)', fontSize: '15px', lineHeight: 1.55, margin: 0, whiteSpace: 'pre-wrap' }}>{request}</p>
+              </div>
+              <div style={{ marginBottom: '18px', paddingTop: '22px', borderTop: '1px solid var(--vfo-border-chip)' }}>
+                <div style={{ fontSize: '17px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '6px' }}>Your response</div>
+                <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.5 }}>Upload documents, write a reply, or both.</div>
+              </div>
+            </>
+          )}
+
+          {allowText && <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '8px' }}>Upload documents</div>}
+
           <label
             onDragOver={e => { e.preventDefault(); setDrag(true) }}
             onDragLeave={() => setDrag(false)}
@@ -133,23 +151,23 @@ export default function TaxUploadPage() {
                 </div>
               ))}
               <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginTop: '12px' }}>
-                Thank you — your tax documents have been received. You can close this page or add more files at any time using the same link.
+                Thank you — your {request ? '' : 'tax '}documents have been received. You can close this page or add more files at any time using the same link.
               </p>
             </div>
           )}
 
           {allowText && (
           <div style={{ marginTop: '26px', paddingTop: '22px', borderTop: '1px solid var(--vfo-border-chip)' }}>
-            <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Or write an explanation</div>
+            <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Write a reply</div>
             <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', lineHeight: 1.5, margin: '0 0 12px' }}>
-              If what we asked for isn't a document, just tell us here — your message goes straight to your tax team.
+              Type your answer here. Your message goes straight to your tax team.
             </p>
             <textarea
               rows={5}
               value={note}
               onChange={e => { setNote(e.target.value); setNoteSent(false); setNoteError('') }}
               disabled={sending}
-              placeholder="Type your explanation or additional details here..."
+              placeholder="Type your reply here..."
               style={{
                 ...card, padding: '14px 16px', width: '100%', boxSizing: 'border-box', resize: 'vertical',
                 fontFamily: 'inherit', fontSize: '14px', lineHeight: 1.55, color: 'var(--vfo-ink)',
@@ -167,7 +185,7 @@ export default function TaxUploadPage() {
                   color: '#0095ff',
                 }}
               >{sending ? 'Sending…' : 'Send'}</button>
-              {noteSent && <span style={{ color: 'var(--vfo-success-text)', fontSize: '13px', fontWeight: 500 }}>Explanation sent — thank you.</span>}
+              {noteSent && <span style={{ color: 'var(--vfo-success-text)', fontSize: '13px', fontWeight: 500 }}>Reply sent — thank you.</span>}
               {noteError && <span style={{ color: '#e74c3c', fontWeight: 500, fontSize: '13px' }}>{noteError}</span>}
             </div>
           </div>
