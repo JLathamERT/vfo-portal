@@ -190,7 +190,7 @@ function Statement({ member, adjusting, onAdjust, onAdjusted }) {
               {(e.created_by && e.entry_type === 'adjustment') ? <span style={{ color: 'var(--vfo-faint)' }}> · {e.created_by}</span> : null}
               {e.entry_type === 'membership' && (
                 <span style={{ display: 'block', fontSize: '11px', color: e.ert_transfer_status === 'failed' ? '#d93025' : 'var(--vfo-faint)' }}>
-                  {e.ert_transfer_status === 'sent' ? 'Moved to ERT' : e.ert_transfer_status === 'failed' ? 'Move to ERT failed — retried nightly' : 'Moving to ERT tonight'}
+                  {e.ert_transfer_status === 'sent' ? 'Moved to ERT' : e.ert_transfer_status === 'failed' ? 'Move to ERT failed — retried each morning' : 'Moves to ERT at the next daily run (8:30am ET)'}
                   {e.sandbox ? ' · Sandbox' : ''}
                 </span>
               )}
