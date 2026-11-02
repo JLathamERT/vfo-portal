@@ -21,6 +21,7 @@ import PFTAutomationPanel from '../components/admin/PFTAutomationPanel'
 import SpecialistAutomationPanel from '../components/admin/SpecialistAutomationPanel'
 import EmailTemplatesPanel from '../components/admin/EmailTemplatesPanel'
 import NotificationEditorPanel from '../components/admin/NotificationEditorPanel'
+import TeamNotificationEmailsPanel from '../components/admin/TeamNotificationEmailsPanel'
 import PortalHeader from '../components/shared/PortalHeader'
 import AdminNavBar from '../components/admin/AdminNavBar'
 import AllPaymentsTab from '../components/payments/AllPaymentsTab'
@@ -646,6 +647,9 @@ export default function AdminPortal() {
           )}
           {activeTab === 'automation' && automationSection === 'notification_editor' && (
             <NotificationEditorPanel />
+          )}
+          {activeTab === 'automation' && automationSection === 'team_notification_emails' && (
+            <TeamNotificationEmailsPanel />
           )}
 
           {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'payments' && (

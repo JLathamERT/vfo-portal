@@ -38,7 +38,7 @@ export function useMemberNavData(session, enabled = true) {
   const memberNumber = session?.member_number
   const [nav, setNav] = useState(() => {
     const snap = enabled && memberNumber ? getLastSeen(`memberportal:${memberNumber}`) : null
-    return snap ? fromLoads(snap.data, snap.progData, snap.enabledData, memberNumber) : { programs: [], websiteEnabled: false, tier1: false }
+    return snap ? fromLoads(snap.data, snap.progData, snap.enabledData, memberNumber) : { programs: [], websiteEnabled: false, tier1: null }
   })
   useEffect(() => {
     if (!enabled || !memberNumber) return
@@ -98,7 +98,10 @@ function NavDropdown({ label, isActive, options, activeTab, onSelect, onLabelCli
 // (MEMBER_TIER2_ACTIONS) - this list is only what the bar draws.
 export const TIER1_TABS = ['profile', 'profile_edit', 'client_overview', 'showroom']
 
-export default function MemberNavBar({ activeTab, onSelect, programs = [], websiteEnabled = false, tier1 = false }) {
+// tier1 = null while the member's tier is not loaded yet: only Profile is drawn, so a
+// Tier 1 member never sees a Tier 2 tab, not even for the first paint.
+export default function MemberNavBar({ activeTab, onSelect, programs = [], websiteEnabled = false, tier1 = null }) {
+  const tierKnown = tier1 !== null
   const tabBtn = (key, label) => (
     <button key={key} onClick={() => onSelect(key)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === key ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: activeTab === key ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
       {label}
@@ -107,7 +110,7 @@ export default function MemberNavBar({ activeTab, onSelect, programs = [], websi
 
   const flatTabs = ['client_overview', 'tax_diagnostic', 'specialists', 'showroom', 'website', 'growthplan', 'ciq', 'gc', 'vault']
     .filter(tab => tab !== 'website' || websiteEnabled)
-    .filter(tab => !tier1 || TIER1_TABS.includes(tab))
+    .filter(tab => tierKnown && (!tier1 || TIER1_TABS.includes(tab)))
   const tabLabel = key => ({ client_overview: 'Client Overview', tax_diagnostic: 'Tax Diagnostic', profile_edit: 'Edit Profile' })[key] || MEMBER_TAB_LABELS[key] || ''
   const profileOptions = [{ key: 'profile', label: 'Profile' }, { key: 'profile_edit', label: 'Edit Profile' }]
   const msmOptions = [
@@ -117,7 +120,7 @@ export default function MemberNavBar({ activeTab, onSelect, programs = [], websi
   const pick = o => ({ key: o.key, label: o.label, active: activeTab === o.key, onSelect: () => onSelect(o.key) })
   const menuItems = [
     { key: 'profile_group', label: 'Profile', options: profileOptions.map(pick) },
-    ...(tier1 ? [] : [{ key: 'msm_group', label: 'MSM', options: msmOptions.map(pick) }]),
+    ...(!tierKnown || tier1 ? [] : [{ key: 'msm_group', label: 'MSM', options: msmOptions.map(pick) }]),
     ...flatTabs.map(key => pick({ key, label: tabLabel(key) })),
   ]
 
@@ -131,7 +134,7 @@ export default function MemberNavBar({ activeTab, onSelect, programs = [], websi
         onSelect={onSelect}
         onLabelClick={() => onSelect('profile')}
       />
-      {!tier1 && (
+      {tierKnown && !tier1 && (
         <NavDropdown
           label="MSM"
           isActive={activeTab === 'msm_home' || !!activeTab?.startsWith('msm_')}

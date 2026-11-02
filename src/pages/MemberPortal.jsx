@@ -35,7 +35,7 @@ export default function MemberPortal() {
   const session = getSession()
   usePortalTheme()
   const isPhone = useIsPhone()
-  const [activeTab, setActiveTab] = useState(() => {
+  const [pickedTab, setActiveTab] = useState(() => {
     const qs = new URLSearchParams(window.location.search)
     // Land returning Stripe buyers (/member?gc_success=1) on the GC Marketplace.
     if (qs.get('gc_success') === '1') return 'gc'
@@ -57,7 +57,13 @@ export default function MemberPortal() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [enabledPrograms, setEnabledPrograms] = useState([])
-  const [features, setFeatures] = useState({})
+  // null until msm_load_enabled_programs answers: the member's tier is unknown till then.
+  const [features, setFeatures] = useState(null)
+  // Portal licensing L6: the member tier, from the member type (null = not loaded yet).
+  const tier1 = features ? features.member_tier === 1 : null
+  // A Tier 1 member is never drawn a hidden tab, not even for the paint before the
+  // effect below moves them to Profile.
+  const activeTab = tier1 && pickedTab && !TIER1_TABS.includes(pickedTab) ? 'profile' : pickedTab
   const [allPrograms, setAllPrograms] = useState([])
 
   useLayoutEffect(() => {
@@ -80,8 +86,8 @@ export default function MemberPortal() {
   // Portal licensing L6: a Tier 1 member landing on a hidden tab (remembered, or a
   // deep link such as ?gc_success=1 / ?intake=) is put on Profile instead.
   useEffect(() => {
-    if (features.member_tier === 1 && activeTab && !TIER1_TABS.includes(activeTab)) setActiveTab('profile')
-  }, [features, activeTab])
+    if (tier1 && pickedTab && !TIER1_TABS.includes(pickedTab)) setActiveTab('profile')
+  }, [tier1, pickedTab])
 
   async function loadData(quiet) {
     try {
@@ -129,10 +135,8 @@ export default function MemberPortal() {
 
   if (!session) return null
 
-  const taxIntakeEnabled = features.tax_intake === true
+  const taxIntakeEnabled = features?.tax_intake === true
   const orderedEnabledPrograms = orderMemberPrograms(allPrograms, enabledPrograms, features)
-  // Portal licensing L6: the member tier, from the member type.
-  const tier1 = features.member_tier === 1
 
   return (
     // Phone: room under the page for the floating Help (?) button, which sat

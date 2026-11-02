@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { callApi, getSession } from '../../lib/api'
 import { SpecialistOnboardingListSkeleton, SpecialistOnboardingDetailSkeleton } from '../shared/Skeleton'
-import { TrackHero, PhaseBadge, ListHeader } from '../shared/TrackKit'
+import { TrackHero, PhaseBadge, ListHeader, noMultiClickSelect } from '../shared/TrackKit'
 import StepEmailsChip from '../shared/StepEmailsChip'
 import { formatDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
@@ -438,14 +438,14 @@ function OnboardingDetail({ id, onBack }) {
 
     return (
       <div style={{ background: 'var(--vfo-card)', border: `1px solid ${borderColor}`, borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px' }}>
-          <div onClick={() => setExpanded(p => ({ ...p, [stage]: !p[stage] }))} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', flex: 1 }}>
+        <div onClick={() => setExpanded(p => ({ ...p, [stage]: !p[stage] }))} onMouseDown={noMultiClickSelect} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
             <PhaseBadge number={stage} state={state} />
             <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{displayTitle}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <StageBadge stage={stage} />
-            <span onClick={() => setExpanded(p => ({ ...p, [stage]: !p[stage] }))} style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s', cursor: 'pointer' }}>▼</span>
+            <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
           </div>
         </div>
         {isExpanded && ob.current_stage >= stage && (

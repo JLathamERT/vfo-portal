@@ -4,6 +4,10 @@ import { useIsPhone } from '../../lib/useMediaQuery'
 // Purely presentational track-view kit — progress hero + phase badges.
 // No API calls, no state, no business logic: callers pass display data only.
 
+// onMouseDown for a clickable phase-card header: a fast double click would
+// otherwise select the text of the phase's open steps below it.
+export const noMultiClickSelect = e => { if (e.detail > 1) e.preventDefault() }
+
 // Numbered circle for phase-card headers. done = green check, active = blue
 // gradient number, pending = tinted grey number.
 export function PhaseBadge({ number, state }) {
