@@ -494,12 +494,12 @@ export default function ClientDetail() {
           </div>
         ) : (
           <>
-            {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} program={program} />}
-            {activeTab === 'home' && (isMember || isAdmin) && portalAccess !== undefined && client && (
+            {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} program={program}
+              portalCard={isMember && portalAccess !== undefined && client ? <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={tier1Own ? null : ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} readOnly={isAdmin} /> : null}
+              mirroringCard={(isMember || isAdmin) && client ? <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} /> : null} />}
+            {/* The admin view keeps the Client Portal card at the bottom; the member's sits above Client Mirroring. */}
+            {activeTab === 'home' && isAdmin && portalAccess !== undefined && client && (
               <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={tier1Own ? null : ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} readOnly={isAdmin} />
-            )}
-            {activeTab === 'home' && (isMember || isAdmin) && client && (
-              <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} />
             )}
             {/* This client's CIQs, inside the profile (2026-10-20). The list loads by
                 the OWNING member (a member caller's number is forced server-side). */}
@@ -542,7 +542,7 @@ export default function ClientDetail() {
   )
 }
 
-function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, sectionStyle, readOnly = false, plannerMode = false, directMode = false, notes = [], onNotesChange, program }) {
+function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, sectionStyle, readOnly = false, plannerMode = false, directMode = false, notes = [], onNotesChange, program, portalCard = null, mirroringCard = null }) {
   const isPhone = useIsPhone()
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [editNoteText, setEditNoteText] = useState('')
@@ -714,6 +714,11 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
           name/email only, the Cc switches stay admin-only (isAdmin off). */}
       {!readOnly && <ClientAdditionalContacts client={client} contacts={contacts} onReloadContacts={onReloadContacts} sectionStyle={sectionStyle} isAdmin />}
       {readOnly && directMode && <ClientAdditionalContacts client={client} contacts={contacts} onReloadContacts={onReloadContacts} sectionStyle={sectionStyle} />}
+
+      {/* Above every notes card (Jake, 2026-11-02): the member's Client Portal
+          card, then Client Mirroring. */}
+      {portalCard}
+      {mirroringCard}
 
       {/* Notes — full width so long threads use the whole row. */}
       {!readOnly && (
