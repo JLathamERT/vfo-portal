@@ -890,11 +890,6 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                 <div />
                 <div>
                   {money(shownSched.reduce((s, r) => s + faceOf(r), 0))}
-                  {shownSched.some(r => Number(r.mm_applied) > 0) && (
-                    <div style={{ fontSize: '10.5px', fontWeight: 600, color: MM_COLOR }}>
-                      {money(shownSched.reduce((s, r) => s + Number(r.mm_applied || 0), 0))} Money Mapping
-                    </div>
-                  )}
                   {tier1 && !licenceOnly && (
                     <div style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--vfo-faint)' }}>
                       incl. {money(shownSched.reduce((s, r) => s + Number(r.vfo_portal_licence_amount || 0), 0))} VFO Portal
