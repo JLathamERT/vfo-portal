@@ -196,9 +196,9 @@ export const TEMPLATE_META = {
     ['ACCOUNTANT_login_setup', 'New member portal login — set-your-password link', 'To: Accountant'],
   ],
   'TEAM': [
-    ['new_model_sale', 'Internal — announces a new advisor / accountant sale to the team', 'To: Team list (below)'],
-    ['new_vfo_associate_member', 'Internal — announces a new VFO Associate member to the team (sent at Create)', 'To: Team list (below)'],
-    ['new_financial_collaborator_member', 'Internal — announces a new Financial Collaborator member to the team (sent at Create)', 'To: Team list (below)'],
+    ['new_model_sale', 'Internal — announces a new advisor / accountant sale to the team', 'To: Team Notification Emails list (Automation & Config)'],
+    ['new_vfo_associate_member', 'Internal — announces a new VFO Associate member to the team (sent at Create)', 'To: Team Notification Emails list (Automation & Config)'],
+    ['new_financial_collaborator_member', 'Internal — announces a new Financial Collaborator member to the team (sent at Create)', 'To: Team Notification Emails list (Automation & Config)'],
   ],
   'SPECIALIST_ONBOARDING': [
     ['SPECIALIST_yes', 'Step 1 — invitation to continue after the preliminary meeting (agreement + revenue examples attached)', 'To: Specialist'],
@@ -335,7 +335,7 @@ export const ROLE_LABELS = {
   ADVISOR: 'Advisor',
   ACCOUNTANT: 'Accountant',
   TEAM_MEMBER: 'Team member responsible',
-  TEAM: 'Team (all admins)',
+  TEAM: 'Team (Team Notification Emails list)',
   RECIPIENT: 'Default recipient',
   FACILITATOR: 'Proactive Facilitator (Evan / Ian)',
   ASSIGNED_MSM: 'Assigned MSM',

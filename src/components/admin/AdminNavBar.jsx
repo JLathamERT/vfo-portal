@@ -210,6 +210,7 @@ const automationOptions = [
   { key: 'growth_credits', label: 'Growth Credits' },
   { key: 'email_templates', label: 'Email Templates' },
   { key: 'notification_editor', label: 'Notification Editor' },
+  { key: 'team_notification_emails', label: 'Team Notification Emails' },
 ]
 
 const accountingSubmenus = [

@@ -3,7 +3,7 @@ import DirectPill from '../shared/DirectPill'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession, loadCachedAction, getLastSeen, setLastSeen, getWriteCount } from '../../lib/api'
 import { ClientsListSkeleton, TrainingTrackSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, AdminMsmHomeSkeleton, ProgramNotesSkeleton, AdminProgramViewSkeleton, SkeletonText, PhaseListSkeleton } from '../shared/Skeleton'
-import { TrackHero, PhaseBadge } from '../shared/TrackKit'
+import { TrackHero, PhaseBadge, noMultiClickSelect } from '../shared/TrackKit'
 import { countedTasks, countedDone, phaseState, isPositiveStatus, planStatusLabel } from '../shared/trainingStatus'
 import { isTrackerTask } from '../shared/trackerSteps'
 import RoleplayStep, { isRoleplayTask } from '../shared/RoleplayStep'
@@ -799,8 +799,8 @@ function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
         const phaseNumber = phases.slice(0, phaseIdx).filter(p => !p.name.includes('Review')).length + 1
         return (
           <div key={phase.id} style={{ background: isReview ? 'var(--vfo-tint)' : 'var(--vfo-card)', border: `1px solid ${borderColor}`, borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: isReview ? '10px' : '10px', marginTop: isReview ? '-6px' : '0', marginLeft: isReview ? '20px' : '0', overflow: 'hidden', borderTopLeftRadius: isReview ? '0' : '12px', borderTopRightRadius: isReview ? '12px' : '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px' }}>
-              <div onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} style={{ display: 'flex', alignItems: 'center', gap: isReview ? '10px' : '12px', cursor: 'pointer', flex: 1 }}>
+            <div onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} onMouseDown={noMultiClickSelect} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isReview ? '10px' : '12px', flex: 1 }}>
                 {isReview
                   ? <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: dotColor, border: `1.5px solid ${state === 'pending' ? 'var(--vfo-border-mid)' : dotColor}`, flexShrink: 0 }} />
                   : <PhaseBadge number={phaseNumber} state={state} />}
@@ -810,7 +810,7 @@ function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
                 {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{countable.length}</span>}
                 {state === 'pending' && !isReview && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
-                <span onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s', cursor: 'pointer' }}>▼</span>
+                <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
               </div>
             </div>
 
