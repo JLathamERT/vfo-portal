@@ -8,6 +8,86 @@
 
 ---
 
+## 2026-11-02 (d) — The STAGING copy of the portal, part 1 (S1-S4 website): staging.vfoportal.com on project "VFO Staging", live unchanged — by Jake
+
+**Why.** Phase 5 of the two-person workflow. Paxton starts around 2026-11-11, and two people cannot share one live system for testing: the last deploy wins, and test members and clients clutter live. Jake wants a team-wide **test mode** with fake data only, Stripe always in sandbox, every email to the team inbox, a TEST banner, a reset button that also refreshes settings from live, and kept in step with live. **"Remove all testing things from live portal entirely eventually."** Plan of record, decisions D1-D19 and the full setup record: [plans/staging/README.md](plans/staging/README.md). Branches `claude/phase-5-staging-portal-2ba513` (edge) / `-db3a8b` (react), one chat (2026-10-31 planning, 11-01 / 11-02 build).
+
+**Decided (Jake).**
+- D1: a new Supabase project, $10/month.
+- D2: staging.vfoportal.com from a second repo, with DNS at GoDaddy.
+- D3: a new Google user on vfo-services.com, a real account and not an alias of aipc@, so staging can never hold live's mailbox or Drive.
+- D4/D5: the EXISTING Stripe and BoldSign sandboxes MOVE to staging, and live becomes live-only (§4b, not done yet).
+- D6: html2pdf shares live's key.
+- D8: own staging admin passwords, and fake logins share one test password.
+- D18: no testing on live at all. The sandbox toggles, the test-member force and the "Test member only" position all go on the switch day (§4c).
+- D10-D17 and D19 stand as Claude's recommendation. D13 (a Supabase token in GitHub) is to be re-asked before S6.
+
+**Built — backend (S2, edge).**
+- **`constants/environment.ts`** is the one place that knows which copy this is: `isLiveProject()` (by `SUPABASE_URL`), `VFO_ENVIRONMENT`, `environmentSandbox()`, `projectUrl()` / `adminApiUrl()`, `PORTAL_BASE` (from `PORTAL_BASE_URL`) and `SPECIALIST_DRIVE_ROOT`.
+- **The environment decides sandbox first.** Any project that is not live is always sandbox; live with `VFO_ENVIRONMENT=live` never is; unset on live means today's rules.
+  - This covers every helper in `integrations/sandbox-config.ts`. `environmentAllowsMode` keeps staging off live keys.
+  - `save_sandbox_config` answers 403 where the environment decides, and the Feature Switches lose their "Test member only" position there.
+- **Hardcoded live addresses removed from the backend:**
+  - the six chains and seven PDF links that hardcoded live's project URL;
+  - `PORTAL_BASE` and its four renamed copies, plus about 25 inline `https://vfoportal.com` links;
+  - the three hardcoded specialist Drive folders.
+  - Unset, every one of them is today's value byte for byte.
+- **CORS** adds the staging origin on non-live projects only.
+- **The staging email guard** `utils/staging-email-guard.ts` sits inside `gmailPostWithRetry`, the one Gmail writer. Every To/Cc/Bcc becomes the team inbox, the subject gets `[TEST] `, and the body opens with who it would have gone to. It fails closed.
+- **Proof:** `scripts/probe-staging-environment.ps1` (4 scenarios: today, live-only, staging, staging-without-inbox, all PASS); `deno check` 0; action count 639, unchanged.
+
+**Built — website (S4, react).**
+- **`src/lib/environment.js`:** `IS_STAGING`, `SUPABASE_URL`, `HEADSHOTS_URL`, `PORTAL_URL`. The headshot and logo base (7 files), the website-widget embed and the Tax Diagnostic public link read it.
+- **`.env.staging`** holds public values only, including staging's anon key (public by design, like live's). It is committed through a `.gitignore` exception.
+- **`StagingBanner.jsx`:** an orange line across the top plus a "Test Site · Test Data · Stripe Test Mode" label bottom-left (Jake's wording). It never takes a click, and Sentry reports `environment=staging`.
+- **`npm run build:staging` / `deploy:staging`:**
+  - `scripts/finish-staging-build.mjs` sets the CNAME, `robots` Disallow, `noindex` and a `[TEST] ` title, drops the sitemap and points the copied files at staging.
+  - It **refuses to publish** if any file still names live's project, live's key or vfoportal.com.
+- **The live build is proven unchanged:** no banner, no staging address, CNAME vfoportal.com, sitemap kept, Sentry `production`.
+
+**Set up (S1, S3).**
+- **Project and structure:**
+  - Project `yxolcioazczlhruprmrb` "VFO Staging" (us-east-2), created by Claude through MCP.
+  - Structure is a schema-only copy of live with fingerprint-identical tables, columns, functions and policies. The default-privilege drift was fixed, and sequences start at 100000.
+  - 22 buckets and 48 template files.
+  - 15 settings tables are hash-identical to live. `allowed_admins` and every person table are left empty.
+- **Repo and DNS:** repo `JLathamERT/vfo-portal-staging`, with the GoDaddy CNAME `staging` → `jlathamert.github.io`. Pages and Enforce HTTPS were switched on by Jake.
+- **Secrets:**
+  - Claude set `VFO_ENVIRONMENT=staging`, `PORTAL_BASE_URL`, `STAGING_EMAIL_TO`, `SPECIALIST_DRIVE_ROOT_ID` and `GOOGLE_DRIVE_FOLDER_ID`.
+  - Jake set `HTML2PDF_API_KEY`, the Vault `cron_api_key` and `GMAIL_CLIENT_ID` / `_SECRET` / `_REFRESH_TOKEN`.
+  - Every one was verified by digest, with no value in the chat (#718).
+- **Google:** Jena made `staging@vfo-services.com` ("VFO Staging"). It has its own Google Cloud project and client, Drive folders "VFO Staging Files" / "Clients", and scopes `gmail.compose` + `gmail.readonly` + `drive`.
+- **Crons:** the same 19 crons, from `supabase/cron/staging-install.sql`. The key is read from staging's Vault at run time; live's 19 still hold the key inline (to be fixed on the switch day).
+
+**Deployed — to STAGING only (each on Jake's "deploy").**
+- Backend: staging v1 (14:07 UTC), then v6 (22:29 UTC) after bringing both branches up to main (edge 333e6cd, react 6f423ac5).
+- Website: 3 publishes (the first build, the label rewording, the sync).
+- **Live was never deployed from this branch:** `vfo-admin-api` stayed v1082 → v1085, each version from the other chats' releases.
+
+**Checked on staging:**
+- https 200, `[TEST]` title, `noindex`, http → 301;
+- the app calls staging only;
+- crons 200 once the key was fixed;
+- the arrears digest by hand = 200, a draft in staging@ (Draft mode).
+
+**Broke / learned.**
+- All crons 401 at first: a new project's functions hold the NEW-style keys (#715).
+- `npx supabase` v3 rejects `config.toml` (#716).
+- Every CLI link is live (#717).
+- `deno check` without `--no-lock` left a v5 `deno.lock` that blocked the Docker bundle (#112 / #574 — deleted, redeployed).
+- A hand template copy wrote `'{}'` into a jsonb list (#719).
+
+**Kept in step by hand.** The other chats' same-day migrations (`team_notification_recipients`, the three Client Portal template migrations) were applied to staging too. Live's Cc/Bcc clear on templates 159/182/183 was copied, as were the 7 switches turned on for all on live. The `email_templates` and `portal_feature_flags` fingerprints equal live's.
+
+**Stop-gap.** Jake's staging login is his live `allowed_admins` row (id 1, with its salted hash) copied to staging (his pick). He sets his own staging password once the reset / login flow exists. `create_admin` takes a typed passcode and sends no email, so D8's "set-up link" does not exist yet.
+
+**Not done (the plan's remaining checkpoints):**
+- S4: fake per-person data lanes, Paxton's staging login, the §4b sandbox move, and the headline test (log in, test-card payment, receipt in the staging inbox).
+- S5: Reset / Refresh-settings, plus staging's `vfo-widget.js`, which still calls live.
+- S6: main → staging on merge, a drift check, and smoke `-Target staging`.
+- S7: the rule switch.
+- §4c switch day.
+
 ## 2026-11-02 (c) — Feature Switches go live: Client Mirroring, Members add clients, the VFO Client Portal (tax side for new plans only), My Progress — by Jake
 
 Branch `claude/feature-switches-live-df5dda` (edge) / `-c619f7` (react), ONE chat. Jake turned the switches on one at a time, clicked each through, and took the confirmed ones off the list.

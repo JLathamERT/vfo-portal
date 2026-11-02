@@ -28,7 +28,7 @@ $env:VITE_API_URL = "http://127.0.0.1:54321/functions/v1/vfo-admin-api"
 npm run dev
 ```
 
-`VITE_API_URL` is honored by `src/lib/api.js`, `src/pages/PayPage.jsx`, and `src/pages/DecidePage.jsx`. When the env var is unset, all three fall back to the hardcoded production URL — production behavior unchanged.
+`VITE_API_URL` is honored by every file that calls the backend (42, `grep -rl VITE_API_URL src`). When the env var is unset, each falls back to the hardcoded production URL — production behavior unchanged.
 
 ## Deploy
 
@@ -37,6 +37,10 @@ npm run deploy
 ```
 
 Runs `vite build && gh-pages -d dist`. Pushes the built bundle to the `gh-pages` branch; GitHub Pages serves it at the URL above. No CI/CD — deploys are manual.
+
+**Staging** (the team's test copy, https://staging.vfoportal.com/):
+- `npm run build:staging` = `vite build --mode staging` (values from `.env.staging`), the route pages, then `scripts/finish-staging-build.mjs`. That script points the copied files at staging, adds `noindex` and the `[TEST] ` title, and REFUSES if anything still names live.
+- `npm run deploy:staging` = that build, then `gh-pages` to `JLathamERT/vfo-portal-staging`. It needs the same explicit "deploy" as live.
 
 ## Repo layout
 

@@ -57,6 +57,10 @@
   3. Live goes back to main the SAME DAY — merge + release, or re-release main as it is. A test build never stays on live overnight; a handoff that leaves one says so in OWED.
 
   The website never needs a test deploy — the dev server is the test.
+- **The staging copy exists (2026-11-02): https://staging.vfoportal.com/, project `yxolcioazczlhruprmrb`.** Until its plan's S6/S7 switch the rules over ([plans/staging/README.md](plans/staging/README.md)):
+  1. Every staging command names `--project-ref yxolcioazczlhruprmrb`: every checkout's CLI link is LIVE, so a command without it hits live. A staging deploy still needs the person's "deploy" (backend `--use-docker`; website `npm run deploy:staging`).
+  2. Every migration, email-template change or feature-switch flip made on live is made on staging too, the same day.
+  3. After each live release, staging is brought up to main and redeployed (on the person's "deploy"), or it drifts behind live.
 - **One step at a time when shipping.** Ask for "deploy", then stop. After the deploy is done and verified, give the smoke command (only if the backend was deployed), then stop. After the person says it passed, give the live test steps (if any), then stop. Never hand over a later step's command or script early.
 - **Fix on the spot, ship once.** A bug found while testing is fixed in the worktree right away (a product decision — UX flow, schema, a new column — is still asked first) and everything ships together at the end. Don't keep asking to deploy the frontend: keep a list of what is waiting and raise it at wrap-up or when the person asks.
 - **Every approved change ends DEPLOYED, not merged:** backend → `vfo-admin-api` deploy (`--use-docker`, Docker Desktop running, `deno.lock` deleted — #574); frontend → `npm run deploy`, then prove the live site changed (§10); DB schema → migration applied through MCP AND committed as a file (#196); Storage → file uploaded; cron → re-installed. Work spanning both repos needs both deploys, or the final summary says plainly which half is not live.
@@ -94,7 +98,7 @@
 
 ## 8. DATA, SQL AND MONEY
 
-- **Run SQL yourself through the Supabase MCP** (`execute_sql`; `apply_migration` for DDL, which is asked first — §1). Never "here is the SQL, paste it in the dashboard". There is one project and it is production (`ejpsprsmhpufwogbmxjv`).
+- **Run SQL yourself through the Supabase MCP** (`execute_sql`; `apply_migration` for DDL, which is asked first — §1). Never "here is the SQL, paste it in the dashboard". There is one REAL project and it is production (`ejpsprsmhpufwogbmxjv`). The staging copy (`yxolcioazczlhruprmrb`) holds fake data only; name it on every call (§4).
 - **Before deleting a real client,** search `clients` by last name AND email. More than one row = show them all (ref, member, plan, planner, files) and ask which; say which one holds the real work. Never trust a ref alone (2026-10-12, Ameya Kabre).
 - **A test client seeded into a program** needs its `clients` row AND its `client_enrollments` row — the program lists read the join table.
 - **Resetting the tax test client:** DELETE its `client_tax_progress` rows, then `client_tax_specialists`, then `client_tax_plans` — never NULL fields one by one (stale booked-ROI columns fake failures). MAP 1: DELETE the `pipeline_map1` row (`UNIQUE(client_id)`) and clear its `client_progress` C-tasks. Mark only THAT client's unread bells read, never anyone else's. Then log out and back in — the `api.js` cache survives a hard refresh.

@@ -165,17 +165,27 @@ No write path from any handler — PDFs are uploaded manually via Supabase Studi
 
 ## CORS
 
-The admin-api maintains a hardcoded allowlist:
+The admin-api maintains a hardcoded allowlist (`constants/allowed-origins.ts`):
 
 ```
 ALLOWED_ORIGINS = [
+  "https://vfoportal.com",
+  "https://www.vfoportal.com",
   "https://jlathamert.github.io",
-  "http://localhost:5173",
-  "http://localhost:5174",
+  "http://localhost:5173" … "http://localhost:5176",
+  ...(isLiveProject() ? [] : ["https://staging.vfoportal.com"]),
 ]
 ```
 
-Set on every response. Adding a new frontend host (e.g., a custom domain) requires editing the function and redeploying.
+Set on every response. Adding a new frontend host requires editing the function and redeploying. **The staging website is accepted by the staging backend only** — live never lists it (2026-11-02).
+
+## The staging project (2026-11-02)
+
+A second project, **"VFO Staging"** (`yxolcioazczlhruprmrb`, us-east-2, $10/month), runs the same `vfo-admin-api` for staging.vfoportal.com. Plan of record and every setup step: [plans/staging/README.md](../plans/staging/README.md).
+- **Structure:** a schema-only copy of live, fingerprint-identical. The settings tables (email templates, switches, sandbox config, …) are copied from live. There are no real people, and its `allowed_admins` starts empty. Sequences start at 100000.
+- **Deploys:** every checkout's CLI link (`supabase/.temp/project-ref`) is LIVE, so every staging command names `--project-ref yxolcioazczlhruprmrb`. Deploying still needs the person's "deploy".
+- **Crons:** the same 19 jobs, installed from `supabase/cron/staging-install.sql`. Each reads its key at run time from staging's Vault (`cron_api_key` = staging's `sb_secret_…` key, #715), never inline.
+- **Until S6/S7:** every live migration, template change or switch flip is applied to staging too, and staging is redeployed from main after each live release.
 
 ## Migration practices
 

@@ -18,10 +18,15 @@
 | Stripe — ERT account | membership, Growth Credits, onboarding payments | team member invite | to add |
 | Stripe — VFO Services account | MAP 1, Tax, PFT, specialist payments | team member invite | to add |
 | BoldSign | agreements and signatures | to decide | to add |
-| Gmail (the account the portal drafts emails from) | email drafts and sends | to decide | to add |
+| Gmail (the account the portal drafts emails from: `aipc@vfo-services.com`) | email drafts and sends | to decide | to add |
 | Google Drive / Sheets | client folders, invoice + receipt PDFs | to decide | to add |
 | Sentry | frontend error reports | team invite | — |
 | html2pdf | PDF rendering | to decide | to add |
 | Test accounts (tax-planner test logins, test member / client logins) | testing | — | to add |
+| **STAGING** — GitHub `JLathamERT/vfo-portal-staging` (public) | the staging website, published by `npm run deploy:staging` to its `gh-pages`; GitHub Pages serves it at https://staging.vfoportal.com/ (GoDaddy CNAME `staging` → `jlathamert.github.io`) | collaborator invite | — |
+| **STAGING** — Supabase project "VFO Staging" (`yxolcioazczlhruprmrb`) | the staging backend, database and secrets | same organization as live | — |
+| **STAGING** — portal login at https://staging.vfoportal.com/admin | the staging admin portal | a superadmin adds you in staging's Admin Editor (no set-up email) | — |
+| **STAGING** — Google user `staging@vfo-services.com` ("VFO Staging") | staging's mailbox (every staging email lands here) and its Drive; recovery address Jake's ERT email | Google Workspace admin (Jena) | VFO Staging Google |
+| **STAGING** — Google Cloud project "VFO Staging" + OAuth client "VFO Staging portal" | the client ID / secret / refresh token in staging's `GMAIL_*` secrets | signed in as `staging@` | VFO Staging Google app |
 
 "to decide" / "to add" — filled in when the vault is set up; update this table in the same PR.

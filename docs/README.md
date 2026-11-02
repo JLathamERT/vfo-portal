@@ -146,7 +146,7 @@ These items are flagged across multiple docs and remain unresolved without exter
 2. **Stripe quarterly payments 2-4** — no observed code path creates them with `metadata.payment_number`. May be manual / external / unimplemented. See [flows/stripe-webhook.md](flows/stripe-webhook.md#sub-branch-b1--quarterly-subsequent-payment).
 3. ~~Reminder followup columns~~ — **RESOLVED 2026-05-21.** The reminder ladder is now implemented for the three MAP 1 stalls (as of 2026-08-14 its tiers count **2 / 4 BUSINESS days**, not the calendar 48h/96h it launched with — #396; the anchor below keeps its original slug); the legacy unimplemented columns were dropped and replaced with active `*_email_sent_at` / `*_reminder_sent_at` / `*_pf_notified_at` timestamptz columns driven by `automation_CONTRACT_revshare_sweep`. See [flows/contract-and-payment.md](flows/contract-and-payment.md#reminder-ladder-48h-client-reminder--96h-pf-notification).
 4. **`gc_create_checkout` admin-only gate** — gated by `ADMIN_ONLY_ACTIONS` but invoked from a member-mounted React component. Members would currently get HTTP 403. See [flows/gift-credits.md](flows/gift-credits.md#auth).
-5. **Gmail OAuth account identity** — which Gmail account owns the refresh token, and where do the drafts appear? Not visible from code.
+5. ~~Gmail OAuth account identity~~ — **RESOLVED 2026-10-31 (Jake):** live's drafts land in `aipc@vfo-services.com`. Staging has its own account, `staging@vfo-services.com` ([integrations/gmail.md](integrations/gmail.md)).
 6. **`boldsign_template_id` column** — read but never used in the BoldSign API request. Vestigial?
 7. **`stripe_test_mode` column** — exists on `pipeline_sandbox_config` but no code reads it.
 
