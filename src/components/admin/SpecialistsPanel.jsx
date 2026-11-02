@@ -13,6 +13,7 @@ import ImageCropModal from './ImageCropModal'
 import { formatDate } from '../../lib/dates'
 import ExportButton from '../shared/ExportButton'
 import { splitName, exportDate } from '../../lib/exportXlsx'
+import { HEADSHOTS_URL } from '../../lib/environment'
 
 // `default: false` columns start unticked in the Export window.
 const specialistExportColumns = (ecoMap) => [
@@ -36,7 +37,7 @@ const MEMBER_SERVICES = 'Member Services'
 // The Tax section (shared, one set per person) only surfaces under this ecosystem.
 const TAX_ECOSYSTEM = 'Tax Planning'
 import { STATUS_COLORS } from '../shared/statusColors'
-const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
+const HEADSHOT_SUPABASE = HEADSHOTS_URL
 const HEADSHOT_BASE = 'https://biz-diagnostic.com/Uploads/ExpertPhotos/'
 
 // A specialist can serve more than one VFO ecosystem, and their short_bio +

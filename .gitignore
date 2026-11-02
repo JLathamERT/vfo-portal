@@ -16,6 +16,8 @@ dist-ssr
 .env
 .env.*
 !.env.example
+# The staging build's addresses (no secrets) - docs/plans/staging/README.md
+!.env.staging
 
 # Editor directories and files
 .vscode/*

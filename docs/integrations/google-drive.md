@@ -14,6 +14,9 @@ Used by exactly one action — `automation_CONTRACT_invoicereceipt` ([admin-api:
 |---|---|
 | `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` / `GMAIL_REFRESH_TOKEN` | Same OAuth grant as Gmail — single refresh token covers Drive scope |
 | `GOOGLE_DRIVE_FOLDER_ID` | Parent folder ID under which per-client folders are created |
+| `SPECIALIST_DRIVE_ROOT_ID` | The folder holding "VFO Specialist Onboarding" (a sibling of the clients folder). Unset = live's own folder, on live only (`constants/environment.ts` `SPECIALIST_DRIVE_ROOT`, 2026-11-02) |
+
+**Staging (2026-11-02)** files into `staging@vfo-services.com`'s own Drive: "VFO Staging Files" (`SPECIALIST_DRIVE_ROOT_ID`), with "Clients" inside it (`GOOGLE_DRIVE_FOLDER_ID`). It never holds a grant to live's Drive.
 
 ## API endpoints used
 

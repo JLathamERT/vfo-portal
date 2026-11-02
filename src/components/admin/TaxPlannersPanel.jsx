@@ -19,7 +19,8 @@ import ExportButton from '../shared/ExportButton'
 import { exportDate } from '../../lib/exportXlsx'
 
 import { STATUS_COLORS, statusColor } from '../shared/statusColors'
-const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
+import { HEADSHOTS_URL } from '../../lib/environment'
+const HEADSHOT_SUPABASE = HEADSHOTS_URL
 
 const PLANNER_EXPORT_COLUMNS = [
   { header: 'First Name', value: p => p.first_name || '' },

@@ -22,6 +22,8 @@ await fetch(`${SUPABASE_URL}/functions/v1/vfo-admin-api`, {
 });
 ```
 
+**Never hardcode the project URL in a chain (2026-11-02).** Use `${SUPABASE_URL}` or `adminApiUrl()` from `constants/environment.ts`. On the staging copy a literal live URL would chain from staging INTO LIVE. The six chains (and seven PDF links) that hardcoded `ejpsprsmhpufwogbmxjv` now use `adminApiUrl()` / `projectUrl()`, which on live return the same literal URL.
+
 **40 files** chain this way (re-derived 2026-09-25 with `grep -rl "functions/v1/vfo-admin-api"` over the function — derive, never trust this number; 39 before the Rapid Route branch made `actions/tax/final-decision.ts` a chain source, 38 on 2026-09-18, 34 on 2026-08-24; **`utils/member-payout-release.ts` added 2026-08-24** was the first chaining file that is a *util* rather than an action, because its two callers already hold service-role context and nothing third-party triggers it. **None of the 2026-09-17/18 tax-intake files chain over HTTP** — `finalizeTaxIntake`, the deposit documents, the $250 leg and the Holistic ask are all direct helper calls made from contexts that already hold service-role, so the count did not move on that branch). Two credential shapes, and the difference is load-bearing:
 
 | Caller context | Credential | Notes |

@@ -10,8 +10,9 @@ import vfoCertifiedSeal from '../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../assets/vfo-accredited-emblem.png'
 import { formatDate } from '../lib/dates'
 import { statusColor } from '../components/shared/statusColors'
+import { HEADSHOTS_URL } from '../lib/environment'
 
-const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
+const HEADSHOT_SUPABASE = HEADSHOTS_URL
 const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:\/\//i.test(s) ? 'https://' + s : s }
 const LIST_TITLE = { accountant: 'Accountants', strategic_member: 'Strategic Members' }
 

@@ -2,8 +2,9 @@ import { useState, useEffect, useLayoutEffect } from 'react'
 import { detailEntries, entryLabel, DB_FIELDS, REVENUE_SHARE_KEY, CLIENT_HIDDEN_FIELDS } from '../shared/specialistDetails'
 import { callApi } from '../../lib/api'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { HEADSHOTS_URL } from '../../lib/environment'
 
-const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
+const HEADSHOT_SUPABASE = HEADSHOTS_URL
 const HEADSHOT_FALLBACK = 'https://biz-diagnostic.com/img/expert/'
 
 // Fixed "standard plugin" look — identical on every member's account. Only the

@@ -14,8 +14,19 @@ Confirmed via `Deno.env.get(...)` audit of `vfo-admin-api/index.ts` and `boldsig
 
 | Var | Used by | Purpose |
 |---|---|---|
-| `SUPABASE_URL` | both edge functions | Project URL — `https://ejpsprsmhpufwogbmxjv.supabase.co`. Used to construct chain-call URLs and as the `createClient` arg. |
-| `SUPABASE_SERVICE_ROLE_KEY` | both edge functions | Service-role JWT for `createClient`. Bypasses RLS. Also presented as `Authorization: Bearer ...` on server-to-server chain calls. |
+| `SUPABASE_URL` | both edge functions | Project URL — `https://ejpsprsmhpufwogbmxjv.supabase.co` on live, the staging project's own on staging. The `createClient` arg. Chain-call URLs and public storage links go through `projectUrl()` / `adminApiUrl()` (`constants/environment.ts`, 2026-11-02), which on live return the literal live URL so live's links stay byte-identical. |
+| `SUPABASE_SERVICE_ROLE_KEY` | both edge functions | Service-role key for `createClient`. Bypasses RLS. Also presented as `Authorization: Bearer ...` on server-to-server chain calls, and every sweep compares the cron's Bearer with it. **On a project created in 2026 (staging) Supabase fills it with the NEW-style `sb_secret_…` key, not the legacy JWT** — a caller that sends the legacy JWT gets 401 (#715). |
+
+### Environment — which copy of the portal this is (2026-11-02, `constants/environment.ts`)
+
+Unset on live = today's behaviour byte for byte. The staging project sets them (plan: [plans/staging/README.md](../plans/staging/README.md)).
+
+| Var | Read by | Purpose |
+|---|---|---|
+| `VFO_ENVIRONMENT` | `isStagingEnvironment()` / `isLiveOnlyEnvironment()` / `environmentSandbox()` | `staging` on the staging project. `live` = live-only (never sandbox), set on the switch day (plan §4c). Unset = today: the pipeline toggles, the test-member force and each row's stamp decide sandbox. Any project that is not live is ALWAYS sandbox, whatever this says. |
+| `PORTAL_BASE_URL` | `PORTAL_BASE` (every emailed link, Stripe `success_url` / `cancel_url`) | `https://staging.vfoportal.com` on staging; unset = `https://vfoportal.com`. |
+| `STAGING_EMAIL_TO` | `utils/staging-email-guard.ts` | The one inbox every staging email goes to (`staging@vfo-services.com`). Missing on a non-live project = no email leaves (fails closed). |
+| `SPECIALIST_DRIVE_ROOT_ID` | `SPECIALIST_DRIVE_ROOT` (specialist bg / licence receipts) | The Drive folder that holds "VFO Specialist Onboarding". Unset = live's own folder, **on live only** — a test copy never files into live's Drive. |
 
 ### Stripe
 
@@ -61,7 +72,7 @@ A single OAuth refresh token covers all three Google APIs.
 |---|---|---|
 | `GMAIL_CLIENT_ID` | every handler that creates a Gmail draft, reads Sheets, or uploads to Drive | OAuth client ID |
 | `GMAIL_CLIENT_SECRET` | same | OAuth client secret |
-| `GMAIL_REFRESH_TOKEN` | same | Long-lived refresh token. Single token; granted scopes must cover `gmail.compose`, `spreadsheets.readonly`, and `drive` (or sub-scope). Scope detail not in repo. |
+| `GMAIL_REFRESH_TOKEN` | same | Long-lived refresh token. Single token. The code needs `gmail.compose` (drafts + send), `gmail.readonly` (the thread lookup in `utils/gmail-thread.ts`) and `drive`; it makes no Sheets call any more. Live's exact grant is not in the repo. Staging's (2026-11-02) is exactly those three, granted by `staging@vfo-services.com` through its own Google Cloud project "VFO Staging". |
 | `GOOGLE_DRIVE_FOLDER_ID` | `automation_CONTRACT_invoicereceipt` only | Parent folder ID under which per-client subfolders are created |
 
 > **Naming inconsistency:** the variable is `GMAIL_CLIENT_ID` etc. but it's actually the **Google** OAuth client used for Gmail + Sheets + Drive. Renaming would break the deployed function; documented as-is.
@@ -78,11 +89,14 @@ Vite-style (`import.meta.env`):
 
 | Var | Used by | Purpose |
 |---|---|---|
-| `VITE_API_URL` | [src/lib/api.js:1](src/lib/api.js), [src/pages/PayPage.jsx:4](src/pages/PayPage.jsx), [src/pages/DecidePage.jsx:4](src/pages/DecidePage.jsx) | Override for the edge function URL. Falls back to hardcoded `https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api`. Production behavior unchanged when unset. |
+| `VITE_API_URL` | 42 files (`grep -rl VITE_API_URL src`, 2026-11-02), [src/lib/api.js:1](src/lib/api.js) first | Override for the edge function URL. Falls back to hardcoded `https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api`. Production behavior unchanged when unset. |
+| `VITE_SUPABASE_URL` | [src/lib/environment.js](src/lib/environment.js) `SUPABASE_URL` / `HEADSHOTS_URL` | The project behind storage links (headshots, logos, the website-widget embed). Unset = live's. |
+| `VITE_PORTAL_URL` | [src/lib/environment.js](src/lib/environment.js) `PORTAL_URL` | This website's own address, for links a screen shows or copies (the Tax Diagnostic public link). Unset = `https://vfoportal.com`. |
+| `VITE_SUPABASE_ANON_KEY` | `scripts/finish-staging-build.mjs` only | Staging's PUBLIC anon key, swapped into the staging build's files in place of live's (see below). |
 
-> **Resolved inconsistency.** Previously only DecidePage honored `VITE_API_URL`; api.js and PayPage hardcoded the prod URL. As of `test/frontend-vs-local-function` branch (commit `3bf0963`), all three honor the env var.
+**The staging build (2026-11-02).** `npm run build:staging` = `vite build --mode staging`, which reads the committed [.env.staging](../../.env.staging) (public values only: API URL, project URL, portal URL, anon key), then `scripts/finish-staging-build.mjs`. `IS_STAGING` (`import.meta.env.MODE === 'staging'`) mounts the TEST banner; in the live build it folds to `false` and the banner is left out. `npm run build` / `npm run deploy` read none of these, so the live build is unchanged.
 
-The hardcoded **anon key** is in [src/lib/api.js:2](src/lib/api.js) — not an env var. Rotating the anon key requires editing source + redeploying.
+The hardcoded **anon key** is in [src/lib/api.js:2](src/lib/api.js) — not an env var. Rotating the anon key requires editing source + redeploying. The staging build swaps live's key for staging's in `dist` (the finishing script, which then refuses to publish if any file still names live's project, key or address).
 
 The **Sentry DSN** (frontend error monitoring, added 2026-06-18) is likewise **hardcoded** in [src/main.jsx](src/main.jsx) — *not* an env var and *not* a secret. A DSN is a public, ingest-only key (it can only send error reports to the one project, never read), safe to ship like the anon key. There is therefore nothing to add to the secret inventory above. See [sentry.md](sentry.md).
 
