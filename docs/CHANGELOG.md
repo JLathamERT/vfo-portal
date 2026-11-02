@@ -8,6 +8,13 @@
 
 ---
 
+## 2026-11-02 (b) — Money Mapping: first real member (Linc Campbell) + two UI tidies — by Jake
+
+- **Linc Campbell 59457, plan 98** (mid-year transfer, $8,000, year to Jul 15, 2027; 4 paid on the old system, per the accounting sheet) started BY HAND on Money Mapping with no card, as Paul asked: 8 rows on the 2nd (Nov 2, 2026 - Jun 2, 2027, built with the code's own `buildTransferDayRows`, `year_start` 2026-11-02), `charge_day` 2, `pay_with_mm` on. November paid via `money_mapping_apply_to_row` ($9,008.32 -> $8,341.32), INV / REC-59457-0001 drafted (transfer kind). Ledger 45 = a $675 adjustment "Holistic Core - Dave Svatik (Nov 2025)". OWED: its ERT transfer (ledger 46) is the first LIVE Money Mapping transfer — verify after the next daily run.
+- **UI** (react only, branch `claude/mm-ui-tidy`): the yellow "$X Money Mapping" line under the Membership Fees Totals is gone; the statement note for a membership row not yet moved reads "Moves to ERT at the next daily run (8:30am ET)" (was "tonight" — the run is 13:30 UTC).
+
+---
+
 ## 2026-11-02 — Tier 1 tab bar never shows Tier 2 tabs; whole-row phase headers; Team Notification Emails list — by Jake
 
 Three asks from Jake in one chat (branch `claude/portal-tier-visibility-ui-58d918`, both repos).
