@@ -1,0 +1,1 @@
+import{r as a}from"./index-CKqAemBC.js";import{d as u}from"./formatters-nd6EWXjb.js";function s({value:t,onChange:e,style:o,placeholder:n="(555) 555-5555",...r}){return a.jsx("input",{type:"tel",inputMode:"tel",autoComplete:"tel",value:t||"",placeholder:n,onChange:p=>e(u(p.target.value,t||"")),style:o,...r})}export{s as P};
