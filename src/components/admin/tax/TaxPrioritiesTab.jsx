@@ -5667,8 +5667,6 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       // recovered, so those rounds show no question text.
       const requests = Array.isArray(livePlan?.additional_info_requests) ? livePlan.additional_info_requests : []
       const rounds = additionalInfoRounds(requests, responses, requestedAt, receivedAt)
-      const clientFull = client ? `${client.first_name || ''} ${client.last_name || ''}`.trim() : ''
-      const clientFirst = clientFull ? clientFull.split(/\s+/)[0] : ''
       const draft = declineDrafts[task.id] || {}
       const composeOpen = !!draft.composeOpen
       const sending = !!draft.sending
@@ -5765,7 +5763,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: subDotColor, flexShrink: 0, border: `1.5px solid ${subDotBorder}` }} />
-                <span className="vfo-stepname" style={{ fontSize: '13px', color: (done || requestedAt) ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>Request additional information{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={taxDisplayName(task.name)} templates={[{ name: 'TAX_request_additional_info', when: 'Asks the client to upload the requested additional information via a secure link' }]} context={emailCtx} /></span>}</span>
+                <span className="vfo-stepname" style={{ fontSize: '13px', color: (done || requestedAt) ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>Request additional information{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={taxDisplayName(task.name)} templates={[{ name: 'TAX_request_additional_info', when: 'Asks the client to open a secure page, read the request and respond (the request is not in the email)' }]} context={emailCtx} /></span>}</span>
                 {(readOnly || addlInfoLocked) ? (
                   done
                     ? <span style={chipStyle('#1b9254')}>Information received — {formatStamp(receivedAt)}</span>
@@ -5777,26 +5775,16 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               </div>
               {composeOpen && !readOnly && !addlInfoLocked && (
                 <div style={{ marginLeft: '18px', marginBottom: '8px', padding: '14px 16px', background: 'var(--vfo-tint)', borderRadius: '10px', border: '1px solid var(--vfo-tint-deep)', fontFamily: 'Inter, sans-serif' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
-                    Subject: Additional information required - {clientFull || '[Client Name]'}
+                  <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                    Your request
                   </div>
-                  <div style={{ fontSize: '13px', color: '#44557a', lineHeight: '1.6' }}>
-                    <p style={{ margin: '0 0 12px' }}>Dear {clientFirst},</p>
-                    <p style={{ margin: '0 0 12px' }}>As part of your tax planning engagement, we are requesting the following additional information:</p>
-                    <textarea
-                      value={text}
-                      onChange={e => setDraft({ text: e.target.value })}
-                      placeholder="List the additional information you need from the client."
-                      disabled={sending}
-                      style={{ width: '100%', minHeight: '90px', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.06)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', fontSize: '13px', lineHeight: '1.55', boxSizing: 'border-box', resize: 'vertical', marginBottom: '12px' }}
-                    />
-                    <p style={{ margin: '0 0 12px' }}>Please use the secure button below to provide the additional information:</p>
-                    <div style={{ margin: '0 0 12px' }}>
-                      <span style={{ display: 'inline-block', padding: '10px 18px', borderRadius: '6px', background: '#0095ff', color: '#fff', fontSize: '13px', fontWeight: 600, pointerEvents: 'none' }}>Upload Additional Information</span>
-                    </div>
-                    <p style={{ margin: '0 0 12px' }}>If you have any questions, please reply all to this email and we'd be happy to help!</p>
-                    <p style={{ margin: 0 }}>Thank you,</p>
-                  </div>
+                  <textarea
+                    value={text}
+                    onChange={e => setDraft({ text: e.target.value })}
+                    placeholder="List the additional information you need from the client."
+                    disabled={sending}
+                    style={{ width: '100%', minHeight: '90px', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.06)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', fontSize: '13px', lineHeight: '1.55', boxSizing: 'border-box', resize: 'vertical' }}
+                  />
                   <div style={{ marginTop: '14px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                     <button disabled={sending} onClick={clearDraft} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '12px', cursor: sending ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Cancel</button>
                     <button disabled={sending || !text.trim()} onClick={sendRequest} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '12px', cursor: (sending || !text.trim()) ? 'not-allowed' : 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: (sending || !text.trim()) ? 'rgba(0,149,255,0.06)' : 'rgba(0,149,255,0.18)', color: '#0095ff', fontWeight: '600' }}>{sending ? 'Sending…' : 'Send'}</button>

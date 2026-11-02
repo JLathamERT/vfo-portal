@@ -8,6 +8,26 @@
 
 ---
 
+## 2026-11-01 (d) — Additional information + Questions for the client: the emails never carry the request — by Jake
+
+Jake: the client should have to click through to see what is being asked. The *Additional information required* email and the *Questions for the client* email now share one body (and their reminders another), none of them shows the request, and the two pages the button opens look the same.
+
+- **Emails** (migration `20261101120000_tax_request_emails_no_question.sql`, data only): 201 `TAX_request_additional_info` and 316 `TAX_client_question` share *"As part of your tax planning engagement, we have a request for you. Please use the secure button below to view our request and respond. You can type a reply, upload documents, or both."* + the red *Please do not reply* line; 301 / 317 the reminder twin (*"…still waiting for your response to the request we sent on [date]"*). Subjects unchanged. **All four now SEND** (301 / 316 / 317 were Draft). The button reads **View and Respond** in all four (code: `request-additional-info.ts`, `client-questions.ts` `answerButtonHtml`, `utils/tax-reminder-chases.ts`).
+- **`/tax-upload` shows the request.** `vault_tax_upload_context` returned only `allow_text` (#331: "never widen"); it now also returns `request`, the last `additional_info_requests[].text` of the same plan — Jake accepted that anyone holding the client's long-lived link sees the text the email used to show. With a request the page reads *Respond to Your Tax Team*, **Our request**, then **Your response** (*Upload documents, write a reply, or both.*) over **Upload documents** and **Write a reply**; `/tax-question` got the identical layout. The old *Or write an explanation* wording went because the client may do both. Returns-only / first-payment arrivals still get the plain upload page.
+- **The compose card** on *Request additional information* drew a hard-coded copy of email 201 (already stale: it still said *"reply all"*) — Jake saw the old email while testing. It is now just **Your request** + Cancel / Send (#709).
+- **Order of release, decided mid-test:** the migration was applied on live during the click-through (Jake's word, after the classifier blocked the first attempt), on the test build v1081 and before the website release — so real request emails went out without the question while the live `/tax-upload` did not yet show it, until the website shipped the same day.
+- **Deploys:** `vfo-admin-api` **v1081** — a test deploy from the branch (0 behind `origin/main`, over v1080 = main). No DDL; action count 637 (unchanged).
+- **Tested (Jake, 59524 sandbox, plan 304):** smoke 23/23 vs v1081; the additional-info email with no request text and the View and Respond button; `/tax-upload` showing the request, upload + written reply; *Questions for the client* email + `/tax-question`; the plain upload page with no request. **Not tested:** the two reminders (301 / 317) — they go out from the weekday chase run.
+
+Superseded template bodies (2026-11-01), verbatim:
+
+> 201: `Dear [Client First],<br><br>We are requesting the following additional information:<br><br>[REQUESTED_INFO]<br><br><b style="color: red;">Please do not reply to this email.</b> Instead, use the secure button below to provide the additional information:<br><br>[UPLOAD_BUTTON]<br><br>Thank you,` (send)
+> 301: `Dear [Client First],<br><br>Just a friendly reminder that we are still waiting for the additional information we requested on [Request Date]:<br><br>[REQUESTED_INFO]<br><br><b style="color: red;">Please do not reply to this email.</b> Instead, use the secure button below to provide the additional information:<br><br>[UPLOAD_BUTTON]<br><br>Thank you,` (draft)
+> 316: `Dear [Client First],<br><br>As we work on your tax plan, we have a question for you:<br><br>[QUESTION]<br><br><b style="color: red;">Please do not reply to this email.</b> Instead, use the secure button below to answer. You can also attach any documents we have asked for:<br><br>[ANSWER_BUTTON]<br><br>Thank you,` (draft)
+> 317: `Dear [Client First],<br><br>Just a friendly reminder that we are still waiting for your answer to the question we asked on [Question Date]:<br><br>[QUESTION]<br><br><b style="color: red;">Please do not reply to this email.</b> Instead, use the secure button below to answer:<br><br>[ANSWER_BUTTON]<br><br>Thank you,` (draft)
+
+---
+
 ## 2026-11-01 (c) — Two-person workflow, phase 2: the superadmin list, Paxton on the access lists, a 23-check smoke gate — by Jake
 
 Hub OWED (AG) Phase 2. Paxton needs the same superadmin powers as Jake, and the smoke gate only covered five pipeline loaders, so a broken member, client, specialist or planner portal, or a broken emailed-link page, passed it.
