@@ -127,7 +127,7 @@
 > query). Raised by `member_client_connection_add` (`sendConnectedNotice` in `utils/client-connections.ts`) to the
 > mirrored member's **`member_logins.email`** (`forceRecipients`; no login = no bell): *"Client mirrored: <client>
 > (from <owner>)"*, linking to `/member/client/<id>`. Its sibling email is template `CLIENT_PORTAL` /
-> `MEMBER_client_connected` (Draft). Behind `mirrored_clients`, keyed on the client's owner.
+> `MEMBER_client_connected` (Send since 2026-11-02). Behind `mirrored_clients` (On for all since 2026-11-02), keyed on the client's owner.
 >
 > **The 2026-10-21 additions, no section below:** `Payment Failure Alerts` **+2**, both Jake, dismissible FYI, deduped while
 > unread (migration `20261022130000`): **`FAILURE_email_delivery`** (sort 210) — raised by the delivery layer itself when a

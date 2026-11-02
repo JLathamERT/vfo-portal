@@ -4140,7 +4140,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                   </>
                 )}
               </>
-            ) : memberLocked ? null : !ready ? (
+            ) : memberLocked ? <span style={neutralChipStyle}>Not started</span> : !ready ? (
               <span className="vfo-stepchips" style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
                 <LockedIcon />
                 <span style={lockedHintStyle}>{blockedHint}</span>
@@ -4234,10 +4234,12 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
           <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <LockedIcon />
-            <span style={lockedHintStyle}>Starts automatically after the "{rapidPlan ? RAPID_STEP_LABELS.enter_details : 'Client tax planning decision'}" step</span>
-          </span>
+          {memberLocked ? <span style={neutralChipStyle}>Not started</span> : (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <LockedIcon />
+              <span style={lockedHintStyle}>Starts automatically after the "{rapidPlan ? RAPID_STEP_LABELS.enter_details : 'Client tax planning decision'}" step</span>
+            </span>
+          )}
           <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}></span>
         </div>
       )
@@ -4554,7 +4556,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           {done ? (
             <span style={chipStyle('#1b9254')}>Email drafted for {formatDate(sendDate)}</span>
           ) : memberLocked ? (
-            scheduled ? <span style={chipStyle('#0095ff')}>Scheduled — {formatDate(sendDate)}</span> : null
+            scheduled ? <span style={chipStyle('#0095ff')}>Scheduled — {formatDate(sendDate)}</span> : <span style={neutralChipStyle}>Not started</span>
           ) : formOpen ? (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <input type="url" value={draft.link || ''} onChange={e => setDraft({ link: e.target.value })} placeholder="Paste the presentation link..." style={{ ...tdInput, minWidth: '220px' }} />
@@ -4632,7 +4634,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             {done ? (
               <span style={chipStyle('#1b9254')}>{requestedAt ? `Returns received — ${formatStamp(receivedAt)}` : 'Returns on file'}</span>
             ) : memberLocked ? (
-              requestedAt ? <span style={chipStyle('#0095ff')}>Email sent — {formatStamp(requestedAt)}</span> : null
+              requestedAt ? <span style={chipStyle('#0095ff')}>Email sent — {formatStamp(requestedAt)}</span> : <span style={neutralChipStyle}>Not started</span>
             ) : (
               <>
                 <button disabled={sending} onClick={sendRequest} style={tdGreen} title="Drafts a Gmail to the client with a secure link to upload their tax returns.">{sending ? 'Sending…' : (requestedAt ? 'Resend request email' : 'Send email to request tax returns')}</button>
@@ -4690,7 +4692,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               <span style={chipStyle('#1b9254')}>Confirmation sent — {confirmedLabel}</span>
               {!memberLocked && <button disabled={sending} onClick={openDateForm} style={tdCancel} title="Pick a new date/time and re-send the same confirmation email.">Reschedule</button>}
             </div>
-          ) : memberLocked ? null : formOpen ? (
+          ) : memberLocked ? <span style={neutralChipStyle}>Not started</span> : formOpen ? (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <input type="date" value={draft.date || ''} onChange={e => setDraft({ date: e.target.value })} style={tdInput} />
               <input type="time" value={draft.time || ''} onChange={e => setDraft({ time: e.target.value })} style={tdInput} />
@@ -4738,12 +4740,12 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <span className="vfo-stepname" style={{ fontSize: '13px', color: implDecision ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={taxDisplayName(task.name)} templates={[{ name: 'TAX_implementdecision|Undecided', when: 'Sent when you click "Send implementation decision email" — Proceed / Do not proceed buttons' }, { name: 'TAX_implementdecision|Not Implementing', when: 'Sent if the client clicks "No - Do not proceed"' }, { name: 'TAX_implementdecision|Reminder', when: 'Automatic reminder if no response (2 business days)' }]} context={emailCtx} /></span>}</span>
           {implDecision ? (
             <span style={chipStyle(decisionColor)}>{decisionLabel}</span>
+          ) : readOnly ? (
+            <span style={neutralChipStyle}>Not started</span>
           ) : (
-            !readOnly && (
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <button onClick={handleSend} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Send implementation decision email</button>
-              </div>
-            )
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <button onClick={handleSend} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Send implementation decision email</button>
+            </div>
           )}
           {implDecision && p.status && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{implDecision && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
         </div>
@@ -4774,10 +4776,17 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
             <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <LockedIcon />
-              <span style={lockedHintStyle}>Starts automatically after the "Implementation decision" step</span>
-            </span>
+            {memberLocked ? (
+              <>
+                <span style={neutralChipStyle}>Not started</span>
+                <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}></span>
+              </>
+            ) : (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <LockedIcon />
+                <span style={lockedHintStyle}>Starts automatically after the "Implementation decision" step</span>
+              </span>
+            )}
           </div>
         )
       }

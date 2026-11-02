@@ -31,7 +31,7 @@ const CARDS = [
       ['Tax clients', 'a paid tax retainer gives the client the Premium portal free for 12 months, with a login email. $300 of the retainer goes to VFO Portal before the revenue share; a refund takes the portal away.'],
     ],
     off: 'The old tax agreement and TPOM presentation. Members cannot send portal access, there are no licences and no $25 charges, and every client keeps Showroom + Vault as today.',
-    note: 'Keyed on the client\'s member. Applies to agreements sent, decks generated and retainers paid after the switch — nothing already sent or paid changes.',
+    note: 'Keyed on the client\'s member. The tax part (agreement, TPOM slide, free 12 months, $300) reaches only tax plans created from 11/02/2026 on — every older plan keeps the old agreement and deck and gets no licence. Nothing already sent or paid changes.',
     // Inside this card but flipped on their own (portal licensing L8, decision 73).
     subSwitches: [
       {
@@ -50,10 +50,10 @@ const CARDS = [
         'Every newly generated TPOM presentation has the "Additional Benefits" slide straight after "Our Double-Guarantee" (32 slides two-year / 30 single-year; 31 / 29 without it). Decks already generated are not changed.',
       ]],
       ['Basic portal ($0 a month)', [
-        'A "Send portal access" button at the bottom of the Profile tab on the member\'s view of each client ("Resend portal access" once sent). It creates the client\'s login if they have none and emails the client "[Member] has set up your VFO client portal" (Draft until switched to Send in the Email Editor, Client Portal section). Access cannot be taken away again.',
+        'A "Send portal access" button at the bottom of the Profile tab on the member\'s view of each client ("Resend portal access" once sent). It creates the client\'s login if they have none and emails the client "[Member] has set up your VFO client portal" (sent automatically since 11/02/2026). Access cannot be taken away again.',
         'A $0 Basic licence is recorded the first time access is sent, so a price can be added later.',
         'A client without the Premium portal sees the Showroom only — no Vault tab, and the Vault is refused if reached another way. When a Premium portal ends they drop back to Showroom only.',
-        'A "Request an introduction" button on each Showroom specialist (Basic and Premium): emails the member (Tracy Bcc\'d, Draft) and rings a bell for Tracy. Once per specialist.',
+        'A "Request an introduction" button on each Showroom specialist (Basic and Premium): emails the member (Tracy Bcc\'d, sent automatically) and rings a bell for Tracy. Once per specialist.',
       ]],
       ['Premium portal ($25 a month)', [
         'On the member\'s client Profile tab, in the Client Portal card: "Premium portal - $25/month" — Turn on (card or bank sign-in; the first time through a Stripe page that saves it, later clients reuse it), Turn off (stays on to the end of the paid month, then Basic again) and Keep it on. Needs portal access sent first. A client with an active tax licence reads "Included with ...\'s tax planning until ..." and is not charged.',
@@ -63,44 +63,16 @@ const CARDS = [
         'A failed payment: one email to the member at once (with an Update payment method button) and ONE reminder 2 business days later — no bells. The client is on Basic until it is paid.',
         'When the client pays a tax retainer, a paid $25 month runs to its end and the $25 then stops (no further charge, nothing refunded); the tax year starts that day. A $25 with a failed or still-clearing payment stops at once and the tax year starts straight away. The member is emailed either way.',
         'Starting a CIQ records a $0 Basic licence for the client. The admin CIQ setting for the member reads "Member drives CIQ (training complete)"; while this is On for all, new members start with it off.',
-        'All five Premium portal emails are To the member, Cc Tracy, Bcc Paul and Anton, and are Drafts until switched to Send in the Email Editor (Client Portal section).',
+        'All five Premium portal emails are To the member, Cc Tracy, Bcc Paul and Anton, and are sent automatically (since 11/02/2026). Invoices and receipts are numbered INV-PREM- / REC-PREM-.',
       ]],
       ['Tax clients', [
-        'A 12-month Premium portal licence for every tax client whose retainer is paid (card, ACH when it settles, check when it clears). Every paid retainer buys a full 12 months: a second one while a licence is running starts when the running one ends.',
-        'A client portal login is created on that payment, with a separate "Your VFO client portal is ready" email (Draft) — "Set up my portal login", or "Sign in to my portal" if they already have one.',
+        'A 12-month Premium portal licence for every tax client whose retainer is paid on a tax plan created from 11/02/2026 on (card, ACH when it settles, check when it clears). Every paid retainer buys a full 12 months: a second one while a licence is running starts when the running one ends.',
+        'A client portal login is created on that payment, with a separate "Your VFO Premium portal is ready" email (sent automatically) — "Set up my portal login", or "Sign in to my portal" if they already have one.',
         'The client portal gets a Home screen ("Welcome back") showing the licence expiry date.',
         '$300 of every paid retainer goes to VFO Portal before the revenue share is split, shown on the revenue-share emails and split screens (it stays in the VFO Services balance until the VFO Portal Stripe account exists).',
         'Any refund of the tax retainer, full or partial, revokes the licence.',
       ]],
     ],
-  },
-  {
-    id: 'mirrored_clients',
-    keys: ['mirrored_clients'],
-    title: 'Client Mirroring',
-    on: [
-      [null, 'A member can share a client with another member (e.g. a connected advisor or accountant). The other member sees the case view-only — never fees, payments or revenue shares — and gets an email and a bell.'],
-    ],
-    off: 'No sharing. Existing shares are hidden, and come back if it is switched on again.',
-    note: 'Keyed on the client\'s owning member.',
-    details: [
-      [null, [
-        'A "Client Mirroring" card on the Profile tab of each of the member\'s clients (and the admin client Profile tab): the member\'s Connections with a one-click Mirror, plus "Mirror to a member" to search every active member.',
-        'A client can be mirrored to several members. The member or an admin can stop mirroring at any time; a member a client is mirrored to can leave.',
-        'Mirroring emails that member (Draft until switched to Send in the Email Editor, Client Portal section) and rings their bell.',
-        'The other member sees MAP 1 / Holistic, Tax Planning (with the form answers), PIP and Regular priorities, the shared notes, the Client Vault (view and download) and the Additional Contacts — and can change nothing. Revenue share is not affected.',
-      ]],
-    ],
-  },
-  {
-    id: 'tax_intake',
-    keys: ['tax_intake'],
-    title: 'Members add clients',
-    on: [
-      [null, 'Client Overview gets "+ Add Client" — the admin new-client form (name, email, phone, an additional contact). It creates a client profile in no program, ready for portal access later.'],
-      [null, 'Every member gets VFO Tax Planning under MSM with "+ Add Client" — the same new-client form as the Tax Diagnostic tab (fill it in, or send the client a link).'],
-    ],
-    off: 'No "+ Add Client" on Client Overview. VFO Tax Planning shows under MSM only for members enrolled in it, without "+ Add Client". Members add new tax clients from the Tax Diagnostic tab either way.',
   },
   {
     id: 'tax_direct',
@@ -119,8 +91,9 @@ const CARDS = [
 // feature_switches_load still returns it, and SQL can still flip it.
 // tax_diagnostic (2026-10-16) = the public vfoportal.com/tax-diagnostic page + its
 // deposit links; tax_reminders (the tax reminder chases) and single_client_profile
-// (every program on one client page) since 2026-10-19.
-const HIDDEN_SWITCHES = ['tax_diagnostic', 'tax_reminders', 'single_client_profile']
+// (every program on one client page) since 2026-10-19; mirrored_clients (Client
+// Mirroring) and tax_intake (Members add clients) since 2026-11-02.
+const HIDDEN_SWITCHES = ['tax_diagnostic', 'tax_reminders', 'single_client_profile', 'mirrored_clients', 'tax_intake']
 
 const POSITIONS = [
   { mode: 'off', label: 'Off for all' },

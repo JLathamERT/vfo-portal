@@ -1,6 +1,6 @@
 # Client Mirroring — a member mirrors one client to another member (portal licensing L5)
 
-Shipped 2026-10-12 (`vfo-admin-api` v959 → v963), **dark behind the Feature Switch `mirrored_clients`**, keyed on the client's OWNING member (`clients.member_number`) and seeded Test member only (59524). Plan of record and decisions 19-34: [../plans/portal-licensing/README.md](../plans/portal-licensing/README.md) §3 L5. The UI calls it **Client Mirroring** — "connected member" already means something else in the portal (the member-to-member Connections on the Network card); code and tables keep the `connection` names.
+Shipped 2026-10-12 (`vfo-admin-api` v959 → v963), **dark behind the Feature Switch `mirrored_clients`**, keyed on the client's OWNING member (`clients.member_number`) and seeded Test member only (59524); **On for all since 2026-11-02** and **hidden from the Feature Switches tab** (`HIDDEN_SWITCHES`; the row stays `true`, flip by SQL only). Plan of record and decisions 19-34: [../plans/portal-licensing/README.md](../plans/portal-licensing/README.md) §3 L5. The UI calls it **Client Mirroring** — "connected member" already means something else in the portal (the member-to-member Connections on the Network card); code and tables keep the `connection` names.
 
 **Switch off = exactly as before for mirroring**: no Client Mirroring card renders (its loader answers `{ enabled: false }`), no connection can be made, and a member a client was mirrored to stops seeing it at once (the row is kept, so switching back on restores it). Shipped alongside it and NOT behind any switch (decision 31): the member **Client Overview** tab (§4) and the Phase 0 security fence (§6).
 
@@ -31,7 +31,7 @@ Shared helpers: `utils/client-connections.ts` (names, active rows, the owner's p
 
 `sendConnectedNotice` — fail-soft, never rolls the connection back (`email_result` records `sent | drafted | failed`):
 
-- **Email** — template `CLIENT_PORTAL / MEMBER_client_connected` (**Draft**; flip to Send in the Email Editor, Client Portal section, before the switch goes on for real members). To the mirrored member's `members.email`; their flagged `member_contacts` are Cc'd centrally. Subject *"[Owner Name] has mirrored [Client Name] to your portal"*, an **Open Client Overview** button to `/member?tab=client_overview`. Sandbox is keyed on the OWNER (`loadSandboxConfigForMember(sb, "TAX", owner)`), so a 59524 test is rerouted.
+- **Email** — template `CLIENT_PORTAL / MEMBER_client_connected` (**Send** since 2026-11-02, migration `20261102150000`). To the mirrored member's `members.email`; their flagged `member_contacts` are Cc'd centrally. Subject *"[Owner Name] has mirrored [Client Name] to your portal - [Recipient Name]"* (the mirrored member's name, `withSubjectName`, since 2026-11-02), an **Open Client Overview** button to `/member?tab=client_overview`. Sandbox is keyed on the OWNER (`loadSandboxConfigForMember(sb, "TAX", owner)`), so a 59524 test is rerouted.
 - **Bell** — rule `MEMBER_client_connected` (FYI, `dedupe: "unread"`), title *"Client mirrored: <client> (from <owner>)"*, link `/member/client/<id>`, to the mirrored member's **`member_logins.email`** (the only address a member session's bell reads, `actions/notifications/load.ts`) — **no login, no bell**.
 
 ## 4. The member Client Overview tab (no switch)

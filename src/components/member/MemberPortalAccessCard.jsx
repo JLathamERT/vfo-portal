@@ -144,7 +144,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
       {error && <p style={{ fontSize: '13px', marginTop: '12px', marginBottom: 0, color: '#d93025' }}>{error}</p>}
 
       {lic && (
-        <div style={{ marginTop: '22px', paddingTop: '18px', borderTop: '1px solid var(--vfo-border-soft)' }}>
+        <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--vfo-border-soft)' }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '6px' }}>{lic.state === 'covered' || lic.state === 'handover' ? 'Premium portal' : 'Premium portal - $25/month'}</div>
           {syncing ? (
             <p style={{ fontSize: '13px', color: 'var(--vfo-ink)', margin: '0 0 12px', lineHeight: 1.6, display: 'flex', alignItems: 'center', gap: '10px' }}>
