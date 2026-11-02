@@ -17,8 +17,9 @@ import { HeroAvatar } from '../components/shared/TrackKit'
 import { usePortalTheme } from '../lib/theme'
 import { useIsPhone } from '../lib/useMediaQuery'
 import { statusColor } from '../components/shared/statusColors'
+import { HEADSHOTS_URL } from '../lib/environment'
 
-const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
+const HEADSHOT_SUPABASE = HEADSHOTS_URL
 // Prepend https:// to a bare domain so member website links resolve as absolute.
 const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:\/\//i.test(s) ? 'https://' + s : s }
 import vfoCertifiedSeal from '../assets/vfo-certified-emblem.png'

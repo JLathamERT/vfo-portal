@@ -7,6 +7,7 @@ import CopyLink from '../shared/CopyLink'
 import { readable } from '../shared/readableColor'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { statusPillStyle } from '../shared/statusColors'
+import { PORTAL_URL } from '../../lib/environment'
 
 // Tax Diagnostics — the queue of public /tax-diagnostic submissions (grantable
 // tab `tax_diagnostics`, backend TAB_ACTIONS.tax_diagnostics).
@@ -32,7 +33,7 @@ import { statusPillStyle } from '../shared/statusColors'
 // (Pending, Confirm/Dismiss), and a confirmed one whose deposit-link email failed
 // (Retry).
 
-const PUBLIC_URL = 'https://vfoportal.com/tax-diagnostic'
+const PUBLIC_URL = `${PORTAL_URL}/tax-diagnostic`
 const AUTO_CONFIRMED_BY = 'Tax Diagnostic form (auto)'
 const FILTERS = [
   { key: 'pending', label: 'Pending' },

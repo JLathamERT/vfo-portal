@@ -4,8 +4,10 @@ import { BrowserRouter } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
+import StagingBanner from './components/shared/StagingBanner'
 import './index.css'
 import { applyThemeForCurrentRoute } from './lib/theme'
+import { IS_STAGING } from './lib/environment'
 
 // GitHub Pages serves an emitted route page (scripts/emit-route-pages.mjs) at
 // /admin/ with a trailing slash; several checks compare the path exactly
@@ -25,9 +27,10 @@ applyThemeForCurrentRoute()
 // enabled: PROD only — dev `npm run dev` sessions were reporting hot-reload
 // errors as environment=production and polluting the dashboard (2026-07-08).
 // ignoreErrors: browser-extension fetch noise, not app code.
+// The staging build reports as environment=staging, so its errors never mix with live's.
 Sentry.init({
   dsn: 'https://8901dcdcf290d054228b1611f2a929ec@o4511588768088064.ingest.us.sentry.io/4511588781654017',
-  environment: 'production',
+  environment: IS_STAGING ? 'staging' : 'production',
   enabled: import.meta.env.PROD,
   ignoreErrors: [/non ISO-8859-1 code point/],
 })
@@ -43,5 +46,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter basename="/">
       <App />
     </BrowserRouter>
+    {IS_STAGING && <StagingBanner />}
   </ErrorBoundary>
 )

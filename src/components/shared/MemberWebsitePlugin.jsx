@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { callApi } from '../../lib/api'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { SUPABASE_URL } from '../../lib/environment'
 
 const PRESET_FONTS = ['Playfair Display','Lora','Merriweather','Raleway','Montserrat','Open Sans','Poppins','Cormorant Garamond','Libre Baskerville','Source Serif Pro']
 
@@ -66,7 +67,7 @@ export default function MemberWebsitePlugin({ member, onDataChange, readOnly = f
     setFontResults([])
   }
 
-  const embedCode = `<div id="vfo-showroom"></div>\n<script src="https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/vfo-widget/vfo-widget.js?v=26" data-vfo-key="${member.manage_key}"><\/script>`
+  const embedCode = `<div id="vfo-showroom"></div>\n<script src="${SUPABASE_URL}/storage/v1/object/public/vfo-widget/vfo-widget.js?v=26" data-vfo-key="${member.manage_key}"><\/script>`
 
   const subTabStyle = (active) => ({
     padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px'
@@ -253,7 +254,7 @@ export default function MemberWebsitePlugin({ member, onDataChange, readOnly = f
 <style>body { margin: 0; background: ${settings.bg_color}; }</style>
 </head><body>
 <div id="vfo-showroom"></div>
-<script src="https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/vfo-widget/vfo-widget.js?v=26" data-vfo-key="${member.manage_key}"><\/script>
+<script src="${SUPABASE_URL}/storage/v1/object/public/vfo-widget/vfo-widget.js?v=26" data-vfo-key="${member.manage_key}"><\/script>
 </body></html>`}
               style={{ width: '100%', height: '700px', border: 'none', borderRadius: '10px' }}
               title="Widget Preview"

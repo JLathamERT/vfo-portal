@@ -23,6 +23,7 @@ import { MemberNameLink } from '../shared/personLinks'
 import { CORPORATE_TYPES, isCorporateMember, leadMemberNumberOf, findLeadMember } from '../shared/corporateMember'
 import { MEMBER_TYPES, ACCOUNTANT_TYPES } from '../shared/memberTypes'
 import { GCServicesView, GCTransactionHistory } from '../shared/GCMarketplaceViews'
+import { HEADSHOTS_URL } from '../../lib/environment'
 // The engagement rating is set on the Member Overview tab; the profile hero
 // only DISPLAYS it. Admin surface throughout — the member portal never renders
 // it, and load_data strips the column for non-admin callers.
@@ -32,7 +33,7 @@ import { engagementMeta } from './MemberOverviewPanel'
 // SuperAdmin (Jake) plus Tray Valdés-Dennis (tvaldes@elitert.com).
 const canAddMembers = () => { const s = getSession(); return !!s?.is_superadmin || (s?.email || '').toLowerCase() === 'tvaldes@elitert.com' }
 
-const HEADSHOT_SUPABASE = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
+const HEADSHOT_SUPABASE = HEADSHOTS_URL
 // Prepend https:// to a bare domain so member website links resolve as absolute.
 const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:\/\//i.test(s) ? 'https://' + s : s }
 import vfoCertifiedSeal from '../../assets/vfo-certified-emblem.png'

@@ -1,3 +1,5 @@
+import { HEADSHOTS_URL } from '../../lib/environment'
+
 // Turns whatever image a member or admin picks into the ONE logo shape the
 // backend accepts (utils/logo-png.ts): a PNG on a 1200x400 canvas, transparent
 // outside a white rounded badge, the logo trimmed of empty margins and centred
@@ -28,7 +30,7 @@ function roundedRect(ctx, x, y, w, h, r) {
   ctx.closePath()
 }
 
-export const LOGO_BASE_URL = 'https://ejpsprsmhpufwogbmxjv.supabase.co/storage/v1/object/public/headshots/'
+export const LOGO_BASE_URL = HEADSHOTS_URL
 export function logoUrl(filename) {
   return filename ? LOGO_BASE_URL + encodeURIComponent(filename) : null
 }

@@ -6,7 +6,9 @@
     "dev": "vite",
     "build": "vite build && node scripts/emit-route-pages.mjs",
     "preview": "vite preview",
-    "deploy": "npm run build && gh-pages -d dist --dotfiles"
+    "deploy": "npm run build && gh-pages -d dist --dotfiles",
+    "build:staging": "vite build --mode staging && node scripts/emit-route-pages.mjs && node scripts/finish-staging-build.mjs",
+    "deploy:staging": "npm run build:staging && gh-pages -d dist --dotfiles --repo https://github.com/JLathamERT/vfo-portal-staging.git"
   },
   "dependencies": {
     "@sentry/react": "^10.58.0",
