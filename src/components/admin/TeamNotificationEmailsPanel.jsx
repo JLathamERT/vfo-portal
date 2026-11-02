@@ -19,7 +19,9 @@ const redBtn = { padding: '6px 14px', borderRadius: '6px', fontSize: '12px', cur
 
 function templateLabel(pipeline, name) {
   const hit = (TEMPLATE_META[pipeline] || []).find(([n]) => n === name)
-  return hit ? hit[1].replace(/^Internal — /, '') : `${pipeline} / ${name}`
+  if (!hit) return `${pipeline} / ${name}`
+  const label = hit[1].replace(/^Internal — /, '')
+  return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 function PersonRow({ person, onlyOne, busy, onSave, onRemove }) {
