@@ -618,7 +618,7 @@ The queue behind the public, no-login **VFO Tax Diagnostic** (`/tax-diagnostic`)
 | `revoked_at` / `revoked_reason` | timestamptz / text | Stamped by `revokeTaxLicence` on ANY retainer refund (`actions/tax/refund.ts`): *"Tax retainer refunded"* / *"Tax retainer partially refunded"*. |
 | `ciq_subscription_id` | bigint | L4. fk → `ciq_licence_subscriptions.id` ON DELETE SET NULL. The subscription a ciq month was paid on. |
 | `stripe_invoice_id` | text | L4. The Stripe invoice a ciq month was paid by — **the once-per-invoice claim** (unique, below). |
-| `invoice_number` / `receipt_number` / `docs_emailed_at` | text / text / timestamptz | L4. The house INV-/REC-CIQ-<member client ref>-NNNN pair stamped by `automation_PORTAL_ciq_licence_invoicereceipt`, and its email latch. |
+| `invoice_number` / `receipt_number` / `docs_emailed_at` | text / text / timestamptz | L4. The house INV-/REC-PREM-<member client ref>-NNNN pair (INV-/REC-CIQ- before 2026-11-02; issued numbers never renamed) stamped by `automation_PORTAL_ciq_licence_invoicereceipt`, and its email latch. |
 
 **Tax-licence date maths reads `source='tax'` only since L4** (`taxLicencePeriod`, the `tax/invoice-receipt.ts` end-date read) — a $25 CIQ month must never make a new tax licence read as covered (#448 family). The tier helpers (`clientPortalTier`) read `tier='standard'` from ANY source, so a paid ciq month lights Premium with no new logic.
 
