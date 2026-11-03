@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession } from '../lib/api'
 import { formatDate } from '../lib/dates'
+import { splitTestBell, TEST_BELL_TEAL, TEST_BELL_TINT } from './shared/testBell'
  
 // The "View all" link opens /admin?tab=notifications, a page only the admin
 // portal has. Portals that mount the bell without one hide the link.
@@ -171,6 +172,9 @@ export default function NotificationBell() {
             sorted.map(n => {
               const isDismissible = n.dismissible !== false
               const isReminder = n.pipeline === 'REMINDER'
+              const testBell = splitTestBell(n.message)
+              const rowBorder = testBell ? `3px solid ${TEST_BELL_TEAL}` : !isDismissible ? '3px solid #e06717' : isReminder ? '3px solid #7c3aed' : '3px solid transparent'
+              const rowTint = testBell ? TEST_BELL_TINT : !isDismissible ? 'rgba(224,103,23,0.06)' : isReminder ? 'rgba(124,58,237,0.05)' : 'transparent'
               const handleDone = async (e) => {
                 e.stopPropagation()
                 try {
@@ -184,24 +188,30 @@ export default function NotificationBell() {
                   onClick={() => handleClick(n)}
                   style={{
                     padding: '8px 12px 8px 9px', borderBottom: '1px solid var(--vfo-tint)',
-                    borderLeft: !isDismissible ? '3px solid #e06717' : isReminder ? '3px solid #7c3aed' : '3px solid transparent',
-                    background: !isDismissible ? 'rgba(224,103,23,0.06)' : isReminder ? 'rgba(124,58,237,0.05)' : 'transparent',
+                    borderLeft: rowBorder,
+                    background: rowTint,
                     cursor: 'pointer', display: 'flex', gap: '10px', alignItems: 'flex-start'
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
-                  onMouseLeave={e => e.currentTarget.style.background = !isDismissible ? 'rgba(224,103,23,0.06)' : isReminder ? 'rgba(124,58,237,0.05)' : 'transparent'}
+                  onMouseLeave={e => e.currentTarget.style.background = rowTint}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
                       fontSize: '12.5px', color: 'var(--vfo-ink)', fontWeight: 600, marginBottom: '3px', lineHeight: '1.35'
                     }}>{n.title}</div>
-                    {n.message && (
+                    {testBell && (
+                      <div style={{ fontSize: '11px', color: TEST_BELL_TEAL, fontWeight: 600, lineHeight: '1.4', marginBottom: '3px', overflowWrap: 'anywhere' }}>Meant for: {testBell.meantFor}</div>
+                    )}
+                    {(testBell ? testBell.rest : n.message) && (
                       <div style={{
                         fontSize: '11.5px', color: 'var(--vfo-muted)', lineHeight: '1.45',
                         marginBottom: '5px', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere'
-                      }}>{n.message}</div>
+                      }}>{testBell ? testBell.rest : n.message}</div>
                     )}
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {testBell && (
+                        <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: TEST_BELL_TEAL, letterSpacing: '0.4px' }}>TEST</span>
+                      )}
                       {!isDismissible && (
                         <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: '#e06717', letterSpacing: '0.4px' }}>ACTION</span>
                       )}
@@ -221,6 +231,17 @@ export default function NotificationBell() {
                         color: 'var(--vfo-success-text)', fontWeight: 600, cursor: 'pointer', flexShrink: 0
                       }}
                     >Done</button>
+                  )}
+                  {!isDismissible && testBell && (
+                    <button
+                      onClick={handleDone}
+                      title="Staging only: on live this bell clears when its step is done."
+                      style={{
+                        padding: '3px 9px', borderRadius: '4px', fontSize: '10.5px', whiteSpace: 'nowrap',
+                        border: `1px solid ${TEST_BELL_TEAL}66`, background: TEST_BELL_TINT,
+                        color: TEST_BELL_TEAL, fontWeight: 600, cursor: 'pointer', flexShrink: 0
+                      }}
+                    >Clear (test)</button>
                   )}
                 </div>
               )

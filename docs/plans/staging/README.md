@@ -1,6 +1,6 @@
 # VFO Staging — the team's test mode (two-person workflow, Phase 5)
 
-Written 2026-10-31 (Jake + Claude, planning chat — branches `claude/phase-5-staging-portal-db3a8b` (react) / `claude/phase-5-staging-portal-2ba513` (edge)). **Status (2026-11-02): part 1 SHIPPING** (CHANGELOG 2026-11-02 (d)). Staging is live at https://staging.vfoportal.com/ on project `yxolcioazczlhruprmrb`: S1 and S3 done, S2 built and on staging (v6), the S4 website on staging. Left: the rest of S4 (fake lanes, Paxton's login, the §4b sandbox move, the headline test), then S5-S7 and the switch day. Every decision in §9 is Jake's and is asked before anything is built. Hub OWED item (AG), Phase 5. **Must exist before Paxton starts (~2026-11-11).**
+Written 2026-10-31 (Jake + Claude, planning chat — branches `claude/phase-5-staging-portal-db3a8b` (react) / `claude/phase-5-staging-portal-2ba513` (edge)). **Status (2026-11-03): S1-S4 DONE** — part 1 shipped 2026-11-02 (CHANGELOG 2026-11-02 (d)); the rest of S4 (the §4b sandbox move, one test member per person, tester email + bell routing, the full test parts A and B PASS) ships as CHANGELOG 2026-11-03 (c). Staging is live at https://staging.vfoportal.com/ on project `yxolcioazczlhruprmrb`. Left: S5-S7 and the switch day. Every decision in §9 is Jake's and is asked before anything is built. Hub OWED item (AG), Phase 5. **Must exist before Paxton starts (~2026-11-11).**
 
 ---
 
@@ -11,7 +11,7 @@ Written 2026-10-31 (Jake + Claude, planning chat — branches `claude/phase-5-st
 - **It cannot reach live money, live email or live records**, because it holds no live key at all. That is by construction, not by care.
 - **Settings come from live** (email templates, notification rules, feature switches, programs, agreement PDFs…) when someone presses *Reset* or *Refresh settings*.
 - **It runs main's code**, and every database change lands here first, then live.
-- **A TEST banner sits on every page**, and every email it sends goes to the team inbox.
+- **A TEST banner sits on every page**, and every email and bell it makes goes to the tester it is about (else the team inbox / all admins).
 
 ## 2. What the code survey found — and the design rule each finding forces
 
@@ -28,7 +28,7 @@ Written 2026-10-31 (Jake + Claude, planning chat — branches `claude/phase-5-st
 | F8 | GitHub Pages serves one custom domain per repo, and the site must sit at a domain root (`base: '/'`). There is no CI on either repo. | **…be hosted from a second repo** (`vfo-portal-staging`) at `staging.vfoportal.com`, which needs one DNS record. |
 | F9 | The committed migrations cannot rebuild the database. Live's migration history versions don't match the files, data backfills name real clients, `20260905100400` schedules a cron against the LIVE URL, and three cron jobs have no file at all. | **…start from a schema-only dump of live**, taken once. From then on every migration is applied to staging first, then live, and a drift check compares the two. |
 | F10 | Storage splits cleanly. **Templates/assets the code reads by name:** `tax-agreements`, `map1-agreements`, `advisor-onboarding-agreements`, `accountant-onboarding-agreements`, `map1-assets`, `presentation-templates` (ROI deck masters), `specialist-onboarding-assets`, `faq-documents`, `vfo-widget`. **People's documents:** `client-*`, `member-*`, `specialist-showroom-docs`, `headshots`. | **…copy only the template buckets.** People buckets are never copied; staging's are created empty. |
-| F11 | The code hardcodes fixture ids: `TEST_SANDBOX_MEMBER_NUMBERS = ["59524"]` and expert `6137` (`constants/test-sandbox.ts`). Feature switches target member numbers. | **…reuse those numbers in the fake data**, so switches and fixtures behave exactly as on live. |
+| F11 | The code hardcodes fixture ids: `TEST_SANDBOX_MEMBER_NUMBERS = ["59524"]` and expert `6137` (`constants/test-sandbox.ts`). Feature switches target member numbers. | **Superseded 2026-11-03 (Jake):** staging's environment makes every record test-mode (§4c), and Accounting / Payments / Money Mapping hide 59524 and 6137 always, so staging has neither. It has one test set per person instead (§6). |
 
 Docs found stale during the survey: `integrations/env-vars.md` and `architecture/01-system-map.md` say 3 files read `VITE_API_URL` (it is 41), and `integrations/supabase.md`'s CORS list is out of date. These are fixed in S7.
 
@@ -73,13 +73,24 @@ All 8 `pipeline_sandbox_config` rows are already `false`.
 **Done in one sitting at S4, right before the headline test.** Not earlier: until staging works, live is still the only place to test.
 
 1. Jake: in each Stripe sandbox, cancel every ACTIVE subscription. That covers row 8's and any left over from the test clients deleted 2026-10-29. Otherwise their monthly events would land on staging.
-2. Claude (with Jake's OK, test rows only): delete client 422's rows (plan 300, licence row 8, its progress) and 59524's sandbox billing row on live.
+2. **Dropped 2026-11-03 (Jake): nothing is deleted on live.** Team members still use Test Member 59524 and its clients there. Its sandbox rows (CIQ licence row 8, the billing row) stay, and go quiet once step 1 cancels the subscriptions.
 3. Jake: in each Stripe sandbox, change the webhook endpoint URL from live's to staging's. Do the same for the BoldSign sandbox webhook.
 4. Jake: copy the sandbox keys, webhook secrets and stand-in connected-account ids into staging's secrets. Then delete them from LIVE's secrets: `STRIPE_SECRET_KEY_SANDBOX`, `ERT_STRIPE_SECRET_KEY_SANDBOX`, `STRIPE_WEBHOOK_SECRET_SANDBOX`, `ERT_STRIPE_WEBHOOK_SECRET_SANDBOX`, `ERT_CONNECT_ACCOUNT_ID_SANDBOX`, `VFOS_CONNECT_ACCOUNT_ID_SANDBOX`, `BOLDSIGN_API_KEY_SANDBOX`. This secret write bumps live's version with no code change (#485). Smoke live afterwards.
 
+**DONE 2026-11-03 (Jake + Claude), as built:**
+1. Cancelled every subscription in both Stripe sandboxes. VFO Services sandbox: 5 (three Premium client licences for 59524, two Test Specialist $99 licences); live's CIQ licence row 8 then read `ended`, and no other live row matched. ERT sandbox: none.
+2. Nothing deleted on live (above).
+3. Webhooks:
+   - The VFO Services sandbox endpoint "empowering-spark" now points at `https://yxolcioazczlhruprmrb.supabase.co/functions/v1/vfo-admin-api`. Proven: a resent event reached staging, passed the signature check and got 200.
+   - The ERT sandbox endpoint now points at the same address. Proven 2026-11-03 by the full test's part A (a Growth Credits card payment on the ERT sandbox, PASS).
+   - **BoldSign:** live's portal webhook "VFO Portal" is set to environment **Both** and that field cannot be edited. So staging got its OWN Sandbox-only webhook "VFO Staging (sandbox)" (events Signed + Completed, as live) to staging's `boldsign-webhook`, deployed for the first time on Jake's "deploy". Its code equals live v48 apart from three TypeScript type notes; BoldSign's verification ping got 200. A sandbox signing event also still reaches live through "Both", where the document id matches no live row, so nothing changes. "VFO Tax Planning Automation" and "VFO Holistic Automation" go to the old system's Google Apps Script and are left alone.
+4. The 7 sandbox settings are on staging. The six Stripe ones carry exactly live's values (digests equal). BoldSign's old sandbox key could not be re-shown, so staging has its OWN new BoldSign sandbox key "VFO Staging SANDBOX" (in Bitwarden). All 7 were then removed from live with `supabase secrets unset` on Jake's "yes remove". Live went v1088 → v1089 with the code unchanged (same `ezbr_sha256`), and the live smoke test passed.
+   - Census first: live's only sandbox rows are CIQ row 8 (ended), 59524's saved card, the SpecRev sandbox house account, and 59524's Growth Credits monthly service, which deducts credits and never calls Stripe. None needs a key.
+   - The old BoldSign key "VFOHolistic SANDBOX Automation" is left in BoldSign, because the old system may use it.
+
 **Belt and braces:** staging's id sequences start at 100000, so a stray old sandbox event carrying a small `row_id` / `plan_id` can never match a staging row.
 
-**What live gives up:** Test Member 59524 can no longer take a test payment on live. That is D18 (a) — all testing on staging. Turning a pipeline's sandbox toggle ON on live would then break that pipeline ("not configured"), so S7 hides those toggles on live (small frontend change) and the hub's STANDING 59524 entry is rewritten. Removing the 59524 member row itself is D19, later.
+**What live gives up:** Test Member 59524 can no longer take a test payment on live. That is D18 (a) — all testing on staging. Turning a pipeline's sandbox toggle ON on live would then break that pipeline ("not configured"), so S7 hides those toggles on live (small frontend change) and the hub's STANDING 59524 entry is rewritten. The 59524 member row stays on live (Jake 2026-11-03, §4c).
 
 ### 4c. No testing on live at all (Jake 2026-10-31)
 
@@ -100,7 +111,7 @@ Jake: *"i want to turn off any form of testing in the live portal and the abilit
 | Test Member 59524 forced to sandbox (`TEST_SANDBOX_MEMBER_NUMBERS`, used via the helpers in 69 files); Test Specialist 6137 (`TEST_SANDBOX_EXPERT_IDS`) | The force is gone; the environment rule replaces it. |
 | Feature Switches' *Test member only* position. **7 switches sit there now:** `ciq_licence`, `client_basic_portal`, `client_case_progress`, `mirrored_clients`, `portal_licensing`, `tax_intake`, `tpom_additional_benefits` | Two positions only: **Off / On for all**. Those 7 become **Off** on live, which is what every real member sees today, so nothing changes for anyone. They are tested on staging with the switch On there. The portal-licensing switch rule (plan §1, "seeded Test member only") changes to "ships Off on live, tested On on staging". |
 | The Tax Intake form's test-fill for 59524 (`TaxIntakeForm.jsx`) | Shown on staging builds only. |
-| Test DATA on live: member 59524 and its client 422 (+ plan 300, licence row 8, billing row), Test Specialist 6137, the 2 tax-planner test logins, 1 accountant + 1 specialist onboarding test row, and about 8 test-looking clients | Deleted, **each list shown to Jake first** (TEAM_RULES §8). The accounting screens' `isTestMember` filters go with them. |
+| Test DATA on live: member 59524 and its clients (422 `59524-001`, 423 `59524-PFT1`, 424 `59524-PFT2`), Test Specialist 6137, the 2 tax-planner test logins, onboarding test rows, test-looking clients | **KEPT. Never delete them from live** (Jake 2026-11-03: *"do not delete test member test client etc from the live portal. teat members are still using them"*). The accounting screens' `isTestMember` filters stay with them. **Decide before the switch day:** with `VFO_ENVIRONMENT=live`, nothing forces 59524 to sandbox, so a payment taken on it on live would be REAL money. Agree what team members may still do with it (for example demos only, never a payment). |
 | The habit of testing on live: running onboarding with your own email, test members, test clients | A NEW TEAM_RULES §2 line: **never test on live** — no test records, no own-email applicants, no sandbox; all testing on staging. |
 
 **What stays (not testing):** Jake's operational alerts. These are 54 notification rules plus the bells/Bcc in code (e.g. the CEO countersign bells, and the Bcc on templates 183 / 200) that name `jlatham@elitert.com` as the person who acts on them.
@@ -108,7 +119,7 @@ Jake: *"i want to turn off any form of testing in the live portal and the abilit
 **When:** on the switch day, together with §4b, after staging has passed its S4 test. Until then live is the only place to test. Steps:
 1. The code ships in a normal release, inert (`VFO_ENVIRONMENT` unset = today).
 2. Jake sets `VFO_ENVIRONMENT=live` on live and deletes the 7 sandbox secrets.
-3. The test data is deleted (lists approved).
+3. Dropped 2026-11-03 (Jake): live's test records stay.
 4. The website deploy removes the toggles and the *Test member only* position.
 5. Live's 19 crons are re-installed reading their key from live's Vault (the same shape as `supabase/cron/staging-install.sql`), so the secret API key no longer sits written into `cron.job` (found 2026-11-01).
 6. Smoke live.
@@ -233,9 +244,19 @@ Jake: *"i want to turn off any form of testing in the live portal and the abilit
 
 Enough to open every portal and start every program from step 1. Mid-stage scenarios get added as tests need them.
 
-- **Shared fixtures:** Test Member **59524** (Premium tier) with Test Client **59524-001**; Test Specialist (expert **6137**); a Test Group tax-planning group with a planner and a team-member login.
-- **One lane per person** (per D11), e.g. Jake's test member plus a client in each of Holistic, Tax Planning, MAP 1 and PFT, an advisor onboarding and an accountant onboarding, and a VFO Associate on a monthly plan. Paxton's lane is the same shape.
-- Names are obviously fake ("Jake Lane Client – Tax"). Emails are the team inbox with `+tags`. Every money row is `sandbox=true`.
+**As built 2026-11-03** — `supabase/staging/seed-test-data.sql` (edge repo). It refuses anywhere but staging, only creates, and is safe to re-run (a second run added nothing).
+- **No Test Member 59524, Test Client or Test Specialist 6137 on staging** (Jake 2026-11-03). On staging every record is test-mode, so a special member number does nothing. The money screens hide 59524 and 6137 always, so a test on them would vanish.
+- **Shared:** the Test Group tax-planning group with a fake Tax Planner and a fake Team Member, for the planner portal.
+- **One test set per person** (per D11), named after the person ("Jake Member", "Paxton Member") and numbered from **10001**: Jake = **10001**, Paxton = **10002**, the next person 10003. These numbers are below live's lowest member number (11111) and below every automatic-numbering start (30000 / 60000 / 90000), so these numbers can never clash with a real member.
+- **Each set holds:**
+  - a Catalyst member (Tier 2, the full portal) enrolled in Holistic (1), Partnership Fast Track (2) and VFO Tax Planning (4), with those program tabs on;
+  - one client per program at step 1: `<number>-001` Holistic, `<number>-002` Tax, `<number>-PFT1` PFT;
+  - one advisor onboarding and one accountant onboarding (`VFO FT`) at step 1.
+  - There are no plan, payment or agreement rows: each test starts from the real screens. Starting a tax plan grants the Premium client portal itself, and a specialist is made through specialist onboarding.
+- **BUILT 2026-11-03: a test member made automatically for each person** (Jake: *"1 per person … auto allocated with the same stripe connect sandbox account"*). On staging only, `create_admin` makes the person's set (the next free 10001+, the same shape as above, `utils/staging-test-member.ts`): a member login on the admin's own email and passcode hash, one client per program whose email and client login are the admin's TAGGED email (`jlatham+holistic@` / `+tax@` / `+pft@` — `client_logins.email` is unique, #723), two onboardings, and the payout account `STAGING_TEST_CONNECT_ACCOUNT_ID` (one shared sandbox Connect account; the seed gives the Test Group the same one, so the $250 team share and planner shares really pay). `delete_admin` removes the set first. The admin password also opens that member and client logins. Add Member (`add_member` / `add_member_full`) answers 403 on staging and the Members tab shows a note instead of its forms; Add Client and onboarding's own create-member step still work. The seed made Jake 10001 and Paxton 10002.
+- **BUILT 2026-11-03: staging emails and bells go to the TESTER** (Jake: *"the emails are sent to the testers email themself"*; *"i dont want someone to … select [Paxton] as the proactive facilitator and he get lots of test notifications"*). Emails: `stagingTesterFor` in the one guard — the owner of the test member a recipient is or belongs to, else the owner of a test member or client the email names, else the clicker, else the team inbox — and every staging draft is SENT at creation ([integrations/gmail.md](../../integrations/gmail.md)). Bells: `stagingBellRoute` inside `notifyByRule` — the clicker, else the test client's owner, else a named test member's owner, else live recipients who have a staging login, else all admins; title unchanged, message prefixed `TEST - meant for: …`, shown teal with a TEST chip, and action bells get a staging-only **Clear (test)** ([flows/notifications.md](../../flows/notifications.md)). The [TEST] subject and the orange "would have gone to" box stay.
+- **Full test (2026-11-03, Jake, on staging): PASS.** Part A: Jake Member bought Growth Credits by card (ERT sandbox) — a Growth Credits purchase sends no email, bells only. Part B: Jake Tax Client (10001-002, plan 100000) through VFO Tax Planning — Start Tax Plan, a pasted deposit id, returns on file, Test Planner allocated, review Proceed (the $250 team share transferred), risk profile, Skip TPOM retainer first, decision Yes, the agreement signed by client and CEO in BoldSign sandbox, the payment email, a $2,000 card retainer (4242), `INV-10001-002-0001` / `REC-10001-002-0001` in the staging Drive and emailed; every email reached jlatham@elitert.com with the orange box, every bell was teal in Jake's bell only. **Not exercised:** an ACH or check retainer, Tax 4 onward (the retainer revenue share pays only after the client's Client decision 1 click), MAP 1 / PFT / onboarding / SpecRev on staging, and the six recipient-keyed bell clears (specialist onboarding, the Tray FYI).
+- Names are obviously fake ("Jake Tax Client"). Emails are `staging+<tag>@vfo-services.com`: Google delivers anything after the `+` to the staging@ inbox, which Jake and Paxton share.
 - Fake people's logins share ONE staging test password (a staging secret, also in Bitwarden — never in a file). Staff logins are kept across resets (per D8).
 
 ## 7. Costs

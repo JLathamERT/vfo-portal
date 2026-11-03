@@ -41,6 +41,10 @@ Single table: [`notifications`](../tables/notifications.md). Key columns:
 - `client_id`, `pipeline`, `title`, `message`, `link`.
 - `read` (boolean, default `false`).
 
+### On staging: every bell goes to the tester (2026-11-03)
+
+On every project that is not live, `notifyByRule` passes each bell through `stagingBellRoute` (`utils/staging-email-guard.ts`) before saving it. It goes to: the admin or member who clicked; else the owner of the test member the bell's client belongs to; else the owner of a test member the bell names (its number, or a test member's / client's full name — a Growth Credits purchase finishes in a Stripe webhook with no client); else the live recipients who have a staging login, or `admin` when none do. Several live recipients collapse into one row. **The title never changes** — the completing step clears a bell by its title (#411); the message gains a first line `TEST - meant for: <live recipients>`, which the staging build renders teal with a TEST chip (`src/components/shared/testBell.js`) and an action bell gets a **Clear (test)** button that `mark_notification_read` accepts on staging only. The few clears that also filter on a fixed staff recipient (specialist onboarding's Tracy / exec votes, the Tray meeting FYI) go through `liveRecipientEq`, which drops that filter on staging. Live is untouched (#720).
+
 ## Frontend display
 
 [NotificationBell.jsx](src/components/NotificationBell.jsx) is mounted in [AdminPortal.jsx:203](src/pages/AdminPortal.jsx), in [TaxPlannerPortal.jsx](src/pages/TaxPlannerPortal.jsx)'s header, and — **since 2026-09-21 (unit 2 phase 5e)** — in [MemberPortal.jsx](src/pages/MemberPortal.jsx)'s header. One component, three portals. The **View all** link is hidden for `tax_planner` and `member` sessions (`VIEW_ALL_HIDDEN_ROLES`): it opens `/admin?tab=notifications`, a page only the admin portal has. It is also mounted on the member's client-detail route (`/member/client/:id`): since 2026-09-21 `ClientDetail.jsx` renders the same bar as the portal home for a member — bell + Settings + Sign Out — so a Direct member working their own plan sees the asks addressed to them without going back to `/member`.
@@ -269,7 +273,7 @@ Raised by `runRoleplayOutcomePass`, a pass of the weekday growth overdue sweep (
 
 ## Step 3 — Mark read (single)
 
-**Handler:** `mark_notification_read({notification_id})` ([NotificationBell.jsx:41](src/components/NotificationBell.jsx) → [admin-api:4569-4578](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)). UPDATEs `notifications.read=true` for one id.
+**Handler:** `mark_notification_read({notification_id})` ([NotificationBell.jsx:41](src/components/NotificationBell.jsx) → `actions/notifications/mark-read.ts`). UPDATEs `notifications.read=true` for one id. An action-required row (`dismissible=false`) is refused (400) — except on staging, for the Clear (test) button.
 
 ## Step 4 — Bulk clear (per-client, by handlers)
 

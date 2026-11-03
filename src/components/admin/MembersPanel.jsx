@@ -18,6 +18,7 @@ import { TrackHero, HeroAvatar, ListHeader } from '../shared/TrackKit'
 import ExportButton from '../shared/ExportButton'
 import { splitName, exportDate } from '../../lib/exportXlsx'
 import { VisibilityBadge, noteTint } from '../shared/NoteVisibility'
+import { IS_STAGING } from '../../lib/environment'
 import ImageCropModal from './ImageCropModal'
 import { MemberNameLink } from '../shared/personLinks'
 import { CORPORATE_TYPES, isCorporateMember, leadMemberNumberOf, findLeadMember } from '../shared/corporateMember'
@@ -132,7 +133,7 @@ function AccountantsPanel({ allMembers, allExperts, allExclusionMap, ecoMap, onD
       allExclusionMap={allExclusionMap}
       ecoMap={ecoMap}
       onDataChange={onDataChange}
-      addForm={<AddAccountantForm allMembers={allMembers} onDataChange={onDataChange} />}
+      addForm={IS_STAGING ? <StagingAddMemberNote /> : <AddAccountantForm allMembers={allMembers} onDataChange={onDataChange} />}
       selectedKey="adminSelectedAccountant"
       featureTabKey="adminAccountantFeatureTab"
       initialTab={initialTab}
@@ -143,6 +144,20 @@ function AccountantsPanel({ allMembers, allExperts, allExclusionMap, ecoMap, onD
       growthPlan={true}
       listTitle="Accountants"
     />
+  )
+}
+
+// Staging only: members are not added by hand there. Each person's test member is
+// made with their admin login (edge utils/staging-test-member.ts; the server refuses
+// add_member / add_member_full on staging too).
+function StagingAddMemberNote() {
+  return (
+    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }}>
+      <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Test site</div>
+      <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.5 }}>
+        Members are not added by hand on the test site. Each person's own test member is made automatically when their admin login is added in the Admin Editor, and they sign in to the member portal with the same email and password. Members made by running an onboarding test are fine.
+      </div>
+    </div>
   )
 }
 
@@ -551,7 +566,7 @@ function AdvisorsPanel({ allMembers, allExperts, allExclusionMap, ecoMap, onData
       allExclusionMap={allExclusionMap}
       ecoMap={ecoMap}
       onDataChange={onDataChange}
-      addForm={<AddAdvisorForm allMembers={allMembers} onDataChange={onDataChange} />}
+      addForm={IS_STAGING ? <StagingAddMemberNote /> : <AddAdvisorForm allMembers={allMembers} onDataChange={onDataChange} />}
       selectedKey="adminSelectedMember"
       featureTabKey="adminMemberFeatureTab"
       initialTab={initialTab}
@@ -749,7 +764,7 @@ function AddStrategicSection({ groupNames, allMembers, onDataChange, onGroupsCha
         <button style={pill(tab === 'member')} onClick={() => setTab('member')}>Add Strategic Member</button>
         <button style={pill(tab === 'group')} onClick={() => setTab('group')}>Add Strategic Member Group</button>
       </div>
-      {tab === 'member' && <AddStrategicMemberForm groupNames={groupNames} allMembers={allMembers} onDataChange={onDataChange} />}
+      {tab === 'member' && (IS_STAGING ? <StagingAddMemberNote /> : <AddStrategicMemberForm groupNames={groupNames} allMembers={allMembers} onDataChange={onDataChange} />)}
       {tab === 'group' && <AddStrategicGroupForm onGroupsChange={onGroupsChange} />}
     </div>
   )

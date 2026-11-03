@@ -6,7 +6,7 @@ The top-level picture. Two repos, one Supabase project, four external integratio
 
 > **The STAGING copy (2026-11-02).** A second, complete copy runs beside the one drawn below:
 > - **Where:** https://staging.vfoportal.com/ (repo `vfo-portal-staging`, built with `npm run build:staging`) on its own Supabase project `yxolcioazczlhruprmrb`, with the same `vfo-admin-api` code and 19 crons.
-> - **What differs:** fake data only, Stripe always in test mode, and every email goes to `staging@vfo-services.com` marked `[TEST]`. Its own Google account and Drive.
+> - **What differs:** fake data only (one test member per person, 10001+, made with their admin login), Stripe and BoldSign always in sandbox (live holds no sandbox key since 2026-11-03), and every email is SENT to the tester it is about (else `staging@vfo-services.com`) marked `[TEST]`; every bell goes to the tester too, shown teal. Its own Google account and Drive.
 > - **How the code knows:** it reads which copy it is from `constants/environment.ts` (backend) and `src/lib/environment.js` (frontend).
 >
 > Plan, setup record and what is left: [plans/staging/README.md](../plans/staging/README.md).

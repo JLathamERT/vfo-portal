@@ -8,6 +8,37 @@
 
 ---
 
+## 2026-11-03 (c) — STAGING S4 finished: the sandbox move, one test member per person, every staging email and bell to the tester, the first full test PASS — by Jake
+
+**Why.** Staging part 1 (2026-11-02 (d)) put the site up; S4's headline was the first real test on it. Before that could happen, live had to give its sandboxes to staging (§4b, D4/D18), each person needed their own fake test set so two testers never move each other's records (D11), and the test mail had to reach the person testing instead of a shared mailbox. Jake, mid-test: *"i dont want someone to say select even as the proactive facilitator and he get lots of test notifications"*. Two chats on one branch pair (edge `claude/phase-5-staging-cont-24f1db`, react `claude/phase-5-staging-cont-358083`). Plan of record: [plans/staging/README.md](plans/staging/README.md) §4b + §6; roadmap: [plans/two-person-workflow/README.md](plans/two-person-workflow/README.md).
+
+**Decided (Jake, 2026-11-03).**
+- Test sets are numbered from 10001 and named "<First> Member" (Jake 10001, Paxton 10002), one per person, made automatically with their admin login and removed with it; all share the ONE sandbox Stripe Connect account.
+- **Never delete Test Member 59524 or other test records on live** — team members still use them (§4b step 2 and §4c step 3 dropped). Staging has no 59524 / 6137.
+- Onboarding's own create-member step stays; plain Add Member is off on staging; Add Client stays.
+- Client logins are the tester's tagged email; the admin password is the master password for their test member and its clients.
+- ALL staging emails go to the tester and are SENT, not drafted. Bells go to the person who clicked; the title never changes; a bell shows who it was meant for, in teal; action bells get a staging-only Clear (test).
+- Live's BoldSign "VFO Portal" webhook stays "Both" (the field cannot be edited, harmless); old Apps Script webhooks and the BoldSign key "VFOHolistic SANDBOX Automation" are left alone. Jake's staging admin password is a copy of live's until he resets it on staging.
+
+**Done — the sandbox move (§4b, as built in the plan).** Every subscription in both Stripe sandboxes cancelled (5 in VFO Services; live's CIQ row 8 then read `ended`); both Stripe sandbox webhooks point at staging; staging got its own Sandbox-only BoldSign webhook and its own sandbox key (#722) and `boldsign-webhook` v1 on Jake's "deploy"; the 7 sandbox settings copied to staging by digest (#718 — `ERT_CONNECT_ACCOUNT_ID_SANDBOX` needed a re-save for a stray pasted character) and then removed from live. **Live holds no sandbox key.** That secret write is what moved live to **v1089** with no code change (#485); smoke PASS on v1089.
+
+**Built — backend (edge, staging only; every helper returns null / false / unchanged on live).**
+- `utils/staging-test-member.ts`: `ensureStagingTestMember` from `create_admin` (member + Catalyst Tier 2 enrolments 1/2/4, member login on the admin's email + passcode hash, three clients with tagged-email client logins, two onboardings, `STAGING_TEST_CONNECT_ACCOUNT_ID`), `deleteStagingTestMember` from `delete_admin` (first, so a failure leaves the admin and can be retried), `stagingOwnerPasscodeOk` in `member_login` / `client_login`, and `add_member` / `add_member_full` 403 on staging.
+- **Emails:** `stagingTesterFor` in `utils/staging-email-guard.ts` picks the one address (test member's owner by recipient, then by name, then the clicker from `runAsStagingActor` in `index.ts`, then the team inbox); `gmailPostWithRetry` SENDS every staging draft at creation and `maybeSendDraft` no-ops there; the orange box says why it came to you.
+- **Bells:** `stagingBellRoute` inside `notifyByRule` (clicker → test client's owner → a named test member's owner → live recipients with a staging login → `admin`), message prefixed `TEST - meant for: …`, title untouched (#720); six recipient-keyed clears through `liveRecipientEq` (#720); the no-clicker, no-client case added after the Part A Growth Credits bell stranded at four staff addresses (#721); `mark_notification_read` accepts an action bell on staging (Clear (test)).
+- `supabase/staging/seed-test-data.sql`: create-only, refuses anywhere but staging — the Test Group (planner + team member, payout account copied from a test member), Jake 10001 and Paxton 10002.
+- `scripts/probe-staging-environment.*`: **139 checks across the 4 environments** (was 99), incl. the bell routing (live unchanged; staging owner / clicker / named member / nobody → admins; title unchanged) and Clear (test) (400 on live, cleared on staging).
+
+**Built — website (react, staging build only).** The Members tab shows a note instead of the Add Member forms; the Admin Editor reports the test member made or removed; `src/components/shared/testBell.js` — the bell and the Notifications page draw a test bell teal with a TEST chip and a "Meant for" line, and an action bell gets **Clear (test)**. Live builds never match (`IS_STAGING`). Also `SESSION_WRAPUP.md` Part 4E: after every release, staging is brought up to main on the person's "deploy".
+
+**Data (staging only).** Test Group `stripe_account_id` = the shared sandbox account (Jake's "yes"); the 4 stranded Growth Credits bells marked read.
+
+**Tested — full test on staging, Jake, PASS.** Part A: a Growth Credits card payment on the ERT sandbox (bells only, no email — #723), which also proved the ERT sandbox webhook. Part B: Jake Tax Client 10001-002, plan 100000, Start Tax Plan → pasted deposit id → returns on file → Test Planner → review Proceed ($250 team share `tr_1UXndrRv…` + its email) → risk profile → Skip TPOM retainer first → decision Yes → BoldSign sandbox signing by client and CEO (the countersign email routed to Jake by name) → payment email → $2,000 card retainer (4242) → `INV-10001-002-0001` / `REC-10001-002-0001` in the staging Drive and emailed; every email in jlatham@elitert.com with the orange box, every bell teal in Jake's bell only, Clear (test) cleared the open action bell. **Not exercised:** ACH / check retainers, Tax 4 onward (the retainer revenue share pays only on the client's Client decision 1 click), MAP 1 / PFT / onboarding / SpecRev on staging, the six recipient-keyed clears, and a staff-only email that names no test person and has no clicker (it should fall to the team inbox).
+
+**Deploys.** Staging only, from this branch's worktree, each on Jake's "deploy": `vfo-admin-api` up to **v23** (v21 bell routing, v22 the no-clicker fix, v23 Clear (test)), `boldsign-webhook` v1-v2, and the staging website (`index-Czzx4HzB.js`). Live was never deployed from the branch (live's v1089 is the secret write above). One slip: the last staging website publish ran while the react worktree was one docs-only commit (#581) behind main — the same build; merged up straight after.
+
+**Verification.** `deno check` 0; action count 639 (unchanged); probe 139/139; `npm run build` + `npm run build:staging` exit 0 (152 files, nothing names live); no DDL, so the advisor baseline is unchanged; smoke owed against the released version (shared `utils/` changed).
+
 ## 2026-11-03 (b) — The team roadmap written down — by Jake
 
 Branch react `claude/team-roadmap`, docs only, one chat.
