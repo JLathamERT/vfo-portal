@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton } from '../shared/Skeleton'
+import { splitTestBell, TEST_BELL_TEAL, TEST_BELL_TINT } from '../shared/testBell'
 
 // Admin Notifications page (bell "View all"). Two sub-views:
 //  - Notifications: the full paginated feed incl. read rows, filter/sort,
@@ -136,6 +137,19 @@ function NotificationsView({ navigate }) {
     finally { setBusy(false) }
   }
 
+  // Staging only: an action bell on a test plan can be cleared by hand (the server
+  // allows it on staging alone, actions/notifications/mark-read.ts).
+  async function clearTestAction(n) {
+    setBusy(true)
+    try {
+      const res = await callApi('mark_notification_read', { notification_id: n.id })
+      if (res?.error) { setError(res.error); return }
+      window.dispatchEvent(new Event('vfo:notifications-changed'))
+      await load()
+    } catch (e) { setError(e?.message || 'Failed to clear') }
+    finally { setBusy(false) }
+  }
+
   async function openRow(n) {
     if (n.link) {
       const sep = n.link.includes('?') ? '&' : '?'
@@ -199,14 +213,15 @@ function NotificationsView({ navigate }) {
           {rows.map(n => {
             const isAction = n.dismissible === false
             const isReminder = n.pipeline === 'REMINDER'
+            const testBell = splitTestBell(n.message)
             const canSelect = scope === 'current' && !isAction && !n.read
             return (
               <div key={n.id}
                 style={{
                   display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '13px 4px 13px 8px',
                   borderBottom: '1px solid var(--vfo-border-soft)',
-                  borderLeft: isAction ? '3px solid #e06717' : isReminder ? `3px solid ${REMINDER_VIOLET}` : '3px solid transparent',
-                  background: isAction && !n.read ? 'rgba(224,103,23,0.06)' : isReminder && !n.read ? 'rgba(124,58,237,0.05)' : 'transparent',
+                  borderLeft: testBell ? `3px solid ${TEST_BELL_TEAL}` : isAction ? '3px solid #e06717' : isReminder ? `3px solid ${REMINDER_VIOLET}` : '3px solid transparent',
+                  background: testBell && !n.read ? TEST_BELL_TINT : isAction && !n.read ? 'rgba(224,103,23,0.06)' : isReminder && !n.read ? 'rgba(124,58,237,0.05)' : 'transparent',
                 }}>
                 {canSelect ? (
                   <input type="checkbox" checked={selected.has(n.id)} onChange={() => toggleOne(n.id)}
@@ -217,14 +232,23 @@ function NotificationsView({ navigate }) {
                 ) : null}
                 <div onClick={() => openRow(n)} style={{ flex: 1, minWidth: 0, cursor: n.link ? 'pointer' : 'default' }}>
                   <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--vfo-ink)' }}>{n.title}</div>
-                  {n.message && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '3px', lineHeight: 1.5 }}>{n.message}</div>}
+                  {testBell && <div style={{ fontSize: '12px', color: TEST_BELL_TEAL, fontWeight: 600, marginTop: '3px', lineHeight: 1.45, overflowWrap: 'anywhere' }}>Meant for: {testBell.meantFor}</div>}
+                  {(testBell ? testBell.rest : n.message) && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '3px', lineHeight: 1.5 }}>{testBell ? testBell.rest : n.message}</div>}
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap' }}>
+                    {testBell && <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: TEST_BELL_TEAL, letterSpacing: '0.4px' }}>TEST</span>}
                     {isAction && <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: '#e06717', letterSpacing: '0.4px' }}>ACTION</span>}
                     {isReminder && <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: REMINDER_VIOLET, letterSpacing: '0.4px' }}>REMINDER</span>}
                     {n.pipeline && !isReminder && <span style={{ fontSize: '10px', color: '#0095ff', fontWeight: 600, padding: '1px 6px', borderRadius: '3px', background: 'rgba(0,149,255,0.15)' }}>{n.pipeline}</span>}
                     {isAction && !n.read && <span style={{ fontSize: '10.5px', color: 'var(--vfo-faint)' }}>Clears when its task is completed</span>}
                   </div>
                 </div>
+                {isAction && testBell && !n.read && (
+                  <button onClick={() => clearTestAction(n)} disabled={busy}
+                    title="Staging only: on live this bell clears when its step is done."
+                    style={{ padding: '3px 9px', borderRadius: '4px', fontSize: '11px', whiteSpace: 'nowrap', border: `1px solid ${TEST_BELL_TEAL}66`, background: TEST_BELL_TINT, color: TEST_BELL_TEAL, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                    Clear (test)
+                  </button>
+                )}
                 <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', whiteSpace: 'nowrap', flexShrink: 0, marginTop: '2px' }}>{fmtDateTime(n.created_at)}</span>
               </div>
             )
