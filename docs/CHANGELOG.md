@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-11-03 — The Money Mapping transfer memo names the member; the first live transfer — by Jake
+
+Branch edge `claude/mm-transfer-memo` (code) + react `claude/mm-transfer-memo` (docs), one chat (the Money Mapping chat continued).
+
+- **First real member on Money Mapping (2026-11-02).** Linc Campbell 59457, plan 98 (transfer, $8,000, July 15 year), per Paul: he paid July-October, so from November $667 comes from his balance on the 2nd of each month. Started by hand: rows 874-881 (Nov 2 2026 - Jun 2 2027, built with the code's own `buildTransferDayRows`), `year_start` 2026-11-02, `charge_day` 2, `pay_with_mm` on, no card. November paid with `money_mapping_apply_to_row` (balance 9,008.32 → 8,341.32); INV / REC-59457-0001 drafted (transfer kind). Ledger 45 ($675 adjustment) re-described "Holistic Core - Dave Svatik (Nov 2025)".
+- **First live MM → ERT transfer (2026-11-03, 8:30am ET run):** ledger 46 → `tr_1UXhmtRwdhysCa6FeyW79cVK`, $667, with the ERT-side payment memo stamped. Discharges the hub (AF) UNTESTED live-transfer and first-real-member lines.
+- **The memo read badly** (Jake): *Money Mapping - ERT Membership - (59457) ERT Membership - November 2026* — "ERT" twice, no name. `utils/money-mapping-transfer.ts` now loads each row's plan `member_name` and schedule `period_label` and writes *Money Mapping - Membership Fee - (59457) William Linc Campbell - November 2026* (the card charge's shape), on the transfer and the ERT-side payment. The November transfer keeps the old memo (editable by hand in Stripe). First real proof: December's transfer (Dec 2).
+- **Deploys:** test build **v1087** from the worktree (on Jake's "deploy", main merged in, live was main v1086), smoke PASS (Jake) against v1087. Release from main owed the same day.
+
+---
+
 ## 2026-11-02 (d) — The STAGING copy of the portal, part 1 (S1-S4 website): staging.vfoportal.com on project "VFO Staging", live unchanged — by Jake
 
 **Why.** Phase 5 of the two-person workflow. Paxton starts around 2026-11-11, and two people cannot share one live system for testing: the last deploy wins, and test members and clients clutter live. Jake wants a team-wide **test mode** with fake data only, Stripe always in sandbox, every email to the team inbox, a TEST banner, a reset button that also refreshes settings from live, and kept in step with live. **"Remove all testing things from live portal entirely eventually."** Plan of record, decisions D1-D19 and the full setup record: [plans/staging/README.md](plans/staging/README.md). Branches `claude/phase-5-staging-portal-2ba513` (edge) / `-db3a8b` (react), one chat (2026-10-31 planning, 11-01 / 11-02 build).

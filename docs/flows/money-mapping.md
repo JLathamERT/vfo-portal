@@ -95,7 +95,8 @@ not a charge). Rules copied from `utils/tier1-licence-transfer.ts` (#489):
 2. Look up `transfer_group = mm-ert-<ledger id>` first; a prior un-reversed transfer → stamp `sent`
    from it, send nothing.
 3. Send with `Idempotency-Key: mm-ert-<id>`, rotated (`-r<failed_at ms>`) only once the row is
-   `failed`. Description *Money Mapping - ERT Membership - (<member#>) <period>*, metadata
+   `failed`. Description *Money Mapping - Membership Fee - (<member#>) <plan member_name> - <period_label>*
+   (the card charge's "Membership Fee - (n) Name - Month" shape; 2026-11-03), metadata
    `pipeline=MEMBER_MEMBERSHIP`, `payment_kind=money_mapping_membership`, `member_number`,
    `ledger_id`, `plan_id`, `schedule_row_id`; the ERT-side payment memo is stamped after
    (`stampErtDestinationPayment`).
@@ -107,7 +108,7 @@ Callers: **sweep pass 3d** (isolated try/catch so it never stops pass 4; money, 
 gated; limit 200) and the create click (limit 50). Any failure → one bell
 `MONEY_MAPPING_ert_transfer_failed` (Jake, action required, title *Money Mapping transfer to ERT
 FAILED*, link `/admin?tab=accounting`), cleared by a pass that sends some and fails none. **No email,
-ever.** **Proven in sandbox only** (OWED: the first live one).
+ever.** **Proven live 2026-11-03** (Linc Campbell 59457, ledger 46, $667).
 
 ## Tables touched
 
@@ -130,8 +131,8 @@ ever.** **Proven in sandbox only** (OWED: the first live one).
   Money Mapping back and does NOT reverse its ERT transfer — by hand if ever needed.
 - **No member view** of the balance (decision; the receipts state it after each payment).
 - **Tested 2026-11-01** (#705): ACH part payments, annual and transfer plans, a renewal, the reminder
-  ladder for an active MM plan with no method. **Not exercised yet:** the ERT transfer in LIVE Stripe;
-  the first real member.
+  ladder for an active MM plan with no method. The first live ERT transfer ran 2026-11-03 for the first
+  real member (Linc Campbell 59457, plan 98, started by hand 2026-11-02).
 - **Records:** a charge Money Mapping paid part of says so in the Stripe description ("Money Mapping
   paid $X of $Y") and metadata `money_mapping_applied`; the invoice's *Payment Method* reads "Money
   Mapping balance first[, then …]"; `/membership-pay` on an active MM plan with no method says *Set Up
