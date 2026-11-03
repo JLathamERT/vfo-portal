@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-03 (b) — The team roadmap written down — by Jake
+
+Branch react `claude/team-roadmap`, docs only, one chat.
+
+- **New `docs/plans/two-person-workflow/README.md`**, the plan of record for the two-person workflow: where each phase stands (prompts + rules and the superadmin list shipped; staging part 1 shipped, S4 tested but unshipped; the deploy button, OWED → Issues and Paxton's getting-started document not started), the order from here, the deploy button's decided design and its open D13 question, Jake's setup tasks for Paxton, and every decision since 2026-10-31. Until now the plan lived only in Jake's Claude memory, which Paxton's chats could never see.
+- **TEAM_RULES §6:** work that spans chats follows a plan of record, and the PR that ships a step updates its status there. **Starter STEP 0 item 4:** read the plan the task belongs to and say which step the chat is on. **Hub DOC MAP:** the roadmap row (no new line).
+
+---
+
 ## 2026-11-03 — The Money Mapping transfer memo names the member; the first live transfer — by Jake
 
 Branch edge `claude/mm-transfer-memo` (code) + react `claude/mm-transfer-memo` (docs), one chat (the Money Mapping chat continued).
