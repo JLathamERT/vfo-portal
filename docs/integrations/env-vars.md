@@ -25,7 +25,8 @@ Unset on live = today's behaviour byte for byte. The staging project sets them (
 |---|---|---|
 | `VFO_ENVIRONMENT` | `isStagingEnvironment()` / `isLiveOnlyEnvironment()` / `environmentSandbox()` | `staging` on the staging project. `live` = live-only (never sandbox), set on the switch day (plan §4c). Unset = today: the pipeline toggles, the test-member force and each row's stamp decide sandbox. Any project that is not live is ALWAYS sandbox, whatever this says. |
 | `PORTAL_BASE_URL` | `PORTAL_BASE` (every emailed link, Stripe `success_url` / `cancel_url`) | `https://staging.vfoportal.com` on staging; unset = `https://vfoportal.com`. |
-| `STAGING_EMAIL_TO` | `utils/staging-email-guard.ts` | The one inbox every staging email goes to (`staging@vfo-services.com`). Missing on a non-live project = no email leaves (fails closed). |
+| `STAGING_EMAIL_TO` | `utils/staging-email-guard.ts` | The staging team inbox (`staging@vfo-services.com`): where a staging email goes when it names no tester (the guard sends the rest to the tester, `integrations/gmail.md`). Missing on a non-live project = no email leaves (fails closed). |
+| `STAGING_TEST_CONNECT_ACCOUNT_ID` | `utils/staging-test-member.ts` | Staging only: the ONE sandbox Stripe Connect account every per-person test member (and the seed's Test Group) is paid out through. An account id, not a key. |
 | `SPECIALIST_DRIVE_ROOT_ID` | `SPECIALIST_DRIVE_ROOT` (specialist bg / licence receipts) | The Drive folder that holds "VFO Specialist Onboarding". Unset = live's own folder, **on live only** — a test copy never files into live's Drive. |
 
 ### Stripe

@@ -263,6 +263,10 @@ A **401 on a login action** instead `throw`s the server error (`data.error`, e.g
 
 The `'/'` path is the site root — since the custom-domain switch the app is served at the domain root (`https://vfoportal.com/`), not a `/vfo-portal/` subpath. On localhost dev (Vite at port 5173) it resolves to `http://localhost:5173/`.
 
+### Staging: the admin password opens the test member (2026-11-03)
+
+On the staging project only (`isStagingEnvironment`: `VFO_ENVIRONMENT=staging` AND not live's URL), `create_admin` also makes that person's test member (`utils/staging-test-member.ts`: 10001+, a member login on the same email + passcode hash, three clients whose client logins are the tagged email `jlatham+tax@elitert.com`, two onboardings) and `delete_admin` removes it first. `member_login` / `client_login` also accept the OWNER's admin password for that test member and its clients (`stagingOwnerPasscodeOk`), so one password change covers all of them. `add_member` / `add_member_full` answer 403 on staging. All of it returns null / false anywhere else.
+
 ## Passcode hashing
 
 **Salted PBKDF2-HMAC-SHA256** (210,000 iterations, 16-byte random salt), stored as `pbkdf2$sha256$<iter>$<saltB64>$<hashB64>` in `allowed_admins.passcode_hash` / `member_logins.passcode_hash` / `client_logins.passcode_hash` / `specialist_logins.passcode_hash` / `tax_planner_logins.passcode_hash` (the tax_planner table added 2026-07-22; its hash is written by the unified `submit_login_setup` [`login_type='tax_planner'`] and by `tax_planner_update_login`, both via `hashPasscodeSalted`). Helpers live in `vfo-admin-api/utils/crypto.ts` (`hashPasscodeSalted`, `verifyPasscodeSalted`, `isSaltedHash`); the shared `verifyPasscode()` is in `utils/passcode-verify.ts`.

@@ -12,7 +12,7 @@
 |---|---|---|---|
 | 1 | **Prompts + rules** — `TEAM_RULES.md`, `ACCESS.md`, `CLAUDE.md` in both repos, `/start` `/handoff` `/wrapup`, the dev-server script, one PR per repo, deploy → smoke → test one step at a time | **SHIPPED 2026-11-01** | react #572, edge #333 (docs and prompts only) |
 | 2 | **Superadmin list + bigger smoke test** — `constants/superadmin.ts` (Jake + Paxton), the smoke script picks whoever runs it, 23 read-only checks | **SHIPPED 2026-11-01** | edge #334, react #573 · `vfo-admin-api` v1080 · `live-284-superadmin-list` |
-| 5 | **Staging / test mode** — a full second copy of the portal with fake data only. Its own plan: [plans/staging/README.md](../staging/README.md) | **Part 1 SHIPPED 2026-11-02** (S1-S3 + the S4 website) · **S4 rest BUILT + TESTED 2026-11-03, NOT SHIPPED** · S5, S6, S7, switch day: not started | §2 below |
+| 5 | **Staging / test mode** — a full second copy of the portal with fake data only. Its own plan: [plans/staging/README.md](../staging/README.md) | **S1-S4 SHIPPED** — part 1 2026-11-02 (S1-S3 + the S4 website), the rest of S4 2026-11-03 (CHANGELOG 2026-11-03 (c)) · S5, S6, S7, switch day: not started | §2 below |
 | 3 | **Deploy button** — live releases through GitHub, not from a laptop | **NOT STARTED** — build together with staging S6 | §3 below |
 | 4 | **OWED list → GitHub Issues** + a hub small enough to read in full | **NOT STARTED** — may follow after Paxton starts | §3 below |
 | 6 | **Paxton's getting-started document** | **NOT STARTED** — on purpose last, so it describes the finished setup; must be done before he starts | §3 below |
@@ -22,12 +22,11 @@ The numbers are the 2026-10-31 phase numbers. Staging (5) was moved ahead of 3 a
 
 ### Order from here
 
-1. **Ship staging S4** — chat "VFO PORTAL - 11/3 #2 (Paxton)": deploy its last bell fix to staging, `/wrapup`, merge, release, smoke, tag. Its wrap-up also puts the new staging step (Part 4E) into `SESSION_WRAPUP.md` on main.
-2. **Deploy button + staging S6, one chat.** Ask D13 (§3) first.
-3. **Staging S7** — switch the team rules to "test on staging".
-4. **Paxton's getting-started document.**
-5. **Staging S5** (Reset / Refresh) and **OWED → Issues** — can follow after Paxton starts if time runs short.
-6. **The switch day** (staging plan §4c) — after S7, once Jake decides what the team may still do with Test Member 59524 on live (staging plan, open point).
+1. **Deploy button + staging S6, one chat.** Ask D13 (§3) first.
+2. **Staging S7** — switch the team rules to "test on staging".
+3. **Paxton's getting-started document.**
+4. **Staging S5** (Reset / Refresh) and **OWED → Issues** — can follow after Paxton starts if time runs short. Reset must re-make each person's test member (`ensureStagingTestMember`) and clear its bells.
+5. **The switch day** (staging plan §4c) — after S7, once Jake decides what the team may still do with Test Member 59524 on live (staging plan, open point).
 
 ## 2. Staging (phase 5) in one table
 
@@ -38,7 +37,7 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 | S1 | Accounts: Supabase project `yxolcioazczlhruprmrb` ("VFO Staging"), `staging@vfo-services.com`, repo `vfo-portal-staging`, DNS `staging.vfoportal.com` | Done 2026-11-02 |
 | S2 | Backend isolation: `constants/environment.ts`, the staging email guard, URLs and Drive folders from settings | Shipped 2026-11-02 (v1086) |
 | S3 | Staging backend up: schema, buckets, settings, the 19 crons | Done 2026-11-02 |
-| S4 | Website on staging + the sandbox move + test data + the first full test | Website shipped 2026-11-02 (`live-288-staging-part1`). **2026-11-03:** sandbox move done (live holds no sandbox keys, smoke PASS on v1089; both Stripe sandboxes and BoldSign's sandbox report to staging); one test member per person (Jake 10001, Paxton 10002, made automatically with each admin login); client logins on the tester's tagged email; every staging email and bell goes to the tester; full test parts A and B PASS. **Not shipped:** edge branch `claude/phase-5-staging-cont-24f1db` (worktree `goofy-nightingale-0ac23f`) and react branch `claude/phase-5-staging-cont-358083` hold it, partly uncommitted, nothing pushed. Staging runs that branch's build. |
+| S4 | Website on staging + the sandbox move + test data + the first full test | Website shipped 2026-11-02 (`live-288-staging-part1`). **2026-11-03:** sandbox move done (live holds no sandbox keys, smoke PASS on v1089; both Stripe sandboxes and BoldSign's sandbox report to staging); one test member per person (Jake 10001, Paxton 10002, made automatically with each admin login); client logins on the tester's tagged email; every staging email and bell goes to the tester (bells teal, "meant for: …", a staging-only Clear (test) on action bells); full test parts A and B PASS. **Shipped 2026-11-03** (CHANGELOG 2026-11-03 (c)); after the release staging is brought back to main (SESSION_WRAPUP Part 4E). |
 | S5 | A superadmin-only Staging tab: *Reset test data*, *Refresh settings from live*, what is running. Also staging's `vfo-widget.js` still calls live. | Not started |
 | S6 | Keep in step: main → staging on every merge (D13), a drift check between the two databases, `smoke -Target staging` | Not started — with the deploy button |
 | S7 | Switch the rules: TEAM_RULES, CLAUDE.md, the starter and wrap-up so testing happens on staging only | Not started |
@@ -117,6 +116,5 @@ Settled — build on these, don't reopen them.
 
 ## 6. Watch
 
-- **Unshipped work exists only on Jake's computer:** the S4 branches are not pushed (§2). Push them, or ship them, before anything else touches those worktrees.
 - **Until the deploy button exists,** live releases run from the main folders after `git merge --ff-only origin/main` (SESSION_WRAPUP). A release from a chat's folder makes live's `entrypoint_path` name a worktree that doesn't exist on the other person's computer, and their Claude would stop.
 - **Until S6 exists,** staging is kept in step by hand (§2).
