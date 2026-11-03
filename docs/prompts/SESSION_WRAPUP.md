@@ -1,5 +1,5 @@
 <!-- CANONICAL COPY of the VFO session wrap-up prompt. Run it with `/wrapup` (the command file in both repos reads THIS file), or paste it,
-     once when the work is SHIPPING (not at the end of every chat). Edit here only, in a worktree, through a PR. Last updated: 2026-11-01 (phase 2: the smoke gate = every check PASS, run by a superadmin; two-person workflow: releases only from up-to-date main in the MAIN folders, ONE PR per repo — no post-release hub re-stamp, clash-safe live-N tags, CHANGELOG entries say who did the work, one step at a time after "deploy", the dev server stopped by port; 2026-10-31: the deploy re-runs the HEAD..origin/main = 0 check first, #702; 2026-10-28: frontend gate checks phone + desktop width). -->
+     once when the work is SHIPPING (not at the end of every chat). Edit here only, in a worktree, through a PR. Last updated: 2026-11-03 (Part 4E: after every release, staging is brought up to main on the person's "deploy"); 2026-11-01 (phase 2: the smoke gate = every check PASS, run by a superadmin; two-person workflow: releases only from up-to-date main in the MAIN folders, ONE PR per repo — no post-release hub re-stamp, clash-safe live-N tags, CHANGELOG entries say who did the work, one step at a time after "deploy", the dev server stopped by port; 2026-10-31: the deploy re-runs the HEAD..origin/main = 0 check first, #702; 2026-10-28: frontend gate checks phone + desktop width). -->
 
 # SESSION WRAP-UP — HUB UPDATE + STALENESS AUDIT + COMMIT (run once at session end)
 
@@ -104,7 +104,16 @@ Releases run from the MAIN folders (`C:\vfo-edge-functions`, `C:\vfo-react`), ne
 - **Frontend released:** in `C:\vfo-react`, `git fetch --tags`; N = highest `live-*` + 1 (`git tag -l 'live-*' --sort=v:refname`); tag `origin/main`'s commit `live-N-<short>`; push it. Refused because the tag exists = the other person just took N: fetch again, use the next number. Never delete or move someone else's tag.
 - Say the rollback line: "If anything is wrong later, say: restore to <previous tag>."
 - **No hub edit after the release** — the hub derives versions and tags, so nothing written in Part 1 needs a re-stamp and there is no follow-up PR.
-- No release this time (doc-only, or the person held it)? Skip 4C and 4D and say plainly what is merged but NOT live.
+- No release this time (doc-only, or the person held it)? Skip 4C, 4D and 4E and say plainly what is merged but NOT live.
+
+### 4E. STAGING — bring it up to main (after every release, TEAM_RULES §4)
+Staging (https://staging.vfoportal.com/, project `yxolcioazczlhruprmrb`) runs main's code. After each live release it is brought up to main the same day, or it drifts behind live. Until the staging plan's S6 makes this automatic ([plans/staging/README.md](../plans/staging/README.md)), it is this step, one at a time:
+1. **Database first, no deploy needed:** every migration, email-template change or feature-switch flip in this change must already be on staging (TEAM_RULES §4: made on staging the same day). Check with MCP `list_migrations { project_id: "yxolcioazczlhruprmrb" }` and a SELECT of the rows the change touched. Anything missing is applied to staging now (DDL is asked first, TEAM_RULES §1).
+2. **Ask for "deploy" for staging, naming what will go:** "Release is done and smoke passed. Staging is at <its current `vfo-admin-api` version / site build>; say 'deploy' to bring it up to main." Then stop.
+3. **On "deploy",** from the MAIN folders (still at `origin/main` from 4C), in ONE invocation that `cd`s explicitly, and with `--project-ref yxolcioazczlhruprmrb` on every command (#717 — without it the command hits LIVE):
+   - **Backend** (if released): `C:\vfo-edge-functions`, Docker Desktop running, `deno.lock` deleted if present, then `supabase functions deploy vfo-admin-api --project-ref yxolcioazczlhruprmrb --use-docker`. Prove it: MCP `list_edge_functions` on BOTH projects — staging's version went up, and staging's `ezbr_sha256` EQUALS live's (same code). Live's version must be unchanged.
+   - **Frontend** (if released): `C:\vfo-react`, `npm run deploy:staging` (its finishing check refuses a build that names live). Prove it: https://staging.vfoportal.com/ serves the new `index-*.js`, which names staging's project only, and the latest run at `https://api.github.com/repos/JLathamERT/vfo-portal-staging/actions/runs?per_page=1` succeeded.
+4. Say in one line where staging now stands (version, build). There is no staging smoke gate until S6 (`smoke-pipelines.ps1 -Target staging`); say so rather than skip it silently.
 
 ## PART 5 — CLEAN UP
 1. Stop this chat's dev server by its port: `scripts/dev-servers.ps1 -Stop <port>` (vfo-react), then run it again with no switches and confirm that port is gone. Never stop one this chat did not start.
@@ -116,5 +125,5 @@ Releases run from the MAIN folders (`C:\vfo-edge-functions`, `C:\vfo-react`), ne
 - Never push --force to main (feature branches only, with approval) - Never --no-verify w/o approval
 - Never commit .env.local/secrets/large binaries/unrelated node_modules/supabase/.temp/cli-latest
 - Don't push tags except the Part-4D save-point tag - Don't deploy unless the person says "deploy"
-- Never end the flow without saying plainly which repos are merged but not yet released
+- Never end the flow without saying plainly which repos are merged but not yet released — on live AND on staging
 If a pre-commit hook fails: fix the root cause, re-stage, NEW commit (don't --amend).

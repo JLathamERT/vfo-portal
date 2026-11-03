@@ -46,17 +46,22 @@ export default function AdminEditor({ onBack }) {
   async function createAdmin() {
     if (!newEmail || !newName || !newPasscode) { showStatus('error', 'All fields are required.'); return }
     try {
-      await callApi('create_admin', { email: newEmail, name: newName, passcode: newPasscode })
+      const res = await callApi('create_admin', { email: newEmail, name: newName, passcode: newPasscode })
       setNewEmail(''); setNewName(''); setNewPasscode('')
-      showStatus('success', 'Admin created!')
+      // Staging only: the server also makes the person's own test member.
+      const tm = res?.test_member
+      if (tm?.error) showStatus('error', `Admin created, but their test member could not be made: ${tm.error}`)
+      else if (tm?.member_number) showStatus('success', `Admin created. Their test member is ${tm.member_number}: they sign in to the member portal with the same email and password.`)
+      else showStatus('success', 'Admin created!')
       loadAdmins()
     } catch (err) { showStatus('error', err.message) }
   }
 
   async function deleteAdmin(email) {
     try {
-      await callApi('delete_admin', { email })
-      showStatus('success', 'Admin removed.')
+      const res = await callApi('delete_admin', { email })
+      // Staging only: the server also removes the person's test member.
+      showStatus('success', res?.test_member_removed ? `Admin removed, and their test member ${res.test_member_removed} with its clients.` : 'Admin removed.')
       loadAdmins()
     } catch (err) { showStatus('error', err.message) }
   }
