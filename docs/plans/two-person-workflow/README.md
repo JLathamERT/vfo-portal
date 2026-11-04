@@ -13,7 +13,7 @@
 | 1 | **Prompts + rules** — `TEAM_RULES.md`, `ACCESS.md`, `CLAUDE.md` in both repos, `/start` `/handoff` `/wrapup`, the dev-server script, one PR per repo, deploy → smoke → test one step at a time | **SHIPPED 2026-11-01** | react #572, edge #333 (docs and prompts only) |
 | 2 | **Superadmin list + bigger smoke test** — `constants/superadmin.ts` (Jake + Paxton), the smoke script picks whoever runs it, 23 read-only checks | **SHIPPED 2026-11-01** | edge #334, react #573 · `vfo-admin-api` v1080 · `live-284-superadmin-list` |
 | 5 | **Staging / test mode** — a full second copy of the portal with fake data only. Its own plan: [plans/staging/README.md](../staging/README.md) | **S1-S4 SHIPPED** — part 1 2026-11-02 (S1-S3 + the S4 website), the rest of S4 2026-11-03 (CHANGELOG 2026-11-03 (c)) · S5, S6, S7, switch day: not started | §2 below |
-| 3 | **Deploy button** — live releases through GitHub, not from a laptop | **BUILT 2026-11-04, first press owed** — merged, then the live key, the first press and the guard's tests (hub OPEN / OWED) | §3 below |
+| 3 | **Deploy button** — live releases through GitHub, not from a laptop | **SHIPPED 2026-11-04** — backend and website released and tagged through it (`backend-good-2026-11-04-v1092`, `live-290-deploy-button`); the deploy block's test in a new chat is owed (hub OPEN / OWED) | §3 below |
 | 4 | **OWED list → GitHub Issues** + a hub small enough to read in full | **NOT STARTED** — may follow after Paxton starts | §3 below |
 | 6 | **Paxton's getting-started document** | **NOT STARTED** — on purpose last, so it describes the finished setup; must be done before he starts | §3 below |
 | — | **Jake's setup tasks for Paxton** (accounts, access, contract, computer) — not a chat | **PARTLY DONE** | §4 below |
@@ -22,10 +22,9 @@ The numbers are the 2026-10-31 phase numbers. Staging (5) was moved ahead of 3 a
 
 ### Order from here
 
-1. **Deploy button + staging S6: finish the first press** (§3, "Done when").
-2. **The testing move: staging S7 + the switch day (staging plan §4c), the next chat after this one.** Jake's decision of 2026-11-03 (§5) moves all testing to staging as soon as possible.
-3. **Paxton's getting-started document.**
-4. **Staging S5** (Reset / Refresh) and **OWED → Issues** — can follow after Paxton starts if time runs short. Reset must re-make each person's test member (`ensureStagingTestMember`) and clear its bells.
+1. **The testing move: staging S7 + the switch day (staging plan §4c), the next chat.** Jake's decision of 2026-11-03 (§5) moves all testing to staging as soon as possible.
+2. **Paxton's getting-started document.**
+3. **Staging S5** (Reset / Refresh) and **OWED → Issues** — can follow after Paxton starts if time runs short. Reset must re-make each person's test member (`ensureStagingTestMember`) and clear its bells.
 
 ## 2. Staging (phase 5) in one table
 
@@ -38,7 +37,7 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 | S3 | Staging backend up: schema, buckets, settings, the 19 crons | Done 2026-11-02 |
 | S4 | Website on staging + the sandbox move + test data + the first full test | Website shipped 2026-11-02 (`live-288-staging-part1`). **2026-11-03:** sandbox move done (live holds no sandbox keys, smoke PASS on v1089; both Stripe sandboxes and BoldSign's sandbox report to staging); one test member per person (Jake 10001, Paxton 10002, made automatically with each admin login); client logins on the tester's tagged email; every staging email and bell goes to the tester (bells teal, "meant for: …", a staging-only Clear (test) on action bells); full test parts A and B PASS. **Shipped 2026-11-03** (CHANGELOG 2026-11-03 (c)); after the release staging is brought back to main (SESSION_WRAPUP Part 4E). |
 | S5 | A superadmin-only Staging tab: *Reset test data*, *Refresh settings from live*, what is running. Also staging's `vfo-widget.js` still calls live. | Not started |
-| S6 | Keep in step: a merge that changes backend code redeploys staging's backend, a merge that changes the website redeploys staging's website, a docs-only merge redeploys neither (Jake 2026-11-03); a drift check between the two databases, required at wrap-up; `smoke -Target staging` | Built and tested on staging 2026-11-04; goes live on merge |
+| S6 | Keep in step: a merge that changes backend code redeploys staging's backend, a merge that changes the website redeploys staging's website, a docs-only merge redeploys neither (Jake 2026-11-03); a drift check between the two databases, required at wrap-up; `smoke -Target staging` | Shipped 2026-11-04 |
 | S7 | Switch the rules: TEAM_RULES, CLAUDE.md, the starter and wrap-up so testing happens on staging only | Not started |
 | Switch day | Live becomes live-only (`VFO_ENVIRONMENT=live`, the sandbox toggles and "Test member only" removed). Test Member 59524 and live's other test records are **kept** (Jake 2026-11-03: team members still use them). | Not started |
 
@@ -76,12 +75,14 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 1. **Before pressing:** `git diff` between the `backend-good-…` commit and the commit being released is empty for `supabase/functions/vfo-admin-api`.
 2. **Before and after pressing:** `supabase functions download` of live's version, then a file-by-file comparison with line breaks ignored. Every file must match. Any other difference means stop and revert in the dashboard.
 3. **Rehearsed first on staging:** the same comparison between staging's laptop build and its first GitHub build, before live is pressed.
-4. **From then on:** staging and live, both built by GitHub from one commit, should have equal fingerprints, and the wrap-up checks that.
+4. **From then on:** git proves it, with no difference in the backend folder between the commits staging and live were built from. Fingerprints can't: staging and live came out different with all 777 files byte-identical (GOTCHAS #725).
 
 **Rehearsed on staging, 2026-11-04.** Backend, v23 (laptop) against v24 (GitHub): 777 files, 738 identical, 39 differing only in line breaks, none really different. Website: the first GitHub build differed in one file, because the laptops ran Sentry 10.59.0 while `package-lock.json` said 10.58.0, so a GitHub build would have moved live back a version. The lockfile now says 10.59.0, and the GitHub build gives the same bundle names and all 151 files match, ignoring blank lines in the route pages. The staging key is refused on live and on SQL (403), though no deploy to live was attempted with it.
 
+**Done on live, 2026-11-04.** Live before and after the press: 777 files, 738 identical, 39 differing only in line breaks, none really different; smoke PASS on v1092. CHANGELOG 2026-11-04 has the whole run.
+
 **Open before building:**
-- `gh` is installed and signed in on Jake's computer (2026-11-04), not yet on Paxton's. Without it, someone presses the button on github.com.
+- `gh` is installed and signed in on Jake's computer (2026-11-04), not yet on Paxton's. Without it, someone presses the button on github.com. Two-step sign-in went on for Jake's GitHub account the same day.
 - `boldsign-webhook` never deploys from the button unless the person says so explicitly (CLAUDE.md).
 - Test deploys of a branch to staging stay a laptop deploy with `--project-ref` until S7 says otherwise.
 
@@ -111,6 +112,7 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 | Live portal admin login + superadmin | Done 2026-11-01 — passcode still to pass on via Bitwarden |
 | Staging admin login + his test member 10002 | Done 2026-11-03 — password to pass on via Bitwarden; he also gets the `staging@` inbox login |
 | GitHub collaborator on both repos (`vfo-portal`, `vfo-edge-functions`) | Jake to confirm |
+| GitHub two-step sign-in on Paxton's account, since the live deploy key sits in the repo | To do, as soon as he has access |
 | Supabase: Developer, with SQL access | Jake to confirm |
 | Stripe (ERT + VFO Services: View Only + Sandbox Administrator), BoldSign, Gmail, Sentry, Google Drive / Sheets | Jake to confirm (Jena handling Stripe) |
 | Bitwarden shared vault, entries named in `ACCESS.md` | Started 2026-11-01 — Jake to confirm |
@@ -141,4 +143,4 @@ Settled — build on these, don't reopen them.
 
 ## 6. Watch
 
-- **Until the first press is proven,** the laptop release from an up-to-date main folder stays the fallback (TEAM_RULES §4). A release from a chat's folder makes live's `entrypoint_path` name a worktree that doesn't exist on the other person's computer, and their Claude would stop.
+- **If the button breaks,** the laptop release from an up-to-date main folder is the fallback (TEAM_RULES §4). A release from a chat's folder makes live's `entrypoint_path` name a worktree that doesn't exist on the other person's computer, and their Claude would stop.

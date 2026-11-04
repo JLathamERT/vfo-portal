@@ -9,7 +9,7 @@
 //    the guard can't work out also prompts.
 // 2. Deploy block. No chat deploys the backend to live or names no project
 //    (supabase/.temp/project-ref is tracked and points at live). Staging is fine.
-//    On only once the button is proven: DEPLOY_BLOCK_ON below. If the button
+//    Off only through DEPLOY_BLOCK_ON below or the switch: if the button
 //    breaks, a person creates ~/.vfo-deploy-guard-off in their own terminal, which
 //    turns this job off on that computer. Chats never create that file.
 //
@@ -21,7 +21,7 @@ import { execFileSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-const DEPLOY_BLOCK_ON = false
+const DEPLOY_BLOCK_ON = true
 const OFF_SWITCH = '.vfo-deploy-guard-off'
 const STAGING_REF = 'yxolcioazczlhruprmrb'
 
