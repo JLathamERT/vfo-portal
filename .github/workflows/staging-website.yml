@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - main
-      - claude/deploy-button-staging-s6-63e403 # TEMP: first test only, removed before merge
     paths-ignore:
       - docs/**
       - '**/*.md'
