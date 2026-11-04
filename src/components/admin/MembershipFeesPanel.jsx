@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, BLUE, money, StatusPill } from './specialistRevenueShared'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
-import SandboxModeToggle from './SandboxModeToggle'
+import StripeAccountPill from './StripeAccountPill'
 import StepEmailsChip from '../shared/StepEmailsChip'
 import { MemberNameLink } from '../shared/personLinks'
 import { MEMBER_TYPES, ACCOUNTANT_TYPES } from '../shared/memberTypes'
@@ -360,8 +360,7 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
         <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting · Members</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>{title}</h2>
-          <SandboxModeToggle pipeline="MEMBER_MEMBERSHIP" label="Membership Fees" sandboxConfig={sandboxConfig} onChange={setSandboxConfig}
-            note="Membership setup links + monthly pulls follow this toggle. Both Advisor and Accountant panels share the one MEMBER_MEMBERSHIP row." />
+          <StripeAccountPill sandboxConfig={sandboxConfig} />
         </div>
       </div>
 

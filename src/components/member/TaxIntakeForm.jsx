@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { callApi } from '../../lib/api'
+import { IS_STAGING } from '../../lib/environment'
 import {
   TAX_INTAKE_QUESTIONS,
   TAX_INTAKE_POOR_FIT_WARNING,
@@ -116,11 +117,9 @@ export default function TaxIntakeForm({
 
   // Hidden = session-filled; derived = server-filled. Neither is ever rendered.
   const visible = useMemo(() => TAX_INTAKE_QUESTIONS.filter(q => !q.hidden && !q.retired && q.type !== 'derived'), [])
-  // Test Member 59524 only (mirrors the backend TEST_SANDBOX_MEMBER_NUMBERS):
-  // one button that fills every field with plausible test values so a
-  // click-through does not mean typing 36 answers. The public link page learns
-  // it from the token row via publicIntake.test_member, never from the URL.
-  const isTestMember = allowTestFill || (publicMode ? publicIntake?.test_member === true : String(member?.member_number || '') === '59524')
+  // The test site only: one button that fills every field with plausible test
+  // values so a click-through does not mean typing 36 answers.
+  const showTestFill = allowTestFill || IS_STAGING
   function fillTestValues() {
     const stamp = new Date().toISOString().slice(11, 16).replace(':', '')
     setAnswers(a => {
@@ -500,9 +499,9 @@ export default function TaxIntakeForm({
         </div>
       </div>
 
-      {isTestMember && (
+      {showTestFill && (
         <div style={{ margin: '0 0 16px', padding: '12px 16px', border: '1px dashed #e06717', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '12.5px', color: '#e06717', fontWeight: 600 }}>{allowTestFill ? 'Dev server only' : 'Test member only'}: fill every question with test values.</span>
+          <span style={{ fontSize: '12.5px', color: '#e06717', fontWeight: 600 }}>Test site only: fill every question with test values.</span>
           <button type="button" onClick={fillTestValues} disabled={submitting}
             style={{ padding: '8px 16px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid #e06717', background: 'transparent', color: '#e06717', fontFamily: 'Inter, sans-serif' }}>
             Fill with test values

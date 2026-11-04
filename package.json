@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --mode staging",
+    "dev:live": "vite",
     "build": "vite build && node scripts/emit-route-pages.mjs",
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist --dotfiles",

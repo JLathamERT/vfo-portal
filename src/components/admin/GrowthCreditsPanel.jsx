@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
-import SandboxModeToggle from './SandboxModeToggle'
+import StripeAccountPill from './StripeAccountPill'
 import { TableSkeleton } from '../shared/Skeleton'
 
-// Automation & Config -> Growth Credits. Sandbox toggle for the GROWTH_CREDITS
-// Stripe pipeline, the fixed purchase packages (server-enforced), and a service
-// management table (name / description / category / team member / scheduling
+// Automation & Config -> Growth Credits. The fixed purchase packages
+// (server-enforced), and a service management table (name / description / category / team member / scheduling
 // link / credit cost / active / remove). The allocated team member is who the
 // redemption bell goes to and who is CC'd on the member's confirmation email.
 // Remove is a hard delete and is refused server-side once a service has
@@ -196,15 +195,7 @@ export default function GrowthCreditsPanel() {
           <p style={{ fontSize: '10.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 4px' }}>Automation & Config</p>
           <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>Growth Credits</h2>
         </div>
-        {sandboxConfig && (
-          <SandboxModeToggle
-            pipeline="GROWTH_CREDITS"
-            label="Growth Credits"
-            sandboxConfig={sandboxConfig}
-            onChange={setSandboxConfig}
-            note="This toggles the Stripe mode used for Growth Credit purchases only."
-          />
-        )}
+        <StripeAccountPill sandboxConfig={sandboxConfig} />
       </div>
 
       {status && <div style={{ background: 'var(--vfo-accent-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-accent-text)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{status}</div>}

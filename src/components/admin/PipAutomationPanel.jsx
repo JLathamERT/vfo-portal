@@ -1,7 +1,7 @@
 import { useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
-import SandboxModeToggle from './SandboxModeToggle'
+import StripeAccountPill from './StripeAccountPill'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import { useNavigate } from 'react-router-dom'
 import { ClientNameLink, clientPagePath } from '../shared/personLinks'
@@ -187,15 +187,7 @@ export default function PipAutomationPanel() {
       <PanelHero
         eyebrow="Automation Pipeline"
         title="PIP Meetings Pipeline"
-        action={
-          <SandboxModeToggle
-            pipeline="MAP 1"
-            label="PIP Meetings"
-            sandboxConfig={sandboxConfig}
-            onChange={setSandboxConfig}
-            note="PIP Meetings shares the MAP 1 sandbox flag — switching here also switches the MAP 1 pipeline."
-          />
-        }
+        action={<StripeAccountPill sandboxConfig={sandboxConfig} />}
         stats={stats}
       />
 

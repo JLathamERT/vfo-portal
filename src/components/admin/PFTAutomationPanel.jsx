@@ -2,7 +2,7 @@ import { useEffect, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, SubBlock, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
-import SandboxModeToggle from './SandboxModeToggle'
+import StripeAccountPill from './StripeAccountPill'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 
 // Which button the client clicked, mapped to human labels.
@@ -207,14 +207,7 @@ export default function PFTAutomationPanel() {
       <PanelHero
         eyebrow="Automation Pipeline"
         title="Partnership Fast Track"
-        action={
-          <SandboxModeToggle
-            pipeline="PARTNERSHIP_FAST_TRACK"
-            label="Partnership Fast Track"
-            sandboxConfig={sandboxConfig}
-            onChange={setSandboxConfig}
-          />
-        }
+        action={<StripeAccountPill sandboxConfig={sandboxConfig} />}
         stats={stats}
       />
 

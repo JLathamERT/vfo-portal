@@ -1,8 +1,8 @@
 // Which copy of the portal this build is (docs/plans/staging/README.md, S4).
-// `npm run build` / `npm run deploy` = LIVE (vfoportal.com): nothing below is set,
-// so every value is today's. `npm run build:staging` (vite --mode staging, values
-// from .env.staging) = the STAGING copy at staging.vfoportal.com, the team's test
-// mode: its own backend, a TEST banner, never indexed.
+// `npm run build` / `npm run deploy` / `npm run dev:live` = LIVE (vfoportal.com):
+// nothing below is set, so every value is live's. `npm run dev` and
+// `npm run build:staging` (vite --mode staging, values from .env.staging) = the
+// STAGING copy, the team's test mode: its own backend, a TEST banner, never indexed.
 
 export const IS_STAGING = import.meta.env.MODE === 'staging'
 
