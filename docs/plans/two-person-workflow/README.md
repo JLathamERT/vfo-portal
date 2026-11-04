@@ -16,7 +16,7 @@
 | 3 | **Deploy button** — live releases through GitHub, not from a laptop | **SHIPPED 2026-11-04** — backend and website released and tagged through it (`backend-good-2026-11-04-v1092`, `live-290-deploy-button`); both guard checks tested in new chats | §3 below |
 | 4 | **OWED list → GitHub Issues** + a hub small enough to read in full | **NOT STARTED** — before Paxton starts (Jake 2026-11-04) | §3 below |
 | 6 | **Paxton's getting-started document** | **NOT STARTED** — on purpose last, so it describes the finished setup; must be done before he starts | §3 below |
-| — | **Jake's setup tasks for Paxton** (accounts, access, contract, computer) — not a chat | **PARTLY DONE** | §4 below |
+| — | **Jake's setup tasks for Paxton** (accounts, access) — not a chat | **PARTLY DONE** — walked through 2026-11-04; the rest waits for Stripe (Jena) and the Zoom | §4 below |
 
 The numbers are the 2026-10-31 phase numbers. Staging (5) was moved ahead of 3 and 4 because it has the deadline.
 
@@ -24,7 +24,7 @@ The numbers are the 2026-10-31 phase numbers. Staging (5) was moved ahead of 3 a
 
 **Everything below is done before Paxton starts, about 2026-11-11 (Jake, 2026-11-04).** One chat each:
 
-1. **Paxton's accounts and access: a chat that walks Jake through §4**, one step at a time. It changes no code, so it runs at the same time as the chats below and doesn't hold them up. It comes first because the contract and laptop may take days.
+1. **Paxton's accounts and access: a chat that walks Jake through §4**, one step at a time. It changes no code, so it runs at the same time as the chats below and doesn't hold them up.
 2. **DONE 2026-11-04. Move testing fully to staging** (S7 + switch day, staging plan §4c), including staging's `vfo-widget.js`.
 3. **Wipe the old test records from live**, straight after 2. Once live is live-only, a payment on Test Member 59524 would be REAL money. First: Jake approves the exact list, the team is told, a backup is confirmed, and the smoke test moves off 59524. The code's test-member filters go too. Staging is not touched. Details: staging plan §4c.
 4. **Set up live's 19 automatic jobs again**, as its own step, reading their key from the Vault, with a check straight after and another once they have run on schedule (staging plan §4c item 5).
@@ -108,7 +108,11 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 
 **Decided (Jake, 2026-11-01):** its own chat, written with Jake, **last** (so it describes the finished setup) but **before Paxton starts**. Sources: [TEAM_RULES.md](../../TEAM_RULES.md), [ACCESS.md](../../ACCESS.md), this plan.
 
-**It covers:** his accounts and access, Bitwarden, his computer and tools, setting his git name and adding it to the TEAM table, how chats work (`/start`, `/handoff`, `/wrapup`, "deploy", the smoke test), and staging (his test member 10002, the `staging@` inbox, his staging password).
+**Before the Zoom (Jake, 2026-11-04), also in the document:** he has been invited to Supabase at `pcalareso@vfo-services.com` and needs to accept it; he sets up a GitHub account under that same email; and it asks about his current Claude Code account, and whether he has one.
+
+**The Zoom with Jake (Jake, 2026-11-04), listed in the document as steps, never with a value in it (TEAM_RULES §2):** Paxton gives the username of that GitHub account and Jake invites him, with two-step sign-in on. Jake says the logins out loud, not in Zoom's chat and not on a recording: the live passcode, the staging password, the `staging@` inbox and the staging test password. Paxton then changes both portal passcodes in admin Settings, and signs in to `staging@` while still on the call, because Google may send a security check to Jake's ERT email.
+
+**It covers:** his accounts and access, his computer and tools (same folder paths, Node, Deno, Supabase CLI 2.78.1 (not v3, #716), Docker Desktop, `gh`, Claude Code), setting his git name (`git config --global user.name` / `user.email`) and adding it to the TEAM table, how chats work (`/start`, `/handoff`, `/wrapup`, "deploy", the smoke test), and staging (his test member 10002, the `staging@` inbox, his staging password).
 
 **Done when:** Jake has sent it to Paxton.
 
@@ -117,15 +121,13 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 | Task | Status |
 |---|---|
 | Work email `pcalareso@vfo-services.com` | Exists (made by Jena) |
-| Live portal admin login + superadmin | Done 2026-11-01 — passcode still to pass on via Bitwarden |
-| Staging admin login + his test member 10002 | Done 2026-11-03 — password to pass on via Bitwarden; he also gets the `staging@` inbox login |
-| GitHub collaborator on both repos (`vfo-portal`, `vfo-edge-functions`) | Jake to confirm |
-| GitHub two-step sign-in on Paxton's account, since the live deploy key sits in the repo | To do, as soon as he has access |
-| Supabase: Developer, with SQL access | Jake to confirm |
-| Stripe (ERT + VFO Services: View Only + Sandbox Administrator), BoldSign, Gmail, Sentry, Google Drive / Sheets | Jake to confirm (Jena handling Stripe) |
-| Bitwarden shared vault, entries named in `ACCESS.md` | Started 2026-11-01 — Jake to confirm |
-| Contract: confidentiality, IP assignment, data handling | Jake to confirm |
-| Computer: a company Windows laptop (not school-managed), same folder paths, Node, Deno, Supabase CLI 2.78.1 (not v3, #716), Docker Desktop, `gh`, Claude Code; `git config --global user.name` / `user.email`, and that name in the TEAM table | Jake to confirm |
+| Live portal admin login + superadmin | Done 2026-11-01 — Jake tells him the passcode on the Zoom (§3, Phase 6) |
+| Staging admin login + his test member 10002 | Done 2026-11-03 — Jake tells him the password on the Zoom, with the `staging@` inbox login and the staging test password |
+| GitHub collaborator on `vfo-portal`, `vfo-edge-functions` and `vfo-portal-staging`, with two-step sign-in, since the live deploy key sits in the repo | On the Zoom, once he gives his username (§3, Phase 6) |
+| Supabase: Developer, with SQL access | Invited by Jake 2026-11-04 (organization Elite Resource Team, which holds live and staging); he accepts it (§3, Phase 6) |
+| Claude Code account | Ask whether he already has one (§3, Phase 6); who pays is still open |
+| Stripe (ERT + VFO Services: View Only + Sandbox Administrator) | Jena handling |
+| BoldSign, Gmail, Sentry, Google Drive / Sheets | Later, when he needs them |
 
 ## 5. Decisions
 
@@ -136,7 +138,7 @@ Settled — build on these, don't reopen them.
 - Live releases only from up-to-date main after the merge; "branch B wipes branch A" must be impossible.
 - The permanent clash fix is the GitHub deploy button (§3). `live-N` tag clashes must be impossible.
 - OWED moves to GitHub Issues; the hub keeps rules only.
-- Passwords in a Bitwarden shared vault (free for 2); `ACCESS.md` names the entries, never the values.
+- Passwords in a Bitwarden shared vault (free for 2), changed 2026-11-04 below; `ACCESS.md` names the entries, never the values.
 - Superadmin is an easy-to-edit list: Jake + Paxton. The smoke test grows (23 checks, shipped).
 - Always use the house style. Deploy flow one step at a time. One PR per repo. CHANGELOG entries say who did the work.
 - Staging is wanted: Jake's team-wide "test mode" (always sandbox, emails really arrive, no test clutter on live). Jake wants all testing things removed from live eventually.
@@ -152,6 +154,10 @@ Settled — build on these, don't reopen them.
 **2026-11-04 (Jake), on the switch:** "do not change the feature switches leave them as is"; reworking how they work may make sense later, now that features can be built on staging. "test memebr will be fully removed from live portal ... also all clients conected to test memebr". "we are switching and wipeing now. there is no risk they are all tests".
 
 **2026-11-04 (Jake), on GitHub Pro:** "No Pro, stay on the free plan. Keep the button's own main-only check. Extend the guard so no chat can push a branch that changes the button (.github/workflows) without my explicit word. Record this decision in the roadmap." Details in §3.
+
+**2026-11-04 (Jake), on Paxton's setup tasks:** "skip contract and skip laptop (remove both from plan as a whole)". Neither is a setup task any more. The tools he needs on his computer moved to the getting-started document (§3).
+
+**2026-11-04 (Jake), on the handover:** his GitHub username and the passwords wait for a Zoom, and that moves to the getting-started document (§3). "it doesnt sound like any bitwarden setup is needed": Paxton isn't added to the vault, and no password reaches him in writing. BoldSign, Gmail, Sentry and Google Drive wait until he needs them.
 
 ## 6. Watch
 

@@ -8,7 +8,7 @@
 
 ---
 
-## 2026-11-04 (b) — All testing moves to the test site: S7 and the switch day — by Jake
+## 2026-11-04 (c) — All testing moves to the test site: S7 and the switch day — by Jake
 
 **Website.** `npm run dev` now talks to the test site (`vite --mode staging`), and `npm run dev:live` is live, for looking at real data only. The sandbox toggles are gone from all 10 automation panels (`SandboxModeToggle` deleted, the two private badge + modal pairs in `AutomationPanel` and `TaxAutomationPanel` deleted). The read-only "Stripe: ..." pill stays as `StripeAccountPill`, and MAP 1 and Tax gained it (Jake asked why they lacked it). Specialist Revenue shows neither, because its loader does not ship the account. The Tax Intake test-fill shows on the test site only. The Feature Switches screen and values are untouched (Jake).
 
@@ -23,6 +23,20 @@
 **Checks.** `npm run build` and `npm run build:staging` pass (152 files, nothing names live). The drift check matches on every kind. Jake's click-through on the dev server against the test site: PASS (every changed panel, Feature Switches, the test-fill, the pills). **Not exercised:** the admin panels at phone width, `npm run dev:live`, and the new rule's branch test deploy + put-back. The remaining 59524 and *Test member only* mentions in the docs go with the wipe (roadmap step 3).
 
 ---
+
+## 2026-11-04 (b) — Paxton's accounts and access: walked through, contract and laptop dropped, the handover moved to a Zoom — by Jake
+
+**What happened.** Step 1 of the roadmap's "Order from here": a chat walked Jake through §4 of `plans/two-person-workflow/README.md`. No code changed. Checked on the way: Paxton's admin login exists on live and staging, his test member 10002 exists on staging, he is on the superadmin list, and he is on none of the GitHub repos.
+
+**Decided (Jake).** The contract and the laptop are no longer setup tasks. His GitHub username and the passwords wait for a Zoom, which the getting-started document lists as steps, never with a value in it. Paxton isn't added to the Bitwarden vault, so what he needs from it is said out loud. BoldSign, Gmail, Sentry and Google Drive wait until he needs them.
+
+**Done.** Jake invited `pcalareso@vfo-services.com` to the Supabase organization Elite Resource Team as Developer, which covers live and staging. Whether he has accepted is not known yet.
+
+**Notes for the getting-started document (roadmap §3, Phase 6).** He accepts the Supabase invite, sets up a GitHub account under his vfo-services email, and is asked about his current Claude Code account. The tool list from the old laptop row moved there too.
+
+**Still open.** Stripe (Jena is handling it, its state not checked here) and who pays for his Claude Code account.
+
+**Docs.** The roadmap; `ACCESS.md` (the vault is Jake's); `TEAM_RULES.md`'s TEAM table (his superadmin row no longer says "once his admin login exists"). Hub: NOOP.
 
 ## 2026-11-04 — The deploy button and staging S6: GitHub releases live, the test site updates itself, a drift check, a repo guard — by Jake
 

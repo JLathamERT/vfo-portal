@@ -11,7 +11,7 @@
 | Name | `git config user.name` | Portal email | Superadmin |
 |---|---|---|---|
 | Jake Latham | `Jake Latham` | jlatham@elitert.com | yes |
-| Paxton | not set yet — add it when his computer is set up | pcalareso@vfo-services.com | yes — once his admin login exists (Admin Editor) |
+| Paxton | not set yet — add it when his computer is set up | pcalareso@vfo-services.com | yes |
 
 - **Superadmin = on the list in `constants/superadmin.ts`** (edge repo) — one line per person. Adding someone is that line + their admin login + a `vfo-admin-api` deploy; the website reads `is_superadmin` from the server and holds no copy of the list.
 
