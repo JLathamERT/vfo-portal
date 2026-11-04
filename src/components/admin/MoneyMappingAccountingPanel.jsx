@@ -139,7 +139,6 @@ export default function MoneyMappingAccountingPanel() {
                       <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '10px' }}>{isOpen ? '▾' : '▸'}</span>
                       <MemberNameLink memberNumber={m.member_number} style={{ fontWeight: 600 }}>{m.name}</MemberNameLink>
                       <span style={{ fontSize: '11.5px', color: 'var(--vfo-faint)' }}>{m.member_number}</span>
-                      {m.is_test && <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#e06717' }}>TEST</span>}
                     </span>
                     <span style={{ textAlign: 'right' }}>{money(m.earned)}</span>
                     <span style={{ textAlign: 'right', color: m.adjusted ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{m.adjusted ? signed(m.adjusted) : '—'}</span>

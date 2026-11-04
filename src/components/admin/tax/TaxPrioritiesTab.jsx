@@ -104,9 +104,7 @@ const FEE_TOTAL_RANGE_MESSAGE = `Total fee must be greater than $0 and no more t
 // final retainer for the boundary to sit against, buffer band included.
 // NOTE: unrelated to `splitType === 'Custom'` further down, which is the REVENUE
 // split between member / tax planner / VFOS.
-// 62 is the standing sandbox-forced Test Client (member 59524, gotcha #251),
-// kept on the list so this path stays click-testable.
-const CUSTOM_SPLIT_CLIENT_IDS = [105, 62]
+const CUSTOM_SPLIT_CLIENT_IDS = [105]
 const CUSTOM_INITIAL_RANGE_MESSAGE = 'Must be more than $0 and less than the retainer half'
 
 // Mirrors the edge repo's constants/tax-fee-process.ts KNOWN_FEE_PROCESS_VERSIONS

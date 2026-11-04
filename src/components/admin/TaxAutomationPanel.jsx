@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState, useLayoutEffect } from 'react'
+import { IS_STAGING } from '../../lib/environment'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtDate, PanelHero, EmptyState, TableCard } from './automation/StepKit'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
@@ -358,7 +359,7 @@ export default function TaxAutomationPanel({ programScope = 'holistic' }) {
           { label: 'ACTIVE', value: stats.active, color: '#0095ff' },
           { label: 'COMPLETE', value: stats.complete, color: '#16a34a' },
           { label: 'CLOSED', value: stats.closed, color: '#ef4444' },
-          { label: 'SANDBOX', value: stats.sandbox, color: '#e06717' },
+          ...(IS_STAGING ? [{ label: 'SANDBOX', value: stats.sandbox, color: '#e06717' }] : []),
         ]}
       />
 

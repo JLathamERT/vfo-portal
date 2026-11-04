@@ -307,7 +307,7 @@ function PersonalTaxForm({ token }) {
     <TokenShell maxWidth={900}>
       <TaxIntakeForm
         publicMode
-        publicIntake={{ client_first_name: info?.client_first_name, client_last_name: info?.client_last_name, client_email: info?.client_email, test_member: info?.test_member === true }}
+        publicIntake={{ client_first_name: info?.client_first_name, client_last_name: info?.client_last_name, client_email: info?.client_email }}
         lockClientIdentity
         onPublicSubmit={submitAnswers}
         onDone={() => setStatus('thanks')}
