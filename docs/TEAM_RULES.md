@@ -4,7 +4,7 @@
 >
 > **"The person"** below = whoever is running this chat: match `git config user.name` against the TEAM table. Every rule applies to every person. A preference that belongs to one person only lives in that person's own Claude memory, not here.
 >
-> Change this file like code — in a worktree, through a PR. Created 2026-11-01 for the two-person workflow from the standing rules of `prompts/SESSION_STARTER.md` and Jake's Claude memory; `#N` = an entry in [GOTCHAS.md](GOTCHAS.md). Updated 2026-11-01 (phase 2): the superadmin list, the smoke gate's wording. Updated 2026-11-03: plans of record (§6).
+> Change this file like code — in a worktree, through a PR. Created 2026-11-01 for the two-person workflow from the standing rules of `prompts/SESSION_STARTER.md` and Jake's Claude memory; `#N` = an entry in [GOTCHAS.md](GOTCHAS.md). Updated 2026-11-04: the deploy button, staging's self-update, the repo guard. Updated 2026-11-01 (phase 2): the superadmin list, the smoke gate's wording. Updated 2026-11-03: plans of record (§6).
 
 ## TEAM
 

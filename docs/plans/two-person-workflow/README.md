@@ -13,7 +13,7 @@
 | 1 | **Prompts + rules** — `TEAM_RULES.md`, `ACCESS.md`, `CLAUDE.md` in both repos, `/start` `/handoff` `/wrapup`, the dev-server script, one PR per repo, deploy → smoke → test one step at a time | **SHIPPED 2026-11-01** | react #572, edge #333 (docs and prompts only) |
 | 2 | **Superadmin list + bigger smoke test** — `constants/superadmin.ts` (Jake + Paxton), the smoke script picks whoever runs it, 23 read-only checks | **SHIPPED 2026-11-01** | edge #334, react #573 · `vfo-admin-api` v1080 · `live-284-superadmin-list` |
 | 5 | **Staging / test mode** — a full second copy of the portal with fake data only. Its own plan: [plans/staging/README.md](../staging/README.md) | **S1-S4 SHIPPED** — part 1 2026-11-02 (S1-S3 + the S4 website), the rest of S4 2026-11-03 (CHANGELOG 2026-11-03 (c)) · S5, S6, S7, switch day: not started | §2 below |
-| 3 | **Deploy button** — live releases through GitHub, not from a laptop | **NOT STARTED** — build together with staging S6 | §3 below |
+| 3 | **Deploy button** — live releases through GitHub, not from a laptop | **BUILT 2026-11-04, first press owed** — merged, then the live key, the first press and the guard's tests (hub OPEN / OWED) | §3 below |
 | 4 | **OWED list → GitHub Issues** + a hub small enough to read in full | **NOT STARTED** — may follow after Paxton starts | §3 below |
 | 6 | **Paxton's getting-started document** | **NOT STARTED** — on purpose last, so it describes the finished setup; must be done before he starts | §3 below |
 | — | **Jake's setup tasks for Paxton** (accounts, access, contract, computer) — not a chat | **PARTLY DONE** | §4 below |
@@ -22,7 +22,7 @@ The numbers are the 2026-10-31 phase numbers. Staging (5) was moved ahead of 3 a
 
 ### Order from here
 
-1. **Deploy button + staging S6, one chat.** D13 answered 2026-11-03 (§3).
+1. **Deploy button + staging S6: finish the first press** (§3, "Done when").
 2. **The testing move: staging S7 + the switch day (staging plan §4c), the next chat after this one.** Jake's decision of 2026-11-03 (§5) moves all testing to staging as soon as possible.
 3. **Paxton's getting-started document.**
 4. **Staging S5** (Reset / Refresh) and **OWED → Issues** — can follow after Paxton starts if time runs short. Reset must re-make each person's test member (`ensureStagingTestMember`) and clear its bells.
@@ -38,11 +38,11 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 | S3 | Staging backend up: schema, buckets, settings, the 19 crons | Done 2026-11-02 |
 | S4 | Website on staging + the sandbox move + test data + the first full test | Website shipped 2026-11-02 (`live-288-staging-part1`). **2026-11-03:** sandbox move done (live holds no sandbox keys, smoke PASS on v1089; both Stripe sandboxes and BoldSign's sandbox report to staging); one test member per person (Jake 10001, Paxton 10002, made automatically with each admin login); client logins on the tester's tagged email; every staging email and bell goes to the tester (bells teal, "meant for: …", a staging-only Clear (test) on action bells); full test parts A and B PASS. **Shipped 2026-11-03** (CHANGELOG 2026-11-03 (c)); after the release staging is brought back to main (SESSION_WRAPUP Part 4E). |
 | S5 | A superadmin-only Staging tab: *Reset test data*, *Refresh settings from live*, what is running. Also staging's `vfo-widget.js` still calls live. | Not started |
-| S6 | Keep in step: a merge that changes backend code redeploys staging's backend, a merge that changes the website redeploys staging's website, a docs-only merge redeploys neither (Jake 2026-11-03); a drift check between the two databases, required at wrap-up; `smoke -Target staging` | Not started — with the deploy button |
+| S6 | Keep in step: a merge that changes backend code redeploys staging's backend, a merge that changes the website redeploys staging's website, a docs-only merge redeploys neither (Jake 2026-11-03); a drift check between the two databases, required at wrap-up; `smoke -Target staging` | Built and tested on staging 2026-11-04; goes live on merge |
 | S7 | Switch the rules: TEAM_RULES, CLAUDE.md, the starter and wrap-up so testing happens on staging only | Not started |
 | Switch day | Live becomes live-only (`VFO_ENVIRONMENT=live`, the sandbox toggles and "Test member only" removed). Test Member 59524 and live's other test records are **kept** (Jake 2026-11-03: team members still use them). | Not started |
 
-**Until S6 exists**, staging is kept in step by hand (TEAM_RULES §4): every live migration, template change or switch flip is made on staging the same day, and after each live release staging is brought up to main and redeployed on the person's "deploy".
+**Staging keeps itself up to main from the merge on.** Live migrations, template changes and switch flips are still made on staging by hand the same day (TEAM_RULES §4), and the drift check proves it.
 
 ## 3. The phases still to build
 
@@ -141,5 +141,4 @@ Settled — build on these, don't reopen them.
 
 ## 6. Watch
 
-- **Until the deploy button exists,** live releases run from the main folders after `git merge --ff-only origin/main` (SESSION_WRAPUP). A release from a chat's folder makes live's `entrypoint_path` name a worktree that doesn't exist on the other person's computer, and their Claude would stop.
-- **Until S6 exists,** staging is kept in step by hand (§2).
+- **Until the first press is proven,** the laptop release from an up-to-date main folder stays the fallback (TEAM_RULES §4). A release from a chat's folder makes live's `entrypoint_path` name a worktree that doesn't exist on the other person's computer, and their Claude would stop.

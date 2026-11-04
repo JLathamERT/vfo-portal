@@ -1,4 +1,4 @@
-<!-- CANONICAL COPY of the VFO session starter. Run it with `/start <task>` (the command file in both repos reads THIS file), or paste it. Edit here only, in a worktree, through a PR. Last updated: 2026-11-03 (STEP 0 item 4: read the plan of record the task belongs to); 2026-11-01 (two-person workflow: every standing rule moved to docs/TEAM_RULES.md, /start, leftover dev servers listed at start, which build is live stated at start; 2026-10-31: the 2b freshness check is re-run before EVERY deploy, #702). -->
+<!-- CANONICAL COPY of the VFO session starter. Run it with `/start <task>` (the command file in both repos reads THIS file), or paste it. Edit here only, in a worktree, through a PR. Last updated: 2026-11-04 (STEP 0 item 5: check the deploy keys' expiry dates); 2026-11-03 (STEP 0 item 4: read the plan of record the task belongs to); 2026-11-01 (two-person workflow: every standing rule moved to docs/TEAM_RULES.md, /start, leftover dev servers listed at start, which build is live stated at start; 2026-10-31: the 2b freshness check is re-run before EVERY deploy, #702). -->
 
 # VFO SESSION STARTER
 
