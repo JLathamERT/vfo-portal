@@ -1,0 +1,88 @@
+name: Tag live website
+
+# The deploy button, second press, once the site has been checked. Numbers the
+# tag itself (the next live-N) and puts it on the exact commit the first press
+# released, read from that press's own record, whatever main is by now. A restore
+# gets no new tag, and pressing it again for the same release changes nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_run:
+        description: Run id of the "Release live website" press that was checked
+        required: true
+        type: string
+      short_name:
+        description: Words for the tag, such as staging-s4 (makes live-290-staging-s4)
+        required: true
+        type: string
+
+concurrency:
+  group: release-website-tag
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  tag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_RUN: ${{ inputs.release_run }}
+      SHORT_NAME: ${{ inputs.short_name }}
+    steps:
+      - name: Refuse anything but main
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Tags are only made from main. This was pressed on $GITHUB_REF."
+            exit 1
+          fi
+
+      - name: Check what was asked for
+        run: |
+          case "$RELEASE_RUN" in
+            ''|*[!0-9]*) echo "release_run must be a run id (numbers only)."; exit 1 ;;
+          esac
+          if ! printf '%s' "$SHORT_NAME" | grep -Eq '^[a-z0-9][a-z0-9-]{0,48}$'; then
+            echo "short_name takes lower-case letters, numbers and dashes."
+            exit 1
+          fi
+          run=$(gh run view "$RELEASE_RUN" --json workflowName,conclusion,headBranch \
+            --jq '.workflowName + "|" + .conclusion + "|" + .headBranch')
+          if [ "$run" != "Release live website|success|main" ]; then
+            echo "Run $RELEASE_RUN is not a successful release from main ($run)."
+            exit 1
+          fi
+
+      - name: Tag the released commit
+        run: |
+          gh run download "$RELEASE_RUN" --name release-info
+          if [ -n "$(jq -r .restored release-info.json)" ]; then
+            echo "Run $RELEASE_RUN was a restore, which keeps its old tag."
+            exit 1
+          fi
+          sha=$(jq -r .sha release-info.json)
+          released_by=$(jq -r .actor release-info.json)
+
+          refs=$(gh api --paginate "repos/$GH_REPO/git/matching-refs/tags/live-" --jq '.[] | .ref + " " + .object.sha')
+          existing=$(printf '%s\n' "$refs" | awk -v sha="$sha" '$2 == sha { sub("refs/tags/", "", $1); print $1; exit }')
+          if [ -n "$existing" ]; then
+            tag="$existing"
+            echo "$sha already carries $tag."
+          else
+            last=$(printf '%s\n' "$refs" | sed -nE 's#^refs/tags/live-([0-9]+).*#\1#p' | sort -n | tail -1)
+            tag="live-$((last + 1))-$SHORT_NAME"
+            gh api "repos/$GH_REPO/git/refs" -f ref="refs/tags/$tag" -f sha="$sha" > /dev/null
+          fi
+
+          {
+            echo "### Live website tagged"
+            echo "- Tag: \`$tag\`"
+            echo "- Commit: \`$sha\`"
+            echo "- Released by: \`$released_by\`"
+            echo "- Tagged by: \`$GITHUB_ACTOR\`"
+          } >> "$GITHUB_STEP_SUMMARY"

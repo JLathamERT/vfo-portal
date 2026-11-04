@@ -9,6 +9,8 @@ The top-level picture. Two repos, one Supabase project, four external integratio
 > - **What differs:** fake data only (one test member per person, 10001+, made with their admin login), Stripe and BoldSign always in sandbox (live holds no sandbox key since 2026-11-03), and every email is SENT to the tester it is about (else `staging@vfo-services.com`) marked `[TEST]`; every bell goes to the tester too, shown teal. Its own Google account and Drive.
 > - **How the code knows:** it reads which copy it is from `constants/environment.ts` (backend) and `src/lib/environment.js` (frontend).
 >
+> - **How it stays in step:** a merge changing backend code or the website updates it by itself, and `scripts/staging-drift.sql` (edge repo) proves the databases match at every wrap-up.
+>
 > Plan, setup record and what is left: [plans/staging/README.md](../plans/staging/README.md).
 
 ## High-level diagram
@@ -195,7 +197,7 @@ These are explicitly absent from the codebase (read-only observation, no judgeme
 - **No GraphQL.** All API calls are POST with `{action, ...payload}`.
 - **No Supabase Auth.** Identity is a custom session-token scheme over `allowed_admins` / `member_logins`.
 - **No DB migrations directory** in either repo. Migrations are managed remotely on Supabase.
-- **No CI / GitHub Actions** observed. Build and deploy are manual via `npm run deploy` (`gh-pages -d dist`).
+- **GitHub Actions runs releases, no tests.** `.github/workflows` in both repos: the deploy button (`release-*`, then `tag-*`) and the test site's self-update (`staging-*`). Rules: [TEAM_RULES.md](../TEAM_RULES.md) §4. `npm run deploy` is the laptop fallback.
 - **No tests.** No `__tests__/`, no `.test.js`, no test runner config in `package.json`.
 - **No TypeScript** in the React app (only in the Deno edge functions).
 - **No environment-specific configs** for the frontend (Supabase ANON_KEY is hardcoded). `VITE_API_URL` IS honored by `src/lib/api.js`, `src/pages/PayPage.jsx`, and `src/pages/DecidePage.jsx` — production behavior unchanged via fallback to the hardcoded prod URL when the env var is unset. (Added on `test/frontend-vs-local-function` branch, commit `3bf0963`, for local-function smoke testing.)

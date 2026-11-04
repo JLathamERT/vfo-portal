@@ -40,7 +40,7 @@ Runs `vite build && gh-pages -d dist`. Pushes the built bundle to the `gh-pages`
 
 **Staging** (the team's test copy, https://staging.vfoportal.com/):
 - `npm run build:staging` = `vite build --mode staging` (values from `.env.staging`), the route pages, then `scripts/finish-staging-build.mjs`. That script points the copied files at staging, adds `noindex` and the `[TEST] ` title, and REFUSES if anything still names live.
-- `npm run deploy:staging` = that build, then `gh-pages` to `JLathamERT/vfo-portal-staging`. It needs the same explicit "deploy" as live.
+- `npm run deploy:staging` = that build, then `gh-pages` to `JLathamERT/vfo-portal-staging`, for testing a branch. It needs the same explicit "deploy" as live. Merges to main update the test site by themselves (`.github/workflows/staging-website.yml`).
 
 ## Repo layout
 

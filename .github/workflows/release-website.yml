@@ -1,0 +1,96 @@
+name: Release live website
+
+# The deploy button, first press (docs/plans/two-person-workflow/README.md, part 3).
+# Publishes the tip of main to vfoportal.com and records the commit for the second
+# press (tag-website.yml), which runs once the person has checked the site.
+# Give restore_tag to put an old build back instead: live-* tags only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      restore_tag:
+        description: Restore this old build instead of main (a live-* tag only)
+        required: false
+        type: string
+
+concurrency:
+  group: release-website
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RESTORE_TAG: ${{ inputs.restore_tag }}
+    steps:
+      - name: Refuse anything but main
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Live is only released from main. This was pressed on $GITHUB_REF."
+            exit 1
+          fi
+          if [ -n "$RESTORE_TAG" ] && ! printf '%s' "$RESTORE_TAG" | grep -Eq '^live-[A-Za-z0-9._-]+$'; then
+            echo "Restore accepts live-* tags only."
+            exit 1
+          fi
+
+      # ref: main, not the commit it was pressed on, so waiting behind another
+      # press or re-running an old run can never release old code.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.restore_tag && format('refs/tags/{0}', inputs.restore_tag) || 'main' }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.14.0
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Publish to vfoportal.com
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@users.noreply.github.com"
+          npx gh-pages -d dist --dotfiles \
+            --message "Live website from $(git rev-parse HEAD), pressed by $GITHUB_ACTOR" \
+            --repo "https://x-access-token:${GH_TOKEN}@github.com/$GITHUB_REPOSITORY.git"
+
+      - name: Prove the site serves this build
+        run: |
+          bundle=$(grep -o 'index-[A-Za-z0-9_-]*\.js' dist/index.html | head -1)
+          for attempt in $(seq 1 30); do
+            if curl -s "https://vfoportal.com/?check=$GITHUB_RUN_ID" | grep -q "$bundle"; then
+              echo "BUNDLE=$bundle" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "vfoportal.com is not serving $bundle after 10 minutes."
+          exit 1
+
+      - name: Record the release
+        run: |
+          sha=$(git rev-parse HEAD)
+          jq -n --arg sha "$sha" --arg bundle "$BUNDLE" --arg restored "$RESTORE_TAG" --arg actor "$GITHUB_ACTOR" \
+            '{sha: $sha, bundle: $bundle, restored: $restored, actor: $actor}' > release-info.json
+          {
+            echo "### Live website released"
+            echo "- Commit: \`$sha\`"
+            echo "- Serving: \`$BUNDLE\`"
+            echo "- Restored from: \`${RESTORE_TAG:-not a restore}\`"
+            echo "- Pressed by: \`$GITHUB_ACTOR\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-info
+          path: release-info.json

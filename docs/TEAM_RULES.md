@@ -4,7 +4,7 @@
 >
 > **"The person"** below = whoever is running this chat: match `git config user.name` against the TEAM table. Every rule applies to every person. A preference that belongs to one person only lives in that person's own Claude memory, not here.
 >
-> Change this file like code — in a worktree, through a PR. Created 2026-11-01 for the two-person workflow from the standing rules of `prompts/SESSION_STARTER.md` and Jake's Claude memory; `#N` = an entry in [GOTCHAS.md](GOTCHAS.md). Updated 2026-11-01 (phase 2): the superadmin list, the smoke gate's wording. Updated 2026-11-03: plans of record (§6).
+> Change this file like code — in a worktree, through a PR. Created 2026-11-01 for the two-person workflow from the standing rules of `prompts/SESSION_STARTER.md` and Jake's Claude memory; `#N` = an entry in [GOTCHAS.md](GOTCHAS.md). Updated 2026-11-04: the deploy button, staging's self-update, the repo guard. Updated 2026-11-01 (phase 2): the superadmin list, the smoke gate's wording. Updated 2026-11-03: plans of record (§6).
 
 ## TEAM
 
@@ -21,8 +21,8 @@
 
 ## 1. NEVER WITHOUT THE PERSON'S EXPLICIT WORD IN THIS CHAT
 
-- **Deploy to production.** Backend `supabase functions deploy …`; frontend `npm run deploy` — which IS production (vite build + gh-pages → https://vfoportal.com/). It needs the word "deploy": "yes", "continue", "looks good", "merged" and "tested" are not approval (#145). Ask every time, even if something similar was approved an hour ago.
-- **Merge, push, push a tag, or run the wrap-up.** The person decides when work ships.
+- **Deploy to production.** Pressing the deploy button (§4), or running `supabase functions deploy …` or `npm run deploy` by hand. It needs the word "deploy": "yes", "continue", "looks good", "merged" and "tested" are not approval (#145). Ask every time, even if something similar was approved an hour ago.
+- **Merge, push, push a tag, or run the wrap-up.** The person decides when work ships. A push that changes anything under `.github/` (the button) or the guard's own files needs **Jake's** word whoever is working (§4, the repo guard).
 - **Commit.** The person tests first (§6). A button or reply option does ONLY what its label says — "Start Phase 2" never also commits (2026-10-15).
 - **Create or change any email template's subject or body.** Show the full subject + body (placeholders visible, e.g. `[Client First]`, `[CLOSING]`) and wait for OK — for EVERY email in a build, not just the first.
 - **Touch `boldsign-webhook`** — a fresh approval each time, and its deploy MUST carry `--no-verify-jwt` or BoldSign gets 401 (#10).
@@ -50,29 +50,32 @@
 ## 4. DEPLOYING — two people, one live system
 
 - **A deploy replaces the WHOLE backend function, or the whole website, with what is on the deploying computer.** The last deploy wins, silently. Every rule below exists so one person's deploy can never wipe the other person's work.
-- **Releases — the real ship — only from up-to-date `main`, after the PR is merged**, run from the MAIN folder once `git merge --ff-only origin/main` has made it match `origin/main` (the wrap-up's Part 4 does it). A release from the main folder also leaves the live function's `entrypoint_path` with no `/.claude/worktrees/` in it — that is how anyone can see that live is main.
+- **Releases go through the deploy button, and only after the PR is merged.** On "deploy", Claude presses it with `gh` and watches it finish (wrap-up Part 4C). It runs on GitHub, so neither laptop needs a deploy key or Docker Desktop: it releases the tip of `main` at the moment it starts, so **anything else merged by then ships too**; it refuses any other branch; and a second press waits for the first. Backend: `release-live.yml` (edge repo). Website: `release-website.yml` (react repo). Both need `gh` installed and signed in, or the same button pressed on github.com (repo, Actions tab, Run workflow). No `/.claude/worktrees/` in the live `entrypoint_path` still means live is main.
+- **If the button itself is broken,** a laptop release from an up-to-date main folder is the fallback (`git merge --ff-only origin/main` first, Docker Desktop running, `deno.lock` deleted), on the person's "deploy". The repo guard blocks a chat from doing this until the person turns it off in their own terminal (below).
+- **The repo guard** (`.claude/hooks/deploy-guard.mjs` + `.claude/settings.json`, in both repos). Claude Code runs it before a chat's shell commands, file edits and Supabase deploys. **Button check:** a push that changes anything under `.github/` or the guard, or that the guard can't read, brings up a permission prompt a chat can't answer for itself. GitHub's free plan can't limit the live key to main (Jake 2026-11-04), so this is what stops an edited copy of the button from using it. **Answer yes only with Jake's word in the chat; on Paxton's computer the prompt goes to Paxton, and the guard can't tell who answered.** **Deploy block:** no chat deploys the backend to live, or with no project named. Its off switch, for a broken button only, is a file the person creates in their own terminal and deletes afterwards: `New-Item ~/.vfo-deploy-guard-off`. **A chat never creates that file.** The guard stops mistakes by chats. It doesn't stop a person's own terminal or a chat set on removing it, and it exists only in folders made after it merged.
 - **Test deploys of a branch — backend only, and only until the staging project exists.** The dev server talks to the LIVE backend, so a backend change can only be clicked through once it is deployed. A test deploy is allowed only when ALL THREE hold:
   1. `origin/main` was merged into the branch immediately before, in the same command (#702).
   2. What is live now is main or your own branch: MCP `list_edge_functions` → `vfo-admin-api` → `entrypoint_path`. A `/.claude/worktrees/<name>/` path is read like this: that worktree is on THIS computer and clean at `origin/main`'s commit → main's code is live (a release made before this rule); on this computer with other commits → your own test build; NOT on this computer → the other person's test build — STOP and ask them; never deploy over it.
   3. Live goes back to main the SAME DAY — merge + release, or re-release main as it is. A test build never stays on live overnight; a handoff that leaves one says so in OWED.
 
   The website never needs a test deploy — the dev server is the test.
-- **The staging copy exists (2026-11-02): https://staging.vfoportal.com/, project `yxolcioazczlhruprmrb`.** Until its plan's S6/S7 switch the rules over ([plans/staging/README.md](plans/staging/README.md)):
-  1. Every staging command names `--project-ref yxolcioazczlhruprmrb`: every checkout's CLI link is LIVE, so a command without it hits live. A staging deploy still needs the person's "deploy" (backend `--use-docker`; website `npm run deploy:staging`).
-  2. Every migration, email-template change or feature-switch flip made on live is made on staging too, the same day.
-  3. After each live release, staging is brought up to main and redeployed (on the person's "deploy"), or it drifts behind live.
+- **The staging copy exists (2026-11-02): https://staging.vfoportal.com/, project `yxolcioazczlhruprmrb`.** Until its plan's S7 switches the test rules over ([plans/staging/README.md](plans/staging/README.md)):
+  1. Every staging command names `--project-ref yxolcioazczlhruprmrb`: every checkout's CLI link is LIVE, so a command without it hits live. A hand deploy of a branch to staging still needs the person's "deploy" (backend `--use-docker`; website `npm run deploy:staging`).
+  2. Every migration, email-template change or feature-switch flip made on live is made on staging too, the same day. `scripts/staging-drift.sql` (edge repo) proves the two databases match, and it is a required wrap-up step.
+  3. **Staging updates itself from main.** A merge that changes backend code redeploys its backend, and one that changes the website republishes its website. A docs-only merge does neither. A broken update shows as a failed run on GitHub, and GitHub normally emails about it.
+  4. **Before trusting a test result on staging, check it is still running your build:** `list_edge_functions` on staging must show the version you deployed. Any merge that changes backend code replaces your build without warning.
 - **One step at a time when shipping.** Ask for "deploy", then stop. After the deploy is done and verified, give the smoke command (only if the backend was deployed), then stop. After the person says it passed, give the live test steps (if any), then stop. Never hand over a later step's command or script early.
 - **Fix on the spot, ship once.** A bug found while testing is fixed in the worktree right away (a product decision — UX flow, schema, a new column — is still asked first) and everything ships together at the end. Don't keep asking to deploy the frontend: keep a list of what is waiting and raise it at wrap-up or when the person asks.
-- **Every approved change ends DEPLOYED, not merged:** backend → `vfo-admin-api` deploy (`--use-docker`, Docker Desktop running, `deno.lock` deleted — #574); frontend → `npm run deploy`, then prove the live site changed (§10); DB schema → migration applied through MCP AND committed as a file (#196); Storage → file uploaded; cron → re-installed. Work spanning both repos needs both deploys, or the final summary says plainly which half is not live.
+- **Every approved change ends DEPLOYED, not merged:** backend and frontend → the deploy button, then prove the live site changed (§10; the website button checks this itself); DB schema → migration applied through MCP AND committed as a file (#196); Storage → file uploaded; cron → re-installed. Work spanning both repos needs both presses, or the final summary says plainly which half is not live.
 - **Smoke gate** (`scripts/smoke-pipelines.ps1`, edge repo) after any `vfo-admin-api` deploy or any edit to shared routing / dispatch / webhook / auth / `utils/`. Hand it over as ONE line with the person's portal email and a literal `<password>` — never a token, never `Read-Host`:
   `& C:\vfo-edge-functions\scripts\smoke-pipelines.ps1 -Email "<the person's portal email>" -Passcode "<password>"`
-  It must be run by a superadmin (TEAM table) — it stops at login otherwise — and every check must PASS. It is read-only and a wiring check only (each area and portal answers) — it proves nothing about money, emails or bells.
+  It must be run by a superadmin (TEAM table) — it stops at login otherwise — and every check must PASS. It is read-only and a wiring check only (each area and portal answers) — it proves nothing about money, emails or bells. Add `-Target staging` and use the staging password to check the test site.
 
 ## 5. SAVE POINTS (TAGS)
 
-- `backend-good-YYYY-MM-DD-v<Supabase version>` (edge repo) and `live-N-<short>` (react repo), on the merged `origin/main` commit, only AFTER the release is confirmed good. "Restore to <tag>" from the person outranks everything else.
-- **`live-N` can clash** when both people ship the same day: `git fetch --tags` first, N = the highest `live-*` + 1 (`--sort=v:refname`; `sort -V` is not version-aware). If the push is refused because the tag already exists, the other person just took N — fetch again and use the next number. Never delete or move a tag someone else pushed. Backend tags cannot clash (the Supabase version is unique).
-- **Rollback** — frontend: redeploy a `live-*` tag to gh-pages; backend: Supabase Dashboard version revert. A rollback undoes BOTH people's later work — agree with the other person first.
+- `backend-good-YYYY-MM-DD-v<Supabase version>` (edge repo) and `live-N-<short>` (react repo), stamped by the button's second press (`tag-live.yml`, `tag-website.yml`), only AFTER the release is confirmed good. It tags the exact commit the first press released, not whatever `main` is by then. "Restore to <tag>" from the person outranks everything else.
+- **The second press numbers `live-N` itself** (the highest `live-*` + 1), one press at a time. Never delete or move a tag someone else made.
+- **Rollback** — frontend: press `release-website.yml` with `restore_tag` set (it accepts `live-*` tags only); backend: Supabase Dashboard version revert. A rollback undoes BOTH people's later work — agree with the other person first. A website restore gets no new tag.
 - PRs merge with **Squash and merge** — one change = one commit on `main`.
 
 ## 6. HOW WE WORK

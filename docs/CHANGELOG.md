@@ -8,6 +8,20 @@
 
 ---
 
+## 2026-11-04 — The deploy button and staging S6: GitHub releases live, the test site updates itself, a drift check, a repo guard — by Jake
+
+**What was built.** Edge repo: `release-live.yml` (first press: tip of main to live, main only, one at a time, records commit, version and who pressed), `tag-live.yml` (second press: tags the exact released commit), `staging-backend.yml` (a merge changing backend code redeploys the test site's backend; `boldsign-webhook` never), `scripts/staging-drift.sql`, `smoke-pipelines.ps1 -Target staging`. React repo: `release-website.yml` (with a `live-*`-only restore), `tag-website.yml` (numbers `live-N` itself), `staging-website.yml` (docs-only merges do nothing). Both repos: `.claude/hooks/deploy-guard.mjs` + `.claude/settings.json`. The deploy block ships off; the button check is on from merge. Rules, wrap-up (drift check required; 4C-4E through the button), starter (key-expiry check), `CLAUDE.md` and `ACCESS.md` (a Deploy keys section) changed with it.
+
+**Decided (Jake).** 2026-11-03: D13, two limited tokens; two presses; backend-only staging redeploy; drift check required; restore `live-*` only; a guard against chat deploys to live; all testing moves to staging as soon as possible (next chat). 2026-11-04: no GitHub Pro. The free plan can't limit the live key to main (#726), so the guard also prompts on any push changing `.github/`. All in the roadmap's part 3 and §5.
+
+**Found.** The laptops ran Sentry 10.59.0 while the lockfile said 10.58.0, so a GitHub build would have moved live back a version; the lockfile now says 10.59.0 (#724), and `npm run build` still gives live's bundle, `index-CepD-8Lm.js`. A new fingerprint is expected from a GitHub build (#725). Token expiry stops at under a year (#727). A running chat does not load a new hook (#728).
+
+**Tested on the test site.** Test deploys by version: `vfo-admin-api` v23 (laptop) to v24 (GitHub, branch commit, same function code). Rehearsal: 777 files, 738 identical, 39 line breaks only, none really different. Website: all 151 files match the laptop build, ignoring blank lines. Staging smoke PASS on v24 (Jake). The staging key got 200 on staging's functions and 403 on live's functions and on SQL on both; no deploy to live was attempted with it. Drift: all 8 kinds equal on both, and a throwaway `_drift_test` table was caught (tables 111, columns 2011), then dropped. A push changing no backend code redeployed no backend; a docs-only push republished no website. The guard answered 40 made-up commands correctly.
+
+**NOT tested yet.** The two release workflows and two tag workflows cannot run before merge. The guard's prompt has not appeared in a real chat (#728). A live press, a second press waiting behind a first, and a non-main press being refused are all owed, in the hub's OPEN / OWED. Live is untouched: `vfo-admin-api` v1090, `live-289-staging-s4`.
+
+---
+
 ## 2026-11-03 (c) — STAGING S4 finished: the sandbox move, one test member per person, every staging email and bell to the tester, the first full test PASS — by Jake
 
 **Why.** Staging part 1 (2026-11-02 (d)) put the site up; S4's headline was the first real test on it. Before that could happen, live had to give its sandboxes to staging (§4b, D4/D18), each person needed their own fake test set so two testers never move each other's records (D11), and the test mail had to reach the person testing instead of a shared mailbox. Jake, mid-test: *"i dont want someone to say select even as the proactive facilitator and he get lots of test notifications"*. Two chats on one branch pair (edge `claude/phase-5-staging-cont-24f1db`, react `claude/phase-5-staging-cont-358083`). Plan of record: [plans/staging/README.md](plans/staging/README.md) §4b + §6; roadmap: [plans/two-person-workflow/README.md](plans/two-person-workflow/README.md).
