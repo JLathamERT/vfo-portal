@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtDate, PanelHero, EmptyState, TableCard } from './automation/StepKit'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
+import StripeAccountPill from './StripeAccountPill'
 import { CONFIRMATION_CARD_SKIP } from '../../lib/confirmationStatus'
 import { useNavigate } from 'react-router-dom'
 import { ClientNameLink, MemberNameLink, clientPagePath } from '../shared/personLinks'
@@ -297,40 +298,6 @@ function ExpandedRow({ row, onRefresh }) {
   )
 }
 
-function SandboxBadge({ config, onClick }) {
-  const sandbox = !!config?.sandbox_mode
-  const palette = sandbox
-    ? { bg: 'rgba(251,137,90,0.15)', border: 'rgba(251,137,90,0.4)', text: '#e06717', label: 'SANDBOX MODE' }
-    : { bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.4)', text: '#ef4444', label: 'LIVE MODE' }
-  return (
-    <button onClick={onClick} title="Click to toggle"
-      style={{ padding: '4px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: palette.bg, color: palette.text, border: `1px solid ${palette.border}`, letterSpacing: '0.5px', cursor: 'pointer', fontFamily: 'inherit' }}>
-      {palette.label}
-    </button>
-  )
-}
-
-function SandboxToggleModal({ currentlySandbox, onConfirm, onCancel, saving }) {
-  const switchingTo = currentlySandbox ? 'LIVE' : 'SANDBOX'
-  const isGoingLive = switchingTo === 'LIVE'
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,25,60,0.45)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, fontFamily: '"Inter", sans-serif' }}>
-      <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: 16, padding: 32, maxWidth: 440, width: '90%', boxShadow: '0 24px 64px rgba(10,25,60,0.25)' }}>
-        <h2 style={{ fontFamily: 'Inter, sans-serif', fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--vfo-heading)', margin: '0 0 12px' }}>Switch Tax pipeline to {switchingTo} mode?</h2>
-        <p style={{ fontSize: 14, color: 'var(--vfo-muted)', lineHeight: 1.6, margin: '0 0 24px' }}>
-          {isGoingLive
-            ? 'This will switch the TAX automation pipeline to use LIVE Stripe + BoldSign keys. Real emails will be sent to real clients and real cards will be charged. Are you sure?'
-            : 'This will switch back to sandbox mode. Emails route to sandbox_email and Stripe/BoldSign use test keys.'}
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button onClick={onCancel} disabled={saving} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: 14, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-          <button onClick={onConfirm} disabled={saving} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: isGoingLive ? '#ef4444' : '#e06717', color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : `Switch to ${switchingTo}`}</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function TaxAutomationPanel({ programScope = 'holistic' }) {
   const navigate = useNavigate()
   const [rows, setRows] = useState([])
@@ -338,8 +305,6 @@ export default function TaxAutomationPanel({ programScope = 'holistic' }) {
   const [error, setError] = useState('')
   const [sandboxConfig, setSandboxConfig] = useState(null)
   const [expandedRow, setExpandedRow] = useState(null)
-  const [showModeModal, setShowModeModal] = useState(false)
-  const [savingMode, setSavingMode] = useState(false)
 
   // Both views share the same backend tax pipeline; program_id is the only
   // thing that distinguishes the standalone Tax Planning program (4) from the
@@ -372,23 +337,6 @@ export default function TaxAutomationPanel({ programScope = 'holistic' }) {
     load(!!snap)
   }, [])
 
-  async function toggleSandboxMode() {
-    if (!sandboxConfig) return
-    const next = !sandboxConfig.sandbox_mode
-    setSavingMode(true)
-    try {
-      await callApi('save_sandbox_config', {
-        pipeline: 'TAX',
-        sandbox_mode: next,
-        stripe_test_mode: next,
-        boldsign_test_mode: next,
-      })
-      setSandboxConfig({ ...sandboxConfig, sandbox_mode: next, stripe_test_mode: next, boldsign_test_mode: next })
-      setShowModeModal(false)
-    } catch (err) { setError(err.message) }
-    finally { setSavingMode(false) }
-  }
-
   const stats = {
     total: rows.length,
     active: rows.filter(p => { const s = getCurrentStage(p); return s !== 'complete' && s !== 'closed' && s !== 'refunded' }).length,
@@ -404,7 +352,7 @@ export default function TaxAutomationPanel({ programScope = 'holistic' }) {
       <PanelHero
         eyebrow="Automation Pipeline"
         title={programScope === 'standalone' ? 'Tax Planning Automation' : 'Holistic Tax Priorities Automation'}
-        action={<SandboxBadge config={sandboxConfig} onClick={() => setShowModeModal(true)} />}
+        action={<StripeAccountPill sandboxConfig={sandboxConfig} />}
         stats={[
           { label: 'TOTAL', value: stats.total, color: 'var(--vfo-ink)' },
           { label: 'ACTIVE', value: stats.active, color: '#0095ff' },
@@ -471,10 +419,6 @@ export default function TaxAutomationPanel({ programScope = 'holistic' }) {
             </tbody>
           </table>
         </TableCard>
-      )}
-
-      {showModeModal && (
-        <SandboxToggleModal currentlySandbox={!!sandboxConfig?.sandbox_mode} onConfirm={toggleSandboxMode} onCancel={() => setShowModeModal(false)} saving={savingMode} />
       )}
     </div>
   )

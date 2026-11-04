@@ -51,7 +51,7 @@ automation_PIP_revshare
 | `clients` | R only | first_name, last_name, email, member_number, assigned_pf |
 | `members` | R only | first_name, last_name, email, **member_number**, revenue_decision, stripe_account_id, **`suspended` / `paused` / `membership_arrears`** (added 2026-08-24 — the standing hold, see Step 9; `membership_arrears` replaced `membership_suspended` 2026-09-15) |
 | `email_templates` | R only | 4 PIP templates (pipeline='PIP'): `PIP_meeting_confirmation`, `PIP_payment`, `PIP_confirmation`, `PIP_invoicereceipt_email` — plus, on a hold only, `MEMBERS`/`MEMBER_revshare_held` (id 230, the internal notice) |
-| `pipeline_sandbox_config` | R only | Reuses `pipeline='MAP 1'` row (PIP rides on Holistic Planning's sandbox toggle) |
+| `pipeline_sandbox_config` | R only | Reuses `pipeline='MAP 1'` row (PIP rides on Holistic Planning's sandbox row) |
 | `document_numbers` | R/W | Shared global counter — `INV-PIP-{clientRef}-{seq:0004}` / `REC-PIP-{clientRef}-{seq:0004}` |
 
 ## Step-by-step

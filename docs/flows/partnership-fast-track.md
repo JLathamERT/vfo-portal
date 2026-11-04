@@ -86,8 +86,8 @@ One warm template `PFT_meeting_confirm` for all three, parameterised by `automat
 - **RESCHEDULE (2026-08-16, v746) — and the `reschedule` body flag is load-bearing (#404).** A sent Meeting 1/2/3 step offers **Reschedule**, reopening the same form pre-filled (the slot is parsed back out of the status/notes text token by token, best-effort) and re-sending the SAME `PFT_meeting_confirm` template. Only the two **confirm** statuses can be rescheduled — a decline has no next meeting. The frontend passes **`reschedule: true`**, and `actions/pft/meeting-email.ts` uses it to **keep the same `discovery_token` while skipping the `discovery_email_sent_at` / `discovery_pf_notified_at` writes**. That matters because those two columns are the **discovery reminder ladder's clock** in `actions/pft/sweep.ts`: re-stamping them on a resend would restart the chase from zero for a form the client has had all along, silently. (A genuine first send, or a resend that mints a new token, still arms the ladder.)
 - **Automation & Config → Partnership Fast Track** (2026-07-20, gotcha #247): `PFTAutomationPanel` (loader
   `automation_load_pft_pipelines`) is the read-only pipeline view of every client with PFT email activity — meeting
-  sends, discovery/decision/FT button-clicks, and the onboarding handoff — and holds the ONLY UI for the
-  `PARTNERSHIP_FAST_TRACK` sandbox toggle. Its Meeting 1 card shows only when the Initial-Contact tracking-owner
+  sends, discovery/decision/FT button-clicks, and the onboarding handoff — and shows the
+  read-only `StripeAccountPill`. Its Meeting 1 card shows only when the Initial-Contact tracking-owner
   step = `Member`.
 - **Admin backfill — "Complete - NO EMAIL"** (2026-07-17, gotcha #243; **HIDDEN since 2026-09-14** — flag above): a solid-green button marks the
   meeting step complete (status `Complete`) via `msm_save_client_task` with NO email — for bringing

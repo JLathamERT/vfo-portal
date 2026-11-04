@@ -146,7 +146,7 @@ State chips: **Setup pending** `#0095ff` · **Awaiting first payment** `#0095ff`
 ## Traps
 
 - **`scheduled` is a NEW value in the `lic_payment_status` vocabulary** (subscription exists, zero money moved). The column is bare `text` with no CHECK, so nothing announces where the enumerations are — every reader that enumerates it must handle it. See **#437** (and the #431/#433 family).
-- **Two pipeline labels in one flow.** Templates are `SPECIALIST_LICENSE_CONTINUATION`; Stripe metadata, bells and the sandbox toggle stay `SPECIALIST_ONBOARDING`. Look up a continuation *email* under the former and everything else under the latter — a `(pipeline, template_name)` mismatch here looks exactly like a deliberately-Draft row (**#356**).
+- **Two pipeline labels in one flow.** Templates are `SPECIALIST_LICENSE_CONTINUATION`; Stripe metadata, bells and the sandbox row stay `SPECIALIST_ONBOARDING`. Look up a continuation *email* under the former and everything else under the latter — a `(pipeline, template_name)` mismatch here looks exactly like a deliberately-Draft row (**#356**).
 - **Rollout is not code.** Tracy must cancel each specialist's **legacy** license billing from their first portal month, or they pay twice (the #361 exposure). Out of scope for the handlers; there is no automated check.
 
 ## Cross-references

@@ -1511,7 +1511,7 @@ Accessible from admin portal → Automation dropdown → "Holistic Planning - Ta
 
 Backed by [`automation_load_tax_plans`](../../supabase/functions/vfo-admin-api/actions/tax/load-automation-list.ts) — admin-only — returns all tax plans joined with client + member info.
 
-Sandbox toggle uses `save_sandbox_config` with `pipeline='TAX'` parameter (extended from MAP1-only to accept any pipeline).
+No sandbox toggle since 2026-11-04: the environment decides sandbox, and `save_sandbox_config` refuses (staging plan §4c). The header shows the read-only `StripeAccountPill`.
 
 ---
 

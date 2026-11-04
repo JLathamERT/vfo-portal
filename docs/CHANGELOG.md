@@ -8,6 +8,22 @@
 
 ---
 
+## 2026-11-04 (c) — All testing moves to the test site: S7 and the switch day — by Jake
+
+**Website.** `npm run dev` now talks to the test site (`vite --mode staging`), and `npm run dev:live` is live, for looking at real data only. The sandbox toggles are gone from all 10 automation panels (`SandboxModeToggle` deleted, the two private badge + modal pairs in `AutomationPanel` and `TaxAutomationPanel` deleted). The read-only "Stripe: ..." pill stays as `StripeAccountPill`, and MAP 1 and Tax gained it (Jake asked why they lacked it). Specialist Revenue shows neither, because its loader does not ship the account. The Tax Intake test-fill shows on the test site only. The Feature Switches screen and values are untouched (Jake).
+
+**Backend.** No code change: S2 already made the environment decide. `VFO_ENVIRONMENT=live` is the one setting on live; that secret write bumps the version with no code change (#485). Test Member 59524 is therefore no longer forced to sandbox, and its records go in roadmap step 3.
+
+**Test site.** Its bucket's `vfo-widget.js` now calls the test site (made from `widget/vfo-widget.js`; #731).
+
+**Rules.** TEAM_RULES §1 / §2 / §4 / §8 / §11, `CLAUDE.md` in both repos, the starter, the wrap-up, the handoff, the hub, and the stale docs from staging plan §2: never test on live; branch test deploys go to the test site with no "deploy" word (D18), checking its `entrypoint_path` first because two people share it; migrations go on the test site first and on live at release.
+
+**Plan corrected.** The 7 "Test member only" switches the plan said to turn Off have been On for all since 2026-11-02, so no switch value changed.
+
+**Checks.** `npm run build` and `npm run build:staging` pass (152 files, nothing names live). The drift check matches on every kind. Jake's click-through on the dev server against the test site: PASS (every changed panel, Feature Switches, the test-fill, the pills). **Not exercised:** the admin panels at phone width, `npm run dev:live`, and the new rule's branch test deploy + put-back. The remaining 59524 and *Test member only* mentions in the docs go with the wipe (roadmap step 3).
+
+---
+
 ## 2026-11-04 (b) — Paxton's accounts and access: walked through, contract and laptop dropped, the handover moved to a Zoom — by Jake
 
 **What happened.** Step 1 of the roadmap's "Order from here": a chat walked Jake through §4 of `plans/two-person-workflow/README.md`. No code changed. Checked on the way: Paxton's admin login exists on live and staging, his test member 10002 exists on staging, he is on the superadmin list, and he is on none of the GitHub repos.

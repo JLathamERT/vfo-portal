@@ -121,7 +121,7 @@ one. Gotcha **#332**.
 
 ## Related config
 
-- `pipeline_sandbox_config` row `MEMBER_MEMBERSHIP` (SANDBOX as of 2026-07-13). **Gained `stripe_account` 2026-09-11** (`'vfos'` default, `CHECK IN ('vfos','ert')`) — it decides which Stripe account a NEW membership customer is minted on, and **nothing else**. Flipped **by SQL, never from the UI**; `SandboxModeToggle.jsx` renders it as a read-only `Stripe: VFO Services` / `Stripe: ERT` pill. **Flipped to `'ert'` (with `sandbox_mode=false`) on 2026-09-11 ~16:10Z, and `membership_stripe_remap` then moved all 37 existing plans the same day — so BOTH new and existing membership money is now on ERT (0 plans left on `'vfos'`).**
+- `pipeline_sandbox_config` row `MEMBER_MEMBERSHIP` (SANDBOX as of 2026-07-13). **Gained `stripe_account` 2026-09-11** (`'vfos'` default, `CHECK IN ('vfos','ert')`) — it decides which Stripe account a NEW membership customer is minted on, and **nothing else**. Flipped **by SQL, never from the UI**; `StripeAccountPill.jsx` renders it as a read-only `Stripe: VFO Services` / `Stripe: ERT` pill. **Flipped to `'ert'` (with `sandbox_mode=false`) on 2026-09-11 ~16:10Z, and `membership_stripe_remap` then moved all 37 existing plans the same day — so BOTH new and existing membership money is now on ERT (0 plans left on `'vfos'`).**
 - `email_templates` pipeline `MEMBER_MEMBERSHIP_FEES`: `MEMBERSHIP_setup_link` (**id 190**)
   and `MEMBERSHIP_transfer_setup_link` (**id 191**) — **both flipped to SEND mode 2026-08-03,
   so they auto-send with no admin review** (gotcha #325); `MEMBERSHIP_payment_failed` and the

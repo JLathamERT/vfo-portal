@@ -22,7 +22,7 @@
 | Google Drive / Sheets | client folders, invoice + receipt PDFs | to decide | to add |
 | Sentry | frontend error reports | team invite | — |
 | html2pdf | PDF rendering | to decide | to add |
-| Test accounts (tax-planner test logins, test member / client logins) | testing | — | to add |
+| Test accounts (the test site's planner, team member, member and client logins) | testing, on the test site only | — | to add |
 | **STAGING** — GitHub `JLathamERT/vfo-portal-staging` (public) | the staging website, published by `npm run deploy:staging` to its `gh-pages`; GitHub Pages serves it at https://staging.vfoportal.com/ (GoDaddy CNAME `staging` → `jlathamert.github.io`) | collaborator invite | — |
 | **STAGING** — Supabase project "VFO Staging" (`yxolcioazczlhruprmrb`) | the staging backend, database and secrets | same organization as live | — |
 | **STAGING** — portal login at https://staging.vfoportal.com/admin | the staging admin portal | a superadmin adds you in staging's Admin Editor (no set-up email) | — |

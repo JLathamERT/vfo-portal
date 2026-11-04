@@ -1,7 +1,7 @@
 import { useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
-import SandboxModeToggle from './SandboxModeToggle'
+import StripeAccountPill from './StripeAccountPill'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 
 const STAGE_LABELS = {
@@ -240,14 +240,7 @@ export default function SpecialistAutomationPanel() {
       <PanelHero
         eyebrow="Automation Pipeline"
         title="Specialist Onboarding Pipeline"
-        action={
-          <SandboxModeToggle
-            pipeline="SPECIALIST_ONBOARDING"
-            label="Specialist Onboarding"
-            sandboxConfig={sandboxConfig}
-            onChange={setSandboxConfig}
-          />
-        }
+        action={<StripeAccountPill sandboxConfig={sandboxConfig} />}
         stats={stats}
       />
 

@@ -1,12 +1,10 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
-import SandboxModeToggle from './SandboxModeToggle'
 import { NAVY, BLUE, money, RequestRow, MarkReceivedButton, isErtLegOpen } from './specialistRevenueShared'
 import { TableSkeleton } from '../shared/Skeleton'
 
 // Automation → VFO Specialist Revenue. One row per specialist payment request, with
-// where-everything-is-at status and a Retry-payout action. Sandbox toggle shares the
-// MAP 1 row (the same toggle that controls the Connect accounts + transfers).
+// where-everything-is-at status and a Retry-payout action.
 
 // Payout states that still owe the recipient money. The held_member_* trio is parked
 // behind a suspended / paused / in-arrears member and is released on reinstatement, so it counts as
@@ -26,7 +24,6 @@ function isLineOpen(line) {
 
 export default function SpecialistRevenueAutomationPanel() {
   const [requests, setRequests] = useState([])
-  const [sandboxConfig, setSandboxConfig] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [retrying, setRetrying] = useState(null)
@@ -41,7 +38,6 @@ export default function SpecialistRevenueAutomationPanel() {
 
   function apply(res) {
     setRequests(res.requests || [])
-    setSandboxConfig(res.sandbox_config || { sandbox_mode: false })
   }
 
   async function load(quiet = false) {
@@ -106,15 +102,6 @@ export default function SpecialistRevenueAutomationPanel() {
             <p style={{ fontSize: '10.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 4px' }}>Automation Pipeline</p>
             <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>VFO Specialist Revenue</h2>
           </div>
-          {sandboxConfig && (
-            <SandboxModeToggle
-              pipeline="MAP 1"
-              label="VFO Specialist Revenue (shares MAP 1 mode)"
-              sandboxConfig={sandboxConfig}
-              onChange={setSandboxConfig}
-              note="This toggle flips the shared MAP 1 Stripe mode — it also affects MAP 1 / member revenue share, since they use the same Stripe Connect accounts."
-            />
-          )}
         </div>
         <div style={{ display: 'flex', gap: '36px', marginTop: '18px' }}>
           {statBox('Total', stats.total, 'var(--vfo-heading)')}

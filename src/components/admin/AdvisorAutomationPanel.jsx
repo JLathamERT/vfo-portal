@@ -1,7 +1,7 @@
 import { useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
-import SandboxModeToggle from './SandboxModeToggle'
+import StripeAccountPill from './StripeAccountPill'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import OnboardingExtraMeetingCard from './OnboardingExtraMeetingCard'
 import { MemberNameLink } from '../shared/personLinks'
@@ -238,14 +238,7 @@ export default function AdvisorAutomationPanel() {
       <PanelHero
         eyebrow="Automation Pipeline"
         title="Advisor Onboarding Pipeline"
-        action={
-          <SandboxModeToggle
-            pipeline="ADVISOR_ONBOARDING"
-            label="Advisor Onboarding"
-            sandboxConfig={sandboxConfig}
-            onChange={setSandboxConfig}
-          />
-        }
+        action={<StripeAccountPill sandboxConfig={sandboxConfig} />}
         stats={stats}
       />
 
