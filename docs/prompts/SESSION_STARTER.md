@@ -10,8 +10,9 @@ This prompt is the startup PROCEDURE only. Every standing rule — safety, paths
 2. **Read `docs/SESSION_REFERENCE.md` (the hub)** — all of it EXCEPT the LIVE STATE → **OPEN / OWED** list, which has grown too large to read whole: grep that list for the area you are about to touch instead. Pay special attention to the **SECURITY INVARIANTS** box — non-negotiable; re-check them on any table / policy / handler / function change.
 3. **Run the `DERIVE AT SESSION START` block and state the results** — live versions, latest tags, action count, cron count — before any other work. Volatile facts come from those commands, never from prose: if a doc disagrees with the command output, the command wins and the doc is stale. Also state the live `vfo-admin-api` `entrypoint_path`: no `/.claude/worktrees/` in it = main is live; a worktree path = a branch's test build is live, and whose it is matters before any deploy (TEAM_RULES §4).
 4. **If the task belongs to a plan of record** (`docs/plans/<name>/README.md` — the team's own setup is `docs/plans/two-person-workflow/README.md`), read that plan's status table and state which step this chat is on and what comes after it (TEAM_RULES §6).
+5. **Check the deploy keys' dates** in `docs/ACCESS.md` → "Deploy keys". Any key expiring within 30 days, or already expired, is the first thing you tell the person, with the steps in that section.
 
-Do not proceed until all four are done.
+Do not proceed until all five are done.
 
 ---
 

@@ -12,4 +12,4 @@ Commands:
 - `/handoff` — the chat is long and the work is not finished: get the block that continues it in a new chat
 - `/wrapup` — the work is ready to ship
 
-Never, without the person's explicit word in this chat: deploy (`supabase functions deploy`, `npm run deploy`), merge, push, push a tag, or touch `boldsign-webhook`. Never edit the main folders `C:\vfo-react\` or `C:\vfo-edge-functions\` — only `.claude\worktrees\<name>\`. Never put a password, key or token in a file, a commit or the chat.
+Never, without the person's explicit word in this chat: deploy (the deploy button, `supabase functions deploy`, `npm run deploy`), merge, push, push a tag, or touch `boldsign-webhook`. Never push a change to `.github/` or the repo guard without Jake's word, and never create `~/.vfo-deploy-guard-off`. Never edit the main folders `C:\vfo-react\` or `C:\vfo-edge-functions\` — only `.claude\worktrees\<name>\`. Never put a password, key or token in a file, a commit or the chat.

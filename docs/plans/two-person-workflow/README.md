@@ -4,7 +4,7 @@
 >
 > **This file is the source of truth for where the plan stands — not anyone's Claude memory** (a chat on the other person's computer can't see that). Every chat working on any piece of it reads this file first, and the PR that ships a step updates that step's row here (TEAM_RULES §6). Decisions are added to §5 with the date and who made them.
 >
-> Created 2026-11-03 from the 2026-10-31 planning chat ("VFO PORTAL - 10/31 #1 (Paxton)") and the chats since, when the plan was found to exist only in Jake's Claude memory. Last updated: 2026-11-03.
+> Created 2026-11-03 from the 2026-10-31 planning chat ("VFO PORTAL - 10/31 #1 (Paxton)") and the chats since, when the plan was found to exist only in Jake's Claude memory. Last updated: 2026-11-04.
 
 ## 1. Where it stands
 
@@ -22,11 +22,10 @@ The numbers are the 2026-10-31 phase numbers. Staging (5) was moved ahead of 3 a
 
 ### Order from here
 
-1. **Deploy button + staging S6, one chat.** Ask D13 (§3) first.
-2. **Staging S7** — switch the team rules to "test on staging".
+1. **Deploy button + staging S6, one chat.** D13 answered 2026-11-03 (§3).
+2. **The testing move: staging S7 + the switch day (staging plan §4c), the next chat after this one.** Jake's decision of 2026-11-03 (§5) moves all testing to staging as soon as possible.
 3. **Paxton's getting-started document.**
 4. **Staging S5** (Reset / Refresh) and **OWED → Issues** — can follow after Paxton starts if time runs short. Reset must re-make each person's test member (`ensureStagingTestMember`) and clear its bells.
-5. **The switch day** (staging plan §4c) — after S7, once Jake decides what the team may still do with Test Member 59524 on live (staging plan, open point).
 
 ## 2. Staging (phase 5) in one table
 
@@ -39,7 +38,7 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 | S3 | Staging backend up: schema, buckets, settings, the 19 crons | Done 2026-11-02 |
 | S4 | Website on staging + the sandbox move + test data + the first full test | Website shipped 2026-11-02 (`live-288-staging-part1`). **2026-11-03:** sandbox move done (live holds no sandbox keys, smoke PASS on v1089; both Stripe sandboxes and BoldSign's sandbox report to staging); one test member per person (Jake 10001, Paxton 10002, made automatically with each admin login); client logins on the tester's tagged email; every staging email and bell goes to the tester (bells teal, "meant for: …", a staging-only Clear (test) on action bells); full test parts A and B PASS. **Shipped 2026-11-03** (CHANGELOG 2026-11-03 (c)); after the release staging is brought back to main (SESSION_WRAPUP Part 4E). |
 | S5 | A superadmin-only Staging tab: *Reset test data*, *Refresh settings from live*, what is running. Also staging's `vfo-widget.js` still calls live. | Not started |
-| S6 | Keep in step: main → staging on every merge (D13), a drift check between the two databases, `smoke -Target staging` | Not started — with the deploy button |
+| S6 | Keep in step: a merge that changes backend code redeploys staging's backend, a merge that changes the website redeploys staging's website, a docs-only merge redeploys neither (Jake 2026-11-03); a drift check between the two databases, required at wrap-up; `smoke -Target staging` | Not started — with the deploy button |
 | S7 | Switch the rules: TEAM_RULES, CLAUDE.md, the starter and wrap-up so testing happens on staging only | Not started |
 | Switch day | Live becomes live-only (`VFO_ENVIRONMENT=live`, the sandbox toggles and "Test member only" removed). Test Member 59524 and live's other test records are **kept** (Jake 2026-11-03: team members still use them). | Not started |
 
@@ -58,13 +57,35 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 - Neither laptop needs the deploy keys or Docker Desktop for a release.
 - The same workflow deploys main to staging on every merge (staging S6), so both are built in one chat.
 
+**D13 (Jake, 2026-11-03): two limited Supabase tokens, not one full-access token.** One reaches staging only and is used on every merge; one reaches live only and is used only by the button. Each carries Edge Functions read-write and nothing else, and both sit only in the private edge repo. Jake's account offers these scoped tokens (checked 2026-11-03). A leaked live token could still deploy code to live, and that code runs with full database access, so this reduces the risk without removing it.
+
+**Design approved (Jake, 2026-11-03):**
+- **Two presses.** The first releases the tip of main. The second, after the person says smoke passed, tags **the exact commit the first press released**, not whatever main is by then. The first press records that commit and the function version; the second reads them from the first press's run.
+- **Only merges that change backend code redeploy staging's backend,** because a redeploy replaces any branch being tested there. Before trusting a test result, check staging is still running your build (`list_edge_functions` on staging: the version you deployed).
+- **The drift check is a required wrap-up step.** It is a SQL file run through the Supabase connection on both projects, so it needs no database key on a laptop or in GitHub (this replaces the `scripts/staging-drift.ps1` first planned).
+- **The website button can restore an old build,** and accepts `live-*` tags only.
+- **A repo guard stops any chat, on either computer, running a backend deploy to live or one that names no project** (`supabase/.temp/project-ref` is tracked and points at live). It stays off until the button is proven, and has an off switch in case the button breaks. It stops chats, not a person typing in their own terminal.
+
+**Free plan, no GitHub Pro (Jake, 2026-11-04).** GitHub's free plan can't limit a key to main on a private repo, so both Supabase keys are ordinary repo secrets and the only main-only check is the button's own. An edited copy of the button on a branch could drop that check and use the live key, so the guard gains a second job:
+- **No chat can push a branch that changes anything under `.github/` without Jake's explicit word.** That covers `git push` and writing those files through `gh api`, and the same check covers the guard's own files. The guard makes Claude Code show a permission prompt, which a chat can't answer for itself. The docs say this prompt still appears in auto mode; the build proves it. If the guard can't tell what a push changes, it prompts.
+- **This check goes on as soon as it is merged, before the live key is created,** and needs no off switch: it only asks, so it can't get in the way of fixing a broken button. The backend deploy block keeps the plan above: on once the button is proven, with its off switch.
+- **The button checks it is on main before doing anything else,** and runs no script from the repo until that check passes.
+- **Limits, accepted:** it stops mistakes by chats, not a person's own terminal or a chat deliberately editing the guard out; it exists only in folders made after it merges; and on Paxton's computer the prompt goes to Paxton, so `TEAM_RULES` says Paxton gets Jake's word before answering yes.
+
+**Proving "same code" on the first press.** The fingerprint (`ezbr_sha256`) is expected to change, so a new fingerprint proves nothing either way. Git stores these files with Linux line breaks (`core.autocrlf` is on), and a laptop build keeps Windows ones: the deployed copy of v23 holds them in 39 of its files. So, in order:
+1. **Before pressing:** `git diff` between the `backend-good-…` commit and the commit being released is empty for `supabase/functions/vfo-admin-api`.
+2. **Before and after pressing:** `supabase functions download` of live's version, then a file-by-file comparison with line breaks ignored. Every file must match. Any other difference means stop and revert in the dashboard.
+3. **Rehearsed first on staging:** the same comparison between staging's laptop build and its first GitHub build, before live is pressed.
+4. **From then on:** staging and live, both built by GitHub from one commit, should have equal fingerprints, and the wrap-up checks that.
+
+**Rehearsed on staging, 2026-11-04.** Backend, v23 (laptop) against v24 (GitHub): 777 files, 738 identical, 39 differing only in line breaks, none really different. Website: the first GitHub build differed in one file, because the laptops ran Sentry 10.59.0 while `package-lock.json` said 10.58.0, so a GitHub build would have moved live back a version. The lockfile now says 10.59.0, and the GitHub build gives the same bundle names and all 151 files match, ignoring blank lines in the route pages. The staging key is refused on live and on SQL (403), though no deploy to live was attempted with it.
+
 **Open before building:**
-- **D13** — a Supabase access token stored in GitHub's secrets can reach live as well as staging. Ask Jake before building.
-- `gh` is not installed on Jake's computer yet (or Paxton's). Without it, someone presses the button on github.com.
+- `gh` is installed and signed in on Jake's computer (2026-11-04), not yet on Paxton's. Without it, someone presses the button on github.com.
 - `boldsign-webhook` never deploys from the button unless the person says so explicitly (CLAUDE.md).
 - Test deploys of a branch to staging stay a laptop deploy with `--project-ref` until S7 says otherwise.
 
-**Done when:** "deploy" in a chat releases main (backend and website) through the button, both tags appear, a second press while one runs waits, and a merge to main redeploys staging by itself.
+**Done when:** "deploy" in a chat releases main (backend and website) through the button, both tags appear on the released commits, a second press while one runs waits, a merge that changes backend code redeploys staging's backend by itself while a docs-only merge does not, and both guard checks are on and tested: a chat is blocked from deploying to live, and a push that changes `.github/` brings up the prompt.
 
 ### Phase 4 — OWED list → GitHub Issues
 
@@ -113,6 +134,10 @@ Settled — build on these, don't reopen them.
 **2026-11-01 (Jake):** Paxton starts about 2026-11-11 and staging must exist before then. Paxton's getting-started document is its own chat, last. The phase order became: staging, deploy button, OWED → Issues, Paxton's document.
 
 **2026-11-03 (Jake):** the plan lives in this file. Staging decisions from 2026-11-03 (test members numbered 10001+, named "<First> Member"; live's test records are never deleted; all staging emails and bells go to the tester) are in the staging plan.
+
+**2026-11-03 (Jake), on moving the testing:** "just moving all the testing to staging asap is fine. the team doesnt need the test member and tests right now it will just be a day or 2". So S7 + the switch day are the next chat after the deploy button.
+
+**2026-11-04 (Jake), on GitHub Pro:** "No Pro, stay on the free plan. Keep the button's own main-only check. Extend the guard so no chat can push a branch that changes the button (.github/workflows) without my explicit word. Record this decision in the roadmap." Details in §3.
 
 ## 6. Watch
 

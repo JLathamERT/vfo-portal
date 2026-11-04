@@ -30,3 +30,15 @@
 | **STAGING** — Google Cloud project "VFO Staging" + OAuth client "VFO Staging portal" | the client ID / secret / refresh token in staging's `GMAIL_*` secrets | signed in as `staging@` | VFO Staging Google app |
 
 "to decide" / "to add" — filled in when the vault is set up; update this table in the same PR.
+
+## Deploy keys
+
+The deploy button's keys sit in GitHub secrets, which nobody can read back: not here, not in Bitwarden, not on a laptop. Every chat checks these dates at start and warns 30 days ahead ([prompts/SESSION_STARTER.md](prompts/SESSION_STARTER.md)).
+
+| Key | GitHub secret, in which repo | What it can do | Expires | When it runs out |
+|---|---|---|---|---|
+| Supabase token `github-deploy-staging` | `SUPABASE_TOKEN_STAGING`, `vfo-edge-functions` | Edge Functions read-write on VFO Staging only (refused on live and on SQL, tested 2026-11-04) | 2027-11-01 | The test site's backend stops updating. Live is not affected |
+| GitHub token `deploy-staging-website` | `STAGING_SITE_TOKEN`, `vfo-portal` | Contents read-write on `vfo-portal-staging` only | 2027-11-01 | The test site's website stops updating. Live is not affected |
+| Supabase token `github-deploy-live` | `SUPABASE_TOKEN_LIVE`, `vfo-edge-functions` | Edge Functions read-write on VFO Showroom only | not created yet | The backend button can't release |
+
+**To replace one (Jake, one step at a time):** make the new key with the same name and access at https://supabase.com/dashboard/account/tokens (use Generate token, not the legacy one) or https://github.com/settings/personal-access-tokens/new, expiring as late as allowed (a year at most). Then run `gh secret set <secret name> --repo JLathamERT/<repo>` and paste it at the prompt. Update the date above in a PR, and delete the old key.
