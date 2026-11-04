@@ -13,8 +13,8 @@
 | 1 | **Prompts + rules** — `TEAM_RULES.md`, `ACCESS.md`, `CLAUDE.md` in both repos, `/start` `/handoff` `/wrapup`, the dev-server script, one PR per repo, deploy → smoke → test one step at a time | **SHIPPED 2026-11-01** | react #572, edge #333 (docs and prompts only) |
 | 2 | **Superadmin list + bigger smoke test** — `constants/superadmin.ts` (Jake + Paxton), the smoke script picks whoever runs it, 23 read-only checks | **SHIPPED 2026-11-01** | edge #334, react #573 · `vfo-admin-api` v1080 · `live-284-superadmin-list` |
 | 5 | **Staging / test mode** — a full second copy of the portal with fake data only. Its own plan: [plans/staging/README.md](../staging/README.md) | **S1-S4 SHIPPED** — part 1 2026-11-02 (S1-S3 + the S4 website), the rest of S4 2026-11-03 (CHANGELOG 2026-11-03 (c)) · S5, S6, S7, switch day: not started | §2 below |
-| 3 | **Deploy button** — live releases through GitHub, not from a laptop | **SHIPPED 2026-11-04** — backend and website released and tagged through it (`backend-good-2026-11-04-v1092`, `live-290-deploy-button`); the deploy block's test in a new chat is owed (hub OPEN / OWED) | §3 below |
-| 4 | **OWED list → GitHub Issues** + a hub small enough to read in full | **NOT STARTED** — may follow after Paxton starts | §3 below |
+| 3 | **Deploy button** — live releases through GitHub, not from a laptop | **SHIPPED 2026-11-04** — backend and website released and tagged through it (`backend-good-2026-11-04-v1092`, `live-290-deploy-button`); both guard checks tested in new chats | §3 below |
+| 4 | **OWED list → GitHub Issues** + a hub small enough to read in full | **NOT STARTED** — before Paxton starts (Jake 2026-11-04) | §3 below |
 | 6 | **Paxton's getting-started document** | **NOT STARTED** — on purpose last, so it describes the finished setup; must be done before he starts | §3 below |
 | — | **Jake's setup tasks for Paxton** (accounts, access, contract, computer) — not a chat | **PARTLY DONE** | §4 below |
 
@@ -22,9 +22,17 @@ The numbers are the 2026-10-31 phase numbers. Staging (5) was moved ahead of 3 a
 
 ### Order from here
 
-1. **The testing move: staging S7 + the switch day (staging plan §4c), the next chat.** Jake's decision of 2026-11-03 (§5) moves all testing to staging as soon as possible.
-2. **Paxton's getting-started document.**
-3. **Staging S5** (Reset / Refresh) and **OWED → Issues** — can follow after Paxton starts if time runs short. Reset must re-make each person's test member (`ensureStagingTestMember`) and clear its bells.
+**Everything below is done before Paxton starts, about 2026-11-11 (Jake, 2026-11-04).** One chat each:
+
+1. **Paxton's accounts and access: a chat that walks Jake through §4**, one step at a time. It changes no code, so it runs at the same time as the chats below and doesn't hold them up. It comes first because the contract and laptop may take days.
+2. **Move testing fully to staging** (S7 + switch day, staging plan §4c). Includes fixing staging's `vfo-widget.js`, which still calls live.
+3. **Wipe the old test records from live**, straight after 2. Once live is live-only, a payment on Test Member 59524 would be REAL money. First: Jake approves the exact list, the team is told, a backup is confirmed, and the smoke test moves off 59524. The code's test-member filters go too. Staging is not touched. Details: staging plan §4c.
+4. **Set up live's 19 automatic jobs again**, as its own step, reading their key from the Vault, with a check straight after and another once they have run on schedule (staging plan §4c item 5).
+5. **The admin portal's Staging tab** (S5): Reset test data, Refresh settings from live, what is running. Must re-make each person's test member (`ensureStagingTestMember`) and clear its bells. The first thing to drop if time runs short: until it exists, Reset is by hand.
+6. **Move the OWED list to GitHub Issues**, with the clean-up pass and a hub small enough to read in full (§3).
+7. **Paxton's getting-started document**, last, so it describes the finished setup (§3). Needs 1-6.
+
+Chats 2-6 run one at a time, in this order: each builds on the one before, and they edit the same docs.
 
 ## 2. Staging (phase 5) in one table
 
@@ -39,7 +47,7 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 | S5 | A superadmin-only Staging tab: *Reset test data*, *Refresh settings from live*, what is running. Also staging's `vfo-widget.js` still calls live. | Not started |
 | S6 | Keep in step: a merge that changes backend code redeploys staging's backend, a merge that changes the website redeploys staging's website, a docs-only merge redeploys neither (Jake 2026-11-03); a drift check between the two databases, required at wrap-up; `smoke -Target staging` | Shipped 2026-11-04 |
 | S7 | Switch the rules: TEAM_RULES, CLAUDE.md, the starter and wrap-up so testing happens on staging only | Not started |
-| Switch day | Live becomes live-only (`VFO_ENVIRONMENT=live`, the sandbox toggles and "Test member only" removed). Test Member 59524 and live's other test records are **kept** (Jake 2026-11-03: team members still use them). | Not started |
+| Switch day | Live becomes live-only (`VFO_ENVIRONMENT=live`, the sandbox toggles and "Test member only" removed). Test Member 59524 and live's other test records are then **wiped** (Jake 2026-11-04, §5). | Not started |
 
 **Staging keeps itself up to main from the merge on.** Live migrations, template changes and switch flips are still made on staging by hand the same day (TEAM_RULES §4), and the drift check proves it.
 
@@ -135,9 +143,11 @@ Settled — build on these, don't reopen them.
 
 **2026-11-01 (Jake):** Paxton starts about 2026-11-11 and staging must exist before then. Paxton's getting-started document is its own chat, last. The phase order became: staging, deploy button, OWED → Issues, Paxton's document.
 
-**2026-11-03 (Jake):** the plan lives in this file. Staging decisions from 2026-11-03 (test members numbered 10001+, named "<First> Member"; live's test records are never deleted; all staging emails and bells go to the tester) are in the staging plan.
+**2026-11-03 (Jake):** the plan lives in this file. Staging decisions from 2026-11-03 (test members numbered 10001+, named "<First> Member"; live's test records are never deleted, reversed 2026-11-04 below; all staging emails and bells go to the tester) are in the staging plan.
 
 **2026-11-03 (Jake), on moving the testing:** "just moving all the testing to staging asap is fine. the team doesnt need the test member and tests right now it will just be a day or 2". So S7 + the switch day are the next chat after the deploy button.
+
+**2026-11-04 (Jake), on what comes before Paxton starts:** everything in "Order from here" (§1), including the Staging tab ("before") and OWED → Issues, with a chat to walk him through Paxton's accounts and access. On the old test records: "no th eold test records will be wiped i want the live portal clean". This reverses the 2026-11-03 decision to keep them.
 
 **2026-11-04 (Jake), on GitHub Pro:** "No Pro, stay on the free plan. Keep the button's own main-only check. Extend the guard so no chat can push a branch that changes the button (.github/workflows) without my explicit word. Record this decision in the roadmap." Details in §3.
 
