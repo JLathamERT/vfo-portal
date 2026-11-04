@@ -8,6 +8,22 @@
 
 ---
 
+## 2026-11-04 (b) — All testing moves to the test site: S7 and the switch day — by Jake
+
+**Website.** `npm run dev` now talks to the test site (`vite --mode staging`), and `npm run dev:live` is live, for looking at real data only. The sandbox toggles are gone from all 10 automation panels (`SandboxModeToggle` deleted, the two private badge + modal pairs in `AutomationPanel` and `TaxAutomationPanel` deleted). The read-only "Stripe: ..." pill stays as `StripeAccountPill`, and MAP 1 and Tax gained it (Jake asked why they lacked it). Specialist Revenue shows neither, because its loader does not ship the account. The Tax Intake test-fill shows on the test site only. The Feature Switches screen and values are untouched (Jake).
+
+**Backend.** No code change: S2 already made the environment decide. `VFO_ENVIRONMENT=live` is the one setting on live; that secret write bumps the version with no code change (#485). Test Member 59524 is therefore no longer forced to sandbox, and its records go in roadmap step 3.
+
+**Test site.** Its bucket's `vfo-widget.js` now calls the test site (made from `widget/vfo-widget.js`; #731).
+
+**Rules.** TEAM_RULES §1 / §2 / §4 / §8 / §11, `CLAUDE.md` in both repos, the starter, the wrap-up, the handoff, the hub, and the stale docs from staging plan §2: never test on live; branch test deploys go to the test site with no "deploy" word (D18), checking its `entrypoint_path` first because two people share it; migrations go on the test site first and on live at release.
+
+**Plan corrected.** The 7 "Test member only" switches the plan said to turn Off have been On for all since 2026-11-02, so no switch value changed.
+
+**Checks.** `npm run build` and `npm run build:staging` pass (152 files, nothing names live). The drift check matches on every kind. Jake's click-through on the dev server against the test site: PASS (every changed panel, Feature Switches, the test-fill, the pills). **Not exercised:** the admin panels at phone width, `npm run dev:live`, and the new rule's branch test deploy + put-back. The remaining 59524 and *Test member only* mentions in the docs go with the wipe (roadmap step 3).
+
+---
+
 ## 2026-11-04 — The deploy button and staging S6: GitHub releases live, the test site updates itself, a drift check, a repo guard — by Jake
 
 **What was built.** Edge repo: `release-live.yml` (first press: tip of main to live, main only, one at a time, records commit, version and who pressed), `tag-live.yml` (second press: tags the exact released commit), `staging-backend.yml` (a merge changing backend code redeploys the test site's backend; `boldsign-webhook` never), `scripts/staging-drift.sql`, `smoke-pipelines.ps1 -Target staging`. React repo: `release-website.yml` (with a `live-*`-only restore), `tag-website.yml` (numbers `live-N` itself), `staging-website.yml` (docs-only merges do nothing). Both repos: `.claude/hooks/deploy-guard.mjs` + `.claude/settings.json`. The deploy block ships off; the button check is on from merge. Rules, wrap-up (drift check required; 4C-4E through the button), starter (key-expiry check), `CLAUDE.md` and `ACCESS.md` (a Deploy keys section) changed with it.

@@ -1,6 +1,6 @@
 # VFO Staging — the team's test mode (two-person workflow, Phase 5)
 
-Written 2026-10-31 (Jake + Claude, planning chat — branches `claude/phase-5-staging-portal-db3a8b` (react) / `claude/phase-5-staging-portal-2ba513` (edge)). **Status (2026-11-03): S1-S4 DONE** — part 1 shipped 2026-11-02 (CHANGELOG 2026-11-02 (d)); the rest of S4 (the §4b sandbox move, one test member per person, tester email + bell routing, the full test parts A and B PASS) ships as CHANGELOG 2026-11-03 (c). Staging is live at https://staging.vfoportal.com/ on project `yxolcioazczlhruprmrb`. Left: S5-S7 and the switch day. Every decision in §9 is Jake's and is asked before anything is built. Hub OWED item (AG), Phase 5. **Must exist before Paxton starts (~2026-11-11).**
+Written 2026-10-31 (Jake + Claude, planning chat — branches `claude/phase-5-staging-portal-db3a8b` (react) / `claude/phase-5-staging-portal-2ba513` (edge)). **Status (2026-11-03): S1-S4 DONE** — part 1 shipped 2026-11-02 (CHANGELOG 2026-11-02 (d)); the rest of S4 (the §4b sandbox move, one test member per person, tester email + bell routing, the full test parts A and B PASS) ships as CHANGELOG 2026-11-03 (c). Staging is live at https://staging.vfoportal.com/ on project `yxolcioazczlhruprmrb`. **2026-11-04: S6 shipped, S7 and the switch day done (below).** Left: S5. Every decision in §9 is Jake's and is asked before anything is built. Hub OWED item (AG), Phase 5. **Must exist before Paxton starts (~2026-11-11).**
 
 ---
 
@@ -56,7 +56,7 @@ DB       migration ──► staging ──(tested)──► live at release
 | **S4 HEADLINE** Website on staging | `VITE_SUPABASE_URL`, the TEST banner, Sentry environment, `noindex`, `/store`, `npm run deploy:staging`. A minimal fake member + client. **Then the §4b sandbox switch**, right before the test. | Claude + Jake (§4b steps) | **Jake logs in at staging.vfoportal.com, sees the banner and fake data, pays with a Stripe test card, and the receipt email lands in the team inbox with "would have gone to …".** |
 | **S5** Fake data + Reset | The seed (§6); a superadmin-only **Staging** tab with *Reset test data* (typed confirmation), *Refresh settings from live*, and what is running (build, last reset, by whom). The live side gets `staging_settings_export`, which is read-only and allowlisted (live deploy = Jake's "deploy"). | Claude | Reset twice in a row lands the same rows; a switch flipped on live shows on staging after Refresh; a person table is never in the export (probe). |
 | **S6** Keep in step | A merge that changes backend code redeploys staging's backend, and one that changes the website redeploys staging's website (Jake 2026-11-03, per D13); a drift-check SQL file, run on both projects as a required wrap-up step, compares tables, columns, functions, policies and crons; the smoke script gains `-Target staging`. | Claude | A docs-only merge redeploys neither, a backend merge redeploys only the backend, and the drift check reads 0 differences. **Built and tested on staging 2026-11-04** (CHANGELOG): a push changing no backend code redeployed no backend, a docs-only push republished no website, and the drift check caught a throwaway table; the same checks on real merges come with the first merge. |
-| **S7** Switch the rules | TEAM_RULES §1/§4/§8, CLAUDE.md, the starter (dev server → staging), the wrap-up (migrations staging first, deploy staging, then live), ACCESS.md, the hub, integrations docs, the stale docs from §2. Paxton's staging login. | Claude, Jake reviews | Paxton's first `/start` runs against staging. |
+| **S7** Switch the rules | TEAM_RULES §1/§4/§8, CLAUDE.md, the starter (dev server → staging), the wrap-up (migrations staging first, deploy staging, then live), ACCESS.md, the hub, integrations docs, the stale docs from §2. Paxton's staging login. | Claude, Jake reviews | Paxton's first `/start` runs against staging. **Rules switched 2026-11-04** (CHANGELOG); the checkpoint comes with Paxton's first chat. |
 
 ### 4b. The sandbox switch — live becomes live-only (D4, Jake 2026-10-31)
 
@@ -107,11 +107,11 @@ Jake: *"i want to turn off any form of testing in the live portal and the abilit
 
 | Live today | After |
 |---|---|
-| Sandbox toggles: `SandboxModeToggle` in 9 automation panels, action `save_sandbox_config` | Removed from the screens. The action refuses on every environment (staging is always sandbox, live never). |
+| Sandbox toggles: 10 automation panels (8 with `SandboxModeToggle`, MAP 1 and Tax with their own), action `save_sandbox_config` | Removed from the screens 2026-11-04. The read-only "Stripe: ..." pill stays as `StripeAccountPill`, and MAP 1 and Tax gained it (Specialist Revenue's loader does not ship the account). The action refuses on every environment (staging is always sandbox, live never). |
 | Test Member 59524 forced to sandbox (`TEST_SANDBOX_MEMBER_NUMBERS`, used via the helpers in 69 files); Test Specialist 6137 (`TEST_SANDBOX_EXPERT_IDS`) | The force is gone; the environment rule replaces it. |
-| Feature Switches' *Test member only* position. **7 switches sit there now:** `ciq_licence`, `client_basic_portal`, `client_case_progress`, `mirrored_clients`, `portal_licensing`, `tax_intake`, `tpom_additional_benefits` | Two positions only: **Off / On for all**. Those 7 become **Off** on live, which is what every real member sees today, so nothing changes for anyone. They are tested on staging with the switch On there. The portal-licensing switch rule (plan §1, "seeded Test member only") changes to "ships Off on live, tested On on staging". |
+| Feature Switches' *Test member only* position. **7 switches sit there now:** `ciq_licence`, `client_basic_portal`, `client_case_progress`, `mirrored_clients`, `portal_licensing`, `tax_intake`, `tpom_additional_benefits` | Two positions only: **Off / On for all**. **Corrected 2026-11-04:** all 7 went On for all on 2026-11-02, so no value changes (Jake: "do not change the feature switches leave them as is"). The screen is not edited either: the backend already hides the Test position and refuses it once `VFO_ENVIRONMENT=live`. Reworking how switches work is a later question. The portal-licensing switch rule (plan §1, "seeded Test member only") changes to "ships Off on live, tested On on staging". |
 | The Tax Intake form's test-fill for 59524 (`TaxIntakeForm.jsx`) | Shown on staging builds only. |
-| Test DATA on live: member 59524 and its clients (422 `59524-001`, 423 `59524-PFT1`, 424 `59524-PFT2`), Test Specialist 6137, the 2 tax-planner test logins, onboarding test rows, test-looking clients | **WIPED from live, straight after the switch day** (Jake 2026-11-04: *"the old test records will be wiped i want the live portal clean"*, reversing his 2026-11-03 decision to keep them because team members were using them). With `VFO_ENVIRONMENT=live`, nothing forces 59524 to sandbox, so until the wipe a payment on it would be REAL money. **Before deleting:** Jake approves the exact list, including any money rows, and the team is told; a backup is confirmed; `smoke-pipelines.ps1` moves off 59524; the accounting screens' `isTestMember` filters and `constants/test-sandbox.ts` go with the records. Destructive SQL is asked first (TEAM_RULES §1). |
+| Test DATA on live: member 59524 and all its clients (422 `59524-001`, 423 `59524-PFT1`, 424 `59524-PFT2`, 440 `59524-PFT3` and their Partnership Fast Track rows; Jake 2026-11-04: "if those pft clients are under test member they can go too"), Test Specialist 6137, the 2 tax-planner test logins, onboarding test rows, test-looking clients | **WIPED from live, straight after the switch day** (Jake 2026-11-04: *"the old test records will be wiped i want the live portal clean"*, reversing his 2026-11-03 decision to keep them because team members were using them). With `VFO_ENVIRONMENT=live`, nothing forces 59524 to sandbox, so until the wipe a payment on it would be REAL money. **Before deleting:** Jake approves the exact list, including any money rows, and the team is told; a backup is confirmed; `smoke-pipelines.ps1` moves off 59524; the accounting screens' `isTestMember` filters and `constants/test-sandbox.ts` go with the records. Destructive SQL is asked first (TEAM_RULES §1). |
 | The habit of testing on live: running onboarding with your own email, test members, test clients | A NEW TEAM_RULES §2 line: **never test on live** — no test records, no own-email applicants, no sandbox; all testing on staging. |
 
 **What stays (not testing):** Jake's operational alerts. These are 54 notification rules plus the bells/Bcc in code (e.g. the CEO countersign bells, and the Bcc on templates 183 / 200) that name `jlatham@elitert.com` as the person who acts on them.
@@ -123,6 +123,8 @@ Jake: *"i want to turn off any form of testing in the live portal and the abilit
 4. The website deploy removes the toggles and the *Test member only* position.
 5. **Its own chat, after the wipe (Jake 2026-11-04), with a check straight after, not part of the switch day:** live's 19 crons are re-installed reading their key from live's Vault (the same shape as `supabase/cron/staging-install.sql`), so the secret API key no longer sits written into `cron.job` (found 2026-11-01).
 6. Smoke live.
+
+**As run 2026-11-04:** no backend code changed, and the sandbox secrets were already gone (§4b). The website release came first, then `VFO_ENVIRONMENT=live` on live, then smoke. Jake chose to wipe straight after, with no gap to manage (roadmap step 3).
 
 **Target:** S1-S4 by ~2026-11-05 and S5-S7 by ~2026-11-10. The headline is S4, the first moment anyone can click staging.
 
@@ -230,7 +232,7 @@ Jake: *"i want to turn off any form of testing in the live portal and the abilit
     - At 22:31 UTC staging.vfoportal.com served the new build (`index-Bcwr9LPG.js`): it calls staging only and carries the TEST label.
     - The 22:30 cron runs on v6 both returned 200.
     - Live's site still served its own build.
-- **Found:** staging's copy of `vfo-widget/vfo-widget.js` (copied from live in S3) still calls live's project. Members only embed it on their own sites, so nothing on staging loads it. Point it at staging when S5 builds *Refresh settings*.
+- **Found:** staging's copy of `vfo-widget/vfo-widget.js` (copied from live in S3) still calls live's project. Members only embed it on their own sites, so nothing on staging loads it. **Fixed 2026-11-04:** staging's bucket now holds a copy with staging's address and anon key, made from `widget/vfo-widget.js` (edge repo, `widget/README.md` says how). S5's *Refresh settings* must keep that rewrite, never copy live's file over it.
 
 ## 5. Safety built in (each one refused twice)
 
@@ -265,7 +267,7 @@ Enough to open every portal and start every program from step 1. Mid-stage scena
 - Google: one Workspace seat if the staging account is a Workspace user (D3).
 - Stripe sandboxes, BoldSign sandbox, GitHub Pages and DNS: free.
 
-## 8. Rule changes once it works (S7, per D18-D19)
+## 8. Rule changes once it works (S7, per D18-D19) — DONE 2026-11-04
 
 - **TEAM_RULES §4:** test deploys of a branch go ONLY to staging. Live gets releases from main and nothing else. The "until the staging project exists" exception is deleted.
 - **TEAM_RULES §8:** "there is one project and it is production" becomes two projects. Test SQL runs on staging; live SQL is for real-data fixes only. `apply_migration` runs on staging first and on live at release.

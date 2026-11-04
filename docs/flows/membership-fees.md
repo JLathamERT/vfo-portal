@@ -28,7 +28,7 @@
 
 Membership fees are one of the three money flows now billed on the **ERT** Stripe account (Elite Resource Team LLC); the other two are Growth Credit purchases and advisor/accountant onboarding. Full rules: [../integrations/stripe.md](../integrations/stripe.md#two-stripe-accounts-2026-09-11). Two of them apply here, and they answer different questions.
 
-**CONFIG MINTS.** `pipeline_sandbox_config` row **`MEMBER_MEMBERSHIP`** gained **`stripe_account`** (`'vfos'` default, `CHECK IN ('vfos','ert')`). It decides which account a **NEW** Stripe customer is minted on — nothing else. It is flipped **by SQL, never from the UI**; `SandboxModeToggle.jsx` shows a read-only `Stripe: VFO Services` / `Stripe: ERT` pill beside the LIVE/SANDBOX button.
+**CONFIG MINTS.** `pipeline_sandbox_config` row **`MEMBER_MEMBERSHIP`** gained **`stripe_account`** (`'vfos'` default, `CHECK IN ('vfos','ert')`). It decides which account a **NEW** Stripe customer is minted on — nothing else. It is flipped **by SQL, never from the UI**; `StripeAccountPill.jsx` shows a read-only `Stripe: VFO Services` / `Stripe: ERT` pill.
 
 > **LIVE ON ERT since 2026-09-11 ~16:10Z.** The row was flipped by SQL to **`stripe_account='ert'` with `sandbox_mode=false`**, so every NEW membership customer mints on ERT. The flip itself moved nothing already minted — that is what splitting the two rules buys — and the existing plans were then moved separately, later the same day: **`membership_stripe_remap` HAS BEEN RUN, 37 of 37 plans moved, 0 left on `vfos`** (below). **Membership fees now bill entirely on ERT.** The first ORGANIC ERT sweep pull is **Charles West 59046, `$1,500`, due 2026-09-12 at 12:00Z**, then Timothy Feitosa 58156 (`$1,042`) and Jeffery Hill 59123 (`$667`) on 2026-09-15.
 

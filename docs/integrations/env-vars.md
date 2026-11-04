@@ -23,7 +23,7 @@ Unset on live = today's behaviour byte for byte. The staging project sets them (
 
 | Var | Read by | Purpose |
 |---|---|---|
-| `VFO_ENVIRONMENT` | `isStagingEnvironment()` / `isLiveOnlyEnvironment()` / `environmentSandbox()` | `staging` on the staging project. `live` = live-only (never sandbox), set on the switch day (plan §4c). Unset = today: the pipeline toggles, the test-member force and each row's stamp decide sandbox. Any project that is not live is ALWAYS sandbox, whatever this says. |
+| `VFO_ENVIRONMENT` | `isStagingEnvironment()` / `isLiveOnlyEnvironment()` / `environmentSandbox()` | `staging` on the staging project. `live` on the live project since the switch day, 2026-11-04 = live-only, never sandbox (plan §4c). Unset would bring back the old rules: the pipeline toggles, the test-member force and each row's stamp decide sandbox. Any project that is not live is ALWAYS sandbox, whatever this says. |
 | `PORTAL_BASE_URL` | `PORTAL_BASE` (every emailed link, Stripe `success_url` / `cancel_url`) | `https://staging.vfoportal.com` on staging; unset = `https://vfoportal.com`. |
 | `STAGING_EMAIL_TO` | `utils/staging-email-guard.ts` | The staging team inbox (`staging@vfo-services.com`): where a staging email goes when it names no tester (the guard sends the rest to the tester, `integrations/gmail.md`). Missing on a non-live project = no email leaves (fails closed). |
 | `STAGING_TEST_CONNECT_ACCOUNT_ID` | `utils/staging-test-member.ts` | Staging only: the ONE sandbox Stripe Connect account every per-person test member (and the seed's Test Group) is paid out through. An account id, not a key. |
@@ -90,7 +90,7 @@ Vite-style (`import.meta.env`):
 
 | Var | Used by | Purpose |
 |---|---|---|
-| `VITE_API_URL` | 42 files (`grep -rl VITE_API_URL src`, 2026-11-02), [src/lib/api.js:1](src/lib/api.js) first | Override for the edge function URL. Falls back to hardcoded `https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api`. Production behavior unchanged when unset. |
+| `VITE_API_URL` | 42 files (`grep -rl VITE_API_URL src`, 2026-11-02), [src/lib/api.js:1](src/lib/api.js) first | Override for the edge function URL. Falls back to hardcoded `https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api`. Production behavior unchanged when unset. `npm run dev` and `npm run build:staging` set it to the test site through `.env.staging`; `npm run dev:live` leaves it unset. |
 | `VITE_SUPABASE_URL` | [src/lib/environment.js](src/lib/environment.js) `SUPABASE_URL` / `HEADSHOTS_URL` | The project behind storage links (headshots, logos, the website-widget embed). Unset = live's. |
 | `VITE_PORTAL_URL` | [src/lib/environment.js](src/lib/environment.js) `PORTAL_URL` | This website's own address, for links a screen shows or copies (the Tax Diagnostic public link). Unset = `https://vfoportal.com`. |
 | `VITE_SUPABASE_ANON_KEY` | `scripts/finish-staging-build.mjs` only | Staging's PUBLIC anon key, swapped into the staging build's files in place of live's (see below). |

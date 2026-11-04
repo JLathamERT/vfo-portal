@@ -177,7 +177,7 @@ ALLOWED_ORIGINS = [
 ]
 ```
 
-Set on every response. Adding a new frontend host requires editing the function and redeploying. **The staging website is accepted by the staging backend only** — live never lists it (2026-11-02).
+Set on every response. Adding a new frontend host requires editing the function and redeploying. **The staging website is accepted by the staging backend only** — live never lists it (2026-11-02). The dev server talks to the test site, so a dev server on a port above 5176 gets refused by CORS: stop a leftover one (`scripts/dev-servers.ps1`).
 
 ## The staging project (2026-11-02)
 

@@ -12,7 +12,7 @@
 |---|---|---|---|
 | 1 | **Prompts + rules** — `TEAM_RULES.md`, `ACCESS.md`, `CLAUDE.md` in both repos, `/start` `/handoff` `/wrapup`, the dev-server script, one PR per repo, deploy → smoke → test one step at a time | **SHIPPED 2026-11-01** | react #572, edge #333 (docs and prompts only) |
 | 2 | **Superadmin list + bigger smoke test** — `constants/superadmin.ts` (Jake + Paxton), the smoke script picks whoever runs it, 23 read-only checks | **SHIPPED 2026-11-01** | edge #334, react #573 · `vfo-admin-api` v1080 · `live-284-superadmin-list` |
-| 5 | **Staging / test mode** — a full second copy of the portal with fake data only. Its own plan: [plans/staging/README.md](../staging/README.md) | **S1-S4 SHIPPED** — part 1 2026-11-02 (S1-S3 + the S4 website), the rest of S4 2026-11-03 (CHANGELOG 2026-11-03 (c)) · S5, S6, S7, switch day: not started | §2 below |
+| 5 | **Staging / test mode** — a full second copy of the portal with fake data only. Its own plan: [plans/staging/README.md](../staging/README.md) | **S1-S4 SHIPPED** — part 1 2026-11-02 (S1-S3 + the S4 website), the rest of S4 2026-11-03 (CHANGELOG 2026-11-03 (c)) · S6 shipped 2026-11-04 · **S7 + switch day done 2026-11-04** · S5 not started | §2 below |
 | 3 | **Deploy button** — live releases through GitHub, not from a laptop | **SHIPPED 2026-11-04** — backend and website released and tagged through it (`backend-good-2026-11-04-v1092`, `live-290-deploy-button`); both guard checks tested in new chats | §3 below |
 | 4 | **OWED list → GitHub Issues** + a hub small enough to read in full | **NOT STARTED** — before Paxton starts (Jake 2026-11-04) | §3 below |
 | 6 | **Paxton's getting-started document** | **NOT STARTED** — on purpose last, so it describes the finished setup; must be done before he starts | §3 below |
@@ -25,7 +25,7 @@ The numbers are the 2026-10-31 phase numbers. Staging (5) was moved ahead of 3 a
 **Everything below is done before Paxton starts, about 2026-11-11 (Jake, 2026-11-04).** One chat each:
 
 1. **Paxton's accounts and access: a chat that walks Jake through §4**, one step at a time. It changes no code, so it runs at the same time as the chats below and doesn't hold them up. It comes first because the contract and laptop may take days.
-2. **Move testing fully to staging** (S7 + switch day, staging plan §4c). Includes fixing staging's `vfo-widget.js`, which still calls live.
+2. **DONE 2026-11-04. Move testing fully to staging** (S7 + switch day, staging plan §4c), including staging's `vfo-widget.js`.
 3. **Wipe the old test records from live**, straight after 2. Once live is live-only, a payment on Test Member 59524 would be REAL money. First: Jake approves the exact list, the team is told, a backup is confirmed, and the smoke test moves off 59524. The code's test-member filters go too. Staging is not touched. Details: staging plan §4c.
 4. **Set up live's 19 automatic jobs again**, as its own step, reading their key from the Vault, with a check straight after and another once they have run on schedule (staging plan §4c item 5).
 5. **The admin portal's Staging tab** (S5): Reset test data, Refresh settings from live, what is running. Must re-make each person's test member (`ensureStagingTestMember`) and clear its bells. The first thing to drop if time runs short: until it exists, Reset is by hand.
@@ -44,10 +44,10 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 | S2 | Backend isolation: `constants/environment.ts`, the staging email guard, URLs and Drive folders from settings | Shipped 2026-11-02 (v1086) |
 | S3 | Staging backend up: schema, buckets, settings, the 19 crons | Done 2026-11-02 |
 | S4 | Website on staging + the sandbox move + test data + the first full test | Website shipped 2026-11-02 (`live-288-staging-part1`). **2026-11-03:** sandbox move done (live holds no sandbox keys, smoke PASS on v1089; both Stripe sandboxes and BoldSign's sandbox report to staging); one test member per person (Jake 10001, Paxton 10002, made automatically with each admin login); client logins on the tester's tagged email; every staging email and bell goes to the tester (bells teal, "meant for: …", a staging-only Clear (test) on action bells); full test parts A and B PASS. **Shipped 2026-11-03** (CHANGELOG 2026-11-03 (c)); after the release staging is brought back to main (SESSION_WRAPUP Part 4E). |
-| S5 | A superadmin-only Staging tab: *Reset test data*, *Refresh settings from live*, what is running. Also staging's `vfo-widget.js` still calls live. | Not started |
+| S5 | A superadmin-only Staging tab: *Reset test data*, *Refresh settings from live*, what is running. | Not started |
 | S6 | Keep in step: a merge that changes backend code redeploys staging's backend, a merge that changes the website redeploys staging's website, a docs-only merge redeploys neither (Jake 2026-11-03); a drift check between the two databases, required at wrap-up; `smoke -Target staging` | Shipped 2026-11-04 |
-| S7 | Switch the rules: TEAM_RULES, CLAUDE.md, the starter and wrap-up so testing happens on staging only | Not started |
-| Switch day | Live becomes live-only (`VFO_ENVIRONMENT=live`, the sandbox toggles and "Test member only" removed). Test Member 59524 and live's other test records are then **wiped** (Jake 2026-11-04, §5). | Not started |
+| S7 | Switch the rules: TEAM_RULES, CLAUDE.md, the starter and wrap-up so testing happens on staging only | Done 2026-11-04 |
+| Switch day | Live becomes live-only (`VFO_ENVIRONMENT=live`, the sandbox toggles and "Test member only" removed). Test Member 59524 and live's other test records are then **wiped** (Jake 2026-11-04, §5). | Switch done 2026-11-04; the wipe is step 3 |
 
 **Staging keeps itself up to main from the merge on.** Live migrations, template changes and switch flips are still made on staging by hand the same day (TEAM_RULES §4), and the drift check proves it.
 
@@ -92,7 +92,7 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 **Open before building:**
 - `gh` is installed and signed in on Jake's computer (2026-11-04), not yet on Paxton's. Without it, someone presses the button on github.com. Two-step sign-in went on for Jake's GitHub account the same day.
 - `boldsign-webhook` never deploys from the button unless the person says so explicitly (CLAUDE.md).
-- Test deploys of a branch to staging stay a laptop deploy with `--project-ref` until S7 says otherwise.
+- Test deploys of a branch to staging stay a laptop deploy with `--project-ref` (TEAM_RULES §4).
 
 **Done when:** "deploy" in a chat releases main (backend and website) through the button, both tags appear on the released commits, a second press while one runs waits, a merge that changes backend code redeploys staging's backend by itself while a docs-only merge does not, and both guard checks are on and tested: a chat is blocked from deploying to live, and a push that changes `.github/` brings up the prompt.
 
@@ -148,6 +148,8 @@ Settled — build on these, don't reopen them.
 **2026-11-03 (Jake), on moving the testing:** "just moving all the testing to staging asap is fine. the team doesnt need the test member and tests right now it will just be a day or 2". So S7 + the switch day are the next chat after the deploy button.
 
 **2026-11-04 (Jake), on what comes before Paxton starts:** everything in "Order from here" (§1), including the Staging tab ("before") and OWED → Issues, with a chat to walk him through Paxton's accounts and access. On the old test records: "no th eold test records will be wiped i want the live portal clean". This reverses the 2026-11-03 decision to keep them.
+
+**2026-11-04 (Jake), on the switch:** "do not change the feature switches leave them as is"; reworking how they work may make sense later, now that features can be built on staging. "test memebr will be fully removed from live portal ... also all clients conected to test memebr". "we are switching and wipeing now. there is no risk they are all tests".
 
 **2026-11-04 (Jake), on GitHub Pro:** "No Pro, stay on the free plan. Keep the button's own main-only check. Extend the guard so no chat can push a branch that changes the button (.github/workflows) without my explicit word. Record this decision in the roadmap." Details in §3.
 

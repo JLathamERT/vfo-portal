@@ -69,7 +69,7 @@ The transfer is paid from ERT's balance with the ERT key of the PLAN's mode (`ER
 
 All eight rows are `sandbox_mode=false`. **Be precise about what the flip did: from that moment every NEW membership customer, GC checkout session and onboarding customer is minted on ERT — and every EXISTING row keeps its `'vfos'` stamp and keeps charging on VFO Services** until the copy + remap moves it. Four `UPDATE`s moved nothing that already existed, which is the entire payoff of keeping rule 1 and rule 2 apart.
 
-It is flipped **by SQL, deliberately not by the UI.** `SandboxModeToggle.jsx` renders a **read-only** `Stripe: VFO Services` / `Stripe: ERT` pill beside the LIVE/SANDBOX button, and it is **evidence-gated** — `hasAccount = sandboxConfig.stripe_account !== undefined`, so a loader that did not ship the column prints nothing rather than a confident "VFO Services" it has no evidence for. `specialist_revenue_load` (`actions/specialist-revenue/load.ts`) selects an **explicit column list** (`sandbox_mode, stripe_test_mode, boldsign_test_mode`) and therefore shows **no pill** — accepted, not a bug.
+It is flipped **by SQL, deliberately not by the UI.** `StripeAccountPill.jsx` renders a **read-only** `Stripe: VFO Services` / `Stripe: ERT` pill, and it is **evidence-gated** on `sandboxConfig.stripe_account !== undefined`, so a loader that did not ship the column prints nothing rather than a confident "VFO Services" it has no evidence for. `specialist_revenue_load` (`actions/specialist-revenue/load.ts`) selects an **explicit column list** (`sandbox_mode, stripe_test_mode, boldsign_test_mode`) and therefore shows **no pill** — accepted, not a bug.
 
 ### Rule 2 — THE ROW STAMP GOVERNS
 
