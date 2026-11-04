@@ -216,7 +216,7 @@ ACH deposit was still clearing — released by the deposit's own `payment_intent
 three meeting-reminder tiers and the deposit stall ladder.
 
 **Portal licensing L6b columns (2026-10-30, migrations `20261030120000` + `20261030150000`, additive on both deny-all tables).** Flow: [../flows/advisor-accountant-onboarding.md](../flows/advisor-accountant-onboarding.md) *The Tier 1 path*.
-- `tier1_flow_at` (timestamptz, both) — written ONCE at creation by `tier1FlowStamp` while the `tier1_onboarding` switch lets it; never backfilled. With the type below it is what puts a row on the Tier 1 path (`isTier1Onboarding`).
+- `tier1_flow_at` (timestamptz, both) — written ONCE at creation by `tier1FlowStamp`, on every new Associate / FC onboarding (the `tier1_onboarding` switch was removed 2026-10-30); never backfilled. With the type below it is what puts a row on the Tier 1 path (`isTier1Onboarding`).
 - `advisor_onboarding.advisor_type` (text, CHECK NULL or `'Financial Collaborator'`) — NULL = Catalyst, as before.
 - `accountant_onboarding.licence_paid_by` (text, CHECK NULL or `'accountant'` / `'advisor'`) — who pays a connected VFO Associate's $25; NULL = not chosen, no default (#469); written only by `save_accountant_licence_paid_by`.
 - `stripe_payment_method_id` (text, both) — the card / bank saved off-session at the month 1 payment; Membership Fees charges month 2 onwards on it.
@@ -281,7 +281,7 @@ One row per submission of Accounting → **Manually sent Stripe Connect Payment*
 | `destination` | text | not null. The Connect `acct_` id resolved **server-side** at send time (never from the browser). |
 | `amount` | numeric(12,2) | not null, CHECK `> 0`. The handler caps it at $50,000. |
 | `memo` | text | not null (≤ 200 chars in the handler). Lands in the transfer description + metadata and on the recipient-side payment. |
-| `sandbox` | boolean | not null, default `false`. The shared "MAP 1" sandbox toggle OR the test-member force (59524). |
+| `sandbox` | boolean | not null, default `false`. The shared "MAP 1" sandbox toggle OR `isTestSandboxMember` (the environment's answer). |
 | `status` | text | not null, default `'pending'`, **CHECK IN (`'pending'`, `'sent'`, `'failed'`)**. `pending` = inserted, Stripe not yet answered — **or a network drop left the outcome unknown: check Stripe before resending**; `sent` = transfer created; `failed` = refused (account not transfer-ready, or Stripe error). |
 | `stripe_transfer_id` | text | `tr_…` once `sent`. |
 | `error` | text | The refusal message (or the network-drop note on a `pending` row). |

@@ -46,12 +46,6 @@ import MemberBrandingCard from '../shared/MemberBrandingCard'
 import MemberProfileDetails from '../shared/MemberProfileDetails'
 import { STATUS_COLORS, statusColor } from '../shared/statusColors'
 
-// Members carrying the "VFO Reconciliation (Free)" type that ANY admin may still
-// open. 59524 is the standing sandbox-forced Test Member (#251) — it holds that
-// type only because the test account sits on the free tier, and locking it to
-// Jake + Paul would leave every other admin unable to exercise the test member.
-const RECONCILIATION_EXEMPT_MEMBERS = ['59524']
-
 // Detail-view tab sets. Advisors/accountants get the full set; Strategic Members
 // get a trimmed view: Profile (all sub-tabs, always shown), MSM limited to
 // Holistic + Tax Planning, plus Specialists + Showroom + CIQ (no Website Plugin /
@@ -381,7 +375,6 @@ function MemberDirectoryView({
   const canOpenReconciliation = !!_sess?.is_superadmin || (_sess?.email || '').toLowerCase() === 'platham@elitert.com'
   const reconciliationLocked = (m) => m.member_type === 'VFO Reconciliation (Free)'
     && !canOpenReconciliation
-    && !RECONCILIATION_EXEMPT_MEMBERS.includes(String(m.plugin_member_number ?? m.member_number ?? ''))
   const [deny, setDeny] = useState(null) // { x, y } screen coords of the last blocked click
   const denyTimer = useRef(null)
   useEffect(() => () => clearTimeout(denyTimer.current), [])

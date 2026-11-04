@@ -620,7 +620,7 @@ function LeadBox({ d, members, onChanged }) {
             </div>
           )}
           {intake.sandbox && (
-            <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '4px' }}>Test (sandbox) payment — it can only be linked to the Test Member.</div>
+            <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '4px' }}>Test (sandbox) payment.</div>
           )}
         </>
       )}

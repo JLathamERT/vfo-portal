@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState, useLayoutEffect } from 'react'
+import { IS_STAGING } from '../../lib/environment'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState, TableCard } from './automation/StepKit'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
@@ -437,7 +438,7 @@ export default function AutomationPanel({ section }) {
           { label: 'ACTIVE', value: pipelineData.filter(r => { const s = getCurrentStage(r); return s !== 'complete' && s !== 'closed' }).length, color: '#0095ff' },
           { label: 'COMPLETE', value: pipelineData.filter(r => getCurrentStage(r) === 'complete').length, color: '#16a34a' },
           { label: 'CLOSED', value: pipelineData.filter(r => getCurrentStage(r) === 'closed').length, color: '#ef4444' },
-          { label: 'SANDBOX', value: pipelineData.filter(r => r.sandbox).length, color: '#e06717' },
+          ...(IS_STAGING ? [{ label: 'SANDBOX', value: pipelineData.filter(r => r.sandbox).length, color: '#e06717' }] : []),
         ]}
       />
 

@@ -1,4 +1,5 @@
 import { useEffect, useState, useLayoutEffect } from 'react'
+import { IS_STAGING } from '../../lib/environment'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
 import StripeAccountPill from './StripeAccountPill'
@@ -179,7 +180,7 @@ export default function PipAutomationPanel() {
     { label: 'PAID', value: rows.filter(r => r.pip_payment_status === 'succeeded').length, color: '#0d9488' },
     { label: 'PENDING REVSHARE', value: rows.filter(r => r.pip_payment_status === 'succeeded' && !r.pip_rev_share_status?.startsWith('Completed')).length, color: '#db2777' },
     { label: 'COMPLETE', value: rows.filter(r => getCurrentStage(r) === 'complete').length, color: '#16a34a' },
-    { label: 'SANDBOX', value: rows.filter(r => r.sandbox).length, color: '#e06717' },
+    ...(IS_STAGING ? [{ label: 'SANDBOX', value: rows.filter(r => r.sandbox).length, color: '#e06717' }] : []),
   ]
 
   return (

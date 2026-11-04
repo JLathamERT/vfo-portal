@@ -34,7 +34,7 @@ After a return from Stripe (`?ciq_licence=done` / `?ciq_billing=done`, read once
 
 ## Money
 
-- **One Stripe customer per member** (`member_portal_billing`, per account + mode) and **one subscription per client** on it (decision 35). VFO Services account for now (decision 36), sandbox + account from the **TAX** `pipeline_sandbox_config` row plus the 59524 force. Every Stripe-visible text reads `VFO Portal - …`.
+- **One Stripe customer per member** (`member_portal_billing`, per account + mode) and **one subscription per client** on it (decision 35). VFO Services account for now (decision 36), sandbox from the environment, account from the **TAX** `pipeline_sandbox_config` row. Every Stripe-visible text reads `VFO Portal - …`.
 - **Price:** card = $25 + 2.9% + $0.30 = **$26.06**; bank = **$25.00** (decision 51, `ciqChargeCents`). Bank is Stripe sign-in only (`verification_method=instant`, #491) — first payment charged at once.
 - **Turn on** (`member_ciq_licence_start`): refuses a foreign / mirrored client (403), no login (400), a tax-covered client — a tax licence running OR queued, `liveTaxLicenceWindow` (409 + `covered_until`), an open subscription (409). A saved method → the subscription is created off-session on the fixed product `vfo_portal_ciq_licence` (idempotency `ciq-lic-<row id>`); none (or a decline) → the token page **`/portal-license-pay`** (card / bank tiles, PUBLIC `portal_license_pay_load` / `_checkout`, the row's `checkout_token` is the whole credential, #310) → Checkout `mode=subscription` → back to the member client page.
 - **Turn off / Keep it on**: `member_ciq_licence_stop` / `_resume` = `cancel_at_period_end` true / false.

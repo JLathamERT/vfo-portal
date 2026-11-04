@@ -61,7 +61,7 @@ Because [the predicate](#the-predicate--read-this-before-writing-any-3-payment-b
 
 ## The custom initial retainer
 
-`CUSTOM_SPLIT_CLIENT_IDS: number[] = [105, 62]` in `constants/tax-fee-process.ts` is a list of **`clients.id`** values allowed to override the initial retainer. **105 is Chris Colby (59481-002)** — the real client this exists for. **62 is the standing sandbox-forced Test Client** (member 59524, #251), kept on the list so the path stays click-testable.
+`CUSTOM_SPLIT_CLIENT_IDS: number[] = [105]` in `constants/tax-fee-process.ts` is a list of **`clients.id`** values allowed to override the initial retainer. **105 is Chris Colby (59481-002)** — the real client this exists for.
 
 **It moves exactly ONE boundary.** The 50:50 retainer/implementation split of the total is **unaffected** — `total_fee`, `retainer_amount` and `implementation_amount` come out identical to what the flat schedule would have written. Only where the retainer half is cut into initial and final moves.
 

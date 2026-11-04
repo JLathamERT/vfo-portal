@@ -25,7 +25,7 @@ moved from VFO Services to ERT.
   then reverted).
 - **No refunds** of Money Mapping once shares are allocated.
 - **Never ask a member to reply for a link** — the normal setup reminders do it.
-- **Test Member emails always land in Drafts.**
+- **Sandbox emails land in Drafts off the test site** (the test site ignores `draftOnly`).
 
 ## 1. Earning — `syncMoneyMappingEarnings` (`utils/money-mapping.ts`)
 
@@ -46,8 +46,7 @@ changed later never re-prices money already credited):
 | SpecRev | `specialist_revenue_lines.payout_status = 'money_mapping'`, `recipient_type='member'` | `member_share` | `specrev:<line>` |
 
 The owner is the client's `member_number` (MAP 1 falls back to the `client_ref` prefix). **Left out:**
-Test Member 59524 legs and sandbox SpecRev requests — the Test Member's balance comes only from
-adjustments.
+sandbox SpecRev requests.
 
 ## 2. The admin page — Accounting → Members → Money Mapping
 
@@ -58,8 +57,8 @@ the balance after each row and the ERT transfer status); **Adjust** (Add / Deduc
 deduct capped at the balance in the UI) and **Add a member** (a first positive adjustment).
 
 - `money_mapping_load` (`actions/money-mapping/ledger.ts`) — syncs first, then returns every member
-  with a ledger row (`earned`, `adjusted`, `spent`, `balance`, `entries`, `is_test`,
-  `revenue_decision`, their live plan's `pay_with_mm`), `totals` (Test Member left out), the
+  with a ledger row (`earned`, `adjusted`, `spent`, `balance`, `entries`,
+  `revenue_decision`, their live plan's `pay_with_mm`), `totals`, the
   member list for Add a member, and `sync_error`.
 - `money_mapping_adjust` — body `{ member_number, mode, amount, reason }`. `mode: 'add'` writes the
   signed amount (the UI sends Deduct as a negative add); refused if it would take the balance below

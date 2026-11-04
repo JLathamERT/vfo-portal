@@ -188,21 +188,20 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
   next nightly sweep. `transferLinkPulls` and `buildActivatedSchedule` were not touched — the
   legacy path is byte-identical by construction. **Year 2 needs no special handling:** the sweep's
   renewal pass already reads `plan.charge_day`, so it lands on the chosen day automatically.
-- **Membership sandbox — the global toggle, plus a per-member force for Test Member 59524
-  (2026-09-16, v857).** There is ONE `pipeline_sandbox_config` row `MEMBER_MEMBERSHIP` shared by
+- **Membership sandbox — the environment decides since 2026-11-04; before that the global toggle,
+  plus a per-member force for Test Member 59524 (2026-09-16, v857).** There is ONE `pipeline_sandbox_config` row `MEMBER_MEMBERSHIP` shared by
   the Advisor **and** Accountant panels, so flipping it globally exposes every member mid-setup:
   **while that toggle is ON, EVERY live setup/update link in the pipeline 400s with *"link is out
   of date"*** — the v619 mode guards compare each plan's stamped `sandbox` against the pipeline
   toggle, and every real plan is `sandbox=false`, so flipping it inverts the comparison for all of
   them at once (it bit Gary Watts on 2026-08-21, mid-test). Gotcha **#430**.
-  **That is why the test-member force is now member-keyed rather than a toggle flip.**
+  **That is why the test-member force was member-keyed rather than a toggle flip.**
   `integrations/sandbox-config.ts` gained the member twin of `loadSandboxConfigForClient`:
-  - `isTestSandboxMember(memberNumber)` — a constant check against `constants/test-sandbox.ts`,
-    no DB read (membership is keyed by `member_number`, which every caller already holds).
+  - `isTestSandboxMember(memberNumber)` — since 2026-11-04 the environment's answer for every
+    member alike (test site yes, live no), no DB read (membership is keyed by `member_number`, which every caller already holds).
   - `loadSandboxConfigForMember(supabase, pipelineName, memberNumber)` — resolves the global
-    config, then **forces sandbox ON and only ever ON** for a listed test member. Every other
-    member gets the UNCHANGED global result, so real plans stay byte-equivalent and this can
-    never weaken live behaviour. `sandboxEmail` and `stripeAccount` are preserved.
+    config as the environment decided it, and names no member. `sandboxEmail` and `stripeAccount`
+    are preserved.
 
   Swapped in at every member-keyed read: `send-setup-link.ts` (the site that **STAMPS**
   `plan.sandbox` at mint — the one that matters most), `setup-checkout.ts`, `setup-load.ts`,
@@ -835,7 +834,7 @@ Made ONLY by Create on a Tier 1 onboarding ([advisor-accountant-onboarding.md](a
 - **Pass 3c (new):** the $25 transfer backstop (below).
 - **End membership (30 days' notice)** — `membership_end_with_notice` (AUTH + `TAB_ACTIONS.accounting`, `actions/membership/end-with-notice.ts`): claims `ending_on` = today (ET) + 30 days and `auto_renew=false` first (two clicks cannot both run), cancels every scheduled row due after it (rows due on or before are still collected), drafts `MEMBERSHIP_end_of_membership|tier1` with the final-payment line. Refuses a plan that is not `tier1_monthly`, not active, or already ending.
 - **Refused** with `TIER1_PLAN_REFUSAL`: `membership_pause`, `membership_terminate`, `membership_next_year_save`, and `membership_plan_cancel`'s `auto_renew_off` / `auto_renew_on` (`cancel_now` still allowed).
-- ~~Members made from a `TEST_ONBOARDING_EMAILS` onboarding are forced to sandbox in the sweep~~ — **removed 2026-10-30 (c)** with the test-email rule: the sweep's test-plan check is Test Member 59524 only (`isTestSandboxMember`) *(v: 2026-10-31)*.
+- ~~Members made from a `TEST_ONBOARDING_EMAILS` onboarding are forced to sandbox in the sweep~~ — **removed 2026-10-30 (c)** with the test-email rule: the sweep's test-plan check is `isTestSandboxMember` only, the environment's answer since 2026-11-04 *(v: 2026-10-31)*.
 - **Panel** (`MembershipFeesPanel.jsx`): a teal `#0d9488` pill, $/month, the next payment, only past months + the next one, *Bills monthly on the Nth until …*, the End membership button; Pause / Terminate / auto-renew / next year hidden.
 
 ### The $25 VFO Portal licence is transferred to VFO Services (decision 106)
@@ -929,12 +928,11 @@ ask a member to reply for a link — the normal setup reminders do it** (Jake).
 IS NULL), so a plan started on Money Mapping is chased (business hours, 2 business days) until a
 method is saved. **Untested live** (OWED).
 
-**Test Member / sandbox emails are always Drafts** (2026-10-31). `draftGmail` / `deliverRaw` /
-`gmailDraftFetch` take `draftOnly`; every membership send site passes it for a sandbox run (Test
-Member 59524 or the pipeline in sandbox): setup link + update link, receipt, failure email, Send
+**Sandbox emails are Drafts off the test site** (2026-10-31). `draftGmail` / `deliverRaw` /
+`gmailDraftFetch` take `draftOnly`; every membership send site passes it for a sandbox run: setup link + update link, receipt, failure email, Send
 reminder email, renewal notice, next-year terms, End membership, renewal meeting outcome, the
 confirmation, GC emails, the arrears digest and the setup reminder — whatever the template's Send
-mode.
+mode. The test site ignores it (`honourDraftOnly`): each template's Draft/Send setting applies there.
 
 **Panel** (`MembershipFeesPanel.jsx`): a paid row is tinted yellow — `MM_TINT_FULL` (0.20) when paid
 in full by Money Mapping, `MM_TINT` (0.10) when MM paid part (a missed row stays red); the amount
