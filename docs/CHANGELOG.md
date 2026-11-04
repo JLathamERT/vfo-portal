@@ -8,6 +8,20 @@
 
 ---
 
+## 2026-11-04 (b) — Paxton's accounts and access: walked through, contract and laptop dropped, the handover moved to a Zoom — by Jake
+
+**What happened.** Step 1 of the roadmap's "Order from here": a chat walked Jake through §4 of `plans/two-person-workflow/README.md`. No code changed. Checked on the way: Paxton's admin login exists on live and staging, his test member 10002 exists on staging, he is on the superadmin list, and he is on none of the GitHub repos.
+
+**Decided (Jake).** The contract and the laptop are no longer setup tasks. His GitHub username and the passwords wait for a Zoom, which the getting-started document lists as steps, never with a value in it. Paxton isn't added to the Bitwarden vault, so what he needs from it is said out loud. BoldSign, Gmail, Sentry and Google Drive wait until he needs them.
+
+**Done.** Jake invited `pcalareso@vfo-services.com` to the Supabase organization Elite Resource Team as Developer, which covers live and staging. Whether he has accepted is not known yet.
+
+**Notes for the getting-started document (roadmap §3, Phase 6).** He accepts the Supabase invite, sets up a GitHub account under his vfo-services email, and is asked about his current Claude Code account. The tool list from the old laptop row moved there too.
+
+**Still open.** Stripe (Jena is handling it, its state not checked here) and who pays for his Claude Code account.
+
+**Docs.** The roadmap; `ACCESS.md` (the vault is Jake's); `TEAM_RULES.md`'s TEAM table (his superadmin row no longer says "once his admin login exists"). Hub: NOOP.
+
 ## 2026-11-04 — The deploy button and staging S6: GitHub releases live, the test site updates itself, a drift check, a repo guard — by Jake
 
 **What was built.** Edge repo: `release-live.yml` (first press: tip of main to live, main only, one at a time, records commit, version and who pressed), `tag-live.yml` (second press: tags the exact released commit), `staging-backend.yml` (a merge changing backend code redeploys the test site's backend; `boldsign-webhook` never), `scripts/staging-drift.sql`, `smoke-pipelines.ps1 -Target staging`. React repo: `release-website.yml` (with a `live-*`-only restore), `tag-website.yml` (numbers `live-N` itself), `staging-website.yml` (docs-only merges do nothing). Both repos: `.claude/hooks/deploy-guard.mjs` + `.claude/settings.json`. The deploy block ships off; the button check is on from merge. Rules, wrap-up (drift check required; 4C-4E through the button), starter (key-expiry check), `CLAUDE.md` and `ACCESS.md` (a Deploy keys section) changed with it.

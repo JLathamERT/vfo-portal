@@ -5,7 +5,7 @@
 ## The three places
 
 1. **Your own login** — every service that has team seats gets each person their own invite, never a shared login. Losing a person then means removing one seat, not changing a shared password.
-2. **The team Bitwarden vault** (organization *VFO*) — logins that only exist once and are shared, plus test-account passwords. Install the Bitwarden browser extension; it can sit beside a personal password manager.
+2. **Jake's Bitwarden vault** (organization *VFO*) — logins that only exist once and are shared, plus test-account passwords. Paxton isn't in the vault (Jake 2026-11-04): Jake tells him the ones he needs out loud on a call, never in writing.
 3. **Supabase → Edge Functions → Secrets** (project `ejpsprsmhpufwogbmxjv`) — the backend's API keys. Nobody needs these values on their own computer; the names and what reads each are in [integrations/env-vars.md](integrations/env-vars.md).
 
 ## Services
