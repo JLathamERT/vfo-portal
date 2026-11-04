@@ -1,0 +1,68 @@
+name: Update test site website
+
+# Every merge to main that changes the website republishes the test site
+# (staging S6, docs/plans/staging/README.md). Docs-only merges do not.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/deploy-button-staging-s6-63e403 # TEMP: first test only, removed before merge
+    paths-ignore:
+      - docs/**
+      - '**/*.md'
+      - .claude/**
+
+concurrency:
+  group: staging-website
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.14.0
+          cache: npm
+
+      - run: npm ci
+
+      # finish-staging-build.mjs refuses if the build still names anything live.
+      - run: npm run build:staging
+
+      - name: Publish to the test site
+        env:
+          STAGING_SITE_TOKEN: ${{ secrets.STAGING_SITE_TOKEN }}
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@users.noreply.github.com"
+          npx gh-pages -d dist --dotfiles \
+            --message "Test site website from $GITHUB_SHA" \
+            --repo "https://x-access-token:${STAGING_SITE_TOKEN}@github.com/JLathamERT/vfo-portal-staging.git"
+
+      - name: Prove the test site serves this build
+        run: |
+          bundle=$(grep -o 'index-[A-Za-z0-9_-]*\.js' dist/index.html | head -1)
+          for attempt in $(seq 1 30); do
+            if curl -s "https://staging.vfoportal.com/?check=$GITHUB_SHA" | grep -q "$bundle"; then
+              {
+                echo "### Test site website updated"
+                echo "- Commit: \`$GITHUB_SHA\`"
+                echo "- Serving: \`$bundle\`"
+                echo "- Merged by: \`$GITHUB_ACTOR\`"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "The test site is not serving $bundle after 10 minutes."
+          exit 1
