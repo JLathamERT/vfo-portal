@@ -8,6 +8,24 @@
 
 ---
 
+## 2026-11-04 (d) — Live's test records wiped: Test Member 59524, Test Specialist 6137, Test Group — by Jake
+
+**Why.** Roadmap step 3, Jake: "i want the live portal clean". Once `VFO_ENVIRONMENT=live` was set, a payment on 59524 would have been real money.
+
+**Deleted on live, in one transaction, on Jake's approval of the exact list.** Member 59524 and everything under it, clients 422, 423, 424 and 440 (tax plan 307, Fast Track rows 25-27, CIQ 90, 3 portal licences), its Growth Credits rows (balance 930.75, 1 monthly service, 8 redemptions), CIQ licence row 8, the billing row, Test Specialist 6137, planners 9 and 16 with their logins, Test Group, accountant onboardings 40, 42 and 43, the sandbox house account, 49 bells, 10 set-up tokens, 5 sessions, 5 storage files. Also removed by cascade and not itemised in the approved list: 11 training progress rows, 1 roleplay + 1 attempt, 2 growth plan partnerships, tracker entry 39 (it was listed), all 59524's (#733). Backup: Supabase's 2026-11-04 07:23 UTC backup, plus the rows and files saved to the chat's scratchpad first.
+
+**Real plans changed.** Plans 150 (Sandra Jones, live), 156 (Gwen Bostick, stopped) and 103 (Ekansh Bhatnagar, stopped, client lost) held a test planner or team member. Jake: "just remove the allocation dont give it to anyone". Planner / team member and the allocation date were cleared, and progress rows 1068, 1108 and 1842 deleted, so plan 150's allocate step reads not done. Their planner shares were "N/A — No Share Due", and money was untouched. Three bells on real clients that matched the test logins went too (1362, 1363, 2844).
+
+**Mistake, fixed the same day.** The 73 `document_numbers` rows were on the approved list and were deleted, without reading `tables/documents.md`, which says to keep them. Invoices fell from 139 to 103 and receipts from 190 to 153, and the next number comes from that count. Claude found it during the doc pass, Jake said "yes", and they were re-inserted with their original ids and dates before any document was issued (#732).
+
+**Stays, on Jake's word.** The nine test-looking clients under real members (they have no plans or logins), and the switches: `member_numbers` still lists 59524 on 8 rows and `FEATURE_TEST_MEMBER` is now a literal, both unread on either copy.
+
+**Code.** Edge: `constants/test-sandbox.ts` deleted; the sandbox helpers answer from the environment alone; the test-member filters gone from Growth Credits accounting, Money Mapping, the Payments ledger and the documents audit; the Tax Diagnostic's dev-server route gone (`isDevOrigin`, `isDiagnosticPickable`); `test_member` off the intake and holistic form responses; client 62 off `CUSTOM_SPLIT_CLIENT_IDS`; smoke checks member 11111 on live; `probe-staging-environment` updated. Website: the 59524 reconciliation exemption and the TEST tag gone; the SANDBOX counters show on the test site only (Jake); `CUSTOM_SPLIT_CLIENT_IDS` matches; a stale Tax Diagnostics note now reads "Test (sandbox) payment."
+
+**Checks.** After the wipe a search of every public table for the test identifiers matched only the 8 switch rows; the document numbers went back later. Member numbers: the next new one still follows 59529. `deno check` 0, action count 639, probe all 4 scenarios, both builds. Smoke on live (v1093, new script) and on the test site (v25): PASS (Jake). Test-site click-through and the live look: PASS (Jake). Branch test builds on the test site: v25, then v26 (client 62 removed, type-checked, not re-smoked; the release gets its own run). **Not exercised:** the admin panels at phone width.
+
+---
+
 ## 2026-11-04 (c) — All testing moves to the test site: S7 and the switch day — by Jake
 
 **Website.** `npm run dev` now talks to the test site (`vite --mode staging`), and `npm run dev:live` is live, for looking at real data only. The sandbox toggles are gone from all 10 automation panels (`SandboxModeToggle` deleted, the two private badge + modal pairs in `AutomationPanel` and `TaxAutomationPanel` deleted). The read-only "Stripe: ..." pill stays as `StripeAccountPill`, and MAP 1 and Tax gained it (Jake asked why they lacked it). Specialist Revenue shows neither, because its loader does not ship the account. The Tax Intake test-fill shows on the test site only. The Feature Switches screen and values are untouched (Jake).

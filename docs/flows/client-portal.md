@@ -13,7 +13,7 @@ The member's view of their client (`/member/client/:id`, Profile tab) carries a 
 `member_client_portal_access_send { client_id }` (members + admins; in NO gate list, confined by `denyIfNotOwnClient` right after the role check):
 
 1. Switch check on the client's member (403 off).
-2. Sandbox: `loadSandboxConfigForMember(sb, "TAX", member)` — the TAX toggle, plus the 59524 force (#251).
+2. Sandbox: `loadSandboxConfigForMember(sb, "TAX", member)` — the environment decides (test site: sandbox; live: never).
 3. **The login** — `ensureBasicPortalLogin` wraps L1's `ensureClientPortalLogin` (token `created_by='basic-portal'`):
    - no login → a `client_logins` row with a random passcode + a 30-day `/set-password` link → the email's **Set up my portal login** button;
    - an existing login **never set up** (every client setup token auto-minted — `portal-licence` / `basic-portal` — and none completed) → a FRESH 30-day link, so a client whose first link expired, or whose first email failed after the login was made, can still get in;

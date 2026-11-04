@@ -31,7 +31,7 @@ Shared helpers: `utils/client-connections.ts` (names, active rows, the owner's p
 
 `sendConnectedNotice` — fail-soft, never rolls the connection back (`email_result` records `sent | drafted | failed`):
 
-- **Email** — template `CLIENT_PORTAL / MEMBER_client_connected` (**Send** since 2026-11-02, migration `20261102150000`). To the mirrored member's `members.email`; their flagged `member_contacts` are Cc'd centrally. Subject *"[Owner Name] has mirrored [Client Name] to your portal - [Recipient Name]"* (the mirrored member's name, `withSubjectName`, since 2026-11-02), an **Open Client Overview** button to `/member?tab=client_overview`. Sandbox is keyed on the OWNER (`loadSandboxConfigForMember(sb, "TAX", owner)`), so a 59524 test is rerouted.
+- **Email** — template `CLIENT_PORTAL / MEMBER_client_connected` (**Send** since 2026-11-02, migration `20261102150000`). To the mirrored member's `members.email`; their flagged `member_contacts` are Cc'd centrally. Subject *"[Owner Name] has mirrored [Client Name] to your portal - [Recipient Name]"* (the mirrored member's name, `withSubjectName`, since 2026-11-02), an **Open Client Overview** button to `/member?tab=client_overview`. Sandbox is read for the OWNER (`loadSandboxConfigForMember(sb, "TAX", owner)`), and the environment decides it.
 - **Bell** — rule `MEMBER_client_connected` (FYI, `dedupe: "unread"`), title *"Client mirrored: <client> (from <owner>)"*, link `/member/client/<id>`, to the mirrored member's **`member_logins.email`** (the only address a member session's bell reads, `actions/notifications/load.ts`) — **no login, no bell**.
 
 ## 4. The member Client Overview tab (no switch)
@@ -58,4 +58,4 @@ Reads on the gate: `msm_load_client_home` (adds `mirrored: { owner_name }` and o
 
 ## 7. Tests
 
-`scripts/probe-l5-phase0-fence.ps1` (32 checks: own 200 / foreign 403 / admin 200 on the three loaders, all 22 writers 403 — preflights the fence before any write, #603) and `scripts/probe-l5-mirroring.ps1` (owner unchanged; the mirrored member gets 200 on every gated read with **no unmasked money / id / token key anywhere in any reply**, ERT hidden, PFT / a non-mirrored client / every write 403). Both need the owner (59524) and, for the second, the mirrored member's login, with Test Client 62 mirrored to them first.
+`scripts/probe-l5-phase0-fence.ps1` (32 checks: own 200 / foreign 403 / admin 200 on the three loaders, all 22 writers 403 — preflights the fence before any write, #603) and `scripts/probe-l5-mirroring.ps1` (owner unchanged; the mirrored member gets 200 on every gated read with **no unmasked money / id / token key anywhere in any reply**, ERT hidden, PFT / a non-mirrored client / every write 403). Both were written for owner 59524 and Test Client 62, deleted 2026-11-04: they need repointing at a test-site member and client before they run (the second also needs the mirrored member's login, with that client mirrored to them first).

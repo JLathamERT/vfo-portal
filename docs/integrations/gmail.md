@@ -226,7 +226,7 @@ A NEW pipeline label, shown in the Email Editor as section **"90 Day Plan"** (`E
 
 (`TRAINING_roleplay_intro|tax` was seeded and then deleted the same day — one intro per program, migration `20261002180000`.) **The Calendly booking links live in the intro bodies**, not in code — change them in the Email Editor. Tokens, substituted with replacer functions (#438): `[Member First]`, `[Member Name]`, `[Program]` (from the stored `intro_variant`), `[Facilitator First]`, `[Roleplay Date]` (MM/DD/YYYY), `[Roleplay Time]` (12-hour), `[Roleplay Timezone]`; an unknown `[Token]` is left literal. Ctx: `RECIPIENT` + `MEMBER` = the member's email, `FACILITATOR` = `constants/proactive-facilitators.ts` (Evan for program 1, Ian for program 2), `ASSIGNED_MSM` = `resolveAssignedMsmEmail` (none → the Cc is silently skipped).
 
-**Sandbox comes from `MEMBER_MEMBERSHIP`, not `TRAINING`.** There is no `TRAINING` row in `pipeline_sandbox_config`; the handler calls `loadSandboxConfigForMember(supabase, "MEMBER_MEMBERSHIP", member)`, so the **MEMBER_MEMBERSHIP toggle and `sandbox_email` govern these emails**, and Test Member 59524 is forced sandbox (#251). Flipping MEMBER_MEMBERSHIP live flips the roleplay emails live with it.
+**Sandbox comes from `MEMBER_MEMBERSHIP`, not `TRAINING`.** There is no `TRAINING` row in `pipeline_sandbox_config`; the handler calls `loadSandboxConfigForMember(supabase, "MEMBER_MEMBERSHIP", member)`, so the **environment decides sandbox and the MEMBER_MEMBERSHIP row supplies `sandbox_email`** for these emails.
 
 ## Email-template substitution
 

@@ -148,7 +148,7 @@ Admin-sent, one-time, any-amount **VFO Specialist Background Check payment reque
 | `confirmation_email_sent_at` | timestamptz | Once-only latch for `SPECIALIST_bgcheck_confirmation\|ach` (atomic claim). Cleared when the row is marked `failed`, so a re-pay by bank gets its own confirmation. |
 | `invoice_number` / `receipt_number` / `invoice_drive_id` / `receipt_drive_id` | text | Stamped by `automation_SPECIALIST_bgreqinvoicereceipt`. |
 | `invoice_email_sent_at` | timestamptz | Once-only latch for the invoice/receipt (atomic claim, released if the render or draft fails or throws). |
-| `sandbox` | boolean | not null default false. Stamped at send from `pipeline_sandbox_config` row `SPECIALIST_ONBOARDING`, forced true for `TEST_SANDBOX_EXPERT_IDS` (`constants/test-sandbox.ts`, `[6137]` = the production Test Specialist); every later Stripe key, recipient route and webhook mode check reads THIS, not the live config (#485). |
+| `sandbox` | boolean | not null default false. Stamped at send from `pipeline_sandbox_config` row `SPECIALIST_ONBOARDING` OR `isTestSandboxExpert` (the environment's answer); every later Stripe key, recipient route and webhook mode check reads THIS, not the live config (#485). |
 | `created_by` | text | Admin email. |
 | `created_at` / `updated_at` | timestamptz | default `now()`. |
 

@@ -108,8 +108,8 @@ Off-plan priority management was reorganized into two symmetric buckets, identic
 - The accountant variant of the whole feature (different question/action copy).
 
 ## Test fixture
-- **Member 59524** (advisor). Growth data is LEFT POPULATED (the user is mid-testing). Scoring requires an assigned admin.
-- Reset growth data via MCP: `DELETE FROM growth_plan_scores WHERE member_number='59524';` (cascades to actions + partnerships; `growth_plan_history` is FK-free → delete it separately). Member login for synthetic-session testing: `jake.latham11@icloud.com`.
+- **Member 59524** (advisor) was deleted from live 2026-11-04 with its data: use your test-site member. Scoring requires an assigned admin.
+- Reset growth data via MCP: `DELETE FROM growth_plan_scores WHERE member_number='<test-site member>';` (cascades to actions + partnerships; `growth_plan_history` is FK-free → delete it separately).
 
 ## Verification gates before declaring a phase done
 1. `npx vite build` clean (frontend) and/or `deno check --no-lock …/index.ts` = 0 (backend).

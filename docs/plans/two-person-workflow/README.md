@@ -26,7 +26,7 @@ The numbers are the 2026-10-31 phase numbers. Staging (5) was moved ahead of 3 a
 
 1. **Paxton's accounts and access: a chat that walks Jake through §4**, one step at a time. It changes no code, so it runs at the same time as the chats below and doesn't hold them up.
 2. **DONE 2026-11-04. Move testing fully to staging** (S7 + switch day, staging plan §4c), including staging's `vfo-widget.js`.
-3. **Wipe the old test records from live**, straight after 2. Once live is live-only, a payment on Test Member 59524 would be REAL money. First: Jake approves the exact list, the team is told, a backup is confirmed, and the smoke test moves off 59524. The code's test-member filters go too. Staging is not touched. Details: staging plan §4c.
+3. **DONE 2026-11-04. Wipe the old test records from live**, straight after 2. Once live is live-only, a payment on Test Member 59524 would be REAL money. First: Jake approves the exact list, the team is told, a backup is confirmed, and the smoke test moves off 59524. The code's test-member filters go too. Staging is not touched. Details: staging plan §4c.
 4. **Set up live's 19 automatic jobs again**, as its own step, reading their key from the Vault, with a check straight after and another once they have run on schedule (staging plan §4c item 5).
 5. **The admin portal's Staging tab** (S5): Reset test data, Refresh settings from live, what is running. Must re-make each person's test member (`ensureStagingTestMember`) and clear its bells. The first thing to drop if time runs short: until it exists, Reset is by hand.
 6. **Move the OWED list to GitHub Issues**, with the clean-up pass and a hub small enough to read in full (§3).
@@ -47,7 +47,7 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 | S5 | A superadmin-only Staging tab: *Reset test data*, *Refresh settings from live*, what is running. | Not started |
 | S6 | Keep in step: a merge that changes backend code redeploys staging's backend, a merge that changes the website redeploys staging's website, a docs-only merge redeploys neither (Jake 2026-11-03); a drift check between the two databases, required at wrap-up; `smoke -Target staging` | Shipped 2026-11-04 |
 | S7 | Switch the rules: TEAM_RULES, CLAUDE.md, the starter and wrap-up so testing happens on staging only | Done 2026-11-04 |
-| Switch day | Live becomes live-only (`VFO_ENVIRONMENT=live`, the sandbox toggles and "Test member only" removed). Test Member 59524 and live's other test records are then **wiped** (Jake 2026-11-04, §5). | Switch done 2026-11-04; the wipe is step 3 |
+| Switch day | Live becomes live-only (`VFO_ENVIRONMENT=live`, the sandbox toggles and "Test member only" removed). Test Member 59524 and live's other test records are then **wiped** (Jake 2026-11-04, §5). | Done 2026-11-04, wipe included |
 
 **Staging keeps itself up to main from the merge on.** Live migrations, template changes and switch flips are still made on staging by hand the same day (TEAM_RULES §4), and the drift check proves it.
 
@@ -152,6 +152,8 @@ Settled — build on these, don't reopen them.
 **2026-11-04 (Jake), on what comes before Paxton starts:** everything in "Order from here" (§1), including the Staging tab ("before") and OWED → Issues, with a chat to walk him through Paxton's accounts and access. On the old test records: "no th eold test records will be wiped i want the live portal clean". This reverses the 2026-11-03 decision to keep them.
 
 **2026-11-04 (Jake), on the switch:** "do not change the feature switches leave them as is"; reworking how they work may make sense later, now that features can be built on staging. "test memebr will be fully removed from live portal ... also all clients conected to test memebr". "we are switching and wipeing now. there is no risk they are all tests".
+
+**2026-11-04 (Jake), on the wipe:** the test planners on real plans 150, 156 and 103: "just remove the allocation dont give it to anyone". The nine test-looking clients under real members stay. The SANDBOX counters show on the test site only. Test document numbers were put back after being deleted by mistake ("yes"), because new numbers count them (GOTCHAS #732).
 
 **2026-11-04 (Jake), on GitHub Pro:** "No Pro, stay on the free plan. Keep the button's own main-only check. Extend the guard so no chat can push a branch that changes the button (.github/workflows) without my explicit word. Record this decision in the roadmap." Details in §3.
 

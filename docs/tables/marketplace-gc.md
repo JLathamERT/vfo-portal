@@ -55,7 +55,7 @@ Append-only credit ledger. `balance_after` is captured per-tx so audits don't ne
 | `actor_role` | text | **NEW 2026-10-02**, same migration. Nullable, CHECK `actor_role IN ('member','admin','system')`. Drives the History tab's **By** suffix: `member` → the name alone, `admin` → *"«name» (admin)"*, `system` → *"System (renewal)"*, NULL → *"—"*. |
 | `created_at` | timestamptz | default `now()` |
 
-**Read for Accounting → Growth Credits by `gc_load_accounting`, which since 2026-10-21 leaves out the Test Member (59524 and its `-` children) from the balances, the ledger and every total.**
+**Read for Accounting → Growth Credits by `gc_load_accounting`.**
 
 **Touched by:** `gc_load_transactions`, `gc_redeem`, `gc_add_credits`, `gc_deduct_credits`, `membership_gc_plan_save` + `automation_MEMBERSHIP_sweep` (type `membership`, 2026-10-21, via `utils/membership-gc.ts`), `gc_create_checkout` (after Stripe webhook confirms payment), `gc_update_redemption` (reject → `refunded` row), `automation_GC_recurring_sweep` (renewal `redeemed` rows).
 

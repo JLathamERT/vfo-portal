@@ -89,7 +89,7 @@ Many-to-many bridge linking a `client` to a `member_enrollments` row. Allows one
 
 ## `client_member_connections`
 
-**Client Mirroring** (portal licensing L5, 2026-10-12, migration `20261012120000_mirrored_clients.sql`): one row per (client, member the client is MIRRORED to). The client's owner stays `clients.member_number`; a row here lets one OTHER member read that client, view-only and money-masked. Behind the `mirrored_clients` Feature Switch, keyed on the client's OWNER (seeded Test member only, 59524). Not to be confused with `member_connections` (a member's normal partners, [members.md](members.md)). Flow: [../flows/client-mirroring.md](../flows/client-mirroring.md).
+**Client Mirroring** (portal licensing L5, 2026-10-12, migration `20261012120000_mirrored_clients.sql`): one row per (client, member the client is MIRRORED to). The client's owner stays `clients.member_number`; a row here lets one OTHER member read that client, view-only and money-masked. Behind the `mirrored_clients` Feature Switch, keyed on the client's OWNER (seeded Test member only, 59524; On for all since 2026-11-02). Not to be confused with `member_connections` (a member's normal partners, [members.md](members.md)). Flow: [../flows/client-mirroring.md](../flows/client-mirroring.md).
 
 | Column | Type | Notes |
 |---|---|---|
