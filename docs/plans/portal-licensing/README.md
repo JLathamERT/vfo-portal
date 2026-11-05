@@ -445,7 +445,7 @@ Gates: `deno check` 0 · action count 567 → 569 · build exit 0 · advisor STR
 - **The $25 (decision 106, supersedes 95-96's "marked only"):** after every paid month ERT transfers the $25 to VFO Services, a connected account OF ERT (`utils/tier1-licence-transfer.ts`; `member_payment_schedule.vfos_licence_transfer_*`; bell `TIER1_licence_transfer_failed`; membership sweep pass 3c). Live rows wait as `awaiting_link` until the live link exists — recipe and blocker in `docs/integrations/stripe.md` *VFO Services is ALSO a connected account OF ERT*. The Stripe text + `vfo_portal_licence_cents` marking (decision 96) is built as written.
 - **Templates:** 333-338 (onboarding), 339 / 340 (team), 341-356 (payment + Membership Fees) — all **Draft**; flip before go-live.
 - **Go-live order:** `member_tiers` On for all no later than `tier1_onboarding` (that also moves the pre-L6b FC / Associates and the other Tier 1 types to the reduced view). Each test Create takes a REAL next member number — wipe test members after every test.
-- **Tested** (Jake, sandbox): Direct, connected with the advisor paying, FC; End membership; each month 1's transfer. **Not tested:** ACH month 1, any month 2+ charge, the transfer failure bell + retry, the live link. Open items: the hub's OPEN/OWED (AD).
+- **Tested** (Jake, sandbox): Direct, connected with the advisor paying, FC; End membership; each month 1's transfer. **Not tested:** ACH month 1, any month 2+ charge, the transfer failure bell + retry, the live link. Open items: the GitHub Issues.
 
 ### L6 (earlier notes) — VFO Associate and Financial Collaborator portals
 
