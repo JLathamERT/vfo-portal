@@ -12,9 +12,9 @@
 |---|---|---|---|
 | 1 | **Prompts + rules** — `TEAM_RULES.md`, `ACCESS.md`, `CLAUDE.md` in both repos, `/start` `/handoff` `/wrapup`, the dev-server script, one PR per repo, deploy → smoke → test one step at a time | **SHIPPED 2026-11-01** | react #572, edge #333 (docs and prompts only) |
 | 2 | **Superadmin list + bigger smoke test** — `constants/superadmin.ts` (Jake + Paxton), the smoke script picks whoever runs it, 23 read-only checks | **SHIPPED 2026-11-01** | edge #334, react #573 · `vfo-admin-api` v1080 · `live-284-superadmin-list` |
-| 5 | **Staging / test mode** — a full second copy of the portal with fake data only. Its own plan: [plans/staging/README.md](../staging/README.md) | **S1-S4 SHIPPED** — part 1 2026-11-02 (S1-S3 + the S4 website), the rest of S4 2026-11-03 (CHANGELOG 2026-11-03 (c)) · S6 shipped 2026-11-04 · **S7 + switch day done 2026-11-04** · S5 not started | §2 below |
+| 5 | **Staging / test mode** — a full second copy of the portal with fake data only. Its own plan: [plans/staging/README.md](../staging/README.md) | **S1-S4 SHIPPED** — part 1 2026-11-02 (S1-S3 + the S4 website), the rest of S4 2026-11-03 (CHANGELOG 2026-11-03 (c)) · S6 shipped 2026-11-04 · **S7 + switch day done 2026-11-04** · S5 shipped 2026-11-05 | §2 below |
 | 3 | **Deploy button** — live releases through GitHub, not from a laptop | **SHIPPED 2026-11-04** — backend and website released and tagged through it (`backend-good-2026-11-04-v1092`, `live-290-deploy-button`); both guard checks tested in new chats | §3 below |
-| 4 | **OWED list → GitHub Issues** + a hub small enough to read in full | **NOT STARTED** — before Paxton starts (Jake 2026-11-04) | §3 below |
+| 4 | **OWED list → GitHub Issues** + a hub small enough to read in full | **SHIPPED 2026-11-05** — owed work is in Issues on `vfo-edge-functions`, the hub is under 50 KB | §3 below |
 | 6 | **Paxton's getting-started document** | **NOT STARTED** — on purpose last, so it describes the finished setup; must be done before he starts | §3 below |
 | — | **Jake's setup tasks for Paxton** (accounts, access) — not a chat | **PARTLY DONE** — walked through 2026-11-04; the rest waits for Stripe (Jena) and the Zoom | §4 below |
 
@@ -27,10 +27,11 @@ The numbers are the 2026-10-31 phase numbers. Staging (5) was moved ahead of 3 a
 1. **Paxton's accounts and access: a chat that walks Jake through §4**, one step at a time. It changes no code, so it runs at the same time as the chats below and doesn't hold them up.
 2. **DONE 2026-11-04. Move testing fully to staging** (S7 + switch day, staging plan §4c), including staging's `vfo-widget.js`.
 3. **DONE 2026-11-04. Wipe the old test records from live**, straight after 2. Once live is live-only, a payment on Test Member 59524 would be REAL money. First: Jake approves the exact list, the team is told, a backup is confirmed, and the smoke test moves off 59524. The code's test-member filters go too. Staging is not touched. Details: staging plan §4c.
-4. **DONE 2026-11-04, last proof due 2026-11-06. Set up live's 19 automatic jobs again**, reading their key from the Vault (staging plan §4c item 5). All 19 read the Vault and none holds the key. 18 of 19 have returned 200 on schedule. The Friday arrears digest (`membership-arrears-digest-weekly`) first runs 2026-11-06 at 9:45 am ET, and its proof is Paul getting the email. What is left is in the hub's OPEN / OWED.
+4. **DONE 2026-11-04, last proof due 2026-11-06. Set up live's 19 automatic jobs again**, reading their key from the Vault (staging plan §4c item 5). All 19 read the Vault and none holds the key. 18 of 19 have returned 200 on schedule. The Friday arrears digest (`membership-arrears-digest-weekly`) first runs 2026-11-06 at 9:45 am ET, and its proof is Paul getting the email. What is left is in Issue JLathamERT/vfo-edge-functions#351.
 5. **DONE 2026-11-05. The admin portal's Staging tab** (S5, staging plan §4g): Reset my test data, Reset everyone, Refresh settings from live, what is running, and a home page of things to know.
-6. **Move the OWED list to GitHub Issues**, with the clean-up pass and a hub small enough to read in full (§3).
+6. **DONE 2026-11-05. Move the OWED list to GitHub Issues**, with the clean-up pass and a hub small enough to read in full (§3).
 7. **Paxton's getting-started document**, last, so it describes the finished setup (§3). Needs 1-6.
+8. **After 7, the week of 2026-11-09, not needed before Paxton starts: make `vfo-portal` private on GitHub Pro** (Jake 2026-11-05, §5). Steps and options: Issue JLathamERT/vfo-edge-functions#353, in the private repo.
 
 Chats 2-6 run one at a time, in this order: each builds on the one before, and they edit the same docs.
 
@@ -44,7 +45,7 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 | S2 | Backend isolation: `constants/environment.ts`, the staging email guard, URLs and Drive folders from settings | Shipped 2026-11-02 (v1086) |
 | S3 | Staging backend up: schema, buckets, settings, the 19 crons | Done 2026-11-02 |
 | S4 | Website on staging + the sandbox move + test data + the first full test | Website shipped 2026-11-02 (`live-288-staging-part1`). **2026-11-03:** sandbox move done (live holds no sandbox keys, smoke PASS on v1089; both Stripe sandboxes and BoldSign's sandbox report to staging); one test member per person (Jake 10001, Paxton 10002, made automatically with each admin login); client logins on the tester's tagged email; every staging email and bell goes to the tester (bells teal, "meant for: …", a staging-only Clear (test) on action bells); full test parts A and B PASS. **Shipped 2026-11-03** (CHANGELOG 2026-11-03 (c)); after the release staging is brought back to main (SESSION_WRAPUP Part 4E). |
-| S5 | A superadmin-only Staging tab: *Reset test data*, *Refresh settings from live*, what is running. | Not started |
+| S5 | A superadmin-only Staging tab: *Reset test data*, *Refresh settings from live*, what is running. | Shipped 2026-11-05 |
 | S6 | Keep in step: a merge that changes backend code redeploys staging's backend, a merge that changes the website redeploys staging's website, a docs-only merge redeploys neither (Jake 2026-11-03); a drift check between the two databases, required at wrap-up; `smoke -Target staging` | Shipped 2026-11-04 |
 | S7 | Switch the rules: TEAM_RULES, CLAUDE.md, the starter and wrap-up so testing happens on staging only | Done 2026-11-04 |
 | Switch day | Live becomes live-only (`VFO_ENVIRONMENT=live`, the sandbox toggles and "Test member only" removed). Test Member 59524 and live's other test records are then **wiped** (Jake 2026-11-04, §5). | Done 2026-11-04, wipe included |
@@ -104,15 +105,19 @@ Full detail, decisions D1-D19 and the setup record: [plans/staging/README.md](..
 
 **Done when:** the hub has no OWED lines, every open item is an Issue, and the starter, handoff and wrap-up read and write Issues instead.
 
+**Done 2026-11-05 (Jake).** Every job in the old list and in Jake's Claude memory was audited against the code, git and live, and Jake approved the close-out list before anything was dropped. All Issues went in `vfo-edge-functions`, not split by repo, because `vfo-portal` is public (§5). The hub's cap changed from 250 lines to 50 KB: the list had been held under the old cap by joining it into 24 very long lines. The full text of the hub's gotchas moved to [GOTCHAS-curated-full.md](../../GOTCHAS-curated-full.md), and the switch notes to [flows/feature-switches.md](../../flows/feature-switches.md).
+
 ### Phase 6 — Paxton's getting-started document
 
 **Decided (Jake, 2026-11-01):** its own chat, written with Jake, **last** (so it describes the finished setup) but **before Paxton starts**. Sources: [TEAM_RULES.md](../../TEAM_RULES.md), [ACCESS.md](../../ACCESS.md), this plan.
+
+**Also in the document (2026-11-05):** owed work is in Issues on `vfo-edge-functions`, so he needs access to that repo and `gh` signed in to see the list.
 
 **Before the Zoom (Jake, 2026-11-04), also in the document:** he has been invited to Supabase at `pcalareso@vfo-services.com` and needs to accept it; he sets up a GitHub account under that same email; and it asks about his current Claude Code account, and whether he has one.
 
 **The Zoom with Jake (Jake, 2026-11-04), listed in the document as steps, never with a value in it (TEAM_RULES §2):** Paxton gives the username of that GitHub account and Jake invites him, with two-step sign-in on. Jake says the logins out loud, not in Zoom's chat and not on a recording: the live passcode, the staging password, the `staging@` inbox and the staging test password. Paxton then changes both portal passcodes in admin Settings, and signs in to `staging@` while still on the call, because Google may send a security check to Jake's ERT email.
 
-**It covers:** his accounts and access, his computer and tools (same folder paths, Node, Deno, Supabase CLI 2.78.1 (not v3, #716), Docker Desktop, `gh`, Claude Code), setting his git name (`git config --global user.name` / `user.email`) and adding it to the TEAM table, how chats work (`/start`, `/handoff`, `/wrapup`, "deploy", the smoke test), and staging (his test member 10002, the `staging@` inbox, his staging password).
+**It covers:** his accounts and access, his computer and tools (same folder paths, Node, Deno, Supabase CLI 2.78.1 (not v3, #716), Docker Desktop, `gh`, Claude Code), setting his git name (`git config --global user.name` / `user.email`) and adding it to the TEAM table, how chats work (`/start`, `/handoff`, `/wrapup`, "deploy", the smoke test), and staging (his test member 10002, the `staging@` inbox, his staging password). It also carries the spam filter tip for test-site emails (Issue JLathamERT/vfo-edge-functions#352).
 
 **Done when:** Jake has sent it to Paxton.
 
@@ -161,7 +166,9 @@ Settled — build on these, don't reopen them.
 
 **2026-11-04 (Jake), on Paxton's setup tasks:** "skip contract and skip laptop (remove both from plan as a whole)". Neither is a setup task any more. The tools he needs on his computer moved to the getting-started document (§3).
 
-**2026-11-04 (Jake), on proving the Friday job while out of office:** "i cant tell you to check on friday im ooo. set that to send mode and if it sends we will see it worked". The arrears digest went from Draft to Send on both copies. Whether it stays there is still his call (hub OWED).
+**2026-11-04 (Jake), on proving the Friday job while out of office:** "i cant tell you to check on friday im ooo. set that to send mode and if it sends we will see it worked". The arrears digest went from Draft to Send on both copies. Whether it stays there is still his call (Issue JLathamERT/vfo-edge-functions#351).
+
+**2026-11-05 (Jake), on GitHub Pro and making `vfo-portal` private:** "pro eventually but actually lets not do it right now its a next week thing ... this can be an after paxton doc thing". This changes the 2026-11-04 "No Pro" decision for a different reason: that one was about the deploy key. Until then, Issues go in the private `vfo-edge-functions` repo. Steps and options: Issue JLathamERT/vfo-edge-functions#353.
 
 **2026-11-04 (Jake), on the handover:** his GitHub username and the passwords wait for a Zoom, and that moves to the getting-started document (§3). "it doesnt sound like any bitwarden setup is needed": Paxton isn't added to the vault, and no password reaches him in writing. BoldSign, Gmail, Sentry and Google Drive wait until he needs them.
 

@@ -1,10 +1,10 @@
 # VFO TEAM RULES
 
-> **Every chat reads this file IN FULL before any work** — `CLAUDE.md` in both repos sends you here, and `/start` does too. It holds every STANDING rule for everyone who works on the VFO portal. The prompts in [prompts/](prompts/) hold procedures only; the hub ([SESSION_REFERENCE.md](SESSION_REFERENCE.md)) holds live state, the security invariants, the gotchas and the DOC MAP.
+> **Every chat reads this file IN FULL before any work** — `CLAUDE.md` in both repos sends you here, and `/start` does too. It holds every STANDING rule for everyone who works on the VFO portal. The prompts in [prompts/](prompts/) hold procedures only; the hub ([SESSION_REFERENCE.md](SESSION_REFERENCE.md)) holds live state, the security invariants, the gotchas and the DOC MAP; owed work lives in GitHub Issues (§6).
 >
 > **"The person"** below = whoever is running this chat: match `git config user.name` against the TEAM table. Every rule applies to every person. A preference that belongs to one person only lives in that person's own Claude memory, not here.
 >
-> Change this file like code — in a worktree, through a PR. Created 2026-11-01 for the two-person workflow from the standing rules of `prompts/SESSION_STARTER.md` and Jake's Claude memory; `#N` = an entry in [GOTCHAS.md](GOTCHAS.md). Updated 2026-11-04: the deploy button, staging's self-update, the repo guard. Updated 2026-11-01 (phase 2): the superadmin list, the smoke gate's wording. Updated 2026-11-03: plans of record (§6). Updated 2026-11-04: all testing moved to the test site (§2, §4, §8, §11), and live's test records wiped (§8, §11). Updated 2026-11-05: the Staging tab's Refresh settings (§4).
+> Change this file like code — in a worktree, through a PR. Created 2026-11-01 for the two-person workflow from the standing rules of `prompts/SESSION_STARTER.md` and Jake's Claude memory; `#N` = an entry in [GOTCHAS.md](GOTCHAS.md). Updated 2026-11-04: the deploy button, staging's self-update, the repo guard. Updated 2026-11-01 (phase 2): the superadmin list, the smoke gate's wording. Updated 2026-11-03: plans of record (§6). Updated 2026-11-04: all testing moved to the test site (§2, §4, §8, §11), and live's test records wiped (§8, §11). Updated 2026-11-05: the Staging tab's Refresh settings (§4); owed work moved to GitHub Issues (§6).
 
 ## TEAM
 
@@ -92,6 +92,11 @@
 - **Docs are maps, not gospel.** Read the doc the hub's DOC MAP names before touching an area, verify it against the code, and fix a doc found wrong in the same PR. Doc commits are separate from code commits.
 - Default to no code comments — only for a non-obvious WHY. There are no automated tests: smoke + click-through.
 - **Offer a handoff, never a wrap-up,** when a chat runs long or the next piece of work is a different shape (`/handoff`).
+- **Owed work lives in GitHub Issues in `vfo-edge-functions`, for both repos** (https://github.com/JLathamERT/vfo-edge-functions/issues, 2026-11-05). Not in the hub, and not only in anyone's Claude memory, which the other person's chats can't see. Before working an area, search it: `gh issue list --repo JLathamERT/vfo-edge-functions --state open --search "<area>" --limit 30`.
+  - **File an Issue** for any job still open when a chat ships, or that someone raises and nobody is doing now: one Issue per job that can close on its own, with proofs from one feature as a checklist. No password, key or token in one (§2).
+  - **Labels:** `owed` a job to do · `watch` waits on a real event · `parked` not fixed without fresh approval · `decision` needs a person's call · `needs-check` not proven either way · `money` · `security` · `website` · `backend` · `from-hub` moved from the old list.
+  - **The PR that finishes one closes it:** `Fixes #N` from the edge repo, `Fixes JLathamERT/vfo-edge-functions#N` from `vfo-portal`. After the merge, check it closed.
+- **`vfo-portal` is a public repo** until Issue JLathamERT/vfo-edge-functions#353 is done. Never file an Issue there, and put no client name, amount or personal detail in new text there: docs, commit messages, PRs or branch names. That detail goes in the Issue, in the private repo.
 - **Work that spans chats follows a plan of record** in `docs/plans/<name>/README.md`, and that file — not anyone's Claude memory, which the other person's chats can't see — says where the work stands. A chat on a planned piece reads the plan first and says which step it is on; the PR that ships a step updates that step's status in the plan, and a decision the person makes goes into the plan with its date. The team's own setup (staging, the deploy button, OWED → Issues, Paxton's start) is [plans/two-person-workflow/README.md](plans/two-person-workflow/README.md) (2026-11-03).
 
 ## 7. TALKING TO THE PERSON
