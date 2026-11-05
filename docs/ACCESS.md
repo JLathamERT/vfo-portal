@@ -41,4 +41,6 @@ The deploy button's keys sit in GitHub secrets, which nobody can read back: not 
 | GitHub token `deploy-staging-website` | `STAGING_SITE_TOKEN`, `vfo-portal` | Contents read-write on `vfo-portal-staging` only | 2027-11-01 | The test site's website stops updating. Live is not affected |
 | Supabase token `github-deploy-live` | `SUPABASE_TOKEN_LIVE`, `vfo-edge-functions` | Edge Functions read-write on VFO Showroom only | 2027-11-01 | The backend button can't release |
 
+`STAGING_EXPORT_KEY`, the Staging tab's Refresh key, is a Supabase secret on both projects, not a GitHub one, and has no expiry ([env-vars.md](integrations/env-vars.md)).
+
 **To replace one (Jake, one step at a time):** make the new key with the same name and access at https://supabase.com/dashboard/account/tokens (use Generate token, not the legacy one) or https://github.com/settings/personal-access-tokens/new, expiring as late as allowed (a year at most). Then run `gh secret set <secret name> --repo JLathamERT/<repo>` and paste it at the prompt. Update the date above in a PR, and delete the old key.
