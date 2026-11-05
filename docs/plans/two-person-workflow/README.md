@@ -28,7 +28,7 @@ The numbers are the 2026-10-31 phase numbers. Staging (5) was moved ahead of 3 a
 2. **DONE 2026-11-04. Move testing fully to staging** (S7 + switch day, staging plan §4c), including staging's `vfo-widget.js`.
 3. **DONE 2026-11-04. Wipe the old test records from live**, straight after 2. Once live is live-only, a payment on Test Member 59524 would be REAL money. First: Jake approves the exact list, the team is told, a backup is confirmed, and the smoke test moves off 59524. The code's test-member filters go too. Staging is not touched. Details: staging plan §4c.
 4. **DONE 2026-11-04, last proof due 2026-11-06. Set up live's 19 automatic jobs again**, reading their key from the Vault (staging plan §4c item 5). All 19 read the Vault and none holds the key. 18 of 19 have returned 200 on schedule. The Friday arrears digest (`membership-arrears-digest-weekly`) first runs 2026-11-06 at 9:45 am ET, and its proof is Paul getting the email. What is left is in the hub's OPEN / OWED.
-5. **BUILT 2026-11-05. The admin portal's Staging tab** (S5, staging plan §4g): Reset my test data, Reset everyone, Refresh settings from live, what is running, and a home page of things to know. Reset is proven; Refresh's two proofs wait for the live release, on Jake's "deploy".
+5. **DONE 2026-11-05. The admin portal's Staging tab** (S5, staging plan §4g): Reset my test data, Reset everyone, Refresh settings from live, what is running, and a home page of things to know.
 6. **Move the OWED list to GitHub Issues**, with the clean-up pass and a hub small enough to read in full (§3).
 7. **Paxton's getting-started document**, last, so it describes the finished setup (§3). Needs 1-6.
 
