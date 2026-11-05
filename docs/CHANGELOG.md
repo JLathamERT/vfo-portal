@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-05 (c) — The Staging tab's untested list cleared, and three Reset gaps fixed — by Jake
+
+**Why.** Jake went through everything the first entry below lists as not exercised, on the test site.
+
+**Fixed (test-site code only, so no live release).** Each came from these tests, in Reset my test data. It left a specialist's or planner's filled-in details, such as the bio, because it restored only the fields it writes when making them. It left the specialist's showroom folder. It left a Premium licence's invoice and receipt numbers, which belong to the subscription and not the client (`INV-PREM-...`).
+
+**Passed.** The deposit return from the Tax Planning tab by card and from the Tax Diagnostic tab by bank transfer, and an emailed link in a private window keeping the thank-you. Reset cancelling a real sandbox subscription, confirmed in Stripe, and clearing a specialist's work, with Paxton's rows staying. Reset everyone refusing a temporary unlisted table with nothing wiped; the table was dropped and the structure fingerprints match again. A non-superadmin not seeing Refresh, and the backend answering 403. A changed admin password opening the member, specialist, planner, team member and client logins. The group's setup email reaching its owner. `phoneAudit` on the Staging screens at 390 and 360.
+
+**Known quirk.** The old password also keeps working on those logins, because each keeps its own hash from when it was made. Test site only.
+
+---
+
 ## 2026-11-05 (b) — Refresh proven against live, and two false changes removed — by Jake
 
 **Why.** The first Check against live listed 39 FAQ rows and 17 template files. The FAQ list was mostly real: on 2026-11-03 a new question was added on live, which moved 31 questions down one place and stamped all 40 rows. The files were a false alarm (#738), and 8 of the rows had only a new stamp.
