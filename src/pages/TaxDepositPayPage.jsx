@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import TokenShell from '../components/shared/TokenShell'
+import { getSession } from '../lib/api'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -15,6 +16,17 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.su
 //
 // Structure modelled on BgRequestPay (SpecialistPayPage.jsx); the choice cards and
 // their copy are TaxPayPage.jsx's. Raw fetch like every other token page. No emoji.
+// A member who paid in the tab they are logged in on goes back to the portal, to the
+// tab they started from (Jake 2026-11-05, like Growth Credits). The session lives in
+// sessionStorage, so a member paying from an emailed link in a new tab is not logged
+// in here and keeps this page's thank-you (2026-10-13: it needs no login).
+function memberPortalReturn(ach) {
+  const achFlag = ach ? '&ach=1' : ''
+  return (sessionStorage.getItem('memberActiveTab') || '').startsWith('msm_')
+    ? `/member?intake=1&paid=1${achFlag}`
+    : `/member?tab=tax_diagnostic&deposit_paid=1${achFlag}`
+}
+
 export default function TaxDepositPayPage() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') || ''
@@ -39,6 +51,10 @@ export default function TaxDepositPayPage() {
         const d = await res.json().catch(() => ({}))
         if (!live) return
         if (!res.ok || d.error) { setError(d.error || 'This link is not valid.'); setStatus('error'); return }
+        if (returnedPaid && d.payer === 'member' && getSession()?.role === 'member' && !['not_ready', 'closed', 'waived'].includes(d.state)) {
+          window.location.replace(memberPortalReturn(returnedAch))
+          return
+        }
         setData(d)
         setStatus('ready')
       } catch {

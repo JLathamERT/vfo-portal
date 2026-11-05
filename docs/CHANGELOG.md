@@ -8,6 +8,22 @@
 
 ---
 
+## 2026-11-05 — The Staging tab: reset, refresh, a login for every role; tax deposits return to the member portal — by Jake
+
+**Why.** Roadmap step 5 (S5), before Paxton starts. Until now a reset was by hand, nothing could copy settings from live, and a tester had no planner or specialist login of their own.
+
+**Built, test site only.** A Staging tab right of More, and a home page of things to know in place of the KPI cards. Reset my test data for any admin, Reset everyone for superadmins, Refresh settings from live with a preview, and what is running. Every admin now gets a member, clients, specialist, tax planner, team member and group, on their admin password. Bells show only in the admin account. Details and decisions: staging plan §4g, roadmap decisions 2026-11-05. Backend test builds v28-v36. No DDL, no new table, no email-template change, `boldsign-webhook` code not touched (the secret write in the next paragraph bumped the test site's copy from version 2 to 3, with the same checksum).
+
+**Built, reaches live at release.** `staging_settings_export` (read-only, refuses without the key). Jake is off the Proactive Facilitator list (the client dropdown and 3 backend maps); no live client had him. A member paying a tax deposit on the tab they're logged in on now returns to the portal with a confirmation, like Growth Credits; everyone else keeps the thank-you page.
+
+**What broke on the way.** The first Reset my test data left a client's upload link behind, because it isn't a real foreign key (#736); caught by the row check, fixed before the real-plan test. A throwaway key and `STAGING_EXPORT_URL` were set on the test site to test the export against itself. Two real documents were uploaded to test vaults during testing and were deleted by Reset; the home page now says fake data only.
+
+**Proven on the test site (Jake clicking, Claude checking rows).** Reset everyone twice in a row landed identical rows, new accounts included, with settings, sandbox rows, admin logins, widget, cron jobs and Vault unchanged and every job call 200. Reset my test data on a real plan (diagnostic, card deposit, planner and team member allocated, deck generated, vault file) left nothing behind, kept Paxton's rows identical, and the next deposit got valid unique numbers. A non-superadmin can't see Reset everyone and the backend answers 403. Adding and deleting an admin makes and removes the whole set. The export's refusals passed against the test site. The member portal return passed from the Tax Diagnostic tab by card. Phone and desktop looked at by Jake.
+
+**Not exercised.** Refresh against live and Apply (they need the release, so they are OWED). The deposit return from the Tax Planning tab and by ACH, and an emailed link keeping the thank-you. Reset cancelling a real sandbox subscription, and clearing a specialist's own work. Reset everyone refusing an unlisted table. A non-superadmin being refused Refresh. `phoneAudit` was not run.
+
+---
+
 ## 2026-11-05 — Live's 19 scheduled jobs read their key from the Vault — by Jake
 
 **Why.** Roadmap step 4. Live's jobs each had the secret API key written into `cron.job`, found 2026-11-01. Now each reads it at run time from the Vault secret `cron_api_key`, the same shape as the test site.

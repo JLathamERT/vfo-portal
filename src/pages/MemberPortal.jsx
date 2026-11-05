@@ -46,6 +46,8 @@ export default function MemberPortal() {
     if (qs.get('intake')) return 'msm_tax'
     // The Client Mirroring email's Open Client Overview button (L5).
     if (qs.get('tab') === 'client_overview') return 'client_overview'
+    // Back from paying a tax deposit started on the Tax Diagnostic tab.
+    if (qs.get('tab') === 'tax_diagnostic') return 'tax_diagnostic'
     return sessionStorage.getItem('memberActiveTab') || 'profile'
   })
   const [showSettings, setShowSettings] = useState(false)

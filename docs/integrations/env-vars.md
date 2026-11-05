@@ -27,6 +27,8 @@ Unset on live = today's behaviour byte for byte. The staging project sets them (
 | `PORTAL_BASE_URL` | `PORTAL_BASE` (every emailed link, Stripe `success_url` / `cancel_url`) | `https://staging.vfoportal.com` on staging; unset = `https://vfoportal.com`. |
 | `STAGING_EMAIL_TO` | `utils/staging-email-guard.ts` | The staging team inbox (`staging@vfo-services.com`): where a staging email goes when it names no tester (the guard sends the rest to the tester, `integrations/gmail.md`). Missing on a non-live project = no email leaves (fails closed). |
 | `STAGING_TEST_CONNECT_ACCOUNT_ID` | `utils/staging-test-member.ts` | Staging only: the ONE sandbox Stripe Connect account every per-person test member (and the seed's Test Group) is paid out through. An account id, not a key. |
+| `STAGING_EXPORT_KEY` | `actions/staging/settings-export.ts`, `actions/staging/refresh.ts` | The shared key for the Staging tab's Refresh settings. The same value on live and the test site, and never held anywhere else: to replace it, set a new one on both. Unset on live = the export refuses everything. Setting it bumps every function's version on that project (#485). |
+| `STAGING_EXPORT_URL` | `actions/staging/refresh.ts` | Test site only, and only for testing: the endpoint Refresh reads. Unset = live's `vfo-admin-api`. |
 | `SPECIALIST_DRIVE_ROOT_ID` | `SPECIALIST_DRIVE_ROOT` (specialist bg / licence receipts) | The Drive folder that holds "VFO Specialist Onboarding". Unset = live's own folder, **on live only** — a test copy never files into live's Drive. |
 
 ### Stripe

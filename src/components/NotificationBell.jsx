@@ -2,11 +2,18 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession } from '../lib/api'
 import { formatDate } from '../lib/dates'
+import { IS_STAGING } from '../lib/environment'
 import { splitTestBell, TEST_BELL_TEAL, TEST_BELL_TINT } from './shared/testBell'
  
 // The "View all" link opens /admin?tab=notifications, a page only the admin
 // portal has. Portals that mount the bell without one hide the link.
 const VIEW_ALL_HIDDEN_ROLES = ['tax_planner', 'member']
+
+// Test site only: every bell routes to the tester's admin account (stagingBellRoute,
+// Jake 2026-11-05: all or nothing). A member login shares the admin's email, so it
+// would load the same list; these portals load nothing and say where the bells are.
+const TEST_BELL_NOTE = 'While testing, notifications for all your test accounts arrive in your admin account, so check the bell there.'
+const showsTestBellNote = () => IS_STAGING && VIEW_ALL_HIDDEN_ROLES.includes(getSession()?.role)
 
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState([])
@@ -48,6 +55,7 @@ export default function NotificationBell() {
   }, [])
  
   async function loadNotifications() {
+    if (showsTestBellNote()) return
     try {
       const data = await callApi('load_notifications')
       setNotifications(data.notifications || [])
@@ -163,6 +171,11 @@ export default function NotificationBell() {
               )}
             </span>
           </div>
+          {showsTestBellNote() && (
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--vfo-tint-deep)', background: TEST_BELL_TINT, color: TEST_BELL_TEAL, fontSize: '12px', fontWeight: 600, lineHeight: 1.45 }}>
+              {TEST_BELL_NOTE}
+            </div>
+          )}
 
           {count === 0 ? (
             <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--vfo-muted)', fontSize: '13px' }}>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useLayoutEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useState, useLayoutEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { getSession, clearSession, loadCachedData, hasCachedData, getLastSeen, setLastSeen } from '../lib/api'
 import { usePortalTheme } from '../lib/theme'
@@ -9,6 +9,7 @@ import MemberOverviewPanel from '../components/admin/MemberOverviewPanel'
 import ClientOverviewPanel, { CLIENT_OVERVIEW_SECTION_KEY } from '../components/admin/ClientOverviewPanel'
 import FaqEditorPanel from '../components/admin/FaqEditorPanel'
 import FeatureSwitchesPanel from '../components/admin/FeatureSwitchesPanel'
+import { IS_STAGING } from '../lib/environment'
 import TaxDiagnosticsPanel from '../components/admin/TaxDiagnosticsPanel'
 import AdminEditor from '../components/admin/AdminEditor'
 import AdminSettings from '../components/admin/AdminSettings'
@@ -54,6 +55,10 @@ import NotificationsPage from '../components/admin/NotificationsPage'
 import GrowthCreditsRedemptionsPage from '../components/admin/GrowthCreditsRedemptionsPage'
 import { DirectoryListSkeleton } from '../components/shared/Skeleton'
 
+// A staging build only: a live build holds none of this tab's code.
+const StagingPanel = IS_STAGING ? lazy(() => import('../components/admin/StagingPanel')) : null
+const StagingHome = IS_STAGING ? lazy(() => import('../components/admin/StagingHome')) : null
+
 // Tabs a member profile's "Back to list" may return to when the profile was
 // opened from them (openMemberProfile's `origin`). Every other origin keeps the
 // ordinary Back: the member's own directory list. Accounting returns to the section
@@ -93,6 +98,7 @@ export default function AdminPortal() {
     if (t === 'faq_editor' && !canSeeTab('faq_editor')) return null
     if (t === 'tax_diagnostics' && !canSeeTab('tax_diagnostics')) return null
     if (t === 'feature_switches' && !session?.is_superadmin) return null
+    if (t === 'staging' && !IS_STAGING) return null
     if (t === 'members') return 'advisors'
     // Legacy: the standalone Payments tab is now a sub-tab of Accounting.
     if (t === 'payments') return 'accounting'
@@ -184,6 +190,7 @@ export default function AdminPortal() {
     if (tab === 'growth_credits' && !canSeeTab('growth_credits')) return
     if (tab === 'tax_diagnostics' && !canSeeTab('tax_diagnostics')) return
     if (tab === 'feature_switches' && !session?.is_superadmin) return
+    if (tab === 'staging' && !IS_STAGING) return
     // The diagnostic bell carries its row id so the queue can open that card.
     if (tab === 'tax_diagnostics' && params.get('diag')) {
       // A member-portal form's card is keyed `portal-<intake id>` (2026-10-13).
@@ -414,6 +421,14 @@ export default function AdminPortal() {
     setShowSettings(false)
   }
 
+  function selectStaging() {
+    setActiveTab('staging')
+    sessionStorage.setItem('adminActiveTab', 'staging')
+    setNavClickCount(c => c + 1)
+    setShowEditor(false)
+    setShowSettings(false)
+  }
+
   function selectFeatureSwitches() {
     setActiveTab('feature_switches')
     sessionStorage.setItem('adminActiveTab', 'feature_switches')
@@ -481,6 +496,7 @@ export default function AdminPortal() {
     if (tab === 'faq_editor') return selectFaqEditor()
     if (tab === 'tax_diagnostics') return selectTaxDiagnostics()
     if (tab === 'feature_switches') return selectFeatureSwitches()
+    if (tab === 'staging') return selectStaging()
   }
 
   return (
@@ -514,7 +530,8 @@ export default function AdminPortal() {
               <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2.5px', marginBottom: '10px' }}>Welcome back</p>
               <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.02em', fontSize: '38px', color: 'var(--vfo-heading)', margin: 0 }}>{session.name}</p>
               <div style={{ width: '46px', height: '4px', borderRadius: '99px', background: '#fb895a', margin: '18px auto 0' }} />
-              {!loading && (() => {
+              {StagingHome && <Suspense fallback={null}><StagingHome /></Suspense>}
+              {!StagingHome && !loading && (() => {
                 // Mirrors MemberKpiPanel: null status counts as Active, and the
                 // separate buckets (advisor: VFO Reconciliation (Free); accountant:
                 // Team Member) are excluded so these match the KPI Active counts.
@@ -573,6 +590,10 @@ export default function AdminPortal() {
 
           {activeTab === 'feature_switches' && session?.is_superadmin && (
             <FeatureSwitchesPanel />
+          )}
+
+          {activeTab === 'staging' && StagingPanel && (
+            <Suspense fallback={null}><StagingPanel session={session} /></Suspense>
           )}
 
           {activeTab === 'tax_diagnostics' && canSeeTab('tax_diagnostics') && (

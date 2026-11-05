@@ -9,7 +9,7 @@ Written 2026-10-31 (Jake + Claude, planning chat — branches `claude/phase-5-st
 - **A second, complete copy of the portal**: its own Supabase project (database, `vfo-admin-api`, `boldsign-webhook`, storage, crons, secrets) and its own copy of the website at its own address.
 - **Fake data only.** Never a copy of a real client, member, specialist, planner, login, password or document.
 - **It cannot reach live money, live email or live records**, because it holds no live key at all. That is by construction, not by care.
-- **Settings come from live** (email templates, notification rules, feature switches, programs, agreement PDFs…) when someone presses *Reset* or *Refresh settings*.
+- **Settings come from live** (email templates, notification rules, feature switches, programs, agreement PDFs…) when a superadmin presses *Refresh settings* (Reset never copies them).
 - **It runs main's code**, and every database change lands here first, then live.
 - **A TEST banner sits on every page**, and every email and bell it makes goes to the tester it is about (else the team inbox / all admins).
 
@@ -41,7 +41,7 @@ STAGING  staging.vfoportal.com ──► <staging project>  (sandbox keys ONLY)
                                      ├─ BoldSign sandbox, webhook moved → staging boldsign-webhook
                                      ├─ Google: the staging account (its own mailbox + Drive folder)
                                      └─ every email → the team inbox, "[TEST] " + "would have gone to: …"
-SETTINGS live ──(read-only export, shared key, allowlisted tables + template buckets)──► staging   on Reset / Refresh
+SETTINGS live ──(read-only export, shared key, allowlisted tables + template buckets)──► staging   on Refresh
 CODE     merge to main ──► staging (automatic)  ···  release ──► live (as today)
 DB       migration ──► staging ──(tested)──► live at release
 ```
@@ -54,7 +54,7 @@ DB       migration ──► staging ──(tested)──► live at release
 | **S2** Backend isolation (edge code) | Env-driven `PORTAL_BASE_URL`; the 6 chain + 7 PDF literals → `SUPABASE_URL`; Drive folder → setting; the staging email guard; the CORS origin; `staging_*` actions that refuse unless `VFO_ENVIRONMENT=staging` AND `SUPABASE_URL` is not the live ref. **Unset = today's behaviour** on live. | Claude | `deno check` 0; action count +N exactly; a census proving every changed literal resolves to the same string with the env unset. |
 | **S3** Staging backend up | Schema dump → staging; extensions; buckets plus template assets; the 19 crons pointed at staging (key in staging's vault, never in a file); settings copied; the 8 `pipeline_sandbox_config` rows set to sandbox + team inbox; main's `vfo-admin-api` deployed to staging. | Claude (+ Jake's word for `boldsign-webhook`) | `smoke-pipelines.ps1 -Target staging` passes in full; advisor GREEN on staging. |
 | **S4 HEADLINE** Website on staging | `VITE_SUPABASE_URL`, the TEST banner, Sentry environment, `noindex`, `/store`, `npm run deploy:staging`. A minimal fake member + client. **Then the §4b sandbox switch**, right before the test. | Claude + Jake (§4b steps) | **Jake logs in at staging.vfoportal.com, sees the banner and fake data, pays with a Stripe test card, and the receipt email lands in the team inbox with "would have gone to …".** |
-| **S5** Fake data + Reset | The seed (§6); a superadmin-only **Staging** tab with *Reset test data* (typed confirmation), *Refresh settings from live*, and what is running (build, last reset, by whom). The live side gets `staging_settings_export`, which is read-only and allowlisted (live deploy = Jake's "deploy"). | Claude | Reset twice in a row lands the same rows; a switch flipped on live shows on staging after Refresh; a person table is never in the export (probe). |
+| **S5** Fake data + Reset | The seed (§6); a superadmin-only **Staging** tab with *Reset test data* (typed confirmation), *Refresh settings from live*, and what is running (build, last reset, by whom). The live side gets `staging_settings_export`, which is read-only and allowlisted (live deploy = Jake's "deploy"). | Claude | Reset twice in a row lands the same rows (**PASS 2026-11-05**); a switch flipped on live shows on staging after Refresh; a person table is never in the export (probe). The last two wait for the live release. **As built: §4g.** |
 | **S6** Keep in step | A merge that changes backend code redeploys staging's backend, and one that changes the website redeploys staging's website (Jake 2026-11-03, per D13); a drift-check SQL file, run on both projects as a required wrap-up step, compares tables, columns, functions, policies and crons; the smoke script gains `-Target staging`. | Claude | A docs-only merge redeploys neither, a backend merge redeploys only the backend, and the drift check reads 0 differences. **Built and tested on staging 2026-11-04** (CHANGELOG): a push changing no backend code redeployed no backend, a docs-only push republished no website, and the drift check caught a throwaway table; the same checks on real merges come with the first merge. |
 | **S7** Switch the rules | TEAM_RULES §1/§4/§8, CLAUDE.md, the starter (dev server → staging), the wrap-up (migrations staging first, deploy staging, then live), ACCESS.md, the hub, integrations docs, the stale docs from §2. Paxton's staging login. | Claude, Jake reviews | Paxton's first `/start` runs against staging. **Rules switched 2026-11-04** (CHANGELOG); the checkpoint comes with Paxton's first chat. |
 
@@ -234,6 +234,38 @@ Jake: *"i want to turn off any form of testing in the live portal and the abilit
     - Live's site still served its own build.
 - **Found:** staging's copy of `vfo-widget/vfo-widget.js` (copied from live in S3) still calls live's project. Members only embed it on their own sites, so nothing on staging loads it. **Fixed 2026-11-04:** staging's bucket now holds a copy with staging's address and anon key, made from `widget/vfo-widget.js` (edge repo, `widget/README.md` says how). S5's *Refresh settings* must keep that rewrite, never copy live's file over it.
 
+### 4g. S5 as built (2026-11-05, branches `claude/admin-staging-tab-8139bd` (edge) / `claude/admin-staging-tab-e71b02` (react))
+
+The **Staging** tab sits to the right of More in the admin portal, on the test site only: its code is loaded only in a staging build, so live's bundle has none of it. The admin home page there shows **Things to know when testing** (`StagingHome.jsx`) in place of the KPI cards.
+
+| Control | Who | What it does |
+|---|---|---|
+| What is running | Any admin | Website commit, backend version, the person's test member, last reset, last reset of everyone, last settings refresh. The record is `status.json` in the private bucket `staging-status`, which only the test site has, so live needs no new table. |
+| Reset my test data (`staging_reset_mine`, typed `RESET`) | Any admin | Only the person's own set, found from their login and never from the request. Cancels their Stripe sandbox licence subscriptions, empties their member and client vault folders, deletes their test member and everything under it, re-makes it with the same number, clears their bells, and ends their member, client, planner and specialist sessions. Their specialist, planner, team member and group keep their ids, because another tester's plan may name them: their work and vault folders are cleared and their details go back to how they started. |
+| Reset everyone (`staging_reset_all`, typed `RESET EVERYONE`) | Superadmin | Refuses (409) if any table is on neither list in `constants/staging-tables.ts`, then wipes every test table and every people bucket and re-makes each admin's set, existing numbers first. |
+| Refresh settings from live (`staging_refresh_settings`) | Superadmin | **Check what would change** writes nothing; **Apply these changes** adds and updates, never deletes, and lists what exists only on the test site. A switch that differs is named, like `tax_direct: On here, Off on live`, so a switch left On for a feature being built can be stopped before applying. |
+
+**Every admin's set (Jake 2026-11-05), made by `create_admin` and removed by `delete_admin`.** All are opened by the person's admin password, including after it changes (`stagingOwnerPasscodeOk`), and all their mail comes to them (`stagingOwnerOfTestAddress` in the email guard).
+
+| Login | Email (Jake's) |
+|---|---|
+| Admin, member, specialist | `jlatham@elitert.com` (separate login tables, so they can share) |
+| Tax planner | `tpjlatham@elitert.com` (planners share one login table) |
+| Team member | `tmjlatham@elitert.com` |
+| Clients | `jlatham+holistic@`, `+tax@`, `+pft@` `elitert.com` (`client_logins.email` is unique) |
+
+The TP, TM and group addresses are not real mailboxes. The planner and team member sit in the person's own group, `Jake Test Group 10001` (contact `groupjlatham@elitert.com`), because a team member sees their whole group's work. This replaces the shared Test Group and its two planners.
+
+**Bells (Jake 2026-11-05: all or nothing).** All of a tester's bells show in their admin account only. On the test site the member and planner bells load nothing and say so, because a member login shares the admin's email and would otherwise list the same bells, including ones meant for Tracy.
+
+**`staging_settings_export` (on live, `PUBLIC_HANDLERS`).** It takes no input. It refuses everything while `STAGING_EXPORT_KEY` is unset, and otherwise answers 404 unless the header `x-staging-export-key` holds the exact key (compared by hash, in constant time), limited to 30 calls an hour per IP. It returns the 14 tables of `STAGING_SETTINGS_TABLES` and signed links (10 minutes) to the top-level files of 8 template buckets; from `presentation-templates`, only the 2 masters in use. It never returns `allowed_admins`, `pipeline_sandbox_config`, a person table or `vfo-widget`. The one row it writes is the throttle's own. The test site re-checks every table and file against the same allowlist and refuses a link to any other host. `scripts/probe-staging-export.ps1` (edge repo) proves the refusals.
+
+**FAQ ids.** `faq_categories.id` and `faq_items.id` are GENERATED ALWAYS, so a new row can't keep live's id (#735). Refresh matches those two tables by id, then by name or question, and maps `category_id` to the test site's id.
+
+**What Reset doesn't reach:** cron and Vault (it uses only supabase-js on `public` and the Storage API), id sequences (never restarted, so a late sandbox event can't match a new row), the test site's Google Drive (generated decks stay there) and Stripe's sandbox history.
+
+**Not built:** D9 (Reset copying live's admin list). Admins are added by hand in the Admin Editor.
+
 ## 5. Safety built in (each one refused twice)
 
 - `staging_*` actions check `VFO_ENVIRONMENT=staging` (a staging-only secret) AND that `SUPABASE_URL` is not `ejpsprsmhpufwogbmxjv`. If either fails they refuse, so a reset deployed to live by mistake does nothing.
@@ -248,7 +280,7 @@ Enough to open every portal and start every program from step 1. Mid-stage scena
 
 **As built 2026-11-03** — `supabase/staging/seed-test-data.sql` (edge repo). It refuses anywhere but staging, only creates, and is safe to re-run (a second run added nothing).
 - **No Test Member 59524, Test Client or Test Specialist 6137 on staging** (Jake 2026-11-03). On staging every record is test-mode, so a special member number does nothing. The money screens hid 59524 and 6137 at the time, so a test on them would have vanished; those filters and records are gone since 2026-11-04.
-- **Shared:** the Test Group tax-planning group with a fake Tax Planner and a fake Team Member, for the planner portal.
+- **Shared (this file only, for building a new test site):** the Test Group tax-planning group with a fake Tax Planner and a fake Team Member. Since 2026-11-05 Reset and `create_admin` give each person their own instead (§4g).
 - **One test set per person** (per D11), named after the person ("Jake Member", "Paxton Member") and numbered from **10001**: Jake = **10001**, Paxton = **10002**, the next person 10003. These numbers are below live's lowest member number (11111) and below every automatic-numbering start (30000 / 60000 / 90000), so these numbers can never clash with a real member.
 - **Each set holds:**
   - a Catalyst member (Tier 2, the full portal) enrolled in Holistic (1), Partnership Fast Track (2) and VFO Tax Planning (4), with those program tabs on;
@@ -289,7 +321,7 @@ Asked in the planning chat 2026-10-31. Jake: **"dont start yet"**. He sets up th
 | D6 | html2pdf: share live's key | "ok" |
 | D7 | Jake + Paxton now; the whole team after Paxton's first ~two weeks | "roughly yes" |
 | D8 | Own staging admin password (set-up link to the team inbox), kept across resets; fake logins share one staging test password (staging secret + Bitwarden) | "ok" |
-| D9 | When the team joins, Reset copies live's admin list (emails + tabs, never passwords) | "ok" |
+| D9 | When the team joins, Reset copies live's admin list (emails + tabs, never passwords) | "ok". **Not built in S5 (§4g):** admins are added by hand. |
 | D10-D17, D19 | Sharing the backend, per-person data lanes, migrations on shared staging, deploy-on-merge, the settings list, crons, the banner, staging emails, live's 59524 | Not answered ("bored of reploy to these decisons") — **Claude's recommendation (chat 2026-10-31) stands as the default**. Each is shown as built at its checkpoint for Jake to change. **D13 (a Supabase token in GitHub can reach live) was re-asked 2026-11-03: Jake chose two limited tokens, one per project, Edge Functions only** ([two-person-workflow plan](../two-person-workflow/README.md) §3). |
 | D18 | (a) branch test deploys → staging only; (b) a staging deploy needs no "deploy" word, live still does; (c) the dev server → staging by default, `npm run dev:live` kept | "a) ok b) ok c) ok" |
 

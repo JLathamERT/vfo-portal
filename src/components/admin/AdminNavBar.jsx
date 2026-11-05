@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import CollapsibleNavBar from '../shared/CollapsibleNavBar'
+import { IS_STAGING } from '../../lib/environment'
 
 // The admin nav bar (Advisors ▾ … More ▾), moved out of AdminPortal.jsx on
 // 2026-10-20 so the client page draws the very same bar. AdminPortal routes a
@@ -259,7 +260,7 @@ const KEY_TABS = [
 const ADMIN_TAB_LABELS = {
   ...Object.fromEntries(KEY_TABS.map(([key, label]) => [key, label])),
   member_overview: 'Member Overview', client_overview: 'Client Overview', growth_credits: 'Growth Credits',
-  faq_editor: 'FAQ Editor', tax_diagnostics: 'Tax Diagnostics', feature_switches: 'Feature Switches',
+  faq_editor: 'FAQ Editor', tax_diagnostics: 'Tax Diagnostics', feature_switches: 'Feature Switches', staging: 'Staging',
   automation: 'Automation & Config', accounting: 'Accounting',
 }
 
@@ -317,6 +318,7 @@ export default function AdminNavBar({ session, activeTab, onSelect }) {
         ? [{ key: item.key, label: item.submenuLabel, active: activeTab === (item.key === 'more_auto' ? 'automation' : 'accounting'), options: item.submenu.map(moreOption) }]
         : item.options.map(moreOption)),
     }] : []),
+    ...(IS_STAGING ? [{ key: 'staging', label: 'Staging', active: activeTab === 'staging', onSelect: () => onSelect('staging', null) }] : []),
   ]
 
   return (
@@ -332,6 +334,17 @@ export default function AdminNavBar({ session, activeTab, onSelect }) {
         <div style={{ display: 'flex', alignItems: 'center', marginLeft: '10px', paddingLeft: '12px', borderLeft: '1px solid var(--vfo-tint)' }}>
           <NavDropdown label="More" muted items={moreDropdownItems} onSelect={selectMoreOption} isActive={MORE_TABS.includes(activeTab)} />
         </div>
+      )}
+
+      {/* The test site only, for every admin: each can reset their own test member. */}
+      {IS_STAGING && (
+        <button onClick={() => onSelect('staging', null)} style={{
+          padding: '14px 14px', background: 'transparent', border: 'none',
+          borderBottom: activeTab === 'staging' ? '2px solid var(--vfo-primary)' : '2px solid transparent',
+          color: activeTab === 'staging' ? 'var(--vfo-nav-active)' : 'var(--vfo-nav-muted)', fontSize: '13px',
+          fontWeight: activeTab === 'staging' ? '600' : '500', cursor: 'pointer',
+          fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
+        }}>Staging</button>
       )}
     </CollapsibleNavBar>
   )

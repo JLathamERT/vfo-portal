@@ -28,7 +28,7 @@ The numbers are the 2026-10-31 phase numbers. Staging (5) was moved ahead of 3 a
 2. **DONE 2026-11-04. Move testing fully to staging** (S7 + switch day, staging plan §4c), including staging's `vfo-widget.js`.
 3. **DONE 2026-11-04. Wipe the old test records from live**, straight after 2. Once live is live-only, a payment on Test Member 59524 would be REAL money. First: Jake approves the exact list, the team is told, a backup is confirmed, and the smoke test moves off 59524. The code's test-member filters go too. Staging is not touched. Details: staging plan §4c.
 4. **DONE 2026-11-04, last proof due 2026-11-06. Set up live's 19 automatic jobs again**, reading their key from the Vault (staging plan §4c item 5). All 19 read the Vault and none holds the key. 18 of 19 have returned 200 on schedule. The Friday arrears digest (`membership-arrears-digest-weekly`) first runs 2026-11-06 at 9:45 am ET, and its proof is Paul getting the email. What is left is in the hub's OPEN / OWED.
-5. **The admin portal's Staging tab** (S5): Reset test data, Refresh settings from live, what is running. Must re-make each person's test member (`ensureStagingTestMember`) and clear its bells. The first thing to drop if time runs short: until it exists, Reset is by hand.
+5. **BUILT 2026-11-05. The admin portal's Staging tab** (S5, staging plan §4g): Reset my test data, Reset everyone, Refresh settings from live, what is running, and a home page of things to know. Reset is proven; Refresh's two proofs wait for the live release, on Jake's "deploy".
 6. **Move the OWED list to GitHub Issues**, with the clean-up pass and a hub small enough to read in full (§3).
 7. **Paxton's getting-started document**, last, so it describes the finished setup (§3). Needs 1-6.
 
@@ -154,6 +154,8 @@ Settled — build on these, don't reopen them.
 **2026-11-04 (Jake), on the switch:** "do not change the feature switches leave them as is"; reworking how they work may make sense later, now that features can be built on staging. "test memebr will be fully removed from live portal ... also all clients conected to test memebr". "we are switching and wipeing now. there is no risk they are all tests".
 
 **2026-11-04 (Jake), on the wipe:** the test planners on real plans 150, 156 and 103: "just remove the allocation dont give it to anyone". The nine test-looking clients under real members stay. The SANDBOX counters show on the test site only. Test document numbers were put back after being deleted by mistake ("yes"), because new numbers count them (GOTCHAS #732).
+
+**2026-11-05 (Jake), on the Staging tab:** one Reset would have wiped everyone, so "why doesnt it just wipe YOUR test stuff?": any admin resets their own, and only a superadmin resets everyone. Refresh is previewed, adds and updates, never deletes. Every admin gets their own member, clients, specialist, tax planner and team member, on the same password, with planner emails starting TP and TM ("as easy to do and remember as possible"). Notifications are all or nothing, so all of them show in the admin account. Jake is off the Proactive Facilitator list on both sites ("since in testing it doesnt matter").
 
 **2026-11-04 (Jake), on GitHub Pro:** "No Pro, stay on the free plan. Keep the button's own main-only check. Extend the guard so no chat can push a branch that changes the button (.github/workflows) without my explicit word. Record this decision in the roadmap." Details in §3.
 
