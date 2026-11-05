@@ -15,7 +15,7 @@ Confirmed via `Deno.env.get(...)` audit of `vfo-admin-api/index.ts` and `boldsig
 | Var | Used by | Purpose |
 |---|---|---|
 | `SUPABASE_URL` | both edge functions | Project URL — `https://ejpsprsmhpufwogbmxjv.supabase.co` on live, the staging project's own on staging. The `createClient` arg. Chain-call URLs and public storage links go through `projectUrl()` / `adminApiUrl()` (`constants/environment.ts`, 2026-11-02), which on live return the literal live URL so live's links stay byte-identical. |
-| `SUPABASE_SERVICE_ROLE_KEY` | both edge functions | Service-role key for `createClient`. Bypasses RLS. Also presented as `Authorization: Bearer ...` on server-to-server chain calls, and every sweep compares the cron's Bearer with it. **On a project created in 2026 (staging) Supabase fills it with the NEW-style `sb_secret_…` key, not the legacy JWT** — a caller that sends the legacy JWT gets 401 (#715). |
+| `SUPABASE_SERVICE_ROLE_KEY` | both edge functions | Service-role key for `createClient`. Bypasses RLS. Also presented as `Authorization: Bearer ...` on server-to-server chain calls, and every sweep compares the cron's Bearer with it. **On both projects it holds the NEW-style `sb_secret_…` key, not the legacy JWT** — a caller that sends the legacy JWT gets 401 (#715, #737). The scheduled jobs send the same value from each project's Vault secret `cron_api_key`, so rotating this key without updating that secret makes every job answer 401 silently. |
 
 ### Environment — which copy of the portal this is (2026-11-02, `constants/environment.ts`)
 
