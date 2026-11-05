@@ -16,6 +16,8 @@
 
 **Passed.** The deposit return from the Tax Planning tab by card and from the Tax Diagnostic tab by bank transfer, and an emailed link in a private window keeping the thank-you. Reset cancelling a real sandbox subscription, confirmed in Stripe, and clearing a specialist's work, with Paxton's rows staying. Reset everyone refusing a temporary unlisted table with nothing wiped; the table was dropped and the structure fingerprints match again. A non-superadmin not seeing Refresh, and the backend answering 403. A changed admin password opening the member, specialist, planner, team member and client logins. The group's setup email reaching its owner. `phoneAudit` on the Staging screens at 390 and 360.
 
+**Added.** Each test specialist now starts with a random public ecosystem, because the form wouldn't save without one (Jake). Pushed on Jake's word before a click-through; checked after the merge.
+
 **Known quirk.** The old password also keeps working on those logins, because each keeps its own hash from when it was made. Test site only.
 
 ---

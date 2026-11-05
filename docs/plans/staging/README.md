@@ -254,7 +254,7 @@ The **Staging** tab sits to the right of More in the admin portal, on the test s
 | Team member | `tmjlatham@elitert.com` |
 | Clients | `jlatham+holistic@`, `+tax@`, `+pft@` `elitert.com` (`client_logins.email` is unique) |
 
-The TP, TM and group addresses are not real mailboxes. The planner and team member sit in the person's own group, `Jake Test Group 10001` (contact `groupjlatham@elitert.com`), because a team member sees their whole group's work. This replaces the shared Test Group and its two planners.
+Each specialist starts with one random public ecosystem, because the specialist form won't save without one. The TP, TM and group addresses are not real mailboxes. The planner and team member sit in the person's own group, `Jake Test Group 10001` (contact `groupjlatham@elitert.com`), because a team member sees their whole group's work. This replaces the shared Test Group and its two planners.
 
 **Bells (Jake 2026-11-05: all or nothing).** All of a tester's bells show in their admin account only. On the test site the member and planner bells load nothing and say so, because a member login shares the admin's email and would otherwise list the same bells, including ones meant for Tracy.
 
