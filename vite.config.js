@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { execSync } from 'node:child_process'
 
 // Dev only, for the phone preview (src/dev/PhonePreview.jsx):
 // 1. print its link under Vite's own URLs, so every `npm run dev` hands it out
@@ -53,6 +54,14 @@ function phonePreview() {
       }
     },
   }
+}
+
+// The commit this build came from, for the test site's Staging tab. Vite reads
+// VITE_* from the process, so this reaches the dev server and every build alike.
+try {
+  process.env.VITE_BUILD_SHA = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim()
+} catch {
+  process.env.VITE_BUILD_SHA = ''
 }
 
 export default defineConfig({

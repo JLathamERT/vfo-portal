@@ -14,6 +14,10 @@ const SLOW_WRITE_TIMEOUT_MS = 60000
 // These stay WRITES: isReadAction() does not match them, so a timeout still never
 // auto-retries.
 const LONG_TIMEOUT_ACTIONS = {
+  // The test site's resets: a WRITE, never auto-retried. Pressing again is safe.
+  staging_reset_mine: 120000,
+  staging_reset_all: 120000,
+  staging_refresh_settings: 120000,
   tax_generate_presentation: 90000,
   // The Direct member's twin runs the same generator (#487: the tier follows the
   // NAME, so the twin needs its own entry). tax_save_task carries no entry, so

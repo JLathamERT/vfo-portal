@@ -29,6 +29,7 @@ export default function MemberTaxDiagnostic({ member }) {
   const [view, setView] = useState('submitted')
   const [formKey, setFormKey] = useState(0)
   const [doneMessage, setDoneMessage] = useState('')
+  const [paidMessage, setPaidMessage] = useState('')
   const [forms, setForms] = useState(null)
   const [loadError, setLoadError] = useState('')
   const [openKey, setOpenKey] = useState(null)
@@ -43,6 +44,20 @@ export default function MemberTaxDiagnostic({ member }) {
     }
   }
   useEffect(() => { loadForms() }, [])
+
+  // Back from paying the deposit (TaxDepositPayPage). Read once, then stripped from
+  // the URL so a refresh does not replay it. Same wording as the MSM Tax Planning tab.
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (url.searchParams.get('deposit_paid') !== '1') return
+    setPaidMessage(url.searchParams.get('ach') === '1'
+      ? 'Bank transfer submitted. The client will be created once it clears (3-5 business days).'
+      : 'Payment received. Client created. We have emailed you a confirmation.')
+    ;['tab', 'deposit_paid', 'ach'].forEach(k => url.searchParams.delete(k))
+    window.history.replaceState({}, '', url.toString())
+    // The Stripe webhook can land a second or two after the browser gets back here.
+    setTimeout(loadForms, 4000)
+  }, [])
 
   // Same wording as MemberClientsView.finishIntake (the MSM Tax Planning tab).
   function finish(res) {
@@ -68,6 +83,7 @@ export default function MemberTaxDiagnostic({ member }) {
         <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>VFO Tax Planning</p>
         <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '4px 0 0' }}>Tax Diagnostic</h2>
       </div>
+      {paidMessage && <div style={{ background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.4)', color: 'var(--vfo-success-text)', padding: '12px 16px', borderRadius: '10px', fontSize: '14px', marginBottom: '16px' }}>{paidMessage}</div>}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
         {VIEWS.map(v => (
           <button key={v.key} type="button" onClick={() => { setView(v.key); if (v.key === 'submitted') loadForms() }}
