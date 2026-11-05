@@ -6,7 +6,7 @@
 
 1. **Your own login** — every service that has team seats gets each person their own invite, never a shared login. Losing a person then means removing one seat, not changing a shared password.
 2. **Jake's Bitwarden vault** (organization *VFO*) — logins that only exist once and are shared, plus test-account passwords. Paxton isn't in the vault (Jake 2026-11-04): Jake tells him the ones he needs out loud on a call, never in writing.
-3. **Supabase → Edge Functions → Secrets** (project `ejpsprsmhpufwogbmxjv`) — the backend's API keys. Nobody needs these values on their own computer; the names and what reads each are in [integrations/env-vars.md](integrations/env-vars.md).
+3. **Supabase → Edge Functions → Secrets** (project `ejpsprsmhpufwogbmxjv`) — the backend's API keys. Nobody needs these values on their own computer; the names and what reads each are in [integrations/env-vars.md](integrations/env-vars.md). The scheduled jobs' copy of the default secret key is the Vault secret `cron_api_key`, one on each project, typed in by Jake. If that key is ever rotated, update the secret straight away: a wrong value makes every job answer 401 with nothing showing as failed (GOTCHAS #737).
 
 ## Services
 

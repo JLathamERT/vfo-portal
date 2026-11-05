@@ -40,7 +40,7 @@ in `constants.js`). Remaining is a few deferred UX items (see bottom).
 **Backend** (`vfo-edge-functions/supabase/functions/vfo-admin-api/actions/growth/`)
 - `shared.ts` — `resolveMemberNumber(body, auth)` + `getCurrentScoreId` + `getCurrentScore` (id + accountability_mode, for the member access-gate).
 - Phase 1–6: `load.ts`, `load-history.ts`, `save-score.ts`, `save-summary.ts`, `save-actions.ts`, `save-accountability.ts`.
-- Phase 7–8 (this session): `load-admins.ts`, `load-audit.ts`, `set-accountability.ts`, `add-action.ts`, `delete-action.ts`, `overdue-sweep.ts` (PUBLIC cron), `history.ts` (`logGrowthHistory`), `notify.ts` (`notifyProgressUpdate`). Cron SQL at `supabase/cron/growth-overdue-sweep.sql`.
+- Phase 7–8 (this session): `load-admins.ts`, `load-audit.ts`, `set-accountability.ts`, `add-action.ts`, `delete-action.ts`, `overdue-sweep.ts` (PUBLIC cron), `history.ts` (`logGrowthHistory`), `notify.ts` (`notifyProgressUpdate`). Cron SQL at `supabase/cron/live-install.sql`.
 - Role gates: `save_score`/`save_summary`/`set_accountability`/`load_admins` → `ADMIN_ONLY_ACTIONS`; the rest in-handler (member self-scoped; member writes gated on `accountability_mode`).
 
 ## DB schema (live — full dictionary in `docs/tables/growth.md`)

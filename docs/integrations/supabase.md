@@ -184,7 +184,7 @@ Set on every response. Adding a new frontend host requires editing the function 
 A second project, **"VFO Staging"** (`yxolcioazczlhruprmrb`, us-east-2, $10/month), runs the same `vfo-admin-api` for staging.vfoportal.com. Plan of record and every setup step: [plans/staging/README.md](../plans/staging/README.md).
 - **Structure:** a schema-only copy of live, fingerprint-identical. The settings tables (email templates, switches, sandbox config, …) are copied from live. There are no real people, and its `allowed_admins` starts empty. Sequences start at 100000.
 - **Deploys:** every checkout's CLI link (`supabase/.temp/project-ref`) is LIVE, so every staging command names `--project-ref yxolcioazczlhruprmrb`. Deploying still needs the person's "deploy".
-- **Crons:** the same 19 jobs, installed from `supabase/cron/staging-install.sql`. Each reads its key at run time from staging's Vault (`cron_api_key` = staging's `sb_secret_…` key, #715), never inline.
+- **Crons:** the same 19 jobs, installed from `supabase/cron/staging-install.sql`. Each reads its key at run time from staging's Vault (`cron_api_key` = staging's `sb_secret_…` key, #715), never inline. **Live's have the same shape since 2026-11-04**, from `live-install.sql`, with `live-check.sql` to prove them and `live-rollback.sql` as the way back while the Vault backup exists (#737).
 - **Until S6/S7:** every live migration, template change or switch flip is applied to staging too, and staging is redeployed from main after each live release.
 
 ## Migration practices

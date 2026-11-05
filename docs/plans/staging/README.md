@@ -121,7 +121,7 @@ Jake: *"i want to turn off any form of testing in the live portal and the abilit
 2. Jake sets `VFO_ENVIRONMENT=live` on live and deletes the 7 sandbox secrets.
 3. Wipe live's test records (Jake 2026-11-04, the row above), as its own chat straight after the switch day.
 4. The website deploy removes the toggles and the *Test member only* position.
-5. **Its own chat, after the wipe (Jake 2026-11-04), with a check straight after, not part of the switch day:** live's 19 crons are re-installed reading their key from live's Vault (the same shape as `supabase/cron/staging-install.sql`), so the secret API key no longer sits written into `cron.job` (found 2026-11-01).
+5. **Its own chat, after the wipe (Jake 2026-11-04), with a check straight after, not part of the switch day:** live's 19 crons are re-installed reading their key from live's Vault (the same shape as `supabase/cron/staging-install.sql`), so the secret API key no longer sits written into `cron.job` (found 2026-11-01). **Done 2026-11-04 with `supabase/cron/live-install.sql`:** all 19 read the Vault, none holds the key, and 18 of 19 had returned 200 on schedule by 2026-11-05 15:10 UTC. The Friday digest first runs 2026-11-06 (CHANGELOG 2026-11-05, GOTCHAS #737).
 6. Smoke live.
 
 **As run 2026-11-04:** no backend code changed, and the sandbox secrets were already gone (§4b). The website release came first, then `VFO_ENVIRONMENT=live` on live, then smoke. Jake chose to wipe straight after, with no gap to manage (roadmap step 3).
@@ -168,7 +168,7 @@ Jake: *"i want to turn off any form of testing in the live portal and the abilit
   - The dump's 59 `setval` lines were stripped, so every staging sequence stays at 100000 while the settings keep live's ids.
   - **Not copied:** `allowed_admins` (it holds passcode hashes; staff logins are made in S5) and every person table.
 - **Sandbox rows (done):** all 8 are sandbox / Stripe test / BoldSign test, `sandbox_email = staging@vfo-services.com`, and each keeps live's Stripe account.
-- **Crons (ready, not installed).** Live's 19 jobs each carry the secret API key written into `cron.job`. Staging's are in `supabase/cron/staging-install.sql` (edge repo): same names, schedules and actions, pointed at staging, with the key read at run time from staging's Vault (`cron_api_key`). The file refuses where that Vault secret is missing (proven on staging; live has none). It is installed after the first staging deploy.
+- **Crons.** Staging's are in `supabase/cron/staging-install.sql` (edge repo): same names, schedules and actions as live, pointed at staging, with the key read at run time from staging's Vault (`cron_api_key`). Live's read theirs the same way since 2026-11-04 (`live-install.sql`). Live has that Vault secret now too, so what stops `staging-install.sql` on live is its first check: it refuses if any job there calls live. It was installed after the first staging deploy.
 - **DNS (done 2026-11-02).** Jake added the GoDaddy CNAME `staging` → `jlathamert.github.io`; Google's public DNS already returns it. It is the only DNS record staging needs.
 - **Plain settings (done 2026-11-02, Jake's "yes").** Claude set `VFO_ENVIRONMENT=staging`, `PORTAL_BASE_URL=https://staging.vfoportal.com` and `STAGING_EMAIL_TO=staging@vfo-services.com` on staging with `supabase secrets set --project-ref yxolcioazczlhruprmrb`; each listed digest equals the SHA-256 of its value. They are settings, not passwords.
 - **Still to do in S3:**
@@ -180,7 +180,7 @@ Jake: *"i want to turn off any form of testing in the live portal and the abilit
   - **That was the wrong key: every cron run got 401.** Staging is a new project, so Supabase gives its functions the NEW-style keys under the old names. Proof by digest: the function's `SUPABASE_ANON_KEY` digest equals staging's `sb_publishable_` key, not the legacy anon JWT, and its `SUPABASE_SERVICE_ROLE_KEY` digest (`4949cda3…`) is not the Vault entry's (`f33644b6…`).
   - **Fix:** the Vault `cron_api_key` holds staging's **default secret key** (`sb_secret_…`, Project Settings → API Keys). Check: its SHA-256 in SQL must equal the function's `SUPABASE_SERVICE_ROLE_KEY` digest in `supabase secrets list`. **Done 2026-11-02 15:20 UTC:** Jake swapped it and the digest matches. The 15:25 runs (reminder + onboarding-meeting sweeps) both returned 200.
   - `vfo-admin-api` has `verify_jwt = false`, so a non-JWT bearer is fine at the gateway. Its own chained calls use the same env value, so they match.
-  - Anything else that sends staging's service key (smoke `-Target staging` in S6, any hand test) must use the `sb_secret_` key, never the legacy JWT. Live is an old project whose functions hold the legacy JWT, so live's switch-day cron re-install (§4c) keeps using that.
+  - Anything else that sends staging's service key (smoke `-Target staging` in S6, any hand test) must use the `sb_secret_` key, never the legacy JWT. Live's functions hold the `sb_secret_` key too, proved by digest on 2026-11-04, so live's Vault holds that key (GOTCHAS #737).
 
 ### 4f. S4 website code (2026-11-02, react branch, shipped with part 1; on staging since 2026-11-02)
 
