@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-11-05 (b) — Refresh proven against live, and two false changes removed — by Jake
+
+**Why.** The first Check against live listed 39 FAQ rows and 17 template files. The FAQ list was mostly real: on 2026-11-03 a new question was added on live, which moved 31 questions down one place and stamped all 40 rows. The files were a false alarm (#738), and 8 of the rows had only a new stamp.
+
+**Changed (test-site code only).** `actions/staging/refresh.ts` ignores `updated_at` alone and compares part-count eTags by size. A same-size replacement of such a file on live would not be noticed. Live runs the old copy of this code but never calls it, so no live release is needed.
+
+**Proven (test build v40, Jake clicking).** Staging plan §4g. Release v1095 and live-website build `aa8bf670` had their own smoke runs pass. The real `STAGING_EXPORT_KEY` is set on both sites, and the test site's temporary `STAGING_EXPORT_URL` is gone. The secret writes bumped version numbers with the code unchanged.
+
+---
+
 ## 2026-11-05 — The Staging tab: reset, refresh, a login for every role; tax deposits return to the member portal — by Jake
 
 **Why.** Roadmap step 5 (S5), before Paxton starts. Until now a reset was by hand, nothing could copy settings from live, and a tester had no planner or specialist login of their own.
