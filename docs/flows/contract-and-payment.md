@@ -290,7 +290,7 @@ clients behalf)`) read `Payment [X] of [Y]: <strong>$[Payment Amount]</strong>` 
 
 ## Step 10½ — Scheduled-payment charger (quarterly P2-4)
 
-**Trigger:** daily `pg_cron` job `chargescheduled-sweep-daily` at 03:00 UTC (cron SQL: `vfo-edge-functions/supabase/cron/chargescheduled-sweep.sql`).
+**Trigger:** daily `pg_cron` job `chargescheduled-sweep-daily` at 03:00 UTC (cron SQL: `vfo-edge-functions/supabase/cron/live-install.sql`).
 
 **Handler:** `automation_CONTRACT_chargescheduled_sweep` ([actions/pipeline/contract-chargescheduled-sweep.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/pipeline/contract-chargescheduled-sweep.ts)) — PUBLIC, service-role-gated.
 
@@ -361,7 +361,7 @@ For each payment cycle (P1 for one-time, P1+P2+P3+P4 for quarterly), the row sho
 
 ### Step 10⅔b — Daily check-reminder sweep
 
-**Trigger:** daily `pg_cron` job `check-reminder-sweep-daily` at 13:40 UTC Mon–Fri (cron SQL: `vfo-edge-functions/supabase/cron/check-reminder-sweep.sql`).
+**Trigger:** daily `pg_cron` job `check-reminder-sweep-daily` at 13:40 UTC Mon–Fri (cron SQL: `vfo-edge-functions/supabase/cron/live-install.sql`).
 
 **Handler:** `automation_CONTRACT_checkreminder_sweep` ([actions/pipeline/contract-check-reminder-sweep.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/pipeline/contract-check-reminder-sweep.ts)) — PUBLIC, service-role-gated.
 
@@ -501,7 +501,7 @@ It stamps no send/status column, allocates no number and skips the tax-intake as
 
 **Trigger (two paths, both automatic):**
 1. **Push chain from Stripe webhook:** `router/webhooks.ts` chains `_revshare` immediately after `_invoicereceipt` in all three Stripe webhook chain sites (MAP1 first-card, quarterly N succeeded, ACH cleared). ~~First attempt usually returns `pending: true` because Tracy's Revenue Master sheet isn't updated yet~~ — as of 2026-07-01 it pays on clear (no pending).
-2. **Daily sweep via `automation_CONTRACT_revshare_sweep`:** `pg_cron` runs at 13:00 UTC (see `vfo-edge-functions/supabase/cron/revshare-sweep.sql`). The sweep enumerates every `pipeline_map1` row where any `rec1-4_number` is set but `rev_paid` is not yet `Yes`/`Money Mapping`/`N/A` — and re-invokes `_revshare` for each. Includes previously-`Failed` transfers, so misconfigured Stripe Connect accounts auto-recover once fixed. **The same sweep also drives the three-stall reminder ladder (PCADMIN Undecided, agreement signing, Pay1 link) — see "Reminder ladder" below.** No manual path.
+2. **Daily sweep via `automation_CONTRACT_revshare_sweep`:** `pg_cron` runs at 13:00 UTC (see `vfo-edge-functions/supabase/cron/live-install.sql`). The sweep enumerates every `pipeline_map1` row where any `rec1-4_number` is set but `rev_paid` is not yet `Yes`/`Money Mapping`/`N/A` — and re-invokes `_revshare` for each. Includes previously-`Failed` transfers, so misconfigured Stripe Connect accounts auto-recover once fixed. **The same sweep also drives the three-stall reminder ladder (PCADMIN Undecided, agreement signing, Pay1 link) — see "Reminder ladder" below.** No manual path.
 
 **Handler:** `automation_CONTRACT_revshare` ([actions/pipeline/contract-revshare.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/pipeline/contract-revshare.ts)).
 

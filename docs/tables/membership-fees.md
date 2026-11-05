@@ -182,8 +182,8 @@ one. Gotcha **#332**.
   lifts a `suspended` flag (2026-09-23) and releases the member's held revenue-share payouts when the
   clear leaves no hold reason at all; summary carries `arrears_cleared`, `suspensions_lifted`,
   `payouts_released`.**
-- pg_cron jobid 19 `membership-arrears-digest-weekly` @13:00 UTC Fridays (2026-09-15) —
-  `automation_MEMBERSHIP_arrears_digest`, a read-only Gmail draft to platham@ of every member whose
+- pg_cron jobid 19 `membership-arrears-digest-weekly` @14:45 UTC Fridays (2026-09-15) —
+  `automation_MEMBERSHIP_arrears_digest`, a read-only email (on Send since 2026-11-04) to platham@ of every member whose
   active plan carries missed/declined rows.
 - **A `missed`/`declined` row can also be booked by the member at `/membership-pay` (2026-09-15):**
   the Checkout SESSION carries `payment_kind=membership_arrears_payment` + `row_ids`, the PI carries

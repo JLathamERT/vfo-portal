@@ -8,6 +8,26 @@
 
 ---
 
+## 2026-11-05 — Live's 19 scheduled jobs read their key from the Vault — by Jake
+
+**Why.** Roadmap step 4. Live's jobs each had the secret API key written into `cron.job`, found 2026-11-01. Now each reads it at run time from the Vault secret `cron_api_key`, the same shape as the test site.
+
+**What changed on live.** Only each job's command, through `cron.alter_job`, so ids, names, schedules and run history stayed. No release: `vfo-admin-api` stayed v1094 and `boldsign-webhook` v50. Jake typed the secret into the Vault himself, and it was never in a file, a commit or the chat.
+
+**The brief was wrong about the key.** The plan and #715 said live keeps the legacy JWT. Live's key is `sb_secret_`: the function secret, the jobs' written-in key and the new Vault value have the same digest (`a87079f3…`). #1 had it right. Corrected in the plan, #715 and `env-vars.md` (#737).
+
+**How it ran (UTC, 2026-11-04).** Scripts rehearsed on the test site first, where a bug was caught: a loop variable named `job` made `job.schedule` ambiguous, and the block failed with nothing changed. The test site was then put back: same 19 jobs and commands, backup row removed. On live: backup of all 19 commands into the encrypted Vault row `cron_commands_backup` at about 21:22. The two five-minute jobs switched at 21:22:45 and returned 200 at 21:25 and 21:30. The other 17 switched at 21:31:06. `live-check.sql` read 19 of 19 OK straight after, the commands matched the test site's apart from the project ref, and the drift check matched. Smoke passed (Jake) against v1094.
+
+**Proof on schedule, from the function logs, because a cron run reads "succeeded" even on a 401.** 2026-11-05 03:18: `chargescheduled-sweep-daily` 200 and both five-minute jobs 69 of 69. 2026-11-05 15:10: the other 15 daily and weekday jobs 200 at their scheduled minute, including the 13:00 to 13:30 money sweeps, and the five-minute jobs 212 of 212. No 401s, no missed runs, the restore never used. A 200 shows the key was accepted, not what each sweep did. **18 of 19 proven; the Friday digest first runs 2026-11-06.**
+
+**Arrears digest to Send.** Jake is out on Friday, so the email itself is the proof: "set that to send mode and if it sends we will see it worked". Template 268 went to `send_mode = true` on both copies (migration `20261104213809_arrears_digest_send`), to Paul only, which took the count to 109. Staying on Send afterward is still his call. The test site really sends every email anyway, whatever the row says, so the row made no practical difference there.
+
+**Files (edge).** `supabase/cron/live-backup.sql`, `live-install.sql`, `live-rollback.sql` and `live-check.sql`, and a first check in `staging-install.sql` that refuses on live (#346). The 13 old per-job files, which held a key placeholder and old schedules, are deleted, and every doc that named one now points at `live-install.sql`. Older CHANGELOG entries keep their mentions as history (Jake).
+
+**Left, in the hub's OWED.** The digest proof, blanking the key from old `cron.job_run_details` rows (53,426 when counted on 2026-11-04), deleting the Vault backup, and the digest's mode. Nothing was deployed by this change.
+
+---
+
 ## 2026-11-04 (d) — Live's test records wiped: Test Member 59524, Test Specialist 6137, Test Group — by Jake
 
 **Why.** Roadmap step 3, Jake: "i want the live portal clean". Once `VFO_ENVIRONMENT=live` was set, a payment on 59524 would have been real money.

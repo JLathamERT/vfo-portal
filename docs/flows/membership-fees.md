@@ -226,10 +226,10 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
   [tables/members.md](../tables/members.md). Admin gets the `MEMBERSHIP_charge_failed` bell ("marked in
   arrears — revenue shares held until paid"). The sweep's combined due+arrears pull next month is still
   the BACKSTOP if the member never clicks. **Friday digest:** cron jobid 19
-  `membership-arrears-digest-weekly` @13:00 UTC Fri (`automation_MEMBERSHIP_arrears_digest`) drafts
+  `membership-arrears-digest-weekly` @14:45 UTC Fri (`automation_MEMBERSHIP_arrears_digest`) emails
   `MEMBERSHIP_arrears_digest` to platham@ — one bullet per member in arrears (number, name, amount, months),
-  or "No members are currently in arrears" (user decision: still drafted when empty; Draft mode like
-  every template).
+  or "No members are currently in arrears" (user decision: still sent when empty; on Send since
+  2026-11-04, Jake).
 - **Termination**: "Terminate member" (replaces cancel on active plans) → admin enters a fee →
   charged to the saved method immediately (whole dollars; New Model card gross-up), remaining
   scheduled rows voided, plan `terminated`. $0 fee just terminates. A failed fee charge still
@@ -313,7 +313,7 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
    first-signup confirmation email is gated on the `membership_first_payment` kind, so **a save-only
    completion cannot fire a confirmation email.**
 5. **Daily sweep** — `automation_MEMBERSHIP_sweep` (PUBLIC service-role, cron jobid 16 @13:30 UTC,
-   `supabase/cron/membership-sweep.sql`), **five** passes in order — **pass 0 = renewal notices,
+   `supabase/cron/live-install.sql`), **five** passes in order — **pass 0 = renewal notices,
    added 2026-08-04 / v700, runs FIRST so a plan is always warned before it is rolled over
    (see "Renewal notice + meeting" below)** — then: **renewals** (generate the next
    year at next-year terms, advance `renewal_date` +12 months, guard = any row on/after renewal;

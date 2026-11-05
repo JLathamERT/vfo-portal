@@ -1287,7 +1287,7 @@ Alongside the member + strategic legs, `automation_TAX_revshare` also pays the *
 
 **Handler:** [`automation_TAX_revshare_sweep`](../../supabase/functions/vfo-admin-api/actions/tax/revshare-sweep.ts) — PUBLIC handler with service-role auth required (`Bearer SUPABASE_SERVICE_ROLE_KEY` in Authorization header; non-service-role → 401).
 
-**Cron:** Daily pg_cron job `tax-revshare-sweep-daily` at **13:10 UTC** — after MAP 1's `revshare-sweep-daily` (13:00; both moved from 02:00/02:30 on 2026-09-26) to avoid races on shared rows. Install script at [supabase/cron/tax-revshare-sweep.sql](../../supabase/cron/tax-revshare-sweep.sql). Uses the `sb_secret_*` API key (NOT the legacy `eyJ` JWT — per gotcha #1).
+**Cron:** Daily pg_cron job `tax-revshare-sweep-daily` at **13:10 UTC** — after MAP 1's `revshare-sweep-daily` (13:00; both moved from 02:00/02:30 on 2026-09-26) to avoid races on shared rows. Install script: `supabase/cron/live-install.sql` (edge repo). The job reads the `sb_secret_*` key from the Vault at run time, NOT the legacy `eyJ` JWT (#1, #737).
 
 **What it does:**
 1. Validates Authorization header matches `SUPABASE_SERVICE_ROLE_KEY` (401 otherwise).
