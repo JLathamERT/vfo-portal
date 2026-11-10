@@ -39,7 +39,7 @@ In the client portal only (`MemberShowroom` gets `introRequest` from `ClientPort
 `client_request_introduction { expert_id }` (`CLIENT_ALLOWED_ACTIONS`):
 
 1. Client and member from the SESSION (`auth.callerClientId` → `clients.member_number`); switch check (403).
-2. The specialist must be Active and not in the member's `member_exclusions` (404) — the same set the Showroom shows.
+2. The specialist must be Active, not a VFO Accredited Professional Specialist (`vfo_accredited`, 2026-11-10) and not in the member's `member_exclusions` (404) — the same set the Showroom shows.
 3. Insert into `client_intro_requests` — the unique `(client_id, expert_id)` index is the duplicate guard: a second request is **409** with `requested_at`.
 4. Template **312** `CLIENT_PORTAL/CLIENT_intro_request` (**Send** since 2026-11-02; subject ends ` - [Recipient Name]` = the member) To the MEMBER, **Tracy Bcc'd** (`tnmiller@vfo-services.com` in the template's `bcc_list`), member contacts Cc'd as usual: *"Your client [Client Name] ([Client Email]) has asked, through their VFO client portal, for an introduction to [Specialist Name] ([Specialism]). Please make the introduction when you can."* + an **Open client** button (`/member/client/<id>`). Specialists have no company field, so the specialism is `experts.short_bio`. If the email cannot be created the request row is DELETED so the client can try again; otherwise `email_result` = `sent` / `drafted`.
 5. Bell **`CLIENT_intro_requested`** (area *Client Portal*, FYI, dismissible) to Tracy `tnmiller@elitert.com`: *"Introduction requested: [Client] → [Specialist]"*, linking to `/admin/client/<id>` (decision 7).
