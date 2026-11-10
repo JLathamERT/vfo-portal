@@ -8,6 +8,14 @@
 
 ---
 
+## 2026-11-10 (b) — Paxton's git name in the TEAM table — by Paxton
+
+**Why.** Paxton's computer is set up, and his row in `TEAM_RULES.md` still said his `git config user.name` was "not set yet", so a chat on his computer could not match him to his row.
+
+**What changed.** `docs/TEAM_RULES.md` only: his row now reads `Paxton Calareso` with git name `Paxton Calareso`, the same portal email and superadmin as before, and the header gains an "Updated 2026-11-10" note.
+
+Docs only: no code, no deploy, no tag.
+
 ## 2026-11-10 — Members see the VFO Accredited Professional Specialists in their Showroom — by Jake
 
 **Why.** The team asked for members to see the four VFO Accredited Professional Specialists in the VFO Showroom without searching for them, while end clients still never see them. Since 2026-07-16 (#231) one unconditional filter in `MemberShowroom.jsx` hid every `experts.vfo_accredited` specialist from every Showroom. The Showroom's own search only searches what the Showroom shows, so they could not be found there at all, only in Search Specialists.
