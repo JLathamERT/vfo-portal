@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-11-10 — Members see the VFO Accredited Professional Specialists in their Showroom — by Jake
+
+**Why.** The team asked for members to see the four VFO Accredited Professional Specialists in the VFO Showroom without searching for them, while end clients still never see them. Since 2026-07-16 (#231) one unconditional filter in `MemberShowroom.jsx` hid every `experts.vfo_accredited` specialist from every Showroom. The Showroom's own search only searches what the Showroom shows, so they could not be found there at all, only in Search Specialists.
+
+**What changed.**
+- **Website:** `MemberShowroom.jsx` takes a `showAccredited` prop. Only the member portal Showroom, the admin Specialists Showroom tab and the admin per-member Showroom preview pass it. There, accredited specialists show in their ecosystem with a white "VFO Accredited Professional Specialist" tag on the card and in the pop-up. The phone card rule `:nth-child(3)` became `:nth-child(n+3)` so the tag sits in the text column like the background-check badge. The client portal, the specialist portal (Jake: keep hidden), the website widget and `/store/` are unchanged and still hide them.
+- **Backend:** `client_showroom_load` now leaves accredited specialists out of the client's payload, so they are not even in the page data, and `client_request_introduction` refuses one with the same 404 an inactive specialist gets. `specialist_showroom_load` still sends them and relies on the render filter. No schema, gate or action-count change (644).
+
+**Tested on the test site** (backend branch build v46, then the test site put back on main): with Jake Specialist switched to accredited, Jake passed the member Showroom, the admin Showroom tab and its search, the admin member preview, the client Showroom (absent on screen and absent from the `client_showroom_load` response, Paxton Specialist present), phone widths 390 / 360 and 1280 desktop. **Not exercised by a click:** the `client_request_introduction` refusal, because no client screen can offer the button for a specialist it no longer receives. Checked by reading the code only (Issue JLathamERT/vfo-edge-functions#531). Jake Specialist was switched back afterwards.
+
 ## 2026-11-05 (d) — Owed work moved to GitHub Issues, and a hub small enough to read — by Jake
 
 **Why.** Roadmap step 6. The hub's OWED list was 281 KB of its 385 KB, too big to read at the start of a chat, and every PR edited it, so two people's PRs would clash on it. The 250-line cap had stopped working: the list stayed under it by being joined into 24 very long lines.
