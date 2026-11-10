@@ -4,14 +4,14 @@
 >
 > **"The person"** below = whoever is running this chat: match `git config user.name` against the TEAM table. Every rule applies to every person. A preference that belongs to one person only lives in that person's own Claude memory, not here.
 >
-> Change this file like code — in a worktree, through a PR. Created 2026-11-01 for the two-person workflow from the standing rules of `prompts/SESSION_STARTER.md` and Jake's Claude memory; `#N` = an entry in [GOTCHAS.md](GOTCHAS.md). Updated 2026-11-04: the deploy button, staging's self-update, the repo guard. Updated 2026-11-01 (phase 2): the superadmin list, the smoke gate's wording. Updated 2026-11-03: plans of record (§6). Updated 2026-11-04: all testing moved to the test site (§2, §4, §8, §11), and live's test records wiped (§8, §11). Updated 2026-11-05: the Staging tab's Refresh settings (§4); owed work moved to GitHub Issues (§6).
+> Change this file like code — in a worktree, through a PR. Created 2026-11-01 for the two-person workflow from the standing rules of `prompts/SESSION_STARTER.md` and Jake's Claude memory; `#N` = an entry in [GOTCHAS.md](GOTCHAS.md). Updated 2026-11-04: the deploy button, staging's self-update, the repo guard. Updated 2026-11-01 (phase 2): the superadmin list, the smoke gate's wording. Updated 2026-11-03: plans of record (§6). Updated 2026-11-04: all testing moved to the test site (§2, §4, §8, §11), and live's test records wiped (§8, §11). Updated 2026-11-05: the Staging tab's Refresh settings (§4); owed work moved to GitHub Issues (§6). Updated 2026-11-10: Paxton's `git config user.name` (TEAM).
 
 ## TEAM
 
 | Name | `git config user.name` | Portal email | Superadmin |
 |---|---|---|---|
 | Jake Latham | `Jake Latham` | jlatham@elitert.com | yes |
-| Paxton | not set yet — add it when his computer is set up | pcalareso@vfo-services.com | yes |
+| Paxton Calareso | `Paxton Calareso` | pcalareso@vfo-services.com | yes |
 
 - **Superadmin = on the list in `constants/superadmin.ts`** (edge repo) — one line per person. Adding someone is that line + their admin login + a `vfo-admin-api` deploy; the website reads `is_superadmin` from the server and holds no copy of the list.
 
