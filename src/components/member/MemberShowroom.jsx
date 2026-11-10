@@ -92,6 +92,26 @@ function BackgroundCheckBadge({ value, large = false }) {
   )
 }
 
+// VFO Accredited Professional Specialists show only where `showAccredited` is passed
+// (the member portal + the admin views of it), never to clients or specialists.
+function AccreditedBadge({ large = false }) {
+  return (
+    <span
+      title="VFO Accredited Professional Specialist"
+      style={{
+        display: 'inline-flex', alignItems: 'center',
+        padding: large ? '5px 13px' : '3px 10px', borderRadius: '999px',
+        background: '#ffffff', color: '#002973', border: '1px solid rgba(255,255,255,0.55)',
+        fontFamily: '"DM Sans", sans-serif',
+        fontSize: large ? '12px' : '10.5px', fontWeight: 700, letterSpacing: '0.02em',
+        lineHeight: 1, whiteSpace: 'nowrap',
+      }}
+    >
+      VFO Accredited Professional Specialist
+    </span>
+  )
+}
+
 // The Details & Benefits panel the modal's button opens. Everything it renders
 // already exists on the experts row — this is a new VIEW of it, not new data.
 // `showRevenueShare` gates the Revenue Share section to admins and members
@@ -257,6 +277,7 @@ function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = 
             <div className="vfo-sr-modal-namerow">
               <h3 className="vfo-sr-modal-name">{formatName(expert.name)}</h3>
               {expert.background_check && <BackgroundCheckBadge value={expert.background_check} large />}
+              {expert.vfo_accredited && <AccreditedBadge large />}
             </div>
             <p className="vfo-sr-modal-tagline">{expert.short_bio || ''}</p>
             {(expert.categories || []).length > 0 && (
@@ -283,7 +304,7 @@ function ShowroomModal({ expert, onClose, showRevenueShare = false, showVault = 
   )
 }
 
-export default function MemberShowroom({ experts = [], exclusions = [], ecoMap = {}, showMemberServices = false, showRevenueShare = false, showVault = false, introRequest = null, clientView = false }) {
+export default function MemberShowroom({ experts = [], exclusions = [], ecoMap = {}, showMemberServices = false, showRevenueShare = false, showVault = false, showAccredited = false, introRequest = null, clientView = false }) {
   const [activeFilter, setActiveFilter] = useState('All')
   const [search, setSearch] = useState('')
   const isPhone = useIsPhone()
@@ -302,7 +323,7 @@ export default function MemberShowroom({ experts = [], exclusions = [], ecoMap =
   const shown = experts
     .filter(ex => !excluded.has(ex.id))
     .filter(ex => (ex.status || 'Active') === 'Active') // Feature C: only Active specialists appear in any showroom
-    .filter(ex => !ex.vfo_accredited) // VFO Accredited Professional Specialists are hidden from EVERY showroom surface (they surface only in Specialist Search + the Holistic/Tax specialist pickers)
+    .filter(ex => showAccredited || !ex.vfo_accredited) // VFO Accredited Professional Specialists: members (and the admin views of the member Showroom) only; hidden from the client + specialist portals
     .map(ex => ({ ...ex, categories: ecoMap[ex.id] || [] }))
     // Internal-only: hide Member-Services specialists where the category isn't shown.
     .filter(ex => showMemberServices || !ex.categories.includes(MEMBER_SERVICES))
@@ -359,6 +380,7 @@ export default function MemberShowroom({ experts = [], exclusions = [], ecoMap =
                     <p className="vfo-sr-card-tagline">{ex.short_bio || ''}</p>
                   </div>
                   {ex.background_check && <BackgroundCheckBadge value={ex.background_check} />}
+                  {ex.vfo_accredited && <AccreditedBadge />}
                 </div>
               </div>
             ))}
@@ -448,7 +470,7 @@ function showroomCss(s, scale) {
       .vfo-sr-card { padding: 12px 14px; border-radius: 14px; }
       .vfo-sr-card-header { display: grid; grid-template-columns: 52px 1fr; column-gap: 12px; row-gap: 6px; align-items: center; text-align: left; }
       .vfo-sr-card-header > :nth-child(2) { min-width: 0; }
-      .vfo-sr-card-header > :nth-child(3) { grid-column: 2; justify-self: start; }
+      .vfo-sr-card-header > :nth-child(n+3) { grid-column: 2; justify-self: start; }
       .vfo-sr-avatar { width: 52px; height: 52px; margin: 0; grid-row: span 2; align-self: start; }
       .vfo-sr-card-name { font-size: 16px; }
       .vfo-sr-card-tagline { font-size: 12.5px; margin-top: 2px; min-height: 0; }

@@ -185,7 +185,7 @@ export default function MemberPortal() {
           {!loading && activeTab === 'specialists' && memberData && (
             <MemberSpecialists member={memberData} allExperts={allExperts} exclusions={exclusions} ecoMap={ecoMap} onDataChange={loadData} />
           )}
-          {!loading && activeTab === 'showroom' && <MemberShowroom experts={allExperts} exclusions={exclusions} ecoMap={ecoMap} showMemberServices showRevenueShare showVault />}
+          {!loading && activeTab === 'showroom' && <MemberShowroom experts={allExperts} exclusions={exclusions} ecoMap={ecoMap} showMemberServices showRevenueShare showVault showAccredited />}
           {!loading && activeTab === 'website' && memberData && memberData.website_enabled && (
             <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
               <MemberWebsitePlugin member={memberData} onDataChange={loadData} />
