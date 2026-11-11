@@ -15,7 +15,8 @@ import { cleanText, formatPersonName } from '../../lib/formatters'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { statusPillStyle } from '../shared/statusColors'
 import EmailText from '../shared/EmailText'
-import { isMsmMeeting, msmTypeCounts } from '../shared/msmMeetingTypes'
+import { msmTypeCounts } from '../shared/msmMeetingTypes'
+import MsmMeetingsCounter from '../shared/MsmMeetingsCounter'
 
 // Group a phase's tasks so each section header owns the contiguous sub-steps beneath it,
 // letting the UI enclose the group and keep following standalone tasks visually separate.
@@ -232,7 +233,6 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }
 
-  const msmCount = meetings.filter(m => isMsmMeeting(m.meeting_type)).length
   const advancedCount = coachingCounts['Advanced Coaching'] || 0
   const standardCount = coachingCounts['Standard Coaching'] || 0
   const pft90Count = meetings.filter(m => m.meeting_type === 'PFT 90 Day Plan Meeting').length
@@ -280,7 +280,12 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
     : null
 
   if (activeTab === 'msm_home') {
-    const summary = [['MSM Meetings', msmCount], ...msmTypeCounts(meetings), ['Advanced Meetings', advancedCount], ['Standard Meetings', standardCount], ['VFO 90 Day Plan', vfo90Count], ['PFT 90 Day Plan', pft90Count]]
+    const msmCounts = msmTypeCounts(meetings)
+    // Desktop tiles copy the admin MSM Home's Meeting Summary exactly.
+    const summaryTile = { textAlign: 'center', padding: '12px 8px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border)', borderRadius: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }
+    const summaryNumber = { fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)' }
+    const summaryLabel = { fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', textTransform: 'uppercase' }
+    const summary = [['Advanced Meetings', advancedCount], ['Standard Meetings', standardCount], ['VFO 90 Day Plan', vfo90Count], ['PFT 90 Day Plan', pft90Count]]
     const homeSection = isPhone ? { ...sectionStyle, padding: '14px 16px', marginBottom: '12px' } : sectionStyle
     const homeLabel = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
     return (
@@ -320,17 +325,31 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
         <div style={homeSection}>
           <div style={homeLabel}>Meeting Summary</div>
           {/* Phone: a list, count on the right - five big numbers wrapped into an uneven grid. */}
-          {isPhone ? summary.map(([label, count], i) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: i < summary.length - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
-              <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{label}</span>
-              <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--vfo-heading)' }}>{count}</span>
-            </div>
-          )) : (
-            <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+          {isPhone ? (
+            <>
+              <div style={{ padding: '9px 0 6px', fontSize: '14px', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-tint)' }}>MSM Meetings</div>
+              {msmCounts.map(([label, count], i) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', marginLeft: '16px', borderTop: i > 0 ? '1px solid var(--vfo-tint)' : 'none' }}>
+                  <span style={{ fontSize: '14px', color: 'var(--vfo-muted)' }}>{label}</span>
+                  <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--vfo-heading)' }}>{count}</span>
+                </div>
+              ))}
+              {summary.map(([label, count], i) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderTop: i === 0 ? '1px solid var(--vfo-tint)' : 'none', borderBottom: i < summary.length - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
+                  <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{label}</span>
+                  <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--vfo-heading)' }}>{count}</span>
+                </div>
+              ))}
+            </>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+              <div style={summaryTile}>
+                <MsmMeetingsCounter meetings={meetings} numberStyle={summaryNumber} labelStyle={summaryLabel} ruleInset={16} />
+              </div>
               {summary.map(([label, count]) => (
-                <div key={label} style={{ textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)' }}>{count}</div>
-                  <div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '3px', textTransform: 'uppercase' }}>{label}</div>
+                <div key={label} style={summaryTile}>
+                  <div style={summaryNumber}>{count}</div>
+                  <div style={{ ...summaryLabel, marginTop: '3px' }}>{label}</div>
                 </div>
               ))}
             </div>
