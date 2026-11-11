@@ -12,7 +12,7 @@ Member or admin opens a member's "Advanced Coaching" tab. The tab is part of Mem
 
 ### Load meetings
 
-**Handler:** `coaching_load_meetings({enrollment_id})` ([MemberMSMTracking.jsx:711](src/components/member/MemberMSMTracking.jsx) → [admin-api:3417-3424](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)). Reads `coaching_meetings` filtered by `enrollment_id`.
+**Handler:** `coaching_load_meetings({enrollment_id})` ([MemberMSMTracking.jsx:1289](src/components/member/MemberMSMTracking.jsx) → [admin-api:3417-3424](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)). Reads `coaching_meetings` filtered by `enrollment_id`.
 
 ### Log a new meeting
 
@@ -30,7 +30,7 @@ Member or admin opens a member's "Advanced Coaching" tab. The tab is part of Mem
 
 ### Load renewals
 
-**Handler:** `coaching_load_renewals({enrollment_id})` ([MemberMSMTracking.jsx:788](src/components/member/MemberMSMTracking.jsx) → [admin-api:3459-3466](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)). Reads `coaching_renewals` filtered by `enrollment_id`.
+**Handler:** `coaching_load_renewals({enrollment_id})` ([MemberMSMTracking.jsx:1387](src/components/member/MemberMSMTracking.jsx) → [admin-api:3459-3466](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)). Reads `coaching_renewals` filtered by `enrollment_id`.
 
 ### Process a renewal
 

@@ -133,7 +133,7 @@ Three new backend actions — `member_client_vault_list` / `_download` / `_uploa
 ## Cross-talk with other flows
 
 - `msm_save_client_task` is called by [PIPDecisionForm.jsx:106](src/components/admin/map1/PIPDecisionForm.jsx) inside the MAP1 contract flow — see [contract-and-payment.md](contract-and-payment.md#step-2--pip-follow-up-decision).
-- `member_load_pipeline` is invoked from [MemberMSMTracking.jsx:777](src/components/member/MemberMSMTracking.jsx) to surface the MAP1 pipeline state read-only inside the member view.
+- `member_load_pipeline` is invoked from [MemberMSMTracking.jsx:1015](src/components/member/MemberMSMTracking.jsx) to surface the MAP1 pipeline state read-only inside the member view.
 - `training_member_save_task` raises `TRAINING_member_phase_completed` — a dismissible FYI bell routed to the member's assigned MSM via the `ASSIGNED_MSM` token, with the whole MSM team as the call-site fallback when the member has no assigned MSM. The Notification Editor rule is seeded by `supabase/migrations/20260912120000_training_member_phase_completed_rule.sql`; see [notifications.md](notifications.md).
 - The roleplay step's `TRAINING_roleplay_outcome_needed` bell is raised by the **growth** overdue sweep (`automation_GROWTH_overdue_sweep`, `runRoleplayOutcomePass`), not by an msm action — rule seeded by `20261002150000_training_roleplay.sql`.
 
