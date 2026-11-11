@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-11-11 — Evan Anderson's login moves to his vfo-services.com address — by Jake
+
+**Why.** Evan no longer has the elitert.com mailbox; his portal login (admin) becomes `eanderson@vfo-services.com` on live and the test site.
+
+**Code.** The bell filters on the session's email, so every map that routes bells or emails to Evan by his login changes with it: `constants/map1-pfs.ts`, `constants/onboarding-team.ts`, `constants/proactive-facilitators.ts` (role-play intro emails), `actions/pft/_shared.ts`, `utils/tax-notify.ts`, `utils/tax-diagnostic-bell.ts`, `utils/tax-intake-finalize.ts`, `actions/tax/holistic-form.ts`. The map comments that said every login is an elitert.com address now say "the login". Action count unchanged.
+
+**Data.** Migration `20261111150000_evan_login_vfo_services.sql` moves `allowed_admins.email`, his `admin_sessions`, his bells (`notifications.recipient`) and the `notification_rules` recipient lists that name him. History columns recording who did something (`client_tax_plans.*_by`) keep the old address. On the test site only, his Staging-tab test logins (admin, test member, specialist, planner, team member, group, three clients) were renamed to the same domain by hand.
+
+**Tested.** On the test site (branch build): every Evan login reads the new address and none the old; the four routing maps resolve to the new address. Evan's own sign-in with the new email is not yet exercised.
+
 ## 2026-11-11 — Remove prospect, members edit a client's additional contacts, one small-button set — by Jake
 
 **Why.** Members asked how to delete a prospect who never went ahead (loaded before a CIQ meeting) and how to add a spouse to a client after it was created, and read the view-only member Profile as "locked". Jake's rule: add capabilities where they make sense, never a general delete that could take a client with progress.
