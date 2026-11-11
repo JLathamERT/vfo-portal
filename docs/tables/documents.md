@@ -166,6 +166,8 @@ Subjects: 289 / 290 `VFO Services - Tax Planning Deposit Processing - [Client Na
 | **295** | `TAX_decision_rapid (member signing/paying on clients behalf)` | its member twin (126) | the same, member paying | the same |
 | **296** | `TAX_rapid_question_reply` | `TAX_decision_undecided` (18) | `tax_rapid_question_reply` | `[QUESTION]` `[ANSWER]` `[VIDEO_LINK]` `[BUTTONS]` |
 | **297** | `TAX_rapid_question_reply (member signing/paying on clients behalf)` | its member twin (126) | the same, member paying | the same |
+| new 2026-11-11 | `TAX_decision_question_reply` | `TAX_rapid_question_reply` (296), minus the video and the Step 4 question | `tax_rapid_question_reply` on a Traditional Undecided plan | `[QUESTION]` `[ANSWER]` `[BUTTONS]` |
+| new 2026-11-11 | `TAX_decision_question_reply (member signing/paying on clients behalf)` | its member twin (297) | the same, member paying | the same |
 | **298** | `TAX_decision_reminder\|rapid` | `TAX_decision_reminder` (39) | the tax sweep's Rapid reminder pass | `[BUTTONS]` (since 2026-10-26 = the *Watch the video* button, then Yes / I have questions / No) |
 | **299** | `TAX_decision_reminder\|rapid (member signing/paying on clients behalf)` | its member twin (128) | the same, member paying (`sendReminderEmailUnified` suffix) | the same |
 
