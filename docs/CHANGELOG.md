@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-11 — Refresh settings from live stops failing on new email templates — by Jake
+
+**Why.** Refresh on the test site's Staging tab kept stopping with *duplicate key value violates unique constraint "email_templates_pipeline_template_name_key"*. A migration that adds an email template runs on both sites, and the test site counts ids from 100000, so the same template has two ids (live 362, test site 100000 for `TAX_returns_reminder`). Refresh matched `email_templates` by id only, listed live's copy as New and the test site's as "only on the test site", and the insert hit the unique key. Five rows were stuck this way: `TAX_returns_reminder`, `GC_purchase_invoicereceipt`, `GC_purchase_ach_confirmation` and the two `TAX_decision_question_reply` rows.
+
+**Data fix (test site only).** Those five rows were renumbered to live's ids 360-364. Nothing points at `email_templates.id` and 360-364 were free on the test site.
+
+**Backend.** `constants/staging-tables.ts`: a `unique` key on `email_templates` (pipeline, template_name) and `agreement_templates` (pipeline, service_level, payment_plan, payer_type), their own unique constraints. `actions/staging/refresh.ts` `planTable`: a live row with no matching id is matched by that key, unless the test site's row's id is one live also uses; on apply the row is first updated in place to live's id and content, then the usual upsert runs for the rest. A row only on the test site is still kept and listed.
+
+**Tested.** `planTable` with made-up rows (the same name under two ids is updated and takes live's id; a new row is added; a test-only row is kept; an id match beats a name match; identical rows report nothing), `deno check` 0. The apply path runs on the test site once this merges: renumber one template there, then Check and Apply.
+
+**No schema change.** Action count unchanged (649).
+
 ## 2026-11-11 — The Undecided tax email asks questions the Rapid Route way; "Potential Net Savings" — by Jake
 
 **Why.** Evan asked for two changes to the Tax 3 Undecided email: "Potential Tax Savings" should read "Potential Net Savings" (and the portal box with it), and "Request Additional Meeting" should become the "I have questions" the Rapid Route emails carry. Jake chose to make it work identical to Rapid, not just a new label.
