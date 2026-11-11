@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { formatDate } from '../../lib/dates'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { btnPrimary, btnSecondary, btnDanger } from './buttonStyles'
 
 // Portal licensing L5: the CLIENT MIRRORING card on a client (member Profile tab
 // and the admin client Profile tab). member_client_connections_load decides what
@@ -79,9 +80,10 @@ export default function ClientConnectedMembersCard({ clientId, sectionStyle, car
 
   if (!state?.enabled) return null
 
-  const primaryBtn = { padding: '7px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }
-  const ghostBtn = { padding: '7px 14px', borderRadius: '8px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-strong)', color: 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }
-  const dangerBtn = { ...ghostBtn, color: '#c0392b', borderColor: 'rgba(231,76,60,0.35)' }
+  // The house button set (shared/buttonStyles.js, 2026-11-11).
+  const primaryBtn = btnPrimary
+  const ghostBtn = btnSecondary
+  const dangerBtn = btnDanger
   const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--vfo-border-soft)' }
   const muted = { fontSize: '12px', color: 'var(--vfo-muted)' }
   const chip = (oneOff) => ({ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: oneOff ? 'rgba(18,94,204,0.08)' : 'rgba(27,146,84,0.1)', color: oneOff ? 'var(--vfo-accent-text)' : 'var(--vfo-success-text)', marginLeft: '8px' })
@@ -104,7 +106,7 @@ export default function ClientConnectedMembersCard({ clientId, sectionStyle, car
   const stopIcon = (c, leaving) => {
     const open = confirmRemove === c.member_number
     return (
-      <button style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid rgba(231,76,60,0.35)', background: 'var(--vfo-input)', color: '#c0392b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, padding: 0, visibility: open ? 'hidden' : 'visible' }}
+      <button style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid rgba(231,76,60,0.35)', background: 'transparent', color: '#e74c3c', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, padding: 0, visibility: open ? 'hidden' : 'visible' }}
         disabled={!!busy || open} onClick={() => setConfirmRemove(c.member_number)} title={leaving ? 'Leave' : 'Stop mirroring'} aria-label={leaving ? 'Leave' : 'Stop mirroring'}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>
