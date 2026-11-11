@@ -15,7 +15,7 @@ Coaching is a per-enrollment program where the member receives ongoing meetings 
 | `notes` | text | |
 | `created_at` | timestamptz | default `now()` |
 
-**Touched by:** `coaching_load_meetings`, `coaching_log_meeting`, `coaching_update_meeting`, `coaching_delete_meeting`. Frontend: [MemberMSMTracking.jsx:1289](src/components/member/MemberMSMTracking.jsx).
+**Touched by:** `coaching_load_meetings`, `coaching_log_meeting`, `coaching_update_meeting`, `coaching_delete_meeting`. Frontend: [MemberMSMTracking.jsx:1308](src/components/member/MemberMSMTracking.jsx).
 
 ---
 
@@ -36,4 +36,4 @@ Renewal/cancellation events on a coaching enrollment.
 | `created_by` | text | |
 | `created_at` | timestamptz | default `now()` |
 
-**Touched by:** `coaching_load_renewals`, `coaching_process_renewal`. Frontend: [MemberMSMTracking.jsx:1387](src/components/member/MemberMSMTracking.jsx).
+**Touched by:** `coaching_load_renewals`, `coaching_process_renewal`. Frontend: [MemberMSMTracking.jsx:1406](src/components/member/MemberMSMTracking.jsx).

@@ -96,7 +96,7 @@ These are the components where most of the per-feature logic and `callApi` calls
 | `automation_load_pipeline_data` | AdminPortal Automation tab pipeline switch | [AutomationPanel.jsx:299](src/components/admin/AutomationPanel.jsx) |
 | `automation_load_email_templates` | AdminPortal → Automation → Email Templates | [EmailTemplatesPanel.jsx:18](src/components/admin/EmailTemplatesPanel.jsx) |
 | `automation_save_email_template` | EmailTemplatesPanel save | [EmailTemplatesPanel.jsx:40](src/components/admin/EmailTemplatesPanel.jsx) |
-| `member_load_pipeline` | Member viewing a client's MAP1 status | [MemberMSMTracking.jsx:1015](src/components/member/MemberMSMTracking.jsx) |
+| `member_load_pipeline` | Member viewing a client's MAP1 status | [MemberMSMTracking.jsx:1034](src/components/member/MemberMSMTracking.jsx) |
 
 ## How `automation_CONTRACT_revshare` is invoked
 
