@@ -8,6 +8,26 @@
 
 ---
 
+## 2026-11-11 — The Undecided tax email asks questions the Rapid Route way; "Potential Net Savings" — by Jake
+
+**Why.** Evan asked for two changes to the Tax 3 Undecided email: "Potential Tax Savings" should read "Potential Net Savings" (and the portal box with it), and "Request Additional Meeting" should become the "I have questions" the Rapid Route emails carry. Jake chose to make it work identical to Rapid, not just a new label.
+
+**Backend.**
+- `utils/tax-rapid-route.ts`: `questionsLoopOpen` (any `tax_decision='Undecided'` plan, Rapid or not), `undecidedButtonsHtml` (Continue (Yes) / Stop (No) / I have questions with `q=<count>`), `decisionButtonsHtml` (picks Rapid's or the Undecided set), a second bell prefix *"Answer the tax planning question from"* (the Rapid one names the video); `clearRapidQuestionBells` clears both.
+- `automation_TAX_rapidquestion` and `tax_rapid_question_reply` gate on `questionsLoopOpen` instead of the Rapid route. On a Traditional plan the reply drafts the new `TAX_decision_question_reply` (+ member twin) with the Undecided buttons and no video; the latch, ladder restart and bell clear are the Rapid ones.
+- `automation_TAX_finaldecision`: every answer closes an open question and clears its bell. `ExtraMeeting` is still accepted on a Traditional plan, for the links already in inboxes.
+- `tax/decision.ts` Undecided send: the new buttons, and it stamps `rapid_ladder_from_at`.
+- `revshare-sweep.ts`: the Traditional decision reminder and stall bell skip while `rapid_question_open_at` is set and count from `rapid_ladder_from_at` (falling back to the send for plans sent before this); the reminder draws the same three buttons with the plan's current question count. The old `buttonsTax3Undecided` is gone.
+- `utils/tax-plan-steps.ts`: the open-question next action applies on both routes (*"Answer the client's tax planning question"* off Rapid).
+
+**Website.** The Tax 3 card's question thread and reply box became one `questionThread()` used by both the Rapid and the Undecided blocks; the "Potential tax savings" box and the Tax Automation detail read "Potential net savings" (still `potential_tax_savings`); the step's emails chip and `templateMeta.js` list the new reply template.
+
+**Emails** (wording approved by Jake; migration `20261111120000_tax_undecided_i_have_questions.sql`, data only): rows 18 / 126 / 220 / 221 read "Potential Net Savings"; reminders 39 / 128 end *If you have any questions, click "I have questions" and your/the tax planning team will reply by email.*; two new Send-mode rows `TAX_decision_question_reply` (+ member twin) copied from 296 / 297's recipients. Applied on the test site 2026-11-11; on live at release, after the backend deploy.
+
+**Tested** on the test site, branch build v56, client 10001-002: Jake's click-through (send, the question box, the one-question-per-link refusal, the bell, the reply from the Tax 3 card, the reply email, a second question from it, Continue (Yes)) all PASS. Then by Claude through the sweep's own cron command and the public decision action: the reminder and stall bell stay silent with a question open (10 days backdated) and both fire once it closes; an old `ExtraMeeting` link still records and bells; Stop (No) with a question open stops the plan and clears the question and its bell. Not exercised: the member-paying twins and the `|skipped` copies (same code path, different template rows); a Direct plan's planner answering.
+
+**No schema change.** Action count unchanged (649).
+
 ## 2026-11-11 — One combined MSM Meetings counter on MSM Home — by Paxton
 
 **Why.** Paxton found three MSM counters in the Meeting Summary (the total, Growth Plan Meetings, Implementation Period Check-Ins) one too many, and sketched one MSM counter showing each type.
