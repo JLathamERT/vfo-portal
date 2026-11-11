@@ -8,6 +8,36 @@
 
 ---
 
+## 2026-11-11 — PFT Cc the assigned PF, tax returns reminder + "still hasn't" bells, Lead Member in the Network box, Logo sub-text, Growth Credits invoice + receipt — by Jake
+
+**Why.** Five small asks from Jake in one chat (2026-11-10/11).
+
+**1. Partnership Fast Track emails Cc the assigned PF, not Tray.** Every PFT template Cc'd `tvaldes@vfo-services.com`. Migration `20261110120000` drops her from every `PARTNERSHIP_FAST_TRACK` `cc_list` and adds `ASSIGNED_PF` where it was missing (`PFT_decision_undecided` Cc'd Tray alone). **Root cause of a second gap:** the `ASSIGNED_PF` token resolves through `utils/pf-emails.ts`, whose map had no Ian Welham, so Ian's clients' emails went out without their PF and nothing said so (#324). Ian is now in it (`iwelham@elitert.com`, Jake's word). The PFT bells were never affected: `actions/pft/_shared.ts` keeps its own map, which already had him.
+
+**2. Tax returns reminder + two "still hasn't" bells for Tray.** Jake asked what the step-1 cadence was: tax returns had **no reminder at all**; additional info reminded every 2 business days with no cap. Now, in `utils/tax-reminder-chases.ts` (behind `tax_reminders`, block 8 of the daily tax sweep):
+- **New tax returns pass** before the additional-info one: plans with `tax_returns_requested_at` set and `tax_returns_received_at` empty (skipping stopped plans and lost clients) get **`TAX_returns_reminder`** (Send; To the client; Cc PF, member, Tracy, Tray; Bcc Paul, Anton; an *Upload Tax Returns* button to `/tax-upload?token=`) 2 business days after the request and every 2 after that, stamped `tax_returns_reminder_sent_at`. Rule `TAX_returns_reminder_email` (sort 276).
+- **Two bells, once per request, 2 business days after the first reminder:** `TAX_returns_stalled_bell` — *"<client> still hasn't sent their tax returns"* — and `TAX_additional_info_stalled_bell` — *"<client> still hasn't sent the additional information we asked for"*. Dismissible FYI to Tray (`tvaldes@elitert.com`; the member on a Direct plan), linking the plan. Latches `tax_returns_stalled_notified_at` / `additional_info_stalled_notified_at`; a new request re-arms both.
+- **The arrival clears the bell** (Jake asked mid-test: "shouldnt an upload also clear the bell?"): `clearStalledBells` marks the matching unread bells read by title suffix from `vault/upload-notify.ts` (both kinds), `tax/returns-already-have.ts` and `vault/tax-text-submit.ts`.
+- **A 3-hour slack on every chase cutoff** (`chaseCutoff`): the sweep stamps a reminder a few seconds into the run, so an exact N-business-day cutoff the next time round fell just short and every step waited a day longer (#741).
+- Migration `20261110130000`: the three `client_tax_plans` columns, the three rules, the template.
+- **On live's first weekday run after release:** five plans are waiting on returns (oldest plan 164, asked 2026-10-15), so five reminders go out at once; one plan has an additional-info reminder out, so at most one bell fires straight away.
+
+**3. Lead Member in the Network box.** A corporate member now sees the member they belong to, in a **Lead Member** group after Corporate Members, on the member portal profile, the admin member Details tab and the planner's read-only member view. FE `findLeadMember` (`MemberPortal.jsx`) / the lead row in `MembersPanel.jsx`; BE `tax_planner_member_view` returns `lead_member` (`resolveLeadNumber`). Name chosen by Jake.
+
+**4. Logo sub-text.** The profile's Logo card says, under its title: *"Shown on your clients' ROI presentations, beside the VFO Services logo and the tax planning team's logo."* (Jake's words); the admin view reads *"this member's clients'"*. `MemberProfileDetails` gained an `adminView` prop.
+
+**5. Growth Credits purchase emails with the house invoice + receipt.** Growth Credits used to send no purchase email at all. Now it follows #287:
+- **Card:** `fulfillGrowthCredits` stamps `payment_method` + `card_fee` on the `gc_transactions` row and chains the new PUBLIC (service-role or admin session) action **`automation_GC_purchase_invoicereceipt`** (`actions/gc/purchase-invoice-receipt.ts`). It claims `docs_emailed_at` (#611), numbers **INV-GC-<member>-NNNN / REC-GC-<member>-NNNN** per member (`document_numbers.gc_transaction_id`, the seventh owner), verifies the reservation (#282), renders both PDFs in the portal-licence layout (`utils/gc-purchase-html.ts`) and sends `GC_purchase_invoicereceipt` (Send; To the member; Cc Tray `tvaldes@elitert.com`; Bcc Paul, Anton, Daniel), then files both PDFs in the member's ERT/VFOS documents vault (`member-ert-docs`).
+- **Bank:** `checkout.session.completed` with the bank payment still clearing sends `GC_purchase_ach_confirmation` ("Bank payment started", same list), latched per session in the new deny-all table `gc_purchase_notices`. The documents follow when it clears.
+- An admin's comp (no `stripe_session_id`) gets nothing. The wording was shown to and approved by Jake.
+- Migration `20261110140000`. Action count 644 → **645**.
+
+**Tested on the test site** (Jake clicked each, all PASS): the PFT Cc on 10001-PFT1 (assigned PF Ian); the returns reminder email and bell, and the additional-info reminder email and bell, each by backdating the stamps on fixture plan 100015 and running the sweep's `only:"reminder_chases"` hook; an upload clearing the returns bell and a typed reply clearing the additional-info bell; the Lead Member box on all three views (fixture corporate 10001-C1 "Jake Corporate", which needed a `member_plugin_settings` row to appear in the roster, #740); the Logo sub-text; a 1-credit card purchase (tx 100001, $103.30 incl. $3.30 fee) and a 1-credit bank purchase (tx 100002, confirmation then documents), both filed in the vault. **Not exercised:** a returns reminder or bell on a Direct plan (the member as recipient), the bells on the phone layout, and a real (not backdated) 2-business-day wait. Those, and the first live sends, are Issue JLathamERT/vfo-edge-functions#533.
+
+**Deploys.** Test site only, from this branch's worktree: `vfo-admin-api` up to **v50**; the three migrations applied there. Live untouched until release; the migrations go to live then.
+
+**Docs.** `send_mode` count corrected in the hub: live had **239** Send rows on 2026-11-11 (the hub still said 109); this change adds three. `flows/tax-planning.md` no longer calls the reminder templates Draft (they are Send on live).
+
 ## 2026-11-11 — MSM meeting types: Growth Plan Meeting and Implementation Period Check-In — by Paxton
 
 **Why.** Paxton wanted admins to say what kind of MSM meeting they logged, and to see that in Meeting History and in the Meeting Summary counts. Until now, "+ Log MSM Meeting" on the admin MSM Home always saved `meeting_type = 'MSM Meeting'`.

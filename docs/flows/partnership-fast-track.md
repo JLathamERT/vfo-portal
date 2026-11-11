@@ -191,6 +191,8 @@ isn't mapped. As of 2026-07-14 `notifyPfAndRachael` was renamed **`notifyPf`** a
 and the discovery + FT stall bells (4 business days) **all notify the assigned PF only**. All notification links deep-link to the
 specific record (`?onboarding=<id>` for the handoff record, `/admin/client/<id>?tab=pft` for the PFT track).
 
+**Emails Cc the assigned PF, never Tray (2026-11-10, migration `20261110120000`).** Every `PARTNERSHIP_FAST_TRACK` template Cc's `ASSIGNED_PF` and no longer Cc's `tvaldes@vfo-services.com` (the usual shape: To the accountant, Cc member + PF, Bcc Paul + Anton). The email token resolves through `utils/pf-emails.ts`, a SECOND name map beside the bell map above; Ian Welham was missing from it until the same day, so his clients' emails went out with no PF (#742). Adding a PF means both maps.
+
 On handoff into Accountant Onboarding (FT confirm / VFO-Associate pick, in both `decision-email.ts` and the
 `ft-response.ts` fallback insert), the client's `assigned_pf` is copied into the new
 `accountant_onboarding.onboarding_team_member` (+ `onboarding_team_member_at`), so the onboarding's downstream

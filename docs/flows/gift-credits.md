@@ -86,12 +86,24 @@ External to this codebase. Stripe redirects back to `success_url` after payment 
 The helper is **idempotent against Stripe retries** via a `stripe_session_id` guard: it looks for an existing `gc_transactions` row for that session id before crediting. Then:
 1. Reads existing `gc_balances.balance` (or 0).
 2. UPSERTs `gc_balances` with `balance = current + credits`.
-3. INSERTs `gc_transactions` row: `type='purchased'`, `amount=<credits>`, `balance_after=<new>`, `description="<credits> credits purchased via Stripe"`. **No `actor_name` / `actor_role`** — the webhook has no caller session, so a purchase reads *"—"* in the History tab's **By** column (see [Who did it](#who-did-it--the-actor-stamp-2026-10-02-v937)).
+3. INSERTs `gc_transactions` row: `type='purchased'`, `amount=<credits>`, `balance_after=<new>`, `description="<credits> credits purchased via Stripe"`, and since 2026-11-10 **`payment_method`** (`ach` when the session's `payment_method_types` holds `us_bank_account`, else `card`) and **`card_fee`** (the session's `metadata.card_processing_fee`, card only). **No `actor_name` / `actor_role`** — the webhook has no caller session, so a purchase reads *"—"* in the History tab's **By** column (see [Who did it](#who-did-it--the-actor-stamp-2026-10-02-v937)).
+4. Chains the invoice + receipt (below), then the FYI bell to the member's MSM.
 
 See [stripe-webhook.md](stripe-webhook.md#sub-branch-a1--gc-credit-purchase) for full handler detail.
 
 **Tables written:** `gc_balances` (insert/update), `gc_transactions` (insert).
-**Chains:** none.
+**Chains:** `automation_GC_purchase_invoicereceipt` (server-to-server, service role).
+
+### Step 4 — The purchase emails *(2026-11-10, #287)*
+
+Growth Credits sent no purchase email until 2026-11-10. It now follows the system-wide policy (#287). Both templates are pipeline `GROWTH_CREDITS`, **Send** mode, To the MEMBER, Cc Tray (`tvaldes@elitert.com`), Bcc Paul, Anton and Daniel, and the subject ends with the member's name (`withSubjectName`, #679).
+
+| When | Template | What |
+|---|---|---|
+| Card: at fulfilment. Bank: when the payment clears (`async_payment_succeeded` → fulfilment) | `GC_purchase_invoicereceipt` — *Growth Credits - Invoice & Receipt - <member>* | `automation_GC_purchase_invoicereceipt {transaction_id}` ([actions/gc/purchase-invoice-receipt.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/gc/purchase-invoice-receipt.ts)), PUBLIC but service-role or admin session only. Claims `gc_transactions.docs_emailed_at` before sending and releases it on any failure (#611). Numbers **`INV-GC-<member>-NNNN`** / **`REC-GC-<member>-NNNN`** per member through `allocateDocNumber` (owner `document_numbers.gc_transaction_id`), verifies both are reserved (#282; else a `FAILURE_ach_first_payment` bell to Jake and no email), keeps them on the row so a re-run reuses them. Renders both PDFs ([utils/gc-purchase-html.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/utils/gc-purchase-html.ts), the portal-licence layout: Credits, Credits Price, and a Card fee row only when one was charged, #607), attaches them, then files both in the member's ERT/VFOS documents vault (`member-ert-docs`, best-effort). Tokens `[Member First]` `[Credits]` `[AMOUNT]` (*"103.30 (including a $3.30 card processing fee)"*) `[Credit Balance]`. |
+| Bank only: `checkout.session.completed` while the payment is still clearing | `GC_purchase_ach_confirmation` — *Growth Credits - Bank payment started - <member>* | `sendGcAchConfirmation` ([utils/gc-purchase-emails.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/utils/gc-purchase-emails.ts)), in the webhook. A bank purchase has no `gc_transactions` row until it clears, so the once-per-session latch is its own deny-all table **`gc_purchase_notices`** (claimed by an `ignoreDuplicates` upsert, deleted on failure). No attachments. |
+
+An admin's comp (`gc_add_credits`, no `stripe_session_id`) gets neither. To resend a lost invoice + receipt: blank `docs_emailed_at` on the row and call `automation_GC_purchase_invoicereceipt` with its id. **Test-site proven 2026-11-11** (card tx 100001, bank tx 100002); not yet seen on live.
 
 ## Flow B — Redeeming credits
 
@@ -239,11 +251,11 @@ Both surfaces render the **same component**, [GCMarketplaceViews.jsx](src/compon
 ## Tables touched (composite)
 
 - **Read:** `gc_services`, `gc_balances`, `gc_transactions`, `gc_redemptions`, `gc_subscriptions`.
-- **Written:** `gc_balances` (upsert), `gc_transactions` (insert), `gc_redemptions` (insert/update), `gc_services` (insert/update/delete), `gc_subscriptions` (insert/update).
+- **Written:** `gc_balances` (upsert), `gc_transactions` (insert; `docs_emailed_at` / `invoice_number` / `receipt_number` update), `gc_purchase_notices` (insert/delete), `document_numbers` (insert), `gc_redemptions` (insert/update), `gc_services` (insert/update/delete), `gc_subscriptions` (insert/update).
 
 ## Downstream chains
 
-- Stripe purchase → Stripe webhook is the only chain trigger. The webhook is not chained to anything else (no email, no notification).
+- Stripe purchase → Stripe webhook is the only chain trigger. It chains `automation_GC_purchase_invoicereceipt` (the member's invoice + receipt, Step 4), sends the bank "payment started" email in-process, and raises the MSM FYI bell.
 - `automation_GC_recurring_sweep` chains nothing; its two emails are drafted in-process.
 
 ## Frontend touch-points

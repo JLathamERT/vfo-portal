@@ -350,6 +350,9 @@ Migration `20260928160000_client_portal_licenses.sql`. All nullable, no backfill
 | `tax_planner_allocated_at` | timestamptz | When the PLANNER slot was last filled (`allocate-planner.ts`; `tax_team_member_allocated_at` covers the team slot only). Anchors the planner review chase. Stamped from 2026-09-28 only, so older allocations are never chased. |
 | `planner_review_reminder_sent_at` | timestamptz | Last planner review chase drafted; cleared when a new planner is allocated. |
 | `additional_info_reminder_sent_at` | timestamptz | Last additional-info chase drafted. A stamp older than the current `additional_info_requested_at` belongs to an earlier request, which is how a new request re-arms the ladder. |
+| `additional_info_stalled_notified_at` | timestamptz | **NEW 2026-11-10** (migration `20261110130000`). When the *"still hasn't sent the additional information"* bell went to Tray for the current request; a stamp older than `additional_info_requested_at` belongs to an earlier one. |
+| `tax_returns_reminder_sent_at` | timestamptz | **NEW 2026-11-10**, same migration. Last tax returns chase (`TAX_returns_reminder`); re-armed the same way by a newer `tax_returns_requested_at`. |
+| `tax_returns_stalled_notified_at` | timestamptz | **NEW 2026-11-10**, same migration. When the *"still hasn't sent their tax returns"* bell went for the current request. |
 
 ### Indexes
 - `idx_client_tax_plans_tax_token` ON `tax_token`

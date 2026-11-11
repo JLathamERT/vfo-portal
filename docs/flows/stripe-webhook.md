@@ -92,11 +92,14 @@ The handler `if`-checks `event.type === "checkout.session.completed"` and `event
 **What it does:**
 1. Reads existing `gc_balances.balance` for the member (or 0 if no row).
 2. UPSERTs `gc_balances` with `balance = current + credits`.
-3. INSERTs `gc_transactions` row: `type='purchased'`, `amount=<credits>`, `balance_after=<new balance>`, `description="<credits> credits purchased via Stripe"`.
+3. INSERTs `gc_transactions` row: `type='purchased'`, `amount=<credits>`, `balance_after=<new balance>`, `description="<credits> credits purchased via Stripe"`, plus `payment_method` (`card` / `ach`) and `card_fee` (2026-11-10).
+4. Chains `automation_GC_purchase_invoicereceipt {transaction_id}` (the member's invoice + receipt, 2026-11-10).
+
+A bank purchase reaches step 1 only at `checkout.session.async_payment_succeeded`. At `checkout.session.completed` with the payment still clearing, the webhook instead sends the "Bank payment started" email (`sendGcAchConfirmation`, latched per session in `gc_purchase_notices`) — #287. Detail: [gift-credits.md](gift-credits.md) Step 4.
 
 **Tables read:** `gc_balances`.
-**Tables written:** `gc_balances` (insert or update), `gc_transactions` (insert).
-**Chains:** none.
+**Tables written:** `gc_balances` (insert or update), `gc_transactions` (insert), `gc_purchase_notices` (bank only).
+**Chains:** `automation_GC_purchase_invoicereceipt` (service role).
 
 ### Sub-branch A1½ — Tax intake deposit ($500, card or ACH) *(added 2026-09-17, v860; card-or-ACH since 2026-09-23, v886; `router/webhooks.ts` "TAX INTAKE DEPOSIT" block → `utils/tax-intake-deposit-webhook.ts`)*
 
