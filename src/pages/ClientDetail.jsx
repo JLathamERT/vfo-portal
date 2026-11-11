@@ -1,6 +1,6 @@
 import { Fragment, useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { getSession, callApi, loadCachedData, getLastSeen, setLastSeen } from '../lib/api'
+import { getSession, callApi, loadCachedData, getLastSeen, setLastSeen, clearActionCache, clearLastSeen } from '../lib/api'
 import { usePortalTheme } from '../lib/theme'
 import ClientTrackViewV2 from '../components/admin/map1/ClientTrackViewV2'
 import RegularPrioritiesTab from '../components/admin/regular/RegularPrioritiesTab'
@@ -30,6 +30,7 @@ import PhoneInput from '../components/shared/PhoneInput'
 import ClientTabDropdown from '../components/shared/ClientTabDropdown'
 import { useIsPhone } from '../lib/useMediaQuery'
 import EmailText from '../components/shared/EmailText'
+import { btnPrimary, btnSecondary, btnDanger, btnState } from '../components/shared/buttonStyles'
 
 // Program names as programs.name holds them (single client profile tab strip).
 const HOLISTIC = 'VFO Holistic Planning'
@@ -108,6 +109,10 @@ export default function ClientDetail() {
   // The server refuses each of these (MEMBER_TIER2_ACTIONS); this only hides them.
   const tier1Own = isMember && !isMirror && memberNav.tier1
   const isDirect = isMember && !mirror && !tier1Own && !!client?.pf_member_number && String(client.pf_member_number) === String(session?.member_number ?? '')
+  // A Tier 2 member manages the additional contacts on any client they OWN
+  // (2026-11-11; Direct clients only before). Name/email only - the Cc switches
+  // stay admin-only. The msm_*_client_contact handlers re-prove ownership.
+  const contactsEditable = isMember && !isMirror && !tier1Own
 
   // Program sub-tabs (PFT / MAP 1 / Regular / Tax / PIP) are locked on the admin
   // side until a PF is assigned to this client (set on the Profile tab). Members
@@ -494,12 +499,17 @@ export default function ClientDetail() {
           </div>
         ) : (
           <>
-            {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} program={program}
+            {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} contactsEditable={contactsEditable} memberOwnView={isMember && !isMirror} notes={clientNotes} onNotesChange={setClientNotes} program={program}
               portalCard={isMember && portalAccess !== undefined && client ? <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={tier1Own ? null : ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} readOnly={isAdmin} /> : null}
               mirroringCard={(isMember || isAdmin) && client ? <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} /> : null} />}
             {/* The admin view keeps the Client Portal card at the bottom; the member's sits above Client Mirroring. */}
             {activeTab === 'home' && isAdmin && portalAccess !== undefined && client && (
               <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={tier1Own ? null : ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} readOnly={isAdmin} />
+            )}
+            {/* Remove prospect (2026-11-11): the owning member (any tier) or an admin,
+                shown only while the server says nothing has happened to this client. */}
+            {activeTab === 'home' && (isAdmin || (isMember && !isMirror)) && (
+              <RemoveProspect key={`rm-${client.id}`} client={client} isAdmin={isAdmin} onRemoved={() => { clearActionCache(); clearLastSeen(); navigate(backUrl) }} />
             )}
             {/* This client's CIQs, inside the profile (2026-10-20). The list loads by
                 the OWNING member (a member caller's number is forced server-side). */}
@@ -542,7 +552,7 @@ export default function ClientDetail() {
   )
 }
 
-function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, sectionStyle, readOnly = false, plannerMode = false, directMode = false, notes = [], onNotesChange, program, portalCard = null, mirroringCard = null }) {
+function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, sectionStyle, readOnly = false, plannerMode = false, directMode = false, contactsEditable = false, memberOwnView = false, notes = [], onNotesChange, program, portalCard = null, mirroringCard = null }) {
   const isPhone = useIsPhone()
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [editNoteText, setEditNoteText] = useState('')
@@ -622,6 +632,9 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
   // already beside the client's number in the hero, and a card holding only the
   // PF's name was a card for one value (2026-10-28).
   const phoneRows = isPhone && readOnly
+  // The member's Profile is view-only by design, not locked (2026-11-11): each card
+  // says who changes it.
+  const vfoNote = { marginTop: phoneRows ? '10px' : '12px', fontSize: '12.5px', color: 'var(--vfo-muted)', lineHeight: 1.5 }
   const pfText = client?.pf_member_number ? `${client?.assigned_pf || '—'} (Member — Direct)` : (client?.assigned_pf || '—')
 
   return (
@@ -644,7 +657,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
           <div><div style={fieldLabel}>Phone</div><div style={fieldValue}>{client?.phone || '—'}</div></div>
         </div>
         )}
-        {readOnly && !directMode && contacts?.length > 0 && <div style={{ marginTop: phoneRows ? '10px' : '18px', paddingTop: phoneRows ? '12px' : '16px', borderTop: '1px solid var(--vfo-tint)' }}>
+        {readOnly && !contactsEditable && contacts?.length > 0 && <div style={{ marginTop: phoneRows ? '10px' : '18px', paddingTop: phoneRows ? '12px' : '16px', borderTop: '1px solid var(--vfo-tint)' }}>
           <div style={{ ...fieldLabel, marginBottom: '10px' }}>Additional Contacts</div>
           {contacts.map((c, i) => (
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: i < contacts.length - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
@@ -660,6 +673,8 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
             </div>
           ))}
         </div>}
+        {/* On a phone the status + PF cards fold into this one, so their line joins it. */}
+        {memberOwnView && <div style={vfoNote}>Please contact us to edit this client's details.{phoneRows ? ' Status and Proactive Facilitator are managed by VFO Services.' : ''}</div>}
       </div>
 
       {/* Status + assigned PF — side by side. */}
@@ -681,6 +696,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
             }
             {!readOnly && statusNote && <div style={{ marginTop: '8px', fontSize: '13px', color: statusNote.tone === 'error' ? '#e74c3c' : 'var(--vfo-success-text)' }}>{statusNote.text}</div>}
             {!readOnly && !statusNote && status === 'lost' && <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--vfo-muted)' }}>Lost — automatic payments are stopped for this client.</div>}
+            {memberOwnView && <div style={vfoNote}>Managed by VFO Services.</div>}
           </div>
         </div>
         <div style={{ flex: '1 1 300px', minWidth: '260px', display: 'flex' }}>
@@ -703,16 +719,18 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                   {pfSaved && <span style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600' }}>Saved!</span>}
                 </div>
             }
+            {memberOwnView && <div style={vfoNote}>Assigned by VFO Services.</div>}
           </div>
         </div>
       </div>}
 
-      {/* Admins manage Additional Contacts right here on the Profile tab;
-          members/planners get the read-only list in Contact Info instead. A
-          DIRECT member runs this client, so they get the editing card too —
-          name/email only, the Cc switches stay admin-only (isAdmin off). */}
+      {/* Admins manage Additional Contacts right here on the Profile tab. A
+          Tier 2 member gets the editing card on any client they own (2026-11-11;
+          Direct clients only before) — name/email only, the Cc switches stay
+          admin-only (isAdmin off). Planners, mirrored and Tier 1 members get the
+          read-only list in Contact Info instead. */}
       {!readOnly && <ClientAdditionalContacts client={client} contacts={contacts} onReloadContacts={onReloadContacts} sectionStyle={sectionStyle} isAdmin />}
-      {readOnly && directMode && <ClientAdditionalContacts client={client} contacts={contacts} onReloadContacts={onReloadContacts} sectionStyle={sectionStyle} />}
+      {readOnly && contactsEditable && <ClientAdditionalContacts client={client} contacts={contacts} onReloadContacts={onReloadContacts} sectionStyle={sectionStyle} />}
 
       {/* Above every notes card (Jake, 2026-11-02): the member's Client Portal
           card, then Client Mirroring. */}
@@ -911,9 +929,10 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
 // Additional Contacts card — lives on the client Profile (home) tab for admins
 // (moved off Edit Profile 2026-09-16 so it is always visible, empty or not).
 // Members and planners see the read-only list inside ClientHome's Contact Info
-// card instead. Since unit 2 phase 5 a DIRECT member gets this card as well
-// (isAdmin=false: name/email add/edit/remove, no Cc switches) — the three
-// msm_*_client_contact handlers re-prove own + Direct client server-side.
+// card instead. A Tier 2 member gets this card on any client they own (Direct
+// clients since unit 2 phase 5, every own client since 2026-11-11; isAdmin=false:
+// name/email add/edit/remove, no Cc switches) — the three msm_*_client_contact
+// handlers re-prove ownership server-side.
 function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sectionStyle, isAdmin = false }) {
   const [contactStatus, setContactStatus] = useState('')
   const [showAddContact, setShowAddContact] = useState(false)
@@ -1040,13 +1059,11 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
       <div style={sectionStyle}>
         <div style={{ ...cardTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Additional Contacts</span>
-          <button onClick={() => setShowAddContact(!showAddContact)} style={{ padding: '6px 14px', borderRadius: '6px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '12px', cursor: 'pointer' }}>+ Add</button>
+          <button onClick={() => setShowAddContact(!showAddContact)} style={{ ...btnPrimary, textTransform: 'none', letterSpacing: 0 }}>+ Add</button>
         </div>
-        <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '14px', lineHeight: 1.5 }}>
-          {isAdmin
-            ? <>People on this client's side. With <strong>Cc on all client emails</strong> switched on, a contact is Cc'd on every portal email addressed to this client; <strong>Include in the greeting</strong> also names them in the salutation.</>
-            : <>People on this client's side. The Tax Planning Team decides whether a contact is Cc'd on this client's emails.</>}
-        </div>
+        {isAdmin && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '14px', lineHeight: 1.5 }}>
+          People on this client's side. With <strong>Cc on all client emails</strong> switched on, a contact is Cc'd on every portal email addressed to this client; <strong>Include in the greeting</strong> also names them in the salutation.
+        </div>}
 
         {showAddContact && (
           <div style={{ padding: '16px', background: 'var(--vfo-tint)', borderRadius: '8px', marginBottom: '16px' }}>
@@ -1060,8 +1077,8 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={addContact} disabled={!canAddContact} style={{ padding: '8px 20px', borderRadius: '8px', background: canAddContact ? 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)' : 'var(--vfo-tint)', border: canAddContact ? 'none' : '1px solid var(--vfo-border-mid)', boxShadow: canAddContact ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: canAddContact ? '#fff' : 'var(--vfo-muted)', fontSize: '13px', cursor: canAddContact ? 'pointer' : 'not-allowed' }}>Save</button>
-              <button onClick={() => setShowAddContact(false)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={addContact} disabled={!canAddContact} style={btnState(btnPrimary, !canAddContact)}>Save</button>
+              <button onClick={() => setShowAddContact(false)} style={btnSecondary}>Cancel</button>
             </div>
           </div>
         )}
@@ -1079,8 +1096,8 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
                   <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Email</label><input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email" style={inputStyle} /></div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => saveEdit(c.id)} disabled={busyId === c.id} style={{ padding: '6px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '12px', cursor: busyId === c.id ? 'not-allowed' : 'pointer' }}>{busyId === c.id ? 'Saving...' : 'Save'}</button>
-                  <button onClick={() => { setEditId(null); setError(c.id, '') }} style={{ padding: '6px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={() => saveEdit(c.id)} disabled={busyId === c.id} style={btnState(btnPrimary, busyId === c.id)}>{busyId === c.id ? 'Saving...' : 'Save'}</button>
+                  <button onClick={() => { setEditId(null); setError(c.id, '') }} style={btnSecondary}>Cancel</button>
                 </div>
               </div>
             ) : (
@@ -1092,6 +1109,8 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
                     : <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '2px', fontStyle: 'italic' }}>No email on file</div>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                  {!isAdmin && c.cc_on_emails && <span style={ccBadgeStyle}>Cc'd on client emails</span>}
+                  {!isAdmin && c.use_in_greeting && <span style={ccBadgeStyle}>Included in greeting</span>}
                   {isAdmin && (() => {
                     const t = toggleState(c)
                     const dirty = !!stagedToggles[c.id]
@@ -1107,13 +1126,13 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
                             onChange={() => toggleGreeting(c)} style={{ accentColor: '#125ecc', cursor: t.cc_on_emails && busyId !== c.id ? 'pointer' : 'not-allowed' }} />
                           Include in the greeting
                         </label>
-                        {dirty && <button onClick={() => saveToggles(c)} disabled={busyId === c.id} style={{ padding: '6px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '12px', cursor: busyId === c.id ? 'not-allowed' : 'pointer' }}>{busyId === c.id ? 'Saving...' : 'Save'}</button>}
+                        {dirty && <button onClick={() => saveToggles(c)} disabled={busyId === c.id} style={btnState(btnPrimary, busyId === c.id)}>{busyId === c.id ? 'Saving...' : 'Save'}</button>}
                         {!dirty && rowSaved[c.id] && <span style={{ color: 'var(--vfo-success-text)', fontWeight: 600, fontSize: '12px' }}>Saved</span>}
                       </>
                     )
                   })()}
-                  <button onClick={() => startEdit(c)} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>
-                  <button onClick={() => deleteContact(c.id)} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.3)', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Remove</button>
+                  <button onClick={() => startEdit(c)} style={btnSecondary}>Edit</button>
+                  <button onClick={() => deleteContact(c.id)} style={btnDanger}>Remove</button>
                 </div>
               </div>
             )}
@@ -1121,5 +1140,84 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
           </div>
         ))}
       </div>
+  )
+}
+
+// Remove prospect (2026-11-11). Asks the server whether nothing has happened to this
+// client yet (no program, payment, signed agreement, notes, vault files, portal
+// access, mirroring or completed CIQ - utils/prospect-removal.ts) and renders nothing
+// unless so. The delete re-checks server-side, so a client that moved on since the
+// page opened is refused with the reason. The confirm box copies the house modal
+// (GrowthCreditsPanel's Remove service).
+function RemoveProspect({ client, isAdmin, onRemoved }) {
+  const [removable, setRemovable] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [done, setDone] = useState(false)
+  const name = `${client?.first_name || ''} ${client?.last_name || ''}`.trim() || 'this client'
+
+  useEffect(() => {
+    let alive = true
+    callApi(isAdmin ? 'admin_prospect_removal_load' : 'member_prospect_removal_load', { client_id: client.id })
+      .then(res => { if (alive) setRemovable(!!res?.removable) })
+      .catch(err => console.error(err))
+    return () => { alive = false }
+  }, [client.id, isAdmin])
+
+  async function remove() {
+    setBusy(true)
+    setError('')
+    try {
+      await callApi(isAdmin ? 'admin_remove_prospect' : 'member_remove_prospect', { client_id: client.id })
+      setDone(true)
+    } catch (err) {
+      setError(err?.message || 'Something went wrong')
+    } finally { setBusy(false) }
+  }
+
+  if (!removable) return null
+
+  return (
+    <>
+      <div style={{ textAlign: 'right', margin: '4px 2px 20px' }}>
+        <button onClick={() => { setError(''); setOpen(true) }}
+          style={{ padding: 0, border: 'none', background: 'transparent', color: '#e74c3c', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Remove prospect</button>
+      </div>
+      {open && (
+        <div onClick={() => { if (!busy && !done) setOpen(false) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(9,14,26,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: '0 18px 50px rgba(9,14,26,0.35)', padding: '26px 28px', maxWidth: '440px', width: '100%' }}>
+            {done ? (
+              <>
+                <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>Prospect removed</div>
+                <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 18px', lineHeight: 1.5 }}><strong>{name}</strong> has been removed.</p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={onRemoved}
+                    style={{ padding: '8px 22px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Back to clients</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>Remove {name}?</div>
+                <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 18px', lineHeight: 1.5 }}>
+                  This removes the client, any unfinished CIQ and their additional contacts{isAdmin ? '' : ' from your portal'}. It can't be undone.
+                </p>
+                {error && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '13px', margin: '-6px 0 14px' }}>{error}</div>}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button onClick={() => setOpen(false)} disabled={busy}
+                    style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: busy ? 'default' : 'pointer' }}>Cancel</button>
+                  <button onClick={remove} disabled={busy}
+                    style={{ padding: '8px 22px', borderRadius: '8px', border: 'none', background: '#d93025', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.7 : 1 }}>
+                    {busy ? 'Removing...' : 'Remove'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

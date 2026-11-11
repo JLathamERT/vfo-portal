@@ -8,6 +8,20 @@
 
 ---
 
+## 2026-11-11 — Remove prospect, members edit a client's additional contacts, one small-button set — by Jake
+
+**Why.** Members asked how to delete a prospect who never went ahead (loaded before a CIQ meeting) and how to add a spouse to a client after it was created, and read the view-only member Profile as "locked". Jake's rule: add capabilities where they make sense, never a general delete that could take a client with progress.
+
+**1. Remove prospect.** `utils/prospect-removal.ts` decides whether nothing has happened to a client: no PF (`assigned_pf` / `pf_member_number`), no row in any of 20 tables (`PROSPECT_BLOCKING_TABLES`: programs, notes, portal logins, mirroring, paid licences, payment records, other activity, bells), no completed CIQ, no paid `client_portal_licenses` row, no file in the three client vault buckets. A draft CIQ, the $0 CIQ licence record and the contacts do not block, and the delete cascades to them. Four actions in `actions/clients/remove-prospect.ts`: `member_prospect_removal_load` + `member_remove_prospect` (in NO gate list, members only, the OWNER only via `denyIfNotOwnClient`, so a mirrored member is refused; Tier 1 keeps them) and `admin_prospect_removal_load` + `admin_remove_prospect` (`ADMIN_ONLY_ACTIONS`, planners refused in-handler, #490). The check is load-named so `api.js` treats it as a read (no write count on every client page). The remove re-checks and answers 409 with the reasons if the client moved on. On the website, `RemoveProspect` (`ClientDetail.jsx`) ends the Profile tab: a red link only when removable, a house modal to confirm, a success state whose **Back to clients** clears the read caches and the last-seen snapshots (new `clearLastSeen()` in `api.js`). Decisions (Jake): Tier 1 members get it; admins get it; no bell to VFO. New gotcha #743 (a new client-keyed table must join the list).
+
+**2. Members edit additional contacts on any own client.** `msm_add/update/delete_client_contact` moved their member guard from `denyIfNotDirectClient` (Direct clients only, since 2026-09-18) to `denyIfNotOwnClient`. Tier 1 is still refused by `MEMBER_TIER2_ACTIONS`; the Cc / greeting switches stay admin-only. The member's card shows the two read-only pills instead of the switches and no notice line (Jake removed it). Accepted: a member can change the email of a contact VFO has set to Cc.
+
+**3. The view-only Profile says who changes it.** For the owning member: *"Please contact us to edit this client's details."* under Contact Info, *"Managed by VFO Services."* under Client Status, *"Assigned by VFO Services."* under Proactive Facilitator; on a phone, where those cards fold into one, a single combined line (wording and placement Jake's).
+
+**4. One small-button set.** Jake found the contacts and Client Mirroring buttons off house style and different from each other. `src/components/shared/buttonStyles.js` (primary gradient, grey outline, red outline, one size, plus `btnState` for disabled) now drives both cards; the phone's round stop button keeps its shape with the red matched.
+
+**Tested.** Test site build v52 (this branch), Jake's click-through on 10001: add a prospect, add / edit / remove a contact, Remove prospect cancel + remove by the member (client 100094, logged), no link on a client in a program or on one that had been mirrored and un-mirrored (kept strict, Jake), the admin side showing the link, the wording and the buttons at desktop and phone width; test-site smoke all PASS against v52. **Not exercised:** an admin actually removing a prospect, a Tier 1 member's Remove prospect and a mirrored member's refusal (all enforced server-side; edge Issue #535). Action count 645 → 649.
+
 ## 2026-11-11 — PFT Cc the assigned PF, tax returns reminder + "still hasn't" bells, Lead Member in the Network box, Logo sub-text, Growth Credits invoice + receipt — by Jake
 
 **Why.** Five small asks from Jake in one chat (2026-11-10/11).

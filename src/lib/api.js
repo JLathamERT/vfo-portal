@@ -236,6 +236,11 @@ export function setLastSeen(key, value) {
   lastSeen.set(key, { token: getSession()?.token, value })
 }
 
+// After a delete (Remove prospect), so no list redraws the removed row from its snapshot.
+export function clearLastSeen() {
+  lastSeen.clear()
+}
+
 const keyedCaches = new Map()
 
 export function loadCachedAction(action, payload = {}, { refresh = false } = {}) {
