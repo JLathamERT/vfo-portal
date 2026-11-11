@@ -42,13 +42,15 @@ The 32 `msm_*` actions fall into 5 subsystems. Each is a small CRUD island — n
 | `training_roleplay_confirm` | inserts / updates `training_roleplay_attempts`; syncs `member_training_progress`; clears bell | ADMIN_ONLY + in-handler 403. Body `{enrollment_id, task_id, date, time, tz, attempt_id?}`. New attempt (`TRAINING_roleplay_confirm`, or `\|rescheduled` after a No-show) or re-dates the latest open attempt (`attempt_id`, `\|rescheduled`). Row first, rolled back if the email fails. |
 | `training_roleplay_set_outcome` | updates `training_roleplay_attempts`; syncs `member_training_progress`; clears bell | ADMIN_ONLY + in-handler 403. Body `{attempt_id, outcome}` — `completed` \| `no_show` \| `''` (clear). Latest attempt only; a non-empty outcome is refused until the date has arrived (ET). |
 
-### C — Meetings (per-enrollment)
+### C — Meetings (per-member)
 
 | Action | Tables | Notes |
 |---|---|---|
-| `msm_load_meetings` | `member_meetings` | Filtered by `enrollment_id`. |
-| `msm_log_meeting` | inserts `member_meetings` | `ADMIN_ONLY` since 2026-10-09. |
+| `msm_load_meetings` | `member_meetings` | Filtered by `member_number`, newest first. Members get `notes` nulled on `internal` rows. |
+| `msm_log_meeting` | inserts `member_meetings` | `ADMIN_ONLY` since 2026-10-09. Saves the `meeting_type` it is sent, unchecked. |
 | `msm_delete_meeting` | deletes `member_meetings` | |
+
+**Meeting types (2026-11-11).** The admin MSM Home *+ Log MSM Meeting* form has a required **Meeting Type** dropdown: `Growth Plan Meeting` or `Implementation Period Check-In`. The list lives in `src/components/shared/msmMeetingTypes.js` (`MSM_MEETING_TYPES`). Rows logged before then are `MSM Meeting`. On both the admin and the member Home, the Meeting Summary's *MSM Meetings* counter is the total of all three (`isMsmMeeting`). Right after it come one counter per type, *Growth Plan Meetings* and *Implementation Period Check-Ins* (`msmTypeCounts`), which leave out the older `MSM Meeting` rows. Meeting History shows each row's `meeting_type` as its title. A new type is one line in that list: no backend change, since the column is bare `text`.
 
 ### D — Client management (per-enrollment)
 
