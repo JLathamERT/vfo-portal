@@ -15,6 +15,7 @@ import { cleanText, formatPersonName } from '../../lib/formatters'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { statusPillStyle } from '../shared/statusColors'
 import EmailText from '../shared/EmailText'
+import { isMsmMeeting, msmTypeCounts } from '../shared/msmMeetingTypes'
 
 // Group a phase's tasks so each section header owns the contiguous sub-steps beneath it,
 // letting the UI enclose the group and keep following standalone tasks visually separate.
@@ -231,7 +232,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }
 
-  const msmCount = meetings.filter(m => m.meeting_type === 'MSM Meeting').length
+  const msmCount = meetings.filter(m => isMsmMeeting(m.meeting_type)).length
   const advancedCount = coachingCounts['Advanced Coaching'] || 0
   const standardCount = coachingCounts['Standard Coaching'] || 0
   const pft90Count = meetings.filter(m => m.meeting_type === 'PFT 90 Day Plan Meeting').length
@@ -279,7 +280,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
     : null
 
   if (activeTab === 'msm_home') {
-    const summary = [['MSM Meetings', msmCount], ['Advanced Meetings', advancedCount], ['Standard Meetings', standardCount], ['VFO 90 Day Plan', vfo90Count], ['PFT 90 Day Plan', pft90Count]]
+    const summary = [['MSM Meetings', msmCount], ...msmTypeCounts(meetings), ['Advanced Meetings', advancedCount], ['Standard Meetings', standardCount], ['VFO 90 Day Plan', vfo90Count], ['PFT 90 Day Plan', pft90Count]]
     const homeSection = isPhone ? { ...sectionStyle, padding: '14px 16px', marginBottom: '12px' } : sectionStyle
     const homeLabel = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
     return (
