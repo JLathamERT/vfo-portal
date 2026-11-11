@@ -8,6 +8,20 @@
 
 ---
 
+## 2026-11-11 — One combined MSM Meetings counter on MSM Home — by Paxton
+
+**Why.** Paxton found three MSM counters in the Meeting Summary (the total, Growth Plan Meetings, Implementation Period Check-Ins) one too many, and sketched one MSM counter showing each type.
+
+**What changed (website only).**
+- New `src/components/shared/MsmMeetingsCounter.jsx`, used by the admin and the member MSM Home: the Growth Plan and Implementation counts in two equal halves split by a faint line, then a faint rule and the title **MSM Meetings** at the bottom like every other counter. Layout settled over five mocks with Paxton (title at the bottom, both lines faint, halves centred).
+- **No total, by decision.** The older `MSM Meeting` rows (1 on live) are counted nowhere; they still show in Meeting History. `isMsmMeeting` and the `msmCount` lines went with the total tile; `msmTypeCounts` now returns the short labels.
+- The admin tile has only 213px inside at 1280 wide, and equal halves at the normal label size need 234px. The two type labels are therefore 10px with 0.5px spacing (Paxton's choice over a full-row tile), with an 8px gap each side of the line. A box too narrow even for halves sized to each label stacks the counts, with the faint line between them, rather than breaking a word (the admin page on a phone).
+- The member's desktop Meeting Summary now uses the admin's tinted tiles, two to a row (it was a row of bare numbers). The member's phone list shows an *MSM Meetings* row with the two counts indented under it.
+
+**Tested.** Paxton's click-through on the test site through the dev server, member 10002: logging each type moves its count, the admin tile, and the member desktop tiles. Measured in the browser pane: the admin tile side by side with equal halves at 1280, stacked with no overflow at 390. No backend, schema or gate change; action count unchanged (649).
+
+**Docs.** `flows/msm-tracking.md` describes the counter. Seven line references into `MemberMSMTracking.jsx` (in `02-frontend-shell.md`, `06-orchestration-files.md`, `flows/coaching-renewals.md`, `flows/msm-tracking.md`, `tables/coaching.md`) moved by 19 lines.
+
 ## 2026-11-11 — Evan Anderson's login moves to his vfo-services.com address — by Jake
 
 **Why.** Evan no longer has the elitert.com mailbox; his portal login (admin) becomes `eanderson@vfo-services.com` on live and the test site.

@@ -12,7 +12,8 @@ import StepDate from '../shared/StepDate'
 import { formatDate as formatFullDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
 import AddClientForm from '../shared/AddClientForm'
-import { MSM_MEETING_TYPES, isMsmMeeting, msmTypeCounts } from '../shared/msmMeetingTypes'
+import { MSM_MEETING_TYPES } from '../shared/msmMeetingTypes'
+import MsmMeetingsCounter from '../shared/MsmMeetingsCounter'
 
 const PROGRAMS = [
   { key: 'holistic', name: 'VFO Holistic Planning' },
@@ -211,10 +212,12 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
     return <AdminProgramViewSkeleton />
   }
 
-  const msmCount = meetings.filter(m => isMsmMeeting(m.meeting_type)).length
   const advancedCount = coachingCounts['Advanced Coaching'] || 0
   const standardCount = coachingCounts['Standard Coaching'] || 0
   const pft90Count = meetings.filter(m => m.meeting_type === 'PFT 90 Day Plan Meeting').length
+  const summaryTile = { textAlign: 'center', padding: '12px 8px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border)', borderRadius: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }
+  const summaryNumber = { fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)' }
+  const summaryLabel = { fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', textTransform: 'uppercase' }
 
   return (
     <div>
@@ -270,9 +273,10 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
           <div style={sectionStyle}>
             <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Meeting Summary</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
+              <div style={summaryTile}>
+                <MsmMeetingsCounter meetings={meetings} numberStyle={summaryNumber} labelStyle={summaryLabel} ruleInset={16} />
+              </div>
               {[
-                ['MSM Meetings', msmCount],
-                ...msmTypeCounts(meetings),
                 // Advanced (coaching) + PFT (partnership) counters only show when
                 // that program is in scope — strategic members run Holistic + Tax
                 // only, so both are hidden for them.
@@ -281,9 +285,9 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
                 ['VFO 90 Day Plan', vfo90Count],
                 ...((!allowedProgramKeys || allowedProgramKeys.includes('partnership')) ? [['PFT 90 Day Plan', pft90Count]] : []),
               ].map(([label, count]) => (
-                <div key={label} style={{ textAlign: 'center', padding: '12px 8px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border)', borderRadius: '12px' }}>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)' }}>{count}</div>
-                  <div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '3px', textTransform: 'uppercase' }}>{label}</div>
+                <div key={label} style={summaryTile}>
+                  <div style={summaryNumber}>{count}</div>
+                  <div style={{ ...summaryLabel, marginTop: '3px' }}>{label}</div>
                 </div>
               ))}
             </div>
