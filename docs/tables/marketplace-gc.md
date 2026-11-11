@@ -53,9 +53,26 @@ Append-only credit ledger. `balance_after` is captured per-tx so audits don't ne
 | `stripe_account` | text | **NEW 2026-09-11** (`20260911120000_second_stripe_account.sql`, additive nullable, named CHECK `gc_transactions_stripe_account_check IN ('vfos','ert')`). **Which Stripe account this transaction's checkout session was minted on. NULL = legacy = `'vfos'` (VFO Services).** Written by `fulfillGrowthCredits()` in `router/webhooks.ts` from **the account that signed the webhook** — i.e. whichever of the four signing secrets verified the event — not from the config. **Never re-stamped** (a GC purchase is a one-shot session; there is no saved customer to charge again, so this is a record, not a routing key). An **admin comp** via `gc_add_credits` moves no money and leaves this **NULL alongside `stripe_session_id`**, which is consistent with the #466 discriminator rule. **Backfill: `'vfos'` onto every row with a non-NULL `stripe_session_id` — 4 purchases.** Gotcha **#485**. |
 | `actor_name` | text | **NEW 2026-10-02** (`20261002190000_gc_transactions_actor.sql`, additive nullable on the existing deny-all table, v937). **Who wrote the row — stored as a NAME, never an email**, because members read this ledger in their own portal (`gc_load_transactions` is `select("*")` and in `MEMBER_SCOPED_ACTIONS`). Resolved by `utils/gc-actor.ts gcActorFor(supabase, auth)`: an admin caller → `allowed_admins.name` (falls back to the session email only if the admin row has no name); a member caller → `members.first_name + last_name` (fallback `Member <number>`); the renewal sweep → the constant `GC_SYSTEM_ACTOR` (`"System"`). Never throws — an unresolvable caller stamps NULL. Gotcha **#577**. |
 | `actor_role` | text | **NEW 2026-10-02**, same migration. Nullable, CHECK `actor_role IN ('member','admin','system')`. Drives the History tab's **By** suffix: `member` → the name alone, `admin` → *"«name» (admin)"*, `system` → *"System (renewal)"*, NULL → *"—"*. |
+| `payment_method` | text | **NEW 2026-11-10** (migration `20261110140000`), nullable, no CHECK. `card` \| `ach`, written by the Stripe webhook on a member purchase only; NULL on comps, spends and older rows. |
+| `card_fee` | numeric(10,2) | **NEW 2026-11-10**, nullable. The card processing fee inside `amount_usd` (card purchases only, from the session's `metadata.card_processing_fee`). |
+| `invoice_number` / `receipt_number` | text | **NEW 2026-11-10**, nullable. The purchase's `INV-GC-…` / `REC-GC-…`, kept so a re-run reuses them. |
+| `docs_emailed_at` | timestamptz | **NEW 2026-11-10**, nullable. The invoice + receipt latch: claimed before the send, released on failure (#611). |
 | `created_at` | timestamptz | default `now()` |
 
 **Read for Accounting → Growth Credits by `gc_load_accounting`.**
+
+## `gc_purchase_notices` *(NEW 2026-11-10)*
+
+The once-per-checkout latch for the bank "payment started" email (`GC_purchase_ach_confirmation`). A bank purchase has no `gc_transactions` row until it clears, so the claim lives here. RLS on + deny-all policy (anon probe 0 rows on the test site, 2026-11-11). Migration `20261110140000`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `stripe_session_id` | text | pk. The Checkout Session. |
+| `member_number` | text | not null. No foreign key. |
+| `ach_confirmation_sent_at` | timestamptz | Stamped by the claim. |
+| `created_at` | timestamptz | not null, default `now()` |
+
+**Touched by:** `sendGcAchConfirmation` (`utils/gc-purchase-emails.ts`, from the Stripe webhook): an `ignoreDuplicates` upsert claims, a delete releases on failure.
 
 **Touched by:** `gc_load_transactions`, `gc_redeem`, `gc_add_credits`, `gc_deduct_credits`, `membership_gc_plan_save` + `automation_MEMBERSHIP_sweep` (type `membership`, 2026-10-21, via `utils/membership-gc.ts`), `gc_create_checkout` (after Stripe webhook confirms payment), `gc_update_redemption` (reject → `refunded` row), `automation_GC_recurring_sweep` (renewal `redeemed` rows).
 

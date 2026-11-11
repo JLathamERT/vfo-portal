@@ -91,8 +91,9 @@ export function PayoutStatusLine({ status }) {
   return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pill.dot, flexShrink: 0 }} />{pill.label}</span>
 }
 
-// people: { introducedBy, introducerOf[], connections[], corporate[] } — each
-// person is { name, number, member_type, chip? }.
+// people: { introducedBy, introducerOf[], connections[], corporate[], lead } —
+// each person is { name, number, member_type, chip? }. `lead` is a corporate
+// member's lead member, the mirror of the lead's Corporate Members group.
 // Direct to Tax Planning on the Tax Planning card (2026-10-28): 2 qualifying
 // clients make a member READY; an admin's tick (directControl, admin only)
 // switches it on. `standing` is member_profile_load's direct_eligibility.
@@ -134,7 +135,7 @@ function DirectStanding({ standing, admin, control }) {
 
 export default function MemberProfileDetails({
   profile, memberNumber, directEligibility, directControl, hideRevenueDecision = false,
-  payoutSlot, people = {}, onOpenMember, styles,
+  payoutSlot, people = {}, onOpenMember, styles, adminView = false,
 }) {
   const { sectionStyle, cardTitle } = styles
   // Phone: the certification seals shrink - at full size they filled the card.
@@ -149,7 +150,8 @@ export default function MemberProfileDetails({
   const introducerOf = people.introducerOf || []
   const connections = people.connections || []
   const corporate = people.corporate || []
-  const hasNetwork = introducedBy.length + introducerOf.length + connections.length + corporate.length > 0
+  const lead = people.lead ? [people.lead] : []
+  const hasNetwork = introducedBy.length + introducerOf.length + connections.length + corporate.length + lead.length > 0
   const row = { display: 'flex', gap: '16px', alignItems: 'stretch', flexWrap: 'wrap' }
   const col = (basis, min) => ({ flex: `1 1 ${basis}`, minWidth: min, display: 'flex' })
   const card = { ...sectionStyle, flex: 1 }
@@ -229,6 +231,11 @@ export default function MemberProfileDetails({
 
       <div style={sectionStyle}>
         <div style={cardTitle}>Logo</div>
+        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.55, marginBottom: '14px', maxWidth: '760px' }}>
+          {adminView
+            ? "Shown on this member's clients' ROI presentations, beside the VFO Services logo and the tax planning team's logo."
+            : "Shown on your clients' ROI presentations, beside the VFO Services logo and the tax planning team's logo."}
+        </div>
         {profile.logo_image
           ? <img src={logoUrl(profile.logo_image)} alt="Logo" style={{ height: '80px', maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
           : <div style={{ width: '240px', height: '80px', borderRadius: '10px', border: '1px dashed var(--vfo-border-mid)', background: 'var(--vfo-tint)', boxSizing: 'border-box' }} />}
@@ -248,6 +255,7 @@ export default function MemberProfileDetails({
           <PeopleGroup title="Introducer Of" people={introducerOf} onOpenMember={onOpenMember} first={!introducedBy.length} />
           <PeopleGroup title="Connections" people={connections} onOpenMember={onOpenMember} first={!introducedBy.length && !introducerOf.length} />
           <PeopleGroup title="Corporate Members" people={corporate} onOpenMember={onOpenMember} first={!introducedBy.length && !introducerOf.length && !connections.length} />
+          <PeopleGroup title="Lead Member" people={lead} onOpenMember={onOpenMember} first={!introducedBy.length && !introducerOf.length && !connections.length && !corporate.length} />
         </div>
       )}
 
