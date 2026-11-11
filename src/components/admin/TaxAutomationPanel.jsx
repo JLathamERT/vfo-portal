@@ -158,7 +158,7 @@ function ExpandedRow({ row, onRefresh }) {
             {row.tax_decision === 'Yes' && pricing()}
             {row.tax_decision === 'Undecided' && (
               <>
-                <Detail l="Potential tax savings" v={money(row.potential_tax_savings)} />
+                <Detail l="Potential net savings" v={money(row.potential_tax_savings)} />
                 <Detail l="Initial retainer quoted" v={money(row.initial_retainer_quoted)} />
               </>
             )}

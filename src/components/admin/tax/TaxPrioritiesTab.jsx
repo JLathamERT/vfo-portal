@@ -1607,7 +1607,7 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
           <div style={{ fontSize: '12px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Meeting figures</div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: '120px' }}>
-              <label style={labelStyle}>Potential tax savings</label>
+              <label style={labelStyle}>Potential net savings</label>
               <div style={{ position: 'relative' }}>
                 <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--vfo-muted)', fontSize: '14px' }}>$</span>
                 <input value={potentialTaxSavings} onChange={e => setPotentialTaxSavings(e.target.value)} placeholder="0.00" style={{ ...(isViewMode ? readOnlyInput : inputStyle), paddingLeft: '28px' }} readOnly={isViewMode} />
@@ -4187,7 +4187,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         const decisionColor = decisionRaw === 'Yes' || decisionRaw === 'Rapid' ? '#1b9254' : decisionRaw === 'No' ? '#e74c3c' : decisionRaw === 'Undecided' ? '#e06717' : 'var(--vfo-muted)'
         const decisionEmailTemplates = rapidPlan
           ? [{ name: 'TAX_decision_rapid', when: 'The Rapid Route email — video, agreement PDF, Yes / I have questions / No' }, { name: 'TAX_rapid_question_reply', when: 'Your reply to the client\'s question — the buttons again' }, { name: 'TAX_decision_reminder|rapid', when: 'Automatic reminder if the client does not answer (2 business days, paused while a question is open)' }, { name: 'TAX_agreementsent|Yes|skipped', when: 'If the client clicks Yes — sent automatically' }]
-          : [{ name: 'TAX_agreementsent|Yes', when: 'If Yes — congratulations + agreement signing link' }, { name: 'TAX_decision_undecided', when: 'If Undecided — options email to the client' }, { name: 'TAX_decision_decline', when: 'If Decline' }, { name: 'TAX_decision_reminder', when: 'Automatic reminder if the Undecided email gets no response (2 business days)' }]
+          : [{ name: 'TAX_agreementsent|Yes', when: 'If Yes — congratulations + agreement signing link' }, { name: 'TAX_decision_undecided', when: 'If Undecided — options email to the client (Continue / Stop / I have questions)' }, { name: 'TAX_decision_question_reply', when: 'Your reply to the client\'s question — the buttons again' }, { name: 'TAX_decision_decline', when: 'If Decline' }, { name: 'TAX_decision_reminder', when: 'Automatic reminder if the Undecided email gets no response (2 business days, paused while a question is open)' }]
         let formData = null
         if (isDone) { try { formData = JSON.parse(p.notes || '{}') } catch(e) { formData = {} } }
         const formExpandKey = `taxform_${task.id}`
@@ -4280,6 +4280,60 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       const decisionLabel = effectiveDecision === 'Yes' ? (decision === 'Undecided' ? 'Undecided → Yes' : 'Yes — proceeding') : effectiveDecision === 'No' ? (decision === 'Undecided' ? 'Undecided → No' : 'No — declined') : effectiveDecision === 'ExtraMeeting' ? 'Undecided → Extra meeting' : 'Undecided — awaiting client'
       const clientResponse = aiState.client_response || ''
       const pfResponse = aiState.pf_response || ''
+      // The client's "I have questions" thread — the Rapid Route email
+      // (2026-09-25) and, since 2026-11-11, the Undecided email: every question
+      // with its reply, and the reply box under the open one.
+      const decisionQuestions = Array.isArray(livePlan?.rapid_questions) ? livePlan.rapid_questions : []
+      const openDecisionQ = livePlan?.rapid_question_open_at && decisionQuestions.length ? decisionQuestions[decisionQuestions.length - 1] : null
+      const questionThread = () => {
+        const canAct = !memberLocked && !readOnly
+        const qaBox = { margin: '6px 0 8px 14px', padding: '10px 12px', borderRadius: '8px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-chip)' }
+        const qaLabel = { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--vfo-muted)', marginBottom: '4px' }
+        const sendReply = async () => {
+          const text = rapidReply.trim()
+          if (!text || rapidReplyBusy) return
+          if (!window.confirm('Send this reply?\n\nThe client (or the member, if the member is paying) receives your answer with the decision buttons again.')) return
+          setRapidReplyBusy(true)
+          try {
+            await callApi('tax_rapid_question_reply', { tax_plan_id: plan.id, reply: text })
+            setRapidReply('')
+            await refreshLivePlan()
+          } catch (err) {
+            alert('Reply failed: ' + (err?.message || 'unknown error'))
+          } finally { setRapidReplyBusy(false) }
+        }
+        return decisionQuestions.map((q, i) => (
+          <div key={i} style={qaBox}>
+            <div style={qaLabel}>Client question{q.asked_at ? ` · ${fmtMMDD(q.asked_at)}` : ''}</div>
+            <div style={{ fontSize: '12.5px', color: 'var(--vfo-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5, marginBottom: q.reply ? '8px' : 0 }}>{q.question}</div>
+            {q.reply && (
+              <>
+                <div style={qaLabel}>Reply sent{q.replied_at ? ` · ${fmtMMDD(q.replied_at)}` : ''}</div>
+                <div style={{ fontSize: '12.5px', color: 'var(--vfo-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{q.reply}</div>
+              </>
+            )}
+            {openDecisionQ === q && !q.reply && (canAct ? (
+              <div style={{ marginTop: '8px' }}>
+                <textarea
+                  value={rapidReply}
+                  onChange={e => setRapidReply(e.target.value)}
+                  placeholder="Type your reply to the client…"
+                  disabled={rapidReplyBusy}
+                  style={{ width: '100%', minHeight: '90px', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', fontSize: '13px', lineHeight: '1.55', boxSizing: 'border-box', resize: 'vertical' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                  <button disabled={rapidReplyBusy || !rapidReply.trim()} onClick={sendReply}
+                    style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: (rapidReplyBusy || !rapidReply.trim()) ? 'not-allowed' : 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff' }}>
+                    {rapidReplyBusy ? 'Sending…' : 'Send reply'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: '11.5px', color: '#e06717', marginTop: '6px' }}>Awaiting a reply from the tax planning team</div>
+            ))}
+          </div>
+        ))
+      }
 
       function saveAiState(newState, status) {
         callApi('tax_save_task', { tax_plan_id: plan.id, task_id: task.id, status, notes: JSON.stringify(newState) })
@@ -4334,24 +4388,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               // with the send, a Yes sends the agreement on its own, and "I have
               // questions" is answered HERE (no email to the PF, Jake's call).
               const finalDec = livePlan?.tax_final_decision
-              const questions = Array.isArray(livePlan?.rapid_questions) ? livePlan.rapid_questions : []
-              const openQ = livePlan?.rapid_question_open_at && questions.length ? questions[questions.length - 1] : null
+              const openQ = openDecisionQ
               const canAct = !memberLocked && !readOnly
-              const qaBox = { margin: '6px 0 8px 14px', padding: '10px 12px', borderRadius: '8px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-chip)' }
-              const qaLabel = { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--vfo-muted)', marginBottom: '4px' }
-              const sendReply = async () => {
-                const text = rapidReply.trim()
-                if (!text || rapidReplyBusy) return
-                if (!window.confirm('Send this reply?\n\nThe client (or the member, if the member is paying) receives your answer with the Yes / I have questions / No buttons again.')) return
-                setRapidReplyBusy(true)
-                try {
-                  await callApi('tax_rapid_question_reply', { tax_plan_id: plan.id, reply: text })
-                  setRapidReply('')
-                  await refreshLivePlan()
-                } catch (err) {
-                  alert('Reply failed: ' + (err?.message || 'unknown error'))
-                } finally { setRapidReplyBusy(false) }
-              }
               const retryAgreement = async () => {
                 if (rapidAgreementBusy) return
                 setRapidAgreementBusy(true)
@@ -4371,37 +4409,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                     </div>
                   )}
                   {stallRows('tax_decision')}
-                  {questions.map((q, i) => (
-                    <div key={i} style={qaBox}>
-                      <div style={qaLabel}>Client question{q.asked_at ? ` · ${fmtMMDD(q.asked_at)}` : ''}</div>
-                      <div style={{ fontSize: '12.5px', color: 'var(--vfo-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5, marginBottom: q.reply ? '8px' : 0 }}>{q.question}</div>
-                      {q.reply && (
-                        <>
-                          <div style={qaLabel}>Reply sent{q.replied_at ? ` · ${fmtMMDD(q.replied_at)}` : ''}</div>
-                          <div style={{ fontSize: '12.5px', color: 'var(--vfo-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{q.reply}</div>
-                        </>
-                      )}
-                      {openQ === q && !q.reply && (canAct ? (
-                        <div style={{ marginTop: '8px' }}>
-                          <textarea
-                            value={rapidReply}
-                            onChange={e => setRapidReply(e.target.value)}
-                            placeholder="Type your reply to the client…"
-                            disabled={rapidReplyBusy}
-                            style={{ width: '100%', minHeight: '90px', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', fontSize: '13px', lineHeight: '1.55', boxSizing: 'border-box', resize: 'vertical' }}
-                          />
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
-                            <button disabled={rapidReplyBusy || !rapidReply.trim()} onClick={sendReply}
-                              style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: (rapidReplyBusy || !rapidReply.trim()) ? 'not-allowed' : 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff' }}>
-                              {rapidReplyBusy ? 'Sending…' : 'Send reply'}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: '11.5px', color: '#e06717', marginTop: '6px' }}>Awaiting a reply from the tax planning team</div>
-                      ))}
-                    </div>
-                  ))}
+                  {questionThread()}
                   {!finalDec && !openQ && autoStep('Waiting for client to respond via email', false)}
 
                   {finalDec === 'Yes' && (
@@ -4443,7 +4451,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                 <>
                   {autoStep('Decision email sent with agreement PDF', livePlan?.tax_decision_email_sent === 'Yes', null, livePlan?.tax_decision_email_sent_at)}
                   {stallRows('tax_decision')}
-                  {!finalDec && autoStep('Waiting for client to respond via email', false)}
+                  {questionThread()}
+                  {!finalDec && !openDecisionQ && autoStep('Waiting for client to respond via email', false)}
 
                   {finalDec === 'Yes' && !viaExtra && (
                     <>
