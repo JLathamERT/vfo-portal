@@ -194,7 +194,7 @@ Unique `(roleplay_id, attempt_no)`. **Touched by:** `training_roleplay_load` (re
 
 ## `member_meetings`
 
-Meeting log per enrollment.
+Meeting log per member (the admin MSM Home form leaves `enrollment_id` empty).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -202,9 +202,10 @@ Meeting log per enrollment.
 | `member_number` | text | fk → `members.member_number` (CASCADE) |
 | `enrollment_id` | integer | fk → `member_enrollments.id` (CASCADE) |
 | `meeting_date` | date | |
-| `meeting_type` | text | |
+| `meeting_type` | text | no CHECK. MSM meetings: `Growth Plan Meeting` / `Implementation Period Check-In` since 2026-11-11, `MSM Meeting` before (`src/components/shared/msmMeetingTypes.js`). The FE also counts `PFT 90 Day Plan Meeting`, which nothing writes today. |
 | `conducted_by` | text | |
 | `notes` | text | |
+| `visibility` | text | `'internal'` \| `'shared'`, default `'shared'` (2026-07-10, #214) |
 | `created_at` | timestamptz | default `now()` |
 
 **Touched by:** `msm_load_meetings`, `msm_log_meeting`, `msm_delete_meeting`.

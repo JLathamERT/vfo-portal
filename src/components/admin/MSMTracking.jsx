@@ -12,6 +12,7 @@ import StepDate from '../shared/StepDate'
 import { formatDate as formatFullDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
 import AddClientForm from '../shared/AddClientForm'
+import { MSM_MEETING_TYPES, isMsmMeeting, msmTypeCounts } from '../shared/msmMeetingTypes'
 
 const PROGRAMS = [
   { key: 'holistic', name: 'VFO Holistic Planning' },
@@ -70,6 +71,7 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
   // summary tiles derive these counts from coaching_load_meetings per enrollment.
   const [coachingCounts, setCoachingCounts] = useState({})
   const [showLogMeeting, setShowLogMeeting] = useState(false)
+  const [meetingType, setMeetingType] = useState('')
   const [meetingDate, setMeetingDate] = useState('')
   const [meetingConductedBy, setMeetingConductedBy] = useState('')
   const [meetingNotes, setMeetingNotes] = useState('')
@@ -172,17 +174,18 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
   }
 
   async function logMeeting(visibility) {
+    if (!meetingType) { setMeetingStatus('Meeting type is required.'); return }
     if (!meetingDate) { setMeetingStatus('Date is required.'); return }
     try {
       await callApi('msm_log_meeting', {
         member_number: member.plugin_member_number,
         meeting_date: meetingDate,
-        meeting_type: 'MSM Meeting',
+        meeting_type: meetingType,
         conducted_by: meetingConductedBy,
         notes: meetingNotes,
         visibility,
       })
-      setMeetingDate(''); setMeetingConductedBy(''); setMeetingNotes('')
+      setMeetingType(''); setMeetingDate(''); setMeetingConductedBy(''); setMeetingNotes('')
       setShowLogMeeting(false); setMeetingStatus('')
       loadData()
     } catch (err) { setMeetingStatus(err.message) }
@@ -208,7 +211,7 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
     return <AdminProgramViewSkeleton />
   }
 
-  const msmCount = meetings.filter(m => m.meeting_type === 'MSM Meeting').length
+  const msmCount = meetings.filter(m => isMsmMeeting(m.meeting_type)).length
   const advancedCount = coachingCounts['Advanced Coaching'] || 0
   const standardCount = coachingCounts['Standard Coaching'] || 0
   const pft90Count = meetings.filter(m => m.meeting_type === 'PFT 90 Day Plan Meeting').length
@@ -269,6 +272,7 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
               {[
                 ['MSM Meetings', msmCount],
+                ...msmTypeCounts(meetings),
                 // Advanced (coaching) + PFT (partnership) counters only show when
                 // that program is in scope — strategic members run Holistic + Tax
                 // only, so both are hidden for them.
@@ -293,6 +297,13 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
               <div style={{ marginTop: '16px', padding: '16px', background: 'var(--vfo-tint)', borderRadius: '8px' }}>
                 <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: '160px' }}>
+                    <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Meeting Type *</label>
+                    <select value={meetingType} onChange={e => setMeetingType(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
+                      <option value="">-- Select --</option>
+                      {MSM_MEETING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex: 1, minWidth: '160px' }}>
                     <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Date *</label>
                     <input type="date" value={meetingDate} onChange={e => setMeetingDate(e.target.value)} style={inputStyle} />
                   </div>
@@ -310,9 +321,9 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   <SaveVisibilityButtons onSave={logMeeting} internalLabel="Log (internal note)" sharedLabel="Log & share note with member" hint="The meeting is always visible to the member — only the note text is internal or shared." />
-                  <button onClick={() => setShowLogMeeting(false)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={() => { setShowLogMeeting(false); setMeetingType(''); setMeetingStatus('') }} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
                 </div>
-                {meetingStatus && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '8px' }}>{meetingStatus}</p>}
+                {meetingStatus &&<p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '8px' }}>{meetingStatus}</p>}
               </div>
             )}
           </div>

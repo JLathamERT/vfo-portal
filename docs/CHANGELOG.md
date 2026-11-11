@@ -8,6 +8,22 @@
 
 ---
 
+## 2026-11-11 — MSM meeting types: Growth Plan Meeting and Implementation Period Check-In — by Paxton
+
+**Why.** Paxton wanted admins to say what kind of MSM meeting they logged, and to see that in Meeting History and in the Meeting Summary counts. Until now, "+ Log MSM Meeting" on the admin MSM Home always saved `meeting_type = 'MSM Meeting'`.
+
+**What changed (website only).**
+- The log form has a required **Meeting Type** dropdown as its first field, styled like Conducted By: `Growth Plan Meeting` or `Implementation Period Check-In`. Logging with no type shows "Meeting type is required." The chosen value is saved as `meeting_type`, which Meeting History already prints as each row's title, on the admin and the member Home.
+- The Meeting Summary, admin and member, keeps **MSM Meetings** as the total of every MSM meeting, the older `MSM Meeting` rows included (`isMsmMeeting`). Right after it come **Growth Plan Meetings** and **Implementation Period Check-Ins**, which count their own type only (`msmTypeCounts`). The counter label uses a non-breaking hyphen, because the narrow admin tile had split "Check-" / "Ins" across two lines.
+- The type list and both helpers live in the new `src/components/shared/msmMeetingTypes.js`. A new type is one line there.
+- No backend, schema or gate change: `msm_log_meeting` already saves the `meeting_type` it is sent, and the column is bare `text` with no CHECK, checked on both projects. Action count unchanged (644). Live holds only `MSM Meeting` rows.
+
+**Docs fixed on the way.** `flows/msm-tracking.md` said `msm_load_meetings` filters by `enrollment_id`; it filters by `member_number`. `tables/programs.md` gains `member_meetings.visibility`, missing since 2026-07-10. Eight line references into `MemberMSMTracking.jsx`, across `02-frontend-shell.md`, `06-orchestration-files.md`, `flows/coaching-renewals.md`, `flows/msm-tracking.md` and `tables/coaching.md`, were already stale and now point at the calls they name.
+
+**Tested on the test site** through the dev server (`npm run dev`), by Paxton with member 10002: the dropdown and its required check, Cancel clearing the type, logging each type, Meeting History showing the type, the total and per-type counters on the admin and member Home, deleting back to 0, and the phone preview. No backend deploy was needed.
+
+**Noticed, not changed.** The **PFT 90 Day Plan** counter counts `meeting_type = 'PFT 90 Day Plan Meeting'`, which nothing in either repo writes today, so it always reads 0.
+
 ## 2026-11-10 (b) — Paxton's git name in the TEAM table — by Paxton
 
 **Why.** Paxton's computer is set up, and his row in `TEAM_RULES.md` still said his `git config user.name` was "not set yet", so a chat on his computer could not match him to his row.
