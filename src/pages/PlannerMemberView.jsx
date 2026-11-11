@@ -131,7 +131,7 @@ export default function PlannerMemberView() {
                 </div>
               </div>
 
-              {(data.introduced_by || data.introduced.length > 0 || data.connections.length > 0 || data.corporate_members.length > 0 || profile.vfo_certified_date || profile.vfo_accredited_date) && (
+              {(data.introduced_by || data.introduced.length > 0 || data.connections.length > 0 || data.corporate_members.length > 0 || data.lead_member || profile.vfo_certified_date || profile.vfo_accredited_date) && (
                 <div style={{ flex: '1 1 300px', minWidth: '280px' }}>
                   {(data.introduced_by || data.introduced.length > 0) && (
                     <div style={sectionStyle}>
@@ -180,6 +180,15 @@ export default function PlannerMemberView() {
                         <span style={countChip}>{data.corporate_members.length}</span>
                       </div>
                       {data.corporate_members.map((p, i) => personRow(p, i, data.corporate_members.length))}
+                    </div>
+                  )}
+
+                  {data.lead_member && (
+                    <div style={sectionStyle}>
+                      <div style={{ ...cardTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>Lead Member</span>
+                      </div>
+                      {personRow(data.lead_member, 0, 1)}
                     </div>
                   )}
 

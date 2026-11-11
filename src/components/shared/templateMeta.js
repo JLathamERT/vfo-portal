@@ -56,6 +56,7 @@ export const TEMPLATE_META = {
   'TAX': [
     ['TAX_request_returns', 'Request Tax Returns step (Tax Planning) — asks the client to upload their tax returns via a secure link', 'To: Client · Cc: PF + Member'],
     ['TAX_request_returns|holistic', 'Request Tax Returns step (Holistic) — Holistic wording of the email asking the client to upload their tax returns via a secure link', 'To: Client · Cc: PF + Member'],
+    ['TAX_returns_reminder', 'Automatic reminder — the client has not uploaded their tax returns (2 business days after the request, then every 2 business days until they arrive)', 'To: Client · Cc: PF + Member'],
     ['TAX_request_additional_info', 'Request Additional Information step (Tax 1 - Diagnostic, Holistic + Tax Planning) — emails the client a View and Respond button; the request itself is shown only on the secure page, never in the email', 'To: Client · Cc: PF + Member + Tax Planner'],
     ['TAX_highlevelmeeting_confirm|Yes', 'High Level Tax Planning meeting is booked — confirmation', 'To: Client · Auto-Cc: Member + PF'],
     ['TAX_presentation_link', 'Sends the member the tax presentation link ahead of the TPOM', 'To: Member · Auto-Cc: PF'],
@@ -282,6 +283,8 @@ export const TEMPLATE_META = {
     ['PFT_decision_undecided', 'Decision: Undecided — email with the three path buttons (VFO FT / VFO Associate / No) for the client to self-select', 'To: Accountant'],
   ],
   'GROWTH_CREDITS': [
+    ['GC_purchase_ach_confirmation', 'Credits bought by bank transfer (ACH) — confirmation while the payment clears', 'To: Member'],
+    ['GC_purchase_invoicereceipt', 'Credits bought — invoice and receipt PDFs (card straight away, bank transfer once it clears)', 'To: Member'],
     ['GC_redemption_confirmation', 'Redemption confirmation — the member spent credits on a marketplace service', 'To the member, CC the allocated team member'],
   ],
   'PAYMENTS': [

@@ -1235,7 +1235,9 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
                 introducerOf: introducedByMe.map(m => ({ ...m, number: m.plugin_member_number, chip: m.connection_type || null })),
                 connections: connectedToMe.map(m => ({ ...m, number: m.plugin_member_number })),
                 corporate: corporateMembers.map(m => ({ ...m, number: m.plugin_member_number })),
+                lead: leadRow ? { ...leadRow, number: leadRow.plugin_member_number } : null,
               }}
+              adminView
               payoutSlot={profile.stripe_account_id ? (
                     <div>
                       <div style={fieldLabel}>{linkedFrom ? 'Borrowed Stripe Account' : 'Stripe Account'}</div>

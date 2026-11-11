@@ -498,6 +498,7 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
     introducerOf: allMembers.filter(m => m.introduced_by_member_number === me && !CORPORATE_TYPES.includes(m.member_type)).map(m => ({ ...person(m), chip: m.connection_type || null })),
     connections: partnerNumbers.map(n => allMembers.find(m => m.member_number === n)).filter(m => m && !CORPORATE_TYPES.includes(m.member_type)).map(person),
     corporate: allMembers.filter(m => m.member_number?.startsWith(me + '-C') || m.member_number?.startsWith(me + '-FC')).map(person),
+    lead: (() => { const l = findLeadMember(allMembers, member); return l ? person(l) : null })(),
   }
 
   // Mirrors the admin-side member profile (MembersPanel MemberProfile):
