@@ -16,7 +16,7 @@ import TaxPrioritiesTab from '../components/admin/tax/TaxPrioritiesTab'
 import PaymentContinuationTab from '../components/admin/migration/PaymentContinuationTab'
 import AddGeneralNote from '../components/shared/AddGeneralNote'
 import { PhaseNotesButton, PhaseNotesPanel } from '../components/shared/PhaseNotes'
-import { VisibilityBadge, noteTint, SaveVisibilityButtons } from '../components/shared/NoteVisibility'
+import { VisibilityBadge, noteTint, SaveVisibilityButtons, MemberBadge, isMemberNote } from '../components/shared/NoteVisibility'
 import { Skeleton, ProfileTabSkeleton, PhaseListSkeleton } from '../components/shared/Skeleton'
 import { TrackHero, HeroAvatar } from '../components/shared/TrackKit'
 import { MemberNameLink } from '../components/shared/personLinks'
@@ -113,6 +113,9 @@ export default function ClientDetail() {
   // (2026-11-11; Direct clients only before). Name/email only - the Cc switches
   // stay admin-only. The msm_*_client_contact handlers re-prove ownership.
   const contactsEditable = isMember && !isMirror && !tier1Own
+  // Phase notes: every member sees the pill and the team's shared notes; only
+  // the owner on Tier 2 adds (the server refuses mirrored / Tier 1 writes too).
+  const memberCanAddNotes = isMember && !isMirror && !tier1Own
 
   // Program sub-tabs (PFT / MAP 1 / Regular / Tax / PIP) are locked on the admin
   // side until a PF is assigned to this client (set on the Profile tab). Members
@@ -499,7 +502,7 @@ export default function ClientDetail() {
           </div>
         ) : (
           <>
-            {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} contactsEditable={contactsEditable} memberOwnView={isMember && !isMirror} notes={clientNotes} onNotesChange={setClientNotes} program={program}
+            {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} memberCanAdd={memberCanAddNotes} contactsEditable={contactsEditable} memberOwnView={isMember && !isMirror} notes={clientNotes} onNotesChange={setClientNotes} program={program}
               portalCard={isMember && portalAccess !== undefined && client ? <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={tier1Own ? null : ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} readOnly={isAdmin} /> : null}
               mirroringCard={(isMember || isAdmin) && client ? <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} /> : null} />}
             {/* The admin view keeps the Client Portal card at the bottom; the member's sits above Client Mirroring. */}
@@ -525,11 +528,11 @@ export default function ClientDetail() {
                 <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px' }}>Assign a PF on the Profile tab before working this client's tracks.</div>
               </div>
             )}
-            {activeTab === 'map1' && program && !pfLocked && !isPlanner && <ClientTrackViewV2 clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
-            {activeTab === 'pft' && program && !pfLocked && !isPlanner && !isMirror && <PFTEngagementTrack clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} />}
-            {activeTab === 'regular' && program && !pfLocked && !isPlanner && <RegularPrioritiesTab clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} readOnly={isMember} notes={clientNotes} onNotesChange={setClientNotes} initialTrackId={initialTrackId} />}
-            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab key={program.id} onPlanInOtherProgram={handlePlanInOtherProgram} clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} mirror={isMirror} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} openSinglePlan={fromBell} />}
-            {activeTab === 'pip' && program && !pfLocked && !isPlanner && <PipMeetingsTab clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
+            {activeTab === 'map1' && program && !pfLocked && !isPlanner && <ClientTrackViewV2 clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
+            {activeTab === 'pft' && program && !pfLocked && !isPlanner && !isMirror && <PFTEngagementTrack clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} notes={clientNotes} onNotesChange={setClientNotes} />}
+            {activeTab === 'regular' && program && !pfLocked && !isPlanner && <RegularPrioritiesTab clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} notes={clientNotes} onNotesChange={setClientNotes} initialTrackId={initialTrackId} />}
+            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab key={program.id} onPlanInOtherProgram={handlePlanInOtherProgram} clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} openSinglePlan={fromBell} />}
+            {activeTab === 'pip' && program && !pfLocked && !isPlanner && <PipMeetingsTab clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
             {/* memberMode is its own flag, not a relaxed readOnly: a member gets
                 view on all three sections + add on the two client-owned ones,
                 and never share / delete / request-docs / drag-to-move. */}
@@ -552,8 +555,11 @@ export default function ClientDetail() {
   )
 }
 
-function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, sectionStyle, readOnly = false, plannerMode = false, directMode = false, contactsEditable = false, memberOwnView = false, notes = [], onNotesChange, program, portalCard = null, mirroringCard = null }) {
+function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, sectionStyle, readOnly = false, plannerMode = false, directMode = false, memberCanAdd = false, contactsEditable = false, memberOwnView = false, notes = [], onNotesChange, program, portalCard = null, mirroringCard = null }) {
   const isPhone = useIsPhone()
+  // A member's own PHASE notes stay on the phase, off "Notes from your team"
+  // (Paxton, 2026-11-12); a Direct member's General notes still list here.
+  const profileNotes = notes.filter(n => !(isMemberNote(n) && n.tab_name !== 'General Note'))
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [editNoteText, setEditNoteText] = useState('')
   const [status, setStatus] = useState(client?.status || 'pending')
@@ -578,6 +584,30 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
       await callApi('delete_client_note', { note_id: noteId })
       onNotesChange(notes.filter(n => n.id !== noteId))
     } catch (err) { console.error(err) }
+  }
+
+  // The member's own notes on "Notes from your team" (2026-11-12): they edit or
+  // delete only notes they wrote, through the member_client_note_* actions.
+  const memberSession = readOnly && !plannerMode ? getSession() : null
+  const ownNote = (note) => !!memberSession && isMemberNote(note) && String(note.author_member_number ?? '') === String(memberSession.member_number ?? '')
+  const [memberNoteError, setMemberNoteError] = useState('')
+
+  async function memberUpdateNote(noteId) {
+    if (!editNoteText.trim()) return
+    setMemberNoteError('')
+    try {
+      const result = await callApi('member_client_note_update', { note_id: noteId, note_text: editNoteText.trim() })
+      onNotesChange(notes.map(n => n.id === noteId ? result.note : n))
+      setEditingNoteId(null)
+    } catch (err) { console.error(err); setMemberNoteError(err.message || 'Your change was not saved. Try again.') }
+  }
+
+  async function memberDeleteNote(noteId) {
+    setMemberNoteError('')
+    try {
+      await callApi('member_client_note_delete', { note_id: noteId })
+      onNotesChange(notes.filter(n => n.id !== noteId))
+    } catch (err) { console.error(err); setMemberNoteError(err.message || 'The note was not deleted. Try again.') }
   }
 
   async function savePf() {
@@ -740,12 +770,12 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
       {/* Notes — full width so long threads use the whole row. */}
       {!readOnly && (
         <div style={sectionStyle}>
-          <div style={{ ...cardTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ ...cardTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: isPhone ? 'wrap' : 'nowrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>All Notes</span>
               <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{notes.length}</span>
             </div>
-            <AddGeneralNote clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />
+            <AddGeneralNote stacked={isPhone} clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />
           </div>
           {notes.map(note => (
             <div key={note.id} style={{ padding: '10px 12px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
@@ -764,11 +794,11 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
-                    <VisibilityBadge visibility={note.visibility} />
+                    {isMemberNote(note) ? <MemberBadge /> : <VisibilityBadge visibility={note.visibility} />}
                     {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
                     <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.tab_name}</span>
                     {note.phase_name !== 'General' && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{note.phase_name}</span>}
-                    <button onClick={() => { setEditingNoteId(note.id); setEditNoteText(note.note_text) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>
+                    {!isMemberNote(note) && <button onClick={() => { setEditingNoteId(note.id); setEditNoteText(note.note_text) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>}
                     <button onClick={() => deleteNote(note.id)} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Delete</button>
                   </div>
                 </>
@@ -796,7 +826,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
-                <VisibilityBadge visibility={note.visibility} />
+                {isMemberNote(note) ? <MemberBadge /> : <VisibilityBadge visibility={note.visibility} />}
                 {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
                 {note.tab_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.tab_name}</span>}
                 {note.phase_name !== 'General' && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{note.phase_name}</span>}
@@ -809,23 +839,44 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
       {/* Member view — read-only list of notes the team chose to share. A
           DIRECT member also adds their own (always shared, so the team sees
           them on this same profile). */}
-      {readOnly && !plannerMode && (directMode || notes.length > 0) && (
+      {/* A Tier 2 member on their own client (memberCanAdd) gets the admin's
+          "+ Add Note" box here too (Jake, 2026-11-12); their note always goes to
+          the team, and they edit / delete only notes they wrote. */}
+      {readOnly && !plannerMode && (directMode || memberCanAdd || profileNotes.length > 0) && (
         <div style={sectionStyle}>
-          <div style={{ ...cardTitle, marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ ...cardTitle, marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: isPhone && !directMode ? 'wrap' : 'nowrap' }}>
             <span>{directMode ? 'Notes' : 'Notes from your team'}</span>
-            {directMode && <DirectAddNote clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />}
+            {directMode
+              ? <DirectAddNote clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />
+              : memberCanAdd && <AddGeneralNote memberMode stacked={isPhone} clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />}
           </div>
-          {directMode && notes.length === 0 && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '10px' }}>No notes yet.</div>}
-          {notes.map(note => (
+          {memberNoteError && <div style={{ fontSize: '12px', color: '#e74c3c', margin: '8px 0' }}>{memberNoteError}</div>}
+          {(directMode || memberCanAdd) && profileNotes.length === 0 && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '10px' }}>No notes yet.</div>}
+          {profileNotes.map(note => (
             <div key={note.id} style={{ padding: '10px 12px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
-              <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
-                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
-                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
-                {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
-                {note.tab_name && note.phase_name !== 'General' && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.phase_name}</span>}
-              </div>
+              {editingNoteId === note.id ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <textarea value={editNoteText} onChange={e => setEditNoteText(e.target.value)} rows={2} maxLength={5000} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(0,149,255,0.4)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
+                    <button onClick={() => memberUpdateNote(note.id)} disabled={!editNoteText.trim()} style={{ padding: '6px 12px', borderRadius: '8px', background: !editNoteText.trim() ? 'rgba(27,146,84,0.4)' : 'linear-gradient(135deg, #1b9254 0%, #23b268 100%)', border: 'none', boxShadow: !editNoteText.trim() ? 'none' : '0 2px 8px rgba(27,146,84,0.28)', color: '#fff', fontSize: '11px', cursor: !editNoteText.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', fontFamily: 'Inter, sans-serif' }}>Save</button>
+                    <button onClick={() => setEditingNoteId(null)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '11px', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
+                    <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
+                    {isMemberNote(note) && <MemberBadge />}
+                    {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
+                    {note.tab_name && note.phase_name !== 'General' && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.phase_name}</span>}
+                    {ownNote(note) && <button onClick={() => { setEditingNoteId(note.id); setEditNoteText(note.note_text) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>}
+                    {ownNote(note) && <button onClick={() => memberDeleteNote(note.id)} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Delete</button>}
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>

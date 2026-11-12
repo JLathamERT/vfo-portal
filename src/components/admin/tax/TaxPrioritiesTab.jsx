@@ -2778,7 +2778,7 @@ function TaxIntakeCard({ intake, questions, clientId, planId, canEdit = false, o
   )
 }
 
-function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxSpecialists = null, specialists, expertBios = {}, onBack, readOnly = false, mirror = false, plannerMode = false, directMode = false, notes = [], onNotesChange, clientId, programName, client }) {
+function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxSpecialists = null, specialists, expertBios = {}, onBack, readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, plannerMode = false, directMode = false, notes = [], onNotesChange, clientId, programName, client }) {
   // Phone (2026-10-28): slimmer phase bodies and full-width sub-step boxes.
   const isPhone = useIsPhone()
   // Phase notes belong to THIS plan (plus untagged older notes) — a client with
@@ -5978,14 +5978,14 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                 <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{taxDisplayName(phase.name)}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {!readOnly && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'Tax Priorities' && noteInScope(n, noteScope)).length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
+                {(!readOnly || memberNotes) && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'Tax Priorities' && noteInScope(n, noteScope)).length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
                 {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress{doneTasks < nonAutoTasks.length ? ` · ${doneTasks}/${nonAutoTasks.length}` : ''}</span>}
                 {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
                 <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
               </div>
             </div>
-            {!readOnly && expanded[`notes_${phase.id}`] && <PhaseNotesPanel clientId={clientId} phaseName={phase.name} tabName="Tax Priorities" programName={programName} notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
+            {(!readOnly || memberNotes) && expanded[`notes_${phase.id}`] && <PhaseNotesPanel memberMode={!!memberNotes} canAdd={!memberNotes || !!memberCanAdd} clientId={clientId} phaseName={phase.name} tabName="Tax Priorities" programName={programName} notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
             {isExpanded && (
               <div style={{ borderTop: `1px solid ${borderColor}`, padding: isPhone ? '12px 14px' : '12px 18px' }}>
                 {tasks.map(task => renderTask(task, phase))}
@@ -6012,7 +6012,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: tax5State === 'active' ? 'var(--vfo-primary)' : 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tax 5 - Education &amp; DD</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {!readOnly && <PhaseNotesButton count={tax5aNoteCount + tax5bNoteCount} isOpen={expanded['notes_tax5']} onClick={() => setExpanded(p => ({ ...p, ['notes_tax5']: !p['notes_tax5'] }))} />}
+              {(!readOnly || memberNotes) && <PhaseNotesButton count={tax5aNoteCount + tax5bNoteCount} isOpen={expanded['notes_tax5']} onClick={() => setExpanded(p => ({ ...p, ['notes_tax5']: !p['notes_tax5'] }))} />}
               <PhasePill state={tax5State} />
               <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: tax5Expanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
             </div>
@@ -6020,7 +6020,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           {/* One notes thread for the whole merged card: written under the
               Specialist Allocation phase, read across both stored phases so any
               note previously filed under Post Allocation still shows. */}
-          {!readOnly && expanded['notes_tax5'] && <PhaseNotesPanel clientId={clientId} phaseName={TAX5A_PHASE} phaseNames={[TAX5A_PHASE, TAX5B_PHASE]} tabName="Tax Priorities" programName={programName} notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
+          {(!readOnly || memberNotes) && expanded['notes_tax5'] && <PhaseNotesPanel memberMode={!!memberNotes} canAdd={!memberNotes || !!memberCanAdd} clientId={clientId} phaseName={TAX5A_PHASE} phaseNames={[TAX5A_PHASE, TAX5B_PHASE]} tabName="Tax Priorities" programName={programName} notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
           {tax5Expanded && (
           <div style={{ borderTop: `1px solid ${t5Border}`, padding: isPhone ? '12px 14px' : '12px 18px' }}>
           {tax5aPhase && (
@@ -6124,7 +6124,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                       <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: specPill ? `rgba(${specPill.rgb},0.15)` : 'var(--vfo-tint)', color: specPill ? specPill.hex : 'var(--vfo-muted)', border: `1px solid ${specPill ? `rgba(${specPill.rgb},0.3)` : 'var(--vfo-border-chip)'}` }}>{specPill ? specPill.label : 'Pending Decision'}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {!readOnly && <PhaseNotesButton count={specNotesCount(spec)} isOpen={expanded[`notes_spec_${spec.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_spec_${spec.id}`]: !p[`notes_spec_${spec.id}`] }))} />}
+                      {(!readOnly || memberNotes) && <PhaseNotesButton count={specNotesCount(spec)} isOpen={expanded[`notes_spec_${spec.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_spec_${spec.id}`]: !p[`notes_spec_${spec.id}`] }))} />}
                       {!readOnly && (
                         <span onClick={e => { e.stopPropagation(); removeSpecialist(spec) }} style={{ fontSize: '11px', fontWeight: 500, color: '#e74c3c', cursor: removingSpec[spec.id] ? 'not-allowed' : 'pointer', opacity: removingSpec[spec.id] ? 0.6 : 1 }}>
                           {removingSpec[spec.id] ? 'Removing...' : 'Remove'}
@@ -6133,7 +6133,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                       <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isSpecExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
                     </div>
                   </div>
-                  {!readOnly && expanded[`notes_spec_${spec.id}`] && <PhaseNotesPanel clientId={clientId} phaseName={specPhaseName(spec)} tabName="Tax Priorities" programName={programName} notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
+                  {(!readOnly || memberNotes) && expanded[`notes_spec_${spec.id}`] && <PhaseNotesPanel memberMode={!!memberNotes} canAdd={!memberNotes || !!memberCanAdd} clientId={clientId} phaseName={specPhaseName(spec)} tabName="Tax Priorities" programName={programName} notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
                   {isSpecExpanded && (
                     <div style={{ borderTop: '1px solid var(--vfo-border-soft)', padding: '8px 14px' }}>
                       {allocateTask && (
@@ -6196,12 +6196,12 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress{doneTasks < totalTasks ? ` · ${doneTasks}/${totalTasks}` : ''}</span>}
-                {!readOnly && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'Tax Priorities' && noteInScope(n, noteScope)).length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
+                {(!readOnly || memberNotes) && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'Tax Priorities' && noteInScope(n, noteScope)).length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
                 {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
                 <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
               </div>
             </div>
-            {!readOnly && expanded[`notes_${phase.id}`] && <PhaseNotesPanel clientId={clientId} phaseName={phase.name} tabName="Tax Priorities" programName={programName} notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
+            {(!readOnly || memberNotes) && expanded[`notes_${phase.id}`] && <PhaseNotesPanel memberMode={!!memberNotes} canAdd={!memberNotes || !!memberCanAdd} clientId={clientId} phaseName={phase.name} tabName="Tax Priorities" programName={programName} notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
             {isExpanded && (
               <div style={{ borderTop: `1px solid ${borderColor}`, padding: isPhone ? '12px 14px' : '12px 18px' }}>
                 {taxSpecialists.length === 0 && (
@@ -6228,11 +6228,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                           {!specStopped && specDoneCount === 0 && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>Not started</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-                          {!readOnly && <PhaseNotesButton count={specNotesCount(spec)} isOpen={expanded[`notes_tax6_spec_${spec.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_tax6_spec_${spec.id}`]: !p[`notes_tax6_spec_${spec.id}`] }))} />}
+                          {(!readOnly || memberNotes) && <PhaseNotesButton count={specNotesCount(spec)} isOpen={expanded[`notes_tax6_spec_${spec.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_tax6_spec_${spec.id}`]: !p[`notes_tax6_spec_${spec.id}`] }))} />}
                           <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isSpecExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
                         </div>
                       </div>
-                      {!readOnly && expanded[`notes_tax6_spec_${spec.id}`] && <PhaseNotesPanel clientId={clientId} phaseName={specPhaseName(spec)} tabName="Tax Priorities" programName={programName} notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
+                      {(!readOnly || memberNotes) && expanded[`notes_tax6_spec_${spec.id}`] && <PhaseNotesPanel memberMode={!!memberNotes} canAdd={!memberNotes || !!memberCanAdd} clientId={clientId} phaseName={specPhaseName(spec)} tabName="Tax Priorities" programName={programName} notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
                       {isSpecExpanded && (
                         <div style={{ borderTop: '1px solid var(--vfo-border-soft)', padding: '8px 14px' }}>
                           {tasks.map(task => renderTask(task, phase, spec.id))}
@@ -6253,7 +6253,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
 // mirror (Client Mirroring, L5): a member viewing a client mirrored to them -
 // always with readOnly; the server masks every money value and this hides the
 // fee schedule, entered pricing, revenue-share rows, refund amount and PI id.
-function TaxPrioritiesTab({ clientId, programId, programName, client, specialists, ecosystems = [], readOnly = false, mirror = false, notes = [], onNotesChange, initialPlanId = null, openSinglePlan = false, plannerMode = false, directMode = false, onPlanInOtherProgram = null }) {
+function TaxPrioritiesTab({ clientId, programId, programName, client, specialists, ecosystems = [], readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, notes = [], onNotesChange, initialPlanId = null, openSinglePlan = false, plannerMode = false, directMode = false, onPlanInOtherProgram = null }) {
   const isPhone = useIsPhone()
   const [taxPlans, setTaxPlans] = useState([])
   const [phases, setPhases] = useState([])
@@ -6591,6 +6591,8 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
         expertBios={expertBios}
         onBack={() => { setSelectedPlan(null); setSnapPending(getWriteCount() !== writesAtLoadRef.current); loadData(true) }}
         readOnly={readOnly}
+        memberNotes={memberNotes}
+        memberCanAdd={memberCanAdd}
         mirror={mirror}
         plannerMode={plannerMode}
         directMode={directMode}

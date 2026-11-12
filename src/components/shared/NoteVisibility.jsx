@@ -25,6 +25,23 @@ export function VisibilityBadge({ visibility, style }) {
   )
 }
 
+// "Member" pill on a note a member wrote (client_notes.author_type, 2026-11-12),
+// shown on both portals. Violet: teal/amber mean visibility, and navy vanishes
+// on the dark theme's navy surface.
+export function MemberBadge({ style }) {
+  return (
+    <span style={{
+      fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', whiteSpace: 'nowrap',
+      background: 'rgba(124,92,214,0.14)', color: '#7c5cd6', border: '1px solid rgba(124,92,214,0.45)',
+      ...style,
+    }}>
+      Member
+    </span>
+  )
+}
+
+export const isMemberNote = (note) => note?.author_type === 'member'
+
 // Row-background hue matching the badge, for whole-note rows/cards.
 export function noteTint(visibility) {
   return visibility === 'shared' ? 'rgba(13,148,136,0.05)' : 'rgba(180,83,9,0.045)'
