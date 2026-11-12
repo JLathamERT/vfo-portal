@@ -59,7 +59,7 @@ function meetingLabelColor(track) {
   return 'var(--vfo-muted)'
 }
 
-function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChange, onTrackUpdate, readOnly, mirror = false, notes, onNotesChange, clientId, client }) {
+function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChange, onTrackUpdate, readOnly, memberNotes = false, memberCanAdd = false, mirror = false, notes, onNotesChange, clientId, client }) {
   const [localProgress, setLocalProgress] = useState(progress)
   const [scheduledDate, setScheduledDate] = useState(track.pip_scheduled_date || '')
   // Time/tz mirrors of the track columns the confirmation email writes back, so a
@@ -241,7 +241,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                 <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{phase.name}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {!readOnly && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'PIP Meetings').length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
+                {(!readOnly || memberNotes) && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'PIP Meetings').length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
                 {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{nonAutoTasks.length}</span>}
                 {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
@@ -249,7 +249,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
               </div>
             </div>
 
-            {!readOnly && expanded[`notes_${phase.id}`] && <PhaseNotesPanel clientId={clientId} phaseName={phase.name} tabName="PIP Meetings" programName="VFO Holistic Planning" notes={notes} onNotesChange={onNotesChange} />}
+            {(!readOnly || memberNotes) && expanded[`notes_${phase.id}`] && <PhaseNotesPanel memberMode={!!memberNotes} canAdd={!memberNotes || !!memberCanAdd} clientId={clientId} phaseName={phase.name} tabName="PIP Meetings" programName="VFO Holistic Planning" notes={notes} onNotesChange={onNotesChange} />}
 
             {isExpanded && (
               <div style={{ borderTop: `1px solid ${borderColor}`, padding: isPhone ? '12px 14px' : '12px 18px' }}>
@@ -445,7 +445,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
 
 // mirror (Client Mirroring, L5): a member viewing a client mirrored to them -
 // with readOnly, and no payment-method tag or revenue-share row.
-function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, mirror = false, notes = [], onNotesChange }) {
+function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, notes = [], onNotesChange }) {
   const [tracks, setTracks] = useState([])
   const [phases, setPhases] = useState([])
   const [allProgress, setAllProgress] = useState({})
@@ -584,6 +584,8 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
         onProgressChange={(taskId, p) => setAllProgress(prev => ({ ...prev, [selectedTrack.id]: { ...prev[selectedTrack.id], [taskId]: p } }))}
         onTrackUpdate={loadData}
         readOnly={readOnly}
+        memberNotes={memberNotes}
+        memberCanAdd={memberCanAdd}
         mirror={mirror}
         notes={notes}
         onNotesChange={onNotesChange}

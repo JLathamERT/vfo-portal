@@ -20,6 +20,31 @@
 
 ---
 
+## 2026-11-12 — Members read and add notes on their client's phases and Profile — by Paxton
+
+**Why.** Jake's spec "Member phase notes (view + add)" (VFO Workbench, 11 Nov): a member should see the notes the team shares on each phase of their client's program and add their own, which go to the team. Until now every Notes pill and panel was wrapped in `!readOnly`, so a member saw none, and the four note actions are `ADMIN_ONLY` (#490).
+
+**Decided (Paxton, 12 Nov).** The team may delete a member's note but never edit it. A member's phase notes stay off the member's Profile "Notes from your team". Tier 1 members and mirrored clients are view-only. During testing Jake's spec gained a second part: the member also gets the admin's **+ Add Note** box on that Profile card, in the same style.
+
+**Database** (migration `20261112150000_client_notes_author.sql`, DDL asked first, on the test site 12 Nov, **on live at release, BEFORE the backend**): `client_notes.author_type` (`'admin'` default / `'member'`) and `author_member_number`, two check constraints, no backfill (live had 0 member-written notes). Security advisor on the test site: the exact baseline.
+
+**Backend.**
+- `addClientNote` takes a 4th argument `author`, set only by internal callers; `tax_direct_note_add` now marks its note `member` with the member's number.
+- New `actions/client-notes/member.ts`: `member_client_note_add` / `_update` / `_delete`, member only, in `MEMBER_TIER2_ACTIONS` (Tier 1 403), `denyIfNotOwnClient` (mirrored 403), always shared, signed from `members`. Add takes a phase tab (MAP 1, Regular Priorities, Tax Priorities, PIP Meetings, PFT) with a phase, or `General Note` (phase forced to `General`). Update / delete only the caller's own member note.
+- `update_client_note` refuses a member-written note (403) and answers 404 for a missing one.
+- Action count 649 → **652**. `deno check` 0. Test-site deploys from the branch: **v65**, then **v66** (the General Note path).
+
+**Website.**
+- `PhaseNotesPanel` gains `memberMode` / `canAdd`: one green "Save note", Edit / Delete on the member's own notes only, "View only" when `canAdd` is off. `MemberBadge` (violet; navy vanished on the dark theme) marks a member's note on both portals; admins get Delete, no Edit, on it.
+- The five track views (`ClientTrackViewV2`, `RegularPrioritiesTab`, `PipMeetingsTab`, `PFTEngagementTrack`, `TaxPrioritiesTab`, all row kinds) show the pill when `memberNotes`; `ClientDetail` passes `memberNotes={isMember}` and `memberCanAdd` (own client, not Tier 1). The client portal passes neither, so it still shows no notes.
+- Profile: the member card gets `AddGeneralNote memberMode` and Edit / Delete on the member's own notes; it filters out the member's own phase notes. On a phone the open box drops under the card title (`stacked`), on the admin card too: beside the title it squeezed the title to one word a line and pushed Save off the card (Paxton's phone check). The admin "All Notes" list shows the Member tag.
+
+**Tested on the test site** through the dev server, by Paxton with member 10002: member notes saved, edited and deleted on Tax Set Up / Tax 1 (client 100091) and MAP 1 (client 100090); a Profile note saved (100091); admin internal notes absent from the member's view; admin shared notes shown; the Member tag, and Delete without Edit, on the admin side; smoke `-Target staging` all PASS against v65 and again against v66; the phone preview at phone width (the plan pages, and the Profile add box after the fix). **Not exercised:** a note on Regular Priorities, PIP or PFT (same panel); the 403s (another member's client or note, a mirrored client, a Tier 1 member) were never sent as forged requests (edge Issue #548). Whether a member's note should notify anyone: edge Issue #547. Test data left on the test site: notes 100002, 100004, 100005, 100009 (member) and 100006-100008 (admin).
+
+**Drift check:** every kind matches live except `client_notes` (this change, live at release) and five `pft_engagement` `decision_*` / `track` columns on the test site only, from someone's unpushed work, not this change.
+
+---
+
 ## 2026-11-12 — A blocked test-site deploy says how it clears — by Jake
 
 **Why.** Paxton's chat stopped before a test-site backend deploy because Jake's TPOM build was there. It told him to ask Jake but didn't say the build would leave by itself when Jake's PR merged, and it didn't look again after the merge put main back.
