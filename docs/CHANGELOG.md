@@ -8,6 +8,14 @@
 
 ---
 
+## 2026-11-12 — A blocked test-site deploy says how it clears — by Jake
+
+**Why.** Paxton's chat stopped before a test-site backend deploy because Jake's TPOM build was there. It told him to ask Jake but didn't say the build would leave by itself when Jake's PR merged, and it didn't look again after the merge put main back.
+
+**What changed (`TEAM_RULES.md` §4).** A chat that finds the other person's build names its branch and PR and offers to watch the PR and carry on once it merges. It re-reads `entrypoint_path` right before every deploy. A chat puts main back as soon as the tests pass, not at merge. Docs only.
+
+---
+
 ## 2026-11-12 — TPOM template v12, a Rapid Route deck, book-ends with speaker notes — by Jake
 
 **Why.** The business revised the presenter scripts. Jake brought three exports: Evan's TPOM template (new speaker notes on slides 1, 4, 5, 31 and 32), Evan's Rapid Route deck (a shorter deck with his video script on every slide and a smaller slide-2 title to leave room for his face), and the tax team's scripted detailed-tax-plan book-ends. All new clients who get the Additional Benefits slide use the new TPOM deck; a Rapid Route plan gets its own deck in Tax 2.
