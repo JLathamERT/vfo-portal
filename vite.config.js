@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execSync } from 'node:child_process'
 
@@ -51,6 +51,8 @@ function phonePreview() {
         printUrls()
         const local = server.resolvedUrls?.local?.[0]
         if (local) server.config.logger.info(`  \x1b[32m➜\x1b[0m  \x1b[1mPhone preview\x1b[0m: \x1b[36m${local}phone-preview\x1b[0m`)
+        const api = server.config.env.VITE_API_URL
+        if (api) server.config.logger.info(`  \x1b[32m➜\x1b[0m  \x1b[1mBackend\x1b[0m:       \x1b[36m${api.split('/').pop()}\x1b[0m`)
       }
     },
   }
@@ -64,7 +66,20 @@ try {
   process.env.VITE_BUILD_SHA = ''
 }
 
-export default defineConfig({
+// `npm run dev` only (the dev server, test site): talk to your OWN copy of the
+// backend, vfo-admin-api-<name>, when this computer sets VFO_TEST_BACKEND=<name>
+// (TEAM_RULES §4). Never a build, so the test website and live always use the
+// shared vfo-admin-api. VFO_TEST_BACKEND=shared, or unset, keeps the shared one.
+function ownTestBackend(command, mode) {
+  const name = (process.env.VFO_TEST_BACKEND || '').trim().toLowerCase()
+  if (command !== 'serve' || mode !== 'staging' || !name || name === 'shared') return
+  if (!/^[a-z]+$/.test(name)) throw new Error(`VFO_TEST_BACKEND must be a first name like "jake", not "${name}"`)
+  const shared = loadEnv(mode, process.cwd(), 'VITE_').VITE_API_URL || ''
+  if (!/\/functions\/v1\/vfo-admin-api$/.test(shared)) throw new Error(`Can't find the shared test backend in .env.${mode}`)
+  process.env.VITE_API_URL = `${shared}-${name}`
+}
+
+export default defineConfig(({ command, mode }) => (ownTestBackend(command, mode), {
   plugins: [react(), phonePreview()],
   base: '/',
   // Dev-only: keep the dependency scanner on the app entry — public/store/ is a
@@ -82,4 +97,4 @@ export default defineConfig({
   server: {
     historyApiFallback: true
   }
-})
+}))
