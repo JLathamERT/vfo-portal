@@ -160,7 +160,7 @@ function PipConfirmStep({ clientId, task, p, meeting, readOnly, onDone, emailCtx
 // mirror (Client Mirroring, L5): another member viewing a client mirrored to them.
 // Always with readOnly; additionally hides the fee breakdown, the payment-method
 // tag and the revenue-share rows (the server has already masked the values).
-function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirror = false, notes = [], onNotesChange }) {
+function ClientTrackViewV2({ clientId, programId, client, readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, notes = [], onNotesChange }) {
   const [phases, setPhases] = useState([])
   const [progress, setProgress] = useState({})
   const [loading, setLoading] = useState(true)
@@ -509,7 +509,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
                 <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{phase.name}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {!readOnly && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'MAP 1').length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
+                {(!readOnly || memberNotes) && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'MAP 1').length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
                 {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
                 {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{headerTotal}</span>}
                 {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
@@ -517,7 +517,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, mirr
               </div>
             </div>
 
-            {!readOnly && expanded[`notes_${phase.id}`] && <PhaseNotesPanel clientId={clientId} phaseName={phase.name} tabName="MAP 1" programName="VFO Holistic Planning" notes={notes} onNotesChange={onNotesChange} />}
+            {(!readOnly || memberNotes) && expanded[`notes_${phase.id}`] && <PhaseNotesPanel memberMode={!!memberNotes} canAdd={!memberNotes || !!memberCanAdd} clientId={clientId} phaseName={phase.name} tabName="MAP 1" programName="VFO Holistic Planning" notes={notes} onNotesChange={onNotesChange} />}
 
             {/* Phase body */}
             {isExpanded && (
