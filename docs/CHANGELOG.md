@@ -8,6 +8,14 @@
 
 ---
 
+## 2026-11-12 — Tracy can manage ERT/VFOS Documentation — by Jake
+
+**Why.** Jake asked for Tracy Miller to be able to add, delete and move documents in the ERT/VFOS Documentation vault section (clients, members and specialists), like Jake, Tray and Paxton.
+
+**Backend.** `constants/ert-access.ts`: `tnmiller@elitert.com` added to `ERT_MANAGERS`. That one list gates `admin_ert_upload_url`, `admin_ert_delete` and `vault_move_document`; the website reads the login's `is_ert_manager` flag, so no website change. It takes effect at her next sign-in after the release. `TAX_VIEWERS` is untouched (she was already on it).
+
+**Tested.** Not click-tested (Jake chose to ship the one-line list change directly). `deno check` 0, action count unchanged (649).
+
 ## 2026-11-11 — Refresh settings from live stops failing on new email templates — by Jake
 
 **Why.** Refresh on the test site's Staging tab kept stopping with *duplicate key value violates unique constraint "email_templates_pipeline_template_name_key"*. A migration that adds an email template runs on both sites, and the test site counts ids from 100000, so the same template has two ids (live 362, test site 100000 for `TAX_returns_reminder`). Refresh matched `email_templates` by id only, listed live's copy as New and the test site's as "only on the test site", and the insert hit the unique key. Five rows were stuck this way: `TAX_returns_reminder`, `GC_purchase_invoicereceipt`, `GC_purchase_ach_confirmation` and the two `TAX_decision_question_reply` rows.
