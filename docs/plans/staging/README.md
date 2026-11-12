@@ -266,6 +266,8 @@ Each specialist starts with one random public ecosystem, because the specialist 
 
 **FAQ ids.** `faq_categories.id` and `faq_items.id` are GENERATED ALWAYS, so a new row can't keep live's id (#735). Refresh matches those two tables by id, then by name or question, and maps `category_id` to the test site's id.
 
+**Template ids.** A migration that adds an email or agreement template inserts it on both sites, and the test site counts ids from 100000, so the two copies have different ids (#746). Refresh matches those two tables by id, then by their own unique key (pipeline + template name; pipeline + level + plan + payer), and renumbers the test site's row to live's id.
+
 **What Reset doesn't reach:** cron and Vault (it uses only supabase-js on `public` and the Storage API), id sequences (never restarted, so a late sandbox event can't match a new row), the test site's Google Drive (generated decks stay there) and Stripe's sandbox history.
 
 **Not built:** D9 (Reset copying live's admin list). Admins are added by hand in the Admin Editor.
