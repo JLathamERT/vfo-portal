@@ -8,6 +8,24 @@
 
 ---
 
+## 2026-11-12 — TPOM template v12, a Rapid Route deck, book-ends with speaker notes — by Jake
+
+**Why.** The business revised the presenter scripts. Jake brought three exports: Evan's TPOM template (new speaker notes on slides 1, 4, 5, 31 and 32), Evan's Rapid Route deck (a shorter deck with his video script on every slide and a smaller slide-2 title to leave room for his face), and the tax team's scripted detailed-tax-plan book-ends. All new clients who get the Additional Benefits slide use the new TPOM deck; a Rapid Route plan gets its own deck in Tax 2.
+
+**What shipped (decks, all built by script from the live masters — the exports are sources of WORDS, never of formatting or numbers).**
+- **`ROI-template-master-v12.pptx`** (`scripts/roi-presentation/make_v12.py`, edge repo): Evan's notes on displays 1, 4, 5, 23 and 32; display 23 names Dorado Strategies instead of Restrepo Wealth; the Additional Benefits slide gets speaker notes for the first time (a NEW part, `notesSlide30.xml`); slide 5's collage replaced with Evan's (one face differs from the 2026-10-14 picture — found by a pixel diff, then confirmed by eye), cropped to the unchanged frame. Slide text, tokens, slide count and order unchanged; display 8 keeps "4. Tax Plan Review" (the export had a typo there).
+- **`ROI-rapid-master-v1.pptx`** (`make_rapid_v1.py`): v12 minus eleven slides the video skips, Evan's video script on every slide, the smaller slide-5 title (32.8pt) and nudged collage frame. Every part the generator touches is byte-identical to v12's, so the year mode, fee mode, benefits switch, logos and risk arrow behave the same; 21 slides in the master, 18–21 generated.
+- **`ROI-bookends-master-v5.pptx`** (`make_bookends_v5.py`): v4 + the team's presenter script as speaker notes on all nine slides + the same new collage. Shipped under a new name rather than as a same-name hot swap, so live never has the file missing mid-swap and v4 is the rollback.
+- **Typos fixed on Jake's word:** five in the TPOM notes, eleven in the Rapid script, seven in the book-ends script; each fix is asserted to hit exactly one text run. Blanks to fill in, the "Quote" placeholder and deliberate casual wording were left alone.
+
+**Backend.** `generate-presentation.ts`: reads v12, or `RAPID_TEMPLATE_OBJECT` when `rapid_route` is true (the Rapid master is refused if it has the Tailored Tax Strategies slide, the TPOM master if it lacks it, so either uploaded under the other's name fails loudly); the slide-drop loop now takes a dropped slide's speaker-notes part, its rels and its Content_Types Override with it (#747 — the benefits slide is the first droppable slide with notes); `notesSlide30.xml` joins `REQUIRED_TEMPLATE_PARTS`. `generate-bookends.ts`: reads v5 and requires `notesSlide1.xml`. `constants/staging-tables.ts`: the Staging tab's Refresh copies all three masters in use; `scripts/probe-staging-export.ps1` now expects 3. No action, table, column, gate or email change (action count 649).
+
+**Decisions (Jake).** One TPOM template for every plan (a plan from before the 2026-11-02 benefits cut-off simply never shows the benefits slide). A Rapid deck shows the year slides and the Additional Benefits slide under the same rules as TPOM, the benefits slide carrying Evan's TPOM notes. The Drive file keeps the "TPOM Presentation" name on both routes. Clean the `presentation-templates` bucket down to the files in use plus one rollback each, after the release.
+
+**Tested on the test site** (branch builds v60–v63, each after a merge-of-main check; all three masters uploaded there and read back by hash): a two-year 2-payment TPOM deck with the benefits switch on (32 slides, every new note, the new picture, display 8 unchanged) and off (31 slides, opens cleanly — the notes-drop path, the one the pre-cut-off plans take); a book-ends deck (9 slides, every slide has notes); a two-year Rapid deck with the switch on (21 slides, all checked). A local mirror of the drop loop proved every TPOM and Rapid shape structurally clean. **Not clicked:** single-year and 3-payment decks on either route (the surgery parts are byte-identical to v11's, so the existing proofs stand), and the book-ends risk-arrow slide — all watched in JLathamERT/vfo-edge-functions#544. **Smoke gate not required** (two isolated handlers + the staging export allowlist; no routing, dispatch, webhook or auth change).
+
+**Test-site state touched by hand while testing (fake data):** the benefits switch was flipped off and back on; plan 100019 was set to Rapid and back; plan 100019 carries a Tax 4 meeting date set to unlock the book-ends row; plan 100018's was set and cleared.
+
 ## 2026-11-12 — Tracy can manage ERT/VFOS Documentation — by Jake
 
 **Why.** Jake asked for Tracy Miller to be able to add, delete and move documents in the ERT/VFOS Documentation vault section (clients, members and specialists), like Jake, Tray and Paxton.
