@@ -15,16 +15,16 @@
 A chain is an HTTP POST from one handler back into the same edge function:
 
 ```ts
-await fetch(`${SUPABASE_URL}/functions/v1/vfo-admin-api`, {
+await fetch(adminApiUrl(), {
   method: "POST",
   headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_KEY}` },
   body: JSON.stringify({ action: "automation_CONTRACT_paymentemail", client_id }),
 });
 ```
 
-**Never hardcode the project URL in a chain (2026-11-02).** Use `${SUPABASE_URL}` or `adminApiUrl()` from `constants/environment.ts`. On the staging copy a literal live URL would chain from staging INTO LIVE. The six chains (and seven PDF links) that hardcoded `ejpsprsmhpufwogbmxjv` now use `adminApiUrl()` / `projectUrl()`, which on live return the same literal URL.
+**Every chain calls `adminApiUrl()` from `constants/environment.ts`, never a typed URL (2026-11-12, #748).** It names this project AND the copy of the function the request is running in, so a chain started on a person's own test copy (`vfo-admin-api-<name>`) stays there; on live it is always the literal live `vfo-admin-api` URL. A typed live URL on the staging copy would chain from staging INTO LIVE (2026-11-02), and a typed `/functions/v1/vfo-admin-api` sends the rest of a test-copy chain to the shared function. The six chains (and seven PDF links) that hardcoded `ejpsprsmhpufwogbmxjv` now use `adminApiUrl()` / `projectUrl()`, which on live return the same literal URL.
 
-**40 files** chain this way (re-derived 2026-09-25 with `grep -rl "functions/v1/vfo-admin-api"` over the function — derive, never trust this number; 39 before the Rapid Route branch made `actions/tax/final-decision.ts` a chain source, 38 on 2026-09-18, 34 on 2026-08-24; **`utils/member-payout-release.ts` added 2026-08-24** was the first chaining file that is a *util* rather than an action, because its two callers already hold service-role context and nothing third-party triggers it. **None of the 2026-09-17/18 tax-intake files chain over HTTP** — `finalizeTaxIntake`, the deposit documents, the $250 leg and the Holistic ask are all direct helper calls made from contexts that already hold service-role, so the count did not move on that branch). Two credential shapes, and the difference is load-bearing:
+**46 files** chain this way (re-derived 2026-11-12 with `grep -rl "adminApiUrl()"` over the function, less `constants/environment.ts` — derive, never trust this number; 40 on 2026-09-25 by the old `functions/v1/vfo-admin-api` grep; 39 before the Rapid Route branch made `actions/tax/final-decision.ts` a chain source, 38 on 2026-09-18, 34 on 2026-08-24; **`utils/member-payout-release.ts` added 2026-08-24** was the first chaining file that is a *util* rather than an action, because its two callers already hold service-role context and nothing third-party triggers it. **None of the 2026-09-17/18 tax-intake files chain over HTTP** — `finalizeTaxIntake`, the deposit documents, the $250 leg and the Holistic ask are all direct helper calls made from contexts that already hold service-role, so the count did not move on that branch). Two credential shapes, and the difference is load-bearing:
 
 | Caller context | Credential | Notes |
 |---|---|---|
@@ -463,7 +463,7 @@ Not a chain, but it sits on the path every chain's email takes, so it is invento
 
 ## Adding a new chain — checklist
 
-1. Chain over **HTTP**, never a direct call. Forward `body.token` if the target is an AUTH handler (**#11**). If the SOURCE is public (no session), chain to a service-role-only public twin instead (**#546**).
+1. Chain over **HTTP** to `adminApiUrl()`, never a direct call and never a typed URL (**#748**). Forward `body.token` if the target is an AUTH handler (**#11**). If the SOURCE is public (no session), chain to a service-role-only public twin instead (**#546**).
 2. Name the **idempotency column** that proves the side effect already happened, and check it first — Stripe redelivers (**#327**).
 3. Set `metadata.pipeline` **and** `metadata.payment_kind` on anything you create in Stripe (**#13**).
 4. Decide the purchase-email gate's **placement** deliberately — call site vs inside the handler (**#287**).

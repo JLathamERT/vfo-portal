@@ -4,7 +4,7 @@
 >
 > **This file is the source of truth for where the plan stands — not anyone's Claude memory** (a chat on the other person's computer can't see that). Every chat working on any piece of it reads this file first, and the PR that ships a step updates that step's row here (TEAM_RULES §6). Decisions are added to §5 with the date and who made them.
 >
-> Created 2026-11-03 from the 2026-10-31 planning chat ("VFO PORTAL - 10/31 #1 (Paxton)") and the chats since, when the plan was found to exist only in Jake's Claude memory. Last updated: 2026-11-05.
+> Created 2026-11-03 from the 2026-10-31 planning chat ("VFO PORTAL - 10/31 #1 (Paxton)") and the chats since, when the plan was found to exist only in Jake's Claude memory. Last updated: 2026-11-12 (own test backends, §5).
 
 ## 1. Where it stands
 
@@ -171,6 +171,8 @@ Settled — build on these, don't reopen them.
 **2026-11-05 (Jake), on GitHub Pro and making `vfo-portal` private:** "pro eventually but actually lets not do it right now its a next week thing ... this can be an after paxton doc thing". This changes the 2026-11-04 "No Pro" decision for a different reason: that one was about the deploy key. Until then, Issues go in the private `vfo-edge-functions` repo. Steps and options: Issue JLathamERT/vfo-edge-functions#353.
 
 **2026-11-04 (Jake), on the handover:** his GitHub username and the passwords wait for a Zoom, and that moves to the getting-started document (§3). "it doesnt sound like any bitwarden setup is needed": Paxton isn't added to the vault, and no password reaches him in writing. BoldSign, Gmail, Sentry and Google Drive wait until he needs them.
+
+**2026-11-12 (Jake), on test-site clashes:** each person gets their own copy of the backend on the test project (`vfo-admin-api-jake`, `vfo-admin-api-paxton`), the cheap fix, with no new repos or Supabase projects. Separate per-person Supabase projects were turned down as days of work plus a monthly cost. The shared `vfo-admin-api` stays main, for outside-in tests (TEAM_RULES §4).
 
 ## 6. Watch
 

@@ -92,7 +92,7 @@ Vite-style (`import.meta.env`):
 
 | Var | Used by | Purpose |
 |---|---|---|
-| `VITE_API_URL` | 42 files (`grep -rl VITE_API_URL src`, 2026-11-02), [src/lib/api.js:1](src/lib/api.js) first | Override for the edge function URL. Falls back to hardcoded `https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api`. Production behavior unchanged when unset. `npm run dev` and `npm run build:staging` set it to the test site through `.env.staging`; `npm run dev:live` leaves it unset. |
+| `VITE_API_URL` | 42 files (`grep -rl VITE_API_URL src`, 2026-11-02), [src/lib/api.js:1](src/lib/api.js) first | Override for the edge function URL. Falls back to hardcoded `https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api`. Production behavior unchanged when unset. `npm run dev` and `npm run build:staging` set it to the test site through `.env.staging`; `npm run dev:live` leaves it unset. `npm run dev` alone (never a build) appends `-<name>` when the computer sets `VFO_TEST_BACKEND=<name>`, so it talks to that person's own test backend (`vite.config.js`, TEAM_RULES §4, 2026-11-12). |
 | `VITE_SUPABASE_URL` | [src/lib/environment.js](src/lib/environment.js) `SUPABASE_URL` / `HEADSHOTS_URL` | The project behind storage links (headshots, logos, the website-widget embed). Unset = live's. |
 | `VITE_PORTAL_URL` | [src/lib/environment.js](src/lib/environment.js) `PORTAL_URL` | This website's own address, for links a screen shows or copies (the Tax Diagnostic public link). Unset = `https://vfoportal.com`. |
 | `VITE_SUPABASE_ANON_KEY` | `scripts/finish-staging-build.mjs` only | Staging's PUBLIC anon key, swapped into the staging build's files in place of live's (see below). |

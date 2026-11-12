@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-12 — Each person has their own test backend — by Jake
+
+**Why.** The test site had one backend function, and a deploy replaces all of it, so one person's branch build blocked the other's testing (the same day, Jake's Tailored Route chat waited on Paxton's notes build). Jake chose the cheap fix: a copy of the function per person on the same test project. Separate Supabase projects per person were turned down as days of work and a monthly cost.
+
+**What changed.**
+- **Backend (`supabase/config.toml`, edge repo):** `[functions.vfo-admin-api-jake]` and `[functions.vfo-admin-api-paxton]`, the same entrypoint, import map and `verify_jwt = false` as `vfo-admin-api`. The deploy button and the test site's self-update deploy `vfo-admin-api` by name, so neither touches the copies, and the repo guard already allows any deploy that names the test project and refuses live. Both copies were deployed with main on 2026-11-12 (v1 each).
+- **Website (`vite.config.js`):** `npm run dev` talks to `vfo-admin-api-<name>` when the computer sets `VFO_TEST_BACKEND=<name>`, and prints a `Backend:` line under its URL. Builds ignore it (checked: a staging build with it set still names only the shared function).
+- **Chain calls follow their copy (edge repo, #748):** the 105 server-to-server chain calls in 40 files that typed `/functions/v1/vfo-admin-api` now call `adminApiUrl()`, which `index.ts` points at the copy each request arrived on (`noteRunningFunction`). Live always gets the literal live URL, as before. 35 URL variables nothing read any more went with them. Proved on Jake's copy: a chained call from it landed on it.
+- **Rules (`TEAM_RULES.md` TEAM, §4, §7, the starter):** deploy branches to your own copy freely; the shared one runs main and is for outside-in tests only (a Stripe payment, a BoldSign signing, a scheduled job), and the whose-build-is-there rules apply to it alone. Test steps give an emailed link as its dev-server address, and say so when a step has to use the shared one. Each chat brings its person's copy to its own build at start.
+
+---
+
 ## 2026-11-12 — A blocked test-site deploy says how it clears — by Jake
 
 **Why.** Paxton's chat stopped before a test-site backend deploy because Jake's TPOM build was there. It told him to ask Jake but didn't say the build would leave by itself when Jake's PR merged, and it didn't look again after the merge put main back.
