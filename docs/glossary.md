@@ -151,7 +151,7 @@ These names/emails appear hardcoded in the codebase:
 | Jake Latham | `jlatham@elitert.com` | Superadmin (on the `constants/superadmin.ts` list). |
 | Paxton Calareso | `pcalareso@vfo-services.com` | Developer (2026-11). Superadmin (on the `constants/superadmin.ts` list), and on `TAX_VIEWERS` + `isErtManager`. |
 | (named "P. Latham"?) | `platham@elitert.com` | BCC on most automation emails (alongside `aanderson`). |
-| Tracy Miller | `tnmiller@elitert.com` | "VFO Liaison." Recipient of the intro email after payment 1 (sent by `automation_CONTRACT_revshare`). |
+| Tracy Miller | `tnmiller@elitert.com` | "VFO Liaison." Recipient of the intro email after payment 1 (sent by `automation_CONTRACT_revshare`). On `isErtManager` since 2026-11-12. |
 | (Tracy Miller, separate?) | `tracy@vfo-services.com` | CC'd on every `automation_CONTRACT_invoicereceipt` email. **Whether this is the same person as `tnmiller@elitert.com` is not clear from code** — flagged. |
 | Evan Anderson | `eanderson@vfo-services.com` | PF |
 | Bridger Silvester | `bsilvester@vfo-services.com` | PF |
