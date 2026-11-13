@@ -8,6 +8,23 @@
 
 ---
 
+## 2026-11-13 — Test-site emails and bells reach only the tester, or nobody — by Jake
+
+**Why.** Since 2026-11-11 every staff member has a test member (10003-10017) whose email and login are their REAL address. The guard's first rule treated any recipient that was a test member's login as "about that test member" and sent the email to its owner, so every staff To / Cc / Bcc on a test email received it: the Friday "Weekly membership arrears" digest reached Paul with nobody clicking, a countersignature request reached Anton and Paul, an advisor onboarding email reached Anton and Paul through its live Bcc, a High Level Tax email reached four people. Bells had the same leak in their last step (live recipients with a test-site login, else all admins, who are all real staff there).
+
+**Decided (Jake, 13 Nov).** Whoever clicked comes first, ahead of the test data's owner (acting on another person's test client emails you, not them). A scheduled email about nobody's test data is not sent at all, and a reminder about one person's test data reaches only that person. An access block (each person sees only their own test data) was offered and declined: it would touch every admin loader and make the test site's admin screens differ from live's.
+
+**Backend (staging only, live unchanged: every new path returns at `isEmailGuarded()` / is never installed on live).**
+- `utils/staging-email-guard.ts`: one loader (`loadStagingPeople`) for both routes. Emails and bells go to: the admin or member who clicked; else the owner of the test data it is about, found from a made-up test address (a test client's tagged `x+tax@`, `staging+100xx-…`, `tp` / `tm` / `group`) or a test record's full name (members, clients, specialists, planners, team members, groups, advisor / accountant onboardings); else nobody. A real staff address never counts. A failed lookup also means nobody.
+- `utils/delivery-failure-alert.ts`: `gmailPostWithRetry` works out the tester once; a draft with no tester stays in the staging mailbox's Drafts, addressed to the team inbox, never sent, and the caller sees an ordinary success (no failure bell).
+- `utils/notify.ts`: a bell routed to nobody is not saved.
+- `index.ts`: the clicker now survives this backend's own service-role chain calls (most clicks send their email from one, e.g. the advisor No → `automation_ADVISOR_declineemail`). On staging only, `forwardStagingActorOnChainCalls` adds an `x-vfo-staging-actor` header to every chain fetch made while a click is handled, and `chainedStagingActor` reads it back only beside the service-role key (#749).
+- Action count 652 (unchanged). `deno check` 0. Test-site deploys to `vfo-admin-api-jake`: **v4**, then **v5** (the chain-call clicker).
+
+**Tested on the test site (Jake, 13 Nov, v4 / v5): PASS.** The arrears digest fired at Jake's copy was left unsent. Jake Advisor No (admin click): only Jake, live Bcc Anton + Paul shown only in the box. Jake Accountant No: "because you clicked" through the chain. Jake Advisor Undecided, then the emailed No link opened with nobody signed in: decline email and the "clicked No" bell to Jake only (database checked: the one new bell, recipient Jake). **Not exercised:** an email or bell that Stripe or BoldSign starts, which only the shared `vfo-admin-api` receives (it runs main until this merges); the same nobody-clicked path as the emailed link, Issue filed.
+
+---
+
 ## 2026-11-12 — Each person has their own test backend — by Jake
 
 **Why.** The test site had one backend function, and a deploy replaces all of it, so one person's branch build blocked the other's testing (the same day, Jake's Tailored Route chat waited on Paxton's notes build). Jake chose the cheap fix: a copy of the function per person on the same test project. Separate Supabase projects per person were turned down as days of work and a monthly cost.
