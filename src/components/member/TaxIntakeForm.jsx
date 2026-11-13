@@ -65,6 +65,12 @@ export default function TaxIntakeForm({
   // The member Tax Diagnostic tab (2026-10-14) draws its own Client-Overview-
   // style page heading above the form: drop the eyebrow, smaller step titles.
   pageHeading = false,
+  // An EXISTING client of this member (2026-11-13: the client's Vault tab
+  // "Start the Tax Diagnostic" button). Their name, email and phone come from
+  // the record (tax_intake_eligibility returns them after checking the client is
+  // the caller's own), both routes send client_id, and the server puts the case
+  // on that client instead of creating one.
+  existingClientId = null,
 }) {
   const isPhone = useIsPhone()
   const [step, setStep] = useState(() => (publicMode ? 'form' : 'choose'))
@@ -98,14 +104,28 @@ export default function TaxIntakeForm({
   // Route B mini form.
   const [linkForm, setLinkForm] = useState({ first: '', last: '', email: '' })
 
+  const [existingError, setExistingError] = useState('')
   useEffect(() => {
     if (publicMode) return
     let live = true
-    callApi('tax_intake_eligibility', { member_number: member?.member_number })
-      .then(d => { if (live) setEligibility(d) })
-      .catch(() => { if (live) setEligibility(null) })
+    callApi('tax_intake_eligibility', { member_number: member?.member_number, ...(existingClientId ? { client_id: existingClientId } : {}) })
+      .then(d => {
+        if (!live) return
+        setEligibility(d)
+        const c = existingClientId ? d?.client : null
+        if (!c) return
+        setAnswers(a => ({ ...a, q2: c.first_name || a.q2, q3: c.last_name || a.q3, q4: c.email || a.q4, q5: c.phone || a.q5 }))
+        setLinkForm({ first: c.first_name || '', last: c.last_name || '', email: c.email || '' })
+      })
+      .catch(err => {
+        if (!live) return
+        setEligibility(null)
+        if (existingClientId) setExistingError(err?.message || 'Could not load this client.')
+      })
     return () => { live = false }
-  }, [publicMode, member?.member_number])
+  }, [publicMode, member?.member_number, existingClientId])
+  const existingClient = existingClientId ? (eligibility?.client || null) : null
+  const existingName = existingClient ? `${existingClient.first_name} ${existingClient.last_name}`.trim() : ''
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: isPhone ? 'var(--vfo-card-pad)' : '24px', marginBottom: '20px' }
   // A public page already draws the form inside its own card (TokenShell): on a
@@ -143,8 +163,11 @@ export default function TaxIntakeForm({
   }
   // q4 is locked on a link page (the invited address is half of what the token
   // proves) but typed freely on the public diagnostic page, which has no token.
+  // An existing client's name is their record's; so is the email when the record
+  // has one (a blank one is typed here and used for the emails only).
   const lockedIds = lockClientIdentity ? new Set(['q2', 'q3', 'q4'])
-      : publicMode && publicIntake ? new Set(['q4']) : new Set()
+      : existingClient ? new Set(['q2', 'q3', ...(existingClient.email ? ['q4'] : [])])
+      : publicMode && publicIntake ? new Set(publicIntake.name_locked ? ['q2', 'q3', 'q4'] : ['q4']) : new Set()
 
   function set(id, value) {
     setAnswers(a => ({ ...a, [id]: value }))
@@ -164,7 +187,7 @@ export default function TaxIntakeForm({
       const normalized = normalizeTaxIntakeAnswers(answers)
       const res = publicMode
         ? await onPublicSubmit(normalized)
-        : await callApi('tax_intake_submit', { answers: normalized, ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}) })
+        : await callApi('tax_intake_submit', { answers: normalized, ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}), ...(existingClient ? { client_id: existingClient.id } : {}) })
       // A url means the deposit is owed — since 2026-09-23 it is the card-or-ACH
       // choice page (/tax-deposit-pay), for route A and route B alike.
       if (res?.url) { window.location.assign(res.url); return }
@@ -195,6 +218,7 @@ export default function TaxIntakeForm({
         client_last_name: last,
         client_email: email,
         ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}),
+        ...(existingClient ? { client_id: existingClient.id } : {}),
       })
       onDone?.({ link_sent_to: `${first} ${last}`.trim() })
     } catch (err) {
@@ -305,6 +329,23 @@ export default function TaxIntakeForm({
     </div>
   )
 
+  // ─── Started for an existing client that cannot take a new case ─────────
+  // The server refuses both writes for these too; this only explains it.
+  if (existingClientId && (existingError || existingClient?.has_tax_case)) return (
+    <div style={{ ...sectionStyle, borderColor: 'rgba(224,103,23,0.35)' }}>
+      <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }}>
+        {existingError ? 'This client could not be loaded' : 'Tax planning has already started'}
+      </div>
+      <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>
+        {existingError || `${existingName || 'This client'} already has a VFO Tax Planning case. You can follow it on their client page.`}
+      </div>
+      <button type="button" onClick={onCancel}
+        style={{ marginTop: '16px', padding: '8px 18px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
+        Start a different Tax Diagnostic
+      </button>
+    </div>
+  )
+
   // ─── Step 1: who fills the form in? ───────────────────────────────────
   if (step === 'choose') {
     // Who RUNS the case, asked on both routes and decided here — the client is
@@ -330,7 +371,7 @@ export default function TaxIntakeForm({
       <div>
         <div style={{ marginBottom: '20px' }}>
           {!pageHeading && <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>}
-          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: pageHeading ? '18px' : '22px', color: 'var(--vfo-heading)' }}>Add a new tax client</div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: pageHeading ? '18px' : '22px', color: 'var(--vfo-heading)' }}>{existingClientId ? `Start tax planning for ${existingName || 'your client'}` : 'Add a new tax client'}</div>
           {depositLine && (
             <div style={{ fontSize: '13px', fontWeight: 600, color: eligibility && !eligibility.deposit_required ? green : 'var(--vfo-ink)', marginTop: '8px' }}>{depositLine}</div>
           )}
@@ -339,8 +380,8 @@ export default function TaxIntakeForm({
             clicked, so a choice placed under them could never be made. */}
         {(() => {
           const fillOptions = [
-            { key: 'form', title: 'Complete the form for my client', phoneTitle: 'Fill it in now', body: `You answer the Tax Planning Form now${depositRequired === false ? '' : ' and pay the deposit'}. The client is created as soon as you are done.` },
-            { key: 'link', title: 'Send my client a link', phoneTitle: 'Send my client a link', body: `We email your client the Tax Planning Form${depositRequired === false ? '' : ', and they pay the deposit'}. You only need their name and email address.` },
+            { key: 'form', title: 'Complete the form for my client', phoneTitle: 'Fill it in now', body: `You answer the Tax Planning Form now${depositRequired === false ? '' : ' and pay the deposit'}. ${existingClientId ? 'Tax planning starts on this client as soon as you are done.' : 'The client is created as soon as you are done.'}` },
+            { key: 'link', title: 'Send my client a link', phoneTitle: 'Send my client a link', body: `We email your client the Tax Planning Form${depositRequired === false ? '' : ', and they pay the deposit'}. ${existingClientId ? 'Tax planning starts on this client once they are done.' : 'You only need their name and email address.'}` },
           ]
           // Both questions render at once. Direct starts DISABLED (grey) and only
           // lights up once eligibility confirms it, so nothing appears late or
@@ -380,7 +421,10 @@ export default function TaxIntakeForm({
           // The route question shows only while the member's tax_direct switch is
           // on (Jake 2026-10-14); otherwise every case is classic and only the
           // fill question is asked.
-          const showRoute = eligibility?.direct_enabled === true
+          // Never for an existing client (Jake 2026-11-13): the PF is stored on
+          // the client, so Direct would move every program it is on. VFO-run
+          // only; the server refuses Direct there too.
+          const showRoute = eligibility?.direct_enabled === true && !existingClientId
           return (
             <>
               {showRoute && (
@@ -415,6 +459,8 @@ export default function TaxIntakeForm({
 
   // ─── Route B: the three fields we need to email the client ────────────
   if (step === 'link') {
+    // An existing client's name (and email, when the record has one) is locked.
+    const linkInputStyle = locked => ({ ...inputStyle, opacity: locked ? 0.65 : 1, cursor: locked ? 'not-allowed' : 'text' })
     return (
       <div>
         <div style={{ marginBottom: '20px' }}>
@@ -430,15 +476,15 @@ export default function TaxIntakeForm({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px 28px' }}>
             <div>
               <label style={labelStyle}>Client First Name<span style={{ color: '#d93025' }}> *</span></label>
-              <input type="text" value={linkForm.first} onChange={e => setLinkForm(f => ({ ...f, first: e.target.value }))} style={inputStyle} />
+              <input type="text" value={linkForm.first} disabled={!!existingClient} onChange={e => setLinkForm(f => ({ ...f, first: e.target.value }))} style={linkInputStyle(!!existingClient)} />
             </div>
             <div>
               <label style={labelStyle}>Client Last Name<span style={{ color: '#d93025' }}> *</span></label>
-              <input type="text" value={linkForm.last} onChange={e => setLinkForm(f => ({ ...f, last: e.target.value }))} style={inputStyle} />
+              <input type="text" value={linkForm.last} disabled={!!existingClient} onChange={e => setLinkForm(f => ({ ...f, last: e.target.value }))} style={linkInputStyle(!!existingClient)} />
             </div>
             <div>
               <label style={labelStyle}>Client Email<span style={{ color: '#d93025' }}> *</span></label>
-              <input type="text" value={linkForm.email} onChange={e => setLinkForm(f => ({ ...f, email: e.target.value }))} style={inputStyle} />
+              <input type="text" value={linkForm.email} disabled={!!existingClient?.email} onChange={e => setLinkForm(f => ({ ...f, email: e.target.value }))} style={linkInputStyle(!!existingClient?.email)} />
             </div>
           </div>
         </div>

@@ -8,6 +8,25 @@
 
 ---
 
+## 2026-11-13 — The member Vault says it is storage, starts the Tax Diagnostic for that client, and member drops stop belling Tracy — by Jake
+
+**Why.** Members with portal access were dropping a client's tax returns into the client's Vault believing that started tax planning, and every drop belled Tracy (and the client's PF) with *"<Member> dropped a document in <Client>'s vault"* — 60 such bells to Tracy in the 60 days to 13 Nov, most of them storage. Tracy asked for a line saying the Vault is storage, with a link to the diagnostic, and to keep only the bells for drops the tax process is waiting on (after Request Tax Returns / Request Additional Information).
+
+**Decided (Jake, 13 Nov).** The bell rings only while a plan is waiting on returns or additional information; elsewhere a member's drop rings nothing. The link opens the existing Tax Diagnostic choice page pre-filled from the client, and the case lands on THAT client. A client with a case gets the storage line with no button; the popup after a drop shows in either section for a client with no case. Starting from the vault is **VFO-run only**: Jake first chose Direct with the member as PF, then ruled the PF must cover only that tax case — the PF is stored per client, so that is its own piece of work, Issue JLathamERT/vfo-edge-functions#563.
+
+**Backend.**
+- `actions/vault/member-client-vault-shared.ts memberDropInTaxProcess` gates `notifyMemberVaultDrop`: a program-4 plan (or a Holistic plan whose returns were requested) without `tax_returns_received_at` or stamped under an hour ago, or an additional-information request whose review step is unanswered. Fail open. Planner drops and the `member_client_vault_upload_notify` tax bells are unchanged.
+- `utils/tax-intake-existing-client.ts` (new): `resolveExistingTaxClient` (own client for the resolved member number, admins included; `-PFT` / `-TRA` refused; `has_tax_case` = any program-4 plan, failing closed), `vaultTaxCaseState`, `existingClientCaseTaken`.
+- `tax_intake_eligibility` / `tax_intake_submit` / `tax_intake_send_link` take an optional `client_id`; the two writes store it as `existing_client_id` and refuse a client with a case or a Direct route. `member_client_vault_list` returns `has_tax_case`.
+- `finalizeTaxIntake` puts an `existing_client_id` row on that client (owner re-checked, Direct and a case that appeared meanwhile refused). `tax_intake_link_load` returns `name_locked` (and `closed` once a case exists), `tax_intake_link_submit` keeps the stored names, and `tax_intake_deposit_checkout` refuses before any Checkout once a case exists.
+- Migration `20261113180000_tax_intake_existing_client.sql`: `tax_intake_requests.existing_client_id` (nullable fk → `clients`, on delete set null). On the test site 2026-11-13; on live BEFORE the backend release. Not `client_id` — #753.
+
+**Website.** `ClientVaultTab.jsx` member mode: the *The Vault is for storage* card (with *Start the Tax Diagnostic* while the client has no case; owner only, no card for a `-PFT` / `-TRA` client) and the same message as a popup after a drop. `MemberTaxDiagnostic.jsx` reads `?start_for=<client id>` and opens Start a Tax Diagnostic for it. `TaxIntakeForm.jsx` `existingClientId`: *Start tax planning for <Client>*, name / email (and phone) from the record and locked on both routes, no *Who runs this case?*, a *Tax planning has already started* card; the client's `/tax-intake` page locks the name on `name_locked`.
+
+**Tested** on the test site (`vfo-admin-api-jake` v14–v18, and the shared `vfo-admin-api` v76–v77 running the branch for the Stripe steps, put back on main at v78): the card with and without a case and none on a PFT client; the popup; no bell for drops outside the process (both clients); route A with a $500 card deposit landing on the existing client (no duplicate) and the drop afterwards ringing *dropped a document* + *Allocate a team member*; route B with a card deposit (run as Direct before Direct was withdrawn — the client-link half and the existing-client landing are what it proves); the locked name on the client's link page; the vault start offering only VFO-run; a link and an unpaid payment page refused once the client had a case. **Not exercised:** an ACH deposit on an existing client, a waived deposit (member at 2/2, finalize inline), the additional-information bell window and the Holistic returns window, and an admin caller passing `client_id` — Issue JLathamERT/vfo-edge-functions#564.
+
+---
+
 ## 2026-11-13 — The payment link goes out the moment the client signs, not after Anton countersigns — by Jake
 
 **Why.** Every BoldSign agreement went client signs → Anton is asked to countersign → only once Anton signed did the client get the payment email. Jake asked for one flow everywhere: when the client signs, Anton's countersign email AND the client's payment email go out together, and the emails say so.
