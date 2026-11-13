@@ -727,7 +727,7 @@ function OnboardingDetail({ id, onBack }) {
   const depositOnFile = ob.deposit_status === 'succeeded' || ob.deposit_status === 'processing'
   const depositPaid = depositOnFile ? (Number(ob.deposit_amount) || 0) : 0
   const balance = Math.max(Number(ob.payment_amount || 0) - depositPaid, 0)
-  const priced = !!ob.agreement_signed_by_ceo_at
+  const priced = !!ob.agreement_signed_by_advisor_at
   const depositCoversAll = priced && ob.deposit_status === 'succeeded' && depositPaid > 0 && Number(ob.payment_amount) > 0 && balance === 0
   const showPaymentLinkRow = depositCoversAll ? false : (depositPaid === 0 || !!ob.payment_link_sent_at)
   const balanceStatus = ob.balance_charge_status
@@ -736,7 +736,7 @@ function OnboardingDetail({ id, onBack }) {
     <>
       {depositPaid > 0 && (
         <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '4px 0 6px 14px' }}>
-          Deposit of ${fmtMoney(depositPaid)} {ob.deposit_status === 'processing' ? 'pending (ACH clearing)' : `received ${formatDate(ob.deposit_completed_at)}`}{!priced ? ' · balance calculated at countersign' : balance > 0 ? ` · balance due $${fmtMoney(balance)}` : ' · nothing further due'}
+          Deposit of ${fmtMoney(depositPaid)} {ob.deposit_status === 'processing' ? 'pending (ACH clearing)' : `received ${formatDate(ob.deposit_completed_at)}`}{!priced ? ' · balance calculated at signing' : balance > 0 ? ` · balance due $${fmtMoney(balance)}` : ' · nothing further due'}
         </div>
       )}
       <AutoRow label="Engagement agreement created and sent for signing" done={!!ob.agreement_sent_at} date={ob.agreement_sent_at} emails={tier1 ? ADVISOR_TIER1_AGREEMENT_EMAILS : ADVISOR_AGREEMENT_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />

@@ -276,11 +276,11 @@ two legs** (gotcha **#473**):
   carries a redelivery latch (#327): a settled deposit is never re-booked and a processing one only by a
   different PaymentIntent.
 - **`payment_intent.succeeded`** — branches on `pi.metadata.payment_kind`:
-  `'onboarding_deposit'` settles the deposit and, **if `balance_charge_status='awaiting_deposit'` and the
-  agreement is countersigned, chains `_chargebalance`**; `'onboarding_balance'` settles the balance, chains
+  `'onboarding_deposit'` settles the deposit and, **if `balance_charge_status='awaiting_deposit'`, chains
+  `_chargebalance`** (the park is only made once the agreement is signed; no countersign check since 2026-11-13); `'onboarding_balance'` settles the balance, chains
   the invoice/receipt and writes `balance_charge_status='succeeded'`.
 - **`checkout.session.async_payment_failed`** → `handleOnboardingDepositFailure` (`deposit_status='failed'`,
-  action bell to Jake, and **re-chains `_stripecustomer` if a countersign was parked on it** — with the
+  action bell to Jake, and **re-chains `_stripecustomer` if a signed agreement's balance was parked on it** — with the
   deposit gone the whole fee is owed, so the ordinary payment-link route resumes).
 - **`payment_intent.payment_failed`** → the same deposit helper, or `handleOnboardingBalanceFailure` for a
   bounced balance (`payment_status='declined'`, `balance_charge_status='failed'`, Jake bell
@@ -311,7 +311,18 @@ collected engagement).
 
 ---
 
-## The money fork at CEO countersign
+## The money fork at signing
+
+**Since 2026-11-13 this runs the moment the advisor / accountant signs, not when Anton countersigns.**
+`_ceocountersign` (chained on the signer's BoldSign `Signed` event) reads the plan checkboxes, writes
+`payment_amount`, then chains `_stripecustomer` (`utils/payment-at-signing.ts`) before drafting Anton's email.
+The BoldSign `Completed` event still chains `_stripecustomer` once Anton signs; that second call returns on
+`payment_link_sent_at`, or reaches `_chargebalance`, which skips a settled balance. `_chargebalance` requires the
+signer's own `agreement_signed_by_<advisor|accountant>_at`, not `agreement_signed_by_ceo_at`. What still waits for
+Anton: Stage 3 **Create Member** (`createMemberLock`), whose hint names the first open Stage 2 step once the
+invoice step is done, so a paid, invoiced row reads *"Complete 'Engagement agreement signed by CEO' first"*.
+Proven on the test site 2026-11-13: advisor 100047 (link 4 s after signing, paid before Anton) and accountant
+100050 (card deposit, balance charged 3 s after signing, no second charge at `Completed`).
 
 `actions/{advisor,accountant}/stripe-customer.ts` **no longer early-returns on an existing Stripe customer**
 (the deposit step may already have made one). It creates the customer if missing, then forks on
@@ -334,17 +345,22 @@ Jake bell and mints a fresh payment link.
 `payment-email.ts` and every webhook fee base **net a settled deposit off it**. A card deposit that is not
 netted off records a huge negative fee, which is what the netting exists to prevent.
 
-**TRAP — `payment_amount` carries a column DEFAULT of `4000`.** Before countersign prices the engagement, that
-default is indistinguishable from a written value, so the frontend gates every derived balance figure on
-`agreement_signed_by_ceo_at` instead. Gotcha **#469**.
+**TRAP — `payment_amount` carries a column DEFAULT of `4000`.** Before the signer's signature prices the
+engagement (the `_ceocountersign` checkbox read), that default is indistinguishable from a written value, so the
+frontend gates every derived balance figure on the signer's `agreement_signed_by_<advisor|accountant>_at`
+instead (`agreement_signed_by_ceo_at` until 2026-11-13). Gotcha **#469**.
 
 ---
 
 ## Email wording that had to move with the money
 
 - **`<PREFIX>_agreement_sent`** — the sentence promising *"a separate email with a secure payment link"* became
-  the **`[PAYMENT_NEXT_STEP]`** token. `send-agreement.ts` renders the ORIGINAL sentence when there is no
-  deposit and the balance sentence when there is, so a no-deposit row reads exactly as before.
+  the **`[PAYMENT_NEXT_STEP]`** token. `send-agreement.ts` renders the link sentence when there is no
+  deposit and the balance sentence when there is. Since 2026-11-13 both open *"As soon as you have signed the
+  agreement, …"* (*"…you will automatically receive a separate email…"* / *"…the balance … will automatically be
+  charged…"*), no longer *"Once all parties have signed and confirmed your agreement"*.
+- **`<PREFIX>_payment_link`** opens *"Thank you for signing your <Advisor|Accountant> Onboarding Agreement."*
+  (was *"…has been signed and confirmed."*), migration `20261113160000_payment_at_signing_wording.sql`.
 - **`<PREFIX>_payment_link`** — gained **`[Deposit Note]`** after the Total Payment line. The handler renders
   `""` when no deposit settled, so the line is inert on an ordinary link and only appears on the fresh-link
   fallback after a declined balance.
@@ -372,8 +388,8 @@ advisor** — it used to drop cents.
 - *"Payment collected"* becomes *"Remaining payment collected after deposit"*.
 - **Both are hidden when the deposit covers the total**, replaced by *"Deposit covered the full onboarding
   payment"*.
-- An info line reads *"Deposit of $X received … · balance calculated at countersign / balance due $Y /
-  nothing further due"* — **the balance figure only appears once `agreement_signed_by_ceo_at` is set**, for the
+- An info line reads *"Deposit of $X received … · balance calculated at signing / balance due $Y /
+  nothing further due"* — **the balance figure only appears once the signer's own signed stamp is set**, for the
   `payment_amount` default reason above.
 
 ---

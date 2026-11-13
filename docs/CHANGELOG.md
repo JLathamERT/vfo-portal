@@ -8,6 +8,27 @@
 
 ---
 
+## 2026-11-13 — The payment link goes out the moment the client signs, not after Anton countersigns — by Jake
+
+**Why.** Every BoldSign agreement went client signs → Anton is asked to countersign → only once Anton signed did the client get the payment email. Jake asked for one flow everywhere: when the client signs, Anton's countersign email AND the client's payment email go out together, and the emails say so.
+
+**Decided (Jake, 13 Nov).** All five pipelines: MAP 1, Tax (every route), Advisor and Accountant onboarding (Tier 1 and Tailored Route included) and the Specialist licence. An advisor / accountant with a deposit on file has the balance charged at signing too. Advisor / Accountant Create Member keeps waiting for Anton. A specialist reaching Stage 5 before Anton signs is fine. The payment emails open "Thank you for signing" instead of "has been signed and confirmed".
+
+**Backend.**
+- `utils/payment-at-signing.ts chainPaymentAtSigning`: each `*_ceocountersign` chains its own `*_stripecustomer` over HTTP with the service role, never throwing. MAP 1 / Tax after the PF bell, Specialist after its guard, Advisor / Accountant right after the checkbox read writes `payment_amount`. `boldsign-webhook` and the embedded BoldSign handler were NOT touched: `Completed` still chains `*_stripecustomer`, now a no-op for the money (the existing customer id / `payment_link_sent_at` / `_chargebalance`'s settled skip).
+- Deposit route: `_chargebalance` requires the signer's own `agreement_signed_by_<advisor|accountant>_at` instead of Anton's; the deposit-settled release and the deposit-bounce re-chain in `router/webhooks.ts` no longer check the CEO stamp (`awaiting_deposit` is only set once signed).
+- ERT vault copy: `copyAgreementToErtOnce` copies only a document BoldSign reports `Completed` (an unreadable status copies as before, so nothing regresses); `retryErtCopyAfterCountersign` in the MAP 1 / Tax / Specialist `_stripecustomer` takes a copy deferred at payment / go-live once the CEO stamp is set.
+- `createMemberLock` (+ its website mirror `onboardingOrder.js`) names the first open Stage 2 step once the invoice step is done, so a paid row waiting on Anton reads "Complete 'Engagement agreement signed by CEO' first". `paymentStepLabel` / the Stage 2 balance line treat the signer's signature, not Anton's, as "priced".
+- Wording in code: the advisor / accountant `[PAYMENT_NEXT_STEP]` sentences now open "As soon as you have signed the agreement, …"; the MAP 1 and Tax client-signed bells say "…and the payment link has been sent."
+
+**Templates** (migration `20261113160000_payment_at_signing_wording.sql`, data only, guarded by the old text; on the test site 2026-11-13, on live AFTER the backend release). The six MAP 1 / Tax "please sign" emails: "Once all parties have signed and confirmed your/the agreement, you will receive…" → "As soon as you have signed the agreement, you will automatically receive…". `SPECIALIST_agreement_sent`: "forwarded for signing by Anton… we will be in touch to set up the payment details" → an automatic payment-link sentence, with Anton's countersignature mentioned after. Seven payment emails (`CONTRACT_paymentemail|Yes` + member, `TAX_paymentemail|Yes` + member, `ADVISOR_payment_link`, `ACCOUNTANT_payment_link`, `SPECIALIST_lic_payment`) open "Thank you for signing your … Agreement." Subjects unchanged.
+
+**Website.** `templateMeta.js` describes the payment emails as "Sent as soon as the agreement is signed"; the Advisor / Accountant Stage 2 deposit line reads "balance calculated at signing".
+
+**Tested** on the test site (shared `vfo-admin-api` and `vfo-admin-api-jake` v13 running the branch): Tax plan 100024 (payment email 4 s after the client signed, retainer paid by card before Anton, vault copy deferred with BoldSign status `inprogress`, taken when Anton signed, no second email or customer); advisor 100047 (link 4 s after signing, paid before Anton, Create waited, no second link at `Completed`); accountant 100050 (card deposit, balance charged 3 s after signing, no second charge at `Completed`). **Not exercised:** MAP 1 and the Specialist licence end to end (same chain, no test run; MAP 1's emails are Drafts on the test site, no specialist test record), an ACH deposit settling after signing, a deposit bounce after signing. Issue JLathamERT/vfo-edge-functions#561.
+
+---
+
 ## 2026-11-13 — Portal misc fixes: nav menus flip at the window edge, dark-mode payment rows, Client Overview defaults + remembered sort, "Fee remains", presentation link Send now — by Jake
 
 Seven small asks in one change (one chat, click-tested by Jake on the dev server against the test site, his own copy `vfo-admin-api-jake` v12 for the backend part).

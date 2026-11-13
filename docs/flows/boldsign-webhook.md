@@ -113,9 +113,11 @@ Same database writes as standalone, **without the chain calls**:
 
 | Event | Chain target |
 |---|---|
-| `Completed` | `automation_CONTRACT_stripecustomer` (which itself chains `automation_CONTRACT_paymentemail`) |
-| `Signed` (non-CEO) | `automation_CONTRACT_ceocountersign` |
+| `Signed` (non-CEO) | `automation_CONTRACT_ceocountersign`, **which since 2026-11-13 also chains `automation_CONTRACT_stripecustomer`** → the client's payment email goes out at the same moment as Anton's countersign request |
+| `Completed` | `automation_CONTRACT_stripecustomer` again: a no-op for the money (the customer already exists), it only takes any deferred ERT vault copy |
 | `Signed` (CEO) | none — waits for `Completed` |
+
+**Payment at signing, every pipeline (2026-11-13).** The same holds for Tax, Advisor, Accountant and the Specialist licence: each `*_ceocountersign` chains its own `*_stripecustomer` (Advisor / Accountant after the checkbox read prices the row), so the client never waits for Anton to pay. This file and `router/webhooks.ts` were not changed for it. The chain map, the idempotency of the second call and the vault-copy rule: [../architecture/07-server-chains.md](../architecture/07-server-chains.md) *The agreement → payment hop*.
 
 ## Authentication
 
