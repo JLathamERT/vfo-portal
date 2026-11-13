@@ -6,14 +6,14 @@ import { callApi, loadCachedData, loadCachedAction, getLastSeen } from '../../li
 // member's client page draws the very same bar. MemberPortal switches its own tab;
 // the client page stores the pick in memberActiveTab and navigates to /member.
 
-export const PROGRAM_KEYS = { 'VFO Holistic Planning': 'msm_holistic', 'Partnership Fast Track': 'msm_partnership', 'VFO Tax Planning': 'msm_tax', 'Advanced Coaching': 'msm_coaching', 'Standard Coaching': 'msm_standard' }
+export const PROGRAM_KEYS = { 'VFO Holistic Planning': 'msm_holistic', 'Partnership Fast Track': 'msm_partnership', 'Tailored Route for Accountants': 'msm_tailored', 'VFO Tax Planning': 'msm_tax', 'Advanced Coaching': 'msm_coaching', 'Standard Coaching': 'msm_standard' }
 // Canonical program order — matches the admin MSM Home program-toggle list.
-const PROGRAM_ORDER = ['VFO Holistic Planning', 'Partnership Fast Track', 'VFO Tax Planning', 'Advanced Coaching', 'Standard Coaching']
+const PROGRAM_ORDER = ['VFO Holistic Planning', 'Partnership Fast Track', 'Tailored Route for Accountants', 'VFO Tax Planning', 'Advanced Coaching', 'Standard Coaching']
 const TAX_PROGRAM_NAME = 'VFO Tax Planning'
 
 export const MEMBER_TAB_LABELS = {
   profile: 'Profile', msm_home: 'MSM Home',
-  msm_holistic: 'Holistic Planning', msm_partnership: 'Partnership Fast Track',
+  msm_holistic: 'Holistic Planning', msm_partnership: 'Partnership Fast Track', msm_tailored: 'Tailored Route for Accountants',
   msm_tax: 'Tax Planning', msm_coaching: 'Advanced Coaching', msm_standard: 'Standard Coaching',
   specialists: 'Specialists', showroom: 'Showroom', website: 'Website Plugin',
   ciq: 'CIQ', growthplan: 'Growth Plan', gc: 'GC Marketplace', vault: 'Vault'

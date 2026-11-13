@@ -32,10 +32,13 @@ import ClientTabDropdown from '../components/shared/ClientTabDropdown'
 import { useIsPhone } from '../lib/useMediaQuery'
 import EmailText from '../components/shared/EmailText'
 import { btnPrimary, btnSecondary, btnDanger, btnState } from '../components/shared/buttonStyles'
+import { TAILORED_PROGRAM, ACCOUNTANT_FEATURE_TAB } from '../components/shared/accountantPrograms'
+import TailoredRouteTrack from '../components/admin/pft/TailoredRouteTrack'
 
 // Program names as programs.name holds them (single client profile tab strip).
 const HOLISTIC = 'VFO Holistic Planning'
 const PFT = 'Partnership Fast Track'
+const TAILORED = TAILORED_PROGRAM
 const TAX_PLANNING = 'VFO Tax Planning'
 const HOLISTIC_TABS = ['map1', 'regular', 'tax', 'pip']
 
@@ -123,13 +126,13 @@ export default function ClientDetail() {
   // Program sub-tabs (PFT / MAP 1 / Regular / Tax / PIP) are locked on the admin
   // side until a PF is assigned to this client (set on the Profile tab). Members
   // and planners never assign PFs, so the gate never applies to those views.
-  const PROGRAM_TABS = ['pft', 'map1', 'regular', 'tax', 'pip']
+  const PROGRAM_TABS = ['pft', 'tailored', 'map1', 'regular', 'tax', 'pip']
   const pfLocked = isAdmin && !(client?.assigned_pf && String(client.assigned_pf).trim())
 
   // PFT accountants are reached from MSMTracking's internal drill-down (not a
   // route), so navigate(-1) loses that state. Restore the member's Accountants
   // list by re-seeding the AdminPortal/MemberDirectoryView sessionStorage keys.
-  const isPFTBack = program?.name === 'Partnership Fast Track' && location.state?.backTo === 'pft_accountants'
+  const isPFTBack = (program?.name === PFT || program?.name === TAILORED) && location.state?.backTo === 'pft_accountants'
   const backLabel = isPFTBack ? '← Back to Accountants' : '← Back to Clients'
   function handleBack() {
     // A page loaded fresh (a Stripe Checkout return, an emailed link, a new tab)
@@ -148,7 +151,7 @@ export default function ClientDetail() {
       sessionStorage.setItem('adminActiveTab', 'accountants')
       sessionStorage.setItem('adminAccountantsSection', 'accountant_search')
       sessionStorage.setItem('adminSelectedAccountant', String(location.state.memberNumber))
-      sessionStorage.setItem('adminAccountantFeatureTab', 'msm_program_partnership')
+      sessionStorage.setItem('adminAccountantFeatureTab', location.state?.backFeature || ACCOUNTANT_FEATURE_TAB[program?.name] || 'msm_program_partnership')
       sessionStorage.setItem('pftReturnEnrolledTab', 'clients')
       navigate('/admin')
     } else {
@@ -266,13 +269,14 @@ export default function ClientDetail() {
       // Planner: Profile + Vault always; Tax Priorities for Holistic + Tax
       // Planning; no track tab for any other program (e.g. PFT).
       const base = ['home', 'vault']
-      if (prog?.name === 'Partnership Fast Track') return base
+      if (prog?.name === PFT || prog?.name === TAILORED) return base
       return [...base, 'tax']
     }
     const profile = isMember
       ? ['home', 'ciq', 'vault']
       : ['home', 'details', 'vault', ...(client?.member_number ? ['ciq'] : []), 'payments', 'settings', ...(session?.is_superadmin ? ['continuation'] : [])]
     if (prog?.name === 'Partnership Fast Track') return [...profile, 'pft']
+    if (prog?.name === TAILORED) return [...profile, 'tailored']
     if (prog?.name === 'VFO Tax Planning') return [...profile, 'tax']
     return [...profile, 'map1', 'regular', 'tax', 'pip']
   }
@@ -446,7 +450,7 @@ export default function ClientDetail() {
                       const target = taxPrograms.find(p => p.id === program?.id) || taxPrograms[0]
                       return target ? <button style={tabStyle(activeTab === 'tax')} onClick={() => selectProgramTab(target, 'tax')}>Tax Planning</button> : null
                     })()
-                  : program && program.name !== 'Partnership Fast Track' && (
+                  : program && program.name !== PFT && program.name !== TAILORED && (
                   <button style={tabStyle(activeTab === 'tax')} onClick={() => setActiveTab('tax')}>Tax Priorities</button>
                 )}
               </>
@@ -473,9 +477,13 @@ export default function ClientDetail() {
                   <button key={p.id} style={tabStyle(program?.id === p.id && activeTab === 'tax')} onClick={() => selectProgramTab(p, 'tax')}>Tax Planning</button>
                 ) : p.name === PFT && !isMirror ? (
                   <button key={p.id} style={tabStyle(program?.id === p.id && activeTab === 'pft')} onClick={() => selectProgramTab(p, 'pft')}>Partnership Fast Track</button>
+                ) : p.name === TAILORED && !isMirror ? (
+                  <button key={p.id} style={tabStyle(program?.id === p.id && activeTab === 'tailored')} onClick={() => selectProgramTab(p, 'tailored')}>Tailored Route for Accountants</button>
                 ) : null
               )) : !program ? null : program.name === 'Partnership Fast Track' ? (isMirror ? null :
                 <button style={tabStyle(activeTab === 'pft')} onClick={() => setActiveTab('pft')}>PFT Engagement Process</button>
+              ) : program.name === TAILORED ? (isMirror ? null :
+                <button style={tabStyle(activeTab === 'tailored')} onClick={() => setActiveTab('tailored')}>Tailored Route for Accountants</button>
               ) : program?.name === 'VFO Tax Planning' ? (
                 <button style={tabStyle(activeTab === 'tax')} onClick={() => setActiveTab('tax')}>Tax Priorities</button>
               ) : (
@@ -533,6 +541,7 @@ export default function ClientDetail() {
             )}
             {activeTab === 'map1' && program && !pfLocked && !isPlanner && <ClientTrackViewV2 initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
             {activeTab === 'pft' && program && !pfLocked && !isPlanner && !isMirror && <PFTEngagementTrack initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} notes={clientNotes} onNotesChange={setClientNotes} />}
+            {activeTab === 'tailored' && program && !pfLocked && !isPlanner && !isMirror && <TailoredRouteTrack initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} notes={clientNotes} onNotesChange={setClientNotes} />}
             {activeTab === 'regular' && program && !pfLocked && !isPlanner && <RegularPrioritiesTab initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} notes={clientNotes} onNotesChange={setClientNotes} initialTrackId={initialTrackId} />}
             {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab key={program.id} initialNoteId={initialNoteId} onPlanInOtherProgram={handlePlanInOtherProgram} clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} openSinglePlan={fromBell} />}
             {activeTab === 'pip' && program && !pfLocked && !isPlanner && <PipMeetingsTab initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}

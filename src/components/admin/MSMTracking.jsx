@@ -14,10 +14,12 @@ import { readable } from '../shared/readableColor'
 import AddClientForm from '../shared/AddClientForm'
 import { MSM_MEETING_TYPES } from '../shared/msmMeetingTypes'
 import MsmMeetingsCounter from '../shared/MsmMeetingsCounter'
+import { isAccountantProgram, isAccountantRef, ACCOUNTANT_FEATURE_TAB, TAILORED_PROGRAM } from '../shared/accountantPrograms'
 
 const PROGRAMS = [
   { key: 'holistic', name: 'VFO Holistic Planning' },
   { key: 'partnership', name: 'Partnership Fast Track' },
+  { key: 'tailored', name: 'Tailored Route for Accountants' },
   { key: 'tax', name: 'VFO Tax Planning' },
   { key: 'coaching', name: 'Advanced Coaching' },
   { key: 'standard', name: 'Standard Coaching' },
@@ -47,6 +49,7 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
   const activeTab = activeSection === 'msm_meetings' ? 'home' : 'programs'
   const activeProgramKey = activeSection === 'msm_program_holistic' ? 'holistic'
     : activeSection === 'msm_program_partnership' ? 'partnership'
+    : activeSection === 'msm_program_tailored' ? 'tailored'
     : activeSection === 'msm_program_tax' ? 'tax'
     : activeSection === 'msm_program_coaching' ? 'coaching'
     : activeSection === 'msm_program_standard' ? 'standard'
@@ -513,6 +516,8 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
   // Advanced hides the training/status chrome, Standard hides it too.
   const isCoachingLike = isCoaching || isStandard
   const isTaxPlanning = program.name === 'VFO Tax Planning'
+  // Tailored Route for Accountants: Home + Accountants, no 90 Day Plan (2026-11-12).
+  const isTailored = program.name === TAILORED_PROGRAM
   const [activeTab, setActiveTab] = useState(() => {
     // Deep link from a notification (?sub=training) — consume once, then fall back to
     // the pft-return tab and finally Home.
@@ -552,7 +557,7 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
           <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span>Joined {enrollment.date_enrolled ? formatFullDate(enrollment.date_enrolled) : '—'}</span>
             {!isCoachingLike && enrollment.program_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[enrollment.program_status] || 'var(--vfo-faint)', flexShrink: 0 }} />{enrollment.program_status}</span></>}
-            {!isCoachingLike && !isTaxPlanning && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><PlanStatusBadge enrollmentId={enrollment.id} programId={program.id} liveStatus={livePlanStatus} /></>}
+            {!isCoachingLike && !isTaxPlanning && !isTailored && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><PlanStatusBadge enrollmentId={enrollment.id} programId={program.id} liveStatus={livePlanStatus} /></>}
           </div>
         </div>
         {!isCoachingLike && (
@@ -591,6 +596,8 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
           <>
             <button style={tabStyle(activeTab === 'clients')} onClick={() => setActiveTab('clients')}>Clients</button>
           </>
+        ) : isTailored ? (
+          <button style={tabStyle(activeTab === 'clients')} onClick={() => setActiveTab('clients')}>Accountants</button>
         ) : (
           <>
             <button style={tabStyle(activeTab === 'training')} onClick={() => setActiveTab('training')}>90 Day Plan</button>
@@ -999,7 +1006,8 @@ function ClientsPanel({ enrollment, member, program }) {
   const [loadingExisting, setLoadingExisting] = useState(false)
   const [contactsMap, setContactsMap] = useState({})
 
-  const isPFT = program?.name?.includes('Partnership')
+  // Either accountant program (PFT / Tailored Route): accountants, not clients.
+  const isPFT = isAccountantProgram(program?.name)
 
   // Back from a client page lands here: draw the last list at once, refresh behind it.
   useLayoutEffect(() => {
@@ -1031,7 +1039,7 @@ function ClientsPanel({ enrollment, member, program }) {
     try {
       const data = await callApi('msm_load_member_clients', { member_number: member.plugin_member_number })
       const currentIds = clients.map(c => c.id)
-      setAllMemberClients((data.clients || []).filter(c => !currentIds.includes(c.id) && !c.client_ref.includes('-PFT')))
+      setAllMemberClients((data.clients || []).filter(c => !currentIds.includes(c.id) && !isAccountantRef(c.client_ref)))
     } catch (err) { console.error(err) }
     finally { setLoadingExisting(false) }
   }
@@ -1143,7 +1151,7 @@ function ClientsPanel({ enrollment, member, program }) {
         ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No {isPFT ? 'accountants' : 'clients'} added yet.</div>
         : clients.map(client => (
           <div key={client.id} style={{ ...sectionStyle, cursor: 'pointer' }}
-            onClick={() => navigate(`/admin/client/${client.id}`, { state: { enrollment_id: enrollment.id, from: '/admin', backTo: program.name === 'Partnership Fast Track' ? 'pft_accountants' : undefined, memberNumber: member.plugin_member_number } })}
+            onClick={() => navigate(`/admin/client/${client.id}`, { state: { enrollment_id: enrollment.id, from: '/admin', backTo: isPFT ? 'pft_accountants' : undefined, backFeature: ACCOUNTANT_FEATURE_TAB[program.name], memberNumber: member.plugin_member_number } })}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
             onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

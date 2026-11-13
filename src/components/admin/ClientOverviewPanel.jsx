@@ -21,6 +21,7 @@ const SECTIONS = [
   { key: 'regular', label: 'Regular Priorities' },
   { key: 'tax_planning', label: 'Tax Planning' },
   { key: 'pft', label: 'Partnership Fast Track' },
+  { key: 'tailored', label: 'Tailored Route for Accountants' },
   // Clients in NO program (a CIQ-created client starts here). One row per client,
   // no tracks; the admin row's dropdown adds the client to one of its member's
   // programs (msm_link_existing_client). Members see their own, read-only.
@@ -72,12 +73,13 @@ const GRID_BY_SECTION = {
   regular: '1.1fr 1.7fr 96px 130px 1.9fr 1.1fr',
   tax_planning: '1.1fr 170px 96px 130px 90px 1.9fr 1.1fr',
   pft: '1.1fr 96px 130px 1.9fr 1.1fr',
+  tailored: '1.1fr 96px 130px 1.9fr 1.1fr',
   unassigned: '1.4fr 96px 160px 260px',
   // Same column slots as MAP 1: CIQ sits where Service level is, Last updated
   // where Next action is, CIQs where Owner is - so the columns line up pill to pill.
   ciq: '1.1fr 96px 130px 1fr 1.9fr 1.1fr',
 }
-const MIN_WIDTH_BY_SECTION = { map1: '980px', regular: '1000px', tax_planning: '1040px', pft: '860px', unassigned: '760px', ciq: '980px' }
+const MIN_WIDTH_BY_SECTION = { map1: '980px', regular: '1000px', tax_planning: '1040px', pft: '860px', tailored: '860px', unassigned: '760px', ciq: '980px' }
 // The member portal's Client Overview (mode='member', L5 phase 2): the same table
 // minus the Next action and Owner columns (decision 27). Fixed widths shared by
 // every pill (Name 280 · Priority/Plan 260 · Status 110 · PF 180 · Service level /

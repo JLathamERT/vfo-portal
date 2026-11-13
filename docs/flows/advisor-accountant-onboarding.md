@@ -63,7 +63,7 @@ Both export `stage1Steps(ob, pipeline)`, `stage1Lock(ob, pipeline, key)`, `depos
 | # | Step (`key`) | On which rows | Done when |
 |---|---|---|---|
 | 1 | **Team Member Responsible** (`team`) | both | `onboarding_team_member` is set |
-| 2 | **Meeting Reminder Setup** (`reminder`) | both | `meeting_reminder_scheduled_at` or `meeting_reminder_skipped_at` is set, **or any Preliminary Meeting outcome is recorded** — the PFT `'Request no meeting'` fast path writes an outcome with no reminder |
+| 2 | **Meeting Reminder Setup** (`reminder`) | **advisor only** (left Accountant Onboarding 2026-11-13: never used on live, 0 of 22 scheduled, 12 skipped) | `meeting_reminder_scheduled_at` or `meeting_reminder_skipped_at` is set, **or any Preliminary Meeting outcome is recorded** — the PFT `'Request no meeting'` fast path writes an outcome with no reminder |
 | 3 | **Preliminary Meeting** (`prelim`) | both | an outcome is set and it is not `No Show` |
 | 4 | **Direct or Advisor Partnership** (`partnership`) | accountant | `accountant_partnership` is set |
 | 5 | **CC Connected Advisor** (`cc_advisor`) | accountant, only when `accountant_partnership = 'Accountant Partnership'` | `cc_advisor_email` is set — **required** on that path |
@@ -93,7 +93,8 @@ $…"* hint under the Deposit row is hidden while that row is locked.
 | Handler | Refuses when |
 |---|---|
 | `<p>/meeting-reminder.ts` | no Team Member Responsible — `Complete "Team Member Responsible" first` (the bells route to this person) |
-| `<p>/prelim-meeting.ts` | `prelim_meeting_status` is NULL and the reminder was neither scheduled nor skipped — `Complete "Meeting Reminder Setup" first` |
+| `advisor/prelim-meeting.ts` | `prelim_meeting_status` is NULL and the reminder was neither scheduled nor skipped — `Complete "Meeting Reminder Setup" first` |
+| `accountant/prelim-meeting.ts` | `prelim_meeting_status` is NULL → `stage1Lock(…, 'prelim')`, i.e. `Complete "Team Member Responsible" first` (2026-11-13; it was the reminder check) |
 | `accountant/save-partnership.ts` | no partnership is on file yet and a value is being set → `stage1Lock(…, 'partnership')`; changing an existing choice is not re-locked. It now selects the full row (`select("*")`) to evaluate the lock. |
 | `accountant/save-cc-advisor.ts` | no advisor is picked yet and a `member_number` is being set → `stage1Lock(…, 'cc_advisor')`; changing or clearing an existing pick is allowed |
 | `<p>/deposit-email.ts` | `stage1Lock(…, 'deposit')` while `deposit_email_sent_at` is NULL |
@@ -140,6 +141,8 @@ the record, and a bell link (a new navigation, a new key) still opens its record
 ---
 
 ## Meeting Reminder Setup — a COUNTDOWN ladder
+
+**Advisor Onboarding only since 2026-11-13.** Accountant Onboarding dropped the step (Jake: never used, every live row was skipped). Its row, form and email list are gone from `AccountantOnboarding.jsx` and from the accountant step order; `automation_ACCOUNTANT_meetingreminder`, the `ACCOUNTANT_meeting_reminder*` templates and the sweep's accountant pass remain but have nothing to act on (no live accountant row was ever scheduled).
 
 Two buttons: green **Send reminder (with date)** and grey **Skip reminder**.
 
@@ -416,7 +419,7 @@ Plan of record: [../plans/portal-licensing/README.md](../plans/portal-licensing/
 
 **Which rows.** `isTier1Onboarding(ob, pipeline)` (`utils/tier1-onboarding.ts`) = `tier1_flow_at` set AND `accountant_type='VFO Associate'` (accountant) / `advisor_type='Financial Collaborator'` (advisor; NULL = Catalyst). The stamp is written ONCE, at creation, by `tier1FlowStamp`, on every new one. Rows created before keep today's path (an unstamped Associate still skips Stages 1-2). + New Onboarding always offers Financial Collaborator.
 
-**Stage 1** (`utils/onboarding-order.ts` ↔ `onboardingOrder.js`, #594): Team Member → Meeting Reminder → Preliminary Meeting → (Associate: Direct or Advisor Partnership → CC Connected Advisor → **VFO Portal licence paid by** for a connected one) → Decision. No deposit and no implementation value: `prelim-meeting` refuses *Completed - Send Deposit* and advisor `save-implementation-value` refuses an FC (`TIER1_STEP_REFUSAL`). *VFO Portal licence paid by* = `save_accountant_licence_paid_by` (`accountant_onboarding.licence_paid_by`, `accountant` | `advisor`, NULL until chosen — the screen preselects Accountant, nothing defaults it, #469; fixed once the agreement is sent).
+**Stage 1** (`utils/onboarding-order.ts` ↔ `onboardingOrder.js`, #594): Team Member → (FC: Meeting Reminder →) Preliminary Meeting → (Associate: Direct or Advisor Partnership → CC Connected Advisor → **VFO Portal licence paid by** for a connected one) → Decision. No deposit and no implementation value: `prelim-meeting` refuses *Completed - Send Deposit* and advisor `save-implementation-value` refuses an FC (`TIER1_STEP_REFUSAL`). *VFO Portal licence paid by* = `save_accountant_licence_paid_by` (`accountant_onboarding.licence_paid_by`, `accountant` | `advisor`, NULL until chosen — the screen preselects Accountant, nothing defaults it, #469; fixed once the agreement is sent).
 
 **Stage 2.** `send-agreement.ts` (both) picks the active `agreement_templates` row by `service_level` too (`TIER1_SERVICE_LEVEL` `VFO Associate` / `Financial Collaborator`; classic rows `Accountant` / `Advisor`): **35** Associate Direct, **36** Associate Connected, **34** FC. Signing and the CEO countersign run as today. At the countersign `ceo-countersign.ts` writes `payment_amount` = the month (`tier1MonthlyFee`: $145, or $25 for a connected Associate — never the column DEFAULT 4000) and `stripe-customer.ts` mints the customer on ERT and drafts the **month 1** payment link (`<PREFIX>_payment_link|tier1`, or `ACCOUNTANT_payment_link|tier1_advisor_pays` To the advisor with the Associate Cc'd). `/accountant-pay` / `/advisor-pay` show the fee lines; a card adds 2.9% + $0.30 ($149.64 / $26.06), a bank nothing; the card / bank is saved off-session (`stripe_payment_method_id`). The webhook writes no 6-month renewal date for a Tier 1 row and ignores a Checkout session another pipeline minted on the same customer. Invoice + receipt keep the `INV-ACC` / `INV-ADV` numbering (decision 101) with *Membership Fee $120.00* + *VFO Portal Licence $25.00* (connected: the licence line only) — `utils/tier1-onboarding-documents.ts`, `utils/tier1-onboarding-payment.ts`. The stall sweep's payment reminder uses the Tier 1 template; its deposit tiers skip the row.
 

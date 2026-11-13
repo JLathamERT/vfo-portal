@@ -14,7 +14,7 @@ const CHOICE_LABELS = { vfo_ft: 'VFO Fast Track', vfo_associate: 'VFO Associate'
 // read from the URL and recorded via automation_PFT_undecided_response.
 export default function PftDecidePage() {
   const [searchParams] = useSearchParams()
-  const [status, setStatus] = useState('confirm')
+  const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [choice, setChoice] = useState(() => searchParams.get('choice') || '')
 
@@ -28,8 +28,27 @@ export default function PftDecidePage() {
       return
     }
     setChoice(ch)
-    setStatus('confirm')
+    peekDecision(token, ch)
   }, [])
+
+  // Read-only: an answered link opens on "Already Received" and a choice the
+  // email did not offer on its refusal. Anything else, including a backend that
+  // does not know the action yet, shows the confirm card - nothing is recorded
+  // until it is clicked (#290).
+  async function peekDecision(token, ch) {
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'automation_PFT_undecided_peek', token, choice: ch }),
+      })
+      let data = {}
+      try { data = await res.json() } catch { /* empty body */ }
+      if (data.existing_decision) { setChoice(data.existing_decision); setStatus('already_submitted'); return }
+      if (res.status === 404 || (res.status === 400 && !String(data.error || '').startsWith('Unknown action'))) { setError(data.error || 'Something went wrong.'); setStatus('error'); return }
+    } catch { /* fall through to the confirm card */ }
+    setStatus('confirm')
+  }
 
   function handleConfirm() {
     setStatus('processing')
@@ -68,6 +87,14 @@ export default function PftDecidePage() {
       setError('Unable to connect. Please try again later.')
       setStatus('error')
     }
+  }
+
+  if (status === 'loading') {
+    return (
+      <TokenShell maxWidth={520}>
+        <div style={cardStyle}><p style={messageStyle}>Loading...</p></div>
+      </TokenShell>
+    )
   }
 
   if (status === 'confirm') {

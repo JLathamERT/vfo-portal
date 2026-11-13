@@ -210,6 +210,8 @@ Per-accountant state for the Partnership Fast Track engagement track (added 2026
 
 > **`decision_options`** (text, nullable — **2026-09-14**, migration `20260914180000`): `ft_no` | `ft_associate_no` | NULL (= legacy = all three) — which paths the Undecided email offered; read by the sweep re-send and by `automation_PFT_undecided_response`, which refuses a choice outside the set.
 >
+> **Tailored Route for Accountants (2026-11-12, migration `20261112130000`)** — the same row serves a second program, told apart by **`track`** (text NOT NULL DEFAULT `'pft'` | `'tailored_route'`; every reader branches or filters on it, #751). Its decision email adds `decision_message` (text, the team's typed middle), `decision_questions` (jsonb `[{question, asked_at, reply, replied_at}]`, the "I have questions" loop), `decision_question_open_at` (timestamptz, the open-question latch; reminders pause while set) and `decision_ladder_from_at` (timestamptz, a reply restarts the reminder clock from here). `decision_options` also takes `associate_no`. See [../flows/partnership-fast-track.md](../flows/partnership-fast-track.md) *Tailored Route for Accountants*.
+>
 > **The `decision_*` family is not itemised above and predates this session** — `decision_email_sent_at` / `decision_reminder_sent_at` / `decision_pf_notified_at` / `decision_response` exist and are read by `automation_PFT_sweep` and `PFTAutomationPanel.jsx`. Pre-existing doc drift, noted rather than fixed here.
 
 **Touched by:** `automation_PFT_meetingemail`, `automation_PFT_decisionemail`, `automation_PFT_ftresponse`, `automation_PFT_loaddiscovery`, `automation_PFT_submitdiscovery`, `automation_PFT_sweep`, `pft_load_engagement`, `automation_stall_ack`.

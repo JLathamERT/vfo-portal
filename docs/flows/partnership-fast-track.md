@@ -22,6 +22,10 @@ the "Partnership Fast Track" program (program_id=2) under a Testing/real member,
   `decision_email_sent_at`, `decision_task_id`, `decision_response` (`vfo_ft`|`vfo_associate`|`no`),
   `decision_response_at`, `decision_reminder_sent_at`, `decision_pf_notified_at`, and (2026-09-14) `decision_options`
   (`ft_no` | `ft_associate_no` | NULL = legacy = all three) — WHICH paths the Undecided email offered.
+  **Tailored Route columns** (2026-11-12, migration `20261112130000`): `track` (`'pft'` default | `'tailored_route'`,
+  NOT NULL — which program the row belongs to), `decision_message` (the team's typed middle of the email),
+  `decision_questions` (jsonb list of `{question, asked_at, reply, replied_at}`), `decision_question_open_at`,
+  `decision_ladder_from_at`; `decision_options` also takes `associate_no`. See *Tailored Route for Accountants* below.
 - **Emails**: `email_templates` pipeline `PARTNERSHIP_FAST_TRACK` (incl. `PFT_decision_undecided`; derive the set with
   `select id, template_name, to_list, cc_list from email_templates where pipeline='PARTNERSHIP_FAST_TRACK' order by id`
   — never trust a count written here, #402). **Sandbox**:
@@ -154,9 +158,19 @@ runs (onboarding + confirmation email + progress + lost-on-no). Rolls `decision_
 delegate fails so the link can be retried. The sweep's 2-business-day re-send reads `decision_options` too
 (`sendUndecidedReminder` selects it — #448) so the reminder offers the same set. The AI PC Admin row names the variant.
 
+**2026-11-13 — the page asks before it shows the card, and the PF hears the pick.** `/pft-decide` and `/tailored-decide`
+first call **`automation_PFT_undecided_peek`** (PUBLIC, READ-ONLY, same token + choice checks via `checkDecisionLink`):
+an answered link opens straight on *Already Received*, a choice not offered on its refusal, anything else on the confirm
+card. It writes nothing, so #290 still holds. It is a separate action, not a flag on `_undecided_response`, so a website
+newer than its backend gets *Unknown action* and falls back to the card instead of recording on load (#750). After a
+successful pick `_undecided_response` bells the assigned PF (`PFT_decision_picked`, FYI, all admins when there is no PF):
+*"<name> chose VFO Fast Track"* / *"chose VFO Associate Accountant"* (each program's button words) / *"said No on the
+decision email"*, linking the accountant's program tab.
+
 An **AI PC Admin** history block (rendered under the decision step, styled like the Tax 5 AI PC Admin cascade)
 derives the full timeline from `pft_engagement`: undecided email sent → client's path choice → onboarding
-created → confirmation email sent → client's another-meeting response (plus reminder / PF-notified rows).
+created (dated from `accountant_onboarding.created_at`, which `pft_load_engagement` returns since 2026-11-13) →
+confirmation email sent → client's another-meeting response (plus reminder / PF-notified rows).
 **(2026-10-27, #671)** When an onboarding record exists but `ft_email_sent_at` is null (an accountant moved over
 from the old system and linked by hand), the confirmation-email row is hidden and the block counts as complete.
 
@@ -183,13 +197,54 @@ onboarding, **`PFT_decision_vfo_associate_reminder` (266, 2026-09-14)** when the
 is *VFO Associate* (falls back to 106 if 266 is missing/inactive) — then the **4-business-day** PF notice (both via the
 sweep — see Cron).
 
+## Tailored Route for Accountants (2026-11-12/13)
+
+A second accountant program for an accountant who has had ONE tailored meeting (Jake 2026-11-12). It is its own
+`programs` row, **"Tailored Route for Accountants"**, found by NAME everywhere (its id is 100000 on the test site and
+differs on live). It runs on PFT's machinery: the same `pft_engagement` row with `track='tailored_route'`, the same
+decision / onboarding / follow-up handlers, the same sweep. **Anything that reads `pft_engagement` must branch or filter
+on `track`** (#751): `automation-load-pipelines.ts` lists `track='pft'` only, and `trackTemplateName(eng, 'PFT_…')`
+swaps in the `TRA_` template, `trackTab(eng)` the `tailored` tab.
+
+- **Accountants** get the ref `<member>-TRA<n>` (`utils/client-ref.ts` `accountantRefPrefixForProgram`). Every "is
+  this an accountant?" check reads `isAccountantRef` (`-PFT` or `-TRA`), on both sides (`src/components/shared/accountantPrograms.js`).
+- **Screens:** MSM Tracking has a Tailored Route program with **Home** (notes) and **Accountants** tabs (no 90 Day
+  Plan); the member portal shows **Accountants** only. Each accountant's profile has a **Tailored Route for
+  Accountants** tab (`TailoredRouteTrack.jsx`): phase notes (tab name `Tailored`, @mentions link here), then two steps.
+- **Phases** (`track_type='tailored_route'`, migration `20261112120000`): **Tailored Meeting** → *Tailored meeting*
+  (`Completed` / `No show`, a No show is only recorded) · **Post Meeting Decision** → *Post Meeting Decision Email*.
+- **The decision email** (`automation_TRA_decisionemail`, AUTH, ADMIN_ONLY): the team ticks VFO FT Accountant and/or
+  VFO Associate Accountant (never neither) and types the middle; `TRA_decision` = Hi + their text + a standard
+  "Please let us know how you'd like to move forward…" line + buttons (the ticked paths, **No**, and **I have
+  questions**) + Regards + footer. It attaches the matching agreements from the public `accountant-onboarding-agreements`
+  bucket (Partnership version for FT, Connected version for Associate) and refuses to send if one is missing. One send
+  per accountant (409 after). The step reads *Decision email sent - awaiting accountant*.
+- **The accountant's page** `/tailored-decide` (`TailoredDecidePage.jsx`) never names the program. A path or No goes
+  through the PFT peek → confirm card → `automation_PFT_undecided_response`, so onboarding, the follow-up email
+  (`TRA_decision_vfo_ft` / `_vfo_associate` with the "need another meeting?" buttons), lost-on-No (`TRA_decision_no`)
+  and the bell all behave exactly as PFT.
+- **I have questions** copies the Tax Rapid Route loop: `automation_TRA_question` (PUBLIC; one question per email
+  link via `q=<count>`, #548; one open at a time; 25 max) bells the assigned PF (`TRA_question_asked`,
+  action-required, all admins when none); the reply box on the step sends `automation_TRA_questionreply` (AUTH,
+  ADMIN_ONLY) → `TRA_question_reply` with the same buttons, and restarts the reminder ladder
+  (`decision_ladder_from_at`). Reminders pause while a question is open. Picking an option closes any open question.
+- **Reminders** are PFT's: the sweep's undecided tiers send `TRA_decision_reminder` (no attachments) then the PF stall bell.
+- **Emails** (`20261112140000`): eight Draft `TRA_` templates in the `PARTNERSHIP_FAST_TRACK` pipeline with PFT's
+  recipients. Subjects say "VFO Services" / "VFO FT Accountant" / "VFO Associate", never "Tailored Route" (the
+  accountant does not know the name).
+- **Client Overview** has a *Tailored Route for Accountants* pill (`overview-tailored.ts`): meeting → decision email →
+  the accountant's choice → onboarding → follow-up response, *Reply to the accountant's question* while one is open,
+  *Arrange another meeting* after that answer, closed on No.
+
 ## Notifications (who gets what)
 PF routing via `actions/pft/_shared.ts` `PF_EMAILS` (Evan `eanderson@`, Bridger `bsilvester@`, Ian
 `iwelham@`) → falls back to all-admins if the client has no Assigned PF (set in the Profile tab) or the name
 isn't mapped. As of 2026-07-14 `notifyPfAndRachael` was renamed **`notifyPf`** and no longer CCs Rachael (the
 `RACHAEL_EMAIL` export was removed) — so FT-response (either button), VFO-Associate pick, discovery-complete,
 and the discovery + FT stall bells (4 business days) **all notify the assigned PF only**. All notification links deep-link to the
-specific record (`?onboarding=<id>` for the handoff record, `/admin/client/<id>?tab=pft` for the PFT track).
+specific record (`?onboarding=<id>` for the handoff record, `/admin/client/<id>?tab=pft` for the PFT track,
+`?tab=tailored` for a Tailored Route accountant). **2026-11-13:** the accountant's pick on the decision email bells the PF
+too (`PFT_decision_picked`); before that the PF's first bell came only with the follow-up email's answer.
 
 **Emails Cc the assigned PF, never Tray (2026-11-10, migration `20261110120000`).** Every `PARTNERSHIP_FAST_TRACK` template Cc's `ASSIGNED_PF` and no longer Cc's `tvaldes@vfo-services.com` (the usual shape: To the accountant, Cc member + PF, Bcc Paul + Anton). The email token resolves through `utils/pf-emails.ts`, a SECOND name map beside the bell map above; Ian Welham was missing from it until the same day, so his clients' emails went out with no PF (#742). Adding a PF means both maps.
 
@@ -239,12 +294,16 @@ Both tables gained `status` — `'active'` | `'stopped'`, **NOT NULL DEFAULT `'a
 ## Backend files (`actions/pft/`)
 `_shared.ts` (PF_EMAILS, notify helpers, `ftButtons` + `undecidedButtons(base, options)` + `undecidedOptionsHtml` + `undecidedChoices`, template/sandbox/progress
 helpers), `meeting-email.ts`, `decision-email.ts`, `ft-response.ts`, `undecided-email.ts`,
-`undecided-response.ts`, `discovery.ts`, `sweep.ts`, `load-engagement.ts`.
-Dispatched: `automation_PFT_meetingemail`/`_decisionemail`/**`_undecided`** + `pft_load_engagement` (AUTH);
-`automation_PFT_ftresponse`/**`_undecided_response`**/`_sweep`/`_loaddiscovery`/`_submitdiscovery` (PUBLIC).
+`undecided-response.ts`, `discovery.ts`, `sweep.ts`, `load-engagement.ts`; Tailored Route: `tailored-decision-email.ts`,
+`tailored-question.ts`, `tailored-question-reply.ts` (+ `actions/clients/overview-tailored.ts`).
+Dispatched: `automation_PFT_meetingemail`/`_decisionemail`/**`_undecided`** + `pft_load_engagement` +
+`automation_TRA_decisionemail`/`_questionreply` (AUTH);
+`automation_PFT_ftresponse`/**`_undecided_response`**/`_undecided_peek`/`_sweep`/`_loaddiscovery`/`_submitdiscovery` +
+`automation_TRA_question` (PUBLIC).
 
 ## Frontend
 `components/admin/pft/PFTEngagementTrack.jsx` (track UI + `PFTTrackSkeleton` + the `DecisionStep` 4-button step
 + `DecisionHistory`/AI PC Admin cascade), `pages/PftFtDecidePage.jsx` (`/pft-ft-decide`),
 `pages/PftDecidePage.jsx` (`/pft-decide` — the undecided 3-button client page), `pages/PftDiscoveryPage.jsx`
-(`/pft-discovery`). Nav: ClientDetail "Back to Accountants" restore + Phase-6 deep-link into Accountant Onboarding.
+(`/pft-discovery`). Tailored Route: `components/admin/pft/TailoredRouteTrack.jsx`, `pages/TailoredDecidePage.jsx`
+(`/tailored-decide`), `components/shared/accountantPrograms.js`. Nav: ClientDetail "Back to Accountants" restore + Phase-6 deep-link into Accountant Onboarding.

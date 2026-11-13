@@ -76,7 +76,7 @@
 > | MAP 1 | **18** | **15** |
 > | **Membership Fees** | **8** *(7 re-derived live 2026-10-30 + `MONEY_MAPPING_ert_transfer_failed` from migration `20261030170000`, 2026-10-31 — not re-counted live)* | ✗ no section |
 > | **Notes** *(NEW area 2026-11-13)* | **1** | ✗ no section — `NOTES_mention`, the client-note tag bell: [flows/notifications.md](flows/notifications.md) *Client notes — @mentions* |
-> | Partnership Fast Track | 10 | 8 |
+> | Partnership Fast Track | **12** *(+ `TRA_question_asked` 2026-11-12, `PFT_decision_picked` 2026-11-13 — not re-counted live)* | **10** |
 > | Payment Continuation | 2 | 2 ✓ |
 > | Payment Failure Alerts | **20** | **19** |
 > | Regular Priorities (MAP 4) | 4 | 4 ✓ |
@@ -322,7 +322,7 @@
 | **Background-check payment failed (Tracy)** — A specialist's background-check payment failed; they may need a fresh payment link. | FYI | Tracy | Stripe webhook: payment_intent.payment_failed — instant |
 | **License payment failed (Tracy)** — A specialist's monthly license payment failed; their card/bank may need updating. | FYI | Tracy | Stripe webhook: invoice.payment_failed — instant |
 
-### Partnership Fast Track (8)
+### Partnership Fast Track (10)
 
 | Notification | Type | Who gets it (default) | When it fires |
 |---|---|---|---|
@@ -331,9 +331,11 @@
 | **Discovery form stalled** — The discovery form is still incomplete after the reminder window - asks the PF to follow up. | FYI | Assigned PF | Daily PFT sweep — after **4 business day(s)** (editable) |
 | **Fast Track decision reminder email** — Reminder email re-sending the two VFO Fast Track decision buttons to the accountant prospect. | Reminder email | The accountant (email) | Daily PFT sweep — after **2 business day(s)** (editable) |
 | **Fast Track decision stalled** — The accountant has not clicked a VFO Fast Track decision button - asks the PF to follow up. | FYI | Assigned PF | Daily PFT sweep — after **4 business day(s)** (editable) |
-| **VFO Associate confirmed** — An admin confirmed the prospect as a VFO Associate and handed off to Accountant Onboarding. | FYI | Assigned PF | Admin PFT decision step — instant |
+| **VFO Associate confirmed** — An admin confirmed the prospect as a VFO Associate and handed off to Accountant Onboarding. | FYI | Assigned PF | Admin PFT decision step — instant. **No code fires this rule** (grep 2026-11-13); the pick bell below covers the accountant's own click |
+| **The accountant picked an option on the decision email** (`PFT_decision_picked`, NEW 2026-11-13, sort 65) — VFO FT / VFO Associate / No on the PFT or Tailored Route decision email. | FYI | Assigned PF (all admins when none) | `automation_PFT_undecided_response` after the pick — instant |
 | **Fast Track onboarding confirmed** — The accountant clicked Confirm Onboarding in the Fast Track email. | FYI | Assigned PF | Client click on Fast Track email — instant |
 | **Fast Track: another meeting requested** — The accountant clicked I'd Like Another Meeting in the Fast Track email. | FYI | Assigned PF | Client click on Fast Track email — instant |
+| **Tailored Route: the accountant asked a question** (`TRA_question_asked`, NEW 2026-11-12, sort 90) — *I have questions* on the Tailored Route decision email. | **Action required** | Assigned PF (all admins when none) | `/tailored-decide` question submit — instant; cleared by the reply or the accountant's pick |
 
 ### Growth Plan (2)
 

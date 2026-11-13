@@ -17,6 +17,8 @@ Each member enrolls into a program (`member_enrollments`), then training-progres
 | `active` | boolean | default `true` |
 | `created_at` | timestamptz | default `now()` |
 
+**Rows are found by NAME, never id:** ids differ between live and the test site (e.g. *Tailored Route for Accountants*, added 2026-11-12 by migration `20261112120000`, is 100000 on the test site). Its accountants are `-TRA` clients on the `tailored_route` client track ([../flows/partnership-fast-track.md](../flows/partnership-fast-track.md)).
+
 **Touched by:** `msm_load_programs`. Frontend: [MemberPortal.jsx:34](src/pages/MemberPortal.jsx), [MemberMSMTracking.jsx](src/components/member/MemberMSMTracking.jsx), [MSMTracking.jsx](src/components/admin/MSMTracking.jsx).
 
 ---
@@ -64,7 +66,7 @@ Each member enrolls into a program (`member_enrollments`), then training-progres
 | `phase_number` | integer | not null |
 | `name` | text | not null |
 | `phase_order` | integer | not null |
-| `track_type` | text | default `'map1'`. Distinguishes which track this phase belongs to (e.g., `'map1'`, `'partnership_fast_track'`, `'regular'`, `'tax'`). |
+| `track_type` | text | default `'map1'`. Distinguishes which track this phase belongs to (e.g., `'map1'`, `'partnership_fast_track'`, `'tailored_route'`, `'regular'`, `'tax'`). |
 
 ---
 

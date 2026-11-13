@@ -494,7 +494,7 @@ function DecisionHistory({ eng, decStatus, onboarding, readOnly, onAck }) {
         {choice === 'no' && autoStep('Decline email sent to client', true)}
         {(choice === 'vfo_ft' || choice === 'vfo_associate') && (
           <>
-            {autoStep(`Accountant Onboarding record created (${pathLabel[choice]})`, !!onboarding)}
+            {autoStep(`Accountant Onboarding record created (${pathLabel[choice]})`, !!onboarding, onboarding?.created_at)}
             {!ftEmailSkipped && autoStep("Confirmation email sent with the “need another meeting?” choice", ftEmailSent, eng?.ft_email_sent_at)}
             {reminderStep(eng?.ft_reminder_sent_at)}
             {pfNotifiedStep('ft', eng?.ft_pf_notified_at, eng?.ft_pf_ack_at)}

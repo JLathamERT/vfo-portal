@@ -20,11 +20,6 @@ const STAGE_NAMES = ['', 'Preliminary Meeting', 'PC Admin', 'Add New Accountant'
 
 // Read-only per-step email previews (see StepEmailsChip).
 const ACCOUNTANT_PIPELINE = 'ACCOUNTANT_ONBOARDING'
-const ACCOUNTANT_MEETING_REMINDER_EMAILS = [
-  { name: 'ACCOUNTANT_meeting_reminder', when: 'Automatic — sent 1 business day before the meeting (CONFIRM / CANCEL / RESCHEDULE buttons)' },
-  { name: 'ACCOUNTANT_meeting_reminder_60m', when: 'Automatic — 60 minutes before, if confirmed' },
-  { name: 'ACCOUNTANT_meeting_reminder_10m', when: 'Automatic — 10 minutes before, if confirmed' },
-]
 const ACCOUNTANT_DEPOSIT_EMAILS = [
   { name: 'ACCOUNTANT_deposit_payment_link', when: 'Deposit payment link (ACH or Card choice)' },
   { name: 'ACCOUNTANT_deposit_received', when: 'Automatic — sent when the deposit is paid' },
@@ -89,14 +84,6 @@ function accountantTier1MoneyEmails(advisorPays) {
 const LEGACY_PRELIM_STATUS = 'Completed'
 const PRELIM_NO_DEPOSIT = 'Completed - No Deposit'
 const PRELIM_SEND_DEPOSIT = 'Completed - Send Deposit'
-const MEETING_TIMEZONES = [
-  ['ET', 'Eastern (ET)'],
-  ['CT', 'Central (CT)'],
-  ['MT', 'Mountain (MT)'],
-  ['PT', 'Pacific (PT)'],
-  ['AKT', 'Alaska (AKT)'],
-  ['HT', 'Hawaii (HT)'],
-]
 
 // A ?onboarding=<id> link opens its record ONCE per navigation. Tab switches do
 // not navigate, so the router still holds the last link when this panel is opened
@@ -305,8 +292,6 @@ function OnboardingDetail({ id, onBack }) {
   const [expanded, setExpanded] = useState({ 1: true, 2: true, 3: true })
   const [advisors, setAdvisors] = useState(null)
   const [savingCc, setSavingCc] = useState(false)
-  const [reminderForm, setReminderForm] = useState({ open: false, reschedule: false, date: '', time: '', tz: 'ET' })
-  const [reminderBusy, setReminderBusy] = useState(false)
   const [depositBuf, setDepositBuf] = useState('')
   const [depositBusy, setDepositBusy] = useState(false)
   const [refundDraft, setRefundDraft] = useState({ open: false, reason: '', sending: false })
@@ -397,39 +382,6 @@ function OnboardingDetail({ id, onBack }) {
       if (res?.onboarding) setOb(res.onboarding)
     } catch (err) { console.error(err); alert('Error: ' + err.message) }
     finally { setSaving(false) }
-  }
-
-  function openReminderForm(reschedule) {
-    setReminderForm({
-      open: true,
-      reschedule,
-      date: ob?.meeting_date || '',
-      time: String(ob?.meeting_time || '').slice(0, 5),
-      tz: ob?.meeting_timezone || 'ET',
-    })
-  }
-
-  async function sendMeetingReminder(body) {
-    setReminderBusy(true)
-    try {
-      const res = await callApi('automation_ACCOUNTANT_meetingreminder', { onboarding_id: id, ...body })
-      if (res?.error) { alert('Error: ' + res.error); return }
-      if (res?.onboarding) setOb(res.onboarding)
-      setReminderForm({ open: false, reschedule: false, date: '', time: '', tz: 'ET' })
-    } catch (err) { console.error(err); alert('Error: ' + err.message) }
-    finally { setReminderBusy(false) }
-  }
-
-  function submitMeetingReminder() {
-    if (!reminderForm.date || !reminderForm.time) return
-    if (!window.confirm('This reminder will be sent to the prospective accountant 1 business day before the meeting.')) return
-    sendMeetingReminder({
-      mode: 'schedule',
-      meeting_date: reminderForm.date,
-      meeting_time: reminderForm.time,
-      meeting_tz: reminderForm.tz || 'ET',
-      reschedule: !!reminderForm.reschedule,
-    })
   }
 
   // Inline edit of a manual step's completion date (matches the tracking tracks).
@@ -543,60 +495,11 @@ function OnboardingDetail({ id, onBack }) {
   // legacy rows keep rendering what they hold.
   const prelimStatus = ob.prelim_meeting_status
   const depositSent = !!ob.deposit_email_sent_at
-  const reminderDone = !!(ob.meeting_reminder_scheduled_at || ob.meeting_reminder_skipped_at)
-  const reminderDate = ob.meeting_reminder_scheduled_at || ob.meeting_reminder_skipped_at
   const lockFor = (key) => stage1Lock(ob, 'accountant', key)
   const createLock = createMemberLock(ob, 'accountant')
   const prelimSelectValue = prelimStatus === LEGACY_PRELIM_STATUS ? PRELIM_NO_DEPOSIT : (prelimStatus || '')
 
-  const tdInput = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '11px' }
-  const tdGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: reminderBusy ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
-  const tdCancel = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: reminderBusy ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
-  const meetingLabel = [ob.meeting_date, String(ob.meeting_time || '').slice(0, 5), ob.meeting_timezone].filter(Boolean).join(' ')
-  const reminderSendable = !!reminderForm.date && !!reminderForm.time
-
-  const reminderControl = reminderForm.open ? (
-    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-      <input type="date" value={reminderForm.date} onChange={e => setReminderForm(f => ({ ...f, date: e.target.value }))} style={tdInput} />
-      <input type="time" value={reminderForm.time} onChange={e => setReminderForm(f => ({ ...f, time: e.target.value }))} style={tdInput} />
-      <select value={reminderForm.tz} onChange={e => setReminderForm(f => ({ ...f, tz: e.target.value }))} style={{ ...tdInput, background: 'var(--vfo-card)' }}>
-        {MEETING_TIMEZONES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-      </select>
-      <button disabled={reminderBusy || !reminderSendable} onClick={submitMeetingReminder} style={{ ...tdGreen, opacity: (reminderBusy || !reminderSendable) ? 0.6 : 1 }}>{reminderBusy ? 'Sending...' : 'Send'}</button>
-      <button disabled={reminderBusy} onClick={() => setReminderForm(f => ({ ...f, open: false }))} style={tdCancel}>Cancel</button>
-    </div>
-  ) : ob.meeting_reminder_scheduled_at ? (
-    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-      <span style={pillStyle('#1b9254')}>Reminder scheduled — {meetingLabel}</span>
-      <button disabled={reminderBusy} onClick={() => openReminderForm(true)} style={tdCancel} title="Pick a new date/time and re-schedule the reminder.">Reschedule</button>
-    </div>
-  ) : ob.meeting_reminder_skipped_at ? (
-    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-      <span style={neutralPillStyle}>Reminder skipped</span>
-      <button disabled={reminderBusy} onClick={() => openReminderForm(false)} style={tdCancel} title="Pick a new date/time and re-schedule the reminder.">Schedule reminder</button>
-    </div>
-  ) : (
-    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-      <button disabled={reminderBusy} onClick={() => openReminderForm(false)} style={tdGreen}>Send reminder (with date)</button>
-      <button disabled={reminderBusy} onClick={() => sendMeetingReminder({ mode: 'skip' })} style={tdCancel}>Skip reminder</button>
-    </div>
-  )
-
-  const responseTag = ob.meeting_response === 'confirm' ? 'Confirmed'
-    : ob.meeting_response === 'cancel' ? 'Cancelled'
-      : ob.meeting_response === 'reschedule' ? 'Reschedule requested' : null
-
-  const reminderCascade = ob.meeting_reminder_scheduled_at ? (
-    <div style={{ marginLeft: '18px', marginBottom: '4px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
-      <AutoRow label="Reminder email sent (1 business day before)" done={!!ob.meeting_reminder_sent_at} date={ob.meeting_reminder_sent_at} />
-      {!ob.meeting_reminder_sent_at && ob.meeting_reminder_due_at && (
-        <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '4px 0 0 14px' }}>{new Date(ob.meeting_reminder_due_at) <= new Date() ? 'Sends on the next sweep run (within 5 minutes) — the 1-business-day mark has already passed' : `Sends ${formatStampFull(ob.meeting_reminder_due_at)} (1 business day before the meeting)`}</div>
-      )}
-      <AutoRow label="Prospective accountant responded" done={!!ob.meeting_response} date={ob.meeting_response_at} tag={responseTag} />
-      <AutoRow label="60-minute reminder sent" done={!!ob.meeting_reminder_60m_sent_at} date={ob.meeting_reminder_60m_sent_at} />
-      <AutoRow label="10-minute reminder sent" done={!!ob.meeting_reminder_10m_sent_at} date={ob.meeting_reminder_10m_sent_at} />
-    </div>
-  ) : null
+  const tdGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
 
   // Who pays a connected Associate's $25 VFO Portal licence. Accountant is
   // preselected but nothing is stored until Save; fixed once the agreement is sent.
@@ -815,11 +718,6 @@ function OnboardingDetail({ id, onBack }) {
             {ob.onboarding_team_member && !ONBOARDING_TEAM_MEMBER_NAMES.includes(ob.onboarding_team_member) && <option value={ob.onboarding_team_member}>{ob.onboarding_team_member}</option>}
           </select>
         </Row>
-        <Row label="Meeting Reminder Setup" done={reminderDone} date={reminderDate} emails={ACCOUNTANT_MEETING_REMINDER_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx}
-          locked={!reminderDone && !!lockFor('reminder')} lockedHint={lockFor('reminder')}>
-          {reminderControl}
-        </Row>
-        {reminderCascade}
         <Row label="Preliminary Meeting" done={!!prelimStatus} date={ob.prelim_meeting_status_at} onDateChange={d => saveStepDate('prelim_meeting_status_at', d)} saving={saving}
           locked={!prelimStatus && !!lockFor('prelim')} lockedHint={lockFor('prelim')}>
           <select value={prelimSelectValue} onChange={e => savePrelimMeeting(e.target.value)} disabled={saving || depositSent} title={depositSent ? 'A deposit link has already been sent' : undefined} style={{ ...selectStyle, color: 'var(--vfo-ink)' }}>
@@ -1022,14 +920,6 @@ function LockedIcon({ size = 13 }) {
 }
 
 const lockedHintStyle = { fontSize: '11px', color: 'var(--vfo-muted)', fontWeight: 500 }
-
-// Full local date + time, for a scheduled send that hasn't happened yet.
-function formatStampFull(d) {
-  if (!d) return ''
-  const dt = new Date(String(d))
-  if (isNaN(dt.getTime())) return ''
-  return dt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-}
 
 function Row({ label, done, date, children, emails, pipeline, emailCtx, onDateChange, saving, locked, lockedHint }) {
   return (
