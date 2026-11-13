@@ -75,6 +75,7 @@
 > | Growth Plan | 4 | 2 |
 > | MAP 1 | **18** | **15** |
 > | **Membership Fees** | **8** *(7 re-derived live 2026-10-30 + `MONEY_MAPPING_ert_transfer_failed` from migration `20261030170000`, 2026-10-31 — not re-counted live)* | ✗ no section |
+> | **Notes** *(NEW area 2026-11-13)* | **1** | ✗ no section — `NOTES_mention`, the client-note tag bell: [flows/notifications.md](flows/notifications.md) *Client notes — @mentions* |
 > | Partnership Fast Track | 10 | 8 |
 > | Payment Continuation | 2 | 2 ✓ |
 > | Payment Failure Alerts | **20** | **19** |

@@ -70,11 +70,26 @@ Phase/tab-scoped notes on a client. Used by the program-tracking UI to attach no
 | `author_member_number` | text | nullable; required when `author_type='member'` (check `client_notes_member_author_check`). The member who wrote it — the only member who may edit or delete it. |
 | `created_at` / `updated_at` | timestamptz | default `now()` |
 
-**Member notes (2026-11-12):** a Tier 2 member writes notes on their OWN client — on any phase of MAP 1, Regular Priorities, Tax Priorities (Set Up + Tax 1-6), PIP Meetings and PFT, and on the Profile tab (`tab_name='General Note'`, `phase_name='General'`). Always `'shared'`, signed with the member's name. The member edits / deletes only their own; the team may delete a member's note but never edit it (`update_client_note` refuses, 403). Both portals show a violet **Member** tag (`MemberBadge`). A member's PHASE notes stay off the member's Profile "Notes from your team"; their General notes show there. Mirrored members and Tier 1 read only.
+**Member notes (2026-11-12):** a Tier 2 member writes notes on their OWN client — on any phase of MAP 1, Regular Priorities, Tax Priorities (Set Up + Tax 1-6), PIP Meetings and PFT, and on the Profile tab (`tab_name='General Note'`, `phase_name='General'`). Always `'shared'`, signed with the member's name. The member edits / deletes only their own; the team may delete a member's note but never edit it (`update_client_note` refuses, 403). Both portals show a violet **Member** tag (`MemberBadge`). The member's Profile card is **All Notes** (2026-11-13, Paxton; it was "Notes from your team", without the member's phase notes): every note the member can see, their own phase notes included, with the same program / tab / phase tags as the admin list. Mirrored members and Tier 1 read only.
 
 **Scope (2026-10-02):** a phase note written inside a Regular Priority or a tax plan carries that track's / plan's id, so a client with two of either sees each note only where it was written — `PhaseNotesPanel`'s `scope` prop + the exported `noteInScope` (the panel AND every Notes-button count). **NULL = written before the change, shown in every priority / plan** (Jake's call); 18 such notes on multi-track clients were assigned by hand in the migration. The client profile's notes list ignores both columns. `add_client_note` refuses (400) an id belonging to another client. **Not scoped: PIP Meetings** — a client's three meetings share the same three phase names, so their notes still show in all three (open decision).
 
-**Touched by:** `load_client_notes`, `add_client_note`, `update_client_note`, `delete_client_note` (all four are admin-only AND — as of 2026-07-23 — planner-callable from the Tax Planner portal per-phase Notes, with in-handler group-scope guards on the writes; gotcha #273), `client_notes_load_shared` (members), `member_client_note_add` / `_update` / `_delete` (members, 2026-11-12), `tax_direct_note_add` (Direct members). Frontend: [PhaseNotes.jsx](src/components/shared/PhaseNotes.jsx), [AddGeneralNote.jsx](src/components/shared/AddGeneralNote.jsx).
+**Touched by:** `load_client_notes`, `add_client_note`, `update_client_note`, `delete_client_note` (all four are admin-only AND — as of 2026-07-23 — planner-callable from the Tax Planner portal per-phase Notes, with in-handler group-scope guards on the writes; gotcha #273), `client_notes_load_shared` (members), `member_client_note_add` / `_update` / `_delete` (members, 2026-11-12), `tax_direct_note_add` (Direct members). Frontend: [PhaseNotes.jsx](src/components/shared/PhaseNotes.jsx), [AddGeneralNote.jsx](src/components/shared/AddGeneralNote.jsx), [MentionTextarea.jsx](src/components/shared/MentionTextarea.jsx).
+
+### `client_note_mentions` (2026-11-13)
+
+Who a client note tags with `@` (migration `20261113120000_client_note_mentions.sql`; RLS deny-all + the "Deny all access" policy, anon probe `*/0` on the test site). Written only by `processNoteMentions` (`utils/note-mentions.ts`) from `add_client_note` / `update_client_note`; read by `load_client_notes` (admin + planner) as an embedded `client_note_mentions` array. **The member's `client_notes_load_shared` never selects it**, so no staff email reaches a member. The bell it drives is in [flows/notifications.md](../flows/notifications.md) *Client notes — @mentions*.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigint | identity pk |
+| `note_id` | integer | not null, fk → `client_notes.id` **ON DELETE CASCADE** |
+| `recipient_email` | text | not null, the person's LOGIN email, lowercased (check `client_note_mentions_email_lower`) |
+| `recipient_name` | text | not null; the highlighted `@Name` in the text |
+| `recipient_type` | text | not null, check `in ('admin','tax_planner','team_member')` |
+| `created_at` | timestamptz | default `now()` |
+
+`unique(note_id, recipient_email)`. A save diffs the sent emails against these rows: new ones are inserted and belled (not the author), missing ones deleted.
 
 ---
 

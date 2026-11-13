@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, loadCachedAction, getLastSeen, setLastSeen } from '../../../lib/api'
-import { PhaseNotesButton, PhaseNotesPanel } from '../../shared/PhaseNotes'
+import { PhaseNotesButton, PhaseNotesPanel, useOpenLinkedNote } from '../../shared/PhaseNotes'
 import { PFTTrackSkeleton } from '../../shared/Skeleton'
 import { TrackHero, PhaseBadge, noMultiClickSelect } from '../../shared/TrackKit'
 import StepDate from '../../shared/StepDate'
@@ -609,7 +609,7 @@ function DiscoveryViewer({ eng, readOnly, client, onAck }) {
   )
 }
 
-function PFTEngagementTrack({ clientId, programId, client, readOnly = false, memberNotes = false, memberCanAdd = false, notes = [], onNotesChange }) {
+function PFTEngagementTrack({ clientId, programId, client, readOnly = false, memberNotes = false, memberCanAdd = false, notes = [], onNotesChange, initialNoteId = null }) {
   const navigate = useNavigate()
   const [phases, setPhases] = useState([])
   const [progress, setProgress] = useState({})
@@ -756,6 +756,12 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, mem
     if (tasks.some(t => progress[t.id]?.status)) return 'active'
     return 'pending'
   }
+
+  useOpenLinkedNote(initialNoteId, notes, !loading && phases.length ? phases : null, (note) => {
+    if (note.tab_name !== 'PFT') return null
+    const phase = phases.find(ph => ph.name === note.phase_name)
+    return phase ? [phase.id, `notes_${phase.id}`] : null
+  }, setExpanded)
 
   if (loading) return <PFTTrackSkeleton />
 

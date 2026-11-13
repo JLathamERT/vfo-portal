@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { callApi } from '../../lib/api'
 import { getSession } from '../../lib/api'
 import { SaveVisibilityButtons } from './NoteVisibility'
+import { MentionTextarea, mentionEmails } from './MentionTextarea'
 
 // `memberMode` (the member's Profile tab, Jake 2026-11-12): the same box, but the
 // note always goes to the team (member_client_note_add signs it with the
@@ -15,6 +16,7 @@ function AddGeneralNote({ clientId, notes, onNotesChange, programName, memberMod
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [picked, setPicked] = useState([])
   const session = getSession()
 
   async function save(visibility) {
@@ -25,9 +27,10 @@ function AddGeneralNote({ clientId, notes, onNotesChange, programName, memberMod
       const base = { client_id: clientId, phase_name: 'General', tab_name: 'General Note', program_name: programName, note_text: text.trim() }
       const result = memberMode
         ? await callApi('member_client_note_add', base)
-        : await callApi('add_client_note', { ...base, created_by: session?.name || 'Admin', visibility })
-      onNotesChange([result.note, ...notes])
+        : await callApi('add_client_note', { ...base, created_by: session?.name || 'Admin', visibility, mentions: mentionEmails(base.note_text, picked) })
+      onNotesChange([memberMode ? result.note : withMentions(result.note, base.note_text, picked), ...notes])
       setText('')
+      setPicked([])
       setOpen(false)
     } catch (err) { console.error(err); if (memberMode) setError(err.message || 'Your note was not saved. Try again.') }
     finally { setSaving(false) }
@@ -38,6 +41,7 @@ function AddGeneralNote({ clientId, notes, onNotesChange, programName, memberMod
   }
 
   const off = saving || !text.trim()
+  const boxStyle = { flex: stacked ? '1 1 100%' : 1, minWidth: 0, boxSizing: 'border-box', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }
   // The box sits in a card title (upper-case, letter-spaced); its own lines read as body text.
   const plain = { textTransform: 'none', letterSpacing: 0, fontWeight: 400 }
   return (
@@ -45,7 +49,9 @@ function AddGeneralNote({ clientId, notes, onNotesChange, programName, memberMod
       ? { display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 100%', marginTop: '10px' }
       : { display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, marginLeft: '16px' }}>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexWrap: stacked ? 'wrap' : 'nowrap' }}>
-        <textarea value={text} onChange={e => setText(e.target.value)} placeholder={memberMode ? 'Add a note for the VFO team...' : 'Add a general note...'} rows={2} maxLength={memberMode ? 5000 : undefined} style={{ flex: stacked ? '1 1 100%' : 1, minWidth: 0, boxSizing: 'border-box', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
+        {memberMode
+          ? <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Add a note for the VFO team..." rows={2} maxLength={5000} style={boxStyle} />
+          : <MentionTextarea value={text} onChange={e => setText(e.target.value)} tabName="General Note" picked={picked} onPickedChange={setPicked} placeholder="Add a general note... Type @ to tag someone" rows={2} style={boxStyle} />}
         {memberMode
           ? <button onClick={() => save('shared')} disabled={off}
               style={{ padding: '6px 12px', borderRadius: '8px', background: off ? 'rgba(27,146,84,0.4)' : 'linear-gradient(135deg, #1b9254 0%, #23b268 100%)', border: 'none', boxShadow: off ? 'none' : '0 2px 8px rgba(27,146,84,0.28)', color: '#fff', fontSize: '11px', cursor: off ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', fontFamily: 'Inter, sans-serif' }}>
@@ -58,6 +64,13 @@ function AddGeneralNote({ clientId, notes, onNotesChange, programName, memberMod
       {error && <div style={{ ...plain, color: '#e74c3c', fontWeight: 500, fontSize: '12px' }}>{error}</div>}
     </div>
   )
+}
+
+// The saved row comes back without its mentions; add the ones sent so the
+// highlight shows at once.
+function withMentions(note, text, picked) {
+  const emails = new Set(mentionEmails(text, picked))
+  return { ...note, client_note_mentions: picked.filter(p => emails.has(p.email)).map(p => ({ recipient_email: p.email, recipient_name: p.name, recipient_type: p.type })) }
 }
 
 export default AddGeneralNote

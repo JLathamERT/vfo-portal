@@ -15,7 +15,8 @@ import PFTEngagementTrack from '../components/admin/pft/PFTEngagementTrack'
 import TaxPrioritiesTab from '../components/admin/tax/TaxPrioritiesTab'
 import PaymentContinuationTab from '../components/admin/migration/PaymentContinuationTab'
 import AddGeneralNote from '../components/shared/AddGeneralNote'
-import { PhaseNotesButton, PhaseNotesPanel } from '../components/shared/PhaseNotes'
+import { PhaseNotesButton, PhaseNotesPanel, useScrollToLinkedNote } from '../components/shared/PhaseNotes'
+import { NoteText, MentionTextarea, mentionEmails, pickedFromNote } from '../components/shared/MentionTextarea'
 import { VisibilityBadge, noteTint, SaveVisibilityButtons, MemberBadge, isMemberNote } from '../components/shared/NoteVisibility'
 import { Skeleton, ProfileTabSkeleton, PhaseListSkeleton } from '../components/shared/Skeleton'
 import { TrackHero, HeroAvatar } from '../components/shared/TrackKit'
@@ -62,6 +63,8 @@ export default function ClientDetail() {
   // (the self-heal below preserves these params) can't retrigger auto-select.
   const [initialTrackId] = useState(() => { const v = new URLSearchParams(window.location.search).get('track'); return v ? parseInt(v) : null })
   const [initialPlanId] = useState(() => { const v = new URLSearchParams(window.location.search).get('plan'); return v ? parseInt(v) : null })
+  // A tag bell (@mentions, 2026-11-13) names the note: the track opens its phase's Notes.
+  const [initialNoteId] = useState(() => { const v = new URLSearchParams(window.location.search).get('note'); return v ? parseInt(v) : null })
   // Opened from a notification: bell links name the client + tab but no plan,
   // so the tax tab opens the client's one open plan instead of the plan list.
   const [fromBell] = useState(() => new URLSearchParams(window.location.search).get('_from') === 'bell')
@@ -502,7 +505,7 @@ export default function ClientDetail() {
           </div>
         ) : (
           <>
-            {activeTab === 'home' && <ClientHome client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} memberCanAdd={memberCanAddNotes} contactsEditable={contactsEditable} memberOwnView={isMember && !isMirror} notes={clientNotes} onNotesChange={setClientNotes} program={program}
+            {activeTab === 'home' && <ClientHome initialNoteId={initialNoteId} client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} memberCanAdd={memberCanAddNotes} contactsEditable={contactsEditable} memberOwnView={isMember && !isMirror} notes={clientNotes} onNotesChange={setClientNotes} program={program}
               portalCard={isMember && portalAccess !== undefined && client ? <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={tier1Own ? null : ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} readOnly={isAdmin} /> : null}
               mirroringCard={(isMember || isAdmin) && client ? <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} /> : null} />}
             {/* The admin view keeps the Client Portal card at the bottom; the member's sits above Client Mirroring. */}
@@ -528,11 +531,11 @@ export default function ClientDetail() {
                 <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px' }}>Assign a PF on the Profile tab before working this client's tracks.</div>
               </div>
             )}
-            {activeTab === 'map1' && program && !pfLocked && !isPlanner && <ClientTrackViewV2 clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
-            {activeTab === 'pft' && program && !pfLocked && !isPlanner && !isMirror && <PFTEngagementTrack clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} notes={clientNotes} onNotesChange={setClientNotes} />}
-            {activeTab === 'regular' && program && !pfLocked && !isPlanner && <RegularPrioritiesTab clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} notes={clientNotes} onNotesChange={setClientNotes} initialTrackId={initialTrackId} />}
-            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab key={program.id} onPlanInOtherProgram={handlePlanInOtherProgram} clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} openSinglePlan={fromBell} />}
-            {activeTab === 'pip' && program && !pfLocked && !isPlanner && <PipMeetingsTab clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
+            {activeTab === 'map1' && program && !pfLocked && !isPlanner && <ClientTrackViewV2 initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
+            {activeTab === 'pft' && program && !pfLocked && !isPlanner && !isMirror && <PFTEngagementTrack initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} notes={clientNotes} onNotesChange={setClientNotes} />}
+            {activeTab === 'regular' && program && !pfLocked && !isPlanner && <RegularPrioritiesTab initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} notes={clientNotes} onNotesChange={setClientNotes} initialTrackId={initialTrackId} />}
+            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab key={program.id} initialNoteId={initialNoteId} onPlanInOtherProgram={handlePlanInOtherProgram} clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} openSinglePlan={fromBell} />}
+            {activeTab === 'pip' && program && !pfLocked && !isPlanner && <PipMeetingsTab initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
             {/* memberMode is its own flag, not a relaxed readOnly: a member gets
                 view on all three sections + add on the two client-owned ones,
                 and never share / delete / request-docs / drag-to-move. */}
@@ -555,13 +558,17 @@ export default function ClientDetail() {
   )
 }
 
-function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, sectionStyle, readOnly = false, plannerMode = false, directMode = false, memberCanAdd = false, contactsEditable = false, memberOwnView = false, notes = [], onNotesChange, program, portalCard = null, mirroringCard = null }) {
+function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, sectionStyle, readOnly = false, plannerMode = false, directMode = false, memberCanAdd = false, contactsEditable = false, memberOwnView = false, notes = [], onNotesChange, program, portalCard = null, mirroringCard = null, initialNoteId = null }) {
   const isPhone = useIsPhone()
-  // A member's own PHASE notes stay on the phase, off "Notes from your team"
-  // (Paxton, 2026-11-12); a Direct member's General notes still list here.
-  const profileNotes = notes.filter(n => !(isMemberNote(n) && n.tab_name !== 'General Note'))
+  // The member's Profile lists ALL notes they can see, their own phase notes
+  // included, under "All Notes" like the admin side (Paxton, 2026-11-13;
+  // replaces the 2026-11-12 "team notes only" list).
+  const profileNotes = notes
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [editNoteText, setEditNoteText] = useState('')
+  const [editPicked, setEditPicked] = useState([])
+  // A tag bell on a Profile note (?tab=home&note=<id>) scrolls to it.
+  useScrollToLinkedNote(initialNoteId, notes)
   const [status, setStatus] = useState(client?.status || 'pending')
   const [saving, setSaving] = useState(false)
   const [assignedPf, setAssignedPf] = useState(client?.assigned_pf || '')
@@ -573,8 +580,11 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
   async function updateNote(noteId, visibility) {
     if (!editNoteText.trim()) return
     try {
-      const result = await callApi('update_client_note', { note_id: noteId, note_text: editNoteText.trim(), visibility })
-      onNotesChange(notes.map(n => n.id === noteId ? result.note : n))
+      const text = editNoteText.trim()
+      const result = await callApi('update_client_note', { note_id: noteId, note_text: text, visibility, mentions: mentionEmails(text, editPicked) })
+      const sent = new Set(mentionEmails(text, editPicked))
+      const client_note_mentions = editPicked.filter(p => sent.has(p.email)).map(p => ({ recipient_email: p.email, recipient_name: p.name, recipient_type: p.type }))
+      onNotesChange(notes.map(n => n.id === noteId ? { ...result.note, client_note_mentions } : n))
       setEditingNoteId(null)
     } catch (err) { console.error(err) }
   }
@@ -586,7 +596,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
     } catch (err) { console.error(err) }
   }
 
-  // The member's own notes on "Notes from your team" (2026-11-12): they edit or
+  // The member's own notes on their All Notes list (2026-11-12): they edit or
   // delete only notes they wrote, through the member_client_note_* actions.
   const memberSession = readOnly && !plannerMode ? getSession() : null
   const ownNote = (note) => !!memberSession && isMemberNote(note) && String(note.author_member_number ?? '') === String(memberSession.member_number ?? '')
@@ -778,10 +788,10 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
             <AddGeneralNote stacked={isPhone} clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />
           </div>
           {notes.map(note => (
-            <div key={note.id} style={{ padding: '10px 12px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
+            <div key={note.id} data-note-id={note.id} style={{ padding: '10px 12px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
               {editingNoteId === note.id ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <textarea value={editNoteText} onChange={e => setEditNoteText(e.target.value)} rows={2} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(0,149,255,0.4)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
+                  <MentionTextarea value={editNoteText} onChange={e => setEditNoteText(e.target.value)} tabName={note.tab_name} picked={editPicked} onPickedChange={setEditPicked} rows={2} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(0,149,255,0.4)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
                     <SaveVisibilityButtons onSave={(v) => updateNote(note.id, v)} disabled={!editNoteText.trim()} size="sm" hint={false} />
                     <button onClick={() => setEditingNoteId(null)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '11px', cursor: 'pointer' }}>Cancel</button>
@@ -789,7 +799,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                 </div>
               ) : (
                 <>
-                  <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}><NoteText note={note} /></div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
@@ -798,7 +808,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                     {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
                     <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.tab_name}</span>
                     {note.phase_name !== 'General' && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{note.phase_name}</span>}
-                    {!isMemberNote(note) && <button onClick={() => { setEditingNoteId(note.id); setEditNoteText(note.note_text) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>}
+                    {!isMemberNote(note) && <button onClick={() => { setEditingNoteId(note.id); setEditNoteText(note.note_text); setEditPicked(pickedFromNote(note)) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>}
                     <button onClick={() => deleteNote(note.id)} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Delete</button>
                   </div>
                 </>
@@ -820,8 +830,8 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
           </div>
           {notes.length === 0 && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>No notes yet.</div>}
           {notes.map(note => (
-            <div key={note.id} style={{ padding: '10px 12px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
-              <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
+            <div key={note.id} data-note-id={note.id} style={{ padding: '10px 12px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
+              <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}><NoteText note={note} /></div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
@@ -836,7 +846,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
         </div>
       )}
 
-      {/* Member view — read-only list of notes the team chose to share. A
+      {/* Member view — "All Notes": the team's shared notes plus the member's own. A
           DIRECT member also adds their own (always shared, so the team sees
           them on this same profile). */}
       {/* A Tier 2 member on their own client (memberCanAdd) gets the admin's
@@ -845,7 +855,10 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
       {readOnly && !plannerMode && (directMode || memberCanAdd || profileNotes.length > 0) && (
         <div style={sectionStyle}>
           <div style={{ ...cardTitle, marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: isPhone && !directMode ? 'wrap' : 'nowrap' }}>
-            <span>{directMode ? 'Notes' : 'Notes from your team'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>All Notes</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{profileNotes.length}</span>
+            </div>
             {directMode
               ? <DirectAddNote clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />
               : memberCanAdd && <AddGeneralNote memberMode stacked={isPhone} clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />}
@@ -871,7 +884,8 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
                     {isMemberNote(note) && <MemberBadge />}
                     {note.program_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.2)' }}>{note.program_name}</span>}
-                    {note.tab_name && note.phase_name !== 'General' && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.phase_name}</span>}
+                    {note.tab_name && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.tab_name}</span>}
+                    {note.phase_name && note.phase_name !== 'General' && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{note.phase_name}</span>}
                     {ownNote(note) && <button onClick={() => { setEditingNoteId(note.id); setEditNoteText(note.note_text) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>}
                     {ownNote(note) && <button onClick={() => memberDeleteNote(note.id)} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Delete</button>}
                   </div>
