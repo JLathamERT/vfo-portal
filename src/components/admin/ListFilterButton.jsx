@@ -123,8 +123,8 @@ export function sortMembers(arr, sortBy) {
 // switches to it ascending. `reset()` clears the sort (falls back to the
 // caller's default ordering); the overview panels call it when the dropdown sort
 // changes so the two controls never fight.
-export function useHeaderSort() {
-  const [sort, setSort] = useState(null)   // { key, dir } | null
+export function useHeaderSort(initial = null) {
+  const [sort, setSort] = useState(initial)   // { key, dir } | null
   const onSort = (key) => setSort(s => (
     s && s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
   ))

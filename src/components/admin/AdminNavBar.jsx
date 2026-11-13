@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useLayoutEffect, useState, useRef } from 'react'
 import CollapsibleNavBar from '../shared/CollapsibleNavBar'
 import { IS_STAGING } from '../../lib/environment'
 
@@ -43,17 +43,43 @@ function useFlyoutLevel() {
   }
 }
 
-function SubmenuRow({ label, options, onSelect, open, onEnter }) {
+// A flyout opens on its preferred side (`dir`, inherited from its parent) and
+// flips to the other side when it would run past the window's edge and the other
+// side has more room — on a mid-width window More ▸ Accounting ▸ Specialists ran
+// off the right edge (2026-11-13). Measured before paint, so it never flashes.
+function useFlyoutSide(open, dir) {
+  const panelRef = useRef(null)
+  const [side, setSide] = useState(dir)
+  useLayoutEffect(() => {
+    if (!open) { setSide(dir); return }
+    const panel = panelRef.current
+    const anchor = panel?.parentElement
+    if (!panel || !anchor) return
+    const r = anchor.getBoundingClientRect()
+    const viewW = document.documentElement.clientWidth
+    const roomRight = viewW - r.right
+    const roomLeft = r.left
+    const need = panel.offsetWidth + 8
+    let s = dir
+    if (dir === 'right' && need > roomRight && roomLeft > roomRight) s = 'left'
+    if (dir === 'left' && need > roomLeft && roomRight > roomLeft) s = 'right'
+    setSide(s)
+  }, [open, dir])
+  return [panelRef, side]
+}
+
+function SubmenuRow({ label, options, onSelect, open, onEnter, dir = 'right' }) {
   const level = useFlyoutLevel()
+  const [panelRef, side] = useFlyoutSide(open, dir)
   return (
     <div style={{ position: 'relative' }} onMouseEnter={onEnter}>
       <button style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%', padding: '8px 20px', background: open ? 'var(--vfo-tint)' : 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}>
         {label}<span style={{ fontSize: '9px', opacity: 0.6 }}>▸</span>
       </button>
       {open && (
-        <div onMouseLeave={level.leave} style={{ position: 'absolute', top: '-4px', left: '100%', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '210px', zIndex: 210, paddingTop: '4px', paddingBottom: '4px', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
+        <div ref={panelRef} onMouseLeave={level.leave} style={{ position: 'absolute', top: '-4px', ...(side === 'left' ? { right: '100%' } : { left: '100%' }), background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '210px', zIndex: 210, paddingTop: '4px', paddingBottom: '4px', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
           {options.map(opt => opt.submenu ? (
-            <SubmenuRow key={opt.key} label={opt.label} options={opt.submenu} onSelect={onSelect}
+            <SubmenuRow key={opt.key} label={opt.label} options={opt.submenu} onSelect={onSelect} dir={side}
               open={level.active === opt.key} onEnter={() => level.enter(opt.key)} />
           ) : (
             <button key={opt.key} onClick={() => onSelect(opt.key)}
@@ -75,6 +101,18 @@ function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
   // across the nav bar never stacks menus; only the flyouts inside get the
   // hover-intent grace (useFlyoutLevel).
   const level = useFlyoutLevel()
+  // The menu hangs from the tab's left edge, or from its right edge when it
+  // would otherwise run past the window.
+  const menuRef = useRef(null)
+  const [alignRight, setAlignRight] = useState(false)
+  useLayoutEffect(() => {
+    if (!open) { setAlignRight(false); return }
+    const menu = menuRef.current
+    const anchor = menu?.parentElement
+    if (!menu || !anchor) return
+    const r = anchor.getBoundingClientRect()
+    setAlignRight(r.left + menu.offsetWidth > document.documentElement.clientWidth - 8)
+  }, [open])
 
   function handleMouseEnter() {
     setOpen(true)
@@ -111,11 +149,11 @@ function NavDropdown({ label, items, onSelect, isActive, muted = false }) {
         <span style={{ fontSize: '10px', opacity: 0.6 }}>▾</span>
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '180px', zIndex: 200, paddingTop: '4px', paddingBottom: '4px', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
+        <div ref={menuRef} style={{ position: 'absolute', top: '100%', ...(alignRight ? { right: 0 } : { left: 0 }), background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '180px', zIndex: 200, paddingTop: '4px', paddingBottom: '4px', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
           {items.map(item => (
             <div key={item.key}>
               {item.submenu && (
-                <SubmenuRow label={item.submenuLabel} options={item.submenu} onSelect={(k) => { onSelect(k); closeNow() }}
+                <SubmenuRow label={item.submenuLabel} options={item.submenu} onSelect={(k) => { onSelect(k); closeNow() }} dir={alignRight ? 'left' : 'right'}
                   open={level.active === item.key} onEnter={() => level.enter(item.key)} />
               )}
               {item.header && (
@@ -365,10 +403,10 @@ export function openAdminSection(tab, section) {
     if (section && SECTION_KEYS[tab]) sessionStorage.setItem(SECTION_KEYS[tab], section)
     ;['adminSelectedMember', 'adminMemberFeatureTab', 'adminSelectedAccountant', 'adminAccountantFeatureTab',
       'adminSelectedStrategicMember', 'adminStrategicFeatureTab', 'adminOpenView'].forEach(k => sessionStorage.removeItem(k))
-    // AccountingCombinedPanel PILL_KEY / ClientOverviewPanel CLIENT_OVERVIEW_SECTION_KEY
+    // AccountingCombinedPanel PILL_KEY / ClientOverviewPanel CLIENT_OVERVIEW_SECTION_KEY + _VIEW_KEY
     // (literal here so this small module does not pull those panels into the
     // client page's chunk).
     if (tab === 'accounting') sessionStorage.removeItem('adminAccountingPill')
-    if (tab === 'client_overview') sessionStorage.removeItem('clientOverviewSection')
+    if (tab === 'client_overview') { sessionStorage.removeItem('clientOverviewSection'); sessionStorage.removeItem('clientOverviewView') }
   } catch { /* private mode */ }
 }

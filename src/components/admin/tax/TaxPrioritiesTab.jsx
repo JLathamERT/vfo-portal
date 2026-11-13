@@ -980,10 +980,10 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: answered ? green : 'transparent', flexShrink: 0, border: `1.5px solid ${answered ? green : 'var(--vfo-border-mid)'}` }} />
         <span className="vfo-stepname" style={{ fontSize: '13px', color: answered ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{taskLabel(task)}{nameChip}</span>
         {answered && !editable ? (
-          <span style={chipStyle(green)}>{amended ? 'Amended' : status === 'Completed - Confirmed' ? 'Fee confirmed' : 'Fee kept'}</span>
+          <span style={chipStyle(green)}>{amended ? 'Amended' : status === 'Completed - Confirmed' ? 'Fee confirmed' : 'Fee remains'}</span>
         ) : editable ? (
           // House convention: dropdowns make selections, buttons send emails.
-          // "Keep the fee" completes the step on selection, like every other
+          // "Fee remains" completes the step on selection, like every other
           // dropdown step; "Amend the fee" opens the amount form below (the
           // actual amendment saves from its own button). The selection stays
           // changeable until the downstream decision email goes out; once the
@@ -1010,7 +1010,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
                       // A selection here COMMITS the step (and unlocks the next
                       // one), so it confirms first — a mis-click must not
                       // complete a money step.
-                      if (window.confirm(`Keep the fee at $${current ? fmtMoney(current.total) : ''}? This completes the step.`)) submit('keep')
+                      if (window.confirm(`The fee remains at $${current ? fmtMoney(current.total) : ''}? This completes the step.`)) submit('keep')
                     }
                     else if (v === 'amend') setMode('amend')
                     else { setMode(''); setTotalInput('') }
@@ -1018,7 +1018,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
                   style={{ padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '12px', fontFamily: 'Inter, sans-serif', minWidth: '150px', borderColor: committed ? '#1b925466' : 'var(--vfo-border-strong)', color: committed ? 'var(--vfo-success-text)' : 'var(--vfo-ink)', opacity: busy ? 0.6 : 1 }}
                 >
                   <option value="">-- Select --</option>
-                  <option value="keep" disabled={amended || keepBlocked}>Keep the fee{keepBlocked ? ' (not available — fee arrangement)' : ''}</option>
+                  <option value="keep" disabled={amended || keepBlocked}>Fee remains{keepBlocked ? ' (not available — fee arrangement)' : ''}</option>
                   <option value="amend">Amend the fee</option>
                 </select>
               )
@@ -1040,8 +1040,8 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
       {plan?.fee_arrangement_active === true && editable && !mirror && (
         <div style={{ marginLeft: '18px', marginBottom: '10px', padding: '6px 10px', borderRadius: '8px', background: 'rgba(224,103,23,0.08)', border: '1px solid rgba(224,103,23,0.35)', fontSize: '11px', color: 'var(--vfo-ink)' }}>
           <b style={{ color: '#e06717' }}>Fee arrangement in place</b> — see Pricing &amp; revenue split. {stage === 'tax5'
-            ? 'Enter the final fee with "Amend the fee", even if it has not changed — "Keep the fee" is not available while the arrangement is on, so the implementation charge and the final revenue shares only run on a fee someone has confirmed.'
-            : 'Keep the fee to leave the invoiced fee as it is for now; the final fee is entered at the implementation stage (Tax 5).'}
+            ? 'Enter the final fee with "Amend the fee", even if it has not changed — "Fee remains" is not available while the arrangement is on, so the implementation charge and the final revenue shares only run on a fee someone has confirmed.'
+            : 'Pick "Fee remains" to leave the invoiced fee as it is for now; the final fee is entered at the implementation stage (Tax 5).'}
         </div>
       )}
 
@@ -1049,7 +1049,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
       {answered && current && mode !== 'amend' && !mirror && (
         <div style={{ marginLeft: '18px', marginBottom: '10px' }}>
           <div style={{ fontSize: '12px', color: 'var(--vfo-ink)', fontWeight: 600 }}>
-            {amended ? `Fee amended to $${fmtMoney(current.total)}` : status === 'Completed - Confirmed' ? `Final fee confirmed at $${fmtMoney(current.total)}` : `Fee kept at $${fmtMoney(current.total)}`}
+            {amended ? `Fee amended to $${fmtMoney(current.total)}` : status === 'Completed - Confirmed' ? `Final fee confirmed at $${fmtMoney(current.total)}` : `Fee remains at $${fmtMoney(current.total)}`}
           </div>
           <FeeBreakdown split={readOnly ? { ...current, refundOwed: 0 } : current} paidFlags={paidFlags} />
         </div>
@@ -3212,18 +3212,26 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   }
 
   async function firePresentationSchedule(taskId, opts = {}) {
-    const { link, date } = opts
+    const { link, date, now } = opts
     setDeclineDrafts(d => ({ ...d, [taskId]: { ...(d[taskId] || {}), sending: true } }))
     try {
+      // Send now: today's date (the person's own day), and the server sends the
+      // email at once instead of leaving it to the daily run.
+      const today = new Date()
+      const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
       const res = await callApi(act('automation_TAX_presentation_schedule'), {
         tax_plan_id: plan.id,
         presentation_link: link || '',
-        send_date: date || null,
+        send_date: now ? localToday : (date || null),
+        ...(now ? { send_now: true } : {}),
       })
       if (res?.error) {
         alert('Error: ' + res.error)
         setDeclineDrafts(d => ({ ...d, [taskId]: { ...(d[taskId] || {}), sending: false } }))
         return
+      }
+      if (now && res?.sent === false) {
+        alert(`The link is saved, but the email could not be sent just now (${res.send_error || 'unknown error'}). It is scheduled for today, so the next daily run will send it.`)
       }
       await refreshLivePlan()
       setDeclineDrafts(d => { const next = { ...d }; delete next[taskId]; return next })
@@ -4572,11 +4580,17 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0, border: `1.5px solid ${dotBorder}` }} />
-          <span className="vfo-stepname" style={{ fontSize: '13px', color: (done || scheduled) ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={taxDisplayName(task.name)} templates={[{ name: 'TAX_presentation_link', when: 'Automatic — TPOM email drafted on the scheduled date' }]} context={emailCtx} /></span>}</span>
+          <span className="vfo-stepname" style={{ fontSize: '13px', color: (done || scheduled) ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={taxDisplayName(task.name)} templates={[{ name: 'TAX_presentation_link', when: 'Send now sends it at once; Schedule email sends it automatically on the chosen date' }]} context={emailCtx} /></span>}</span>
           {done ? (
-            <span style={chipStyle('#1b9254')}>Email drafted for {formatDate(sendDate)}</span>
+            <span style={chipStyle('#1b9254')}>Email sent — {formatDate(sendDate)}</span>
           ) : memberLocked ? (
             scheduled ? <span style={chipStyle('#0095ff')}>Scheduled — {formatDate(sendDate)}</span> : <span style={neutralChipStyle}>Not started</span>
+          ) : formOpen && draft.now ? (
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input type="url" value={draft.link || ''} onChange={e => setDraft({ link: e.target.value })} placeholder="Paste the presentation link..." style={{ ...tdInput, minWidth: '220px' }} />
+              <button disabled={sending || !draft.link} onClick={() => firePresentationSchedule(task.id, { link: draft.link, now: true })} style={{ ...tdGreen, opacity: (sending || !draft.link) ? 0.6 : 1 }}>{sending ? 'Sending...' : 'Send now'}</button>
+              <button disabled={sending} onClick={() => setDeclineDrafts(d => { const next = { ...d }; delete next[task.id]; return next })} style={tdCancel}>Cancel</button>
+            </div>
           ) : formOpen ? (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <input type="url" value={draft.link || ''} onChange={e => setDraft({ link: e.target.value })} placeholder="Paste the presentation link..." style={{ ...tdInput, minWidth: '220px' }} />
@@ -4587,10 +4601,14 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           ) : scheduled ? (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
               <span style={chipStyle('#0095ff')}>Scheduled — {formatDate(sendDate)}</span>
-              <button disabled={sending} onClick={() => setDraft({ pOpen: true, link: savedLink, date: sendDate })} style={tdCancel}>Edit</button>
+              <button disabled={sending} onClick={() => setDraft({ pOpen: true, now: true, link: savedLink })} style={tdGreen} title="Send the email to the member (Cc the assigned PF) right now instead of on the scheduled date.">Send now</button>
+              <button disabled={sending} onClick={() => setDraft({ pOpen: true, now: false, link: savedLink, date: sendDate })} style={tdCancel}>Edit</button>
             </div>
           ) : (
-            <button disabled={sending} onClick={() => setDraft({ pOpen: true, link: '', date: '' })} style={tdGreen} title="Paste the presentation link and choose the date to send it. A cron job drafts the email to the member (Cc the assigned PF) early that morning.">Schedule email</button>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <button disabled={sending} onClick={() => setDraft({ pOpen: true, now: true, link: '' })} style={tdGreen} title="Paste the presentation link and send the email to the member (Cc the assigned PF) right now.">Send now</button>
+              <button disabled={sending} onClick={() => setDraft({ pOpen: true, now: false, link: '', date: '' })} style={tdGreen} title="Paste the presentation link and choose the date to send it. A daily job sends the email to the member (Cc the assigned PF) that morning.">Schedule email</button>
+            </div>
           )}
           {/* presentation_send_date is the SCHEDULED send day and can be in the
               FUTURE, so it never belongs in the completion column. Scheduling IS

@@ -61,6 +61,13 @@
   --vfo-nav-muted: #97a3ba;
   --vfo-success-text: #1b9254;
   --vfo-success-text-2: #16a34a;
+
+  /* payments table rows (2026-11-13: were literal light fills, white on navy in dark) */
+  --vfo-row-child: #fbfcfe;   /* a group's expanded payment rows */
+  --vfo-row-sub: #f3f7fe;     /* a payment's split / sub rows */
+  --vfo-row-behalf: #fffaf2;  /* paid by the member on the client's behalf */
+  --vfo-row-empty: #f8fafd;   /* the empty-table box */
+  --vfo-ink-soft: #475467;    /* secondary label text */
 }
 
 [data-theme="dark"] {
@@ -110,6 +117,12 @@
   --vfo-nav-muted: #eef3ff;
   --vfo-success-text: #5fd99a;
   --vfo-success-text-2: #5fd99a;
+
+  --vfo-row-child: #03307d;
+  --vfo-row-sub: #0a3179;
+  --vfo-row-behalf: rgba(251, 137, 90, 0.10);
+  --vfo-row-empty: #0a3179;
+  --vfo-ink-soft: #c9d6ee;
 }
 
 /* Phone spacing (2026-10-28). Page side margins and card padding read these

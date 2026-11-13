@@ -28,7 +28,7 @@ const STATUS = {
   paid:       { label: 'Paid',              fg: '#1a7f5a', bg: '#e7f5ee' },
   processing: { label: 'Processing',        fg: '#9a6700', bg: '#fdf3d8' },
   failed:     { label: 'Failed',            fg: '#b42318', bg: '#fdecea' },
-  refunded:   { label: 'Refunded',          fg: '#475467', bg: 'var(--vfo-tint)' },
+  refunded:   { label: 'Refunded',          fg: 'var(--vfo-ink-soft)', bg: 'var(--vfo-tint)' },
   scheduled:  { label: 'Scheduled',         fg: '#1570ef', bg: '#e3effd' },
   awaiting:   { label: 'Awaiting decision', fg: '#7839ee', bg: '#f0e9fe' },
   // Closed by VFO ("Cancel all remaining payments"). Same red family as `failed` —
@@ -188,7 +188,7 @@ export default function PaymentsTable({
 
   if (!rows.length) {
     return (
-      <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--vfo-faint)', fontSize: '13.5px', background: '#f8fafd', border: '1px dashed var(--vfo-border-chip)', borderRadius: '12px' }}>
+      <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--vfo-faint)', fontSize: '13.5px', background: 'var(--vfo-row-empty)', border: '1px dashed var(--vfo-border-chip)', borderRadius: '12px' }}>
         {emptyText}
       </div>
     )
@@ -309,7 +309,7 @@ export default function PaymentsTable({
     const sub = child && !!r.subGroup
     const onRow = rowClick(r)
     return (
-      <tr key={r.key} onClick={onRow || undefined} {...(onRow ? rowHoverProps : {})} style={{ ...(onRow ? clickableRowStyle : null), ...(onBehalf ? { background: '#fffaf2' } : null), ...(child ? { background: '#fbfcfe' } : null), ...(sub && !onBehalf ? { background: '#f3f7fe' } : null) }}>
+      <tr key={r.key} onClick={onRow || undefined} {...(onRow ? rowHoverProps : {})} style={{ ...(onRow ? clickableRowStyle : null), ...(onBehalf ? { background: 'var(--vfo-row-behalf)' } : null), ...(child ? { background: 'var(--vfo-row-child)' } : null), ...(sub && !onBehalf ? { background: 'var(--vfo-row-sub)' } : null) }}>
         <td style={td} />
         <td style={{ ...td, whiteSpace: 'nowrap', color: 'var(--vfo-muted)', ...(child ? { paddingLeft: '14px' } : null), ...(sub ? { paddingLeft: '24px', borderLeft: '3px solid var(--vfo-border-chip)' } : null) }}>{fmtDate(r.date)}</td>
         {hasPerson && (
@@ -323,7 +323,7 @@ export default function PaymentsTable({
         )}
         <td style={td}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: child ? 500 : 600, color: child ? '#475467' : 'var(--vfo-ink)' }}>{r.label}</span>
+            <span style={{ fontWeight: child ? 500 : 600, color: child ? 'var(--vfo-ink-soft)' : 'var(--vfo-ink)' }}>{r.label}</span>
           </div>
           {r.detail && <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '3px' }}>{r.detail}</div>}
           {onBehalf && <div style={{ marginTop: '5px' }}><Tag fg="#8a5200" bg="#fcefd6">Paid by {r.onBehalfByMember} — not the client’s own payment</Tag></div>}
@@ -471,7 +471,7 @@ export default function PaymentsTable({
         </tr>
         {open && kids.map(k => renderRow(k, true))}
         {open && canCancel && (
-          <tr style={{ background: '#fbfcfe' }}>
+          <tr style={{ background: 'var(--vfo-row-child)' }}>
             <td colSpan={colSpan} style={{ padding: '10px 12px 14px 14px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
               <button
                 onClick={() => onCancelGroup(g.key, groupLabel)}

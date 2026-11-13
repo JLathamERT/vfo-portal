@@ -6,7 +6,7 @@ import SpecialistsPanel from '../components/admin/SpecialistsPanel'
 import TaxPlannersPanel from '../components/admin/TaxPlannersPanel'
 import MembersPanel, { MEMBER_PROFILE_ORIGIN_KEY } from '../components/admin/MembersPanel'
 import MemberOverviewPanel from '../components/admin/MemberOverviewPanel'
-import ClientOverviewPanel, { CLIENT_OVERVIEW_SECTION_KEY } from '../components/admin/ClientOverviewPanel'
+import ClientOverviewPanel, { CLIENT_OVERVIEW_SECTION_KEY, CLIENT_OVERVIEW_VIEW_KEY } from '../components/admin/ClientOverviewPanel'
 import FaqEditorPanel from '../components/admin/FaqEditorPanel'
 import FeatureSwitchesPanel from '../components/admin/FeatureSwitchesPanel'
 import { IS_STAGING } from '../lib/environment'
@@ -397,7 +397,7 @@ export default function AdminPortal() {
   }
 
   function selectClientOverview() {
-    try { sessionStorage.removeItem(CLIENT_OVERVIEW_SECTION_KEY) } catch { /* private mode */ }
+    try { sessionStorage.removeItem(CLIENT_OVERVIEW_SECTION_KEY); sessionStorage.removeItem(CLIENT_OVERVIEW_VIEW_KEY) } catch { /* private mode */ }
     setActiveTab('client_overview')
     sessionStorage.setItem('adminActiveTab', 'client_overview')
     setNavClickCount(c => c + 1)
