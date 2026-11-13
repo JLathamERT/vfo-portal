@@ -53,11 +53,15 @@ export function stage1Steps(ob, pipeline) {
   const prelim = ob.prelim_meeting_status
   const steps = [
     { key: 'team', label: 'Team Member Responsible', done: !!ob.onboarding_team_member },
-    // A recorded meeting outcome proves the reminder step was passed (the PFT
-    // fast path writes "Request no meeting" without one).
-    { key: 'reminder', label: 'Meeting Reminder Setup', done: !!(ob.meeting_reminder_scheduled_at || ob.meeting_reminder_skipped_at || prelim) },
-    { key: 'prelim', label: 'Preliminary Meeting', done: !!prelim && prelim !== 'No Show', noShow: prelim === 'No Show' },
   ]
+  // Advisor Onboarding only: Accountant Onboarding dropped Meeting Reminder
+  // Setup (Jake 2026-11-13; never used on live, every row skipped it). A
+  // recorded meeting outcome proves it was passed (the PFT fast path writes
+  // "Request no meeting" without one).
+  if (pipeline === 'advisor') {
+    steps.push({ key: 'reminder', label: 'Meeting Reminder Setup', done: !!(ob.meeting_reminder_scheduled_at || ob.meeting_reminder_skipped_at || prelim) })
+  }
+  steps.push({ key: 'prelim', label: 'Preliminary Meeting', done: !!prelim && prelim !== 'No Show', noShow: prelim === 'No Show' })
   const tier1 = isTier1Onboarding(ob, pipeline)
   if (pipeline === 'accountant') {
     steps.push({ key: 'partnership', label: 'Direct or Advisor Partnership', done: !!ob.accountant_partnership })

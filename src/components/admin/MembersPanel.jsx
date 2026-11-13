@@ -54,6 +54,7 @@ const DEFAULT_MSM_OPTIONS = [
   { key: 'msm_meetings', label: 'MSM' },
   { key: 'msm_program_holistic', label: 'VFO Holistic Planning' },
   { key: 'msm_program_partnership', label: 'Partnership Fast Track' },
+  { key: 'msm_program_tailored', label: 'Tailored Route for Accountants' },
   { key: 'msm_program_tax', label: 'VFO Tax Planning' },
   { key: 'msm_program_coaching', label: 'Advanced Coaching' },
   { key: 'msm_program_standard', label: 'Standard Coaching' },
@@ -535,7 +536,7 @@ function MemberDirectoryView({
           </div>
           {['profile_details','profile_edit','profile_history'].includes(memberFeatureTab) && <MemberProfile member={selectedMember} allMembers={allMembers} onDataChange={onDataChange} activeSection={memberFeatureTab} hiddenFields={hiddenFields} typeOptionsOverride={showModel ? null : typeOptions} onOpenMember={onOpenMember} memberConnections={memberConnections} />}
           {memberFeatureTab === 'profile_payments' && <MemberPaymentsTab member={selectedMember} />}
-          {['msm_meetings','msm_program_holistic','msm_program_partnership','msm_program_tax','msm_program_coaching','msm_program_standard'].includes(memberFeatureTab) && <MSMTracking member={selectedMember} activeSection={memberFeatureTab} onDataChange={onDataChange} bypassEnableGate={msmBypassEnableGate} allowedProgramKeys={msmAllowedPrograms} />}          {memberFeatureTab === 'specialists' && <MemberSpecialists member={selectedMember} allExperts={allExperts} allExclusionMap={allExclusionMap} ecoMap={ecoMap} onDataChange={onDataChange} />}
+          {['msm_meetings','msm_program_holistic','msm_program_partnership','msm_program_tailored','msm_program_tax','msm_program_coaching','msm_program_standard'].includes(memberFeatureTab) && <MSMTracking member={selectedMember} activeSection={memberFeatureTab} onDataChange={onDataChange} bypassEnableGate={msmBypassEnableGate} allowedProgramKeys={msmAllowedPrograms} />}          {memberFeatureTab === 'specialists' && <MemberSpecialists member={selectedMember} allExperts={allExperts} allExclusionMap={allExclusionMap} ecoMap={ecoMap} onDataChange={onDataChange} />}
           {memberFeatureTab === 'showroom' && <MemberShowroom experts={allExperts} exclusions={allExclusionMap[selectedMember.plugin_member_number] || []} ecoMap={ecoMap} showMemberServices showRevenueShare showVault showAccredited />}
           {memberFeatureTab === 'website' && <MemberWebsitePlugin member={selectedMember} onDataChange={onDataChange} readOnly={false} isAdmin={true} />}
           {memberFeatureTab === 'ciq' && <MemberCIQ memberNumber={selectedMember.plugin_member_number} memberName={selectedMember.name} ciqEnabled={selectedMember.ciq_enabled} ciqVfosManaged={selectedMember.ciq_vfos_managed} isAdmin={true} />}

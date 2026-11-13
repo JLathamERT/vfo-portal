@@ -36,6 +36,7 @@ const ROUTES = [
   'specialist-revenue-pay',
   'specialist-revshare-final',
   'specialist-sif',
+  'tailored-decide',
   'tax-decide',
   'tax-deposit-pay',
   'tax-diagnostic',

@@ -17,6 +17,7 @@ import { statusPillStyle } from '../shared/statusColors'
 import EmailText from '../shared/EmailText'
 import { msmTypeCounts } from '../shared/msmMeetingTypes'
 import MsmMeetingsCounter from '../shared/MsmMeetingsCounter'
+import { isAccountantProgram, TAILORED_PROGRAM } from '../shared/accountantPrograms'
 
 // Group a phase's tasks so each section header owns the contiguous sub-steps beneath it,
 // letting the UI enclose the group and keep following standalone tasks visually separate.
@@ -47,6 +48,7 @@ const TAX_PROGRAM_NAME = 'VFO Tax Planning'
 const PROGRAMS = [
   { key: 'holistic', name: 'VFO Holistic Planning' },
   { key: 'partnership', name: 'Partnership Fast Track' },
+  { key: 'tailored', name: 'Tailored Route for Accountants' },
   { key: 'tax', name: 'VFO Tax Planning' },
   { key: 'coaching', name: 'Advanced Coaching' },
   { key: 'standard', name: 'Standard Coaching' },
@@ -242,7 +244,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
     const isCoach = activeTab === 'msm_coaching' || activeTab === 'msm_standard'
     const inner =
       isCoach ? <CoachingMeetingsSkeleton /> :
-      activeTab === 'msm_tax' ? <ClientsListSkeleton /> :
+      (activeTab === 'msm_tax' || activeTab === 'msm_tailored') ? <ClientsListSkeleton /> :
       (activeTab === 'msm_holistic' || activeTab === 'msm_partnership') ? <TrainingTrackSkeleton /> :
       <TrainingTrackSkeleton phaseCount={3} rowsPerPhase={3} />
     return (
@@ -264,7 +266,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
         </div>
         <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', paddingBottom: '10px', borderBottom: '1px solid var(--vfo-border)' }}>
           <Skeleton width={80} height={20} />
-          {activeTab !== 'msm_tax' && <Skeleton width={80} height={20} />}
+          {activeTab !== 'msm_tax' && activeTab !== 'msm_tailored' && <Skeleton width={80} height={20} />}
         </div>
         {inner}
       </div>
@@ -274,6 +276,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
   const activeProgramKey = activeTab === 'msm_home' ? null
     : activeTab === 'msm_holistic' ? 'holistic'
     : activeTab === 'msm_partnership' ? 'partnership'
+    : activeTab === 'msm_tailored' ? 'tailored'
     : activeTab === 'msm_tax' ? 'tax'
     : activeTab === 'msm_coaching' ? 'coaching'
     : activeTab === 'msm_standard' ? 'standard'
@@ -310,7 +313,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
             if (!dbProgram) return null
             const isEnabled = enabledPrograms.some(e => e.program_id === dbProgram.id) || (taxIntakeEnabled && p.name === TAX_PROGRAM_NAME)
             if (!isEnabled) return null
-            const tabKey = { holistic: 'msm_holistic', partnership: 'msm_partnership', tax: 'msm_tax', coaching: 'msm_coaching', standard: 'msm_standard' }[p.key]
+            const tabKey = { holistic: 'msm_holistic', partnership: 'msm_partnership', tailored: 'msm_tailored', tax: 'msm_tax', coaching: 'msm_coaching', standard: 'msm_standard' }[p.key]
             return (
               <div key={p.key} onClick={() => onNavigate(tabKey)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)', cursor: 'pointer' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
@@ -420,8 +423,10 @@ function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged 
   const isStandard = program.name === 'Standard Coaching'
   // Standard Coaching mirrors Advanced Coaching minus the Renewal tab.
   const isCoachingLike = isCoaching || isStandard
-  const isPFT = program.name === 'Partnership Fast Track'
-  const defaultTab = isCoachingLike ? 'home' : program.name === 'VFO Tax Planning' ? 'clients' : 'training'
+  // Tailored Route for Accountants: its Accountants list only, no 90 Day Plan (2026-11-12).
+  const isTailored = program.name === TAILORED_PROGRAM
+  const isPFT = isAccountantProgram(program.name)
+  const defaultTab = isCoachingLike ? 'home' : (program.name === 'VFO Tax Planning' || isTailored) ? 'clients' : 'training'
   // Back from a client (ClientDetail) asks for the Clients tab once.
   const [activeTab, setActiveTab] = useState(() => {
     try {
@@ -447,7 +452,7 @@ function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged 
         </div>
       </div>
       {/* Phone: a tab bar holding ONE tab (Tax Planning's Clients) does nothing - drop it. */}
-      <div style={isPhone && program.name === 'VFO Tax Planning' && !isStandard && !isCoaching ? { display: 'none' } : { display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px' }}>
+      <div style={isPhone && (program.name === 'VFO Tax Planning' || isTailored) && !isStandard && !isCoaching ? { display: 'none' } : { display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px' }}>
         {isStandard ? (
           <>
             <button style={tabStyle(activeTab === 'home')} onClick={() => setActiveTab('home')}>Home</button>
@@ -463,6 +468,8 @@ function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged 
           <>
             <button style={tabStyle(activeTab === 'clients')} onClick={() => setActiveTab('clients')}>Clients</button>
           </>
+        ) : isTailored ? (
+          <button style={tabStyle(activeTab === 'clients')} onClick={() => setActiveTab('clients')}>Accountants</button>
         ) : (
           <>
             <button style={tabStyle(activeTab === 'training')} onClick={() => setActiveTab('training')}>90 Day Plan</button>
@@ -845,7 +852,7 @@ function TrackerEntryCard({ entry, onRemove }) {
 function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged = null, taxIntakeEnabled = false }) {
   const isPhone = useIsPhone()
   const navigate = useNavigate()
-  const isPFT = program?.name === 'Partnership Fast Track'
+  const isPFT = isAccountantProgram(program?.name)
   // Every intake surface below — the Add button, the two deep links, the form
   // itself — rides on this. A tax member with the flag off sees the client list
   // exactly as it looked before unit 1.
