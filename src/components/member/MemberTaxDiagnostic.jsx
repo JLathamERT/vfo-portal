@@ -26,7 +26,21 @@ const VIEWS = [
 
 export default function MemberTaxDiagnostic({ member }) {
   const isPhone = useIsPhone()
-  const [view, setView] = useState('submitted')
+  // ?start_for=<client id> (2026-11-13): the client's Vault tab "Start the Tax
+  // Diagnostic" button. Opens Start a Tax Diagnostic for THAT client, pre-filled
+  // from their record; the server checks the client is the member's own.
+  // Read once, then stripped so a refresh does not re-open it.
+  const [startFor, setStartFor] = useState(() => {
+    const raw = new URLSearchParams(window.location.search).get('start_for')
+    return raw && /^\d+$/.test(raw) ? Number(raw) : null
+  })
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has('start_for')) return
+    ;['tab', 'start_for'].forEach(k => url.searchParams.delete(k))
+    window.history.replaceState({}, '', url.toString())
+  }, [])
+  const [view, setView] = useState(() => (startFor ? 'start' : 'submitted'))
   const [formKey, setFormKey] = useState(0)
   const [doneMessage, setDoneMessage] = useState('')
   const [paidMessage, setPaidMessage] = useState('')
@@ -64,13 +78,15 @@ export default function MemberTaxDiagnostic({ member }) {
     setDoneMessage(res?.link_sent_to
       ? `We have emailed the Tax Planning Form link to ${res.link_sent_to}.`
       : res?.tax_plan_id
-        ? 'Client created. We have emailed you a confirmation.'
+        ? (startFor ? 'Tax planning started. We have emailed you a confirmation.' : 'Client created. We have emailed you a confirmation.')
         : 'Thank you — your Tax Planning Form has been received.')
     loadForms()
   }
 
+  // Done or cancelled, the next form is an ordinary new-client one again.
   function restart() {
     setDoneMessage('')
+    setStartFor(null)
     setFormKey(k => k + 1)
   }
 
@@ -116,7 +132,7 @@ export default function MemberTaxDiagnostic({ member }) {
           </button>
         </div>
       ) : (
-        <TaxIntakeForm key={formKey} member={member} onCancel={restart} onDone={finish} pageHeading />
+        <TaxIntakeForm key={formKey} member={member} onCancel={restart} onDone={finish} pageHeading existingClientId={startFor} />
       )}</div>}
 
       {view === 'submitted' && (

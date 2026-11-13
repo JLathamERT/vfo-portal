@@ -1,4 +1,5 @@
 import { useEffect, useState, useLayoutEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { callApi, getSession, getLastSeen, setLastSeen } from '../../lib/api'
 import { fileSizeError } from '../../lib/fileUpload'
 import { VaultRowsSkeleton } from '../shared/Skeleton'
@@ -45,7 +46,15 @@ const fmtSize = (n) => n == null ? '' : n < 1024 ? `${n} B` : n < 1048576 ? `${(
 // server-side by denyIfNotOwnClient.
 export default function ClientVaultTab({ clientId, sectionStyle, specialists = [], readOnly = false, allowUpload = false, memberMode = false, recipientName, recipientFirst }) {
   const isPhone = useIsPhone()
+  const navigate = useNavigate()
   const [sensitive, setSensitive] = useState([])
+  // Member mode (2026-11-13): members dropped tax returns here believing it
+  // started tax planning. has_tax_case comes with the member vault list; with
+  // none, the owner is told the Vault is storage and offered the Tax Diagnostic,
+  // above the sections and again in a popup after each drop. null = not known
+  // (loading, or an older backend), which shows nothing.
+  const [hasTaxCase, setHasTaxCase] = useState(null)
+  const [storagePopup, setStoragePopup] = useState(false)
   const [canView, setCanView] = useState(false)
   // Strictly narrower than canView: an assigned PF may OPEN this client's tax
   // returns but not add/remove/share them, so the write controls key on this.
@@ -107,6 +116,7 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
 
   function applyMember(d) {
     setSensitive(d.sensitive || []); setGeneral(d.general || []); setErt(d.ert || [])
+    setHasTaxCase(typeof d.has_tax_case === 'boolean' ? d.has_tax_case : null)
     setTaxDenied(false); setGenDenied(false); setErtDenied(false)
   }
 
@@ -199,6 +209,7 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
     const list = Array.from(fileList || [])
     if (!list.length) return
     setBusy(sec.key); setError('')
+    let stored = 0
     for (const file of list) {
       const tooBig = fileSizeError(file)
       if (tooBig) { setError(tooBig); continue }
@@ -208,6 +219,7 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
         const fd = new FormData(); fd.append('cacheControl', '3600'); fd.append('', file)
         const put = await fetch(d.signed_url, { method: 'PUT', headers: { 'x-upsert': 'true' }, body: fd })
         if (!put.ok) throw new Error('Upload failed')
+        stored += 1
         // Member Sensitive uploads: tell the server the file ARRIVED, so a member
         // dropping the returns greens "Request Tax Returns" exactly like the
         // client's link does (2026-09-25). Best-effort — never fails the upload.
@@ -217,7 +229,15 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
       } catch (e) { setError(e.message || 'Upload failed') }
     }
     setBusy(''); load()
+    if (stored > 0 && showStorageNotice && hasTaxCase === false) setStoragePopup(true)
   }
+
+  // Only the client's OWNER sees it: a mirrored or Tier 1 view is read-only here
+  // (no drops), and Tier 1 cannot start a Tax Diagnostic.
+  const showStorageNotice = memberMode && !readOnly
+  const clientLabel = recipientName || 'this client'
+  const startDiagnostic = () => navigate(`/member?tab=tax_diagnostic&start_for=${clientId}`)
+  const storageButton = { padding: '9px 20px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: 'none', background: '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif' }
 
   // ─── Drag to move between sections ───
   // A move is a cross-bucket copy + delete server-side, so it is confirmed on
@@ -376,6 +396,36 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
     <>
       {/* Admin view only: the planner (readOnly) and member views never see the drop link. */}
       {!readOnly && !memberMode && <VaultDropLink entityType="client" entityKey={clientId} />}
+      {showStorageNotice && hasTaxCase !== null && (
+        <div style={{ ...sectionStyle, borderColor: 'rgba(18,94,204,0.35)' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '6px' }}>The Vault is for storage</div>
+          <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>
+            {hasTaxCase
+              ? `Documents dropped here are kept with ${clientLabel}'s file.`
+              : `Documents dropped here are kept with ${clientLabel}'s file. They do not start tax planning. If you wish to start VFO Tax Planning for ${clientLabel}, fill in the Tax Diagnostic.`}
+          </div>
+          {!hasTaxCase && (
+            <button type="button" onClick={startDiagnostic} style={{ ...storageButton, marginTop: '14px' }}>Start the Tax Diagnostic</button>
+          )}
+        </div>
+      )}
+      {storagePopup && (
+        <div onClick={() => setStoragePopup(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(9,14,26,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div role="dialog" aria-modal="true" aria-label="The Vault is for storage" onClick={e => e.stopPropagation()}
+            style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: '0 18px 50px rgba(9,14,26,0.35)', padding: '26px 28px', maxWidth: '460px', width: '100%', fontFamily: 'Inter, sans-serif' }}>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>The Vault is for storage</div>
+            <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 18px', lineHeight: 1.55 }}>
+              Your document is saved in {clientLabel}'s Vault. Dropping documents here does not start tax planning. If you wish to start VFO Tax Planning for {clientLabel}, fill in the Tax Diagnostic.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => setStoragePopup(false)}
+                style={{ padding: '9px 20px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Close</button>
+              <button type="button" onClick={startDiagnostic} style={storageButton}>Start the Tax Diagnostic</button>
+            </div>
+          </div>
+        </div>
+      )}
       {error && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '13px', marginBottom: '12px' }}>{error}</div>}
       {moving && <div style={{ color: '#0095ff', fontWeight: 500, fontSize: '13px', marginBottom: '12px' }}>Moving document…</div>}
       {canMove && !loading && (
