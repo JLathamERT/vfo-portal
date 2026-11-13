@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { getSession } from '../../lib/api'
 import { VisibilityBadge, noteTint, SaveVisibilityButtons, MemberBadge, isMemberNote } from './NoteVisibility'
 import { formatDate } from '../../lib/dates'
+import { MentionTextarea, NoteText, mentionEmails, pickedFromNote } from './MentionTextarea'
 
 export function PhaseNotesButton({ count, isOpen, onClick }) {
   return (
@@ -20,6 +21,46 @@ export function PhaseNotesButton({ count, isOpen, onClick }) {
 export function noteInScope(note, scope) {
   if (!scope) return true
   return Object.entries(scope).every(([key, id]) => note[key] == null || String(note[key]) === String(id))
+}
+
+// A tag bell links to one note (?note=<id>, 2026-11-13). Once the view's phases
+// and the notes are loaded, open what holds that note and scroll to it.
+// `resolve(note)` returns the `expanded` keys to open, or null when this view
+// does not show the note (another priority, another plan). `phasesKey` is the
+// loaded phases array (null while loading): a view that draws a cached copy and
+// then re-expands on the fresh load gets the keys applied again, for 5 seconds.
+export function useOpenLinkedNote(noteId, notes, phasesKey, resolve, setExpanded) {
+  const applied = useRef({ at: 0, key: null })
+  useEffect(() => {
+    if (!noteId || !phasesKey) return
+    const last = applied.current
+    if (last.at && (last.key === phasesKey || Date.now() - last.at > 5000)) return
+    const note = (notes || []).find(n => n.id === noteId)
+    if (!note) return
+    const keys = resolve(note)
+    if (!keys || !keys.length) return
+    const first = !last.at
+    applied.current = { at: last.at || Date.now(), key: phasesKey }
+    setExpanded(p => { const next = { ...p }; keys.forEach(k => { next[k] = true }); return next })
+    if (first) scrollToNote(noteId, 20)
+  })
+}
+
+// The Profile tab's notes list has nothing to expand: just scroll to the note.
+export function useScrollToLinkedNote(noteId, notes) {
+  const done = useRef(false)
+  useEffect(() => {
+    if (done.current || !noteId || !(notes || []).some(n => n.id === noteId)) return
+    done.current = true
+    scrollToNote(noteId, 20)
+  })
+}
+
+function scrollToNote(id, tries) {
+  const el = document.querySelector(`[data-note-id="${id}"]`)
+  if (!el) { if (tries > 0) setTimeout(() => scrollToNote(id, tries - 1), 150); return }
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  el.animate?.([{ boxShadow: '0 0 0 2px #0095ff' }, { boxShadow: '0 0 0 2px rgba(0,149,255,0)' }], { duration: 2400, easing: 'ease-out' })
 }
 
 // `phaseName` is the phase notes are WRITTEN under. `phaseNames` optionally
@@ -40,6 +81,9 @@ export function PhaseNotesPanel({ clientId, phaseName, phaseNames, tabName, prog
   const [editingId, setEditingId] = useState(null)
   const [editText, setEditText] = useState('')
   const [error, setError] = useState('')
+  // Who the add / edit box has tagged (@mentions, team side only, 2026-11-13).
+  const [newPicked, setNewPicked] = useState([])
+  const [editPicked, setEditPicked] = useState([])
   const session = getSession()
 
   const readPhases = (phaseNames && phaseNames.length) ? phaseNames : [phaseName]
@@ -57,9 +101,10 @@ export function PhaseNotesPanel({ clientId, phaseName, phaseNames, tabName, prog
       const base = { client_id: clientId, phase_name: phaseName, tab_name: tabName, program_name: programName || null, note_text: newNote.trim(), ...(scope || {}) }
       const result = memberMode
         ? await callApi('member_client_note_add', base)
-        : await callApi('add_client_note', { ...base, created_by: session?.name || 'Admin', visibility })
-      onNotesChange([result.note, ...notes])
+        : await callApi('add_client_note', { ...base, created_by: session?.name || 'Admin', visibility, mentions: mentionEmails(base.note_text, newPicked) })
+      onNotesChange([withMentions(result.note, base.note_text, newPicked), ...notes])
       setNewNote('')
+      setNewPicked([])
     } catch (err) { console.error(err); setError(err.message || 'Your note was not saved. Try again.') }
     finally { setSaving(false) }
   }
@@ -70,8 +115,8 @@ export function PhaseNotesPanel({ clientId, phaseName, phaseNames, tabName, prog
     try {
       const result = memberMode
         ? await callApi('member_client_note_update', { note_id: noteId, note_text: editText.trim() })
-        : await callApi('update_client_note', { note_id: noteId, note_text: editText.trim(), visibility })
-      onNotesChange(notes.map(n => n.id === noteId ? result.note : n))
+        : await callApi('update_client_note', { note_id: noteId, note_text: editText.trim(), visibility, mentions: mentionEmails(editText.trim(), editPicked) })
+      onNotesChange(notes.map(n => n.id === noteId ? (memberMode ? result.note : withMentions(result.note, editText.trim(), editPicked)) : n))
       setEditingId(null)
     } catch (err) { console.error(err); setError(err.message || 'Your change was not saved. Try again.') }
   }
@@ -88,7 +133,9 @@ export function PhaseNotesPanel({ clientId, phaseName, phaseNames, tabName, prog
     <div onClick={e => e.stopPropagation()} style={{ borderTop: '1px solid var(--vfo-border-chip)', padding: '12px 18px', background: 'var(--vfo-tint)' }}>
       {canAdd ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
-          <textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..." rows={2} style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
+          {memberMode
+            ? <textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..." rows={2} style={ADD_BOX} />
+            : <MentionTextarea value={newNote} onChange={e => setNewNote(e.target.value)} tabName={tabName} picked={newPicked} onPickedChange={setNewPicked} placeholder="Add a note... Type @ to tag someone" rows={2} style={ADD_BOX} />}
           {memberMode
             ? <MemberSaveButton onSave={() => addNote('shared')} saving={saving} disabled={!newNote.trim()} hint="Your note is visible to the VFO team." />
             : <SaveVisibilityButtons onSave={addNote} saving={saving} disabled={!newNote.trim()} size="sm" />}
@@ -99,10 +146,12 @@ export function PhaseNotesPanel({ clientId, phaseName, phaseNames, tabName, prog
       {error && <div style={{ fontSize: '12px', color: '#e74c3c', marginBottom: '8px' }}>{error}</div>}
       {phaseNotes.length === 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', padding: '4px 0' }}>No notes yet</div>}
       {phaseNotes.map(note => (
-        <div key={note.id} style={{ padding: '8px 10px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
+        <div key={note.id} data-note-id={note.id} style={{ padding: '8px 10px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
           {editingId === note.id ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={2} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(0,149,255,0.4)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
+              {memberMode
+                ? <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={2} style={EDIT_BOX} />
+                : <MentionTextarea value={editText} onChange={e => setEditText(e.target.value)} tabName={tabName} picked={editPicked} onPickedChange={setEditPicked} rows={2} style={EDIT_BOX} />}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
                 {memberMode
                   ? <MemberSaveButton onSave={() => updateNote(note.id)} disabled={!editText.trim()} label="Save" />
@@ -112,11 +161,11 @@ export function PhaseNotesPanel({ clientId, phaseName, phaseNames, tabName, prog
             </div>
           ) : (
             <>
-              <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '4px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
+              <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '4px', whiteSpace: 'pre-wrap' }}>{memberMode ? note.note_text : <NoteText note={note} />}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by} · {formatDate(note.created_at)}</span>
                 {isMemberNote(note) ? <MemberBadge /> : !memberMode && <VisibilityBadge visibility={note.visibility} />}
-                {canEdit(note) && <button onClick={() => { setEditingId(note.id); setEditText(note.note_text) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>}
+                {canEdit(note) && <button onClick={() => { setEditingId(note.id); setEditText(note.note_text); setEditPicked(pickedFromNote(note)) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>}
                 {canDelete(note) && <button onClick={() => deleteNote(note.id)} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Delete</button>}
               </div>
             </>
@@ -125,6 +174,17 @@ export function PhaseNotesPanel({ clientId, phaseName, phaseNames, tabName, prog
       ))}
     </div>
   )
+}
+
+const ADD_BOX = { flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }
+const EDIT_BOX = { padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(0,149,255,0.4)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }
+
+// The saved row comes back without its mentions; put the ones this save sent on
+// it so the highlight shows straight away (the next load reads them from the DB).
+function withMentions(note, text, picked) {
+  const emails = new Set(mentionEmails(text, picked))
+  const client_note_mentions = (picked || []).filter(p => emails.has(p.email)).map(p => ({ recipient_email: p.email, recipient_name: p.name, recipient_type: p.type }))
+  return { ...note, client_note_mentions }
 }
 
 // The member's one save button: their notes always go to the team. Same green

@@ -6,7 +6,7 @@ import PFPricingForm from './PFPricingForm'
 import PFExtraMeetingForm from './PFExtraMeetingForm'
 import PIPDecisionForm from './PIPDecisionForm'
 import MeetingCompleteButton from './MeetingCompleteButton'
-import { PhaseNotesButton, PhaseNotesPanel } from '../../shared/PhaseNotes'
+import { PhaseNotesButton, PhaseNotesPanel, useOpenLinkedNote } from '../../shared/PhaseNotes'
 import { TrackHero, PhaseBadge, noMultiClickSelect } from '../../shared/TrackKit'
 import Map1PricingSplitCard from './Map1PricingSplitCard'
 import StepDate from '../../shared/StepDate'
@@ -160,7 +160,7 @@ function PipConfirmStep({ clientId, task, p, meeting, readOnly, onDone, emailCtx
 // mirror (Client Mirroring, L5): another member viewing a client mirrored to them.
 // Always with readOnly; additionally hides the fee breakdown, the payment-method
 // tag and the revenue-share rows (the server has already masked the values).
-function ClientTrackViewV2({ clientId, programId, client, readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, notes = [], onNotesChange }) {
+function ClientTrackViewV2({ clientId, programId, client, readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, notes = [], onNotesChange, initialNoteId = null }) {
   const [phases, setPhases] = useState([])
   const [progress, setProgress] = useState({})
   const [loading, setLoading] = useState(true)
@@ -423,6 +423,12 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, memb
     if (sl) ctx['Service Level'] = sl
     return ctx
   })()
+
+  useOpenLinkedNote(initialNoteId, notes, !loading && phases.length ? phases : null, (note) => {
+    if (note.tab_name !== 'MAP 1') return null
+    const phase = phases.find(ph => ph.name === note.phase_name)
+    return phase ? [phase.id, `notes_${phase.id}`] : null
+  }, setExpanded)
 
   if (loading) return <Map1TrackSkeleton />
 

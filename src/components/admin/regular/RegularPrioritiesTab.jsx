@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
-import { PhaseNotesButton, PhaseNotesPanel, noteInScope } from '../../shared/PhaseNotes'
+import { PhaseNotesButton, PhaseNotesPanel, noteInScope, useOpenLinkedNote } from '../../shared/PhaseNotes'
 import { TaxPlanListSkeleton, PhaseListSkeleton } from '../../shared/Skeleton'
 import { TrackHero, PhaseBadge, ListHeader, noMultiClickSelect } from '../../shared/TrackKit'
 import StepDate from '../../shared/StepDate'
@@ -321,7 +321,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
   )
 }
 
-function PriorityTrackView({ track, phases, progress, specialists, onBack, onProgressChange, readOnly = false, memberNotes = false, memberCanAdd = false, onTrackUpdate, notes = [], onNotesChange, clientId, emailCtx }) {
+function PriorityTrackView({ track, phases, progress, specialists, onBack, onProgressChange, readOnly = false, memberNotes = false, memberCanAdd = false, onTrackUpdate, notes = [], onNotesChange, clientId, emailCtx, initialNoteId = null }) {
   // Phase notes belong to THIS priority (plus untagged older notes) — a client
   // with two priorities never sees one's notes inside the other.
   const noteScope = { priority_track_id: track.id }
@@ -352,6 +352,12 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
     })
     setExpanded(expandState)
   }, [])
+
+  useOpenLinkedNote(initialNoteId, notes, phases.length ? phases : null, (note) => {
+    if (note.tab_name !== 'Regular Priorities' || !noteInScope(note, noteScope)) return null
+    const phase = phases.find(ph => ph.name === note.phase_name)
+    return phase ? [phase.id, `notes_${phase.id}`] : null
+  }, setExpanded)
 
   async function saveTask(taskId, status, existingDate) {
     const today = new Date().toISOString().split('T')[0]
@@ -617,7 +623,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
   )
 }
 
-function RegularPrioritiesTab({ clientId, programId, client, specialists, readOnly = false, memberNotes = false, memberCanAdd = false, notes = [], onNotesChange, initialTrackId = null }) {
+function RegularPrioritiesTab({ clientId, programId, client, specialists, readOnly = false, memberNotes = false, memberCanAdd = false, notes = [], onNotesChange, initialTrackId = null, initialNoteId = null }) {
   const [priorityTracks, setPriorityTracks] = useState([])
   const [phases, setPhases] = useState([])
   const [allProgress, setAllProgress] = useState({})
@@ -848,6 +854,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
         onNotesChange={onNotesChange}
         clientId={clientId}
         emailCtx={emailCtx}
+        initialNoteId={initialNoteId}
       />
     )
   }

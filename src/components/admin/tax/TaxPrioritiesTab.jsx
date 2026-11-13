@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, cloneElement, Fragment, useLayout
 import DirectPill from '../../shared/DirectPill'
 import { callApi, loadCachedAction, getSession, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
 import { TaxPlanListSkeleton, PhaseListSkeleton } from '../../shared/Skeleton'
-import { PhaseNotesButton, PhaseNotesPanel, noteInScope } from '../../shared/PhaseNotes'
+import { PhaseNotesButton, PhaseNotesPanel, noteInScope, useOpenLinkedNote } from '../../shared/PhaseNotes'
 import { TrackHero, PhaseBadge, ListHeader, noMultiClickSelect } from '../../shared/TrackKit'
 import { hasStrategicSplit, computeStrategicShares } from '../../../lib/strategicSplits'
 import { MEMBER_PAYS_SPLIT_TYPE, memberPaysTaxShares } from '../../../lib/memberPaysSplit'
@@ -2778,7 +2778,7 @@ function TaxIntakeCard({ intake, questions, clientId, planId, canEdit = false, o
   )
 }
 
-function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxSpecialists = null, specialists, expertBios = {}, onBack, readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, plannerMode = false, directMode = false, notes = [], onNotesChange, clientId, programName, client }) {
+function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxSpecialists = null, specialists, expertBios = {}, onBack, readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, plannerMode = false, directMode = false, notes = [], onNotesChange, clientId, programName, client, initialNoteId = null }) {
   // Phone (2026-10-28): slimmer phase bodies and full-width sub-step boxes.
   const isPhone = useIsPhone()
   // Phase notes belong to THIS plan (plus untagged older notes) — a client with
@@ -2977,6 +2977,19 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     setExpanded(expandState)
     loadSpecialists()
   }, [])
+
+  // A tag bell's note (?note=): its phase, the merged Tax 5 card, or a
+  // specialist's thread (opened on the Tax 5 card).
+  useOpenLinkedNote(initialNoteId, notes, phases.length ? phases : null, (note) => {
+    if (note.tab_name !== 'Tax Priorities' || !noteInScope(note, { tax_plan_id: plan.id })) return null
+    if (note.phase_name === TAX5A_PHASE || note.phase_name === TAX5B_PHASE) return ['tax5', 'notes_tax5']
+    if (String(note.phase_name || '').startsWith('Specialist - ')) {
+      const spec = taxSpecialists.find(s => 'Specialist - ' + s.specialist_name === note.phase_name)
+      return spec ? ['tax5', `spec_${spec.id}`, `notes_spec_${spec.id}`] : null
+    }
+    const phase = phases.find(ph => ph.name === note.phase_name)
+    return phase ? [phase.id, `notes_${phase.id}`] : null
+  }, setExpanded)
 
   async function loadSpecialists() {
     setLoadingSpecs(true)
@@ -6253,7 +6266,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
 // mirror (Client Mirroring, L5): a member viewing a client mirrored to them -
 // always with readOnly; the server masks every money value and this hides the
 // fee schedule, entered pricing, revenue-share rows, refund amount and PI id.
-function TaxPrioritiesTab({ clientId, programId, programName, client, specialists, ecosystems = [], readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, notes = [], onNotesChange, initialPlanId = null, openSinglePlan = false, plannerMode = false, directMode = false, onPlanInOtherProgram = null }) {
+function TaxPrioritiesTab({ clientId, programId, programName, client, specialists, ecosystems = [], readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, notes = [], onNotesChange, initialPlanId = null, openSinglePlan = false, plannerMode = false, directMode = false, onPlanInOtherProgram = null, initialNoteId = null }) {
   const isPhone = useIsPhone()
   const [taxPlans, setTaxPlans] = useState([])
   const [phases, setPhases] = useState([])
@@ -6601,6 +6614,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
         clientId={clientId}
         client={client}
         programName={programName === 'VFO Tax Planning' ? 'VFO Tax Planning' : 'VFO Holistic Planning'}
+        initialNoteId={initialNoteId}
       />
     )
   }

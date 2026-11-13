@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
-import { PhaseNotesButton, PhaseNotesPanel } from '../../shared/PhaseNotes'
+import { PhaseNotesButton, PhaseNotesPanel, useOpenLinkedNote } from '../../shared/PhaseNotes'
 import { PipMeetingsListSkeleton, PipMeetingDetailSkeleton } from '../../shared/Skeleton'
 import { TrackHero, PhaseBadge, ListHeader, noMultiClickSelect } from '../../shared/TrackKit'
 import PipPurchaseDecisionForm from './PipPurchaseDecisionForm'
@@ -59,7 +59,7 @@ function meetingLabelColor(track) {
   return 'var(--vfo-muted)'
 }
 
-function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChange, onTrackUpdate, readOnly, memberNotes = false, memberCanAdd = false, mirror = false, notes, onNotesChange, clientId, client }) {
+function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChange, onTrackUpdate, readOnly, memberNotes = false, memberCanAdd = false, mirror = false, notes, onNotesChange, clientId, client, initialNoteId = null }) {
   const [localProgress, setLocalProgress] = useState(progress)
   const [scheduledDate, setScheduledDate] = useState(track.pip_scheduled_date || '')
   // Time/tz mirrors of the track columns the confirmation email writes back, so a
@@ -85,6 +85,13 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
     })
     setExpanded(expandState)
   }, [])
+
+  // PIP notes are not per meeting (#386): a linked note opens in the meeting opened.
+  useOpenLinkedNote(initialNoteId, notes, phases.length ? phases : null, (note) => {
+    if (note.tab_name !== 'PIP Meetings') return null
+    const phase = phases.find(ph => ph.name === note.phase_name)
+    return phase ? [phase.id, `notes_${phase.id}`] : null
+  }, setExpanded)
 
   async function saveScheduled(newDate) {
     setSavingDate(true)
@@ -445,7 +452,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
 
 // mirror (Client Mirroring, L5): a member viewing a client mirrored to them -
 // with readOnly, and no payment-method tag or revenue-share row.
-function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, notes = [], onNotesChange }) {
+function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, notes = [], onNotesChange, initialNoteId = null }) {
   const [tracks, setTracks] = useState([])
   const [phases, setPhases] = useState([])
   const [allProgress, setAllProgress] = useState({})
@@ -591,6 +598,7 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
         onNotesChange={onNotesChange}
         clientId={clientId}
         client={client}
+        initialNoteId={initialNoteId}
       />
     )
   }
