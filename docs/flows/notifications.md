@@ -271,6 +271,31 @@ dismissible: false
 
 Raised by `runRoleplayOutcomePass`, a pass of the weekday growth overdue sweep (cron jobid 12, 10:00 UTC — see [07-server-chains.md](../architecture/07-server-chains.md)); once per attempt via `training_roleplay_attempts.outcome_bell_sent_at`; skipped when the MSM set the step `Stopped` / `N/A`. **Cleared by title + the plan's own link** (a member in both programs clears per plan) by `training_roleplay_set_outcome`, and by `training_roleplay_confirm` on a reschedule, which also resets the latch so a new date can bell again. The title is load-bearing (#365).
 
+### Client notes — @mentions (2026-11-13)
+
+Typing `@` in any team-side client note box (every phase Notes panel, the Profile **+ Add Note** box, and Edit in the Profile **All Notes** list, in the admin portal and the tax planner portal) lists the team. Picking a name inserts `@Full Name`. Saving bells each person the note newly tags. **Bell only, no email:** team notifications are bells (TEAM_RULES §8).
+
+```
+rule:        NOTES_mention (area 'Notes', kind 'bell', FYI, migration 20261113120000_client_note_mentions.sql)
+recipient:   each newly tagged person's LOGIN email (allowed_admins.email / tax_planner_logins.email)
+pipeline:    'NOTES'
+title:       "<author> has tagged you in <client>'s <phase_name> phase"
+             "<author> has tagged you in a note on <client>'s profile"   (a Profile note, tab_name 'General Note')
+message:     the note text, first 200 characters
+link:        /admin/client/<id>?tab=<map1|regular|tax|pip|pft|home>[&program=<n>&plan=<id>][&track=<id>]&note=<note id>
+links:       a tax planner / team member gets /tax-planner/client/<id>?tab=tax&program=<n>&plan=<id>&note=<note id>
+dismissible: true
+```
+
+- **Who can be tagged** (`utils/note-mentions.ts` `loadMentionDirectory`, action `mention_directory_load`): every `allowed_admins` row with `role='admin'`, on every note. Active `tax_planners` (`Tax Planner` / `Team Member`) that have a `tax_planner_logins` row are listed only on **Tax Priorities** notes, because the tax plan is the only client page their portal opens. One list, deduped by lowercased email, Admin first.
+- **The server decides.** The page sends `mentions: [emails]` with `add_client_note` / `update_client_note`. `processNoteMentions` keeps only emails in the directory for that note's tab (at most 20) and ignores anything else, including names typed in the text. The result is stored in `client_note_mentions` ([tables/clients.md](../tables/clients.md)).
+- **Who is belled:** only people this save ADDS (diffed against `client_note_mentions`), never the author (`auth.session.email`). Re-saving an unchanged note bells nobody. A name taken out of the text is untagged (its row is deleted). Delete sends nothing.
+- `forceRecipients: true`, so the Notification Editor can switch the rule off but cannot re-route it.
+- **Fail-soft:** a mention or bell failure is logged and never fails the note save.
+- **Member notes never tag.** The member actions (`member_client_note_*`, `tax_direct_note_add`) call `addClientNote` with an `author` and skip mentions. The member portal shows `@Name` as plain text, and `client_notes_load_shared` returns no mention data.
+- **The link opens the note.** `?note=<id>` (`ClientDetail` `initialNoteId`) makes the track view expand the note's phase and its Notes panel (`useOpenLinkedNote` in `PhaseNotes.jsx`), or scrolls the Profile list to it (`useScrollToLinkedNote`). PIP notes are not per meeting (#386), so a PIP note opens once a meeting is opened.
+- On the test site every bell goes to the tester with the `TEST - meant for:` line, so a planner's planner-portal link only shows on live.
+
 ## Step 3 — Mark read (single)
 
 **Handler:** `mark_notification_read({notification_id})` ([NotificationBell.jsx:41](src/components/NotificationBell.jsx) → `actions/notifications/mark-read.ts`). UPDATEs `notifications.read=true` for one id. An action-required row (`dismissible=false`) is refused (400) — except on staging, for the Clear (test) button.

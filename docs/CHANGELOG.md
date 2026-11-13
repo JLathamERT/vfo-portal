@@ -8,6 +8,37 @@
 
 ---
 
+## 2026-11-13 — @mentions in client notes, and the member's All Notes — by Paxton
+
+**Why.** Jake's spec "Admin @mentions in phase notes" (VFO Workbench, 11 Nov): typing `@` in a client note should list the team, and saving should tell each tagged person.
+
+**Decided (Paxton, 13 Nov).**
+- **Team notifications are bells only, never email**; clients and members get email, members sometimes a bell too. New standing rule, TEAM_RULES §8. So the spec's email went.
+- Tax planners and team members can tag (from their portal's Tax Priorities notes) as well as be tagged. They are LISTED only on Tax Priorities notes, the only client page their portal opens; admins are listed everywhere.
+- The bell opens the tagged note, not just the tab.
+- During testing: tagging works anywhere the team saves a client note, so the Profile **+ Add Note** box and Edit in **All Notes** too, not only the phase panels.
+- During testing: the member's Profile card is now **All Notes**, like the admin's, with the member's own phase notes in it (the 12 Nov entry below kept them off). This answers one of Jake's open questions on the member notes spec.
+
+**Database** (migration `20261113120000_client_note_mentions.sql`, DDL asked first, on the test site 13 Nov, **on live at release, BEFORE the backend**: `load_client_notes` embeds the new table and errors without it):
+- `client_note_mentions` (note, login email lowercased, name, type; unique per note + email; cascade on note delete). RLS deny-all + policy; anon probe `*/0`; security advisor on the test site at the exact baseline.
+- `notification_rules` row `NOTES_mention` (area Notes, bell, FYI).
+
+**Backend.**
+- New `utils/note-mentions.ts`: `loadMentionDirectory` (admins; active planners + team members with a login, Tax Priorities only; deduped by email), `mention_directory_load` (`ADMIN_ONLY_ACTIONS` + `TAX_PLANNER_ALLOWED_ACTIONS`), and `processNoteMentions`: re-checks the sent emails against that list (max 20), diffs against the stored rows, and bells only the people a save adds, never the author. Fail-soft.
+- `add_client_note` / `update_client_note` take `mentions` and now get `c.auth`; the member path (`author` set) never tags. `load_client_notes` embeds `client_note_mentions`; `client_notes_load_shared` (members) does not.
+- Bell: "<author> has tagged you in <client>'s <phase> phase", or "...in a note on <client>'s profile" for a Profile note; link `?tab=…&note=<id>` (+ `program` / `plan` on tax, `track` on Regular); a planner's link goes to `/tax-planner/client/…`.
+- Action count 652 → **653**. `deno check` 0. Test-site deploys to `vfo-admin-api-paxton`: **v2**, then **v3** (Profile note wording).
+
+**Website.**
+- New `components/shared/MentionTextarea.jsx`: the `@` list at the caret (portaled, keyboard + mouse, 8 rows, name + Admin / Tax Planner / Team Member), `NoteText` (blue highlight of tagged names), the cached directory.
+- Used in `PhaseNotesPanel` (add + edit, team side only), `AddGeneralNote` (team side) and the admin Profile All Notes edit. The member side keeps a plain textarea and plain text.
+- `?note=<id>`: `ClientDetail` `initialNoteId` → `useOpenLinkedNote` in the five track views (Tax: merged Tax 5 and specialist threads), `useScrollToLinkedNote` on the Profile.
+- Member Profile: "Notes from your team" → **All Notes** with a count, every note the member can see, tab + phase tags as on the admin list.
+
+**Tested on the test site** through the dev server, by Paxton (13 Nov, v2 / v3): the `@` list on Tax notes (admins + planners + team members) and MAP 1 notes (admins only); tags on MAP 1, Tax Set Up and a Profile note each raised one bell with the right title and a link that opened the note; tagging yourself saved the tag and raised no bell; a shared note's tag showed as plain text to member 10002; the member's All Notes showed their own phase notes. Rows checked by SQL (`client_note_mentions`, `notifications` pipeline `NOTES`). **Not run:** a crafted request with an email outside the list (code-checked only), and a planner signed in to tag (the planner bell loads nothing on the test site, by design).
+
+---
+
 ## 2026-11-13 — Test-site emails and bells reach only the tester, or nobody — by Jake
 
 **Why.** Since 2026-11-11 every staff member has a test member (10003-10017) whose email and login are their REAL address. The guard's first rule treated any recipient that was a test member's login as "about that test member" and sent the email to its owner, so every staff To / Cc / Bcc on a test email received it: the Friday "Weekly membership arrears" digest reached Paul with nobody clicking, a countersignature request reached Anton and Paul, an advisor onboarding email reached Anton and Paul through its live Bcc, a High Level Tax email reached four people. Bells had the same leak in their last step (live recipients with a test-site login, else all admins, who are all real staff there).

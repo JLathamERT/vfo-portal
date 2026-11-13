@@ -40,7 +40,7 @@ cd C:\vfo-react;          git fetch --tags -q; git tag -l 'live-*'         --sor
 cd C:\vfo-edge-functions; git fetch --tags -q; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
-#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-12 → 6 + 646 = **652**: + the three member note actions (CHANGELOG 2026-11-12); past values in CHANGELOG)
+#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-13 → 6 + 647 = **653**: + `mention_directory_load` (CHANGELOG 2026-11-13); past values in CHANGELOG)
 cd C:\vfo-edge-functions   # or the worktree
 $logins   = (Select-String -Path supabase/functions/vfo-admin-api/index.ts          -Pattern '^\s*if \(action === '            -AllMatches).Matches.Count
 $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatch.ts -Pattern '^\s*"([a-zA-Z0-9_]+)":\s*\(c\)'  -AllMatches).Matches.Count
