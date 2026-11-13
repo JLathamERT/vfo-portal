@@ -99,7 +99,10 @@ export function paymentStepLabel(ob) {
   const depositOnFile = ob.deposit_status === 'succeeded' || ob.deposit_status === 'processing'
   const depositPaid = depositOnFile ? (Number(ob.deposit_amount) || 0) : 0
   const balance = Math.max(Number(ob.payment_amount || 0) - depositPaid, 0)
-  const coversAll = !!ob.agreement_signed_by_ceo_at && ob.deposit_status === 'succeeded'
+  // Priced when the advisor / accountant signs, so their signature (not Anton's)
+  // makes payment_amount real. Mirror of utils/onboarding-order.ts.
+  const signed = !!(ob.agreement_signed_by_advisor_at || ob.agreement_signed_by_accountant_at)
+  const coversAll = signed && ob.deposit_status === 'succeeded'
     && depositPaid > 0 && Number(ob.payment_amount) > 0 && balance === 0
   if (coversAll) return 'Deposit covered the full onboarding payment'
   return depositPaid > 0 ? 'Remaining payment collected after deposit' : 'Payment collected'
@@ -125,6 +128,9 @@ export function createMemberLock(ob, pipeline) {
     [paymentStepLabel(ob), ob.payment_status === 'succeeded'],
     [INVOICE_STEP, !!ob.invoice_sent_at],
   ]
-  // Named by the step directly above Create — the last Stage 2 row.
-  return steps.some(([, done]) => !done) ? lockHint(INVOICE_STEP) : null
+  // Named by the step directly above Create (the last Stage 2 row) while that is
+  // open; once it is done, by the first open step above it (a paid, invoiced row
+  // can still be waiting on Anton's countersignature).
+  const open = !steps[steps.length - 1][1] ? steps[steps.length - 1] : steps.find(([, done]) => !done)
+  return open ? lockHint(open[0]) : null
 }
