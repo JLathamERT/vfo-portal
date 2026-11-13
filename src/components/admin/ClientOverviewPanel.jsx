@@ -175,6 +175,20 @@ function readSection(key, sections) {
   } catch { return fallback }
 }
 
+// The list's search, filters and sort ride along with the pill (Jake 2026-11-13:
+// sorting, opening a client and pressing Back lost the sort), and clear with it
+// on a fresh visit from the nav. Default: every status shown, A to Z by name
+// (the name is "First Last", so A to Z is by first name).
+export const CLIENT_OVERVIEW_VIEW_KEY = 'clientOverviewView'
+const MEMBER_VIEW_KEY = 'memberClientOverviewView'
+const DEFAULT_VIEW = { search: '', filter: { status: ['Active', 'Pending', 'Lost', 'Removed'] }, sort: 'az', colSort: null }
+function readView(key) {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(key) || 'null')
+    return v && typeof v === 'object' ? { ...DEFAULT_VIEW, ...v } : DEFAULT_VIEW
+  } catch { return DEFAULT_VIEW }
+}
+
 // canAddClient (member mode): the "+ Add Client" button on the Clients list, on
 // the member's tax_intake switch ("Members add clients").
 export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddClient = false }) {
@@ -183,6 +197,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
   const memberMode = mode === 'member'
   const sections = memberMode ? MEMBER_SECTIONS : SECTIONS
   const sectionKey = memberMode ? MEMBER_SECTION_KEY : CLIENT_OVERVIEW_SECTION_KEY
+  const viewKey = memberMode ? MEMBER_VIEW_KEY : CLIENT_OVERVIEW_VIEW_KEY
   const loadAction = memberMode ? 'member_client_overview_load' : 'client_overview_load'
   const clientBase = memberMode ? '/member/client' : '/admin/client'
 
@@ -198,12 +213,16 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
   const [allPrograms, setAllPrograms] = useState([])       // Unassigned pill's dropdown (admin)
   const [loadingSection, setLoadingSection] = useState(null)
   const [errorBySection, setErrorBySection] = useState({}) // section -> message
-  const [search, setSearch] = useState('')
-  const [listFilter, setListFilter] = useState({ status: ['Active', 'Pending'] })
-  const [listSort, setListSort] = useState('ref_asc')
+  const [initialView] = useState(() => readView(viewKey))
+  const [search, setSearch] = useState(initialView.search)
+  const [listFilter, setListFilter] = useState(initialView.filter)
+  const [listSort, setListSort] = useState(initialView.sort)
   // One header-sort state for this table instance; kept across sub-tab switches
   // (the client columns are identical in every section).
-  const { sort: colSort, onSort, reset: resetColSort } = useHeaderSort()
+  const { sort: colSort, onSort, reset: resetColSort } = useHeaderSort(initialView.colSort)
+  useEffect(() => {
+    try { sessionStorage.setItem(viewKey, JSON.stringify({ search, filter: listFilter, sort: listSort, colSort })) } catch { /* private mode */ }
+  }, [viewKey, search, listFilter, listSort, colSort])
 
   // Sections fetched fresh during this mount (a snapshot alone does not count).
   const freshSections = useRef({})

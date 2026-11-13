@@ -28,7 +28,7 @@ const PTYPE_TAG = {
   Specialist: { fg: '#0e7490', bg: '#cffafe' },
   'Tax Planner': { fg: '#1570ef', bg: '#e3effd' },
   'Strategic Partner': { fg: '#b45309', bg: '#fef3c7' },
-  ERT: { fg: '#475467', bg: 'var(--vfo-tint)' },
+  ERT: { fg: 'var(--vfo-ink-soft)', bg: 'var(--vfo-tint)' },
 }
 
 const GRID = '104px 1.3fr 1.5fr 130px 130px 120px 1fr'
