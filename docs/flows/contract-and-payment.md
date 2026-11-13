@@ -185,16 +185,16 @@ Each arrow is implemented either as:
 
 **Trigger:** Server-to-server chain from `boldsign-webhook` (standalone).
 
-**Handler:** `automation_CONTRACT_ceocountersign` ([admin-api:745-858](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)).
+**Handler:** `automation_CONTRACT_ceocountersign` (`actions/pipeline/contract-ceo-countersign.ts`).
 
 **What it does:**
 1. Validates `boldsign_doc_id` exists, `c18_ceo_signed !== 'Yes'`.
-2. Polls BoldSign `getEmbeddedSignLink` for `aanderson@elitert.com` (3 retries × 2s).
-3. Loads template `'CONTRACT_ceocountersign|Yes'`.
-4. Substitutes `[Client Name]`, `[Service Level]`, `[Total Fee]`, `[SIGNING_LINK]`.
-5. Creates Gmail draft to CEO with embedded sign link.
+2. Raises the PF's "signed the agreement" FYI bell ("…with the CEO for countersignature, and the payment link has been sent").
+3. **Chains `automation_CONTRACT_stripecustomer` (Step 8) straight away (2026-11-13)**: the payment email no longer waits for Anton.
+4. Polls BoldSign `getEmbeddedSignLink` for `aanderson@elitert.com` (3 retries × 2s).
+5. Loads template `'CONTRACT_ceocountersign|Yes'`, substitutes `[Client Name]`, `[Service Level]`, `[Total Fee]`, `[SIGNING_LINK]`, and drafts the email to the CEO.
 
-**Chains:** none — waits for CEO to sign.
+**Chains:** `automation_CONTRACT_stripecustomer`.
 
 ---
 
@@ -207,20 +207,20 @@ BoldSign fires `event.eventType='Signed'` with CEO email AND eventually `event.e
 **Handlers (standalone webhook):**
 
 - On `Signed` with CEO email → UPDATE `c18_ceo_signed='Yes'` only. No chain.
-- On `Completed` → UPDATE both `c17_client_signed='Yes'` and `c18_ceo_signed='Yes'` (re-sets). **Chains** `automation_CONTRACT_stripecustomer`.
+- On `Completed` → UPDATE both `c17_client_signed='Yes'` and `c18_ceo_signed='Yes'` (re-sets). **Chains** `automation_CONTRACT_stripecustomer` a second time, which finds the customer made at Step 6 and only takes a deferred ERT vault copy (below).
 
-> The chain only fires on the `Completed` event, not on `Signed`-by-CEO — important behavioral detail.
+> The client may already have paid by now: since 2026-11-13 the payment does not wait for Anton.
 
 ---
 
 ## Step 8 — Create Stripe customer + send payment email
 
-**Trigger:** Server-to-server chain from `boldsign-webhook` (Completed event).
+**Trigger:** Chained from Step 6 the moment the client signs (2026-11-13), and again by `boldsign-webhook`'s `Completed` event (a no-op for the money).
 
-**Handler:** `automation_CONTRACT_stripecustomer` ([admin-api:861-936](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)).
+**Handler:** `automation_CONTRACT_stripecustomer` (`actions/pipeline/contract-stripe-customer.ts`).
 
 **What it does:**
-1. Validates pipeline row exists. If `stripe_customer_id` already set, idempotent return.
+1. Validates pipeline row exists. Runs `retryErtCopyAfterCountersign` (copies the fully signed agreement into the payer's ERT vault if payment 1's confirmation already ran while Anton had not signed; does nothing before `c18_ceo_signed='Yes'`). If `stripe_customer_id` already set, idempotent return.
 2. POSTs to `https://api.stripe.com/v1/customers` with `email`, `name`, `metadata[client_id]`.
 3. UPDATEs `pipeline_map1.stripe_customer_id`.
 4. Generates 32-byte `checkout_token` (hex), UPDATEs `pipeline_map1.checkout_token`.

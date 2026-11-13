@@ -948,9 +948,10 @@ After each successful send, `sendPresentationLinkEmail` (the sweep, or Send now)
 3. Loads template `'TAX_ceocountersign|Yes'`.
 4. Substitutes `[Client Name]`, `[Total Fee]`, `[SIGNING_LINK]`.
 5. Creates Gmail draft to CEO with embedded sign link.
-6. **(2026-10-15, v994)** Raises the dismissible `TAX_client_signed` bell to the step owner (the PF; the member on a Direct plan — the chase bell's routing) — *"<client> signed the Tax Planning agreement"* (*"…was signed by the member"* on member-pays), `dedupe: "unread"` — and marks the unread *"<client> hasn't signed the Tax Planning agreement"* chase bell read. Fail-soft (runs before the BoldSign link poll).
+6. **(2026-10-15, v994)** Raises the dismissible `TAX_client_signed` bell to the step owner (the PF; the member on a Direct plan — the chase bell's routing) — *"<client> signed the Tax Planning agreement"* (*"…was signed by the member"* on member-pays), `dedupe: "unread"`, message *"…It is now with the CEO for countersignature, and the payment link has been sent."* (2026-11-13) — and marks the unread *"<client> hasn't signed the Tax Planning agreement"* chase bell read. Fail-soft (runs before the BoldSign link poll).
+7. **(2026-11-13)** Chains `automation_TAX_stripecustomer` (Step 8) right after the bell, before the CEO link poll: the retainer payment email goes out the moment the client signs, alongside Anton's countersign request. Proven on the test site 2026-11-13 (plan 100024: payment email 4 s after signing, retainer paid before Anton signed).
 
-**Chains:** none — waits for CEO to sign.
+**Chains:** `automation_TAX_stripecustomer`.
 
 ---
 
@@ -962,7 +963,7 @@ BoldSign fires `event.eventType='Signed'` with CEO email AND eventually `event.e
 
 **Handlers (both webhook surfaces):**
 - On `Signed` with CEO email → UPDATE `ceo_signed='Yes'`. No chain (single-signed event).
-- On `Completed` → UPDATE both `client_signed='Yes'` and `ceo_signed='Yes'` (idempotent re-set). **Chains** `automation_TAX_stripecustomer`.
+- On `Completed` → UPDATE both `client_signed='Yes'` and `ceo_signed='Yes'` (idempotent re-set). **Chains** `automation_TAX_stripecustomer` a second time: the customer already exists, so it only takes a deferred ERT vault copy (Step 8).
 
 > **Sandbox email collision:** in sandbox mode, both client + CEO BoldSign signers get the same `sandbox_email` (override). The webhook's `signerEmail === ceoEmail` check fails (both look like the client). Doesn't matter because the `Completed` event sets both flags + fires the chain regardless.
 
@@ -970,12 +971,12 @@ BoldSign fires `event.eventType='Signed'` with CEO email AND eventually `event.e
 
 ## Step 8 — Create Stripe customer + send payment email
 
-**Trigger:** Server-to-server chain from BoldSign webhook (Completed event).
+**Trigger:** Chained from Step 6 the moment the client signs (2026-11-13), and again by the BoldSign webhook's `Completed` event (a no-op for the money).
 
-**Handler:** [`automation_TAX_stripecustomer`](../../supabase/functions/vfo-admin-api/actions/tax/stripe-customer.ts) — PUBLIC handler (service-role from webhook).
+**Handler:** [`automation_TAX_stripecustomer`](../../supabase/functions/vfo-admin-api/actions/tax/stripe-customer.ts) — PUBLIC handler (service-role chain).
 
 **What it does:**
-1. Validates plan exists. If `stripe_customer_id` already set, idempotent return.
+1. Validates plan exists; stamps `client_signed_at` if still NULL. Runs `retryErtCopyAfterCountersign`: the retainer confirmation copies the signed agreement into the ERT vault only once BoldSign reports the document `Completed`, so a retainer paid before Anton signs defers the copy, and this call (after `ceo_signed='Yes'`) takes it. If `stripe_customer_id` already set, idempotent return.
 2. POSTs to `https://api.stripe.com/v1/customers` with `email`, `name`, `metadata[tax_plan_id]`, `metadata[client_id]`, `metadata[pipeline]='TAX'`.
 3. UPDATEs `client_tax_plans.stripe_customer_id`.
 4. Generates 32-byte `checkout_token` (hex), UPDATEs `client_tax_plans.checkout_token`.
