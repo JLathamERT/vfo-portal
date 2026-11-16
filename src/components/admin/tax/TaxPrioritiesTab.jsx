@@ -2831,6 +2831,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   const [submittingExtraNo, setSubmittingExtraNo] = useState(false)
   const [depositPiDrafts, setDepositPiDrafts] = useState({})
   const [refundReasonDrafts, setRefundReasonDrafts] = useState({})
+  const [earlyRefundSending, setEarlyRefundSending] = useState(false)
   const [ackSaving, setAckSaving] = useState({})
   const [trackStatus, setTrackStatus] = useState(plan.status || 'live')
   const [togglingStatus, setTogglingStatus] = useState(false)
@@ -5135,10 +5136,30 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         setLocalProgress(map)
         setDepositPiDrafts(p => { const c = { ...p }; delete c[task.id]; return c })
       }
+      // Early refund (2026-11-16): the client or member asked to stop before the
+      // planner review. Admins only, and only until the review is answered — after
+      // a Stop the Tax Plan Red Light step is the refund; after a Proceed $250 has
+      // gone to the planning group. The server refuses both cases too.
+      const canEarlyRefund = !readOnly && !plannerMode && !!savedPi && !depositRefunded
+        && !reviewStatus && !livePlan?.deposit_team_share_status && (livePlan || plan)?.status !== 'stopped'
+      const earlyRefundPayer = taxIntake?.payer === 'client' ? 'the client' : 'the member'
+      async function sendEarlyRefund() {
+        const name = client?.first_name ? `${client.first_name} ${client.last_name || ''}`.trim() : 'this client'
+        if (!confirm(`Refund the tax planning deposit and stop tax planning for ${name}?\n\nThe deposit is refunded in Stripe to whoever paid it, the plan is closed, and an "as you requested" email goes to ${earlyRefundPayer}. Cannot be undone.`)) return
+        setEarlyRefundSending(true)
+        const res = await callApi('automation_TAX_depositrefund_requested', { tax_plan_id: plan.id })
+        if (res?.error) {
+          alert(`Refund failed: ${res.error}`)
+          setEarlyRefundSending(false)
+          return
+        }
+        await refreshLivePlan()
+        setEarlyRefundSending(false)
+      }
       return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone && depositClosed ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone && depositClosed ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-          <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
+          <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{canEarlyRefund && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title="Refund deposit" templates={[{ name: taxIntake?.payer === 'client' ? 'TAX_deposit_refund_requested|client' : 'TAX_deposit_refund_requested', when: 'Refund deposit — the client or member asked to stop before the planner review' }]} context={{ ...emailCtx, 'Refund Amount': '$500.00' }} /></span>}</span>
           {depositWaived ? (
             <span style={neutralChipStyle} title="No deposit was taken: the member already had two qualifying tax clients">N/A — No Deposit</span>
           ) : depositClearing ? (
@@ -5147,6 +5168,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             depositBounced
               ? <span style={chipStyle('#d93025')}>Bank transfer failed</span>
               : savedPi && !mirror && <span style={{ ...chipStyle('#1b9254'), fontFamily: 'monospace' }}>{savedPi}</span>
+          ) : savedPi && paidViaPortal ? (
+            // Stamped by the portal's own payment: nothing to paste or correct here.
+            <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--vfo-muted)' }}>{savedPi}</span>
           ) : (
             <>
               {depositBounced && <span style={chipStyle('#d93025')} title="The bank transfer did not go through. The payment link works again; paste a PaymentIntent here only if the deposit was paid another way.">Bank transfer failed</span>}
@@ -5164,6 +5188,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           {/* Stamped by the member's own portal intake rather than typed in by
               an admin — the tell is an intake row that carries this plan. */}
           {savedPi && paidViaPortal && <span style={chipStyle('#1b9254')}>Paid via portal</span>}
+          {canEarlyRefund && (
+            <>
+              <button disabled={earlyRefundSending} onClick={sendEarlyRefund} title="The client or member asked to stop. Refunds the deposit and closes the plan. Available until the tax planner review is complete." style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: earlyRefundSending ? 'not-allowed' : 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600 }}>{earlyRefundSending ? 'Refunding...' : 'Refund deposit'}</button>
+            </>
+          )}
           {/* The submit date stays fixed while the transfer clears or after it bounced. */}
           {isDone && !readOnly && !depositClearing && !depositBounced ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
         </div>
