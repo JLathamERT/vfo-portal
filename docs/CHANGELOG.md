@@ -8,6 +8,27 @@
 
 ---
 
+## 2026-11-16 (b) — Tax Plan KPI Tracker: a chevron on every Client Overview tax plan — by Paxton
+
+**Why.** Jake's Workbench spec *Tax Plan KPI Tracker*: the team wants to see, per tax plan, where the client is on the tax path and how many days each step took, so step times can be tracked as KPIs.
+
+**Decided (Paxton, 16 Nov).** It sits on Client Overview → Tax Planning as a ▸ chevron on each plan row (admin only), not on a new page. A Direct plan with no intake row (27 of 43 eligible) dates its deposit from the Deposit Paid step. Statuses go by the outcome, not the decision flags: a paid retainer is Step 3 YES – PAID (`tax_final_decision` is set on 10 of 102 plans), Tax 4 Proceed counts as Confirmed, Tax 5 Confirmed as Proceed. The first tile is named **Set Up** like the plan page. Plans without step dates print *Step dates unavailable for migrated accounts*, and an unpaid deposit prints *Awaiting deposit*, instead of hover-only notes. The day count is each tile's headline.
+
+**Beyond the spec, forced by the system.** The role check is the edge gate, not SQL: there is no Supabase Auth, so the function only ever runs as the service role. The step tile is new (no tile existed); it uses the existing status tints and `var(--vfo-*)` tokens. A stopped plan with no stop date stops at its first step not done, and its stop day count is "—". The $30k path waits on a final retainer only when the plan has a `final_retainer_amount`.
+
+**Backend.**
+- Migration `20261116150000_tax_plan_kpis.sql` (functions only, no table): `tax_plan_kpis(p_client_id)` returns one jsonb row per non-sandbox plan with every rule, and `tax_plan_kpi_day` builds one day count. Both `security invoker`, `search_path` pinned, execute revoked from `public, anon, authenticated`. On the test site 2026-11-16 (security advisor at its baseline), on live at release.
+- New action `tax_plan_kpis_load` (`actions/clients/tax-plan-kpis.ts`, `ADMIN_ONLY_ACTIONS` + `TAB_ACTIONS.client_overview`, in no client / specialist / planner list); 658 → 659.
+- `scripts/tax-plan-kpis-check.sql`: the spec's SQL test, read-only. Run on live after the migration; it must print PASS (ineligible since Aug 12 = 149, 150, 151, 156, 188).
+
+**Website.** `ClientOverviewPanel.jsx`: the chevron column on the Tax Planning pill (admin mode), one `tax_plan_kpis_load` per client, cached for the visit. New `src/components/admin/tax/TaxPlanKpiPanel.jsx`: header (program, team, current step, total days, Stopped), the Set Up + 1-6 tiles with their $ lines, Step 6 strategy sub-tiles, footer VFO REV GENERATED + total days.
+
+**Found and fixed while testing.** A comparison on an empty column is NULL in PL/pgSQL, and a NULL flag skipped every CASE arm, so most plans read "Step 6" and stopped plans stopped at Step 6. Every flag is now coalesced to false (gotcha #755).
+
+**Tested** on the test site (`vfo-admin-api-paxton` v4) on ten fake plans `10002-K01`…`K10`, one per acceptance case: deposit paid three days after the plan (paid_at used, the step date and a later planner change ignored); deposit required and unpaid; member waiver; VFOS; exactly $30,000 with the final retainer and two strategies; under $30k complete (no final retainer line); stopped in Tax 2; refunded at Tax 4; migrated; created before Aug 12. Paxton clicked through them in light and dark, on desktop and in the phone preview at 390 / 360 wide, and the smoke gate passed against `vfo-admin-api-paxton` v4. A caller with no session gets 401. **Not exercised:** a member, client or tax planner session calling the action (the gate is the same list `client_overview_load` sits in); the check script on live, which waits for the migration at release. All of these, the first look at real live plans and the clean-up of the ten fake plans are Issue JLathamERT/vfo-edge-functions#569.
+
+---
+
 ## 2026-11-16 — Refund a tax deposit early: Refund deposit on the Deposit Paid step — by Jake
 
 **Why.** A member's three new tax clients stopped before any planner review and wanted their $500 deposits back. The only refund was the Tax Plan Red Light step, which appears only after "Tax planner review complete" reads Stop, so refunding early meant recording a review that never happened.
