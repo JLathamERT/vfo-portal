@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import ListFilterButton, { matchesFilter, SortSelect, useHeaderSort, sortByColumn, SortHeader } from './ListFilterButton'
@@ -9,6 +9,7 @@ import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import AddClientForm from '../shared/AddClientForm'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { STATUS_COLORS, statusPillStyle } from '../shared/statusColors'
+import TaxPlanKpiPanel from './tax/TaxPlanKpiPanel'
 
 // Client Overview — a mirror of Member Overview, but oriented around clients and
 // their program tracks. Four sub-tabs, each lazily loaded from the backend
@@ -68,10 +69,11 @@ const CLIENT_SORT_OPTIONS = [
 ]
 
 // Client (member beneath) · [Priority/Plan] · Status · PF · [Service level] · [Phase] · Next action · Owner
+// Tax Planning leads with the KPI chevron (admin only, 2026-11-16).
 const GRID_BY_SECTION = {
   map1: '1.1fr 96px 130px 1fr 1.9fr 1.1fr',
   regular: '1.1fr 1.7fr 96px 130px 1.9fr 1.1fr',
-  tax_planning: '1.1fr 170px 96px 130px 90px 1.9fr 1.1fr',
+  tax_planning: '24px 1.1fr 170px 96px 130px 90px 1.9fr 1.1fr',
   pft: '1.1fr 96px 130px 1.9fr 1.1fr',
   tailored: '1.1fr 96px 130px 1.9fr 1.1fr',
   unassigned: '1.4fr 96px 160px 260px',
@@ -79,7 +81,7 @@ const GRID_BY_SECTION = {
   // where Next action is, CIQs where Owner is - so the columns line up pill to pill.
   ciq: '1.1fr 96px 130px 1fr 1.9fr 1.1fr',
 }
-const MIN_WIDTH_BY_SECTION = { map1: '980px', regular: '1000px', tax_planning: '1040px', pft: '860px', tailored: '860px', unassigned: '760px', ciq: '980px' }
+const MIN_WIDTH_BY_SECTION = { map1: '980px', regular: '1000px', tax_planning: '1074px', pft: '860px', tailored: '860px', unassigned: '760px', ciq: '980px' }
 // The member portal's Client Overview (mode='member', L5 phase 2): the same table
 // minus the Next action and Owner columns (decision 27). Fixed widths shared by
 // every pill (Name 280 · Priority/Plan 260 · Status 110 · PF 180 · Service level /
@@ -384,6 +386,22 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
     }
   }
 
+  // Tax Planning (admin): each plan row's chevron opens its Tax Plan Progress
+  // (tax_plan_kpis_load, one call per client, kept for this mount).
+  const showKpi = isTax && !memberMode
+  const [kpiOpen, setKpiOpen] = useState({})         // plan id -> open
+  const [kpiByClient, setKpiByClient] = useState({}) // client id -> { loading, error, plans }
+  function toggleKpi(client, planId) {
+    const opening = !kpiOpen[planId]
+    setKpiOpen(o => ({ ...o, [planId]: opening }))
+    const have = kpiByClient[client.id]
+    if (!opening || (have && (have.loading || have.plans))) return
+    setKpiByClient(m => ({ ...m, [client.id]: { loading: true, error: '', plans: null } }))
+    callApi('tax_plan_kpis_load', { client_id: client.id })
+      .then(res => setKpiByClient(m => ({ ...m, [client.id]: { loading: false, error: '', plans: res.plans || [] } })))
+      .catch(err => setKpiByClient(m => ({ ...m, [client.id]: { loading: false, error: err.message, plans: null } })))
+  }
+
   const wrap = { padding: isPhone ? '16px var(--vfo-gutter)' : '24px', maxWidth: '1500px', margin: '0 auto' }
   const phoneCards = isPhone && memberMode && isList
   const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
@@ -441,6 +459,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
         <div style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
           <div style={{ minWidth: (memberMode ? MEMBER_MIN_WIDTH_BY_SECTION : MIN_WIDTH_BY_SECTION)[activeSection] }}>
             <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
+              {showKpi && <span />}
               <SortHeader label="Name" sortKey="name" sort={colSort} onSort={onSort} />
               {secondCol && <span>{secondCol}</span>}
               <SortHeader label="Status" sortKey="status" sort={colSort} onSort={onSort} />
@@ -563,9 +582,21 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
                 ? nexts
                 : (t.next_action ? [{ label: t.next_action, owner: null }] : [])
               const done = t.state === 'complete' || t.state === 'closed'
+              const planId = t.link?.plan ?? t.id
+              const kpiOpenRow = showKpi && planId != null && !!kpiOpen[planId]
+              const kpi = kpiByClient[c.id]
               return (
-                <div key={`${c.id}:${t.id ?? activeSection}`} onClick={() => openTrack(c, t)} {...rowHoverProps}
+                <Fragment key={`${c.id}:${t.id ?? activeSection}`}>
+                <div onClick={() => openTrack(c, t)} {...rowHoverProps}
                   style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
+                  {showKpi && (planId != null ? (
+                    <button
+                      onClick={ev => { ev.stopPropagation(); toggleKpi(c, planId) }}
+                      title={kpiOpenRow ? 'Hide tax plan progress' : 'Show tax plan progress'}
+                      style={{ width: '24px', height: '24px', border: '1px solid var(--vfo-border-strong)', background: kpiOpenRow ? 'var(--vfo-tint)' : 'var(--vfo-card)', borderRadius: '6px', cursor: 'pointer', color: 'var(--vfo-muted)', fontSize: '11px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {kpiOpenRow ? '▾' : '▸'}
+                    </button>
+                  ) : <span />)}
                   <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                     <span onClick={e => { e.stopPropagation(); openProfile(c, t) }} title="Open client profile" style={{ fontWeight: 600, color: 'var(--vfo-link)', cursor: 'pointer', alignSelf: 'flex-start' }}
                       onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
@@ -613,6 +644,14 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
                       ))}
                   </span>}
                 </div>
+                {kpiOpenRow && (
+                  <TaxPlanKpiPanel
+                    loading={!kpi || kpi.loading}
+                    error={kpi?.error || ''}
+                    plan={(kpi?.plans || []).find(p => String(p.plan_id) === String(planId)) || null}
+                  />
+                )}
+                </Fragment>
               )
             })}
           </div>
