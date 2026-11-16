@@ -8,6 +8,26 @@
 
 ---
 
+## 2026-11-16 — Refund a tax deposit early: Refund deposit on the Deposit Paid step — by Jake
+
+**Why.** A member's three new tax clients stopped before any planner review and wanted their $500 deposits back. The only refund was the Tax Plan Red Light step, which appears only after "Tax planner review complete" reads Stop, so refunding early meant recording a review that never happened.
+
+**Decided (Jake, 16 Nov).** A button, admins only, usable until the planner review is complete and never after. It refunds the $500 base (the card fee is kept, as on every deposit refund). A standard "as you requested" email goes to whoever paid. Direct members get no button: a Direct member already has two qualifying clients, which waives the deposit, and live has no Direct plans. Both new emails Cc Tracy and Tray and Bcc Paul and Anton, a deliberate exception to the bells-only rule for the team.
+
+**Backend.**
+- `actions/tax/deposit-refund.ts`: the worker is now private `depositRefund(..., requested)`, exported twice: `automationTaxDepositRefund` (the Red Light refund, unchanged inputs) and `automationTaxDepositRefundRequested` (no reason, templates `TAX_deposit_refund_requested` / `|client` by payer). Not an optional parameter, because `directMemberHandler` passes the `Request` fourth (#754).
+- New action `automation_TAX_depositrefund_requested` (`ADMIN_ONLY_ACTIONS`, not on the planner allowlist, no Direct twin); 657 → 658. It refuses (400) once the review is answered at all or `deposit_team_share_status` is set.
+- **Both** refund actions now refuse (400, before Stripe) once the review said Proceed or `deposit_team_share_status='Yes'`: the $250 has gone to the planning group by then. Before this, only the UI kept a refund off a Proceed plan.
+- Migration `20261116120000_tax_deposit_refund_requested_templates.sql` (data only): the two Send templates. To like 181 / 279; Cc `ASSIGNED_PF` (+ `MEMBER` on the client copy), Tracy, Tray; Bcc Paul, Anton; closing "Regards,". On the test site 2026-11-16, on live at release.
+
+**Website.** `TaxPrioritiesTab.jsx` Deposit Paid step: the red **Refund deposit** button with a `confirm()`, and its emails chip beside the VFOS chip. A PaymentIntent paid through the portal now shows as read-only text (no box, no Save); a hand-entered one keeps the box. After the refund the Red Light step shows **Refunded $500.00**.
+
+**Docs fixed in passing.** `tables/documents.md` still listed Tracy and Tray on the Cc of 181 / 279; they were removed 2026-10-27.
+
+**Tested** on the test site (`vfo-admin-api-jake` v19): a member-paid portal card deposit refunded by the button ($500.00, plan stopped, email with the member To, Stripe sandbox refund, PF bell); no button on the planner and member views; a hand-entered deposit shows the box, Save and the button; with the review at Proceed (set by SQL, so no $250 moved) the button is hidden and both refund actions return the Proceed error with nothing written. **Not exercised:** a client-paid deposit (the `|client` email), an ACH deposit, the refusal after a review of Stop, the team Cc / Bcc addresses (the test site redirects all mail), and the 1280 / 390 width check of the new row. The first live uses and these paths are JLathamERT/vfo-edge-functions#567.
+
+---
+
 ## 2026-11-13 — The member Vault says it is storage, starts the Tax Diagnostic for that client, and member drops stop belling Tracy — by Jake
 
 **Why.** Members with portal access were dropping a client's tax returns into the client's Vault believing that started tax planning, and every drop belled Tracy (and the client's PF) with *"<Member> dropped a document in <Client>'s vault"* — 60 such bells to Tracy in the 60 days to 13 Nov, most of them storage. Tracy asked for a line saying the Vault is storage, with a link to the diagnostic, and to keep only the bells for drops the tax process is waiting on (after Request Tax Returns / Request Additional Information).
