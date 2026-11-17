@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-11-17 (b) — SDP ATSG: a switch for SDP's planners, and who at SDP is Cc'd per case — by Jake
+
+**Why.** Caught at the release of the entry below, before anything reached live (no migration applied, no button pressed): Jake does not want SDP's people to see ATSG yet, and wants to choose who at SDP is Cc'd on each client's emails.
+
+**Planner switch `sdp_atsg_planners`** (More ▸ Feature Switches, *SDP ATSG for SDP planners*, Off / On only). Off: `resolveAtsgCaller` refuses every planner and team member, so SDP sees no tab and cannot call any SDP action; admins keep More ▸ SDP ATSG. Released Off on live, On on the test site. The card's confirm dialogs name SDP's planners rather than "every member" (`onConfirm` / `offConfirm` on a card). SDP's Cc on client emails stays while it is Off (Jake).
+
+**Per-case Cc.** + Add Client lists everyone at the case's group (its active planners and team members, as individuals — never the group contact address) with a tick each; a planner adding a case starts ticked, an admin's case starts with nobody. The case screen's new *Cc on client emails* card edits it any time (`sdp_atsg_save_cc`, new). The ticked people replace the old automatic SDP Cc (the group contact + whoever opened the case); the member is always Cc'd and the group contact still gets SDP's revenue-share emails. New column `sdp_atsg_cases.sdp_cc_emails`; the server keeps only people on the group's list, and someone who leaves the group stops being Cc'd at the next send.
+
+**Tested on the test site (Jake):** the switch Off (planner: no tab, server 403s) and back On; Add Client's list and default tick; the case card's save; an agreement email Cc'ing the member + the two ticked people and not the group contact. Migration `20261117150000_sdp_atsg_switch_and_cc.sql` (test site; live at the release, after the two SDP migrations). Action count 677 → **678**.
+
 ## 2026-11-17 — SDP - Advanced Tax Strategy Governance: SDP's own clients, agreement, retainer, Strategy Impact Fees — by Jake
 
 **What.** A one-off track for the tax planning partner SDP Personalized Planning ([flows/sdp-atsg.md](flows/sdp-atsg.md)). SDP's planners and team members get a planner-portal tab, *SDP - Advanced Tax Strategy Governance*, and admins granted it get More ▸ **SDP ATSG**. They add their own clients under one of our members, enter an ATSG Advisory Retainer (one yearly figure, billed annually / quarterly / monthly), and send SDP's own engagement agreement: the client signs in BoldSign, SDP's CEO countersigns, then the client gets a card-or-ACH payment link (`/sdp-atsg-pay`). Later retainer payments are charged by a new daily job; one-off Strategy Impact Fees each get their own link. Every payment lands on the VFO Services account and is split 47.5% SDP / 47.5% the member / 5% VFO Services, locked, with any card fee kept by VFO Services. Invoice (one per engagement, re-issued with each payment) and receipt are emailed and saved to Drive; each share has its revenue-share email. One year, then the case is done.
