@@ -27,6 +27,11 @@ const KINDS = [
 ]
 
 const REMINDER_VIOLET = '#7c3aed'
+// SDP ATSG bells (2026-11-17) get a colour no other bell uses (Jake asked for
+// purple, which REMINDER already has).
+const SDP_BELL = '#c026d3'
+const SDP_BELL_TINT = 'rgba(192,38,211,0.06)'
+const SDP_BELL_TINT_STRONG = 'rgba(192,38,211,0.15)'
 
 function fmtDateTime(s) {
   if (!s) return ''
@@ -213,6 +218,7 @@ function NotificationsView({ navigate }) {
           {rows.map(n => {
             const isAction = n.dismissible === false
             const isReminder = n.pipeline === 'REMINDER'
+            const isSdp = n.pipeline === 'SDP_ATSG'
             const testBell = splitTestBell(n.message)
             const canSelect = scope === 'current' && !isAction && !n.read
             return (
@@ -220,8 +226,8 @@ function NotificationsView({ navigate }) {
                 style={{
                   display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '13px 4px 13px 8px',
                   borderBottom: '1px solid var(--vfo-border-soft)',
-                  borderLeft: testBell ? `3px solid ${TEST_BELL_TEAL}` : isAction ? '3px solid #e06717' : isReminder ? `3px solid ${REMINDER_VIOLET}` : '3px solid transparent',
-                  background: testBell && !n.read ? TEST_BELL_TINT : isAction && !n.read ? 'rgba(224,103,23,0.06)' : isReminder && !n.read ? 'rgba(124,58,237,0.05)' : 'transparent',
+                  borderLeft: testBell ? `3px solid ${TEST_BELL_TEAL}` : isAction ? '3px solid #e06717' : isReminder ? `3px solid ${REMINDER_VIOLET}` : isSdp ? `3px solid ${SDP_BELL}` : '3px solid transparent',
+                  background: testBell && !n.read ? TEST_BELL_TINT : isAction && !n.read ? 'rgba(224,103,23,0.06)' : isReminder && !n.read ? 'rgba(124,58,237,0.05)' : isSdp && !n.read ? SDP_BELL_TINT : 'transparent',
                 }}>
                 {canSelect ? (
                   <input type="checkbox" checked={selected.has(n.id)} onChange={() => toggleOne(n.id)}
@@ -238,7 +244,7 @@ function NotificationsView({ navigate }) {
                     {testBell && <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: TEST_BELL_TEAL, letterSpacing: '0.4px' }}>TEST</span>}
                     {isAction && <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: '#e06717', letterSpacing: '0.4px' }}>ACTION</span>}
                     {isReminder && <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: REMINDER_VIOLET, letterSpacing: '0.4px' }}>REMINDER</span>}
-                    {n.pipeline && !isReminder && <span style={{ fontSize: '10px', color: '#0095ff', fontWeight: 600, padding: '1px 6px', borderRadius: '3px', background: 'rgba(0,149,255,0.15)' }}>{n.pipeline}</span>}
+                    {n.pipeline && !isReminder && <span style={{ fontSize: '10px', color: isSdp ? SDP_BELL : '#0095ff', fontWeight: 600, padding: '1px 6px', borderRadius: '3px', background: isSdp ? SDP_BELL_TINT_STRONG : 'rgba(0,149,255,0.15)' }}>{isSdp ? 'SDP ATSG' : n.pipeline}</span>}
                     {isAction && !n.read && <span style={{ fontSize: '10.5px', color: 'var(--vfo-faint)' }}>Clears when its task is completed</span>}
                   </div>
                 </div>

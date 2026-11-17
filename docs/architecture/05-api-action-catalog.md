@@ -957,6 +957,28 @@ The NEW "Tax Planners" 5th key admin section — an admin-managed person-type (`
 
 The **Tax Planner Share** payout leg (no dedicated action — chained inside `automation_TAX_revshare`) runs `utils/tax-planner-payout.ts transferPlannerShare`: proportional `(tax_planner_share / total_fee) × payment` to the planner's GROUP Connect account (`tax_planners.member_type` → `tax_planning_groups.name` → `stripe_account_id`); statuses `Yes`/`Money Mapping`/`N/A — No Share Due`/`Failed` on `{retainer,implementation}_planner_paid`; `FAILURE_tax_planner_share` bell + daily-sweep retry on failure; confirmation emails `TAX_planner_revshare|retainer`/`|implementation` (ids 198/199, Draft). Gotcha #253.
 
+### SDP - Advanced Tax Strategy Governance (`actions/sdp-atsg/`, added 2026-11-17)
+
+SDP's own clients, kept apart from ours: [flows/sdp-atsg.md](../flows/sdp-atsg.md). Every authed action is on `ADMIN_ONLY_ACTIONS`, `TAB_ACTIONS.sdp_atsg` and `TAX_PLANNER_ALLOWED_ACTIONS`, and every handler re-checks the caller with `resolveAtsgCaller` (an admin, or a planner / team member of an `atsg_enabled` group) and the case with `loadCaseFor` (a planner reaches only their group's cases, #257).
+
+| Action | File | Role | Notes |
+|---|---|---|---|
+| `sdp_atsg_access_load` | `cases.ts` | AUTH (admin / planner) | `{enabled}` — whether the planner portal shows the tab. |
+| `sdp_atsg_cases_load` / `sdp_atsg_case_load` | `cases.ts` | AUTH (as above) | The client list with progress; one case with its payments, the strategy list and the member's payout-setup state. |
+| `sdp_atsg_members_load` | `cases.ts` | AUTH (as above) | The member picker for + Add Client. |
+| `sdp_atsg_case_create` | `cases.ts` | AUTH (as above) | A new case under a member; `client_ref` `<member>-SDPnnn`. |
+| `sdp_atsg_save_retainer` | `cases.ts` | AUTH (as above) | The yearly figure + frequency; refused once the agreement is sent. |
+| `sdp_atsg_agreement_preview` / `sdp_atsg_send_agreement` | `agreement.ts` | AUTH (as above) | The PDF as it would be sent / the BoldSign send (claims `agreement_sent_at` first; client then CEO; the client's signing email). |
+| `sdp_atsg_resend_payment_email` | `pay.ts` | AUTH (as above) | Re-sends the first-payment email until payment 1 is paid or processing. |
+| `sdp_atsg_send_update_link` | `pay.ts` | AUTH (as above) | Emails the save-only update-payment-method link. |
+| `sdp_atsg_impact_fee_create` | `pay.ts` | AUTH (as above) | A Strategy Impact Fee + its own pay link; locked until payment 1 is paid. |
+| `sdp_atsg_stop` | `cases.ts` | AUTH (as above) | One-way stop: unpaid rows `canceled`, case `stopped`. |
+| `sdp_atsg_member_payout_request` | `cases.ts` | AUTH (as above) | The usual payout-setup request, for this case's member only (#490). |
+| `sdp_atsg_pay_load` / `sdp_atsg_pay_checkout` | `pay.ts` | PUBLIC (token) | The `/sdp-atsg-pay` page: the token row alone decides first payment / missed payments (with `missed` rows for the page's notice) / update method / one fee; the checkout mints a Stripe Checkout (payment or setup mode) on the VFO Services account. |
+| `automation_SDP_ATSG_boldsign_event` | `signing.ts` | PUBLIC, service-role only | BoldSign hand-off from both webhooks: Signed / Completed / Declined / Expired / Revoked. |
+| `automation_SDP_ATSG_settle` | `settle.ts` | PUBLIC, service-role only | One paid row: invoice + receipt, the two transfers, the two revenue-share emails. Re-runnable. |
+| `automation_SDP_ATSG_sweep` | `sweep.ts` | PUBLIC, service-role only | The daily job: charges, settle retries, completion. |
+
 ### Tax Planner PORTAL (5th portal / 6th login type — added 2026-07-22)
 
 The NEW `tax_planner` caller role + portal (login `tax_planner_login`, above). A planner is **deny-by-default**: it may ONLY call `TAX_PLANNER_ALLOWED_ACTIONS` (`constants/role-gates.ts` — read the array, never a count written here, #402) — it SKIPS the tab gate and the ADMIN_ONLY gate, and every planner-callable tax handler ALSO carries an in-handler `denyIfNotPlannerClient`/`denyIfNotPlannerPlan` whole-GROUP-scope guard (`utils/tax-planner-ownership.ts`). Gotcha #257. Beyond the login, the portal adds 4 dispatched actions. See [../flows/tax-planning.md](../flows/tax-planning.md) + [04-auth-and-sessions.md](04-auth-and-sessions.md).

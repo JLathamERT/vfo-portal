@@ -6,6 +6,7 @@ import PlannerNavBar from '../components/tax-planner/PlannerNavBar'
 import ChangePasswordCard from '../components/shared/ChangePasswordCard'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import PlannerClientsList from '../components/tax-planner/PlannerClientsList'
+import SdpAtsgPanel from '../components/sdp-atsg/SdpAtsgPanel'
 import { usePortalTheme } from '../lib/theme'
 
 export default function TaxPlannerPortal() {
@@ -41,6 +42,8 @@ export default function TaxPlannerPortal() {
       )}
 
       {tab === 'planning' && <PlannerClientsList />}
+
+      {tab === 'sdp_atsg' && <SdpAtsgPanel mode="planner" />}
 
       {tab === 'settings' && (
         <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>

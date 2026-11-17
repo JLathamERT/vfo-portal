@@ -285,7 +285,7 @@ const accountingSubmenus = [
   },
 ]
 
-const MORE_TABS = ['member_overview', 'client_overview', 'growth_credits', 'faq_editor', 'tax_diagnostics', 'feature_switches', 'automation', 'accounting']
+const MORE_TABS = ['member_overview', 'client_overview', 'growth_credits', 'faq_editor', 'tax_diagnostics', 'sdp_atsg', 'feature_switches', 'automation', 'accounting']
 
 // The five key tabs, for the narrow-window menu and its current-tab label.
 const KEY_TABS = [
@@ -298,7 +298,7 @@ const KEY_TABS = [
 const ADMIN_TAB_LABELS = {
   ...Object.fromEntries(KEY_TABS.map(([key, label]) => [key, label])),
   member_overview: 'Member Overview', client_overview: 'Client Overview', growth_credits: 'Growth Credits',
-  faq_editor: 'FAQ Editor', tax_diagnostics: 'Tax Diagnostics', feature_switches: 'Feature Switches', staging: 'Staging',
+  faq_editor: 'FAQ Editor', tax_diagnostics: 'Tax Diagnostics', sdp_atsg: 'SDP ATSG', feature_switches: 'Feature Switches', staging: 'Staging',
   automation: 'Automation & Config', accounting: 'Accounting',
 }
 
@@ -317,6 +317,8 @@ export default function AdminNavBar({ session, activeTab, onSelect }) {
     ...(canSeeTab('growth_credits') ? [{ key: 'more_gc', options: [{ key: '__growth_credits', label: 'Growth Credits' }] }] : []),
     ...(canSeeTab('faq_editor') ? [{ key: 'more_faq', options: [{ key: '__faq_editor', label: 'FAQ Editor' }] }] : []),
     ...(canSeeTab('tax_diagnostics') ? [{ key: 'more_diag', options: [{ key: '__tax_diagnostics', label: 'Tax Diagnostics' }] }] : []),
+    // SDP - Advanced Tax Strategy Governance (2026-11-17): grantable in the Admin Editor.
+    ...(canSeeTab('sdp_atsg') ? [{ key: 'more_sdp', options: [{ key: '__sdp_atsg', label: 'SDP ATSG' }] }] : []),
     // Superadmin only, never grantable (feature_switches_* are SUPERADMIN_ONLY_ACTIONS).
     ...(session?.is_superadmin ? [{ key: 'more_switches', options: [{ key: '__feature_switches', label: 'Feature Switches' }] }] : []),
     // The two tabs with their own sub-options open sideways on hover instead of

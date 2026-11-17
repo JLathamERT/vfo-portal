@@ -11,6 +11,7 @@ import FaqEditorPanel from '../components/admin/FaqEditorPanel'
 import FeatureSwitchesPanel from '../components/admin/FeatureSwitchesPanel'
 import { IS_STAGING } from '../lib/environment'
 import TaxDiagnosticsPanel from '../components/admin/TaxDiagnosticsPanel'
+import SdpAtsgPanel from '../components/sdp-atsg/SdpAtsgPanel'
 import AdminEditor from '../components/admin/AdminEditor'
 import AdminSettings from '../components/admin/AdminSettings'
 import AutomationPanel from '../components/admin/AutomationPanel'
@@ -97,6 +98,7 @@ export default function AdminPortal() {
     if (t === 'growth_credits' && !canSeeTab('growth_credits')) return null
     if (t === 'faq_editor' && !canSeeTab('faq_editor')) return null
     if (t === 'tax_diagnostics' && !canSeeTab('tax_diagnostics')) return null
+    if (t === 'sdp_atsg' && !canSeeTab('sdp_atsg')) return null
     if (t === 'feature_switches' && !session?.is_superadmin) return null
     if (t === 'staging' && !IS_STAGING) return null
     if (t === 'members') return 'advisors'
@@ -115,6 +117,7 @@ export default function AdminPortal() {
   // Membership-fees deep link (?…&member=): the plan card to auto-open once.
   const [initialMemberNumber, setInitialMemberNumber] = useState(null)
   const [initialDiagnosticId, setInitialDiagnosticId] = useState(null)
+  const [initialAtsgCaseId, setInitialAtsgCaseId] = useState(null)
   const [showEditor, setShowEditor] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [allExperts, setAllExperts] = useState([])
@@ -189,6 +192,9 @@ export default function AdminPortal() {
     if (tab === 'client_overview' && !canSeeTab('client_overview')) return
     if (tab === 'growth_credits' && !canSeeTab('growth_credits')) return
     if (tab === 'tax_diagnostics' && !canSeeTab('tax_diagnostics')) return
+    if (tab === 'sdp_atsg' && !canSeeTab('sdp_atsg')) return
+    // An SDP ATSG bell carries its case id so the tab opens that client.
+    if (tab === 'sdp_atsg' && params.get('case')) setInitialAtsgCaseId(Number(params.get('case')))
     if (tab === 'feature_switches' && !session?.is_superadmin) return
     if (tab === 'staging' && !IS_STAGING) return
     // The diagnostic bell carries its row id so the queue can open that card.
@@ -437,6 +443,17 @@ export default function AdminPortal() {
     setShowSettings(false)
   }
 
+  function selectSdpAtsg() {
+    // Choosing the tab from the menu opens its client list, not the last case.
+    try { sessionStorage.removeItem('sdpAtsgOpenCase') } catch { /* storage off */ }
+    setActiveTab('sdp_atsg')
+    sessionStorage.setItem('adminActiveTab', 'sdp_atsg')
+    setInitialAtsgCaseId(null)
+    setNavClickCount(c => c + 1)
+    setShowEditor(false)
+    setShowSettings(false)
+  }
+
   function selectTaxDiagnostics() {
     setActiveTab('tax_diagnostics')
     sessionStorage.setItem('adminActiveTab', 'tax_diagnostics')
@@ -495,6 +512,7 @@ export default function AdminPortal() {
     if (tab === 'growth_credits') return selectGrowthCredits()
     if (tab === 'faq_editor') return selectFaqEditor()
     if (tab === 'tax_diagnostics') return selectTaxDiagnostics()
+    if (tab === 'sdp_atsg') return selectSdpAtsg()
     if (tab === 'feature_switches') return selectFeatureSwitches()
     if (tab === 'staging') return selectStaging()
   }
@@ -594,6 +612,10 @@ export default function AdminPortal() {
 
           {activeTab === 'staging' && StagingPanel && (
             <Suspense fallback={null}><StagingPanel session={session} /></Suspense>
+          )}
+
+          {activeTab === 'sdp_atsg' && canSeeTab('sdp_atsg') && (
+            <SdpAtsgPanel key={`sdp-${navClickCount}-${initialAtsgCaseId || ''}`} mode="admin" initialCaseId={initialAtsgCaseId} />
           )}
 
           {activeTab === 'tax_diagnostics' && canSeeTab('tax_diagnostics') && (

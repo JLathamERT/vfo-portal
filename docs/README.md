@@ -62,6 +62,7 @@ docs/
 │   ├── tax-fee-process.md            (the tax fee/pricing flow — one total in, derived amounts, the 3-payment split, the amend steps)
 │   ├── tax-intake.md                 (the member-run tax intake — Tax Planning Form, $500 card-or-ACH deposit on /tax-deposit-pay / waiver, routes A / B / Holistic, deposit docs, $250 team share, linked refund)
 │   ├── tax-diagnostic.md             (the public no-login VFO Tax Diagnostic + its admin confirm queue)
+│   ├── sdp-atsg.md                   (SDP - Advanced Tax Strategy Governance — SDP's own clients, agreement, retainer + Strategy Impact Fees, the sweep, kept apart from ours)
 │   ├── client-portal.md              (portal licensing L2 — member Send portal access, client Request an introduction, the Basic portal gate)
 │   ├── boldsign-webhook.md           (sign events → pipeline updates → chains)
 │   ├── stripe-webhook.md             (payment events → pipeline updates → chains)

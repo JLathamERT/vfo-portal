@@ -25,6 +25,9 @@ const SECTIONS = [
   { key: 'training', label: '90 Day Plan', pipeline: 'TRAINING' },
   { key: 'growth_credits', label: 'Growth Credits', pipeline: 'GROWTH_CREDITS' },
   { key: 'client_portal', label: 'Client Portal', pipeline: 'CLIENT_PORTAL' },
+  // SDP - Advanced Tax Strategy Governance (2026-11-17): SDP's own emails, kept in
+  // their own pipeline and section, apart from ours.
+  { key: 'sdp_atsg', label: 'SDP - Advanced Tax Strategy Governance', pipeline: 'SDP_ATSG' },
   // Miscellaneous — standalone, non-pipeline emails grouped together (each row
   // is an explicit [pipeline, template_name] ref rather than a whole pipeline).
   { key: 'misc', label: 'Miscellaneous', items: [

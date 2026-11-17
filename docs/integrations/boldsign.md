@@ -80,6 +80,8 @@ CEO signer is hardcoded to `Anton Anderson` / `aanderson@elitert.com` ([line 474
 
 BoldSign-side configuration of the webhook URL is **outside this codebase** — flagged for the user to verify. Two possible URLs are present in the source:
 
+**Events (2026-11-17):** the live and sandbox webhooks send Signed, Completed, **Declined, Expired and Revoked** — the last three were added by Jake on 2026-11-17; before that no decline event had ever reached us (#757).
+
 1. **Standalone function**: `https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/boldsign-webhook` ([file](C:/vfo-edge-functions/supabase/functions/boldsign-webhook/index.ts))
 2. **Embedded handler in admin-api**: `https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api` (gated by `body.event?.eventType` — [admin-api line 544](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts))
 
