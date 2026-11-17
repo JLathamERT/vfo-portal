@@ -391,6 +391,18 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
   const showKpi = isTax && !memberMode
   const [kpiOpen, setKpiOpen] = useState({})         // plan id -> open
   const [kpiByClient, setKpiByClient] = useState({}) // client id -> { loading, error, plans }
+  // The table scrolls sideways below its min width, so an open panel is sized to
+  // the table's VISIBLE width (and stuck to its left edge) to wrap on screen.
+  const [tableBox, setTableBox] = useState(null)
+  const [tableVisibleWidth, setTableVisibleWidth] = useState(null)
+  useEffect(() => {
+    if (!showKpi || !tableBox || typeof ResizeObserver === 'undefined') return
+    const measure = () => setTableVisibleWidth(tableBox.clientWidth || null)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(tableBox)
+    return () => ro.disconnect()
+  }, [showKpi, tableBox])
   function toggleKpi(client, planId) {
     const opening = !kpiOpen[planId]
     setKpiOpen(o => ({ ...o, [planId]: opening }))
@@ -456,7 +468,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
           {rows.map(({ client: c }) => <MemberClientCard key={c.id} c={c} onOpen={() => openProfile(c, {})} />)}
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
+        <div ref={setTableBox} style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
           <div style={{ minWidth: (memberMode ? MEMBER_MIN_WIDTH_BY_SECTION : MIN_WIDTH_BY_SECTION)[activeSection] }}>
             <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
               {showKpi && <span />}
@@ -649,6 +661,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
                     loading={!kpi || kpi.loading}
                     error={kpi?.error || ''}
                     plan={(kpi?.plans || []).find(p => String(p.plan_id) === String(planId)) || null}
+                    fitWidth={tableVisibleWidth}
                   />
                 )}
                 </Fragment>

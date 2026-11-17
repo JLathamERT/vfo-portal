@@ -8,6 +8,24 @@
 
 ---
 
+## 2026-11-16 (c) — Tax Plan KPI Tracker, feedback round 1: per-step day counts, Title Case tags, amounts due, the revenue split — by Paxton
+
+**Why.** Jake's Workbench card *Tax Plan KPI Tracker – feedback updates* (spec *feedback round 1*, ten items from his review of 2026-11-16 (b)): the panel had to stay clean at any width, its header had to line up, each step's count had to measure only that step, tags had to read consistently, money must not overflow, and the footer had to show how the fee splits.
+
+**Decided (Paxton, 16 Nov).** A step's day count starts at its first ticked task (Step 1 included) and the step counts need not add up to Total days. A reached step with nothing ticked reads *Not started*. *Split not set* when no share is set, never a 1/3 default. Specialist revenue in the split is deferred (its rows carry no client or plan id): Issue JLathamERT/vfo-edge-functions#571. After testing: the *Tax Plan Progress* title stays vertically centred, **VFO REV GENERATED stays** with REVENUE SPLIT under it (the spec had replaced it), Total fee and VFO REV GENERATED are big like the day counts, and **an unpaid step shows its amount DUE** in grey instead of $0.
+
+**Beyond the spec, forced by the system.** The Tax Planning table is at least 1074px wide and scrolls sideways, so the panel could not stay on screen at 390 / 768 / 1024 by itself: `ClientOverviewPanel.jsx` now measures the table's visible width (`ResizeObserver`) and the panel renders that wide, `position: sticky; left: 0`. A finished step with nothing ticked in its phase reads "—" (a finished step cannot be "Not started"). An implementation fee not stored yet is due as `total_fee` minus the retainer, from the fee invariants in `actions/tax/amend-fee.ts`; a stopped plan and a cancelled charge keep the muted $0. `atp_name` is empty on all five live Strategic Partner plans, so the partner shows with no name until it is filled in.
+
+**Backend.** Migration `20261116180000_tax_plan_kpis_feedback.sql` (functions only, no table): `create or replace` of `tax_plan_kpis` and `tax_plan_kpi_day`, same grants. Per-step start anchors (the earliest `completed_date` of the plan's answered rows in phase `Tax N - …`; both Tax 5 phases are step 5; a Step 6 strategy reads only its specialist's rows), day state `not_started`, Title Case labels, the step 0 reason *Holistic route*, one money line per tile with `due`, and a `split` object (shares, `split_label` with VFOS shown as VFO, `strategic_partner_share` parsed from text). The old keys stay (`program`, top-level `vfos_share`), so either side can ship first. No handler change: `tax_plan_kpis_load` passes the rows through. On the test site 2026-11-16 (security advisor at its baseline), on live at release.
+
+**Website.** `TaxPlanKpiPanel.jsx`: no program pill and no Direct / VFOS text; header Tax plan team / Current step / Total fee / Total days on one top line; no caption under a count; wrap-safe chips and money lines; footer VFO REV GENERATED, then REVENUE SPLIT; phone padding on `--vfo-gutter`. `ClientOverviewPanel.jsx`: the `fitWidth` measurement above.
+
+**Found while wrapping up.** The drift check fingerprints a function by `md5(pg_get_functiondef)`, comments included, so the test site's copy (applied from a trimmed paste) drifted from the file: re-applied from the file's exact text (gotcha #756).
+
+**Tested** on the test site against `vfo-admin-api-paxton` v5 (this branch, no backend code change) on the fake plans `10002-K01`…`K10`, with ticked tasks and splits added to K05 and K06 (rows tagged `KPI feedback test`). K06 reads Step 2 = 5 days (first Tax 2 tick 3 days after Tax 1 ended, ROI booked 5 days later) and every other step its own count; K05 shows a Strategic Partner split parsed from "1,500.00"; K10 *Split not set*; K01 *Not started* at Step 4 and *Impl. fee due* $10,000; K08 *Final retainer due* and *Impl. fee due*; K10 (stopped) keeps $0. No all-caps status on any test-site plan. Paxton clicked it through at 1440 / 1024 / 768 / 390, in the phone preview and in light and dark. **Not exercised:** a cancelled charge, a $30k-and-over plan with no `final_retainer_amount`, and real live plans (the migration waits for the release); added to Issue JLathamERT/vfo-edge-functions#569.
+
+---
+
 ## 2026-11-16 (b) — Tax Plan KPI Tracker: a chevron on every Client Overview tax plan — by Paxton
 
 **Why.** Jake's Workbench spec *Tax Plan KPI Tracker*: the team wants to see, per tax plan, where the client is on the tax path and how many days each step took, so step times can be tracked as KPIs.
