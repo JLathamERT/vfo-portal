@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 
 // Tax Plan KPI Tracker (2026-11-16, Jake's Workbench spec): the body under a plan
@@ -25,11 +25,13 @@ function fmtKpiMoney(v) {
 
 const bigNumber = { fontSize: '26px', fontWeight: 800, letterSpacing: '-0.5px' }
 
-// One day count: { state: value | na | dash | blocked | not_started, kind: between | in_step, days }.
+// One day count: { state: value | na | hidden | dash | blocked | not_started, kind: between | in_step, days }.
 // The number is the tile's headline; it measures only that step (the header's is the whole process).
+// 'hidden' (a plan without reliable step dates) shows nothing but keeps the line's height.
 function DayLine({ day }) {
   if (!day) return null
   const base = { fontSize: '12px', fontWeight: 600 }
+  if (day.state === 'hidden') return <span aria-hidden="true" style={{ display: 'inline-block', height: '29px' }} />
   if (day.state === 'na') return <span title={NA_TIP} style={{ ...base, fontWeight: 500, color: 'var(--vfo-faint)' }}>{NA_TEXT}</span>
   if (day.state === 'blocked') return <span style={{ ...base, color: '#e06717' }}>Awaiting deposit</span>
   if (day.state === 'not_started') return <span style={{ ...base, fontSize: '13px', color: 'var(--vfo-faint)' }}>Not started</span>
@@ -51,8 +53,9 @@ function StatusChip({ tone, children }) {
   )
 }
 
+// A tile fills the cell StepRow gives it; StepRow owns the widths and the gaps between tiles.
 const tileStyle = (tone) => ({
-  flex: '1 1 160px', minWidth: '150px', maxWidth: '230px',
+  flex: '1 1 auto', minWidth: 0,
   background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderTop: `3px solid ${(TONES[tone] || TONES.grey).rail}`,
   borderRadius: '10px', boxShadow: 'var(--vfo-shadow-card)', padding: '10px 12px',
   display: 'flex', flexDirection: 'column', gap: '6px',
@@ -79,7 +82,7 @@ function StepTile({ step, strategies, blockedReason }) {
   const isImpl = step.number === 6
   const subs = isImpl ? (strategies || []) : []
   return (
-    <div style={{ ...tileStyle(step.tone), ...(subs.length ? { flex: '2 1 300px', maxWidth: '480px' } : null) }}>
+    <div style={tileStyle(step.tone)}>
       {/* Step 0 is the plan page's Set Up phase (Deposit Paid). */}
       <span style={stepLabel}>{step.number === 0 ? 'Set Up' : `Step ${step.number}`}</span>
       <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-ink)', lineHeight: 1.25 }}>{step.name}</span>
@@ -97,6 +100,108 @@ function StepTile({ step, strategies, blockedReason }) {
               <span style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', overflowWrap: 'anywhere' }}>{s.specialist_name || '—'}</span>
               <StatusChip tone={s.tone}>{s.status}</StatusChip>
               {s.day && <span style={{ marginLeft: 'auto' }}><DayLine day={s.day} /></span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// The days between two steps: { from_step: 'start' | 0-5, to_step: 1-6, days, state: value | waiting | missing | hidden }.
+// Each gap has a fixed slot that is the ONLY space between two tiles, so its connector is
+// always centred between them; a gap with no count shows a faint dash. 'waiting' counts up to today, in amber.
+const SLOT_W = 44 // a slot between two tiles
+const SLOT_H = 18 // a slot above a tile, on a phone
+const TILE_MIN = 120 // the narrowest a tile gets before the row wraps
+const TILE_MIN_PHONE = 140
+function GapSlot({ gap, vertical, noDates }) {
+  const slot = vertical
+    ? { flex: 'none', height: `${SLOT_H}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }
+    : { flex: 'none', width: `${SLOT_W}px`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }
+  // No gap at all (Set Up's cell in the grid) leaves the slot empty; a gap with no count
+  // fills it with the faint dash the tiles use, and on a plan with no step dates
+  // (pre-12 Aug / migrated) the arrow alone (Paxton 2026-11-17).
+  if (!gap) return <div aria-hidden="true" style={slot} />
+  const noCount = gap.state === 'hidden'
+  const waiting = gap.state === 'waiting'
+  const text = noCount && noDates
+    ? null
+    : noCount || gap.state === 'missing' || gap.days === null || gap.days === undefined
+      ? '—'
+      : `${gap.days} ${gap.days === 1 ? 'day' : 'days'}`
+  const title = noCount
+    ? undefined
+    : waiting
+      ? `Waiting to start Step ${gap.to_step}`
+      : gap.from_step === 'start' ? 'Days from plan start to Step 1' : `Days between Step ${gap.from_step} and Step ${gap.to_step}`
+  // An arrow-only slot keeps an invisible label, so its arrow lines up with the others.
+  const label = <span style={{ fontSize: '10.5px', fontWeight: 600, lineHeight: 1.1, whiteSpace: 'nowrap', visibility: text === null ? 'hidden' : undefined }}>{text === null ? '—' : text}</span>
+  return (
+    <div title={title} style={{ ...slot, color: waiting ? '#e06717' : noCount ? 'var(--vfo-faint)' : 'var(--vfo-muted)' }}>
+      {vertical ? (
+        <>
+          <svg width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="M4 1v11M1 9l3 3 3-3" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          {label}
+        </>
+      ) : (
+        <>
+          {label}
+          <svg width="28" height="8" viewBox="0 0 28 8" aria-hidden="true"><path d="M2 4h22M20 1l4 3-4 3" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </>
+      )}
+    </div>
+  )
+}
+
+// The step tiles and the gaps between them, laid out from the row's measured width.
+// When every tile fits at TILE_MIN with its slots, they sit on ONE row at equal widths
+// (Implementation twice as wide when it lists strategies). Otherwise each step and the
+// slot that leads into it form one cell of an even grid, so a connector always wraps
+// with its own tile (on its left, or above it on a phone); Set Up's slot is empty.
+function StepRow({ plan, isPhone }) {
+  const ref = useRef(null)
+  const [width, setWidth] = useState(0)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return undefined
+    const measure = () => setWidth(el.clientWidth)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const steps = plan.steps || []
+  const strategies = plan.strategies || []
+  const gapFor = (n) => (plan.gaps || []).find(g => g.to_step === n)
+  const isWide = (s) => s.number === 6 && strategies.length > 0
+  const noDates = plan.timing_eligible === false
+  const units = steps.reduce((n, s) => n + (isWide(s) ? 2 : 1), 0)
+  const tile = (s) => <StepTile step={s} strategies={strategies} blockedReason={plan.timing_blocked_reason} />
+
+  const oneRow = !isPhone && width > 0 && width >= units * TILE_MIN + Math.max(steps.length - 1, 0) * SLOT_W
+  const cellMin = isPhone ? TILE_MIN_PHONE : TILE_MIN + SLOT_W
+  const cols = Math.max(1, Math.floor((width || cellMin) / cellMin))
+
+  return (
+    <div ref={ref}>
+      {oneRow ? (
+        <div style={{ display: 'flex', alignItems: 'stretch' }}>
+          {steps.map((s, i) => (
+            <Fragment key={s.number}>
+              {i > 0 && <GapSlot gap={gapFor(s.number)} noDates={noDates} />}
+              <div style={{ flex: `${isWide(s) ? 2 : 1} 1 0`, minWidth: 0, display: 'flex' }}>{tile(s)}</div>
+            </Fragment>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, rowGap: '10px', columnGap: isPhone ? '10px' : 0 }}>
+          {steps.map(s => (
+            <div key={s.number} style={{ display: 'flex', flexDirection: isPhone ? 'column' : 'row', minWidth: 0, gridColumn: isWide(s) && cols > 1 ? 'span 2' : undefined }}>
+              <GapSlot gap={s.number === 0 ? null : gapFor(s.number)} vertical={isPhone} noDates={noDates} />
+              {tile(s)}
             </div>
           ))}
         </div>
@@ -129,25 +234,28 @@ function RevenueSplit({ split }) {
   const parties = [
     { key: 'member', label: 'Member', amount: sp.member_share, who: sp.member_name },
     { key: 'planner', label: 'Tax planner', amount: sp.tax_planner_share, who: sp.team },
-    { key: 'vfo', label: 'VFO', amount: sp.vfos_share, who: null },
+    { key: 'vfos', label: 'VFOS', amount: sp.vfos_share, who: null },
     { key: 'partner', label: 'Strategic partner', amount: sp.strategic_partner_share, who: sp.atp_name },
   ].filter(p => hasShare(p.amount))
   const heading = { fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 700, letterSpacing: '0.4px', whiteSpace: 'nowrap' }
+  // The split type is the heading's sub-header, the parties the line under it.
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '6px 18px', minWidth: 0 }}>
-      <span style={heading}>REVENUE SPLIT</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+      <span style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
+        <span style={heading}>REVENUE SPLIT</span>
+        {parties.length > 0 && sp.split_label && <span style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', fontWeight: 500, minWidth: 0, overflowWrap: 'anywhere' }}>{sp.split_label}</span>}
+      </span>
       {parties.length === 0 ? (
         <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-faint)' }}>Split not set</span>
       ) : (
-        <>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '4px 18px', minWidth: 0 }}>
           {parties.map(p => (
             <span key={p.key} style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>
               {p.label} <span style={{ color: 'var(--vfo-ink)', fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtKpiMoney(p.amount)}</span>
               {p.who && <span style={{ fontWeight: 500 }}> ({p.who})</span>}
             </span>
           ))}
-          {sp.split_label && <span style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', fontWeight: 500, minWidth: 0, overflowWrap: 'anywhere' }}>{sp.split_label}</span>}
-        </>
+        </div>
       )}
     </div>
   )
@@ -189,12 +297,10 @@ export default function TaxPlanKpiPanel({ plan, loading = false, error = '', fit
         {plan.stopped && <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 10px', borderRadius: '999px', background: '#e74c3c', color: '#fff' }}>Stopped</span>}
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-        {(plan.steps || []).map(s => <StepTile key={s.number} step={s} strategies={plan.strategies} blockedReason={plan.timing_blocked_reason} />)}
-      </div>
+      <StepRow plan={plan} isPhone={isPhone} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed var(--vfo-border-strong)' }}>
-        <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0 10px', fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 700, letterSpacing: '0.4px' }}>VFO REV GENERATED <span style={{ ...bigNumber, color: 'var(--vfo-ink)', lineHeight: 1.1, whiteSpace: 'nowrap' }}>{fmtKpiMoney(plan.vfos_share)}</span></span>
+        <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0 10px', fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 700, letterSpacing: '0.4px' }}>VFOS REV GENERATED <span style={{ ...bigNumber, color: 'var(--vfo-ink)', lineHeight: 1.1, whiteSpace: 'nowrap' }}>{fmtKpiMoney(plan.vfos_share)}</span></span>
         <RevenueSplit split={plan.split} />
       </div>
     </div>
