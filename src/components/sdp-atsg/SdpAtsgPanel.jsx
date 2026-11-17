@@ -204,9 +204,18 @@ function AddClientCard({ onCancel, onCreated }) {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [sdpPeople, setSdpPeople] = useState({})
+  const [ownGroupId, setOwnGroupId] = useState(null)
+  const [cc, setCc] = useState([])
   useEffect(() => {
-    callApi('sdp_atsg_members_load').then(d => { setMembers(d.members || []); setGroups(d.groups || []) }).catch(e => setErr(e.message || 'Could not load members'))
+    callApi('sdp_atsg_members_load').then(d => {
+      setMembers(d.members || []); setGroups(d.groups || [])
+      setSdpPeople(d.sdp_people || {}); setOwnGroupId(d.own_group_id || null); setCc(d.default_cc || [])
+    }).catch(e => setErr(e.message || 'Could not load members'))
   }, [])
+  // The group the case will belong to: the planner's own, the admin's pick, or the only one.
+  const caseGroupId = ownGroupId || groupId || (groups.length === 1 ? groups[0].id : '')
+  const ccPeople = sdpPeople[String(caseGroupId)] || []
   const matches = useMemo(() => {
     const q = memberQuery.trim().toLowerCase()
     if (!q || member) return []
@@ -220,7 +229,7 @@ function AddClientCard({ onCancel, onCreated }) {
     if (groups.length > 1 && !groupId) return setErr('Pick the SDP group')
     setBusy(true)
     try {
-      const d = await callApi('sdp_atsg_case_create', { member_number: member.member_number, first_name: first, last_name: last, email, group_id: groupId ? Number(groupId) : undefined })
+      const d = await callApi('sdp_atsg_case_create', { member_number: member.member_number, first_name: first, last_name: last, email, group_id: groupId ? Number(groupId) : undefined, cc_emails: cc })
       onCreated(d.case_id)
     } catch (e) {
       setErr(e.message || 'Could not add the client')
@@ -259,7 +268,7 @@ function AddClientCard({ onCancel, onCreated }) {
       {groups.length > 1 && (
         <>
           <label style={labelStyle}>SDP group</label>
-          <select value={groupId} onChange={e => setGroupId(e.target.value)} style={{ ...inputStyle, marginBottom: '14px' }}>
+          <select value={groupId} onChange={e => { setGroupId(e.target.value); setCc([]) }} style={{ ...inputStyle, marginBottom: '14px' }}>
             <option value="">Pick a group</option>
             {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
@@ -273,11 +282,68 @@ function AddClientCard({ onCancel, onCreated }) {
       <label style={labelStyle}>Client email</label>
       <input type="email" value={email} onChange={e => setEmail(e.target.value)} style={{ ...inputStyle, marginBottom: '16px' }} />
 
+      {caseGroupId !== '' && (
+        <div style={{ marginBottom: '16px' }}>
+          <label style={labelStyle}>Cc on client emails</label>
+          <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', margin: '0 0 8px' }}>Everyone ticked is Cc'd on every email to this client. You can change this later on the client's page.</p>
+          <CcPicker people={ccPeople} value={cc} onChange={setCc} disabled={busy} />
+        </div>
+      )}
+
       {err && <div style={{ color: '#ef4444', fontSize: '12.5px', marginBottom: '12px' }}>{err}</div>}
       <div style={{ display: 'flex', gap: '10px' }}>
         <button type="button" onClick={save} disabled={busy} style={primaryBtn(busy)}>{busy ? 'Adding…' : 'Add Client'}</button>
         <button type="button" onClick={onCancel} disabled={busy} style={{ ...ghostBtn('#6b7280'), padding: '8px 16px' }}>Cancel</button>
       </div>
+    </div>
+  )
+}
+
+// ─── Who at SDP is Cc'd on the client's emails (Jake 2026-11-17) ───────────
+// Everyone at the case's group (its active planners and team members); tick as
+// many as you like. The server keeps only people on that list.
+function CcPicker({ people, value, onChange, disabled }) {
+  if (!people.length) return <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>No active planners or team members in this group.</div>
+  const on = new Set(value)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      {people.map(p => (
+        <label key={p.email} style={{ display: 'flex', alignItems: 'center', gap: '9px', fontSize: '13px', color: 'var(--vfo-ink)', cursor: disabled ? 'default' : 'pointer' }}>
+          <input type="checkbox" checked={on.has(p.email)} disabled={disabled}
+            onChange={e => onChange(e.target.checked ? [...value, p.email] : value.filter(x => x !== p.email))} />
+          <span><b>{p.name}</b> <span style={{ color: 'var(--vfo-muted)' }}>{p.email}{p.role ? ` · ${p.role}` : ''}</span></span>
+        </label>
+      ))}
+    </div>
+  )
+}
+
+function CcCard({ c, people, busy, act, open, onToggle }) {
+  const saved = c.sdp_cc_emails || []
+  const [picked, setPicked] = useState(saved)
+  useEffect(() => { setPicked(c.sdp_cc_emails || []) }, [c.sdp_cc_emails])
+  const names = people.filter(p => saved.includes(p.email)).map(p => p.name)
+  const changed = picked.length !== saved.length || picked.some(e => !saved.includes(e))
+  return (
+    <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', padding: '14px 18px', marginBottom: '10px', fontFamily: 'Inter, sans-serif' }}>
+      <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Cc on client emails</span>
+        <span style={{ flex: 1 }} />
+        <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{names.length ? names.join(', ') : 'Nobody from SDP'}</span>
+        <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
+      </div>
+      {open && (
+        <div style={{ marginTop: '12px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', margin: '0 0 10px' }}>Everyone ticked is Cc'd on every email to this client, from the next one sent. The member is always Cc'd.</p>
+          <CcPicker people={people} value={picked} onChange={setPicked} disabled={!!busy} />
+          {changed && (
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+              <button type="button" disabled={!!busy} onClick={() => act('sdp_atsg_save_cc', { emails: picked }, 'Cc list saved.')} style={primaryBtn(busy === 'sdp_atsg_save_cc')}>{busy === 'sdp_atsg_save_cc' ? 'Saving…' : 'Save'}</button>
+              <button type="button" disabled={!!busy} onClick={() => setPicked(saved)} style={{ ...ghostBtn('#6b7280'), padding: '8px 16px' }}>Cancel</button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -485,6 +551,8 @@ function CaseView({ caseId, mode, onBack }) {
       {msg && <div style={{ ...card, padding: '11px 16px', marginBottom: '10px', fontSize: '13px', color: msg.tone === 'error' ? '#ef4444' : msg.tone === 'amber' ? '#b45309' : 'var(--vfo-success-text)' }}>{msg.text}</div>}
 
       <PricingSplit c={c} d={d} retainer={retainer} fees={fees} busy={busy} act={act} open={isOpen('split', false)} onToggle={() => toggle('split', false)} />
+
+      <CcCard c={c} people={d.sdp_people || []} busy={busy} act={act} open={isOpen('cc', false)} onToggle={() => toggle('cc', false)} />
 
       {phaseCard('s1', 1, 'ATSG Advisory Retainer', s1State, !s1Done, statePill(s1State, s1Steps.filter(Boolean).length, 3), (
         <>

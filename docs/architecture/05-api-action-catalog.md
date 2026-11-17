@@ -959,14 +959,15 @@ The **Tax Planner Share** payout leg (no dedicated action — chained inside `au
 
 ### SDP - Advanced Tax Strategy Governance (`actions/sdp-atsg/`, added 2026-11-17)
 
-SDP's own clients, kept apart from ours: [flows/sdp-atsg.md](../flows/sdp-atsg.md). Every authed action is on `ADMIN_ONLY_ACTIONS`, `TAB_ACTIONS.sdp_atsg` and `TAX_PLANNER_ALLOWED_ACTIONS`, and every handler re-checks the caller with `resolveAtsgCaller` (an admin, or a planner / team member of an `atsg_enabled` group) and the case with `loadCaseFor` (a planner reaches only their group's cases, #257).
+SDP's own clients, kept apart from ours: [flows/sdp-atsg.md](../flows/sdp-atsg.md). Every authed action is on `ADMIN_ONLY_ACTIONS`, `TAB_ACTIONS.sdp_atsg` and `TAX_PLANNER_ALLOWED_ACTIONS`, and every handler re-checks the caller with `resolveAtsgCaller` (an admin, or — while the `sdp_atsg_planners` switch is On — a planner / team member of an `atsg_enabled` group) and the case with `loadCaseFor` (a planner reaches only their group's cases, #257).
 
 | Action | File | Role | Notes |
 |---|---|---|---|
 | `sdp_atsg_access_load` | `cases.ts` | AUTH (admin / planner) | `{enabled}` — whether the planner portal shows the tab. |
 | `sdp_atsg_cases_load` / `sdp_atsg_case_load` | `cases.ts` | AUTH (as above) | The client list with progress; one case with its payments, the strategy list and the member's payout-setup state. |
-| `sdp_atsg_members_load` | `cases.ts` | AUTH (as above) | The member picker for + Add Client. |
-| `sdp_atsg_case_create` | `cases.ts` | AUTH (as above) | A new case under a member; `client_ref` `<member>-SDPnnn`. |
+| `sdp_atsg_members_load` | `cases.ts` | AUTH (as above) | The member picker for + Add Client, plus `sdp_people` (everyone at each group the caller can add for) and `default_cc`. |
+| `sdp_atsg_case_create` | `cases.ts` | AUTH (as above) | A new case under a member; `client_ref` `<member>-SDPnnn`; `cc_emails` kept only where they name someone at the case's group. |
+| `sdp_atsg_save_cc` | `cases.ts` | AUTH (as above) | **2026-11-17.** The case's *Cc on client emails* list (`{case_id, emails}`), filtered to the group's active planners and team members. |
 | `sdp_atsg_save_retainer` | `cases.ts` | AUTH (as above) | The yearly figure + frequency; refused once the agreement is sent. |
 | `sdp_atsg_agreement_preview` / `sdp_atsg_send_agreement` | `agreement.ts` | AUTH (as above) | The PDF as it would be sent / the BoldSign send (claims `agreement_sent_at` first; client then CEO; the client's signing email). |
 | `sdp_atsg_resend_payment_email` | `pay.ts` | AUTH (as above) | Re-sends the first-payment email until payment 1 is paid or processing. |

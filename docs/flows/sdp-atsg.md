@@ -1,6 +1,6 @@
 # SDP - Advanced Tax Strategy Governance (ATSG)
 
-> Built 2026-11-17 (Jake). Code: `vfo-edge-functions` `supabase/functions/vfo-admin-api/actions/sdp-atsg/*`, website `src/components/sdp-atsg/SdpAtsgPanel.jsx` + `src/pages/SdpAtsgPayPage.jsx`. Migrations `20261117120000_sdp_atsg.sql` (tables, column, agreement, bells, job) and `20261117120100_sdp_atsg_emails.sql` (the 10 emails). Verify against the code before relying on a detail here (#399).
+> Built 2026-11-17 (Jake). Code: `vfo-edge-functions` `supabase/functions/vfo-admin-api/actions/sdp-atsg/*`, website `src/components/sdp-atsg/SdpAtsgPanel.jsx` + `src/pages/SdpAtsgPayPage.jsx`. Migrations `20261117120000_sdp_atsg.sql` (tables, column, agreement, bells, job) and `20261117120100_sdp_atsg_emails.sql` (the 10 emails), then `20261117150000_sdp_atsg_switch_and_cc.sql` (the planner switch row, Off; the per-case Cc column). Verify against the code before relying on a detail here (#399).
 
 ## What it is
 
@@ -23,6 +23,8 @@ A one-off track for the tax planning partner **SDP Personalized Planning**. SDP'
 
 Every handler calls `resolveAtsgCaller` (admin, or a planner of an `atsg_enabled` group, else 403) and `loadCaseFor` (a planner reaches only their group's cases) — the allowlists alone are not the fence (#257). The authed actions are in `ADMIN_ONLY_ACTIONS` (never a member's) and `TAX_PLANNER_ALLOWED_ACTIONS`. Live: `atsg_enabled` is on for SDP Personalized Planning only; on the test site every test group has it (`utils/staging-test-member.ts`).
 
+**The planner switch `sdp_atsg_planners`** (More ▸ Feature Switches, *SDP ATSG for SDP planners*, Off / On only, 2026-11-17): while it is Off, `resolveAtsgCaller` refuses every planner and team member, so SDP sees no tab and cannot call any SDP action; admins are never affected. A missing row reads as Off. Released Off on live (Jake: SDP does not see it yet); On on the test site.
+
 ## The money
 
 - Every payment lands on the **VFO Services** Stripe account (`STRIPE_ACCOUNT_PRIMARY`; sandbox per `atsgSandbox`).
@@ -34,7 +36,8 @@ Every handler calls `resolveAtsgCaller` (admin, or a planner of an `atsg_enabled
 
 | Step | Action / trigger | What happens |
 |---|---|---|
-| Add client | `sdp_atsg_case_create` | A case row, status `new`. Member picked from `sdp_atsg_members_load`. |
+| Add client | `sdp_atsg_case_create` | A case row, status `new`. Member picked from `sdp_atsg_members_load`, which also lists everyone at the group for the case's **Cc on client emails** ticks (a planner adding it starts ticked; an admin's case starts with nobody). |
+| Cc list | `sdp_atsg_save_cc` | The case's *Cc on client emails* card: tick or untick anyone at the group, any time; the next email onward uses it. |
 | Retainer | `sdp_atsg_save_retainer` | `retainer_amount` + `frequency`; editable until the agreement is sent. |
 | Preview | `sdp_atsg_agreement_preview` | The PDF exactly as it would be sent. |
 | Send agreement | `sdp_atsg_send_agreement` (claims `agreement_sent_at` first) | Renders `agreement_templates` pipeline `SDP_ATSG` with html2pdf (Letter, margin 0, #535), sends through BoldSign with the client first and the CEO second (EnableSigningOrder), emails `SDP_ATSG_agreementsent` with the embedded signing link. BoldSign sends no emails of its own. Status `agreement_sent`. |
@@ -58,7 +61,7 @@ Every handler calls `resolveAtsgCaller` (admin, or a planner of an `atsg_enabled
 
 ## Emails and bells
 
-- **10 emails**, pipeline `SDP_ATSG`, all Send mode, in their own section of the Email Templates tab. Client emails go To the client, Cc the member and SDP (the group contact + whoever opened the case). Each subject ends with the person's name (`withSubjectName`, #679). "SDP Personalized Planning" is fixed text, never a placeholder.
+- **10 emails**, pipeline `SDP_ATSG`, all Send mode, in their own section of the Email Templates tab. Client emails go To the client, Cc the member and the people ticked on the case (`sdp_atsg_cases.sdp_cc_emails`). Only the group's **active planners and team members, as individuals,** can be ticked (`loadSdpPeople`; never the group's contact address, Jake 2026-11-17), the server keeps only names on that list (`pickSdpCc`), and someone who leaves the group stops being Cc'd at the next send. The group contact still gets SDP's revenue-share emails. Each subject ends with the person's name (`withSubjectName`, #679). "SDP Personalized Planning" is fixed text, never a placeholder.
 - **7 bells**, Jake only, in their own colour (fuchsia `#c026d3`): client signed, CEO countersigned, agreement declined / expired / revoked, payment received, payment failed, transfer failed, member share held. A failure / held / transfer bell's title ends with the payment's label, so a second event on the same case is not de-duplicated away while the first is unread (#758).
 
 ## Testing it on the test site

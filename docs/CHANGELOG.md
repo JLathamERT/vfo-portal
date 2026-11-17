@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-17 (c) — SDP ATSG: a switch for SDP's planners, and who at SDP is Cc'd per case — by Jake
+
+**Why.** Caught at the release of the entry below, before anything reached live (no migration applied, no button pressed): Jake does not want SDP's people to see ATSG yet, and wants to choose who at SDP is Cc'd on each client's emails.
+
+**Planner switch `sdp_atsg_planners`** (More ▸ Feature Switches, *SDP ATSG for SDP planners*, Off / On only). Off: `resolveAtsgCaller` refuses every planner and team member, so SDP sees no tab and cannot call any SDP action; admins keep More ▸ SDP ATSG. Released Off on live, On on the test site. The card's confirm dialogs name SDP's planners rather than "every member" (`onConfirm` / `offConfirm` on a card). SDP's Cc on client emails stays while it is Off (Jake).
+
+**Per-case Cc.** + Add Client lists everyone at the case's group (its active planners and team members, as individuals — never the group contact address) with a tick each; a planner adding a case starts ticked, an admin's case starts with nobody. The case screen's new *Cc on client emails* card edits it any time (`sdp_atsg_save_cc`, new). The ticked people replace the old automatic SDP Cc (the group contact + whoever opened the case); the member is always Cc'd and the group contact still gets SDP's revenue-share emails. New column `sdp_atsg_cases.sdp_cc_emails`; the server keeps only people on the group's list, and someone who leaves the group stops being Cc'd at the next send.
+
+**Tested on the test site (Jake):** the switch Off (planner: no tab, server 403s) and back On; Add Client's list and default tick; the case card's save; an agreement email Cc'ing the member + the two ticked people and not the group contact. Migration `20261117150000_sdp_atsg_switch_and_cc.sql` (test site; live at the release, after the two SDP migrations). Action count 677 → **678**.
 ## 2026-11-17 (b) — Tax Plan KPI Tracker, feedback round 2: the days between steps, nothing under the steps of an undated plan, VFOS labels — by Paxton
 
 **Why.** Paxton's Workbench card *Tax Plan KPI Tracker – feedback round 2* (spec *feedback round 2*, for Jake to confirm): show how long the client waited between one step ending and the next starting, stop repeating the "dates unavailable" note under every step of a plan without reliable step dates, and call the VFOS party VFOS.
