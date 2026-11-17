@@ -8,7 +8,7 @@
 
 ---
 
-## 2026-11-17 (b) — SDP ATSG: a switch for SDP's planners, and who at SDP is Cc'd per case — by Jake
+## 2026-11-17 (c) — SDP ATSG: a switch for SDP's planners, and who at SDP is Cc'd per case — by Jake
 
 **Why.** Caught at the release of the entry below, before anything reached live (no migration applied, no button pressed): Jake does not want SDP's people to see ATSG yet, and wants to choose who at SDP is Cc'd on each client's emails.
 
@@ -17,6 +17,23 @@
 **Per-case Cc.** + Add Client lists everyone at the case's group (its active planners and team members, as individuals — never the group contact address) with a tick each; a planner adding a case starts ticked, an admin's case starts with nobody. The case screen's new *Cc on client emails* card edits it any time (`sdp_atsg_save_cc`, new). The ticked people replace the old automatic SDP Cc (the group contact + whoever opened the case); the member is always Cc'd and the group contact still gets SDP's revenue-share emails. New column `sdp_atsg_cases.sdp_cc_emails`; the server keeps only people on the group's list, and someone who leaves the group stops being Cc'd at the next send.
 
 **Tested on the test site (Jake):** the switch Off (planner: no tab, server 403s) and back On; Add Client's list and default tick; the case card's save; an agreement email Cc'ing the member + the two ticked people and not the group contact. Migration `20261117150000_sdp_atsg_switch_and_cc.sql` (test site; live at the release, after the two SDP migrations). Action count 677 → **678**.
+## 2026-11-17 (b) — Tax Plan KPI Tracker, feedback round 2: the days between steps, nothing under the steps of an undated plan, VFOS labels — by Paxton
+
+**Why.** Paxton's Workbench card *Tax Plan KPI Tracker – feedback round 2* (spec *feedback round 2*, for Jake to confirm): show how long the client waited between one step ending and the next starting, stop repeating the "dates unavailable" note under every step of a plan without reliable step dates, and call the VFOS party VFOS.
+
+**Decided (Paxton, 17 Nov).** The days between steps are shown, as connectors between the tiles (reverses round 1's "gaps aren't shown anywhere"). A plan that is not timing-eligible keeps its Total days note and shows nothing under its steps. During testing: the footer heading is **VFOS REV GENERATED** (the spec had limited "VFOS" to the split party), a gap with no count shows a faint "—" with its arrow, the arrow ALONE on a plan with no step dates, and the split type is a sub-header under REVENUE SPLIT with the parties on the line below. **Open for Jake:** are step overlaps normal, or should they be flagged on screen? For now an overlap is "0 days" plus a console warning.
+
+**Beyond the spec, forced by the layout.** Round 1's 10px row gap put each connector against one tile, and widening a unit by the connector pushed Step 6 onto a second row at 1440. Every gap now has a fixed 44px slot that is the only space between two tiles, and the panel measures its row: all seven tiles on one row at equal widths when they fit at 120px (1104px; 1224px when Step 6 lists strategies), else an even grid where a connector wraps with its own tile (on its left, above it on a phone).
+
+**Backend.** Migration `20261117140000_tax_plan_kpis_gaps.sql` (functions only, no table, same grants): `create or replace` of `tax_plan_kpis` and `tax_plan_kpi_day`. Adds `gaps[]` (`{from_step, to_step, days, state}`, `value` / `waiting` / `missing` / `hidden`, ends clamped to the plan start so steps + gaps = Total days on clean data), the `hidden` day mode for steps and strategies of an ineligible plan (Total days keeps `na`), an overlap warning, and `split_label` = `split_type` as stored. Old keys stay, so the new page works on the old function (no `gaps` = no connectors). A connector into a step finished before a stop reads "—", not hidden (fixed during testing). No handler change. `scripts/tax-plan-kpis-check.sql` gains a second read-only check (every gap and step day `hidden`, Total days `na`, on every ineligible plan). On the test site 2026-11-17 (applied twice from the file's exact text, the second for the stop fix; md5 matches the file, advisor at baseline), on live at release. The file was renamed from `20261117120000_…` when #577 took that version (gotcha #761).
+
+**Website.** `TaxPlanKpiPanel.jsx`: `GapSlot` + `StepRow` (the slots, the measured one-row / even-grid layout), `DayLine` `hidden` (an empty line of the value's height), VFOS REV GENERATED, the VFOS split party, the split type as REVENUE SPLIT's sub-header.
+
+**Release order.** Website first, then the migration on live: the old page on the new function would read "—" on every step of an ineligible plan for the minutes between.
+
+**Tested** on the test site against `vfo-admin-api-paxton` v5 (no backend code change) on the fake plans `10002-K01`…`K10`, one Tax 4 tick added to K05 before its retainer cleared (tagged `KPI round 2 test`). K06 reads Step 2 = 5 days with 3 days from Step 1 to Step 2, and its step days (33) + gaps (28) = Total days (61); K01 an amber 23-day wait before Step 4 (Not started); K05 0 days between Step 3 and Step 4 plus the overlap warning; K02 (awaiting deposit) and K07 / K10 (stopped) no counts; K08 / K09 (ineligible) arrows only and Total days unchanged; the check script PASS. Paxton clicked it through at 1440 / 1024 / 768 / 390, in the phone preview and in light and dark. **Not exercised:** real live plans (the migration waits for the release) and how often steps overlap on them; added to Issue JLathamERT/vfo-edge-functions#569.
+
+---
 
 ## 2026-11-17 — SDP - Advanced Tax Strategy Governance: SDP's own clients, agreement, retainer, Strategy Impact Fees — by Jake
 
