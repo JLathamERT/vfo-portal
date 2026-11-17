@@ -84,6 +84,17 @@ const CARDS = [
     off: 'VFO Services runs every new tax case. Existing Direct cases carry on unchanged.',
     note: 'Chosen on the tax client form ("Who runs this case?"), from the Tax Diagnostic tab or MSM.',
   },
+  {
+    id: 'sdp_atsg_planners',
+    keys: ['sdp_atsg_planners'],
+    title: 'SDP ATSG for SDP planners',
+    on: [
+      [null, 'SDP\'s tax planners and team members see the "SDP - Advanced Tax Strategy Governance" tab in their portal and can add and run their own clients.'],
+    ],
+    off: 'SDP\'s planners and team members see no tab and cannot open SDP cases. Admins still run SDP ATSG from More ▸ SDP ATSG, and its client emails still Cc SDP.',
+    onConfirm: 'ON for SDP\'s tax planners and team members, starting immediately.',
+    offConfirm: 'OFF for SDP\'s tax planners and team members. Admins keep More ▸ SDP ATSG.',
+  },
 ]
 
 // Switches that are permanently ON and must not be flipped from this tab (Jake):
@@ -152,10 +163,10 @@ export default function FeatureSwitchesPanel() {
   async function setMode(card, mode, current) {
     if (mode === current || busyCard) return
     const what = mode === 'on'
-      ? 'ON for EVERY member, starting immediately.'
+      ? (card.onConfirm || 'ON for EVERY member, starting immediately.')
       : mode === 'test'
         ? (card.testConfirm || `OFF for everyone except the test member (${testMember}).`)
-        : 'OFF for everyone, including the test member.'
+        : (card.offConfirm || 'OFF for everyone, including the test member.')
     if (!window.confirm(`"${card.title}"\n\nThis turns it ${what}\n\nContinue?`)) return
     setBusyCard(card.id)
     try {
