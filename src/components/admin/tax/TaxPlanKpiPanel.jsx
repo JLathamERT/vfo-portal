@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
+import { useIsPhone } from '../../../lib/useMediaQuery'
 
 // Tax Plan KPI Tracker (2026-11-16, Jake's Workbench spec): the body under a plan
 // row on Client Overview > Tax Planning. Every rule (statuses, day counts, fee
-// path, deposit waiver) is computed by the SQL function tax_plan_kpis behind
-// tax_plan_kpis_load; this only formats and lays it out.
+// path, deposit waiver, the split) is computed by the SQL function tax_plan_kpis
+// behind tax_plan_kpis_load; this only formats and lays it out.
 
 const TONES = {
   green: { bg: 'rgba(27,146,84,0.13)', color: 'var(--vfo-success-text)', rail: '#1b9254' },
@@ -22,39 +23,23 @@ function fmtKpiMoney(v) {
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: cents ? 2 : 0 })
 }
 
-const fmtDays = (n) => (n === 1 ? '1 day' : `${n} days`)
+const bigNumber = { fontSize: '26px', fontWeight: 800, letterSpacing: '-0.5px' }
 
-const stepName = (n) => (String(n) === '0' ? 'Set Up' : `Step ${n}`)
-
-// What a day count measures, under the number: "Set Up to Step 1" for a finished
-// step (label "0–1"), "so far in Step 4" for the step the plan is in now.
-function dayCaption(day) {
-  if (day.label === 'total') return 'total'
-  if (day.kind === 'in_step') return `so far in ${stepName(day.label)}`
-  const [a, b] = String(day.label).split('–')
-  return b != null ? `${stepName(a)} to ${stepName(b)}` : stepName(a)
-}
-
-// One day count: { state: value | na | dash | blocked, kind: between | in_step, label, days }.
-// size 'lg' (step tiles, header) shows the number as the tile's headline; 'sm' is inline.
-function DayLine({ day, size = 'sm' }) {
+// One day count: { state: value | na | dash | blocked | not_started, kind: between | in_step, days }.
+// The number is the tile's headline; it measures only that step (the header's is the whole process).
+function DayLine({ day }) {
   if (!day) return null
   const base = { fontSize: '12px', fontWeight: 600 }
   if (day.state === 'na') return <span title={NA_TIP} style={{ ...base, fontWeight: 500, color: 'var(--vfo-faint)' }}>{NA_TEXT}</span>
   if (day.state === 'blocked') return <span style={{ ...base, color: '#e06717' }}>Awaiting deposit</span>
-  if (day.state !== 'value') return <span style={{ ...base, color: 'var(--vfo-faint)', fontSize: size === 'lg' ? '20px' : '12px' }}>—</span>
+  if (day.state === 'not_started') return <span style={{ ...base, fontSize: '13px', color: 'var(--vfo-faint)' }}>Not started</span>
+  if (day.state !== 'value') return <span style={{ ...base, color: 'var(--vfo-faint)', fontSize: '20px' }}>—</span>
   // A step still running counts up, in amber; a finished one reads in ink.
   const color = day.kind === 'in_step' ? '#e06717' : 'var(--vfo-ink)'
-  if (size === 'sm') {
-    return <span style={{ ...base, color }}>{fmtDays(day.days)}{day.label === 'total' ? '' : ` · ${dayCaption(day)}`}</span>
-  }
   return (
-    <span style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 1.1 }}>
-      <span style={{ color, whiteSpace: 'nowrap' }}>
-        <span style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.5px' }}>{day.days}</span>
-        <span style={{ fontSize: '12px', fontWeight: 700, marginLeft: '4px' }}>{day.days === 1 ? 'day' : 'days'}</span>
-      </span>
-      {day.label !== 'total' && <span style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--vfo-muted)', marginTop: '2px' }}>{dayCaption(day)}</span>}
+    <span style={{ color, whiteSpace: 'nowrap', lineHeight: 1.1 }}>
+      <span style={bigNumber}>{day.days}</span>
+      <span style={{ fontSize: '12px', fontWeight: 700, marginLeft: '4px' }}>{day.days === 1 ? 'day' : 'days'}</span>
     </span>
   )
 }
@@ -62,7 +47,7 @@ function DayLine({ day, size = 'sm' }) {
 function StatusChip({ tone, children }) {
   const t = TONES[tone] || TONES.grey
   return (
-    <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: t.bg, color: t.color, whiteSpace: 'nowrap', alignSelf: 'flex-start', letterSpacing: '0.2px' }}>{children}</span>
+    <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: t.bg, color: t.color, alignSelf: 'flex-start', maxWidth: '100%', overflowWrap: 'anywhere', letterSpacing: '0.2px' }}>{children}</span>
   )
 }
 
@@ -74,14 +59,16 @@ const tileStyle = (tone) => ({
 })
 const stepLabel = { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }
 
+// One short label and its amount; on a narrow tile the amount drops to the next line.
+// An unpaid step shows what is due, muted ("—" while the amount is not set yet).
 function MoneyLines({ money }) {
   if (!money || money.length === 0) return null
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px', minWidth: 0 }}>
       {money.map(m => (
-        <div key={m.label} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '11px' }}>
-          <span style={{ color: 'var(--vfo-muted)', fontWeight: 600, letterSpacing: '0.2px' }}>{m.label}</span>
-          <span style={{ fontWeight: 700, color: m.muted ? 'var(--vfo-faint)' : 'var(--vfo-ink)', whiteSpace: 'nowrap' }}>{fmtKpiMoney(m.amount)}</span>
+        <div key={m.label} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0 8px', minWidth: 0, fontSize: '11px' }}>
+          <span style={{ color: 'var(--vfo-muted)', fontWeight: 600, letterSpacing: '0.2px', minWidth: 0 }}>{m.label}</span>
+          <span style={{ fontWeight: 700, color: m.muted ? 'var(--vfo-faint)' : 'var(--vfo-ink)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>{m.due && (m.amount === null || m.amount === undefined) ? '—' : fmtKpiMoney(m.amount)}</span>
         </div>
       ))}
     </div>
@@ -97,7 +84,7 @@ function StepTile({ step, strategies, blockedReason }) {
       <span style={stepLabel}>{step.number === 0 ? 'Set Up' : `Step ${step.number}`}</span>
       <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-ink)', lineHeight: 1.25 }}>{step.name}</span>
       <StatusChip tone={step.tone}>{step.status}</StatusChip>
-      {step.day && <div style={{ marginTop: '2px' }}><DayLine day={step.day} size="lg" /></div>}
+      {step.day && <div style={{ marginTop: '2px' }}><DayLine day={step.day} /></div>}
       {step.reason && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{step.reason}</span>}
       {step.number === 0 && blockedReason && <span style={{ fontSize: '12px', fontWeight: 600, color: '#e06717' }}>{blockedReason}</span>}
       {step.number === 0 && step.paid_date && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Paid {fmtShortDate(step.paid_date)}</span>}
@@ -105,11 +92,11 @@ function StepTile({ step, strategies, blockedReason }) {
       {subs.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
           {subs.map(s => (
-            <div key={s.id} style={{ border: '1px solid var(--vfo-border-soft)', borderLeft: `3px solid ${(TONES[s.tone] || TONES.grey).rail}`, borderRadius: '8px', padding: '6px 9px', background: 'var(--vfo-input)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 10px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{s.strategy || 'Strategy'}</span>
-              <span style={{ fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{s.specialist_name || '—'}</span>
+            <div key={s.id} style={{ border: '1px solid var(--vfo-border-soft)', borderLeft: `3px solid ${(TONES[s.tone] || TONES.grey).rail}`, borderRadius: '8px', padding: '6px 9px', background: 'var(--vfo-input)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 10px', minWidth: 0 }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--vfo-ink)', overflowWrap: 'anywhere' }}>{s.strategy || 'Strategy'}</span>
+              <span style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', overflowWrap: 'anywhere' }}>{s.specialist_name || '—'}</span>
               <StatusChip tone={s.tone}>{s.status}</StatusChip>
-              {s.day && <span style={{ marginLeft: 'auto' }}><DayLine day={s.day} size="lg" /></span>}
+              {s.day && <span style={{ marginLeft: 'auto' }}><DayLine day={s.day} /></span>}
             </div>
           ))}
         </div>
@@ -123,17 +110,53 @@ function fmtShortDate(iso) {
   return y && m && d ? `${m}/${d}/${y}` : String(iso)
 }
 
-const metaLabel = { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }
+// Every header label sits on one top line (fixed line height), its value below.
+const metaLabel = { fontSize: '10px', lineHeight: '14px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }
 function Meta({ label, children }) {
   return (
     <span style={{ display: 'inline-flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
       <span style={metaLabel}>{label}</span>
-      <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--vfo-ink)' }}>{children}</span>
+      <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--vfo-ink)', lineHeight: 1.25 }}>{children}</span>
     </span>
   )
 }
 
-export default function TaxPlanKpiPanel({ plan, loading = false, error = '' }) {
+const hasShare = (v) => Number.isFinite(Number(v)) && v !== null && v !== '' && Number(v) > 0
+
+// The agreed split of the whole fee, as stored on the plan (not what has been collected).
+function RevenueSplit({ split }) {
+  const sp = split || {}
+  const parties = [
+    { key: 'member', label: 'Member', amount: sp.member_share, who: sp.member_name },
+    { key: 'planner', label: 'Tax planner', amount: sp.tax_planner_share, who: sp.team },
+    { key: 'vfo', label: 'VFO', amount: sp.vfos_share, who: null },
+    { key: 'partner', label: 'Strategic partner', amount: sp.strategic_partner_share, who: sp.atp_name },
+  ].filter(p => hasShare(p.amount))
+  const heading = { fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 700, letterSpacing: '0.4px', whiteSpace: 'nowrap' }
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '6px 18px', minWidth: 0 }}>
+      <span style={heading}>REVENUE SPLIT</span>
+      {parties.length === 0 ? (
+        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-faint)' }}>Split not set</span>
+      ) : (
+        <>
+          {parties.map(p => (
+            <span key={p.key} style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>
+              {p.label} <span style={{ color: 'var(--vfo-ink)', fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtKpiMoney(p.amount)}</span>
+              {p.who && <span style={{ fontWeight: 500 }}> ({p.who})</span>}
+            </span>
+          ))}
+          {sp.split_label && <span style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', fontWeight: 500, minWidth: 0, overflowWrap: 'anywhere' }}>{sp.split_label}</span>}
+        </>
+      )}
+    </div>
+  )
+}
+
+// fitWidth: the width of the table's visible area (Client Overview measures it), so
+// the panel stays on screen while the table itself scrolls sideways.
+export default function TaxPlanKpiPanel({ plan, loading = false, error = '', fitWidth = null }) {
+  const isPhone = useIsPhone()
   useEffect(() => {
     if (!plan) return
     ;(plan.warnings || []).forEach(w => console.warn(`Tax KPI: ${w}`))
@@ -141,32 +164,38 @@ export default function TaxPlanKpiPanel({ plan, loading = false, error = '' }) {
     if (days.some(d => d && d.bad)) console.warn(`Tax KPI: plan ${plan.plan_id} has a negative day count (bad step dates)`)
   }, [plan])
 
-  const wrap = { padding: '12px 18px 16px 52px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', cursor: 'default' }
+  const wrap = {
+    padding: isPhone ? '12px var(--vfo-gutter) 16px' : '12px 18px 16px 52px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', cursor: 'default',
+    ...(fitWidth ? { position: 'sticky', left: 0, width: `${fitWidth}px`, boxSizing: 'border-box' } : null),
+  }
   if (loading) return <div style={{ ...wrap, fontSize: '12.5px', color: 'var(--vfo-muted)' }}>Loading tax plan progress...</div>
   if (error) return <div style={{ ...wrap, fontSize: '12.5px', color: '#c0392b' }}>Could not load tax plan progress: {error}</div>
   if (!plan) return <div style={{ ...wrap, fontSize: '12.5px', color: 'var(--vfo-faint)' }}>No progress data for this plan.</div>
 
-  const direct = plan.program === 'Direct'
+  const fee = plan.total_fee
+  const feeSet = fee !== null && fee !== undefined && fee !== '' && Number.isFinite(Number(fee))
   return (
     <div style={wrap} onClick={e => e.stopPropagation()}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '10px 24px', marginBottom: '12px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#0a85e8', alignSelf: 'center' }}>Tax Plan Progress</span>
-        <Meta label="Program">
-          <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', background: direct ? 'rgba(224,103,23,0.12)' : 'var(--vfo-accent-tint)', color: direct ? '#e06717' : 'var(--vfo-accent-text)', border: '1px solid var(--vfo-border-chip)' }}>{plan.program}</span>
-        </Meta>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '10px 24px', marginBottom: '12px' }}>
+        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#0a85e8', whiteSpace: 'nowrap', alignSelf: 'center' }}>Tax Plan Progress</span>
         <Meta label="Tax plan team">{plan.team}</Meta>
         <Meta label="Current step">{plan.current_step?.label || '—'}</Meta>
-        <Meta label="Total days"><DayLine day={plan.total_days} size="lg" /></Meta>
-        {plan.stopped && <span style={{ alignSelf: 'center', fontSize: '10.5px', fontWeight: 700, padding: '2px 10px', borderRadius: '999px', background: '#e74c3c', color: '#fff' }}>Stopped</span>}
+        <Meta label="Total fee">
+          {feeSet
+            ? <span style={{ ...bigNumber, color: 'var(--vfo-ink)', lineHeight: 1.1, whiteSpace: 'nowrap' }}>{fmtKpiMoney(fee)}</span>
+            : <span style={{ fontSize: '20px', fontWeight: 600, color: 'var(--vfo-faint)' }}>—</span>}
+        </Meta>
+        <Meta label="Total days"><DayLine day={plan.total_days} /></Meta>
+        {plan.stopped && <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 10px', borderRadius: '999px', background: '#e74c3c', color: '#fff' }}>Stopped</span>}
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
         {(plan.steps || []).map(s => <StepTile key={s.number} step={s} strategies={plan.strategies} blockedReason={plan.timing_blocked_reason} />)}
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 28px', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed var(--vfo-border-strong)' }}>
-        <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 700, letterSpacing: '0.4px' }}>VFO REV GENERATED <span style={{ color: 'var(--vfo-ink)' }}>{fmtKpiMoney(plan.vfos_share)}</span></span>
-        <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 700, letterSpacing: '0.4px' }}>TOTAL DAYS <DayLine day={plan.total_days} /></span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed var(--vfo-border-strong)' }}>
+        <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0 10px', fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 700, letterSpacing: '0.4px' }}>VFO REV GENERATED <span style={{ ...bigNumber, color: 'var(--vfo-ink)', lineHeight: 1.1, whiteSpace: 'nowrap' }}>{fmtKpiMoney(plan.vfos_share)}</span></span>
+        <RevenueSplit split={plan.split} />
       </div>
     </div>
   )
