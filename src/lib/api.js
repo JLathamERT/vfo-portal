@@ -14,6 +14,10 @@ const SLOW_WRITE_TIMEOUT_MS = 60000
 // These stay WRITES: isReadAction() does not match them, so a timeout still never
 // auto-retries.
 const LONG_TIMEOUT_ACTIONS = {
+  // SDP ATSG (2026-11-17): renders the agreement PDF, sends it through BoldSign and
+  // waits up to ~25s for the signing link before the client email goes.
+  sdp_atsg_send_agreement: 90000,
+  sdp_atsg_agreement_preview: 60000,
   // The test site's resets: a WRITE, never auto-retried. Pressing again is safe.
   staging_reset_mine: 120000,
   staging_reset_all: 120000,

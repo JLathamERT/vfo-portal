@@ -42,6 +42,7 @@ const PftDiscoveryPage = lazyPage(() => import('./pages/PftDiscoveryPage'))
 const TailoredDecidePage = lazyPage(() => import('./pages/TailoredDecidePage'))
 const PayPage = lazyPage(() => import('./pages/PayPage'))
 const TaxPayPage = lazyPage(() => import('./pages/TaxPayPage'))
+const SdpAtsgPayPage = lazyPage(() => import('./pages/SdpAtsgPayPage'))
 const AdvisorPayPage = lazyPage(() => import('./pages/AdvisorPayPage'))
 const AccountantPayPage = lazyPage(() => import('./pages/AccountantPayPage'))
 const PipPayPage = lazyPage(() => import('./pages/PipPayPage'))
@@ -107,6 +108,7 @@ export default function App() {
       <Route path="/tailored-decide" element={<TailoredDecidePage />} />
       <Route path="/pay" element={<PayPage />} />
       <Route path="/tax-pay" element={<TaxPayPage />} />
+      <Route path="/sdp-atsg-pay" element={<SdpAtsgPayPage />} />
       <Route path="/advisor-pay" element={<AdvisorPayPage />} />
       <Route path="/accountant-pay" element={<AccountantPayPage />} />
       <Route path="/pip-pay" element={<PipPayPage />} />

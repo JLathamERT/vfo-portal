@@ -292,6 +292,19 @@ export const TEMPLATE_META = {
     ['TRA_decision_vfo_associate_reminder', 'Tailored Route: 2-business-day reminder — the VFO Associate response is still outstanding', 'To: Accountant'],
     ['TRA_decision_no', 'Tailored Route: the accountant picked No — close-out', 'To: Accountant'],
   ],
+  // SDP - Advanced Tax Strategy Governance (2026-11-17), in the order they fire.
+  'SDP_ATSG': [
+    ['SDP_ATSG_agreementsent', 'Agreement sent - the client’s signing link', 'To: Client, Cc: Member + SDP'],
+    ['SDP_ATSG_ceocountersign', 'The client signed - Steven Cox’s countersign link', 'To: Steven Cox'],
+    ['SDP_ATSG_paymentemail', 'Steven Cox signed - the client’s payment link for the first advisory retainer payment', 'To: Client, Cc: Member + SDP'],
+    ['SDP_ATSG_ach_confirmation', 'Paid by bank transfer (ACH) - confirmation while it clears', 'To: Client, Cc: Member + SDP'],
+    ['SDP_ATSG_invoicereceipt', 'A payment cleared - invoice and receipt PDFs (every payment)', 'To: Client, Cc: Member + SDP'],
+    ['SDP_ATSG_payment_failed', 'A retainer payment failed - update payment method and pay now', 'To: Client, Cc: Member + SDP'],
+    ['SDP_ATSG_update_method', 'Secure link to change the saved card or bank (nothing charged)', 'To: Client, Cc: Member + SDP'],
+    ['SDP_ATSG_impactfee_request', 'Strategy Impact Fee - the fee and its payment link', 'To: Client, Cc: Member + SDP'],
+    ['SDP_ATSG_revshare|member', 'The member’s 47.5% revenue share was sent - confirmation', 'To: Member'],
+    ['SDP_ATSG_revshare|sdp', 'SDP’s 47.5% revenue share was sent - confirmation', 'To: SDP'],
+  ],
   'GROWTH_CREDITS': [
     ['GC_purchase_ach_confirmation', 'Credits bought by bank transfer (ACH) — confirmation while the payment clears', 'To: Member'],
     ['GC_purchase_invoicereceipt', 'Credits bought — invoice and receipt PDFs (card straight away, bank transfer once it clears)', 'To: Member'],
