@@ -10,6 +10,12 @@ BoldSign POSTs JSON with `body.event.eventType` and `body.context.documentId` (o
 
 The BoldSign webhook URL is configured **outside this codebase** in the BoldSign account settings.
 
+## SDP ATSG documents come first (2026-11-17)
+
+Before the cascade below, the standalone handler (and the embedded one) looks the document up in `sdp_atsg_cases.boldsign_doc_id`. A match is chained to `automation_SDP_ATSG_boldsign_event` with the service role and the handler returns 200, so no branch below ever sees an SDP document ([sdp-atsg.md](sdp-atsg.md)).
+
+**Declined / Expired / Revoked only arrive if BoldSign's webhook subscribes to them.** Until 2026-11-17 neither the live nor the sandbox webhook did, so the declined-bell branch below had never fired on any pipeline; Jake added the three events to both that day (#757).
+
 ## Current cascade (4-level lookup as of 2026-05-28)
 
 Both handlers (standalone `boldsign-webhook` function AND the embedded `maybeHandleBoldSignWebhook` in `vfo-admin-api/router/webhooks.ts`) now cascade through four onboarding-flow tables, looking up the document ID at each level. First match wins; subsequent levels are skipped.

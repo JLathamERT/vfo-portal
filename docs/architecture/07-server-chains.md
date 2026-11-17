@@ -446,6 +446,13 @@ Reinstating a member releases every revenue-share leg the standing hold parked, 
 
 Re-firing a member who is **still** flagged is a safe no-op: every engine re-checks standing on entry and re-holds idempotently, and the internal held notice is deduped on the leg's prior status. So the release is "fire everything that is parked", not "decide who is eligible".
 
+### SDP ATSG — its own chains (2026-11-17) *(v: 2026-11-17)*
+
+SDP - Advanced Tax Strategy Governance never enters our pipelines' chains ([flows/sdp-atsg.md](../flows/sdp-atsg.md)):
+- **BoldSign:** both `boldsign-webhook` and the embedded handler look the document up in `sdp_atsg_cases.boldsign_doc_id` FIRST and, on a match, chain `automation_SDP_ATSG_boldsign_event` (service role) and return — no other branch sees an SDP document.
+- **Stripe:** `router/webhooks.ts` calls `maybeHandleSdpAtsgStripeEvent` first for every VFO Services event; anything stamped `metadata.pipeline = SDP_ATSG` (a Checkout session, its PaymentIntent / SetupIntent, a sweep charge) is handled there and stops.
+- **Settle:** a row moving to `paid` chains `automation_SDP_ATSG_settle` in the background (`chainAtsg`, `adminApiUrl()`, #748). The daily `sdp-atsg-sweep-daily` (13:20 UTC) retries any paid row whose documents, transfers or emails are not done, 10+ minutes after `paid_at`.
+
 ### Admin-driven paths (no webhook involved)
 
 Check payments (`_paidbycheck` → `_checkcleared`, MAP 1 P1–P4 and tax retainer) and the tax **deposit refund** run entirely admin-driven. The refund lives on one decision step in Tax 1 (`program_client_tasks` 116, sentinel `tax_refund`): **Proceed** writes status `'Proceed'` — **and, since 2026-09-17, fires the $250 deposit team share** (see "Tax intake deposit" above; the Green/Red step is the single trigger for both deposit money movements); **Refund** writes no status at all and fires `automation_TAX_depositrefund`, which **requires** a `reason` (400 without it) filling `[Refund Reason]` (**#293**). **The refund is payer-aware as of 2026-09-17:** the Stripe call carries `Idempotency-Key: deposit-refund-tax-<plan.id>` (one deposit per plan, one refund — a double-click or a retried request cannot refund twice), and the notice goes to whoever paid — `tax_intake_requests.payer = 'client'` on the plan's newest intake row picks template **279** (`TAX_deposit_refund|client`, To the client, member Cc'd), anything else including **no intake row at all** picks **181** (`TAX_deposit_refund`, To the MEMBER — the pre-1b behaviour Jake kept for hand-typed deposits; the client is the To fallback only when the member has no email). All `subst` replacers are functions because `[Refund Amount]` carries a `$` (#438).

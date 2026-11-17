@@ -67,6 +67,10 @@ Two observability writes, neither of which changes behaviour:
 
 **The four onboarding PaymentIntent expansions key off the ROW stamp, not the config** — `getStripeKeyFor(normalizeStripeAccount(row.stripe_account), !!sandboxCfg?.sandbox_mode)` — because the config only decides where NEW customers are minted and this customer already exists. Each now also **logs a non-ok fetch** (`"… payment_intent fetch FAILED (method/last4 left unknown) — onboarding <id> account <label> status <n>"`); the "unknown method" fallback is deliberate but used to happen in total silence.
 
+### Step 0c — SDP ATSG events are handled first (2026-11-17)
+
+For every VFO Services event, `maybeHandleSdpAtsgStripeEvent` (`actions/sdp-atsg/webhook.ts`) runs before anything else. An object stamped `metadata.pipeline = SDP_ATSG` — a Checkout session (`kind` `payment` or `update_method`), its PaymentIntent or SetupIntent, or a sweep's off-session PaymentIntent — is handled there (paid / processing / missed / declined, the saved method, the background settle) and the webhook returns; nothing below sees SDP money. [sdp-atsg.md](sdp-atsg.md).
+
 ### Step 1 — Dispatch by event type
 
 The handler `if`-checks `event.type === "checkout.session.completed"` and `event.type === "payment_intent.succeeded"` (Branches A/B below). It ALSO handles a set of failure/lifecycle events (`payment_intent.payment_failed`, **`payment_intent.canceled`**, `checkout.session.async_payment_failed`, subscription/dispute/refund/transfer events — see [SESSION_REFERENCE.md](../SESSION_REFERENCE.md) "Failure-event handling"), including the v612 late-ACH off-session branches described in **Branch C** below, and **`payment_intent.processing`** (**Branch D**). All other event types are ignored (200 OK with `{received: true}`).
