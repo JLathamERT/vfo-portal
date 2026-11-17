@@ -56,10 +56,9 @@ export default function TaxPostReviewDecidePage() {
         setStatus('error')
         return
       }
-      // The decision IS recorded (HTTP 200) but the Stripe refund did not go
-      // through. Never promise a confirmation email the refund handler will not
-      // send — show the "received, we'll process it" state instead.
-      if (data.refund_failed) {
+      // A Refund click is a request the team follows up on (2026-11-17): nothing
+      // is refunded yet. refund_failed is what the backend before that sent.
+      if (data.refund_requested || data.refund_failed) {
         setStatus('refund_pending')
         return
       }
@@ -105,8 +104,8 @@ function getConfirm(decision) {
   if (decision === 'Refund') {
     return {
       title: 'Please confirm your decision',
-      message: "You're about to have your retainer refunded. This will end your Tax Planning Engagement.",
-      buttonLabel: 'Confirm — refund my retainer',
+      message: "You're about to request a refund of your retainer, which will end your Tax Planning Engagement. Our team will be in touch.",
+      buttonLabel: 'Confirm — request my refund',
       buttonColor: '#ef4444',
     }
   }
@@ -128,19 +127,16 @@ function getView(status, decision, error) {
   if (status === 'window_expired') {
     return { icon: '⏰', color: '#e06717', title: 'Window Closed', message: error || 'The refund window has closed. Your engagement has been locked in. Please contact us if you have questions.' }
   }
-  // Decision recorded, automatic refund failed. Amber like the window_expired
-  // state — this is neither a clean success nor an error the client caused, and
-  // the copy deliberately promises no confirmation email.
+  // A refund REQUEST (2026-11-17): the team follows up before anything is
+  // refunded, so the copy promises a conversation, not a refund.
   if (status === 'refund_pending') {
-    return { icon: '⏳', color: '#e06717', title: 'Refund Received', message: 'We have received your decision, but your refund could not be completed automatically. Our team will process it and be in touch.' }
+    return { icon: '✓', color: '#16a34a', title: 'Refund Request Received', message: "We've received your refund request. A member of our team will be in touch with you shortly." }
   }
   if (status === 'error') {
     return { icon: '⚠️', color: '#ef4444', title: 'Something Went Wrong', message: error || 'An unexpected error occurred. Please contact us.' }
   }
   if (decision === 'Refund') {
-    // The code-confirmed click refunds straight away (2026-10-27); a refund that
-    // did not go through shows refund_pending above instead.
-    return { icon: '✓', color: '#16a34a', title: 'Refund Processed', message: 'Your retainer has been refunded. You will receive a confirmation email shortly.' }
+    return { icon: '✓', color: '#16a34a', title: 'Refund Request Received', message: "We've received your refund request. A member of our team will be in touch with you shortly." }
   }
   return { icon: '✓', color: '#16a34a', title: 'Thank You — Moving Forward', message: "We're delighted to continue with your Tax Planning Engagement. Our team will be in touch with next steps shortly." }
 }

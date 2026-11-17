@@ -3397,9 +3397,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     const admin = livePlan?.post_review_decision ?? null
     const client = livePlan?.post_review_client_decision ?? null
     if (admin === 'Stop - Refund' || client === 'Refund') {
-      // A client Refund whose automatic refund failed waits for the team (2026-10-27).
+      // A client Refund click is a request the team confirms or cancels (2026-11-17).
       if (admin !== 'Stop - Refund' && livePlan?.refund_status !== 'succeeded') {
-        return { open: false, hint: 'The client chose a refund at Client decision 1 but it did not go through — retry it or mark it not genuine first' }
+        return { open: false, hint: 'The client requested a refund at Client decision 1 — confirm or cancel it first' }
       }
       return { open: false, hint: 'The client chose a refund at Client decision 1' }
     }
@@ -5434,29 +5434,44 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       const stallRows = (stall) => stallSteps(stall, (label, done, at) => autoStep(label, done, { at }))
       const revshareChip = (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" templates={[{ name: 'TAX_member_revshare|retainer', when: 'Automatic — member revenue-share notice (retainer)' }, { name: 'TAX_member_revshare|implementation', when: 'Automatic — member revenue-share notice (implementation)' }, { name: 'TAX_planner_revshare|retainer', when: 'Automatic — tax planner revenue-share notice (retainer)' }, { name: 'TAX_planner_revshare|implementation', when: 'Automatic — tax planner revenue-share notice (implementation)' }]} context={emailCtx} />
       const refundChip = (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" templates={[{ name: 'TAX_refund_email|Yes', when: 'Automatic — retainer refund confirmation' }]} context={emailCtx} />
+      const refundRequestChip = (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" templates={[{ name: 'TAX_postreview_refund_request', when: 'Automatic — when the client requests a refund' }]} context={emailCtx} />
 
-      // The client's Refund click needs the code emailed to them and then refunds
-      // on its own (2026-10-27; from 10-23 to 10-27 it was only a request). The
-      // Confirm refund / Not genuine row only shows when that automatic refund
-      // FAILED: Confirm refund retries it (tax_confirm_client_refund), Not genuine
-      // clears the click (tax_clear_client_refund_request) so the email's buttons
-      // work again. A VFO Services step: admins only — the backend refuses planners
-      // and members, and a Direct member's own view shows it as the VFO team's.
+      // The client's Refund click (with the code emailed to them) is a REQUEST
+      // (2026-11-17): it sends them the refund-request email and nothing is
+      // refunded. The team follows up, then answers here: Confirm refund
+      // (tax_confirm_client_refund, the Stripe refund + the usual refund email) or
+      // Cancel Refund - Continue with Revenue Shares (tax_cancel_client_refund, the
+      // click becomes a yes and everything a green click does follows). A VFO
+      // Services step: admins only — the backend refuses planners, their team
+      // members and members, and those views show "Waiting for the VFO team".
       // The click's IP address and browser are saved on the plan for looking up,
       // never shown here (Jake).
       const refundDone = refundStatus === 'succeeded'
       const refundConfirmedAt = livePlan?.post_review_refund_confirmed_at
+      // Cancel refund (tax_cancel_client_refund) moves the client's Refund click
+      // time to post_review_refund_requested_at and makes the decision time the
+      // cancel time. Only that handler writes the column, so a value there = the
+      // team cancelled a refund request and the client never clicked the green
+      // button.
+      const refundRequestedAt = livePlan?.post_review_refund_requested_at
+      const refundCancelled = !!refundRequestedAt
+      const clientYesRows = (label) => refundCancelled ? (
+        <>
+          {autoStep('Client requested a refund', true, { at: refundRequestedAt })}
+          {autoStep(`Refund cancelled by ${livePlan?.post_review_refund_request_cleared_by || 'the team'}`, true, { at: livePlan?.post_review_client_decision_at })}
+        </>
+      ) : autoStep(label, true, { at: livePlan?.post_review_client_decision_at })
       const canAnswerRefund = !readOnly && !plannerMode && !mirror && !directMode
       async function answerRefundRequest(kind) {
         const ask = kind === 'confirm'
-          ? "Retry the refund?\n\nThis refunds the client's retainer through Stripe now and drafts the refund confirmation email. Fix whatever made the automatic refund fail first. It cannot be undone."
-          : "Mark this refund as not genuine?\n\nNothing is refunded. The client's Refund click is cleared and the buttons in their Client decision 1 email work again."
+          ? "Confirm the refund?\n\nThis refunds the client's retainer through Stripe now and drafts the refund confirmation email. It cannot be undone."
+          : "Cancel the refund and continue?\n\nNothing is refunded. The client's Refund click becomes a yes: they are sent the usual confirmation email and the revenue shares are paid (on a 3-payment plan, the final retainer is charged first). It cannot be undone."
         if (!confirm(ask)) return
         setSaving(p => ({ ...p, [key]: kind }))
         try {
-          await callApi(kind === 'confirm' ? 'tax_confirm_client_refund' : 'tax_clear_client_refund_request', { tax_plan_id: plan.id })
+          await callApi(kind === 'confirm' ? 'tax_confirm_client_refund' : 'tax_cancel_client_refund', { tax_plan_id: plan.id })
         } catch (err) {
-          alert(`${kind === 'confirm' ? 'Refund' : 'Clearing the request'} failed: ${err.message || err}`)
+          alert(`${kind === 'confirm' ? 'Refund' : 'Cancelling the refund'} failed: ${err.message || err}`)
         } finally {
           await refreshLivePlan()
           setSaving(p => ({ ...p, [key]: false }))
@@ -5469,24 +5484,24 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       )
       const refundRequestRows = () => (
         <>
-          {autoStep('Client chose a refund (clicked Refund and entered the emailed code)', true, { at: livePlan?.post_review_client_decision_at })}
+          {autoStep('Client requested a refund', true,{ at: livePlan?.post_review_client_decision_at, chip: refundRequestChip })}
           {refundConfirmedAt
             ? autoStep(`Refund confirmed by ${livePlan?.post_review_refund_confirmed_by || 'the team'}`, true, { at: refundConfirmedAt })
             : !refundDone && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1px solid #e74c3c' }} />
-                <span style={{ fontSize: '12px', color: 'var(--vfo-ink)', flex: 1 }}>The automatic refund did not go through. Nothing has been refunded yet.</span>
+                <span style={{ fontSize: '12px', color: 'var(--vfo-ink)', flex: 1 }}>Follow up, then confirm or cancel</span>
                 {canAnswerRefund ? (
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginLeft: 'auto' }}>
-                    {answerBtn('confirm', 'Retry refund', '231,76,60', '#e74c3c')}
-                    {answerBtn('clear', 'Not genuine', '100,116,139', 'var(--vfo-muted)')}
+                    {answerBtn('confirm', 'Confirm refund', '231,76,60', '#e74c3c')}
+                    {answerBtn('cancel', 'Cancel Refund - Continue with Revenue Shares', '27,146,84', '#1b9254')}
                   </div>
                 ) : (
                   <span style={{ ...neutralChipStyle, marginLeft: 'auto' }}>Waiting for the VFO team</span>
                 )}
               </div>
             )}
-          {autoStep('Refund processed and confirmation email sent', refundDone, { chip: refundChip, at: refundDate })}
+          {autoStep('Refund processed + email sent', refundDone,{ chip: refundChip, at: refundDate })}
         </>
       )
 
@@ -5529,7 +5544,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                   )}
                   {clientDecision === 'Confirmed' && (
                     <>
-                      {autoStep('Client confirmed Continue (clicked "Continue now")', true, { at: livePlan?.post_review_client_decision_at })}
+                      {clientYesRows('Client confirmed Continue (clicked "Continue now")')}
                       {!mirror && autoStep('Revenue share verified, member paid, member emailed', revShareSettled, { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
@@ -5543,7 +5558,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                       rows; a click before 2026-08-28 carries no timestamp. */}
                   {clientDecision === 'Proceed' && (
                     <>
-                      {autoStep('Client confirmed Continue (from the reminder email)', true, { at: livePlan?.post_review_client_decision_at })}
+                      {clientYesRows('Client confirmed Continue (from the reminder email)')}
                       {!mirror && autoStep('Revenue share verified, member paid, member emailed', revShareSettled, { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
@@ -5556,7 +5571,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                   {!clientDecision && !reminderSentAt && autoStep('Waiting for client (2 business days before reminder)', false)}
                   {clientDecision === 'Proceed' && (
                     <>
-                      {autoStep('Client clicked Proceed', true, { at: livePlan?.post_review_client_decision_at })}
+                      {clientYesRows('Client clicked Proceed')}
                       {!mirror && autoStep('Revenue share verified, member paid, member emailed', revShareSettled, { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
