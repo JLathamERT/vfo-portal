@@ -86,6 +86,8 @@ UPDATE client_tax_plans SET
   post_review_client_decision=NULL, implementation_final_decision=NULL,
   post_review_client_decision_at=NULL, post_review_client_decision_ip=NULL, post_review_client_decision_ua=NULL,
   post_review_refund_confirmed_at=NULL, post_review_refund_confirmed_by=NULL,  -- 2026-10-23 refund-request columns
+  post_review_refund_request_cleared_at=NULL, post_review_refund_request_cleared_by=NULL,
+  post_review_refund_requested_at=NULL,  -- 2026-11-17 cancelled refund request
   status='live'
   /* …and the rest of the flow fields; see the session reset script for the full column list… */
 WHERE id = <TAX_PLAN_ID>;
