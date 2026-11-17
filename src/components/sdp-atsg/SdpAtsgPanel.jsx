@@ -297,6 +297,10 @@ function OwnerChip({ label }) {
   const c = OWNER[label] || OWNER.Automated
   return <span style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '999px', background: c[0], color: c[1], fontWeight: 600, marginLeft: '8px', verticalAlign: 'middle', whiteSpace: 'nowrap', display: 'inline-block' }}>{label}</span>
 }
+// The last agreement came back unsigned (BoldSign Declined / Expired / Revoked)
+// and has not been sent again.
+const declinedEvent = c => (c.agreement_declined_at && !c.agreement_sent_at ? (c.agreement_declined_event || 'Declined') : null)
+const declinedNoticeStyle = { background: 'rgba(180,83,9,0.08)', border: '1px solid rgba(180,83,9,0.35)', borderRadius: '10px', padding: '10px 14px', margin: '4px 0 12px', fontSize: '13px', lineHeight: 1.5, color: '#b45309' }
 const chipStyle = hex => ({ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: `${hex}26`, color: hex, fontWeight: 600, border: `1px solid ${hex}4d`, whiteSpace: 'nowrap' })
 const neutralChipStyle = { fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', color: 'var(--vfo-muted)', fontWeight: 600, border: '1px solid var(--vfo-border-chip)', whiteSpace: 'nowrap' }
 const mmdd = d => {
@@ -488,7 +492,7 @@ function CaseView({ caseId, mode, onBack }) {
             done={retainerSaved && sent}
             name="ATSG Advisory Retainer and agreement"
             owner="SDP"
-            status={retainerSaved && sent ? <span style={chipStyle(GREEN)}>Sent</span> : <span style={neutralChipStyle}>Not started</span>}
+            status={retainerSaved && sent ? <span style={chipStyle(GREEN)}>Sent</span> : declinedEvent(c) ? <span style={chipStyle('#e06717')}>{declinedEvent(c)}</span> : <span style={neutralChipStyle}>Not started</span>}
             date={c.agreement_sent_at}
             expandable={sent}
             open={isOpen('pricing', !sent)}
@@ -511,9 +515,6 @@ function CaseView({ caseId, mode, onBack }) {
                     ? <button type="button" disabled={!!busy} onClick={() => act('sdp_atsg_resend_payment_email', {}, 'Payment email sent again.', 'Send the payment email to the client again?')} style={smallBtn('#6b7280')}>{busy === 'sdp_atsg_resend_payment_email' ? 'Sending…' : 'Resend'}</button>
                     : null} />
               ))}
-              {c.agreement_declined_at && !c.agreement_sent_at && (
-                <div style={{ fontSize: '12px', color: '#e06717', padding: '6px 0' }}>The last agreement was declined, expired or revoked on {fmtDate(c.agreement_declined_at)}. Check the retainer above and send it again.</div>
-              )}
             </div>
           </div>
 
@@ -677,12 +678,17 @@ function RetainerForm({ c, caseId, locked, busy, act }) {
   async function submit() {
     if (!(await saveFirst())) return
     await act('sdp_atsg_send_agreement', {}, 'Pricing saved and the agreement sent to the client.',
-      `Send the Advanced Tax Strategy Governance agreement to ${c.client_first} ${c.client_last} (${c.client_email})?\n\n${money(n)} per year, billed ${freqLabel(freq).toLowerCase()}. The pricing cannot be changed once it is sent.`)
+      `Send the Advanced Tax Strategy Governance agreement to ${c.client_first} ${c.client_last} (${c.client_email})?\n\n${money(n)} for the 12-month engagement, ${freq === 'annual' ? 'paid in full' : `billed ${freqLabel(freq).toLowerCase()}`}. The pricing cannot be changed once it is sent.`)
   }
 
   return (
     <div style={formBox}>
       <div style={formTitle}>{locked ? 'Pricing sent with the agreement' : 'Complete pricing & send agreement'}</div>
+      {!locked && declinedEvent(c) && (
+        <div style={declinedNoticeStyle}>
+          {declinedEvent(c) === 'Expired' ? 'The agreement expired unsigned' : declinedEvent(c) === 'Revoked' ? 'The agreement was revoked' : 'The client declined the agreement'} on {fmtDate(c.agreement_declined_at)}. Check the pricing and send it again.
+        </div>
+      )}
       <div style={formSection}>
         <div style={formSectionTitle}>Fee details</div>
         <label style={fLabel}>ATSG Advisory Retainer (per year)</label>

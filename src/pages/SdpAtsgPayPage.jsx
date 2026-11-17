@@ -107,6 +107,7 @@ export default function SdpAtsgPayPage() {
   const baseAmount = Number(data.payment_amount) || 0
   const cardTotal = Number(data.card_total) || baseAmount
   const cardFee = Math.round((cardTotal - baseAmount) * 100) / 100
+  const missed = Array.isArray(data.missed) ? data.missed : []
   const lineRows = (data.lines || []).map(l => ({ label: l.label, value: `$${formatMoney(l.amount)}`, valueColor: 'var(--vfo-ink-2)' }))
 
   return (
@@ -114,9 +115,16 @@ export default function SdpAtsgPayPage() {
       <div style={pageContainerStyle}>
         {heading}
         <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: '12px' }}>Choose your preferred payment method</p>
-        <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: '32px', fontSize: '13px', color: 'var(--vfo-muted)' }}>
+        <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: missed.length ? '20px' : '32px', fontSize: '13px', color: 'var(--vfo-muted)' }}>
           {data.payment_label} · {data.client_name}
         </p>
+        {missed.length > 0 && (
+          <div style={missedNoticeStyle}>
+            {missed.length === 1
+              ? <>Your {missed[0].label} payment{missed[0].due ? <>, due {missed[0].due},</> : null} did not go through. Pay it here; the card or bank you use is saved for your later payments.</>
+              : <>{missed.length} advisory retainer payments did not go through: {missed.map(m => `${m.short}${m.due ? ` (due ${m.due})` : ''}`).join(', ')}. Pay them here; the card or bank you use is saved for your later payments.</>}
+          </div>
+        )}
 
         <OptionCard
           isHovered={hoveredOption === 'ach'}
@@ -191,6 +199,7 @@ function formatMoney(n) {
 }
 
 const pageContainerStyle = { width: '100%' }
+const missedNoticeStyle = { background: 'rgba(180,83,9,0.08)', border: '1px solid rgba(180,83,9,0.35)', borderRadius: '12px', padding: '12px 16px', marginBottom: '24px', fontSize: '13px', lineHeight: 1.5, color: '#b45309', textAlign: 'center' }
 const messageCardStyle = { textAlign: 'center', padding: '12px 0' }
 const iconCircleStyle = { width: '72px', height: '72px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }
 const titleStyle = { fontSize: '24px', fontWeight: 700, color: 'var(--vfo-ink)', marginBottom: '12px' }
