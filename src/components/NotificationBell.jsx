@@ -9,6 +9,12 @@ import { splitTestBell, TEST_BELL_TEAL, TEST_BELL_TINT } from './shared/testBell
 // portal has. Portals that mount the bell without one hide the link.
 const VIEW_ALL_HIDDEN_ROLES = ['tax_planner', 'member']
 
+// SDP ATSG bells (2026-11-17) get a colour no other bell uses (Jake asked for
+// purple, which REMINDER already has).
+const SDP_BELL = '#c026d3'
+const SDP_BELL_TINT = 'rgba(192,38,211,0.06)'
+const SDP_BELL_TINT_STRONG = 'rgba(192,38,211,0.15)'
+
 // Test site only: every bell routes to the tester's admin account (stagingBellRoute,
 // Jake 2026-11-05: all or nothing). A member login shares the admin's email, so it
 // would load the same list; these portals load nothing and say where the bells are.
@@ -185,9 +191,10 @@ export default function NotificationBell() {
             sorted.map(n => {
               const isDismissible = n.dismissible !== false
               const isReminder = n.pipeline === 'REMINDER'
+              const isSdp = n.pipeline === 'SDP_ATSG'
               const testBell = splitTestBell(n.message)
-              const rowBorder = testBell ? `3px solid ${TEST_BELL_TEAL}` : !isDismissible ? '3px solid #e06717' : isReminder ? '3px solid #7c3aed' : '3px solid transparent'
-              const rowTint = testBell ? TEST_BELL_TINT : !isDismissible ? 'rgba(224,103,23,0.06)' : isReminder ? 'rgba(124,58,237,0.05)' : 'transparent'
+              const rowBorder = testBell ? `3px solid ${TEST_BELL_TEAL}` : !isDismissible ? '3px solid #e06717' : isReminder ? '3px solid #7c3aed' : isSdp ? `3px solid ${SDP_BELL}` : '3px solid transparent'
+              const rowTint = testBell ? TEST_BELL_TINT : !isDismissible ? 'rgba(224,103,23,0.06)' : isReminder ? 'rgba(124,58,237,0.05)' : isSdp ? SDP_BELL_TINT : 'transparent'
               const handleDone = async (e) => {
                 e.stopPropagation()
                 try {
@@ -231,7 +238,7 @@ export default function NotificationBell() {
                       {isReminder && (
                         <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: '#7c3aed', letterSpacing: '0.4px' }}>REMINDER</span>
                       )}
-                      {n.pipeline && !isReminder && <span style={{ fontSize: '10px', color: '#0095ff', fontWeight: 600, padding: '1px 6px', borderRadius: '3px', background: 'rgba(0,149,255,0.15)' }}>{n.pipeline}</span>}
+                      {n.pipeline && !isReminder && <span style={{ fontSize: '10px', color: isSdp ? SDP_BELL : '#0095ff', fontWeight: 600, padding: '1px 6px', borderRadius: '3px', background: isSdp ? SDP_BELL_TINT_STRONG : 'rgba(0,149,255,0.15)' }}>{isSdp ? 'SDP ATSG' : n.pipeline}</span>}
                       <span style={{ fontSize: '10px', color: 'var(--vfo-faint)' }}>{formatDate(n.created_at)}</span>
                     </div>
                   </div>

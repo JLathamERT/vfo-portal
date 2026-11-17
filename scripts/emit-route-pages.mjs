@@ -43,6 +43,7 @@ const ROUTES = [
   'tax-implement-decide',
   'tax-intake',
   'tax-pay',
+  'sdp-atsg-pay',
   'tax-postreview-decide',
   'tax-question',
   'tax-upload',

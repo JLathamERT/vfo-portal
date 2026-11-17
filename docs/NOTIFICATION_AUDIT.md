@@ -428,6 +428,20 @@
 > (payment method updated) is still open — that is the SUCCESS side of the same flow; what shipped is
 > the STALL side. Gotchas #296 / #298 / #299 / #300.
 
+### SDP ATSG (7 bells + 10 emails) *(new area, 2026-11-17)*
+
+All bells go to Jake only (`notification_rules` area `SDP ATSG`, `default_recipients` Jake), pipeline `SDP_ATSG`, drawn in their own fuchsia. The failure, held and transfer bells end their title with the payment's label (#758). Emails: [flows/sdp-atsg.md](flows/sdp-atsg.md#emails-and-bells).
+
+| Notification | Type | Who gets it (default) | When it fires |
+|---|---|---|---|
+| `SDP_ATSG_client_signed` | bell | Jake | BoldSign Signed (the client) |
+| `SDP_ATSG_countersigned` | bell | Jake | BoldSign Completed (the CEO); says whether the payment email went |
+| `SDP_ATSG_agreement_declined` | bell | Jake | BoldSign Declined / Expired / Revoked |
+| `SDP_ATSG_payment_received` | bell (dedupe ever) | Jake | A row turns paid |
+| `SDP_ATSG_payment_failed` | bell | Jake | A declined card / bounced bank payment (sweep or webhook) |
+| `SDP_ATSG_payout_failed` | bell | Jake | SDP's or the member's transfer failed (the sweep retries) |
+| `SDP_ATSG_member_share_held` | bell | Jake | The member has no working payout account |
+
 ## Gap analysis — places that arguably SHOULD notify but currently do not
 
 Verified against the code (several "gaps" a first pass suggested turned out to already be covered —
