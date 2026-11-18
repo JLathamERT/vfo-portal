@@ -12,6 +12,7 @@ import FeatureSwitchesPanel from '../components/admin/FeatureSwitchesPanel'
 import { IS_STAGING } from '../lib/environment'
 import TaxDiagnosticsPanel from '../components/admin/TaxDiagnosticsPanel'
 import SdpAtsgPanel from '../components/sdp-atsg/SdpAtsgPanel'
+import PortalBacklogPanel from '../components/admin/PortalBacklogPanel'
 import AdminEditor from '../components/admin/AdminEditor'
 import AdminSettings from '../components/admin/AdminSettings'
 import AutomationPanel from '../components/admin/AutomationPanel'
@@ -118,6 +119,8 @@ export default function AdminPortal() {
   const [initialMemberNumber, setInitialMemberNumber] = useState(null)
   const [initialDiagnosticId, setInitialDiagnosticId] = useState(null)
   const [initialAtsgCaseId, setInitialAtsgCaseId] = useState(null)
+  // A Portal Backlog bell (?tab=portal_backlog&request=): the request to open, stamped so a second click reopens it.
+  const [backlogLink, setBacklogLink] = useState(null)
   const [showEditor, setShowEditor] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [allExperts, setAllExperts] = useState([])
@@ -202,6 +205,9 @@ export default function AdminPortal() {
       // A member-portal form's card is keyed `portal-<intake id>` (2026-10-13).
       const diag = params.get('diag')
       setInitialDiagnosticId(diag.startsWith('portal-') ? diag : Number(diag))
+    }
+    if (tab === 'portal_backlog' && params.get('request')) {
+      setBacklogLink({ id: Number(params.get('request')), at: Date.now() })
     }
     setActiveTab(tab)
     sessionStorage.setItem('adminActiveTab', tab)
@@ -435,6 +441,14 @@ export default function AdminPortal() {
     setShowSettings(false)
   }
 
+  function selectPortalBacklog() {
+    setActiveTab('portal_backlog')
+    sessionStorage.setItem('adminActiveTab', 'portal_backlog')
+    setNavClickCount(c => c + 1)
+    setShowEditor(false)
+    setShowSettings(false)
+  }
+
   function selectFeatureSwitches() {
     setActiveTab('feature_switches')
     sessionStorage.setItem('adminActiveTab', 'feature_switches')
@@ -513,6 +527,7 @@ export default function AdminPortal() {
     if (tab === 'faq_editor') return selectFaqEditor()
     if (tab === 'tax_diagnostics') return selectTaxDiagnostics()
     if (tab === 'sdp_atsg') return selectSdpAtsg()
+    if (tab === 'portal_backlog') return selectPortalBacklog()
     if (tab === 'feature_switches') return selectFeatureSwitches()
     if (tab === 'staging') return selectStaging()
   }
@@ -604,6 +619,10 @@ export default function AdminPortal() {
 
           {activeTab === 'faq_editor' && (
             <FaqEditorPanel />
+          )}
+
+          {activeTab === 'portal_backlog' && (
+            <PortalBacklogPanel link={backlogLink} />
           )}
 
           {activeTab === 'feature_switches' && session?.is_superadmin && (
