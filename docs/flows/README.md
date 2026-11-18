@@ -30,6 +30,7 @@ Ordered by complexity (highest first). Highest-complexity flow drives the rest o
 | [coaching-renewals.md](coaching-renewals.md) | Coaching meeting log + renewal lifecycle |
 | [gift-credits.md](gift-credits.md) | GC marketplace — buy credits via Stripe, redeem for services |
 | [member-help-faq.md](member-help-faq.md) | Member Help button (FAQs + Wistia videos + client-side search, mounted app-level on every `/member*` page) and the grantable FAQ Editor admin tab (2026-09-14) |
+| [portal-backlog.md](portal-backlog.md) | The admin Portal Backlog (2026-11-17): any admin files a portal update request → a superadmin approves or denies → the Tasks board (Unassigned, each superadmin's To do / Working on / Done, Ready to announce with a write-up) → archived when announced; five team bells |
 | [notifications.md](notifications.md) | How portal notifications get inserted and read |
 | [additional-contacts.md](additional-contacts.md) | Per-client email Cc + greeting: `client_contacts.cc_on_emails` / `use_in_greeting` → `loadAdditionalContacts` → every client-facing email. Replaces the old per-form `extra_cc`. |
 
