@@ -9,6 +9,13 @@ import {
   normalizeTaxIntakeAnswers,
   numberTaxIntakeQuestions,
   formatTaxIntakeMoneyInput,
+  isInternationalTaxCase,
+  parseTaxIntakeContactList,
+  taxIntakeContactProblem,
+  TAX_INTAKE_CONTACT_MAX_MESSAGE,
+  TAX_INTAKE_CC_MAX,
+  TAX_INTAKE_INTERNATIONAL_DEPOSIT_NOTE,
+  TAX_INTAKE_INTERNATIONAL_DEPOSIT_NOTE_PUBLIC,
 } from './taxIntakeQuestions'
 import PhoneInput from '../shared/PhoneInput'
 import { cleanText, formatPersonName } from '../../lib/formatters'
@@ -58,6 +65,10 @@ export default function TaxIntakeForm({
   // The CLIENT is the one filling it in (the /tax-intake link page, or the
   // diagnostic's "I am the client"): a question's selfLabel replaces its label.
   clientFilling = false,
+  // The diagnostic's "I am a VFO member completing this for my client": with
+  // q41 Yes, the hedged international deposit note shows (the page cannot know
+  // the named member's waiver).
+  memberFilling = false,
   // The personal Tax Diagnostic link for an EXISTING client (2026-10-07): the
   // client's first / last name and email come from their record and are locked,
   // and there is no deposit line (no deposit is ever due).
@@ -103,6 +114,9 @@ export default function TaxIntakeForm({
   const [failed, setFailed] = useState('')
   // Route B mini form.
   const [linkForm, setLinkForm] = useState({ first: '', last: '', email: '' })
+  // q42's typed-but-not-yet-added person, and why the last Add was refused.
+  const [ccDraft, setCcDraft] = useState({ first: '', last: '', email: '' })
+  const [ccError, setCcError] = useState('')
 
   const [existingError, setExistingError] = useState('')
   useEffect(() => {
@@ -151,6 +165,8 @@ export default function TaxIntakeForm({
         else if (q.id === 'q4') next.q4 = next.q4 || `test.client.${stamp}@example.com`
         else if (q.id === 'q5') next.q5 = '(555) 555-0100'
         else if (q.id === 'q18') next.q18 = q.options.find(o => o.startsWith('$100k')) || q.options[1]
+        else if (q.id === 'q41') next.q41 = next.q41 || 'No'
+        else if (q.type === 'contact_list') continue
         else if (q.poorFitOption) next[q.id] = q.options.find(o => o !== q.poorFitOption)
         else if (q.type === 'radio') next[q.id] = q.options[0]
         else if (q.type === 'select') next[q.id] = q.options.find(o => o && !/select/i.test(String(o))) || q.options[0]
@@ -174,8 +190,50 @@ export default function TaxIntakeForm({
   }
 
 
+  // q42: the Add button. The typed person (names tidied like the client's own)
+  // joins the stored list, or the reason they cannot is shown under the boxes.
+  // Returns the new answers, or null when nothing was added.
+  function addCc(id, base = answers) {
+    const person = {
+      first_name: formatPersonName(ccDraft.first),
+      last_name: formatPersonName(ccDraft.last),
+      email: cleanText(ccDraft.email).toLowerCase(),
+    }
+    const list = parseTaxIntakeContactList(base[id])
+    const problem = taxIntakeContactProblem(person)
+      || (person.email === String(base.q4 || '').trim().toLowerCase() ? "That is the client's own email address" : null)
+      || (list.some(c => c.email === person.email) ? 'That person is already on the list' : null)
+      || (list.length >= TAX_INTAKE_CC_MAX ? TAX_INTAKE_CONTACT_MAX_MESSAGE : null)
+    if (problem) { setCcError(problem); return null }
+    const next = { ...base, [id]: JSON.stringify([...list, person]) }
+    setAnswers(next)
+    setCcDraft({ first: '', last: '', email: '' })
+    setCcError('')
+    return next
+  }
+  function removeCc(id, email) {
+    const list = parseTaxIntakeContactList(answers[id]).filter(c => c.email !== email)
+    set(id, list.length ? JSON.stringify(list) : '')
+  }
+  const ccDraftStarted = !!(ccDraft.first.trim() || ccDraft.last.trim() || ccDraft.email.trim())
+
   async function submit() {
-    const found = [...(validatePrelude ? validatePrelude() : []), ...validateTaxIntakeAnswers(answers)]
+    // A person typed into q42 but never added is added now rather than lost; one
+    // who cannot be added stops the submit with the reason under the boxes.
+    let toCheck = answers
+    if (ccDraftStarted) {
+      const ccQ = visible.find(q => q.type === 'contact_list')
+      if (ccQ) {
+        const next = addCc(ccQ.id, answers)
+        if (!next) {
+          setErrors([`${ccQ.label}: press Add for the person you typed, or clear the boxes`])
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+          return
+        }
+        toCheck = next
+      }
+    }
+    const found = [...(validatePrelude ? validatePrelude() : []), ...validateTaxIntakeAnswers(toCheck)]
     setErrors(found)
     setFailed('')
     if (found.length > 0) {
@@ -184,7 +242,7 @@ export default function TaxIntakeForm({
     }
     setSubmitting(true)
     try {
-      const normalized = normalizeTaxIntakeAnswers(answers)
+      const normalized = normalizeTaxIntakeAnswers(toCheck)
       const res = publicMode
         ? await onPublicSubmit(normalized)
         : await callApi('tax_intake_submit', { answers: normalized, ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}), ...(existingClient ? { client_id: existingClient.id } : {}) })
@@ -258,6 +316,46 @@ export default function TaxIntakeForm({
     if (q.type === 'textarea') {
       return <textarea value={val} onChange={e => set(q.id, e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
     }
+    // q42: first name, last name and email, then Add (or Enter in any box); each
+    // added person is a pill with its own remove button. Names tidy when a box
+    // is left, exactly like the client's own.
+    if (q.type === 'contact_list') {
+      const list = parseTaxIntakeContactList(val)
+      const onKey = e => { if (e.key === 'Enter') { e.preventDefault(); addCc(q.id) } }
+      const draft = (k, v) => { setCcDraft(d => ({ ...d, [k]: v })); if (ccError) setCcError('') }
+      return (
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: isPhone ? '1fr' : '1fr 1fr 1.4fr auto', gap: '8px' }}>
+            <input type="text" value={ccDraft.first} placeholder="First name" aria-label="First name"
+              onChange={e => draft('first', e.target.value)} onBlur={() => draft('first', formatPersonName(ccDraft.first))}
+              onKeyDown={onKey} style={{ ...inputStyle, minWidth: 0 }} />
+            <input type="text" value={ccDraft.last} placeholder="Last name" aria-label="Last name"
+              onChange={e => draft('last', e.target.value)} onBlur={() => draft('last', formatPersonName(ccDraft.last))}
+              onKeyDown={onKey} style={{ ...inputStyle, minWidth: 0 }} />
+            <input type="email" value={ccDraft.email} placeholder="name@example.com" aria-label="Email"
+              onChange={e => draft('email', e.target.value)} onKeyDown={onKey} style={{ ...inputStyle, minWidth: 0 }} />
+            <button type="button" onClick={() => addCc(q.id)} disabled={!ccDraftStarted}
+              style={{ padding: isPhone ? '10px 18px' : '0 18px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: ccDraftStarted ? 'pointer' : 'not-allowed', border: '1px solid #125ecc', background: 'transparent', color: '#125ecc', fontFamily: 'Inter, sans-serif' }}>
+              Add
+            </button>
+          </div>
+          {ccError && <div style={{ marginTop: '6px', fontSize: '12px', color: '#d93025' }}>{ccError}</div>}
+          {list.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+              {list.map(({ first_name, last_name, email }) => (
+                <span key={email} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 6px 4px 12px', borderRadius: '999px', background: 'rgba(18,94,204,0.08)', border: '1px solid rgba(18,94,204,0.22)', fontSize: '12.5px', color: 'var(--vfo-ink)', maxWidth: '100%' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{first_name} {last_name} &middot; {email}</span>
+                  <button type="button" onClick={() => removeCc(q.id, email)} aria-label={`Remove ${first_name} ${last_name}`}
+                    style={{ border: 'none', background: 'transparent', color: 'var(--vfo-muted)', cursor: 'pointer', fontSize: '15px', lineHeight: 1, padding: '0 4px', fontFamily: 'Inter, sans-serif' }}>
+                    &times;
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
     // q5 shapes itself as typed; q2 / q3 names tidy when the box is left
     // (src/lib/formatters.js - the server tidies again on save).
     if (q.format === 'phone') {
@@ -284,21 +382,35 @@ export default function TaxIntakeForm({
     )
   }
 
-  const depositRequired = publicMode
+  // q41 Yes (international tax): the $500 deposit is always taken — the
+  // qualifying-client waiver never applies. The server decides the same way.
+  const international = isInternationalTaxCase(answers)
+  const baseDepositRequired = publicMode
     ? publicIntake?.deposit_required
     : eligibility?.deposit_required
+  const depositRequired = international && baseDepositRequired === false ? true : baseDepositRequired
   const depositAmount = publicMode ? (publicIntake?.deposit_amount || 500) : (eligibility?.deposit_amount || 500)
+  // The member's own form, a deposit normally waived, and q41 Yes: say why it is due.
+  // The public diagnostic page has no signed-in member, so a member filling it in
+  // gets the hedged wording instead (whether a named member's deposit is waived is
+  // never revealed to an unsigned-in page).
+  const waiverLostNote = !international ? ''
+    : !publicMode
+      ? (eligibility && eligibility.deposit_required === false ? TAX_INTAKE_INTERNATIONAL_DEPOSIT_NOTE : '')
+      : (memberFilling && !publicIntake ? TAX_INTAKE_INTERNATIONAL_DEPOSIT_NOTE_PUBLIC : '')
 
   // The public diagnostic page (no intake row yet) takes no payment and quotes none.
   const depositLine = lockClientIdentity || (publicMode && !publicIntake)
     ? null
-    : publicMode
-      ? (depositRequired ? `Deposit: $${depositAmount}` : 'Deposit: waived')
-      : eligibility == null
-        ? 'Checking your deposit...'
-        : eligibility.deposit_required
-          ? `Deposit: $${eligibility.deposit_amount}`
-          : `Deposit: waived (you have ${eligibility.qualifying_count} qualifying clients)`
+    : international && (publicMode || eligibility != null)
+      ? `Deposit: $${depositAmount} (international tax case)`
+      : publicMode
+        ? (depositRequired ? `Deposit: $${depositAmount}` : 'Deposit: waived')
+        : eligibility == null
+          ? 'Checking your deposit...'
+          : eligibility.deposit_required
+            ? `Deposit: $${eligibility.deposit_amount}`
+            : `Deposit: waived (you have ${eligibility.qualifying_count} qualifying clients)`
 
   const errorBox = errors.length > 0 && (
     <div style={{ background: 'rgba(217,48,37,0.10)', border: '1px solid rgba(217,48,37,0.32)', borderRadius: '12px', padding: '14px 16px', marginBottom: '20px' }}>
@@ -529,7 +641,7 @@ export default function TaxIntakeForm({
       <div style={questionsStyle}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px 28px' }}>
           {numberTaxIntakeQuestions(visible, answers, numberOffset).map(({ q, num }) => (
-            <div key={q.id} style={q.type === 'textarea' ? { gridColumn: '1 / -1' } : undefined}>
+            <div key={q.id} style={q.type === 'textarea' || q.type === 'contact_list' ? { gridColumn: '1 / -1' } : undefined}>
               <label style={labelStyle}>
                 {num}. {clientFilling && q.selfLabel ? q.selfLabel : q.label}{q.required && <span style={{ color: '#d93025' }}> *</span>}
               </label>
@@ -538,6 +650,14 @@ export default function TaxIntakeForm({
               {q.poorFitOption && answers[q.id] === q.poorFitOption && (
                 <div style={{ marginTop: '8px', fontSize: '12px', color: '#e06717', lineHeight: 1.55 }}>
                   {TAX_INTAKE_POOR_FIT_WARNING}
+                </div>
+              )}
+              {q.alertOption && q.alertText && answers[q.id] === q.alertOption && (
+                <div style={{ marginTop: '8px', fontSize: '12px', color: '#e06717', lineHeight: 1.55 }}>
+                  {q.alertText}
+                  {q.id === 'q41' && waiverLostNote && (
+                    <div style={{ marginTop: '6px', fontWeight: 600 }}>{waiverLostNote}</div>
+                  )}
                 </div>
               )}
             </div>
@@ -552,6 +672,11 @@ export default function TaxIntakeForm({
             style={{ padding: '8px 16px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid #e06717', background: 'transparent', color: '#e06717', fontFamily: 'Inter, sans-serif' }}>
             Fill with test values
           </button>
+        </div>
+      )}
+      {waiverLostNote && (
+        <div style={{ margin: '0 0 12px', textAlign: 'right', fontSize: '12.5px', fontWeight: 600, color: '#e06717', lineHeight: 1.5 }}>
+          {waiverLostNote}
         </div>
       )}
       <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginBottom: '32px' }}>

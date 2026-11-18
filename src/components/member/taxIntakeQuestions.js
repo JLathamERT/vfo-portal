@@ -4,7 +4,7 @@
 // server re-validates, and both produce every message from the SAME two
 // templates below so FE and BE can never disagree (#306/#314).
 
-import { formatPersonName, formatPhone } from "../../lib/formatters";
+import { formatPersonName, formatPhone, nameHasTwoPeople, TWO_PEOPLE_CONTACT_MESSAGE } from "../../lib/formatters";
 
 // US states + DC, then Canadian provinces/territories. Q6 is a plain select.
 export const TAX_INTAKE_STATES = [
@@ -45,13 +45,41 @@ export const TAX_INTAKE_Q1_CLIENT = "Client";
 export const TAX_INTAKE_Q38_TRADITIONAL = "Traditional 6-Step Process";
 export const TAX_INTAKE_Q38_RAPID = "Rapid Route - Step 3: Orientation Meeting replaced with customized video";
 
+// Q41 (2026-11-18, international tax planning). Yes = the case begins with Matt
+// Miller: the $500 deposit is always taken (no 2-qualifying-client waiver) and
+// its $250 share goes to him instead of the tax planning group. Picking Yes shows
+// the question's `alertText` in orange (`alertOption`).
+export const TAX_INTAKE_Q41_YES = "Yes";
+export const TAX_INTAKE_Q41_ALERT =
+  "Because your situation involves international tax planning, your case will begin with Matt Miller, our VFO Specialist and International Tax Advisor. Matt will review your situation from both an international and U.S. tax perspective. If U.S. taxable income is identified, he will bring in one of our VFO Tax Planning Teams to evaluate additional planning opportunities.";
+
+export function isInternationalTaxCase(answers) {
+  return String(answers?.q41 ?? "").trim() === TAX_INTAKE_Q41_YES;
+}
+
+// FE only: shown on the member's own portal form when their deposit is normally
+// waived and they answer Yes to q41.
+export const TAX_INTAKE_INTERNATIONAL_DEPOSIT_NOTE =
+  "International tax cases always take the $500 deposit, even though your deposit is usually waived.";
+// The public diagnostic page cannot know (and must not reveal) whether the named
+// member's deposit is waived, so a member filling it in sees this hedged wording.
+export const TAX_INTAKE_INTERNATIONAL_DEPOSIT_NOTE_PUBLIC =
+  "International tax cases always take the $500 deposit, even if your deposit is usually waived.";
+
+// Q42 (2026-11-18): the people Cc'd on every email to the client, built one Add
+// click at a time (type "contact_list": first name, last name and email each), stored
+// as a JSON array string.
+export const TAX_INTAKE_CC_MAX = 10;
+
 export const TAX_INTAKE_QUESTIONS = [
   { id: "q1", label: "Who is completing this form?", type: "derived", required: false, options: [TAX_INTAKE_Q1_ADVISOR, TAX_INTAKE_Q1_ACCOUNTANT, TAX_INTAKE_Q1_CLIENT] },
   { id: "q2", label: "Client First Name", type: "text", required: true, format: "name" },
   { id: "q3", label: "Client Last Name", type: "text", required: true, format: "name" },
   { id: "q4", label: "Client Email", type: "text", required: true },
   { id: "q5", label: "Client Phone Number", type: "text", required: true, format: "phone" },
+  { id: "q42", label: "Is there anyone your client would like copied on all emails, as well as the client?", selfLabel: "Is there anyone you would like copied on all emails, as well as you?", type: "contact_list", required: false, note: "Enter their first name, last name and email, then press Add. Add as many people as you like." },
   { id: "q6", label: "Client State of Residence", type: "select", required: true, options: TAX_INTAKE_STATES },
+  { id: "q41", label: "Is the client a U.S. individual or business with foreign income, operations, ownership, or cross-border activities?", selfLabel: "Are you a U.S. individual or business with foreign income, operations, ownership, or cross-border activities?", type: "radio", required: true, options: [TAX_INTAKE_Q41_YES, "No"], alertOption: TAX_INTAKE_Q41_YES, alertText: TAX_INTAKE_Q41_ALERT },
   { id: "q7", label: "Associated VFO Member", type: "text", required: false, hidden: true },
   { id: "q8", label: "Introducer Email", type: "text", required: false, hidden: true },
   { id: "q9", label: "Introducer Firm Name", type: "text", required: false, hidden: true },
@@ -148,7 +176,9 @@ export function numberTaxIntakeQuestions(questions, answers, offset = 0, keepAns
 // client's name / email / phone / state and the member + introducer fields are
 // never edited; every other live question is. Mirrored from the server file,
 // which refuses the same list.
-export const TAX_INTAKE_EDIT_LOCKED = ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9"];
+// q41 / q42 (2026-11-18) are locked too: q41 decided the deposit and where its
+// share goes, and q42's people are client contacts once the case exists.
+export const TAX_INTAKE_EDIT_LOCKED = ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q41", "q42"];
 
 export function taxIntakeQuestionEditable(q) {
   return q.type !== "derived" && !q.hidden && !q.retired && !TAX_INTAKE_EDIT_LOCKED.includes(q.id);
@@ -171,6 +201,62 @@ export const TAX_INTAKE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // byte-identical without a hand-maintained list.
 export const taxIntakeRequiredMessage = (label) => `${label} is required`;
 export const taxIntakeEmailMessage = (label) => `${label} must be a valid email address`;
+// q42's messages, the same on both sides. The two-people one is the add-client
+// contact form's own (src/lib/formatters.js).
+export const TAX_INTAKE_CONTACT_NAME_MESSAGE = "Each person copied on emails needs a first and last name";
+export const TAX_INTAKE_CONTACT_EMAIL_MESSAGE = "Each person copied on emails needs an email address";
+export const taxIntakeContactBadEmailMessage = (email) => `"${email}" is not a valid email address`;
+export const TAX_INTAKE_CONTACT_MAX_MESSAGE = `At most ${TAX_INTAKE_CC_MAX} people can be copied on emails`;
+
+// A contact_list answer (q42) back into its people: names tidied exactly as the
+// client's own (formatPersonName), emails trimmed and lower-cased, de-duplicated
+// by email, order kept. Takes the stored JSON string or an array.
+export function parseTaxIntakeContactList(v) {
+  let items = [];
+  if (Array.isArray(v)) items = v;
+  else {
+    const s = String(v ?? "").trim();
+    if (s.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) items = parsed;
+      } catch { items = []; }
+    }
+  }
+  const out = [];
+  const seen = new Set();
+  for (const it of items) {
+    const o = it && typeof it === "object" ? it : {};
+    const c = {
+      first_name: formatPersonName(o.first_name),
+      last_name: formatPersonName(o.last_name),
+      email: String(o.email ?? "").trim().toLowerCase(),
+    };
+    if (!c.first_name && !c.last_name && !c.email) continue;
+    const key = c.email || `${c.first_name} ${c.last_name}`.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(c);
+  }
+  return out;
+}
+
+// What is wrong with one person, or null. The add-client contact form's rules,
+// plus the email, which a Cc cannot do without.
+export function taxIntakeContactProblem(c) {
+  if (!c.first_name || !c.last_name) return TAX_INTAKE_CONTACT_NAME_MESSAGE;
+  if (nameHasTwoPeople(c.first_name) || nameHasTwoPeople(c.last_name)) return TWO_PEOPLE_CONTACT_MESSAGE;
+  if (!c.email) return TAX_INTAKE_CONTACT_EMAIL_MESSAGE;
+  if (!TAX_INTAKE_EMAIL_RE.test(c.email)) return taxIntakeContactBadEmailMessage(c.email);
+  return null;
+}
+
+// The read-only views (cards): "Mary Smith (mary@x.com), John Doe (john@x.com)".
+export function formatTaxIntakeContactList(v) {
+  return parseTaxIntakeContactList(v)
+    .map((c) => `${`${c.first_name} ${c.last_name}`.trim()}${c.email ? ` (${c.email})` : ""}`)
+    .join(", ");
+}
 
 // Strips the money-input decoration a member may type ("$1,200" -> "1200") so a
 // money answer is stored as the digits the admin card reads back.
@@ -195,6 +281,12 @@ export function validateTaxIntakeAnswers(answers) {
     if (q.id === "q4" && val && !TAX_INTAKE_EMAIL_RE.test(val)) {
       errors.push(taxIntakeEmailMessage(q.label));
     }
+    if (q.type === "contact_list") {
+      const list = parseTaxIntakeContactList(raw);
+      const problem = list.map(taxIntakeContactProblem).find((p) => p);
+      if (problem) errors.push(problem);
+      else if (list.length > TAX_INTAKE_CC_MAX) errors.push(TAX_INTAKE_CONTACT_MAX_MESSAGE);
+    }
   }
   return errors;
 }
@@ -210,6 +302,15 @@ export function normalizeTaxIntakeAnswers(answers) {
     if (q.type === "derived" || q.retired) { out[q.id] = ""; continue; }
     if (!taxIntakeQuestionShown(q, a)) { out[q.id] = ""; continue; }
     const raw = a[q.id];
+    if (q.type === "contact_list") {
+      // Only complete, valid people; never the client's own address.
+      const own = String(a.q4 ?? "").trim().toLowerCase();
+      const list = parseTaxIntakeContactList(raw)
+        .filter((c) => c.email !== own && !taxIntakeContactProblem(c))
+        .slice(0, TAX_INTAKE_CC_MAX);
+      out[q.id] = list.length ? JSON.stringify(list) : "";
+      continue;
+    }
     // format: "name" / "phone" answers tidied as the server does (src/lib/formatters.js).
     out[q.id] = q.type === "money" ? normalizeTaxIntakeMoney(raw)
       : q.format === "name" ? formatPersonName(raw)

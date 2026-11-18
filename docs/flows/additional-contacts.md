@@ -35,6 +35,8 @@ Two boolean columns on the existing `client_contacts` table (migration `20260820
 
 Full column list → [tables/clients.md](../tables/clients.md).
 
+**Contacts from the Tax Planning Form (2026-11-18).** The form's q42 (*"Is there anyone … would like copied on all emails?"*) collects first name, last name and email per person; when the case is created `addIntakeCcContacts` (`utils/tax-intake-finalize.ts`, also called by `tax_holistic_form_submit`) inserts each as a `client_contacts` row with **`cc_on_emails = true`** (Jake: Cc on straight away), or switches Cc on for an existing contact with that email. It is the one writer that sets the toggle without an admin; the invariant below still holds because every row it writes carries an email. `use_in_greeting` stays false. See [tax-intake.md](tax-intake.md#the-form--one-definition-mirrored).
+
 **Two invariants, enforced in the handler on the FINAL state** (stored row merged with the incoming patch, never on the incoming fields alone — so a two-step edit cannot sneak past them):
 
 1. `cc_on_emails` requires a non-empty `email` on the row.

@@ -222,6 +222,7 @@ function PublicTaxDiagnostic() {
         submitLabel="Proceed"
         allowTestFill={import.meta.env.DEV}
         clientFilling={completedBy === 'client'}
+        memberFilling={completedBy === 'member'}
       />
     </TokenShell>
   )

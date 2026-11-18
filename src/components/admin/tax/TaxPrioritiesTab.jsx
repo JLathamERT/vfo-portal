@@ -13,7 +13,7 @@ import { CONFIRMATION_CARD_SKIP } from '../../../lib/confirmationStatus'
 import { formatDate as formatFullDate } from '../../../lib/dates'
 import { makeTaxPlanRules, KNOWN_FEE_PROCESS_VERSIONS, isNewFeeProcess, AMEND_FEE_CODE, AMEND_FEE_TAX5_CODE, isAmendStepTask, amendStage, DEPOSIT_NA_STATUS, DEPOSIT_PROCESSING_STATUS, DEPOSIT_FAILED_STATUS, phaseBadgeToken, phaseShortLabel, implRevShareDone, IMPL_REV_NO_SHARE } from './taxPlanRules'
 import { TAX_DISPLAY_NAMES, taxDisplayName } from '../../shared/taxDisplayNames'
-import { numberTaxIntakeQuestions, TAX_INTAKE_QUESTIONS, taxIntakeQuestionEditable, taxIntakeQuestionShown, formatTaxIntakeMoneyInput } from '../../member/taxIntakeQuestions'
+import { numberTaxIntakeQuestions, TAX_INTAKE_QUESTIONS, taxIntakeQuestionEditable, taxIntakeQuestionShown, formatTaxIntakeMoneyInput, formatTaxIntakeContactList } from '../../member/taxIntakeQuestions'
 import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { statusPillStyle } from '../../shared/statusColors'
@@ -770,16 +770,24 @@ const DEPOSIT_TEAM_CHIP_COLORS = {
   'Yes': '#1b9254',
   'Failed': '#e74c3c',
   'Awaiting Planner Allocation': '#e06717',
+  // An international case whose specialist cannot take transfers yet (2026-11-18).
+  'Awaiting Payout Setup': '#e06717',
   [DEPOSIT_NA_STATUS]: 'var(--vfo-muted)',
   // Proceeded before the leg existed; deposit split by hand. Terminal, never paid.
   'N/A — Legacy': 'var(--vfo-muted)',
 }
-function depositTeamChip(status) {
+// An international case (client_tax_plans.international_tax, q41 Yes) pays the
+// same $250 to the international tax specialist instead of the group.
+function depositTeamChip(status, international = false) {
   const s = String(status || '')
   const color = DEPOSIT_TEAM_CHIP_COLORS[s]
   if (!color) return null
-  const label = s === 'Yes' ? '$250 team share paid' : s === 'Failed' ? '$250 team share failed' : s
-  return <span style={chipStyle(color)} title="Tax Planning Team share of the $500 deposit">{label}</span>
+  const who = international ? 'international share' : 'team share'
+  const label = s === 'Yes' ? `$250 ${who} paid` : s === 'Failed' ? `$250 ${who} failed` : s
+  const title = international
+    ? 'International tax specialist share of the $500 deposit'
+    : 'Tax Planning Team share of the $500 deposit'
+  return <span style={chipStyle(color)} title={title}>{label}</span>
 }
 
 function LockedIcon({ size = 13 }) {
@@ -2505,12 +2513,17 @@ function ClientQuestionsCard({ planId, act }) {
 // booking step is in. `canSwitch` is false once the server would refuse it —
 // the booking step answered, the TPOM skipped, the plan stopped — and on every
 // surface that does not own the booking step (planner, classic member).
-function TaxRouteCard({ rapid, canSwitch, busy, onChange }) {
+// `international` (q41 Yes, 2026-11-18): the case begins with the international
+// tax specialist, shown as a chip beside the heading on every surface.
+function TaxRouteCard({ rapid, international = false, canSwitch, busy, onChange }) {
   const pill = (on) => ({ padding: '4px 12px', borderRadius: '999px', border: 'none', fontSize: '11.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
     cursor: busy ? 'not-allowed' : 'pointer', background: on ? '#125ecc' : 'transparent', color: on ? '#fff' : 'var(--vfo-ink)' })
   return (
     <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 18px', flexWrap: 'wrap' }}>
-      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tax Planning Route</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tax Planning Route</span>
+        {international && <span style={chipStyle('#e06717')} title="The client answered Yes to the international tax question: the case begins with Matt Miller">International tax case</span>}
+      </span>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{rapid ? 'The TPOM is replaced by a customized video' : 'The client attends the TPOM'}</span>
         {canSwitch
@@ -2564,6 +2577,7 @@ function additionalInfoRounds(requests, responses, requestedAt, receivedAt) {
 const INTAKE_DEFS = Object.fromEntries(TAX_INTAKE_QUESTIONS.map(q => [q.id, q]))
 function intakeAnswerText(id, raw) {
   const s = String(raw ?? '').trim()
+  if (INTAKE_DEFS[id]?.type === 'contact_list') return formatTaxIntakeContactList(s)
   return INTAKE_DEFS[id]?.type === 'money' && /^\d+(\.\d+)?$/.test(s) ? `$${formatTaxIntakeMoneyInput(s)}` : s
 }
 const intakeStamp = (at) => {
@@ -5933,7 +5947,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap', opacity: isGreyedOut ? 0.3 : 1, pointerEvents: isGreyedOut ? 'none' : undefined }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
         <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase, spec)}{greyNote && <span style={{ fontSize: '11px', color: '#e06717', fontWeight: 600, marginLeft: '8px' }}>({greyNote})</span>}</span>
-        {showTeamShareChip && depositTeamChip(livePlan?.deposit_team_share_status)}
+        {showTeamShareChip && depositTeamChip(livePlan?.deposit_team_share_status, livePlan?.international_tax === true)}
         <LockedControl locked={reviewLocked && !readOnly} hint={REVIEW_LOCKED_HINT}>
           <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, taxSpecialistId)} disabled={saving[key] || reviewLocked} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)', cursor: reviewLocked ? 'not-allowed' : undefined }}>
             <option value="">-- Select --</option>
@@ -5993,6 +6007,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
 
       <TaxRouteCard
         rapid={!!(livePlan || plan)?.rapid_route}
+        international={(livePlan || plan)?.international_tax === true}
         canSwitch={(!readOnly || directMode) && !plannerMode && !roiSkipped && !(livePlan || plan)?.ready_for_tax3_decision && (livePlan || plan)?.status !== 'stopped'}
         busy={routeBusy}
         onChange={async (next) => {
