@@ -11,6 +11,7 @@ import { statusPillStyle } from '../../shared/statusColors'
 
 const REGULAR_PRIORITIES = [
   "Business Growth", "Business Exit", "Business Advisory",
+  "International Tax Planning",
   "Long Term Sickness Concern", "Living too Long Concern", "Death Impacting Dependents Concern",
   "Asset Protection (Personally Sued)", "Loss of Key Person", "Asset Protection (Business Sued)",
   "Technology Advancements", "Risk Mitigation",

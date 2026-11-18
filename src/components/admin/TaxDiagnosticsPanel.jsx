@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { formatDate, formatDateTime } from '../../lib/dates'
-import { TAX_INTAKE_QUESTIONS, numberTaxIntakeQuestions } from '../member/taxIntakeQuestions'
+import { TAX_INTAKE_QUESTIONS, numberTaxIntakeQuestions, formatTaxIntakeContactList } from '../member/taxIntakeQuestions'
 import CopyLink from '../shared/CopyLink'
 import { readable } from '../shared/readableColor'
 import { useIsPhone } from '../../lib/useMediaQuery'
@@ -339,7 +339,7 @@ export function DiagnosticCard({ d, members, open, onToggle, onChanged, card, me
             {numberTaxIntakeQuestions(visibleQuestions, answers, 0, true).map(({ q, num }, i, all) => (
               <div key={q.id} style={{ padding: '10px 0', borderBottom: i === all.length - 1 ? 'none' : '1px solid var(--vfo-tint)' }}>
                 <div style={label}>{num}. {q.label}</div>
-                <div style={value}>{answers[q.id] || '—'}</div>
+                <div style={value}>{(q.type === 'contact_list' ? formatTaxIntakeContactList(answers[q.id]) : answers[q.id]) || '—'}</div>
               </div>
             ))}
           </div>

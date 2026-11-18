@@ -4,7 +4,7 @@ import { hasStrategicSplit, computeStrategicShares } from '../../../lib/strategi
 
 const PIP_PRIORITIES = [
   { group: '— Business Advisory —', items: ['Business Growth', 'Business Exit', 'Business Advisory'] },
-  { group: '— Tax —', items: ['Tax Planning (Income Tax Focus)', 'Tax Planning (Capital Gain Tax Focus)', 'Tax Planning (Retirement/Estate Tax Focus)', 'Tax Planning (Charitable/Gift Tax Focus)', 'Tax Planning (Business Tax Focus)', 'Tax Planning'] },
+  { group: '— Tax —', items: ['Tax Planning (Income Tax Focus)', 'Tax Planning (Capital Gain Tax Focus)', 'Tax Planning (Retirement/Estate Tax Focus)', 'Tax Planning (Charitable/Gift Tax Focus)', 'Tax Planning (Business Tax Focus)', 'International Tax Planning', 'Tax Planning'] },
   { group: '— Risk Mitigation —', items: ['Long Term Sickness Concern', 'Living too Long Concern', 'Death Impacting Dependents Concern', 'Asset Protection (Personally Sued)', 'Loss of Key Person', 'Asset Protection (Business Sued)', 'Technology Advancements', 'Risk Mitigation'] },
   { group: '— Wealth Planning —', items: ['Wealth Planning (Short Term)', 'Wealth Planning (Long Term)', 'Wealth Planning (Short/Long Term)', 'Wealth Planning (Grow Wealth)', 'Wealth Planning (Retain Wealth)', 'Wealth Planning (Grow/Retain Wealth)', 'Wealth Planning (Young Kids Focus)', 'Wealth Planning (College Planning Focus)', 'Wealth Planning (Retirement Planning Focus)', 'Wealth Planning (Legacy Planning Focus)', 'Wealth Planning (Alternative Investments Focus)', 'Wealth Planning'] },
   { group: '— Legal —', items: ['Family Law', 'Trusts and Wills (Estate Planning)', 'Contract / Corporate Law', 'Structuring Entities', 'Buy / Sell Agreements', 'Joint Venture Agreements', 'Intellectual Property', 'Legal Focus'] },
