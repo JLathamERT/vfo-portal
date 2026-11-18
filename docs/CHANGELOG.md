@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-18 — SDP ATSG: SDP and the member split the 95% per retainer and per fee; VFO Services' 5% stays locked — by Jake
+
+Branch `claude/sdp-atsg-editable-split` (both repos), ONE chat (the SDP ATSG chat, continued after its 2026-11-17 release). Tested on `vfo-admin-api-jake` and the shared test `vfo-admin-api` (both this branch, 2026-11-18); live untouched until release. Action count unchanged (no new action). Migration `20261118120000_sdp_atsg_editable_split.sql` (applied on the test site 2026-11-18; goes on live at release).
+
+- **Why (Jake):** SDP decides how the 95% after VFO Services' locked 5% is shared with the member, case by case, instead of the fixed 47.5 / 47.5.
+- **Built — backend:** `sdp_pct` (numeric, 0-95 in 0.5 steps, default 47.5, check constraint) on `sdp_atsg_cases` and `sdp_atsg_payments`. `sdp_atsg_save_retainer` takes `sdp_pct` with the amount and frequency and copies it onto the retainer rows (refused once the agreement is sent, as before); `sdp_atsg_impact_fee_create` takes the fee's own `sdp_pct` (default 47.5), fixed once sent. `splitAmounts(base, sdpPct)` fixes VFO Services' 5% first, SDP its %, the member the rest (a rounding cent is the member's; before, VFO Services took it). The settle reads the row's `sdp_pct`; the transfer descriptions, the paid / held / transfer bells and the transfer metadata (`leg` + `leg_pct`, was `sdp_47_5` / `member_47_5`) carry the real %. A 0% leg is marked `none_due`, never transferred or emailed, and the sweep's settle-retry filter treats it as finished. The held-share bell rule's description drops "47.5%".
+- **Built — website (`SdpAtsgPanel.jsx`):** a *Revenue split* box in the retainer form and in the Strategy Impact Fee form: SDP's % typed, the member's shown as the rest, VFO Services 5% (locked), with the dollars per payment; the send confirmations name the split; read-only once sent. Each sent fee's row shows "SDP x% / Member y% / VFOS 5%". The *Pricing & revenue split* card uses the case's and each fee's %, and under each share says what has reached them so far and on how many payments ("Received $875.00 so far · 1 of 4 payments") — Jake: a 1-of-4 payout read as paid in full.
+- **Tested (Jake, test site):** a $10,000 quarterly retainer at SDP 60 (35 / 5 shown, $1,500 / $875 / $125 per payment); 60.3 refused; the send confirmation; agreement, countersign and card payment 1 with the payment bell and both transfers at 60 / 35; a $2,000 fee at SDP 40 paid and transferred at 40 / 55; the card's received-so-far lines.
+- **Not tested:** a 0% leg (`none_due`) end to end and its sweep filter; an ACH payment under a custom split; phone width of the new boxes.
+- **Also this chat (test site only, 2026-11-17):** the test site's `boldsign-webhook` had been put back from a worktree before the SDP release merged, so it had no SDP hand-off and dropped a test client's Signed event. Redeployed from main (v8) and the event replayed; recorded as #763.
+- **Gates:** `deno check` clean; build exit 0, 51 route pages; the dev server must run on 5173-5176 (the CORS list), 5191 failed to fetch.
+
 ## 2026-11-17 (e) — Portal Backlog: portal update requests, their review, a board and an archive, replacing the update-requests sheet — by Paxton
 
 Branch `claude/vfos-portal-backlog-tracker-38e9d5` (both repos), ONE chat. Tested on `vfo-admin-api-paxton` v6 → v8 (the test site); live untouched until release. Action count **678 → 689** (+11). Migrations `20261117190000_portal_backlog.sql` and `20261117190100_portal_backlog_title_writeup.sql` (test site; live at release, then the sheet import). Docs: [flows/portal-backlog.md](flows/portal-backlog.md), [tables/portal-backlog.md](tables/portal-backlog.md).

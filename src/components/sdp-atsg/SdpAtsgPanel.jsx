@@ -15,7 +15,12 @@ import { useIsPhone } from '../../lib/useMediaQuery'
 
 const SDP_ORANGE = '#fd681d'
 const GREEN = '#1b9254'
-const SPLIT_NOTE = '47.5% SDP / 47.5% member / 5% VFO Services (locked)'
+// VFO Services' 5% is locked; SDP and the member split the other 95%, set with
+// the retainer (locked once the agreement is sent) and per Strategy Impact Fee
+// (locked once that fee is sent). Default 47.5 / 47.5 (Jake, 2026-11-18).
+const VFOS_PCT = 5
+const SHARED_PCT = 95
+const DEFAULT_SDP_PCT = 47.5
 
 const FREQS = [
   ['annual', 'Annual', '1 payment'],
@@ -51,6 +56,7 @@ const LEG_STATUS = {
   held_paused: { label: 'held - member paused', color: '#b45309' },
   held_arrears: { label: 'held - member in arrears', color: '#b45309' },
   failed: { label: 'failed - retried daily', color: '#ef4444' },
+  none_due: { label: 'none due (0%)', color: '#6b7280' },
 }
 
 const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)' }
@@ -386,10 +392,60 @@ const submitBtn = busy => ({ padding: '8px 18px', borderRadius: '6px', fontSize:
 const cancelBtn = { padding: '8px 16px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }
 const smallBtn = (color = '#0095ff') => ({ padding: '4px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', border: `1px solid ${color}66`, background: `${color}1f`, color, fontWeight: 600, fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' })
 
-function splitOf(amount) {
-  const sdp = Math.round(amount * 0.475 * 100) / 100
-  const member = Math.round(amount * 0.475 * 100) / 100
-  return { sdp, member, vfos: Math.round((amount - sdp - member) * 100) / 100 }
+// The same sums as the server's splitAmounts: VFO Services' 5% first, SDP its %,
+// the member the rest (so any rounding cent is the member's).
+function splitOf(amount, sdpPct = DEFAULT_SDP_PCT) {
+  const r2 = n => Math.round(n * 100) / 100
+  const vfos = r2(amount * VFOS_PCT / 100)
+  const sdp = r2(amount * sdpPct / 100)
+  return { sdp, member: r2(amount - vfos - sdp), vfos }
+}
+const pctOf = row => {
+  const n = Number(row?.sdp_pct)
+  return Number.isFinite(n) && row?.sdp_pct != null ? n : DEFAULT_SDP_PCT
+}
+const pctText = n => `${Number.isInteger(n) ? n : n.toFixed(1)}%`
+// SDP's % as typed: 0 to 95 in steps of 0.5, else null.
+function parsePct(v) {
+  if (String(v).trim() === '') return null
+  const n = Number(v)
+  if (!Number.isFinite(n) || n < 0 || n > SHARED_PCT || Math.round(n * 2) !== n * 2) return null
+  return n
+}
+
+// The editable split: SDP's % typed, the member's is the rest of the 95%, VFO
+// Services' 5% shown locked. With an amount, each share's dollars underneath.
+function SplitInput({ value, onChange, locked, amount, amountNote }) {
+  const pct = parsePct(value)
+  const sp = pct != null && amount > 0 ? splitOf(amount, pct) : null
+  const box = { ...fInput, opacity: 0.6 }
+  const dollars = v => <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{money(v)}{amountNote ? ` ${amountNote}` : ''}</div>
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px' }}>
+        <div>
+          <label style={fLabel}>SDP Personalized Planning</label>
+          <div style={{ position: 'relative' }}>
+            <input value={value} readOnly={locked} onChange={e => onChange(e.target.value.replace(/[^0-9.]/g, ''))} inputMode="decimal"
+              style={{ ...fInput, paddingRight: '28px', ...(locked ? { opacity: 0.6, pointerEvents: 'none' } : {}) }} />
+            <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--vfo-muted)', fontSize: '14px' }}>%</span>
+          </div>
+          {sp && dollars(sp.sdp)}
+        </div>
+        <div>
+          <label style={fLabel}>Member</label>
+          <div style={box}>{pct != null ? pctText(SHARED_PCT - pct) : '—'}</div>
+          {sp && dollars(sp.member)}
+        </div>
+        <div>
+          <label style={fLabel}>VFO Services (locked)</label>
+          <div style={box}>{pctText(VFOS_PCT)}</div>
+          {sp && dollars(sp.vfos)}
+        </div>
+      </div>
+      {!locked && value !== '' && pct == null && <div style={{ color: '#e74c3c', fontSize: '12px', marginTop: '6px' }}>SDP's share must be 0 to {SHARED_PCT}%, in steps of 0.5.</div>}
+    </>
+  )
 }
 function paymentsFor(annual, freq) {
   const n = FREQ_COUNT[freq] || 0
@@ -609,39 +665,62 @@ function CaseView({ caseId, mode, onBack }) {
 }
 
 // The tax PricingSplitCard's look: a plan-tool header row, the figures, and the
-// "Pays out to" table. The split is locked, so there is no Edit.
+// "Pays out to" table. The split is set in the retainer and fee forms, not here.
 function PricingSplit({ c, d, retainer, fees, busy, act, open, onToggle }) {
   const annual = Number(c.retainer_amount) || 0
   const feeTotal = fees.filter(f => f.status !== 'canceled').reduce((s, f) => s + Number(f.amount || 0), 0)
   const m = d.member
   const memberReady = !!m?.payout_ready
   const sdpReady = !!d.group?.payout_ready
-  const ret = splitOf(annual)
-  const imp = splitOf(feeTotal)
-  const legNote = (rows, leg) => {
-    const paid = rows.filter(r => r.status === 'paid')
-    if (!paid.length) return ''
-    const done = paid.filter(r => r[`${leg}_payout_status`] === 'paid').length
-    const held = paid.some(r => String(r[`${leg}_payout_status`] || '').startsWith('held_') || r[`${leg}_payout_status`] === 'awaiting_connect')
-    const failed = paid.some(r => r[`${leg}_payout_status`] === 'failed')
-    return failed ? 'failed — retrying' : held ? 'held — awaiting payout setup' : `paid on ${done} of ${paid.length} payment${paid.length === 1 ? '' : 's'}`
+  // The retainer's split is the case's; each fee has its own, so the fee column
+  // adds up each fee's shares.
+  const retPct = pctOf(c)
+  const ret = splitOf(annual, retPct)
+  const imp = fees.filter(f => f.status !== 'canceled').reduce((t, f) => {
+    const s = splitOf(Number(f.amount || 0), pctOf(f))
+    return { sdp: t.sdp + s.sdp, member: t.member + s.member, vfos: t.vfos + s.vfos }
+  }, { sdp: 0, member: 0, vfos: 0 })
+  // Under each share: what has actually reached them so far out of the total, and
+  // on how many of the payments (or fees), so a 1-of-4 payout never reads as paid
+  // in full (Jake, 2026-11-18). VFO Services' 5% is "kept" when the client pays.
+  const legNotes = (rows, leg, total, unit) => {
+    const live = rows.filter(r => r.status !== 'canceled')
+    if (!live.length) return []
+    if (!(total > 0)) return [{ text: 'None due (0%)', color: 'var(--vfo-muted)' }]
+    const share = r => {
+      const stamped = r[`${leg}_share`]
+      return stamped != null ? Number(stamped) : splitOf(Number(r.amount || 0), pctOf(r))[leg]
+    }
+    const reached = leg === 'vfos' ? live.filter(r => r.status === 'paid') : live.filter(r => r[`${leg}_payout_status`] === 'paid')
+    const got = Math.round(reached.reduce((s, r) => s + share(r), 0) * 100) / 100
+    const of = `${reached.length} of ${live.length} ${unit}${live.length === 1 ? '' : 's'}`
+    const verb = leg === 'vfos' ? 'Kept' : 'Received'
+    const out = [reached.length === live.length
+      ? { text: `${verb} in full · ${of}`, color: GREEN }
+      : { text: got > 0 ? `${verb} ${money(got)} so far · ${of}` : `Nothing ${verb.toLowerCase()} yet · ${of}`, color: got > 0 ? GREEN : 'var(--vfo-muted)' }]
+    if (leg !== 'vfos') {
+      const paid = live.filter(r => r.status === 'paid')
+      if (paid.some(r => r[`${leg}_payout_status`] === 'failed')) out.push({ text: 'A transfer failed — retried daily', color: '#b9451d' })
+      else if (paid.some(r => String(r[`${leg}_payout_status`] || '').startsWith('held_') || r[`${leg}_payout_status`] === 'awaiting_connect')) out.push({ text: 'Held — awaiting payout setup', color: '#b9451d' })
+    }
+    return out
   }
-  const noteColor = t => (t.startsWith('paid') ? GREEN : t ? '#b9451d' : 'var(--vfo-muted)')
   const th = { textAlign: 'right', padding: '6px 8px', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--vfo-border-soft)' }
   const td = { padding: '7px 8px', textAlign: 'right', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-border-soft)' }
   const label = { fontSize: '11px', color: 'var(--vfo-muted)' }
   const value = { fontSize: '13px', color: 'var(--vfo-ink)', fontWeight: 600 }
   const rows = [
-    { key: 'vfos', name: 'VFO Services · 5%', r: ret.vfos, i: imp.vfos, rn: '', in: '' },
-    { key: 'member', name: `Member${m ? ` — ${m.name} (${m.member_number})` : ''} · 47.5%`, r: ret.member, i: imp.member, rn: legNote(retainer, 'member'), in: legNote(fees, 'member') },
-    { key: 'sdp', name: 'SDP Personalized Planning · 47.5%', r: ret.sdp, i: imp.sdp, rn: legNote(retainer, 'sdp'), in: legNote(fees, 'sdp') },
-  ]
+    { key: 'vfos', name: `VFO Services · ${pctText(VFOS_PCT)} locked`, r: ret.vfos, rp: VFOS_PCT, i: imp.vfos },
+    { key: 'member', name: `Member${m ? ` — ${m.name} (${m.member_number})` : ''}`, r: ret.member, rp: SHARED_PCT - retPct, i: imp.member },
+    { key: 'sdp', name: 'SDP Personalized Planning', r: ret.sdp, rp: retPct, i: imp.sdp },
+  ].map(r => ({ ...r, rn: legNotes(retainer, r.key, r.r, 'payment'), in: legNotes(fees, r.key, r.i, 'fee') }))
+  const notes = list => list.map(n => <div key={n.text} style={{ fontSize: '10px', color: n.color }}>{n.text}</div>)
   return (
     <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', padding: '14px 18px', marginBottom: '10px', fontFamily: 'Inter, sans-serif' }}>
       <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Pricing &amp; revenue split</span>
         <span style={{ flex: 1 }} />
-        <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{annual > 0 ? `${money(annual)} / year · SDP 47.5 / Member 47.5 / VFOS 5` : 'No pricing entered yet'}</span>
+        <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{annual > 0 ? `${money(annual)} / year · SDP ${pctText(retPct)} / Member ${pctText(SHARED_PCT - retPct)} / VFOS ${pctText(VFOS_PCT)}` : 'No pricing entered yet'}</span>
         <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
       </div>
 
@@ -650,7 +729,7 @@ function PricingSplit({ c, d, retainer, fees, busy, act, open, onToggle }) {
         <div style={{ marginTop: '9px', padding: '8px 12px', borderRadius: '8px', background: 'rgba(185,69,29,0.08)', border: '1px solid rgba(185,69,29,0.25)', fontSize: '11px', color: '#b9451d', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <span style={{ flex: 1, minWidth: '200px' }}>
             {!sdpReady && 'SDP Personalized Planning has no active Stripe payout account. '}
-            {!memberReady && m && `${m.name} has no active Stripe payout account — their 47.5% is held until they finish setup, then paid automatically.${m.setup_email_sent_at ? ` Setup email sent ${fmtDate(m.setup_email_sent_at)}.` : ''}`}
+            {!memberReady && m && `${m.name} has no active Stripe payout account — their share is held until they finish setup, then paid automatically.${m.setup_email_sent_at ? ` Setup email sent ${fmtDate(m.setup_email_sent_at)}.` : ''}`}
           </span>
           {!memberReady && m && (
             <button type="button" disabled={!!busy} onClick={e => { e.stopPropagation(); act('sdp_atsg_member_payout_request', { force: !!m.setup_email_sent_at }, `Payout setup email sent to ${m.name}.`, m.setup_email_sent_at ? `${m.name} was already sent a payout setup email on ${fmtDate(m.setup_email_sent_at)}. Send it again?` : `Email ${m.name} their Stripe payout setup link?`) }} style={smallBtn('#b9451d')}>
@@ -673,16 +752,16 @@ function PricingSplit({ c, d, retainer, fees, busy, act, open, onToggle }) {
               <thead>
                 <tr>
                   <th style={{ ...th, textAlign: 'left' }}>Pays out to</th>
-                  <th style={th}>Advisory retainer {money(annual)}</th>
-                  <th style={th}>Strategy Impact Fees {money(feeTotal)}</th>
+                  <th style={th}>Advisory retainer {money(annual)} — share of the year</th>
+                  <th style={th}>Strategy Impact Fees {money(feeTotal)} — share of all fees</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map(r => (
                   <tr key={r.key}>
                     <td style={{ ...td, textAlign: 'left' }}>{r.name}</td>
-                    <td style={td}>{money(r.r)}{r.rn && <div style={{ fontSize: '10px', color: noteColor(r.rn) }}>{r.rn}</div>}</td>
-                    <td style={td}>{feeTotal > 0 ? money(r.i) : '—'}{r.in && <div style={{ fontSize: '10px', color: noteColor(r.in) }}>{r.in}</div>}</td>
+                    <td style={td}>{money(r.r)} <span style={{ fontSize: '10.5px', color: 'var(--vfo-muted)' }}>({pctText(r.rp)})</span>{notes(r.rn)}</td>
+                    <td style={td}>{feeTotal > 0 ? money(r.i) : '—'}{notes(r.in)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -699,31 +778,34 @@ function PricingSplit({ c, d, retainer, fees, busy, act, open, onToggle }) {
 function RetainerForm({ c, caseId, locked, busy, act }) {
   const [amount, setAmount] = useState(c.retainer_amount != null ? String(c.retainer_amount) : '')
   const [freq, setFreq] = useState(c.frequency || '')
+  const [sdpPct, setSdpPct] = useState(String(pctOf(c)))
   const [previewing, setPreviewing] = useState(false)
   const [err, setErr] = useState('')
   const n = Number(amount)
+  const pct = parsePct(sdpPct)
   const plan = paymentsFor(n, freq)
   const per = plan[0] || 0
-  const perSplit = splitOf(per)
   const readOnlyInput = { ...fInput, opacity: 0.6, pointerEvents: 'none' }
+  const unchanged = () => Number(c.retainer_amount) === n && c.frequency === freq && pctOf(c) === pct
 
   async function saveFirst() {
     setErr('')
     if (!(n > 0)) { setErr('Please enter the ATSG Advisory Retainer.'); return false }
     if (!freq) { setErr('Please select how the client pays.'); return false }
-    if (Number(c.retainer_amount) === n && c.frequency === freq) return true
-    const res = await act('sdp_atsg_save_retainer', { retainer_amount: n, frequency: freq })
+    if (pct == null) { setErr(`SDP's share must be 0 to ${SHARED_PCT}%, in steps of 0.5.`); return false }
+    if (unchanged()) return true
+    const res = await act('sdp_atsg_save_retainer', { retainer_amount: n, frequency: freq, sdp_pct: pct })
     return !!res
   }
-  // The schedule writes itself: once there is an amount and a billing choice the
-  // retainer is saved (after a short pause in typing), so the payment rows below
-  // appear without a click. Editable until the agreement is sent.
+  // The schedule writes itself: once there is an amount, a billing choice and a
+  // valid split the retainer is saved (after a short pause in typing), so the
+  // payment rows below appear without a click. Editable until the agreement is sent.
   useEffect(() => {
-    if (locked || !(n > 0) || !freq) return
-    if (Number(c.retainer_amount) === n && c.frequency === freq) return
-    const t = setTimeout(() => { act('sdp_atsg_save_retainer', { retainer_amount: n, frequency: freq }) }, 700)
+    if (locked || !(n > 0) || !freq || pct == null) return
+    if (unchanged()) return
+    const t = setTimeout(() => { act('sdp_atsg_save_retainer', { retainer_amount: n, frequency: freq, sdp_pct: pct }) }, 700)
     return () => clearTimeout(t)
-  }, [amount, freq])
+  }, [amount, freq, sdpPct])
 
   async function preview() {
     setErr('')
@@ -746,7 +828,7 @@ function RetainerForm({ c, caseId, locked, busy, act }) {
   async function submit() {
     if (!(await saveFirst())) return
     await act('sdp_atsg_send_agreement', {}, 'Pricing saved and the agreement sent to the client.',
-      `Send the Advanced Tax Strategy Governance agreement to ${c.client_first} ${c.client_last} (${c.client_email})?\n\n${money(n)} for the 12-month engagement, ${freq === 'annual' ? 'paid in full' : `billed ${freqLabel(freq).toLowerCase()}`}. The pricing cannot be changed once it is sent.`)
+      `Send the Advanced Tax Strategy Governance agreement to ${c.client_first} ${c.client_last} (${c.client_email})?\n\n${money(n)} for the 12-month engagement, ${freq === 'annual' ? 'paid in full' : `billed ${freqLabel(freq).toLowerCase()}`}.\nSplit: SDP ${pctText(pct)} / member ${pctText(SHARED_PCT - pct)} / VFO Services ${pctText(VFOS_PCT)}.\n\nThe pricing and split cannot be changed once it is sent.`)
   }
 
   return (
@@ -782,20 +864,12 @@ function RetainerForm({ c, caseId, locked, busy, act }) {
 
       <div style={formSection}>
         <div style={formSectionTitle}>Revenue split</div>
-        <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: per > 0 ? '10px' : 0 }}>Locked for every SDP payment: 47.5% SDP Personalized Planning / 47.5% member / 5% VFO Services. Any card fee stays with VFO Services.</div>
-        {per > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px' }}>
-            {[['SDP Personalized Planning', perSplit.sdp], ['Member', perSplit.member], ['VFO Services', perSplit.vfos]].map(([l, v]) => (
-              <div key={l}>
-                <label style={fLabel}>{l} {plan.length > 1 ? 'per payment' : ''}</label>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--vfo-muted)', fontSize: '14px' }}>$</span>
-                  <input value={fmtMoney(v)} readOnly style={{ ...readOnlyInput, paddingLeft: '28px' }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '10px' }}>
+          {locked
+            ? 'Set when the agreement was sent; it applies to every advisory retainer payment.'
+            : `VFO Services keeps ${VFOS_PCT}% (locked). Enter SDP's share of the other ${SHARED_PCT}%; the member gets the rest. Locked once the agreement is sent.`} Any card fee stays with VFO Services.
+        </div>
+        <SplitInput value={sdpPct} onChange={setSdpPct} locked={locked} amount={per} amountNote={plan.length > 1 ? 'per payment' : ''} />
       </div>
 
       {err && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '13px', marginBottom: '8px' }}>{err}</div>}
@@ -807,7 +881,6 @@ function RetainerForm({ c, caseId, locked, busy, act }) {
   )
 }
 
-const fmtMoney = n => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 // Payments 2+ are dated from the day payment 1 is made, so until then each row
 // says how far after it falls; once payment 1 is in, the real dates show.
@@ -880,20 +953,22 @@ function ImpactFees({ c, fees, strategies, unlocked, busy, act, isPhone }) {
   const [strategy, setStrategy] = useState('')
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
+  const [sdpPct, setSdpPct] = useState(String(DEFAULT_SDP_PCT))
   const [err, setErr] = useState('')
   const grid = '1.4fr 110px 110px 100px 140px 1.5fr'
   const name = adding ? newName.trim() : strategy
   const n = Number(amount)
-  const sp = splitOf(n > 0 ? n : 0)
+  const pct = parsePct(sdpPct)
 
   async function send() {
     setErr('')
     if (!(n > 0)) return setErr('Please enter the fee amount.')
+    if (pct == null) return setErr(`SDP's share must be 0 to ${SHARED_PCT}%, in steps of 0.5.`)
     if (!date) return setErr('Please enter the meeting date.')
     if (!name) return setErr('Please pick or add a strategy name.')
-    const res = await act('sdp_atsg_impact_fee_create', { amount: n, meeting_date: date, strategy_name: name }, 'Strategy Impact Fee sent to the client.',
-      `Email ${c.client_first} ${c.client_last} a Strategy Impact Fee of ${money(n)} for ${name}?`)
-    if (res) { setAmount(''); setDate(''); setStrategy(''); setNewName(''); setAdding(false) }
+    const res = await act('sdp_atsg_impact_fee_create', { amount: n, sdp_pct: pct, meeting_date: date, strategy_name: name }, 'Strategy Impact Fee sent to the client.',
+      `Email ${c.client_first} ${c.client_last} a Strategy Impact Fee of ${money(n)} for ${name}?\n\nSplit: SDP ${pctText(pct)} / member ${pctText(SHARED_PCT - pct)} / VFO Services ${pctText(VFOS_PCT)}. It cannot be changed once sent.`)
+    if (res) { setAmount(''); setDate(''); setStrategy(''); setNewName(''); setAdding(false); setSdpPct(String(DEFAULT_SDP_PCT)) }
   }
 
   if (!unlocked) {
@@ -939,9 +1014,10 @@ function ImpactFees({ c, fees, strategies, unlocked, busy, act, isPhone }) {
           </div>
           <div style={formSection}>
             <div style={formSectionTitle}>Revenue split</div>
-            <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>
-              Locked: 47.5% SDP Personalized Planning{n > 0 ? ` (${money(sp.sdp)})` : ''} / 47.5% member{n > 0 ? ` (${money(sp.member)})` : ''} / 5% VFO Services{n > 0 ? ` (${money(sp.vfos)})` : ''}.
+            <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '10px' }}>
+              VFO Services keeps {VFOS_PCT}% (locked). Enter SDP's share of the other {SHARED_PCT}% for this fee; the member gets the rest. Locked once the fee is sent.
             </div>
+            <SplitInput value={sdpPct} onChange={setSdpPct} amount={n > 0 ? n : 0} />
           </div>
           {err && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '13px', marginBottom: '8px' }}>{err}</div>}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -960,7 +1036,8 @@ function ImpactFees({ c, fees, strategies, unlocked, busy, act, isPhone }) {
                 <div>Strategy</div><div>Meeting</div><div>Amount</div><div>Card fee</div><div>Status</div><div style={{ textAlign: 'right' }}>Payment</div>
               </div>
               {fees.map(f => (
-                <PaymentRow key={f.id} r={f} grid={grid} label={f.strategy_name} due={fmtDate(f.meeting_date)} />
+                <PaymentRow key={f.id} r={f} grid={grid} due={fmtDate(f.meeting_date)}
+                  label={<>{f.strategy_name}<div style={{ fontSize: '11px', fontWeight: 400, color: 'var(--vfo-muted)' }}>SDP {pctText(pctOf(f))} / Member {pctText(SHARED_PCT - pctOf(f))} / VFOS {pctText(VFOS_PCT)}</div></>} />
               ))}
             </div>
           </div>

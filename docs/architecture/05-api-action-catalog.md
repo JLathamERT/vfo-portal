@@ -986,11 +986,11 @@ SDP's own clients, kept apart from ours: [flows/sdp-atsg.md](../flows/sdp-atsg.m
 | `sdp_atsg_members_load` | `cases.ts` | AUTH (as above) | The member picker for + Add Client, plus `sdp_people` (everyone at each group the caller can add for) and `default_cc`. |
 | `sdp_atsg_case_create` | `cases.ts` | AUTH (as above) | A new case under a member; `client_ref` `<member>-SDPnnn`; `cc_emails` kept only where they name someone at the case's group. |
 | `sdp_atsg_save_cc` | `cases.ts` | AUTH (as above) | **2026-11-17.** The case's *Cc on client emails* list (`{case_id, emails}`), filtered to the group's active planners and team members. |
-| `sdp_atsg_save_retainer` | `cases.ts` | AUTH (as above) | The yearly figure + frequency; refused once the agreement is sent. |
+| `sdp_atsg_save_retainer` | `cases.ts` | AUTH (as above) | The yearly figure + frequency + SDP's % of the 95% (`sdp_pct`, the member gets the rest); refused once the agreement is sent. |
 | `sdp_atsg_agreement_preview` / `sdp_atsg_send_agreement` | `agreement.ts` | AUTH (as above) | The PDF as it would be sent / the BoldSign send (claims `agreement_sent_at` first; client then CEO; the client's signing email). |
 | `sdp_atsg_resend_payment_email` | `pay.ts` | AUTH (as above) | Re-sends the first-payment email until payment 1 is paid or processing. |
 | `sdp_atsg_send_update_link` | `pay.ts` | AUTH (as above) | Emails the save-only update-payment-method link. |
-| `sdp_atsg_impact_fee_create` | `pay.ts` | AUTH (as above) | A Strategy Impact Fee + its own pay link; locked until payment 1 is paid. |
+| `sdp_atsg_impact_fee_create` | `pay.ts` | AUTH (as above) | A Strategy Impact Fee + its own pay link and its own `sdp_pct`; locked until payment 1 is paid. |
 | `sdp_atsg_stop` | `cases.ts` | AUTH (as above) | One-way stop: unpaid rows `canceled`, case `stopped`. |
 | `sdp_atsg_member_payout_request` | `cases.ts` | AUTH (as above) | The usual payout-setup request, for this case's member only (#490). |
 | `sdp_atsg_pay_load` / `sdp_atsg_pay_checkout` | `pay.ts` | PUBLIC (token) | The `/sdp-atsg-pay` page: the token row alone decides first payment / missed payments (with `missed` rows for the page's notice) / update method / one fee; the checkout mints a Stripe Checkout (payment or setup mode) on the VFO Services account. |
