@@ -1,6 +1,6 @@
 # SDP - Advanced Tax Strategy Governance (ATSG)
 
-> Built 2026-11-17 (Jake). Code: `vfo-edge-functions` `supabase/functions/vfo-admin-api/actions/sdp-atsg/*`, website `src/components/sdp-atsg/SdpAtsgPanel.jsx` + `src/pages/SdpAtsgPayPage.jsx`. Migrations `20261117120000_sdp_atsg.sql` (tables, column, agreement, bells, job) and `20261117120100_sdp_atsg_emails.sql` (the 10 emails), then `20261117150000_sdp_atsg_switch_and_cc.sql` (the planner switch row, Off; the per-case Cc column). Verify against the code before relying on a detail here (#399).
+> Built 2026-11-17 (Jake). Code: `vfo-edge-functions` `supabase/functions/vfo-admin-api/actions/sdp-atsg/*`, website `src/components/sdp-atsg/SdpAtsgPanel.jsx` + `src/pages/SdpAtsgPayPage.jsx`. Migrations `20261117120000_sdp_atsg.sql` (tables, column, agreement, bells, job) and `20261117120100_sdp_atsg_emails.sql` (the 10 emails), then `20261117150000_sdp_atsg_switch_and_cc.sql` (the planner switch row, Off; the per-case Cc column) and `20261118120000_sdp_atsg_editable_split.sql` (`sdp_pct` on cases and payments). Verify against the code before relying on a detail here (#399).
 
 ## What it is
 
@@ -28,7 +28,8 @@ Every handler calls `resolveAtsgCaller` (admin, or a planner of an `atsg_enabled
 ## The money
 
 - Every payment lands on the **VFO Services** Stripe account (`STRIPE_ACCOUNT_PRIMARY`; sandbox per `atsgSandbox`).
-- **Split, locked:** 47.5% SDP (the group's Connect account) / 47.5% the member / 5% VFO Services, on the payment **before** any card fee (`splitAmounts`). The card fee (2.9% + $0.30 grossed up, `cardChargeCentsFor`) stays with VFO Services. ACH has no fee. The split is stamped on the row at the payout (`sdp_share` / `member_share` / `vfos_share`, #659).
+- **Split:** VFO Services keeps **5%, locked**. SDP (the group's Connect account) and the member split the other 95%: SDP's % is typed (`sdp_pct`, 0 to 95 in steps of 0.5, default 47.5) and the member gets the rest (Jake, 2026-11-18). The retainer's is set with its amount and locked once the agreement is sent (on the case, copied onto every retainer row); each Strategy Impact Fee has its own, locked once that fee is sent. All on the payment **before** any card fee (`splitAmounts`: VFO Services' 5% first, SDP its %, the member the rest, so a rounding cent is the member's). A 0% leg is marked `none_due`: no transfer, no revenue-share email.
+- **The case screen's *Pricing & revenue split* card** shows each payee's share of the year's retainer and of all fees, and under it what has actually reached them so far and on how many of the payments ("Received $875.00 so far · 1 of 4 payments"), so one quarterly payout never reads as the whole year (Jake, 2026-11-18). Each sent fee's row shows its own split. The card fee (2.9% + $0.30 grossed up, `cardChargeCentsFor`) stays with VFO Services. ACH has no fee. The split is stamped on the row at the payout (`sdp_share` / `member_share` / `vfos_share`, #659).
 - Transfers carry `source_transaction` (the client's charge); Stripe refuses a `transfer_group` beside it when the charge already has one, so `transfer_group` is set only when there is no charge to tie to (#759).
 - **The member's share is held, never paid,** when the member is suspended / paused / in arrears (`held_suspended` / `held_paused` / `held_arrears`, with the usual held notice), or has no working payout account (`awaiting_connect`: the usual payout-setup request email, unless one already went, plus Jake's bell). The daily sweep pays it once the hold clears. SDP's share is held the same way if SDP's account stops working.
 
@@ -38,7 +39,7 @@ Every handler calls `resolveAtsgCaller` (admin, or a planner of an `atsg_enabled
 |---|---|---|
 | Add client | `sdp_atsg_case_create` | A case row, status `new`. Member picked from `sdp_atsg_members_load`, which also lists everyone at the group for the case's **Cc on client emails** ticks (a planner adding it starts ticked; an admin's case starts with nobody). |
 | Cc list | `sdp_atsg_save_cc` | The case's *Cc on client emails* card: tick or untick anyone at the group, any time; the next email onward uses it. |
-| Retainer | `sdp_atsg_save_retainer` | `retainer_amount` + `frequency`; editable until the agreement is sent. |
+| Retainer | `sdp_atsg_save_retainer` | `retainer_amount` + `frequency` + SDP's % of the 95% (`sdp_pct`); editable until the agreement is sent. |
 | Preview | `sdp_atsg_agreement_preview` | The PDF exactly as it would be sent. |
 | Send agreement | `sdp_atsg_send_agreement` (claims `agreement_sent_at` first) | Renders `agreement_templates` pipeline `SDP_ATSG` with html2pdf (Letter, margin 0, #535), sends through BoldSign with the client first and the CEO second (EnableSigningOrder), emails `SDP_ATSG_agreementsent` with the embedded signing link. BoldSign sends no emails of its own. Status `agreement_sent`. |
 | Client signs | BoldSign `Signed` → `boldsign-webhook` → `automation_SDP_ATSG_boldsign_event` | Status `client_signed`; `SDP_ATSG_ceocountersign` to the CEO with his embedded link; bell. |
@@ -49,7 +50,7 @@ Every handler calls `resolveAtsgCaller` (admin, or a planner of an `atsg_enabled
 | Later payments | `automation_SDP_ATSG_sweep`, daily 13:20 UTC (`sdp-atsg-sweep-daily`) | Charges every due retainer row off-session on the saved method. A decline: the row goes `missed`, `SDP_ATSG_payment_failed` to the client (once per row), Jake's bell. Missed rows are collected again alongside the next row that falls due, oldest first, stopping at the first refusal. Then retries anything paid but not settled (10+ minutes after `paid_at`), then marks a case whose retainer rows are all paid `completed`. |
 | Pay what was missed | the failure email's link (the case `pay_token`) | Collects every missed row in one Checkout and saves the new method. The page shows an amber notice naming the missed payments and their due dates, and "- missed" on each line. |
 | Update payment method | `sdp_atsg_send_update_link` → `SDP_ATSG_update_method` → `/sdp-atsg-pay?token=…&update=1` | Stripe Checkout in setup mode: saves the new card or bank, charges nothing. |
-| Strategy Impact Fee | `sdp_atsg_impact_fee_create` | A `requested` row with its own `pay_token`; `SDP_ATSG_impactfee_request` to the client. The strategy name joins `sdp_atsg_strategies` for good. No Resend or Cancel (Jake). |
+| Strategy Impact Fee | `sdp_atsg_impact_fee_create` | A `requested` row with its own `pay_token` and its own `sdp_pct` (default 47.5); `SDP_ATSG_impactfee_request` to the client. The strategy name joins `sdp_atsg_strategies` for good. No Resend or Cancel (Jake). |
 | Stop | `sdp_atsg_stop` (the Live / Stopped switch; one way) | Every scheduled / requested / missed / declined row `canceled`; the case `stopped`; its pay links close; the sweep skips it. Payments already made stay. |
 | Payout setup | `sdp_atsg_member_payout_request` | The usual payout-setup request, for this case's member only (#490). |
 
@@ -57,7 +58,7 @@ Every handler calls `resolveAtsgCaller` (admin, or a planner of an `atsg_enabled
 
 - `sdp_atsg_cases.status`: `new` → `agreement_sent` → `client_signed` → `awaiting_payment` → `active` → `completed`, or `stopped` from any point.
 - `sdp_atsg_payments.status`: `scheduled` | `requested` (an impact fee) | `processing` (ACH) | `paid` | `missed` (a later retainer row that failed) | `declined` (a first payment or fee that failed) | `canceled`.
-- Payout statuses: `paid` | `awaiting_connect` | `held_suspended` | `held_paused` | `held_arrears` | `failed` (retried by the sweep with a fresh idempotency key, #489).
+- Payout statuses: `paid` | `none_due` (a 0% leg) | `awaiting_connect` | `held_suspended` | `held_paused` | `held_arrears` | `failed` (retried by the sweep with a fresh idempotency key, #489).
 
 ## Emails and bells
 
