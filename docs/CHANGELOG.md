@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-11-18 (b) — Client decision 1: the team's Stop - Refund pick is a refund request too — by Jake
+
+Branch `claude/stop-refund-request` (both repos), ONE chat (the same one as 2026-11-17 (d)). Tested on `vfo-admin-api-jake` v38 (the test site). Action count **689** (unchanged by this branch). No migration: the 11-17 column and email row are reused.
+
+- **Why (Jake):** after 11-17 (d) a client's Refund click waits for the team, but the team's own **Stop - Refund** pick on Client decision 1 still refunded at once. It now works the same way: the client gets the refund-request email and the team follows up before anything is refunded.
+- **Built — the pick (`postreview-decision.ts`):** one conditional write records `Stop - Refund` and stamps `post_review_refund_requested_at`, then `raiseRefundRequest` (new, exported from `postreview-client-decision.ts`, shared with the client's click) sends `TAX_postreview_refund_request` and Tracy's action bell *"<client>: Stop - Refund picked on Client decision 1"*. Nothing chains `automation_TAX_refund` any more.
+- **Built — the answers (`client-refund-request.ts`):** `requestKind` tells a client request from a Stop request. **Confirm refund** claims and refunds either. **Cancel** on a Stop request also sets `post_review_decision='Continue - Revenue Share'` with `Confirmed`, and rewrites the Client decision 1 step row to match, then runs the green click's path. Both retire either bell title.
+- **Built — the request date:** a client's Refund click now stamps `post_review_refund_requested_at` at the click as well (11-17 only the cancel wrote it), so every request is dated from the start.
+- **Built — the website:** the Stop branch of the step shows *Stop - Refund picked* + the two buttons. A cancelled Stop shows *Stop - Refund picked* / *Refund cancelled by …* with no email row and no reminder rows. The pick pop-ups no longer say a Refund refunds straight away. The member's read-only row shows *Refund requested - waiting for the VFO team* while any refund request is open, instead of the team's bare pick (Jake, after the member check).
+- **Tested (Jake, test site):** plan 100044 Stop → request email, Tracy's bell, nothing refunded → Cancel → `Continue - Revenue Share` + `Confirmed`, step row rewritten, decision time = cancel, revenue shares paid, "Continuing" email. Plan 100045 (paid with 4242) Stop → Confirm → **$2,500 refunded**, plan stopped, refunded bell. Plan 100046 (an open Stop request, seeded): the planner and the planner's team member see *Waiting for the VFO team* and no buttons; the member sees the amber chip.
+- **Not tested:** a forced Confirm / Cancel call from a planner or member session (the backend refuses any non-admin, unchanged); the new rows at 390 wide; a Stop request on a 3-payment plan (the same `continueAfterClientDecision1` the 11-17 3-payment test proved). All in JLathamERT/vfo-edge-functions#580.
+- **Gates:** `deno check --no-lock` 0; action count 689; build exit 0, 51 route pages; smoke owed at release.
+
 ## 2026-11-18 — SDP ATSG: SDP and the member split the 95% per retainer and per fee; VFO Services' 5% stays locked — by Jake
 
 Branch `claude/sdp-atsg-editable-split` (both repos), ONE chat (the SDP ATSG chat, continued after its 2026-11-17 release). Tested on `vfo-admin-api-jake` and the shared test `vfo-admin-api` (both this branch, 2026-11-18); live untouched until release. Action count unchanged (no new action). Migration `20261118120000_sdp_atsg_editable_split.sql` (applied on the test site 2026-11-18; goes on live at release).

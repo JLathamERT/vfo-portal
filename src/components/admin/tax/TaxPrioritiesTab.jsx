@@ -3397,9 +3397,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     const admin = livePlan?.post_review_decision ?? null
     const client = livePlan?.post_review_client_decision ?? null
     if (admin === 'Stop - Refund' || client === 'Refund') {
-      // A client Refund click is a request the team confirms or cancels (2026-11-17).
-      if (admin !== 'Stop - Refund' && livePlan?.refund_status !== 'succeeded') {
-        return { open: false, hint: 'The client requested a refund at Client decision 1 — confirm or cancel it first' }
+      // A client Refund click (2026-11-17) or the team's Stop - Refund pick
+      // (2026-11-18) is a request the team confirms or cancels.
+      if (livePlan?.refund_status !== 'succeeded') {
+        return { open: false, hint: 'A refund was requested at Client decision 1 — confirm or cancel it first' }
       }
       return { open: false, hint: 'The client chose a refund at Client decision 1' }
     }
@@ -5083,11 +5084,19 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     // A Direct member's own steps are exempt too (memberLocked is false there):
     // the ROI booking step and the two generic dropdown steps live BELOW this
     // line (#459) and must reach their own renderers.
+    // Client decision 1 holding an open refund request (a client's Refund click or
+    // the team's Stop - Refund pick, 2026-11-18) is the VFO team's to answer: the
+    // member sees that, not the team's pick, which reads as settled.
+    const memberRefundOpen = task.status_options === 'tax_continue_stop' && livePlan?.refund_status !== 'succeeded'
+      && (livePlan?.post_review_decision === 'Stop - Refund' || livePlan?.post_review_client_decision === 'Refund')
+    const memberRowColor = memberRefundOpen ? '#e06717' : statusColor
     if (memberLocked && !isAllocTask(task)) return (
       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? memberRowColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? memberRowColor : 'var(--vfo-border-mid)'}` }} />
         <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
-        {isDone
+        {memberRefundOpen
+          ? <span style={chipStyle(memberRowColor)}>Refund requested - waiting for the VFO team</span>
+          : isDone
           ? <span style={chipStyle(statusColor)}>{p.status}</span>
           : <span style={neutralChipStyle}>Not started</span>
         }
@@ -5386,10 +5395,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       async function handlePick(value) {
         if (!value) return
         if (value === 'Continue - Revenue Share' && !confirm(decision1ThreePay
-          ? "Mark client as Continue?\n\nThis sends them an email with a green Confirm button and a red Refund button. Either click only counts once they enter the code we email them. When they confirm, their FINAL RETAINER is collected from the payment method on file, and the retainer revenue share fires once that payment settles. A confirmed Refund refunds the initial retainer straight away. After 2 business days with no click they get a reminder email, after 4 business days the PF is notified to reach out."
-          : "Mark client as Continue?\n\nThis sends them an email with a green Confirm button and a red Refund button. Either click only counts once they enter the code we email them. The revenue share fires ONLY when they confirm; a confirmed Refund refunds the retainer straight away. After 2 business days with no click they get a reminder email, after 4 business days the PF is notified to reach out.")) return
-        if (value === 'Stop - Refund' && !confirm("Stop - Refund? This will IMMEDIATELY fire a Stripe refund of the retainer and draft a refund confirmation email to the client.")) return
-        if (value === 'Undecided' && !confirm("Mark client as Undecided?\n\nThey'll get an email with two buttons (Proceed / Refund). Either click only counts once they enter the code we email them; a confirmed Refund refunds the retainer straight away. After 2 business days with no click we send a reminder, after 4 business days we notify you to call the client.")) return
+          ? "Mark client as Continue?\n\nThis sends them an email with a green Confirm button and a red Refund button. Either click only counts once they enter the code we email them. When they confirm, their FINAL RETAINER is collected from the payment method on file, and the retainer revenue share fires once that payment settles. A confirmed Refund is a request: they get the refund request email and an admin then confirms or cancels it here. After 2 business days with no click they get a reminder email, after 4 business days the PF is notified to reach out."
+          : "Mark client as Continue?\n\nThis sends them an email with a green Confirm button and a red Refund button. Either click only counts once they enter the code we email them. The revenue share fires ONLY when they confirm; a confirmed Refund is a request: they get the refund request email and an admin then confirms or cancels it here. After 2 business days with no click they get a reminder email, after 4 business days the PF is notified to reach out.")) return
+        if (value === 'Stop - Refund' && !confirm("Stop - Refund?\n\nNothing is refunded yet. The client is sent the refund request email, and an admin then confirms the refund or cancels it (continuing with revenue shares) on this step.")) return
+        if (value === 'Undecided' && !confirm("Mark client as Undecided?\n\nThey'll get an email with two buttons (Proceed / Refund). Either click only counts once they enter the code we email them; a confirmed Refund is a request an admin then confirms or cancels here. After 2 business days with no click we send a reminder, after 4 business days we notify you to call the client.")) return
         // The step row + the decision email + (maybe) the revised invoice take
         // several seconds; hold the clicked button in a Sending state and
         // disable the other two until the plan re-reads. saveTask runs with
@@ -5448,16 +5457,17 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       // never shown here (Jake).
       const refundDone = refundStatus === 'succeeded'
       const refundConfirmedAt = livePlan?.post_review_refund_confirmed_at
-      // Cancel refund (tax_cancel_client_refund) moves the client's Refund click
-      // time to post_review_refund_requested_at and makes the decision time the
-      // cancel time. Only that handler writes the column, so a value there = the
-      // team cancelled a refund request and the client never clicked the green
-      // button.
+      // post_review_refund_requested_at dates every refund request (the client's
+      // click, or the team's Stop - Refund pick, 2026-11-18). A plan that holds
+      // one AND a yes was cancelled by the team (tax_cancel_client_refund, which
+      // makes the decision time the cancel time). A cancelled Stop - Refund pick
+      // never sent a decision email, so it has no email row and no reminders.
       const refundRequestedAt = livePlan?.post_review_refund_requested_at
       const refundCancelled = !!refundRequestedAt
+      const stopCancelled = refundCancelled && !emailSentAt
       const clientYesRows = (label) => refundCancelled ? (
         <>
-          {autoStep('Client requested a refund', true, { at: refundRequestedAt })}
+          {autoStep(stopCancelled ? 'Stop - Refund picked' : 'Client requested a refund', true, { at: refundRequestedAt })}
           {autoStep(`Refund cancelled by ${livePlan?.post_review_refund_request_cleared_by || 'the team'}`, true, { at: livePlan?.post_review_client_decision_at })}
         </>
       ) : autoStep(label, true, { at: livePlan?.post_review_client_decision_at })
@@ -5482,9 +5492,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           {saving[key] === kind ? 'Working…' : label}
         </button>
       )
-      const refundRequestRows = () => (
+      const refundRequestRows = (firstLabel) => (
         <>
-          {autoStep('Client requested a refund', true,{ at: livePlan?.post_review_client_decision_at, chip: refundRequestChip })}
+          {autoStep(firstLabel, true, { at: refundRequestedAt || livePlan?.post_review_client_decision_at, chip: refundRequestChip })}
           {refundConfirmedAt
             ? autoStep(`Refund confirmed by ${livePlan?.post_review_refund_confirmed_by || 'the team'}`, true, { at: refundConfirmedAt })
             : !refundDone && (
@@ -5525,17 +5535,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           </div>
           {adminDecision && (
             <div style={{ marginLeft: isPhone ? 0 : '18px', padding: isPhone ? '8px 10px' : '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)', marginBottom: '8px' }}>
-              {adminDecision === 'Stop - Refund' && (
-                <>
-                  {autoStep('Refund processed and confirmation email sent', refundStatus === 'succeeded', { chip: refundChip, at: refundDate })}
-                </>
-              )}
+              {adminDecision === 'Stop - Refund' && refundRequestRows('Stop - Refund picked')}
               {adminDecision === 'Continue - Revenue Share' && (
                 <>
-                  {autoStep('Email sent to client with Confirm + Refund buttons', !!emailSentAt, { at: emailSentAt })}
-                  {stallRows('post_review')}
+                  {!stopCancelled && autoStep('Email sent to client with Confirm + Refund buttons', !!emailSentAt, { at: emailSentAt })}
+                  {!stopCancelled && stallRows('post_review')}
                   {!clientDecision && autoStep('Waiting for client to confirm (click required)', false)}
-                  {clientDecision === 'Refund' && refundRequestRows()}
+                  {clientDecision === 'Refund' && refundRequestRows('Client requested a refund')}
                   {clientDecision === 'Auto-Locked' && (
                     <>
                       {autoStep('Auto-locked (legacy 24h flow)', true)}
@@ -5575,7 +5581,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                       {!mirror && autoStep('Revenue share verified, member paid, member emailed', revShareSettled, { na: zeroShare, chip: revshareChip, at: livePlan?.retainer_rev_email_sent_at || livePlan?.retainer_rev_completed_at })}
                     </>
                   )}
-                  {clientDecision === 'Refund' && refundRequestRows()}
+                  {clientDecision === 'Refund' && refundRequestRows('Client requested a refund')}
                 </>
               )}
             </div>
