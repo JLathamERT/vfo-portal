@@ -298,6 +298,10 @@ dismissible: true
 - **The link opens the note.** `?note=<id>` (`ClientDetail` `initialNoteId`) makes the track view expand the note's phase and its Notes panel (`useOpenLinkedNote` in `PhaseNotes.jsx`), or scrolls the Profile list to it (`useScrollToLinkedNote`). PIP notes are not per meeting (#386), so a PIP note opens once a meeting is opened.
 - On the test site every bell goes to the tester with the `TEST - meant for:` line, so a planner's planner-portal link only shows on live.
 
+### Portal Backlog (2026-11-17)
+
+Five FYI bells for the team, never email (TEAM_RULES §8), area **Portal Backlog**, pipeline `PORTAL_BACKLOG`, link `/admin?tab=portal_backlog&request=<id>`: `BACKLOG_new_request` (the superadmins), `BACKLOG_approved` / `BACKLOG_denied` / `BACKLOG_ready_to_announce` (the requester), `BACKLOG_assigned` (the new assignee). `bellAdmin` (`actions/portal-backlog/shared.ts`) sends each with `forceRecipients`, never to the actor and never to an address no longer in `allowed_admins`. Titles and triggers: [flows/portal-backlog.md](portal-backlog.md) *Bells*.
+
 ## Step 3 — Mark read (single)
 
 **Handler:** `mark_notification_read({notification_id})` ([NotificationBell.jsx:41](src/components/NotificationBell.jsx) → `actions/notifications/mark-read.ts`). UPDATEs `notifications.read=true` for one id. An action-required row (`dismissible=false`) is refused (400) — except on staging, for the Clear (test) button.
