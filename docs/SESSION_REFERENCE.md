@@ -40,7 +40,7 @@ cd C:\vfo-react;          git fetch --tags -q; git tag -l 'live-*'         --sor
 cd C:\vfo-edge-functions; git fetch --tags -q; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
-#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-17 → 6 + 683 = **689**: + 11 Portal Backlog actions; past values in CHANGELOG)
+#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-18 → 6 + 683 = **689**: + 11 Portal Backlog actions; past values in CHANGELOG)
 cd C:\vfo-edge-functions   # or the worktree
 $logins   = (Select-String -Path supabase/functions/vfo-admin-api/index.ts          -Pattern '^\s*if \(action === '            -AllMatches).Matches.Count
 $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatch.ts -Pattern '^\s*"([a-zA-Z0-9_]+)":\s*\(c\)'  -AllMatches).Matches.Count
@@ -49,7 +49,7 @@ $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatc
 # 4. Type-check baseline — must be 0; --no-lock avoids the v5 deno.lock the bundler rejects (#112)
 & "$env:USERPROFILE\.deno\bin\deno.exe" check --no-lock supabase/functions/vfo-admin-api/index.ts   # or plain `deno` when it is on PATH
 
-# 5. Frontend build — expect exit 0. (v: 2026-11-17 → **51** route pages, the dev-only `/phone-preview` never among them; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
+# 5. Frontend build — expect exit 0. (v: 2026-11-18 → **51** route pages, the dev-only `/phone-preview` never among them; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
 cd C:\vfo-react; npm run build
 
 # 6. Pipeline smoke gate — hand it to the person running the chat in EXACTLY this form: THEIR portal email (TEAM table, TEAM_RULES.md), a literal <password>, never a token, never Read-Host

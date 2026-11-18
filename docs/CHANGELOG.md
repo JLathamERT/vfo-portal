@@ -8,6 +8,21 @@
 
 ---
 
+## 2026-11-18 (c) — Tax Planning Form: international tax question, people to copy on emails, International Tax Planning priority — by Jake
+
+Branch `claude/tax-diagnostic-intl-tax-*` (both repos), ONE chat. Tested on `vfo-admin-api-jake` v40 and the shared test `vfo-admin-api` v103 (this branch; main put back afterwards, v104). Action count **689** (unchanged: no new action). Migrations `20261118150000_international_tax.sql` (column + two bell rules) and `20261118150100_international_tax_share_email.sql` (email template), applied on the test site 2026-11-18; they go on live at release.
+
+- **Why (Jake, from Tracy's email):** international clients start with the VFO international tax specialist rather than a planning team; the form should collect anyone to copy on emails; and International Tax Planning should be a priority.
+- **Built — q41 international tax:** required Yes / No after the state, Tracy's wording, an orange message on Yes. `isInternationalTaxCase` (both copies). The plan gets `international_tax` at creation; the admin Tax Planning Route card shows *International tax case*.
+- **Built — the deposit:** `depositWaivedForCase` replaces `depositWaivedFor` on every submit / load / checkout / confirm path, so an international case always pays the $500. The member's own form shows a bold note when their deposit is normally waived; the public diagnostic shows a hedged note to any member (it never reveals a named member's waiver); clients see no note.
+- **Built — the $250 share:** on an international plan `transferDepositTeamShare` pays the $250 to the specialist's own Connect account (found by email) instead of the group, same trigger (review Proceed). No ready account = new status `Awaiting Payout Setup` + bell `TAX_intl_deposit_share_waiting`; the nightly sweep pays it when ready, then bell `TAX_intl_deposit_share_paid` and email `TAX_intl_deposit_share` (template 281's HTML with the greeting and opening reworded; Send mode).
+- **Built — q42 people to copy on emails:** optional, after the phone; first name, last name and email per person with an Add button (client-name rules, two people in one name refused), stored as a JSON string; at plan creation each becomes a `client_contacts` row with Cc on. Shown on the PDF, the Tax Planning Form card and the Tax Diagnostics card. q41 / q42 are locked from Edit.
+- **Built — priorities:** *International Tax Planning* in MAP 1's PIP Decision priorities (Tax group), in Regular Priorities > Select Priority, and in the first-payment email's `TAX_PRIORITIES` (Tax Form button).
+- **Tested (Jake, test site):** member form with Yes (orange message, $500 for a waived member, note shown); paid case → `international_tax` true, Cc contact with names; review Proceed → `Awaiting Payout Setup` + waiting bell; fake specialist given a test payout account + sweep → `Yes`, $250 transfer, waiting bell cleared, paid bell, specialist email in the 281 format (Jake checked); client link with Yes → $500 for a waived member, Cc contact saved; public diagnostic as a member with Yes → $500, hedged note shown (and hidden for a client).
+- **Not tested:** the personal `/tax-diagnostic?client=` link writing q42 contacts on an existing client; a `Failed` share (specialist row missing); the new rows at 390 wide beyond the form; the live specialist's real payout account (not set up yet). All in JLathamERT/vfo-edge-functions#586, with the first real case to watch.
+- **Known limit:** the route B link email is written before the client answers, so for a waived member it still says the deposit is waived; the link page quotes $500 once the client answers Yes.
+- **Gates:** `deno check --no-lock` 0; action count 689; build exit 0, 51 route pages; question arrays identical in both copies; security advisor (test site) at baseline; drift check matches except `client_tax_plans.international_tax`, which goes on live with the migrations at release; smoke owed at release.
+
 ## 2026-11-18 (b) — Client decision 1: the team's Stop - Refund pick is a refund request too — by Jake
 
 Branch `claude/stop-refund-request` (both repos), ONE chat (the same one as 2026-11-17 (d)). Tested on `vfo-admin-api-jake` v38 (the test site). Action count **689** (unchanged by this branch). No migration: the 11-17 column and email row are reused.
