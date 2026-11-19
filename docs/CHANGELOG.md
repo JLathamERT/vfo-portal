@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-11-19 — Member portal access by tier: three positive lists, every other type cannot sign in — by Jake
+
+Portal licensing L6 revised (plan decisions 111-115). **Tier 1** is now ONLY Financial Collaborator + VFO Associate (Advisor / Direct). **Tier 2** = the Catalyst, VFO FT and Implementation types. **Tier 3** = the Fusion, Advanced, Accelerator and Plus types — the Tier 2 portal until Tier 3 is built (1 Jan 2027). A member type on **no** list — every corporate type, Team Member, VFO Reconciliation (Free), Survey #1-3, FAC Historic, Free Legacy TBM, Action Coach, Tax Plan IQ, and any type added later until it is listed — has no member portal: before this, any unlisted type got the full portal.
+
+- **Backend:** `constants/member-tiers.ts` holds the three lists + `MEMBER_TIER_EXCEPTIONS` (11111, ERT's house account, Tier 2); `memberTierOf` returns `1 | 2 | 3 | null`. `member_login` refuses a `null` tier after the passcode check (corporate types get their own message: ask the lead member for access), and its members read now fails closed. `create_member_login` + `send_login_setup_email` (member) refuse such a member; `load_member_login` returns `portal_access` / `portal_tier`. The Tier 1 gate (6d) is unchanged.
+- **Website:** the admin member profile's Member Login card shows "No portal access" (and no setup button) for such a member. The sign-in page already showed the server's message.
+- No DDL, no email template, no money. Sessions already open run out within 8 h. Corporate members' own clients stay where they are.
+- **Tested** on the test site (`vfo-admin-api-jake` v42) by switching test member 10001 through Corporate Member, VFO Reconciliation (Free), Fusion, Financial Collaborator and back to Catalyst: refusals with the right wording, the admin card, Tier 3 = full portal, Tier 1 view. **Not exercised:** the server refusals of `create_member_login` / `send_login_setup_email` (the card hides both buttons, so no click reaches them) and the fail-closed members read at sign-in. New gotcha #766: a new member type must join a tier list or its members are locked out.
+
+---
+
 ## 2026-11-19 — One payment wording standard (cleared / clearing / on its way) + advisor/accountant "implementation" wording — by Jake
 
 Branch `claude/payment-wording-cleared` (both repos), one chat. Tested on `vfo-admin-api-jake` v41 and the shared test `vfo-admin-api` (this branch; main put back afterwards by re-running `staging-backend.yml`). Action count **689** (unchanged). Data migration `20261119120000_payment_wording_cleared.sql` (54 email templates, 5 notification-rule descriptions, 1 MAP 1 tracker step name) applied on the test site; it goes on live at release.

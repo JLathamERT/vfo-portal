@@ -1812,6 +1812,7 @@ function MemberGC({ member }) {
 function MemberSettings({ member, allMembers = [], onDataChange }) {
   const [loginLoading, setLoginLoading] = useState(true)
   const [existingLogin, setExistingLogin] = useState(null)
+  const [portalAccess, setPortalAccess] = useState(true)
   const [loginEmail, setLoginEmail] = useState('')
   const [loginPasscode, setLoginPasscode] = useState('')
   const [loginStatus, setLoginStatus] = useState('')
@@ -1858,6 +1859,7 @@ function MemberSettings({ member, allMembers = [], onDataChange }) {
     try {
       const data = await callApi('load_member_login', { member_number: member.plugin_member_number })
       setExistingLogin(data.login || null)
+      setPortalAccess(data.portal_access !== false)
       if (data.login) setLoginEmail(data.login.email)
     } catch (err) { console.error(err) }
     finally { setLoginLoading(false) }
@@ -1918,7 +1920,12 @@ function MemberSettings({ member, allMembers = [], onDataChange }) {
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Member Login</div>
         {loginLoading
           ? <SkeletonText lines={2} />
-          : (
+          : !portalAccess ? (
+            <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', margin: 0 }}>
+              <strong style={{ color: 'var(--vfo-ink)' }}>No portal access.</strong> This member type does not include the member portal, so this member cannot sign in
+              {existingLogin ? <> (their login, <strong>{existingLogin.email}</strong>, is kept but refused)</> : null}.
+            </p>
+          ) : (
             <>
               <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', marginBottom: '16px' }}>
                 {existingLogin
