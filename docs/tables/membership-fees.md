@@ -13,9 +13,10 @@
 ## member_payment_plans
 
 One row per member membership plan. Partial unique index `member_payment_plans_one_live_idx`
-on `(member_number) WHERE status <> 'canceled'` — one live plan per member
-(`terminated` also counts as live for the index; the app filters `not in (canceled, terminated)`
-when checking, so terminate → create-new works).
+on `(member_number) WHERE status NOT IN ('canceled', 'terminated')` — one live plan per member,
+matching the handlers' own `not in (canceled, terminated)` check, so terminate → create-new works.
+Until 2026-11-19 (`20261119230000`) the index excluded only `canceled` and a terminated plan
+blocked a new one (gotcha #283) *(v: 2026-11-19)*.
 
 | Column | Notes |
 |---|---|
