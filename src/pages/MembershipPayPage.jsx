@@ -92,7 +92,7 @@ export default function MembershipPayPage() {
         <div className="vfo-statusicon" style={{ ...iconCircle, background: 'rgba(34,197,94,0.15)' }}><span style={{ fontSize: '28px', lineHeight: 1 }}>✓</span></div>
         <h1 style={title}>You're all set</h1>
         <p style={subtitle}>
-          Thank you — your payment method is saved securely with Stripe, and if a payment was due today it has been submitted
+          Thank you - your payment method is saved securely with Stripe, and if a payment was due today it is on its way
           (bank payments can take a few days to clear).<br />
           Future membership payments run automatically — no further action is needed.
         </p>

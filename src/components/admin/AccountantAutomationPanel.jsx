@@ -4,6 +4,7 @@ import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptySt
 import StripeAccountPill from './StripeAccountPill'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import OnboardingExtraMeetingCard from './OnboardingExtraMeetingCard'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 const STAGE_LABELS = {
   new: 'New',
@@ -142,7 +143,7 @@ function AccountantPipelineRow({ row, expanded, onToggle, onReload }) {
                 <Detail l="Method" v={row.payment_method_type} />
                 <Detail l="Account" v={row.acct_last4 ? `****${row.acct_last4}` : null} />
                 <Detail l="Payment amount" v={fmtMoney(row.payment_amount)} />
-                <Detail l="Status" v={row.payment_status} />
+                <Detail l="Status" v={paymentStatusLabel(row.payment_status)} />
                 <Detail l="Payment received" v={fmtDate(row.payment_completed_at)} />
                 <Detail l="Renewal review" v={fmtDate(row.renewal_date)} />
               </>

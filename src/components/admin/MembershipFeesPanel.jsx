@@ -32,7 +32,7 @@ const PLAN_STATUS = {
 
 const SCHED_STATUS = {
   scheduled: { label: 'Scheduled', color: '#6b7280' },
-  processing: { label: 'Processing', color: '#e06717' },
+  processing: { label: 'Clearing', color: '#e06717' },
   paid: { label: 'Paid', color: '#16a34a' },
   missed: { label: 'Missed', color: '#ef4444' },
   declined: { label: 'Declined', color: '#ef4444' },

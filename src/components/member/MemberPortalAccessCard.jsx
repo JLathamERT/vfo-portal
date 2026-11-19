@@ -159,7 +159,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
               ? <>{first} is on the Basic portal (Showroom only). The member has not turned on the $25/month Premium portal.</>
               : <>{first} is on the Basic portal (Showroom only). The Premium portal adds {lic.progress_tab ? 'My Progress, their One Page Plan' : 'their One Page Plan'} and Client Vault. It is charged to you monthly; {first} never sees the cost.</>)}
             {lic.state === 'processing' && (lic.payment_method_type === 'ach'
-              ? <>{readOnly ? "The member's" : 'Your'} bank payment is processing{method}. {first} gets the Premium portal once it clears, usually 3-5 business days.</>
+              ? <>{readOnly ? "The member's" : 'Your'} bank payment is on its way{method}. {first} gets the Premium portal once it clears, usually 3-5 business days.</>
               : <>{readOnly ? "The member's" : 'Your'} payment is being confirmed.</>)}
             {lic.state === 'active' && <>The Premium portal is on{lic.period_end ? <>. Renews <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong></> : ''}{method}.</>}
             {lic.state === 'ending' && <>The Premium portal is on until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(lic.period_end)}</strong>, then {first} goes back to the Basic portal.</>}

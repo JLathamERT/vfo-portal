@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { ClientNameLink, MemberNameLink, clientPagePath } from '../shared/personLinks'
 import { formatDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 const STAGE_LABELS = {
   not_started:     'Not Started',
@@ -75,13 +76,13 @@ function PaymentButtons({ plan, onRefresh }) {
   const [err, setErr] = useState('')
 
   async function clickPayByCheck() {
-    if (!window.confirm('Mark this client as paying by check?\n\n• Sets retainer_status to "check_pending"\n• Blocks the Stripe /tax-pay link\n• Drafts a Gmail with check mailing instructions\n\nProceed?')) return
+    if (!window.confirm('Mark this client as paying by check?\n\n• Marks the retainer as check clearing\n• Blocks the Stripe /tax-pay link\n• Drafts a Gmail with check mailing instructions\n\nProceed?')) return
     setBusy('paidbycheck'); setErr('')
     try { await callApi('automation_TAX_paidbycheck', { tax_plan_id: plan.id }); await onRefresh() }
     catch (e) { setErr(e.message || String(e)) } finally { setBusy(null) }
   }
   async function clickCheckCleared() {
-    if (!window.confirm('Mark check as cleared?\n\nSets retainer_status to "succeeded" and chains confirmation + invoice/receipt.\nOnly click AFTER your bank has cleared the check.')) return
+    if (!window.confirm('Mark check as cleared?\n\nThis marks the retainer as paid and fires the confirmation + invoice/receipt.\nOnly click AFTER your bank has cleared the check.')) return
     setBusy('cleared'); setErr('')
     try { await callApi('automation_TAX_checkcleared', { tax_plan_id: plan.id }); await onRefresh() }
     catch (e) { setErr(e.message || String(e)) } finally { setBusy(null) }
@@ -204,7 +205,7 @@ function ExpandedRow({ row, onRefresh }) {
             <Detail l="Method" v={row.payment_method_type} />
             <Detail l="Account" v={row.acct_last4 ? `****${row.acct_last4}` : null} />
             <Detail l="Payment amount" v={money(row.retainer_amount)} />
-            <Detail l="Retainer status" v={row.retainer_status} />
+            <Detail l="Retainer status" v={paymentStatusLabel(row.retainer_status)} />
             <Detail l="Retainer paid" v={fmtDate(row.retainer_date)} />
             <PaymentButtons plan={row} onRefresh={onRefresh} />
           </>
@@ -268,7 +269,7 @@ function ExpandedRow({ row, onRefresh }) {
       <StepCard title="Implementation Fee" status={sImpl}>
         {row.implementation_charge_status ? (
           <>
-            <Detail l="Charge status" v={row.implementation_charge_status} />
+            <Detail l="Charge status" v={paymentStatusLabel(row.implementation_charge_status)} />
             <Detail l="Charged" v={fmtDate(row.implementation_charge_date)} />
             <Detail l="Receipt #" v={row.implementation_receipt_number} mono />
             <Detail l="Receipt status" v={row.implementation_receipt_status} />
@@ -406,7 +407,7 @@ export default function TaxAutomationPanel({ programScope = 'holistic' }) {
                       </td>
                       <td style={{ padding: 12, fontSize: 13, color: 'var(--vfo-muted)' }}>{row.tax_final_decision || row.tax_decision || '—'}</td>
                       <td style={{ padding: 12, fontSize: 13, color: 'var(--vfo-muted)' }}>{fmtMoney(row.retainer_amount) ? `$${fmtMoney(row.retainer_amount)}` : '—'}</td>
-                      <td style={{ padding: 12, fontSize: 13, color: 'var(--vfo-muted)' }}>{row.retainer_status || '—'}</td>
+                      <td style={{ padding: 12, fontSize: 13, color: 'var(--vfo-muted)' }}>{paymentStatusLabel(row.retainer_status) || '—'}</td>
                       <td style={{ padding: 12, fontSize: 12, color: 'var(--vfo-muted)' }}>{row.created_at ? formatDate(row.created_at) : '—'}</td>
                     </tr>
                     {isExpanded && (

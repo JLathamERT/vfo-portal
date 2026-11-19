@@ -158,7 +158,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
   const finalCancelled = plan?.final_retainer_status === 'cancelled' || !!plan?.final_retainer_cancelled_at
   const finalNote = finalCancelled ? 'Cancelled'
     : plan?.final_retainer_status === 'succeeded' ? `Paid ${plan?.final_retainer_charge_date || ''}`
-      : plan?.final_retainer_status === 'processing' ? 'Payment in progress'
+      : plan?.final_retainer_status === 'processing' ? 'Bank payment clearing'
         : plan?.final_retainer_status === 'declined' ? 'Charge declined — pay link sent'
           : 'Not yet charged'
   const hasPricing = totalFee > 0
@@ -562,7 +562,7 @@ export default function PricingSplitCard({ plan, plannerName = '', isSuperadmin 
               <div style={value}>{fmt(implAmt)}</div>
               <div style={{ fontSize: '10px', color: 'var(--vfo-muted)' }}>
                 {plan?.implementation_charge_status === 'succeeded' ? 'Charged'
-                  : plan?.implementation_charge_status === 'processing' ? 'Charge in progress'
+                  : plan?.implementation_charge_status === 'processing' ? 'Bank payment clearing'
                     : plan?.implementation_charge_status === 'declined' ? 'Charge declined — pay link sent'
                       : implSettledNoCharge || (arrOn && implAmt === 0) ? 'No payment due' : 'Not yet charged'}
               </div>

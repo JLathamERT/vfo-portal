@@ -122,7 +122,7 @@ export default function ConnectCardPage() {
               badgeClass="green"
               amount={data?.amount}
               breakdown={amountRow}
-              footer="Funds transfer directly from your bank account. Takes 3-5 business days to process."
+              footer="Funds transfer directly from your bank account. Takes 3-5 business days to clear."
             />
 
             <div style={dividerStyle}>— or —</div>

@@ -108,7 +108,7 @@ let lineSeq = 1
 
 const PAYMENT_METHODS = [
   { key: 'link', title: 'Payment link', tag: 'Card or ACH', desc: 'Specialist gets an email with a secure Stripe link and pays by ACH (no fee) or card (2.9% + $0.30).' },
-  { key: 'pending', title: 'Bank transfer', tag: 'Email our account details', desc: 'Specialist is emailed our fixed VFO account and routing numbers to push the payment to. You mark it received once the money lands.' },
+  { key: 'pending', title: 'Bank transfer', tag: 'Email our account details', desc: 'Specialist is emailed our fixed VFO account and routing numbers to push the payment to. You mark it received once the money has cleared.' },
   { key: 'recurring', title: 'Recurring monthly', tag: 'Send setup link', desc: 'Emails the specialist a setup link to authorize an automatic monthly payment by ACH or card on a day you choose.' },
   { key: 'external', title: 'Already paid', tag: 'Send revenue shares only', desc: 'We already have the money (paid another way). Nothing is requested and the specialist gets no email; the shares are paid out now from the VFO Services Stripe balance.' },
   { key: 'none', title: 'Record deals', tag: 'No payment', desc: 'Records deals where no money changed hands. All money columns are $0. Nothing is charged and no email is sent.' },
@@ -256,7 +256,7 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
             {result.email_drafted
               ? <>An email with the VFO account details below was drafted to <strong>{result.to_email}</strong> so they can push the {money(result.gross_amount)} transfer from their own bank. Review &amp; send it from the Gmail drafts folder. </>
               : <>The bank details email could not be drafted{result.email_error ? ` (${result.email_error})` : ''} — give the specialist the VFO account details below so they can push the {money(result.gross_amount)} transfer from their own bank. </>}
-            Once the transfer lands, mark it received in Accounting → VFO Specialist Revenue (Automation).
+            Once the transfer has cleared, mark it received in Accounting → VFO Specialist Revenue (Automation).
           </div>
           {result.account && (
             <div style={{ padding: '14px 16px', background: 'var(--vfo-card)', border: '1px solid #bbf7d0', borderRadius: '10px' }}>

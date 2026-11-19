@@ -38,7 +38,7 @@ function stateOf(status) {
 const STATE_PILL = {
   // Same labels + colours as the SpecRev / License Fees pills.
   paid: { label: 'Payment received', color: '#16a34a' },
-  processing: { label: 'Payment processing', color: '#e06717' },
+  processing: { label: 'Bank payment clearing', color: '#e06717' },
   awaiting: { label: 'Payment requested', color: '#0095ff' },
   failed: { label: 'Payment failed', color: '#ef4444' },
 }

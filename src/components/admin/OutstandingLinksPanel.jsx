@@ -4,6 +4,7 @@ import { callApi, getLastSeen, setLastSeen, redraftInstallmentEmail, resendConti
 import { money, StatusPill } from './specialistRevenueShared'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
 import { MemberNameLink, ClientNameLink, SpecialistNameLink, clientPagePath } from '../shared/personLinks'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 // Where a map1 / tax card's "Open plan" goes. MAP 1 lives under Holistic (program 1).
 // A tax card needs the plan's program_id or the client page opens the wrong program
@@ -320,7 +321,7 @@ function ContinuationCard({ item, kind, onDone }) {
 function ImplementationCard({ item }) {
   const parts = []
   parts.push(programLabel(item.program_id))
-  if (item.charge_status) parts.push(`charge ${item.charge_status}`)
+  if (item.charge_status) parts.push(`charge ${paymentStatusLabel(item.charge_status)}`)
   const charged = fmtDate(item.charge_date)
   if (charged) parts.push(charged)
   return (
@@ -336,7 +337,7 @@ function ImplementationCard({ item }) {
     >
       <Detail label="Amount due" value={money(item.amount_due)} />
       <Detail label="Program" value={programLabel(item.program_id)} />
-      <Detail label="Charge status" value={item.charge_status || 'not started'} />
+      <Detail label="Charge status" value={paymentStatusLabel(item.charge_status) || 'not started'} />
       <Detail label="Charge date" value={charged || 'not yet'} />
     </OutstandingCard>
   )
@@ -372,7 +373,7 @@ function InstallmentCard({ item, onDone }) {
     >
       <Detail label="Amount due" value={money(item.amount_due)} />
       <Detail label="Installment" value={`Payment ${item.payment_number} of 4`} />
-      <Detail label="Charge status" value={item.charge_status || 'unknown'} />
+      <Detail label="Charge status" value={paymentStatusLabel(item.charge_status) || 'unknown'} />
       <Detail label="Scheduled for" value={charged || 'not set'} />
       {failed.length > 1 && (
         <Detail

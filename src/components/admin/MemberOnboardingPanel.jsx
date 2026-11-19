@@ -4,6 +4,7 @@ import { NAVY, money } from './specialistRevenueShared'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink, useOpenMember } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 // Accounting > Members > Advisor/Accountant Onboarding. The one-time onboarding fee each
 // member paid when they went through onboarding. kind = 'advisor' | 'accountant'.
@@ -18,9 +19,9 @@ function fmtDate(s) {
 function StatusTag({ status, method }) {
   const ach = method === 'ach'
   const tone = status === 'succeeded' ? { bg: 'rgba(22,163,74,0.12)', fg: '#16a34a', label: 'Paid' }
-    : status === 'processing' ? { bg: 'rgba(224,103,23,0.14)', fg: '#c2620f', label: 'Processing' }
+    : status === 'processing' ? { bg: 'rgba(224,103,23,0.14)', fg: '#c2620f', label: 'Clearing' }
     : status === 'failed' ? { bg: 'rgba(239,68,68,0.12)', fg: '#ef4444', label: 'Failed' }
-    : { bg: 'rgba(78,96,135,0.12)', fg: 'var(--vfo-muted)', label: status || '—' }
+    : { bg: 'rgba(78,96,135,0.12)', fg: 'var(--vfo-muted)', label: paymentStatusLabel(status) || '—' }
   return (
     <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
       <span style={{ padding: '3px 10px', borderRadius: '20px', background: tone.bg, color: tone.fg, fontSize: '11.5px', fontWeight: 700 }}>{tone.label}</span>

@@ -6,6 +6,7 @@ import StripeAccountPill from './StripeAccountPill'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import { useNavigate } from 'react-router-dom'
 import { ClientNameLink, clientPagePath } from '../shared/personLinks'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 const STAGE_LABELS = {
   purchase: 'Purchase',
@@ -96,7 +97,7 @@ function PipPipelineRow({ row, expanded, onToggle }) {
                 <Detail l="Method" v={row.pip_payment_method_type} />
                 <Detail l="Account" v={row.pip_acct_last4 ? `****${row.pip_acct_last4}` : null} />
                 <Detail l="Payment amount" v={fmtMoney(row.pip_purchase_amount)} />
-                <Detail l="Status" v={row.pip_payment_status} />
+                <Detail l="Status" v={paymentStatusLabel(row.pip_payment_status)} />
                 <Detail l="Payment received" v={fmtDate(row.pip_payment_completed_at)} />
               </>
             ) : <Pending />}

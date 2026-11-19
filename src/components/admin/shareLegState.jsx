@@ -63,6 +63,7 @@ export function legState(status, { revShare, paymentStatus, context } = {}) {
     if (context === 'tax_retainer') return { note: 'awaiting client decision', tone: 'pending' }
     return { note: 'not yet paid', tone: 'pending' }
   }
+  if (String(status).toLowerCase() === 'processing') return { note: 'clearing', tone: 'pending' }
   return { note: String(status).toLowerCase(), tone: 'pending' }
 }
 
@@ -164,7 +165,7 @@ export function SubNote({ text }) {
 
 // The payment itself is still in flight, so nothing downstream of it can have paid out.
 export function paymentNoteFor(status) {
-  if (status === 'processing') return 'processing'
-  if (status === 'check_pending') return 'check pending'
+  if (status === 'processing') return 'clearing'
+  if (status === 'check_pending') return 'check clearing'
   return null
 }

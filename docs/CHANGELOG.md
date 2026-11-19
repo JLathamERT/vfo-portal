@@ -8,6 +8,43 @@
 
 ---
 
+## 2026-11-19 — One payment wording standard (cleared / clearing / on its way) + advisor/accountant "implementation" wording — by Jake
+
+Branch `claude/payment-wording-cleared` (both repos), one chat. Tested on `vfo-admin-api-jake` v41 and the shared test `vfo-admin-api` (this branch; main put back afterwards by re-running `staging-backend.yml`). Action count **689** (unchanged). Data migration `20261119120000_payment_wording_cleared.sql` (54 email templates, 5 notification-rule descriptions, 1 MAP 1 tracker step name) applied on the test site; it goes on live at release.
+
+- **Why (Ian, Rachael, by email):** the email to a new accountant said "onboarding" while the agreement says "implementation", and it said the funds had "settled". Ian's rule: keep "onboarding" for the next step, but they pay for the 6-month implementation; the standard word should be "cleared" or "available". Jake: make one word consistent everywhere.
+- **Inventory first:** a portal-wide sweep found about 100 places using settled / cleared / processing / pending / received / landed for money on its way or arrived. "Cleared" was already the most common.
+- **The standard (now TEAM_RULES §8):**
+  - money arrived = **cleared**;
+  - bank payment or check on its way = **clearing**;
+  - right after a bank payment = **"is on its way"**;
+  - card = **processed**.
+- **Emails (migration):**
+  - Every bank-only confirmation now says "Thank you. Your bank payment of $X ... is on its way to us." instead of "we have received ... successfully processed". This covers MAP 1, Tax, membership, specialist background check / licence, Background Check, the Tax deposit, SDP and advisor/accountant.
+  - Rows shared by card and bank say "Thank you for your payment ...": PIP, specialist revenue, Tax implementation fee, Tier 1.
+  - "once the funds have settled" became "once the payment has cleared".
+  - Subjects "Payment received", "Deposit Processing" and "payment received" (Background Check) became "Bank payment on its way" / "on its way".
+- **Code-built sentences:** every `[PROCESSING_TIME]` bank line now reads "Bank payments usually take 3-5 business days to clear. Your invoice and receipt will follow once it has cleared." The card line reads "Your card payment has been processed. ..." Error toasts, failure bells and bank-verification bells say "cleared" / "clearing".
+- **Bells:** the MAP 1 / Tax team bells that fire at a bank payment's start say "[client] started a bank payment (clearing)", no longer "paid".
+- **Website:**
+  - The "Pending — ACH clearing" chips (9 screens) now read "Bank payment clearing".
+  - "Processing" status labels now read "Clearing" (including the Payments tab clients, members and specialists see).
+  - Pay pages' bank option says "Takes 3-5 business days to clear".
+  - The member Growth Credits, MSM Tracking and Tax Diagnostic messages changed. The last two had said the client is created only once the deposit clears, which has been wrong since 2026-10-30.
+  - Raw statuses on admin screens go through the new display-only `src/lib/paymentStatusLabel.js`.
+  - The Tax Deposit Paid step's stored status `Processing` is unchanged; it shows as "Clearing".
+- **Advisor / Accountant "implementation":** emails, `[PAYMENT_NEXT_STEP]`, the BoldSign title and attachment name, invoice/receipt PDFs, Stripe descriptions and the pay-page headings now say Implementation. The deposit keeps the name **ERT Membership Deposit** (Jake). Tier 1 rows keep their membership names.
+  - Small fixes that rode along: the `[Deposit Note]` no longer runs into the next line; "Total Payment" became "Amount Due" on the payment link; the decline email's missing full stop; em dashes in reminders; accountant amounts show cents properly.
+- **Left on purpose:** "settled on old system" (paid outside the portal), refunds and payouts, receipts' "received", and the internal sweep bell title that `stall-ack.ts` matches word for word.
+- **Tested (Jake, test site):** one classic accountant onboarding end to end:
+  - agreement email and BoldSign title;
+  - payment link and pay page;
+  - bank payment, the "on its way" email and the "Bank payment clearing" chip;
+  - invoice/receipt email and PDFs;
+  - the "Ready to create" bell.
+- **Not tested:** the other pipelines' bank confirmations and bells, the deposit and Tier 1 paths, and the new labels at 390 wide. Listed in JLathamERT/vfo-edge-functions#588 with three leftovers (an out-of-date rule description, a card bell that says "drafted", a connected Associate's licence called "membership").
+- **Gates:** `deno check` 0; action count 689; build 51 route pages; the migration dry-run on temp copies matched every sentence exactly once, and live's 54 rows are byte-identical to the test site's.
+
 ## 2026-11-18 (c) — Tax Planning Form: international tax question, people to copy on emails, International Tax Planning priority — by Jake
 
 Branch `claude/tax-diagnostic-intl-tax-*` (both repos), ONE chat. Tested on `vfo-admin-api-jake` v40 and the shared test `vfo-admin-api` v103 (this branch; main put back afterwards, v104). Action count **689** (unchanged: no new action). Migrations `20261118150000_international_tax.sql` (column + two bell rules) and `20261118150100_international_tax_share_email.sql` (email template), applied on the test site 2026-11-18; they go on live at release.

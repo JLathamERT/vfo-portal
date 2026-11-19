@@ -622,7 +622,7 @@ function OnboardingDetail({ id, onBack }) {
       {depositRefundable && !refundDraft.open && <button disabled={refundSending} onClick={() => setRefundDraft({ open: true, reason: '', sending: false })} style={trRed}>Refund</button>}
     </div>
   ) : depositStatus === 'processing' ? (
-    <span style={pillStyle('#e06717')}>Deposit pending (ACH clearing) — ${fmtMoney(depositAmount)}</span>
+    <span style={pillStyle('#e06717')}>Deposit clearing (bank payment) - ${fmtMoney(depositAmount)}</span>
   ) : depositStatus === 'failed' ? (
     <span style={pillStyle('#e74c3c')}>Deposit failed</span>
   ) : (
@@ -736,7 +736,7 @@ function OnboardingDetail({ id, onBack }) {
     <>
       {depositPaid > 0 && (
         <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '4px 0 6px 14px' }}>
-          Deposit of ${fmtMoney(depositPaid)} {ob.deposit_status === 'processing' ? 'pending (ACH clearing)' : `received ${formatDate(ob.deposit_completed_at)}`}{!priced ? ' · balance calculated at signing' : balance > 0 ? ` · balance due $${fmtMoney(balance)}` : ' · nothing further due'}
+          Deposit of ${fmtMoney(depositPaid)} {ob.deposit_status === 'processing' ? 'clearing (bank payment)' : `received ${formatDate(ob.deposit_completed_at)}`}{!priced ? ' · balance calculated at signing' : balance > 0 ? ` · balance due $${fmtMoney(balance)}` : ' · nothing further due'}
         </div>
       )}
       <AutoRow label="Engagement agreement created and sent for signing" done={!!ob.agreement_sent_at} date={ob.agreement_sent_at} emails={tier1 ? ADVISOR_TIER1_AGREEMENT_EMAILS : ADVISOR_AGREEMENT_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
@@ -1031,7 +1031,7 @@ function AutoRow({ label, done, date, tag, emails, pipeline, emailCtx, pending =
           <span key={i} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{t}</span>
         ))}
         {!done && pending
-          ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>Pending — ACH clearing</span>
+          ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>Bank payment clearing</span>
           : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: done ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: done ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: done ? 'var(--vfo-success-text)' : 'var(--vfo-muted)' }}>{done ? 'Done' : 'Not completed'}</span>}
         <span style={dateTextStyle}>{done && date ? formatDate(date) : ''}</span>
       </span>
