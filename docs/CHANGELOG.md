@@ -8,6 +8,43 @@
 
 ---
 
+## 2026-11-19 — Held Payouts (every hold reason + Retry now), Accounting > SDP ATSG, Advisor / Accountant Implementation pages — by Jake
+
+Branch `claude/revenue-holds-implementation-tracking-*` (both repos), one chat. Tested on `vfo-admin-api-jake` v43-v45. Action count **689 → 692**. New table `payout_holds` (migration `20261119150000_payout_holds.sql`, on the test site; live at release). No email template, no feature switch, no bell rule.
+
+- **Why (Jake):** the Accounting *Held - No Payout Account* sub-tabs only listed member shares held for want of a payout account (`member_held_shares`). Shares were also stuck for other reasons nobody could see in one place: the member suspended / paused / in arrears, a Stripe error (a Tax retainer share and two planner shares were Failed on live), the Stripe balance too low. And the advisors and accountants who pay for the 6-month implementation through onboarding had no page like Membership Fees.
+- **What already happened to an unpaid share (inventory first):** every engine already parked it in a non-terminal status the nightly sweeps retry, except a refused **PIP** transfer, which read `Pending` with a completion stamp and was never retried. No engine stored Stripe's error, so "balance too low" could not be told from any other refusal. Strategic, planner, specialist, ERT and SDP legs were held in their own status columns with no list at all.
+- **Backend:**
+  - **`payout_holds`** (deny-all RLS, anon `*/0`): one row per held leg with its reason (`no_payout_account` · `member_suspended` / `_paused` / `_arrears` · `balance_low` · `stripe_error` · `awaiting_planner` · `not_configured`), Stripe's code and message, attempts and refusals. Written by `utils/payout-holds.ts` `noteHold` from every engine and leg: MAP 1 member + strategic, Tax member + strategic + planner + the $250 deposit share (incl. the international case), PIP, SpecRev member / specialist / ERT, SDP ATSG SDP + member. `releaseHold` on payout. The migration copied every `member_held_shares` row in.
+  - **`held_payouts_load`** (accounting tab): the list per engine, each row live-checked against the leg's own status column (`stillHeld`), with the member email ladder from `member_held_shares`.
+  - **`held_payout_retry`** (accounting tab): **Retry now**, chaining that one leg with the service-role key to its engine, or to the nightly sweep's new single-leg modes (`only_strategic` on the MAP 1 sweep, `only_leg` on the Tax sweep: the main handlers return early once the member leg is resolved). 07-server-chains.md *Held Payouts*.
+  - **Fresh key after a refusal (#767):** MAP 1 / Tax / PIP member, strategic, planner and SpecRev member / specialist transfers send `<key>-r<refusals>` once a Stripe refusal (400/402/403/404) is on record, so a retry the same day is not answered with the cached refusal (#489). The nightly sweeps get this too.
+  - **PIP:** a refused transfer now reads `Failed` (no completion stamp), the MAP 1 sweep's PIP pass retries it, and the Payments ledger shows it as failed.
+  - **`sdp_atsg_revenue_load`** (accounting tab, read-only): cleared SDP ATSG payments and their split.
+  - **`member_onboarding_payments_load`** gained `implementation: true` (fee, deposit, balance, term, end date, invoice / receipt; signed-but-unpaid rows; Tier 1 left out). The old paid-only answer is unchanged for the published page (#564).
+  - `payout_holds` joined the test-site reset lists and the remove-prospect blockers.
+- **Website:**
+  - **Held Payouts** (`HeldPayoutsPanel.jsx`, rewritten) on Holistic, Tax Planning, Additional PIP, VFO Specialist Revenue and the new Accounting > SDP ATSG. It shows payee and payee type, reason chip with Stripe's message or the email ladder, a reason filter, a total and **Retry now** (one click; Paid / Still held / the error). Phone: stacked cards. Retry timeout 90 s, never auto-retried.
+  - **More > Accounting > SDP ATSG** with **SDP ATSG Revenue** (`SdpAtsgRevenuePanel.jsx`, Holistic Revenue's look) and **Held Payouts**. The SDP ATSG tab itself is unchanged (a first try added the list there; Jake moved it to Accounting).
+  - **Advisor / Accountant Implementation** (`ImplementationPanel.jsx`) replaced the Onboarding fee lists (`MemberOnboardingPanel.jsx` deleted; section keys kept). It has Members cards in the Membership Fees style (Payment · Date · Amount · Status · Payment), Outstanding Payment Links and Implementation Ending.
+  - Refresh is now the same bordered button after the filters on Held Payouts and the three Outstanding Payment Links pages (it was first in the row / a text link on the right).
+- **Tested on the test site** (fixtures on Jake's member 10001; the suspension and the planner group's account put back, the seeded Jake Advisor deposit left as test data):
+  - Retry on a seeded Tax hold with 10001 suspended → **Member suspended**, plus a new planner row **Stripe error** `resource_missing` (the planner group pointed at a made-up account), refusals 1.
+  - Account put back → Retry → **Paid** (on the rotated key).
+  - Un-suspending 10001 → member share paid by the release chain; both rows released `paid`.
+  - Every Held Payouts page and SDP ATSG Revenue load.
+  - Implementation pages with a seeded deposit-paid advisor and a paid-in-full accountant (Members, Outstanding Payment Links, Implementation Ending + its Refresh).
+  - Phone layout.
+- **Not exercised:**
+  - a real **Stripe balance too low** (the sandbox balance could not be drained);
+  - Retry on MAP 1 (member or strategic), PIP, SpecRev, SDP ATSG and the deposit share;
+  - the PIP `Failed` retry by the sweep;
+  - the Implementation Clearing / Failed / Ended / Stopped states.
+
+  JLathamERT/vfo-edge-functions#592 holds them, plus the watch for the shares held on live today.
+
+---
+
 ## 2026-11-19 — Member portal access by tier: three positive lists, every other type cannot sign in — by Jake
 
 Portal licensing L6 revised (plan decisions 111-115). **Tier 1** is now ONLY Financial Collaborator + VFO Associate (Advisor / Direct). **Tier 2** = the Catalyst, VFO FT and Implementation types. **Tier 3** = the Fusion, Advanced, Accelerator and Plus types — the Tier 2 portal until Tier 3 is built (1 Jan 2027). A member type on **no** list — every corporate type, Team Member, VFO Reconciliation (Free), Survey #1-3, FAC Historic, Free Legacy TBM, Action Coach, Tax Plan IQ, and any type added later until it is listed — has no member portal: before this, any unlisted type got the full portal.

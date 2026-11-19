@@ -494,6 +494,13 @@ Shared: **`utils/onboarding-order.ts`** (the step order + every lock, mirrored b
 `_depositemail`, `_depositrefund`. PUBLIC: `automation_{ADVISOR,ACCOUNTANT}_depositconfirmation`,
 `_chargebalance`, plus `automation_ONBOARDING_MEETING_sweep` and `automation_ONBOARDING_meetingresponse`.
 
+## Accounting > Members > Advisor / Accountant Implementation *(2026-11-19)*
+
+Replaced the *Advisor / Accountant Onboarding* fee lists (section keys `advisor_onboarding_fees` / `accountant_onboarding_fees` kept, so old links still land). `src/components/admin/ImplementationPanel.jsx`, read-only, in the Membership Fees style, from `member_onboarding_payments_load` with `implementation: true` (Tier 1 rows left out: they are monthly membership). Three pills:
+- **Members** — one card per onboarding with a payment, a deposit or a signed agreement: the implementation fee, when it ends (`renewal_date`), payments made, a status (Active · Ended · Clearing · Deposit paid · Awaiting payment · Payment failed · Stopped). It opens to the Deposit + Balance rows (or one Payment in full) in the Membership Fees columns (Payment · Date · Amount · Status · Payment), then Agreement signed, the implementation dates and term, any deposit refund, and the invoice / receipt numbers. Search, a status filter and a "Paid in" year / month filter with the total collected.
+- **Outstanding Payment Links** — signed, payment link sent, nothing (or only the deposit) paid: the amount or balance due and the link / reminder dates. The link itself is sent from the onboarding pipeline.
+- **Implementation Ending** — by month, like Membership Fees' Renewals.
+
 ## Frontend
 
 `src/components/admin/AdvisorOnboarding.jsx` + `AccountantOnboarding.jsx` (the locked Stage 1 cascade, the
