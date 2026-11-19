@@ -184,7 +184,7 @@ Audit trail of `member_type` changes.
 
 ## `member_held_shares`
 
-*(2026-10-15, migrations `20261015150000` / `160000` / `170000`; deny-all RLS, anon `*/0`.)* One row per member revenue-share leg HELD because the member has no usable Stripe payout account. Written by `utils/member-held-shares.ts` `recordHeldShareForConnect`, called by all four payout engines at the moment they park the leg; read by `member_held_shares_load` (the four Accounting *Held - No Payout Account* pills) and the ladder in the SpecRev payout sweep.
+*(2026-10-15, migrations `20261015150000` / `160000` / `170000`; deny-all RLS, anon `*/0`.)* One row per member revenue-share leg HELD because the member has no usable Stripe payout account. Written by `utils/member-held-shares.ts` `recordHeldShareForConnect`, called by all four payout engines at the moment they park the leg; read by the ladder in the SpecRev payout sweep and, since 2026-11-19, by `held_payouts_load` for the "Member emailed / reminded / Tracy asked" note on a member's no-payout-account row. **The Accounting list itself now reads `payout_holds` (below)**; `member_held_shares_load` is no longer called by the website.
 
 | Column | Meaning |
 |---|---|
@@ -192,6 +192,19 @@ Audit trail of `member_type` changes.
 | `client_id`, `amount` (numeric(12,2), > 0), `source_label`, `detail`, `sandbox` | what the email and the pill show — the amount is the engine's own share computed at hold time (MAP 1 / Tax do not store it elsewhere) |
 | `held_at`, `asked_at`, `asked_by_hand`, `reminded_at`, `tracy_notified_at` | the ask ladder: a new ask stamps `asked_at` on every open row of the member and clears the other two; `asked_by_hand` = a setup link an admin sent by hand (the four 2026-10-15 backfill rows), skipped by the ladder until a new hold emails them |
 | `released_at`, `release_reason` | stamped by the engine on payout (`paid`), the Tax refund (`refunded`), the SpecRev zero close, or lazily by any reader whose live check finds the leg no longer waiting |
+
+## `payout_holds`
+
+*(2026-11-19, migration `20261119150000_payout_holds.sql`; deny-all RLS, anon `*/0`.)* One row per revenue-share leg a payout engine could not pay, **for any reason**, with the reason. Written by `utils/payout-holds.ts` `noteHold` from every engine (MAP 1 member + strategic, Tax member + strategic + planner + $250 deposit share, PIP, SpecRev member / specialist / ERT, SDP ATSG SDP + member) each time it leaves a leg unpaid, and released by `releaseHold` when the leg pays. Read by `held_payouts_load` (the Accounting *Held Payouts* sub-tabs) and `held_payout_retry` (the Retry now button). **The leg's own status column stays the truth:** a reader live-checks every open row against it and releases a row whose leg has moved on (`stillHeld` in `actions/payouts/held-payouts-load.ts`; a row noted in the last 10 minutes is trusted, because the engine writes the status column after it). The migration copied every `member_held_shares` row in, open and released, as `no_payout_account`.
+
+| Column | Meaning |
+|---|---|
+| `engine` (`map1` / `tax` / `pip` / `specrev` / `sdp_atsg`, CHECK), `source_key`, `leg` (`member` / `strategic` / `planner` / `deposit_team` / `specialist` / `ert` / `sdp`, CHECK) | the leg. `source_key` as `member_held_shares`, plus `plan:<id>:deposit` (the $250 deposit share) and `payment:<sdp_atsg_payments.id>`; `unique(engine, source_key, leg)` |
+| `reason` | `no_payout_account` · `member_suspended` · `member_paused` · `member_arrears` · `balance_low` (Stripe `balance_insufficient`) · `stripe_error` · `awaiting_planner` · `not_configured` (no Stripe key / ERT account / member row in this environment). Plain text, no CHECK (#431) |
+| `stripe_code`, `stripe_message` | what Stripe answered (or why no call was made) on the latest attempt |
+| `refusals` | Stripe refusals on record (an error object with HTTP 400 / 402 / 403 / 404, so no transfer was made). While it is above 0, `transferKey` gives the engine's fixed Idempotency-Key a `-r<refusals>` suffix, so a retry is not answered with the cached refusal (#489, #767). Never reset, even when a released leg is held again. The deposit share, SpecRev ERT and SDP ATSG keep their own rotation and do not count refusals |
+| `payee_name`, `member_number`, `client_id`, `amount`, `source_label`, `detail`, `sandbox` | what the list shows: the amount is the engine's own figure at hold time |
+| `attempts`, `held_at`, `last_attempt_at`, `released_at`, `release_reason` | `attempts` counts the tries in this hold; `release_reason` is `paid`, or the status the leg reached (`Money Mapping`, `no longer held (…)`) |
 
 ## `member_exclusions`
 

@@ -11,7 +11,7 @@ A one-off track for the tax planning partner **SDP Personalized Planning**. SDP'
 3. **Payments** — the first on the client's link; later ones charged automatically by the daily sweep on the saved card or bank.
 4. **Strategy Impact Fees** — any number of one-off fees (amount, meeting date, strategy name), each with its own pay link. Locked until retainer payment 1 is paid.
 
-**Entirely separate from our own clients by design (Jake):** its own tables (`sdp_atsg_*`), its own invoice / receipt numbering (`INV-` / `REC-<client_ref>-NNNN` on the payment row — never `document_numbers`), its own held shares (on the payment row — never `member_held_shares`). Nothing here reads or writes `clients`, `client_tax_plans` or any program. Client refs are `<member>-SDP001`, `-SDP002`...
+**Entirely separate from our own clients by design (Jake):** its own tables (`sdp_atsg_*`), its own invoice / receipt numbering (`INV-` / `REC-<client_ref>-NNNN` on the payment row — never `document_numbers`), its own held shares (on the payment row — never `member_held_shares`; since 2026-11-19 each held leg is also noted in `payout_holds`, which is only a list, so it shows under Accounting > SDP ATSG > Held Payouts). Nothing here reads or writes `clients`, `client_tax_plans` or any program. Client refs are `<member>-SDP001`, `-SDP002`...
 
 ## Who can use it
 
@@ -32,6 +32,7 @@ Every handler calls `resolveAtsgCaller` (admin, or a planner of an `atsg_enabled
 - **The case screen's *Pricing & revenue split* card** shows each payee's share of the year's retainer and of all fees, and under it what has actually reached them so far and on how many of the payments ("Received $875.00 so far · 1 of 4 payments"), so one quarterly payout never reads as the whole year (Jake, 2026-11-18). Each sent fee's row shows its own split. The card fee (2.9% + $0.30 grossed up, `cardChargeCentsFor`) stays with VFO Services. ACH has no fee. The split is stamped on the row at the payout (`sdp_share` / `member_share` / `vfos_share`, #659).
 - Transfers carry `source_transaction` (the client's charge); Stripe refuses a `transfer_group` beside it when the charge already has one, so `transfer_group` is set only when there is no charge to tie to (#759).
 - **The member's share is held, never paid,** when the member is suspended / paused / in arrears (`held_suspended` / `held_paused` / `held_arrears`, with the usual held notice), or has no working payout account (`awaiting_connect`: the usual payout-setup request email, unless one already went, plus Jake's bell). The daily sweep pays it once the hold clears. SDP's share is held the same way if SDP's account stops working.
+- **Accounting > SDP ATSG** (2026-11-19, admins with the Accounting tab; the SDP ATSG tab itself is unchanged): **SDP ATSG Revenue** lists every cleared payment with its SDP / member / VFO Services split and a note on any share not yet paid (`sdp_atsg_revenue_load`, read-only; a row opens the case); **Held Payouts** lists every held SDP or member share with its reason and a **Retry now** button, which runs `automation_SDP_ATSG_settle` for that payment (`held_payouts_load` / `held_payout_retry`, engine `sdp_atsg`, [../architecture/07-server-chains.md](../architecture/07-server-chains.md) *Held Payouts*).
 
 ## Step by step
 

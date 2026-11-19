@@ -43,7 +43,8 @@ import TaxRevenuePanel from '../components/admin/TaxRevenuePanel'
 import TaxReconciliationPanel from '../components/admin/TaxReconciliationPanel'
 import PipRevenuePanel from '../components/admin/PipRevenuePanel'
 import PipReconciliationPanel from '../components/admin/PipReconciliationPanel'
-import MemberOnboardingPanel from '../components/admin/MemberOnboardingPanel'
+import ImplementationPanel from '../components/admin/ImplementationPanel'
+import SdpAtsgRevenuePanel from '../components/admin/SdpAtsgRevenuePanel'
 import MembershipFeesPanel from '../components/admin/MembershipFeesPanel'
 import AccountingCombinedPanel, { PILL_KEY as ACCOUNTING_PILL_KEY } from '../components/admin/AccountingCombinedPanel'
 import OutstandingLinksPanel from '../components/admin/OutstandingLinksPanel'
@@ -79,6 +80,7 @@ const ACCOUNTING_SECTIONS = [
   'advisor_onboarding_fees', 'advisor_membership_fees',
   'accountant_onboarding_fees', 'accountant_membership_fees',
   'gc_accounting', 'mm_accounting',
+  'sdp_atsg_revenue', 'sdp_atsg_held_payouts',
 ]
 
 export default function AdminPortal() {
@@ -729,7 +731,7 @@ export default function AdminPortal() {
                 { key: 'specialist_reconciliation', label: 'VFO Specialist Reconciliation', render: () => <SpecialistReconciliationPanel allMembers={allMembers} embedded /> },
                 { key: 'specialist_recurring', label: 'VFO Specialist Recurring Revenue Payments', render: () => <SpecialistRecurringPanel embedded /> },
                 { key: 'specialist_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="specrev" embedded /> },
-                { key: 'specialist_held_payouts', label: 'Held - No Payout Account', render: () => <HeldPayoutsPanel engine="specrev" embedded /> },
+                { key: 'specialist_held_payouts', label: 'Held Payouts', render: () => <HeldPayoutsPanel engine="specrev" embedded /> },
               ]}
             />
           )}
@@ -763,7 +765,7 @@ export default function AdminPortal() {
                 { key: 'holistic_revenue', label: 'Holistic Planning Revenue', render: () => <HolisticRevenuePanel embedded /> },
                 { key: 'holistic_reconciliation', label: 'Holistic Planning Reconciliation', render: () => <HolisticReconciliationPanel embedded /> },
                 { key: 'holistic_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="map1" embedded /> },
-                { key: 'holistic_held_payouts', label: 'Held - No Payout Account', render: () => <HeldPayoutsPanel engine="map1" embedded /> },
+                { key: 'holistic_held_payouts', label: 'Held Payouts', render: () => <HeldPayoutsPanel engine="map1" embedded /> },
               ]}
             />
           )}
@@ -775,7 +777,7 @@ export default function AdminPortal() {
                 { key: 'tax_revenue', label: 'Tax Planning Revenue', render: () => <TaxRevenuePanel embedded /> },
                 { key: 'tax_reconciliation', label: 'Tax Planning Reconciliation', render: () => <TaxReconciliationPanel embedded /> },
                 { key: 'tax_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="tax" embedded /> },
-                { key: 'tax_held_payouts', label: 'Held - No Payout Account', render: () => <HeldPayoutsPanel engine="tax" embedded /> },
+                { key: 'tax_held_payouts', label: 'Held Payouts', render: () => <HeldPayoutsPanel engine="tax" embedded /> },
               ]}
             />
           )}
@@ -786,19 +788,29 @@ export default function AdminPortal() {
               tabs={[
                 { key: 'pip_revenue', label: 'Additional PIP Revenue', render: () => <PipRevenuePanel embedded /> },
                 { key: 'pip_reconciliation', label: 'Additional PIP Reconciliation', render: () => <PipReconciliationPanel embedded /> },
-                { key: 'pip_held_payouts', label: 'Held - No Payout Account', render: () => <HeldPayoutsPanel engine="pip" embedded /> },
+                { key: 'pip_held_payouts', label: 'Held Payouts', render: () => <HeldPayoutsPanel engine="pip" embedded /> },
+              ]}
+            />
+          )}
+          {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'sdp_atsg_revenue' || accountingSection === 'sdp_atsg_held_payouts') && (
+            <AccountingCombinedPanel
+              breadcrumb="Accounting · SDP ATSG" title="SDP ATSG"
+              maxWidth="1150px" initialKey={accountingSection}
+              tabs={[
+                { key: 'sdp_atsg_revenue', label: 'SDP ATSG Revenue', render: () => <SdpAtsgRevenuePanel embedded /> },
+                { key: 'sdp_atsg_held_payouts', label: 'Held Payouts', render: () => <HeldPayoutsPanel engine="sdp_atsg" embedded /> },
               ]}
             />
           )}
           {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'advisor_onboarding_fees' && (
-            <MemberOnboardingPanel kind="advisor" title="Advisor Onboarding" />
+            <ImplementationPanel kind="advisor" title="Advisor Implementation" />
           )}
           {activeTab === 'accounting' && !loading && canSeeTab('accounting') && accountingSection === 'advisor_membership_fees' && (
             <MembershipFeesPanel title="Advisor Membership Fees" category="advisor" allMembers={allMembers}
               isSuperadmin={canSeeTab('accounting')} initialMemberNumber={initialMemberNumber} />
           )}
           {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'accountant_onboarding_fees' && (
-            <MemberOnboardingPanel kind="accountant" title="Accountant Onboarding" />
+            <ImplementationPanel kind="accountant" title="Accountant Implementation" />
           )}
           {activeTab === 'accounting' && !loading && canSeeTab('accounting') && accountingSection === 'accountant_membership_fees' && (
             <MembershipFeesPanel title="Accountant Membership Fees" category="accountant" allMembers={allMembers}
