@@ -38,7 +38,7 @@ These **six** are dispatched inline in `index.ts` BEFORE webhook detection (pre-
 | Action | File | R | W | Chains |
 |---|---|---|---|---|
 | `admin_login` | `actions/auth/admin-login.ts` | `allowed_admins` | `admin_sessions` | — |
-| `member_login` | `actions/auth/member-login.ts` | `member_logins`, `member_plugin_settings`, `members` | `admin_sessions` | — |
+| `member_login` | `actions/auth/member-login.ts` | `member_logins`, `member_plugin_settings`, `members` | `admin_sessions` | — 403 for Lost / Removed, and (2026-11-19) for a member type with no portal (`noPortalRefusal`, corporate wording apart). |
 | `login` (legacy) | `actions/auth/login.ts` | `allowed_admins` | `admin_sessions` | — |
 | `client_login` | `actions/auth/client-login.ts` | `client_logins` (salted PBKDF2 verify of email+passcode) | `admin_sessions` | The third login type. Returns `{token, name, email, role:'client', client_id}`. |
 | `specialist_login` | `actions/auth/specialist-login.ts` | `specialist_logins` (salted PBKDF2 verify of email+passcode) | `admin_sessions` | Specialist portal login. Returns `{token, name, email, role:'specialist', expert_id}`. |
@@ -369,9 +369,9 @@ Every action is `ADMIN_ONLY_ACTIONS` with **no tab key** (open to every admin) a
 
 | Action | File | R | W | Chains |
 |---|---|---|---|---|
-| `load_member_login` | `actions/member-logins/load.ts` | `member_logins` | — | — |
+| `load_member_login` | `actions/member-logins/load.ts` | `member_logins`, `members` (type) | — | — Returns `{ login, portal_access, portal_tier }` (2026-11-19): `portal_access=false` when the member type has no portal (`memberTierOf` null). |
 | `load_my_login` (uses auth) | `actions/member-logins/load-mine.ts` | `member_logins` | — | — |
-| `create_member_login` | `actions/member-logins/create.ts` | — | `member_logins` (hashed) | — |
+| `create_member_login` | `actions/member-logins/create.ts` | `members` (type) | `member_logins` (hashed) | — Refuses (400) a member type with no portal (2026-11-19). |
 | `update_member_login` | `actions/member-logins/update.ts` | — | `member_logins` | — |
 
 ### Vault (Supabase Storage)
