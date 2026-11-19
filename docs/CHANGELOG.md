@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-19 (b) — One-sentence Stripe reasons, Held Payouts count badges, "Tax Tax" bell wording — by Jake
+
+Branch `claude/stripe-short-reasons` (both repos), same chat as the Held Payouts release below. Tested on `vfo-admin-api-jake` v46-v47. Action count **692** (unchanged). No DDL.
+
+- **Why (Jake):** a refused transfer showed Stripe's whole paragraph (with a dashboard link) on the Held Payouts row and in the failure bell. He wanted one sentence, and a count on each Held Payouts pill so a held share is visible without opening the tab.
+- **Backend:** `utils/payout-holds.ts` `stripeReasonText` maps the known transfer refusal codes to one plain sentence. Examples: `balance_insufficient` → "The VFO Stripe balance was too low to send it.", `resource_missing` → "The payee's Stripe account was not found.", `insufficient_capabilities_for_transfer` → "…cannot receive transfers yet.". Anything else gets Stripe's first sentence, capped at 140 characters; the raw answer stays in the logs. It feeds the `payout_holds` message and the eight transfer-failure bells: MAP 1 member, Tax member, strategic, planner, both deposit-share bells, the Tier 1 licence and Money Mapping transfers. The Tax bells said "Tax Tax Retainer" (a "Tax" prefix before a label that already has one); fixed in the Tax member, planner and strategic bells.
+- **Website:** `HeldPayoutsLabel` / `HeldCountBadge` (`HeldPayoutsPanel.jsx`): a red count on all five Held Payouts pills. It uses the list's own loader and last-seen snapshot, and updates on every reload and on a Retry that pays (`vfo-held-count` event).
+- **Live data, by hand the same day:** the three Tax rows added after the release (ids 7-9) and their bells (4370, 4371, 4384) were shortened to the one sentence, with the "Tax Tax" removed.
+- **Tested:** a real `resource_missing` refusal (the test planner group pointed at a made-up account) gave the short reason on the row and in the bell. A second Retry was refused on the rotated key (2 refusals). The account was put back, Retry paid, and the badge went from 1 to nothing. The bell cleared itself on payment.
+
+---
+
 ## 2026-11-19 — Held Payouts (every hold reason + Retry now), Accounting > SDP ATSG, Advisor / Accountant Implementation pages — by Jake
 
 Branch `claude/revenue-holds-implementation-tracking-*` (both repos), one chat. Tested on `vfo-admin-api-jake` v43-v45. Action count **689 → 692**. New table `payout_holds` (migration `20261119150000_payout_holds.sql`, on the test site; live at release). No email template, no feature switch, no bell rule.
