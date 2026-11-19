@@ -54,6 +54,7 @@ export function clearedPipPurchases(rows) {
       id: r.id,
       clearedAt: r.pip_payment_completed_at,
       amount: parseNum(r.pip_purchase_amount),
+      fee: parseNum(r.pip_card_processing_fee),
       member: parseNum(r.pip_purchase_member_share),
       vfos: parseNum(r.pip_purchase_vfos_share),
       clientName: r.client_name || `Client #${r.client_id}`,

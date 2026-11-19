@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
+import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell } from './cardFeeColumn'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { ordinal } from '../../lib/ordinal'
@@ -20,7 +21,9 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 // Same column widths the SpecRev table uses for the columns the two share, so the
 // date / money / status columns line up when the panels sit side by side.
-const LEDGER_GRID = '1.4fr 118px 112px 178px'
+// The Card fee column is always a dash: licence payments carry no card fee (fee-free
+// on card or bank since 2026-09-22; the ledger has no fee column).
+const LEDGER_GRID = `1.4fr 118px 112px ${CARD_FEE_COL} 178px`
 
 function fmtDate(s) {
   if (!s) return '—'
@@ -124,18 +127,19 @@ export default function SpecialistLicensePanel({ allExperts = [], embedded = fal
         <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
-      {loading && <AccountingTableSkeleton cols={4} />}
+      {loading && <AccountingTableSkeleton cols={5} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && (
         <div style={tableStyle}>
           <div style={{ ...headerRowStyle, gridTemplateColumns: LEDGER_GRID }}>
-            <span>Specialist</span><span>Date</span><span style={{ textAlign: 'right' }}>Amount</span><span style={{ textAlign: 'right' }}>Status</span>
+            <span>Specialist</span><span>Date</span><span style={{ textAlign: 'right' }}>Amount</span><span style={{ textAlign: 'right' }}>{CARD_FEE_LABEL}</span><span style={{ textAlign: 'right' }}>Status</span>
           </div>
           <div style={{ ...totalsRowStyle, gridTemplateColumns: LEDGER_GRID }}>
             <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>{periodLabel}</span></span>
             <span />
             <span style={{ textAlign: 'right' }}>{money(periodTotal)}</span>
+            <span style={{ textAlign: 'right' }}>—</span>
             <span />
           </div>
           {filtered.length === 0 && (
@@ -149,6 +153,7 @@ export default function SpecialistLicensePanel({ allExperts = [], embedded = fal
               </span>
               <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(p.paid_at)}</span>
               <span style={{ textAlign: 'right', fontWeight: 700 }}>{money(p.amount)}</span>
+              <span style={{ textAlign: 'right' }}><CardFeeCell fee={0} /></span>
               <LicenseStatusTag status={p.status} />
             </div>
           ))}

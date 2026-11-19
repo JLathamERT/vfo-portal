@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo } from 'react'
+import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell } from '../admin/cardFeeColumn'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
@@ -31,7 +32,8 @@ const PTYPE_TAG = {
   ERT: { fg: 'var(--vfo-ink-soft)', bg: 'var(--vfo-tint)' },
 }
 
-const GRID = '104px 1.3fr 1.5fr 130px 130px 120px 1fr'
+// Amount is what was taken less the card fee; the fee has its own column (Jake 2026-11-19).
+const GRID = `104px 1.3fr 1.5fr 120px ${CARD_FEE_COL} 130px 120px 1fr`
 
 // The row's calendar month: a date-only value is a calendar date as stored; a
 // timestamp is read in the viewer's local time (as fmtDate shows it).
@@ -165,16 +167,14 @@ function PaymentsLedger({ direction }) {
         <div style={{ ...tableStyle, overflowX: 'auto' }}>
           <div style={{ ...headerRowStyle, gridTemplateColumns: GRID }}>
             <span>Date</span><span>{direction === 'out' ? 'Paid to' : 'Who'}</span><span>What</span>
-            <span style={{ textAlign: 'right' }}>Amount</span><span>Status</span><span>Method</span><span>Reference</span>
+            <span style={{ textAlign: 'right' }}>Amount</span><span style={{ textAlign: 'right' }}>{CARD_FEE_LABEL}</span><span>Status</span><span>Method</span><span>Reference</span>
           </div>
           <div style={{ ...totalsRowStyle, gridTemplateColumns: GRID }}>
             <span style={{ ...totalsLabelStyle, gridColumn: 'span 3' }}>
               Totals<span style={totalsSubStyle}>{periodLabel} · {shown.length} row{shown.length === 1 ? '' : 's'} · {countedWord} only</span>
             </span>
-            <span style={{ textAlign: 'right' }}>
-              {fmtMoney(total)}
-              {fees > 0 && <span style={{ ...sub, fontWeight: 600 }}>incl. {fmtMoney(fees)} card fees</span>}
-            </span>
+            <span style={{ textAlign: 'right' }}>{fmtMoney(total - fees)}</span>
+            <span style={{ textAlign: 'right' }}>{fees > 0 ? fmtMoney(fees) : '—'}</span>
             <span /><span /><span />
           </div>
           {shown.length === 0 && (
@@ -200,10 +200,8 @@ function PaymentsLedger({ direction }) {
                   {r.detail && <span style={sub}>{r.detail}</span>}
                   {r.onBehalfByMember && <span style={{ ...sub, color: '#b45309' }}>Paid by {r.onBehalfByMember}</span>}
                 </span>
-                <span style={{ textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                  {fmtMoney(r.amount)}
-                  {Number(r.fee) > 0 && <span style={sub}>incl. {fmtMoney(Number(r.fee))} card fee</span>}
-                </span>
+                <span style={{ textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtMoney((Number(r.amount) || 0) - (Number(r.fee) || 0))}</span>
+                <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}><CardFeeCell fee={r.fee} /></span>
                 <span><StatusPill status={r.status} /></span>
                 <span style={{ color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{fmtMethod(r.method, r.last4)}</span>
                 <span style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', wordBreak: 'break-all' }}>

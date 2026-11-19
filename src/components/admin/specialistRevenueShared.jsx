@@ -1,6 +1,7 @@
 // Shared helpers + row renderer for the VFO Specialist Revenue surfaces
 // (Accounting viewer + Automation tracker).
 import { useState } from 'react'
+import { CardFeeCell } from './cardFeeColumn'
 import { callApi } from '../../lib/api'
 // Wording only. shareLegState imports `money` from here, so this is a cycle — safe
 // because neither module touches the other's bindings at module scope, only inside
@@ -290,6 +291,7 @@ export function RequestRow({ request, actions, grid }) {
           <span style={{ textAlign: 'right' }}>{money(request.total_ert_share)}</span>
           <span style={{ textAlign: 'right' }}>{money(request.total_vfos_share)}</span>
           <span style={{ textAlign: 'right', fontWeight: 700, color: 'var(--vfo-heading)' }}>{money(request.gross_amount)}</span>
+          <span style={{ textAlign: 'right' }}><CardFeeCell fee={settled ? request.card_processing_fee : 0} /></span>
           <span style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
             {isRecurring && <StatusPill label="Recurring" color="#6b7280" />}
             <StatusPill label={req.label} color={req.color} />

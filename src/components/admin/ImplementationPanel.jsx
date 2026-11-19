@@ -1,4 +1,5 @@
 import { useState, useMemo, useLayoutEffect } from 'react'
+import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell } from './cardFeeColumn'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, BLUE, money, StatusPill } from './specialistRevenueShared'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
@@ -242,7 +243,8 @@ function ImplementationCard({ r, today }) {
   }
   const paidCount = payRows.filter(p => p.status === 'succeeded').length
   // Same columns as a Membership Fees plan card, less Credit.
-  const grid = isPhone ? '1fr 90px 90px' : '1.2fr 110px 110px 120px 1.4fr'
+  const grid = isPhone ? '1fr 90px 90px' : `1.2fr 110px 110px ${CARD_FEE_COL} 120px 1.4fr`
+  const paidFee = p => (p.status === 'succeeded' || p.status === 'processing' ? p.fee : 0)
 
   return (
     <div style={{ ...card, marginBottom: '10px', overflow: 'hidden', opacity: st === IMPL_STATUS.stopped ? 0.7 : 1 }}>
@@ -276,7 +278,7 @@ function ImplementationCard({ r, today }) {
       {open && (
         <div style={{ background: 'var(--vfo-input)', borderTop: '1px solid var(--vfo-border-soft)', padding: '14px 18px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
-            <div>Payment</div>{!isPhone && <div>Date</div>}<div>Amount</div><div>Status</div>{!isPhone && <div style={{ textAlign: 'right' }}>Payment</div>}
+            <div>Payment</div>{!isPhone && <div>Date</div>}<div>Amount</div>{!isPhone && <div>{CARD_FEE_LABEL}</div>}<div>Status</div>{!isPhone && <div style={{ textAlign: 'right' }}>Payment</div>}
           </div>
           {payRows.map(p => {
             const meta = PAY_STATUS[p.status] || { label: p.status ? p.status : 'Not paid', color: '#6b7280' }
@@ -286,6 +288,7 @@ function ImplementationCard({ r, today }) {
                 <div style={{ fontWeight: 600 }}>{p.label}{isPhone && p.date ? <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--vfo-faint)' }}>{fmtDate(p.date)}</div> : null}</div>
                 {!isPhone && <div>{fmtDate(p.date)}</div>}
                 <div style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{money(p.amount)}</div>
+                {!isPhone && <div><CardFeeCell fee={paidFee(p)} /></div>}
                 <div><StatusPill label={meta.label} color={meta.color} /></div>
                 {!isPhone && <div style={{ textAlign: 'right', fontSize: '11.5px', color: 'var(--vfo-muted)', wordBreak: 'break-all' }}>{p.status === 'succeeded' || p.status === 'processing' ? (paidText(p.date, p.type, p.last4) || '—') : '—'}</div>}
               </div>

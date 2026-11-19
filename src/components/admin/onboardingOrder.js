@@ -24,6 +24,14 @@ export function isTier1Onboarding(ob, pipeline) {
     : ob.advisor_type === FC_ADVISOR_TYPE
 }
 
+// The type on the onboarding list rows and record header. An advisor row with
+// no advisor_type is a Catalyst onboarding (the New Onboarding picker's default).
+export function onboardingTypeLabel(ob, pipeline) {
+  if (pipeline === 'advisor') return ob?.advisor_type === FC_ADVISOR_TYPE ? 'Financial Collaborator' : 'Catalyst'
+  if (ob?.accountant_type === ASSOCIATE_ACCOUNTANT_TYPE) return 'VFO Associate'
+  return ob?.accountant_type ? 'VFO FT' : null
+}
+
 export function isConnectedAssociate(ob) {
   return ob?.accountant_partnership === 'Accountant Partnership'
 }

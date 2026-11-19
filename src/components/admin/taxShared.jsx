@@ -201,7 +201,7 @@ export function clearedTaxPayments(rows) {
         // client, not lost. 'payment clearing' still wins while the cash is in flight.
         const deferred = legState(null, { paymentStatus: r.retainer_status, context: 'tax_retainer' })
         out.push({
-          id: `${r.id}-ret`, kind: 'Initial Retainer', clearedAt, amount: parseNum(r.initial_retainer_amount),
+          id: `${r.id}-ret`, kind: 'Initial Retainer', clearedAt, amount: parseNum(r.initial_retainer_amount), fee: parseNum(r.card_processing_fee),
           member: 0, strategic: 0, planner: 0, vfos: 0, status: r.retainer_status,
           retainerBlock, sharesDeferred: true,
           memberState: willPayMember ? deferred : null,
@@ -224,7 +224,7 @@ export function clearedTaxPayments(rows) {
         const sp = stratPer(retShareBase)
         const pp = plannerPortion(retShareBase)
         out.push({
-          id: `${r.id}-fret`, licence: retLicence, kind: 'Final Retainer', clearedAt, amount: parseNum(r.final_retainer_amount),
+          id: `${r.id}-fret`, licence: retLicence, kind: 'Final Retainer', clearedAt, amount: parseNum(r.final_retainer_amount), fee: parseNum(r.final_retainer_card_fee),
           member: mp, strategic: sp, planner: pp,
           vfos: Math.max(ret - retLicence - mp - sp - pp, 0), status: r.final_retainer_status,
           retainerBlock,
@@ -245,7 +245,7 @@ export function clearedTaxPayments(rows) {
         const sp = stratPer(retShareBase)
         const pp = retainerIsHistoric ? 0 : plannerPortion(retShareBase)
         out.push({
-          id: `${r.id}-ret`, licence: retLicence, kind: 'Retainer', clearedAt, amount: ret, member: mp, strategic: sp, planner: pp,
+          id: `${r.id}-ret`, licence: retLicence, kind: 'Retainer', clearedAt, amount: ret, fee: parseNum(r.card_processing_fee), member: mp, strategic: sp, planner: pp,
           vfos: Math.max(ret - retLicence - mp - sp - pp, 0), status: r.retainer_status,
           // The retainer's revenue share fires on the client's decision after the
           // review, not on the charge — hence its own context. ALL THREE legs fire on
@@ -273,7 +273,7 @@ export function clearedTaxPayments(rows) {
         // figure here may be negative — clamping it would hide that (#465).
         const vfosImp = retainerRemainderFor(r) > 0 ? Math.round((imp - mp - sp - pp) * 100) / 100 : Math.max(imp - mp - sp - pp, 0)
         out.push({
-          id: `${r.id}-imp`, kind: 'Implementation', clearedAt, amount: imp, member: mp, strategic: sp, planner: pp,
+          id: `${r.id}-imp`, kind: 'Implementation', clearedAt, amount: imp, fee: parseNum(r.implementation_card_fee), member: mp, strategic: sp, planner: pp,
           vfos: vfosImp, status: r.implementation_charge_status,
           memberState: legState(r.implementation_rev_paid, { revShare: r.implementation_rev_share, paymentStatus: r.implementation_charge_status }),
           plannerState: plannerStateFor(pp, r.implementation_planner_paid, r.implementation_charge_status),

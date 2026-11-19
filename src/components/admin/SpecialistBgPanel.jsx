@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
+import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell } from './cardFeeColumn'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money, StatusPill } from './specialistRevenueShared'
@@ -18,7 +19,7 @@ import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 // Both come from specialist_bg_payments_load ({ payments, requests }).
 
 // Same columns + widths as the License Fees ledger (SpecialistLicensePanel LEDGER_GRID).
-const LEDGER_GRID = '1.4fr 118px 112px 178px'
+const LEDGER_GRID = `1.4fr 118px 112px ${CARD_FEE_COL} 178px`
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 function fmtDate(s) {
@@ -61,6 +62,7 @@ export function bgRowsFrom(res) {
       last4: p.bg_acct_last4 || null,
       sentAt: p.bg_step3_email_sent_at || null,
       paidAt: p.bg_payment_status === 'succeeded' ? p.bg_payment_completed_at : null,
+      fee: Number(p.bg_card_processing_fee) || 0,
       onboardingStatus: p.status || null,
     }
   })
@@ -78,6 +80,7 @@ export function bgRowsFrom(res) {
     last4: r.acct_last4 || null,
     sentAt: r.payment_requested_at || r.created_at || null,
     paidAt: r.payment_status === 'succeeded' ? r.payment_completed_at : null,
+    fee: Number(r.card_processing_fee) || 0,
     reminderAt: r.reminder_sent_at || null,
     tracyAt: r.tracy_notified_at || null,
     sandbox: !!r.sandbox,
@@ -138,6 +141,7 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
   }), [rows, year, month])
 
   const paidTotal = filtered.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+  const paidFee = filtered.reduce((s, r) => s + (r.paidAt ? Number(r.fee) || 0 : 0), 0)
   const periodLabel = month >= 0 ? `${MONTHS[month]} ${year}` : `${year}`
   const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
 
@@ -175,18 +179,19 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
         <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
-      {loading && <AccountingTableSkeleton cols={4} />}
+      {loading && <AccountingTableSkeleton cols={5} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && (
         <div style={tableStyle}>
           <div style={{ ...headerRowStyle, gridTemplateColumns: LEDGER_GRID }}>
-            <span>Specialist</span><span>Date</span><span style={{ textAlign: 'right' }}>Amount</span><span style={{ textAlign: 'right' }}>Status</span>
+            <span>Specialist</span><span>Date</span><span style={{ textAlign: 'right' }}>Amount</span><span style={{ textAlign: 'right' }}>{CARD_FEE_LABEL}</span><span style={{ textAlign: 'right' }}>Status</span>
           </div>
           <div style={{ ...totalsRowStyle, gridTemplateColumns: LEDGER_GRID }}>
             <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>{periodLabel}</span></span>
             <span />
             <span style={{ textAlign: 'right' }}>{money(paidTotal)}</span>
+            <span style={{ textAlign: 'right' }}>{paidFee ? money(paidFee) : '—'}</span>
             <span />
           </div>
           {filtered.length === 0 && (
@@ -202,6 +207,7 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
                 </span>
                 <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(r.paidAt)}</span>
                 <span style={{ textAlign: 'right', fontWeight: 700 }}>{r.amount == null ? '—' : money(r.amount)}</span>
+                <span style={{ textAlign: 'right' }}><CardFeeCell fee={r.paidAt ? r.fee : 0} /></span>
                 <span style={{ display: 'flex', justifyContent: 'flex-end' }}><StatusPill label={pill.label} color={pill.color} /></span>
               </div>
             )
