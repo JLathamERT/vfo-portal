@@ -180,6 +180,14 @@ export default function MembershipPayPage() {
   }
 
   const base = Number(data.amount) || 0
+  // A VFO Associate / FC month: the server's lines (Membership Fee + VFO Portal
+  // Licence), shown only when they add up to the amount, as on the onboarding pages.
+  const feeLines = Array.isArray(data.fee_lines)
+    && Math.round(data.fee_lines.reduce((s, l) => s + (Number(l.amount) || 0), 0) * 100) === Math.round(base * 100)
+    ? data.fee_lines : null
+  const membershipRows = feeLines
+    ? feeLines.map(l => ({ label: l.label, value: `$${fmt(l.amount)}`, valueColor: 'var(--vfo-ink-2)' }))
+    : [{ label: 'VFO Membership', value: `$${fmt(base)}`, valueColor: 'var(--vfo-ink-2)' }]
   const feeApplies = !!data.card_fee_applies
   const payToday = !!data.pay_today
   const cardTotal = feeApplies && payToday ? Math.round((base + 0.30) / (1 - 0.029) * 100) / 100 : base
@@ -237,7 +245,7 @@ export default function MembershipPayPage() {
           amount={daySched ? null : base}
           cadence={daySched ? null : cadence}
           breakdown={daySched ? [] : [
-            { label: 'VFO Membership', value: `$${fmt(base)}`, valueColor: 'var(--vfo-ink-2)' },
+            ...membershipRows,
             { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
           ]}
           footer="Payments transfer directly from your bank account."
@@ -256,10 +264,10 @@ export default function MembershipPayPage() {
           amount={daySched ? null : cardTotal}
           cadence={daySched ? null : cadence}
           breakdown={daySched ? [] : feeApplies && payToday ? [
-            { label: 'VFO Membership', value: `$${fmt(base)}`, valueColor: 'var(--vfo-ink-2)' },
+            ...membershipRows,
             { label: 'Card Processing Fee (2.9% + $0.30)', value: `$${fmt(cardFee)}`, valueColor: 'var(--vfo-ink-2)' },
           ] : [
-            { label: 'VFO Membership', value: `$${fmt(base)}`, valueColor: 'var(--vfo-ink-2)' },
+            ...membershipRows,
             { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
           ]}
           footer="Payments charge to your card automatically."

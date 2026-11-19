@@ -183,6 +183,11 @@ function transferDaySchedule(basisIso, renewalIso, day, remaining) {
   }
 }
 
+// The member types billed month to month with an optional $25 VFO Portal licence
+// (backend TIER1_PAYING_MEMBER_TYPES, constants/member-tiers.ts).
+const TIER1_PAYING_TYPES = ['Financial Collaborator', 'VFO Associate (Direct)', 'VFO Associate (Advisor)']
+const PORTAL_LICENCE = 25
+
 function parseMoney(v) {
   const n = parseFloat(String(v ?? '').replace(/[,$]/g, ''))
   return Number.isFinite(n) ? n : 0
@@ -506,7 +511,8 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
   // L6b): the backend refuses Pause, Terminate and next year's terms on it, and
   // auto-renew is always on — it ends with 30 days' notice instead.
   const tier1 = !!plan.tier1_monthly
-  const licence = tier1 ? (Number(allSched.find(r => Number(r.vfo_portal_licence_amount) > 0)?.vfo_portal_licence_amount) || 25) : 0
+  // The plan's own licence (set up by hand: 25 or 0); NULL = an onboarding plan, always 25.
+  const licence = tier1 ? (plan.vfo_portal_licence_amount == null ? 25 : Number(plan.vfo_portal_licence_amount) || 0) : 0
   const licenceOnly = tier1 && perPull === licence
   const payerNumber = tier1 && plan.paid_by_member_number && plan.paid_by_member_number !== plan.member_number ? plan.paid_by_member_number : null
   const payer = payerNumber ? (allMembers || []).find(x => x.member_number === payerNumber) : null
@@ -768,7 +774,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
               : plan.frequency === 'monthly'
               ? `Monthly (${money(perPull)}/mo${plan.charge_day ? ` on the ${ordinal(plan.charge_day)}` : ''})`
               : `Annual (${money(perPull)}/yr)`}
-            {tier1 ? (licenceOnly ? ' · VFO Portal licence only' : ` · incl. ${money(licence)} VFO Portal licence`) : ''}
+            {tier1 ? (licence <= 0 ? ' · no VFO Portal licence' : licenceOnly ? ' · VFO Portal licence only' : ` · incl. ${money(licence)} VFO Portal licence`) : ''}
             {payerNumber ? ` · Paid by ${payerName ? `${payerName} (${payerNumber})` : payerNumber}, connected advisor` : ''}
             {Number(plan.credit_note) > 0 ? ` · Credit note ${money(plan.credit_note)}` : ''}
             {plan.payment_method_type ? ` · ${plan.payment_method_type === 'ach' ? 'ACH' : 'Card'}${plan.acct_last4 ? ` ••${plan.acct_last4}` : ''}` : ''}
@@ -1297,8 +1303,39 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
   }, [allMembers, category, liveNumbers])
 
   const selected = allMembers.find(m => m.member_number === memberNumber)
+  // A VFO Associate / Financial Collaborator (2026-11-19): Brand new or Track billing
+  // on old system only, always monthly, no credit note, no Money Mapping, no year
+  // start — the monthly value plus Portal licence Yes / No (+$25 a month).
+  const isTier1 = !!selected && TIER1_PAYING_TYPES.includes(selected.member_type) && (!editPlan || !!editPlan.tier1_monthly)
+  const editLicence = editPlan?.tier1_monthly ? (editPlan.vfo_portal_licence_amount == null ? PORTAL_LICENCE : Number(editPlan.vfo_portal_licence_amount)) : 0
+  const [t1Amount, setT1Amount] = useState(editPlan?.tier1_monthly ? String(Math.max(0, Number(editPlan.per_pull_amount) - editLicence)) : '')
+  const [t1Licence, setT1Licence] = useState(editPlan?.tier1_monthly ? editLicence > 0 : null)
+  // 'link' = email the setup link; 'card' = the card / bank on their earlier plan.
+  const [t1PayBy, setT1PayBy] = useState('link')
+  const t1AmountFilled = String(t1Amount).trim() !== ''
+  const t1AmountValid = t1AmountFilled && /^\d+(\.\d{1,2})?$/.test(String(t1Amount).trim().replace(/[,$]/g, ''))
+  const t1Monthly = Math.round((parseMoney(t1Amount) + (t1Licence ? PORTAL_LICENCE : 0)) * 100) / 100
+  // Card on file (every member type, 2026-11-19): their latest earlier plan with a
+  // saved card / bank (newest first) — on ERT for a VFO Associate / FC, whose $25
+  // licence moves from ERT.
+  const cardOnFilePlan = useMemo(() => {
+    if (editPlan || !memberNumber) return null
+    return plans.find(p => p.member_number === memberNumber && p.stripe_customer_id && p.default_payment_method_id &&
+      (p.payment_method_type === 'card' || p.payment_method_type === 'ach') && (!isTier1 || p.stripe_account === 'ert')) || null
+  }, [isTier1, editPlan, plans, memberNumber])
+  useEffect(() => {
+    if (!isTier1) return
+    if (mode === 'transfer') setMode('new')
+    setFrequency('monthly')
+    setPayWithMm(false)
+    setYearStart('')
+    setCreditNote('')
+    setCreditMemo('')
+  }, [isTier1, mode])
+  useEffect(() => { if (!cardOnFilePlan) setT1PayBy('link') }, [cardOnFilePlan])
   const gcOffered = !editPlan && mode === 'new' && selected?.member_type === 'Corporate Member'
   const useGc = gcOffered && payIn === 'gc'
+  const useCardOnFile = !isTracking && !useGc && t1PayBy === 'card' && !!cardOnFilePlan
   const gcCredits = Number(gcCreditsIn)
   const gcCreditsValid = Number.isFinite(gcCredits) && gcCredits > 0 && Math.abs(gcCredits * 4 - Math.round(gcCredits * 4)) < 1e-9
   const gcPayerRow = (gcPayers || []).find(p => p.member_number === gcPayer)
@@ -1320,8 +1357,8 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
     return () => { live = false }
   }, [useGc, memberNumber])
 
-  const annual = parseMoney(annualAmount)
-  const credit = parseMoney(creditNote)
+  const annual = isTier1 ? Math.round(t1Monthly * 12 * 100) / 100 : parseMoney(annualAmount)
+  const credit = isTier1 ? 0 : parseMoney(creditNote)
   const net = Math.max(0, Math.round((annual - credit) * 100) / 100)
   const today = todayIso()
   const isAnchored = mode === 'new' && !useGc && !!yearStart
@@ -1394,6 +1431,8 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
   // payment day from today up to (not on) the renewal date, each (annual −
   // credit) ÷ 12 — the list is rebuilt whenever those inputs change, then the
   // admin can edit amounts, x out a row or add one for a weird case.
+  // Month to month has no renewal of its own: the tracked year runs a year from today.
+  useEffect(() => { if (isTier1 && isTracking) setTrackRenewal(addYearsIso(today, 1)) }, [isTier1, isTracking, today])
   const trackRenewalValid = /^\d{4}-\d{2}-\d{2}$/.test(trackRenewal || '') && trackRenewal > today && trackRenewal <= addYearsIso(today, 1)
   const trackDayValid = frequency === 'annual' || (/^\d+$/.test(String(trackDay)) && Number(trackDay) >= 1 && Number(trackDay) <= 15)
   const trackYearStart = trackRenewalValid ? addYearsIso(trackRenewal, -1) : null
@@ -1437,8 +1476,17 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
         renewal_date: trackRenewal,
         charge_day: frequency === 'monthly' ? Number(trackDay) : 15,
         rows: trackRows.map(r => ({ due_date: r.due_date, amount_due: parseMoney(r.amount) })),
+        ...(isTier1 ? { portal_licence: !!t1Licence } : {}),
       })
       if (!res?.ok) { setMsg({ tone: 'error', text: res?.error || 'Could not save the plan.' }); return }
+      const portalLine = res.portal_access === 'sent' ? ' Their portal set-up email was sent.'
+        : res.portal_access === 'has_login' ? ' They already have a portal login, so no set-up email was needed.'
+        : res.portal_access === 'failed' ? ' Their portal set-up email FAILED — use Send account-setup email on their member profile.'
+        : ''
+      if (isTier1) {
+        onSaved?.({ tone: res.portal_access === 'failed' ? 'amber' : 'success', text: `Tracking plan created — ${res.rows} payment${res.rows === 1 ? '' : 's'} this year. Nothing was charged and no billing email was sent; set each payment's status on their plan card.${portalLine}` })
+        return
+      }
       onSaved?.({ tone: 'success', text: `Tracking plan created — ${res.rows} payment${res.rows === 1 ? '' : 's'} this year. Nothing was emailed or charged; set each payment's status on their plan card.` })
     } catch (e) {
       setMsg({ tone: 'error', text: e?.message || 'Could not save the plan.' })
@@ -1472,10 +1520,50 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
     }
   }
 
+  async function saveTier1() {
+    if (useCardOnFile && !window.confirm(`Create ${selected?.first_name || 'this member'}'s membership at ${money(t1Monthly)} a month on the ${methodWord(cardOnFilePlan.payment_method_type)} ending ${cardOnFilePlan.acct_last4 || '—'}? Month 1 is charged on the next morning run.`)) return
+    setBusy(true)
+    try {
+      const res = await callApi('membership_plan_save', {
+        tier1: true,
+        plan_id: editPlan?.id || undefined,
+        member_number: memberNumber,
+        category,
+        monthly_amount: parseMoney(t1Amount),
+        portal_licence: !!t1Licence,
+        card_on_file_plan_id: useCardOnFile ? cardOnFilePlan.id : undefined,
+      })
+      if (!res?.ok) { setMsg({ tone: 'error', text: res?.error || 'Could not save the plan.' }); return }
+      if (editPlan) { onSaved?.({ tone: 'success', text: 'Plan updated.' }); return }
+      if (res.card_on_file) {
+        onSaved?.({ tone: 'success', text: `Plan created — ${money(res.per_pull)} a month on the ${methodWord(res.method)} ending ${res.last4 || '—'}. Month 1 (due ${fmtDate(res.first_due)}) is charged on the next morning run, then the invoice and receipt go out${t1Licence ? ', with their portal set-up email' : ''}.` })
+        return
+      }
+      try {
+        const link = await callApi('membership_send_setup_link', { plan_id: res.plan_id })
+        if (link?.email_skipped) onSaved?.({ tone: 'amber', text: `Plan created — link ready, but the email template isn't seeded yet — send it manually: ${link.setup_link}` })
+        else if (link?.ok) onSaved?.({ tone: 'success', text: `Plan created — setup email drafted for ${link.to_email}.` })
+        else onSaved?.({ tone: 'amber', text: `Plan created, but the setup email failed: ${link?.error || 'unknown error'}. Use "Send setup link" on their plan card to retry.` })
+      } catch (e) {
+        onSaved?.({ tone: 'amber', text: `Plan created, but the setup email failed: ${e?.message || 'unknown error'}. Use "Send setup link" on their plan card to retry.` })
+      }
+    } catch (e) {
+      setMsg({ tone: 'error', text: e?.message || 'Could not save the plan.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function save() {
     setMsg(null)
     if (!memberNumber) { setMsg({ tone: 'error', text: 'Pick a member first.' }); return }
     if (useGc) { await saveGc(); return }
+    if (isTier1) {
+      if (!t1AmountValid) { setMsg({ tone: 'error', text: 'Enter the monthly membership value (0 or more).' }); return }
+      if (t1Licence === null) { setMsg({ tone: 'error', text: 'Pick Portal licence Yes or No.' }); return }
+      if (!(t1Monthly > 0)) { setMsg({ tone: 'error', text: 'The monthly payment must be more than $0.' }); return }
+      if (!isTracking) { await saveTier1(); return }
+    }
     if (!(annual > 0)) { setMsg({ tone: 'error', text: 'Enter the annual membership value.' }); return }
     if (isTracking) { await saveTracking(); return }
     if (isAnchored && !yearStartIs15th) { setMsg({ tone: 'error', text: 'The membership year must start on the 15th of a month — their anniversary.' }); return }
@@ -1493,6 +1581,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
       setMsg({ tone: 'error', text: 'Pick the day of the month they currently pay on (1–15) — the whole remaining year is charged on that day.' })
       return
     }
+    if (useCardOnFile && !window.confirm(`Start ${selected?.first_name || 'this member'}'s membership on the ${methodWord(cardOnFilePlan.payment_method_type)} ending ${cardOnFilePlan.acct_last4 || '—'}? No setup link is sent; anything due today is charged on the next morning run.`)) return
     setBusy(true)
     try {
       const res = await callApi('membership_plan_save', {
@@ -1508,9 +1597,14 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
         prior_payments_made: xfer && frequency === 'monthly' ? Number(xferPrior) : undefined,
         charge_day: xfer && frequency === 'monthly' ? Number(xferDay) : undefined,
         pay_with_mm: payWithMm,
+        card_on_file_plan_id: useCardOnFile && !editPlan ? cardOnFilePlan.id : undefined,
       })
       if (!res?.ok) { setMsg({ tone: 'error', text: res?.error || 'Could not save the plan.' }); return }
       if (editPlan) { onSaved?.({ tone: 'success', text: 'Plan updated.' }); return }
+      if (res.card_on_file) {
+        onSaved?.({ tone: 'success', text: `Plan started on the ${methodWord(res.method)} ending ${res.last4 || '—'} — no setup link.${res.first_due ? ` The first payment (${money(res.first_amount)}, due ${fmtDate(res.first_due)}) is charged on the ${res.first_due <= todayIso() ? 'next morning run' : 'morning it falls due'}, then the invoice and receipt go out.` : ' Nothing is due until their renewal.'}` })
+        return
+      }
       // Create: the plan now exists, so email failure is reported but never
       // reverts the save.
       try {
@@ -1559,7 +1653,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
         <div style={label}>Is this a brand-new membership, or moving someone over from the old billing?</div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button type="button" style={chip(mode === 'new')} onClick={() => setMode('new')}>Brand new membership</button>
-          <button type="button" style={chip(isTransfer)} onClick={() => setMode('transfer')}>Transfer from old billing (mid-year)</button>
+          {!isTier1 && <button type="button" style={chip(isTransfer)} onClick={() => setMode('transfer')}>Transfer from old billing (mid-year)</button>}
           {/* A pending plan being edited may already have had its setup link sent. */}
           {!editPlan && (
             <button type="button" style={chip(isTracking)} onClick={() => setMode('tracking')}>Track billing on old system</button>
@@ -1567,7 +1661,9 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
         </div>
         {isTracking && (
           <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-muted)' }}>
-            They stay on the old billing — this only records their membership here so everyone is in one place. Nothing is charged and no email is sent. You set each payment's status by hand on their plan card; it still auto-renews on the same terms.
+            {isTier1
+              ? 'They stay on the old billing — this only records their membership here so everyone is in one place. Nothing is charged and no billing email is sent; with the Portal licence, their portal set-up email goes out now. You set each payment\'s status by hand on their plan card.'
+              : 'They stay on the old billing — this only records their membership here so everyone is in one place. Nothing is charged and no email is sent. You set each payment\'s status by hand on their plan card; it still auto-renews on the same terms.'}
           </div>
         )}
         {isTransfer && (
@@ -1589,7 +1685,25 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
         </div>
       )}
 
-      {useGc ? (
+      {isTier1 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+          <div>
+            <div style={label}>Monthly membership value ($)</div>
+            <input value={t1Amount} onChange={e => setT1Amount(e.target.value)} placeholder="e.g. 120" style={input} />
+            {t1AmountFilled && !t1AmountValid && (
+              <div style={{ marginTop: '5px', fontSize: '12px', color: '#b91c1c' }}>Enter an amount in dollars, e.g. 99 or 120.</div>
+            )}
+          </div>
+          <div>
+            <div style={label}>Portal licence (+{money(PORTAL_LICENCE)} a month)</div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button type="button" style={chip(t1Licence === false)} onClick={() => setT1Licence(false)}>No</button>
+              <button type="button" style={chip(t1Licence === true)} onClick={() => setT1Licence(true)}>Yes</button>
+            </div>
+            <div style={{ marginTop: '5px', fontSize: '12px', color: 'var(--vfo-ink-3)' }}>Yes adds the {money(PORTAL_LICENCE)} VFO Portal licence to every month and sends their portal set-up email.</div>
+          </div>
+        </div>
+      ) : useGc ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
           <div>
             <div style={label}>How many Growth Credits?</div>
@@ -1642,7 +1756,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
-        <div>
+        {!isTier1 && <div>
           <div style={label}>Payment frequency</div>
           <div style={{ display: 'flex', gap: '8px' }}>
             {/* Growth Credit memberships are annual only — no Monthly option. */}
@@ -1659,8 +1773,8 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
               <div style={{ marginTop: '5px', fontSize: '12px', color: 'var(--vfo-ink-3)' }}>Each payment comes from their Money Mapping balance first; the card / bank pays the rest. If the balance covers the first payment, the plan starts as soon as you create it.</div>
             </div>
           )}
-        </div>
-        {mode === 'new' && !useGc && (
+        </div>}
+        {mode === 'new' && !useGc && !isTier1 && (
           <div>
             <div style={label}>Membership year starts on (optional)</div>
             <input type="date" value={yearStart} onChange={e => setYearStart(e.target.value)} style={input} />
@@ -1675,7 +1789,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
             )}
           </div>
         )}
-        {isTracking && (
+        {isTracking && !isTier1 && (
           <div>
             <div style={label}>Their renewal date</div>
             <input type="date" value={trackRenewal} onChange={e => setTrackRenewal(e.target.value)} style={input} />
@@ -1736,9 +1850,44 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
         )}
       </div>
 
+      {!isTracking && !useGc && !editPlan && cardOnFilePlan && (
+        <div style={{ marginBottom: '16px' }}>
+          <div style={label}>How will they pay?</div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button type="button" style={chip(t1PayBy === 'link')} onClick={() => setT1PayBy('link')}>Send setup link</button>
+            <button type="button" style={chip(t1PayBy === 'card')} onClick={() => setT1PayBy('card')}>{cardOnFilePlan.payment_method_type === 'ach' ? 'Bank' : 'Card'} on file ••{cardOnFilePlan.acct_last4 || '—'}</button>
+          </div>
+          <div style={{ marginTop: '5px', fontSize: '12px', color: 'var(--vfo-ink-3)' }}>
+            {t1PayBy === 'card'
+              ? `The ${methodWord(cardOnFilePlan.payment_method_type)} saved on their earlier membership. No setup link: the plan starts at once and anything due today is charged on the next morning run.`
+              : `They have a ${methodWord(cardOnFilePlan.payment_method_type)} saved on an earlier membership — pick it to skip the setup link.`}
+          </div>
+        </div>
+      )}
+
       <div style={{ marginBottom: '16px', padding: '14px 16px', borderRadius: '10px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
         <div style={{ ...label, marginBottom: '8px' }}>Plan preview</div>
-        {useGc ? (
+        {isTier1 && !isTracking ? (
+          !t1AmountValid || t1Licence === null || !(t1Monthly > 0) ? (
+            <div style={{ color: '#b45309' }}>Enter the monthly membership value and pick Portal licence Yes or No.</div>
+          ) : (
+            <div>
+              <div>
+                <strong>{money(t1Monthly)} a month</strong>
+                {t1Licence ? <> ({money(parseMoney(t1Amount))} membership + {money(PORTAL_LICENCE)} Portal licence)</> : ' (membership only, no Portal licence)'}
+                {' · '}month to month, ends with 30 days' notice
+              </div>
+              <div style={{ marginTop: '6px' }}>
+                {useCardOnFile
+                  ? <>Month 1 ({fmtMonthYear(today)}) is charged to the {methodWord(cardOnFilePlan.payment_method_type)} ending <strong>{cardOnFilePlan.acct_last4 || '—'}</strong> on the next morning run, then on the <strong>{ordinal(Number(today.slice(8, 10)))}</strong> of every month</>
+                  : <>Month 1 is paid at the setup link, then they are charged on that day of every month</>}
+                {' · '}invoice and receipt every month
+                {t1Licence ? ' · their portal set-up email once month 1 has cleared' : ''}
+              </div>
+              <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--vfo-ink-3)' }}>Card payments add the standard processing fee; bank payments don't.</div>
+            </div>
+          )
+        ) : useGc ? (
           !gcCreditsValid || !gcPayerRow ? (
             <div style={{ color: '#b45309' }}>Enter the Growth Credits and pick whose account they come from.</div>
           ) : (
@@ -1857,9 +2006,11 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
           <div>
             <strong>{frequency === 'monthly' ? `12 × ${money(perPull)}` : `1 × ${money(perPull)}`}</strong>
             {credit > 0 ? <> ({money(annual)} − {money(credit)} credit)</> : null}
-            {' · '}first payment at the link
-            {net === 0 && annual > 0 ? ' (fully credited — link saves their payment method only)' : ''}
-            {' · '}if paid today: {frequency === 'monthly' ? <>charge day the {ordinal(previewChargeDay)}, </> : null}renewal <strong>{fmtDate(previewRenewal)}</strong>
+            {useCardOnFile
+              ? <>{' · '}first payment charged to the {methodWord(cardOnFilePlan.payment_method_type)} ending <strong>{cardOnFilePlan.acct_last4 || '—'}</strong> on the next morning run</>
+              : <>{' · '}first payment at the link</>}
+            {net === 0 && annual > 0 ? (useCardOnFile ? ' (fully credited — nothing to charge)' : ' (fully credited — link saves their payment method only)') : ''}
+            {' · '}{useCardOnFile ? 'starting today' : 'if paid today'}: {frequency === 'monthly' ? <>charge day the {ordinal(previewChargeDay)}, </> : null}renewal <strong>{fmtDate(previewRenewal)}</strong>
           </div>
         )}
       </div>
@@ -1869,10 +2020,14 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
           {busy ? 'Saving…' : (editPlan ? 'Save changes' : isTracking ? 'Create tracking plan' : 'Create membership plan')}
         </button>
         <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>
-          {useGc
+          {isTier1 && !isTracking
+            ? (useCardOnFile ? 'No email now — the plan is active at once and month 1 is taken on the next morning run.' : 'Creating the plan also emails the member their payment setup link (resend anytime from the Members list).')
+            : useGc
             ? 'The credits are taken straight away and the plan is active at once — no payment link. A confirmation email to the member and the member they are connected to is drafted in Gmail.'
             : isTracking
             ? 'Tracking only — no email, no payment link and no charge. The plan shows on the Members list straight away.'
+            : useCardOnFile
+            ? 'No email now — the plan starts at once on the card on file. Legacy members pay no card fee; New Model card payments add the standard processing fee.'
             : 'Creating the plan also emails the member their payment setup link (resend anytime from the Members list). Legacy members pay no card fee; New Model card payments add the standard processing fee.'}
         </span>
       </div>
