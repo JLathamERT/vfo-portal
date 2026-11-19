@@ -359,13 +359,43 @@ instead (`agreement_signed_by_ceo_at` until 2026-11-13). Gotcha **#469**.
   deposit and the balance sentence when there is. Since 2026-11-13 both open *"As soon as you have signed the
   agreement, …"* (*"…you will automatically receive a separate email…"* / *"…the balance … will automatically be
   charged…"*), no longer *"Once all parties have signed and confirmed your agreement"*.
-- **`<PREFIX>_payment_link`** opens *"Thank you for signing your <Advisor|Accountant> Onboarding Agreement."*
-  (was *"…has been signed and confirmed."*), migration `20261113160000_payment_at_signing_wording.sql`.
-- **`<PREFIX>_payment_link`** — gained **`[Deposit Note]`** after the Total Payment line. The handler renders
-  `""` when no deposit settled, so the line is inert on an ordinary link and only appears on the fresh-link
-  fallback after a declined balance.
+- **`<PREFIX>_payment_link`** opens *"Thank you for signing your <Advisor|Accountant> Implementation Agreement."*
+  (was *"…has been signed and confirmed."*), migration `20261113160000_payment_at_signing_wording.sql`, renamed
+  from "Onboarding Agreement" 2026-11-19.
+- **`<PREFIX>_payment_link`** — gained **`[Deposit Note]`** after the Amount Due line. The handler renders
+  `""` when no deposit cleared, so the line is inert on an ordinary link and only appears on the fresh-link
+  fallback after a declined balance. Since 2026-11-19 the note ends in `<br>`, so it no longer runs into the
+  "Engagement Term" line.
 
 Both edits shipped as data migration `20260908120000_onboarding_deposit_wording.sql`.
+
+### Implementation, not onboarding, is what they pay for *(2026-11-19)*
+
+Ian's rule: the classic Advisor / Accountant fee pays for the **6-month implementation**, and **onboarding** is
+the next step after it. Migration `20261119120000_payment_wording_cleared.sql` (edge repo) and the code below
+say so everywhere the client sees it:
+- **Emails:**
+  - agreement, signing-reminder and invoice/receipt subjects;
+  - payment link and reminder;
+  - decline and decision reminder;
+  - deposit emails (the deposit keeps its name **ERT Membership Deposit**: "applied to your implementation fee");
+  - the CEO countersign note.
+- **`[PAYMENT_NEXT_STEP]`** ("the balance of your implementation fee", "to pay your implementation fee").
+- **BoldSign document** title and attachment name (`<Advisor|Accountant> Implementation Agreement`,
+  `*-implementation-agreement.pdf`).
+- **Invoice / receipt PDFs** ("VFO <Advisor|Accountant> Implementation").
+- **Stripe descriptions:** `<Advisor|Accountant> Implementation - <name>`, `… Implementation Balance - <name>`,
+  and `ERT Membership Deposit - <name>`.
+- **`/advisor-pay` and `/accountant-pay` headings.**
+
+**Tier 1 rows** (VFO Associate / Financial Collaborator) are monthly membership and keep their own names.
+**Left on purpose:** the internal sweep bell *"hasn't signed the … Onboarding Agreement"*, because
+`automation/stall-ack.ts` matches that title word for word.
+
+The bank-payment confirmation (`<PREFIX>_payment_confirmation|ach`) goes out at checkout, **before** the money
+arrives. Its subject is now *"Bank payment on its way"*, and it opens *"Thank you. Your bank payment of $X for
+your 6-month <Advisor|Accountant> Implementation (…) is on its way to us."* The payment wording standard is in
+[../TEAM_RULES.md](../TEAM_RULES.md) §8.
 
 ---
 

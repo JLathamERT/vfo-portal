@@ -1114,7 +1114,7 @@ Visible when `payment_method_type='check'` AND `retainer_status='check_pending'`
 
 > **The gate lives INSIDE the handler, not at the webhook call site, on purpose.** The blocks after the draft — the "paid the retainer" PF bell, the Tray scheduling bell and the `copyAgreementToErtOnce` vault copy — are retainer-payment side effects that MUST still run for a card. A call-site gate would silently kill them. Implementation charges are unaffected (they have had no confirmation email since 2026-07-15).
 
-> **The PF retainer bell re-words itself on the pending path (2026-09-08).** `TAX_retainer_paid` becomes *"«Client» submitted bank details for the Tax Planning retainer (verification pending)"* and says Stripe is waiting on micro-deposit verification, **no money has moved yet**, and the invoice + receipt follow once the funds settle. Reporting an intent as an outcome is the failure this avoids (**#468**). (Since 2026-10-13 Tray's meeting-booking bell fires on this pending path too — step 7.)
+> **The PF retainer bell re-words itself on the pending path (2026-09-08).** `TAX_retainer_paid` becomes *"«Client» submitted bank details for the Tax Planning retainer (verification pending)"* and says Stripe is waiting on micro-deposit verification, **no money has moved yet**, and the invoice + receipt follow once it has cleared. **Since 2026-11-19 an ordinary ACH retainer is re-worded too:** *"«Client» started a bank payment for the Tax Planning retainer (clearing)"*. Card and check still say paid. Reporting an intent as an outcome is the failure this avoids (**#468**). (Since 2026-10-13 Tray's meeting-booking bell fires on this pending path too — step 7.)
 
 **Chains:** none.
 
