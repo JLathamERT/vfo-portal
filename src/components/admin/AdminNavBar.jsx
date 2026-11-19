@@ -257,9 +257,9 @@ const accountingSubmenus = [
     key: 'accounting_members',
     submenuLabel: 'Members',
     submenu: [
-      { key: 'advisor_onboarding_fees', label: 'Advisor Onboarding' },
+      { key: 'advisor_onboarding_fees', label: 'Advisor Implementation' },
       { key: 'advisor_membership_fees', label: 'Advisor Membership Fees' },
-      { key: 'accountant_onboarding_fees', label: 'Accountant Onboarding' },
+      { key: 'accountant_onboarding_fees', label: 'Accountant Implementation' },
       { key: 'accountant_membership_fees', label: 'Accountant Membership Fees' },
       { key: 'gc_accounting', label: 'Growth Credits' },
       { key: 'mm_accounting', label: 'Money Mapping' },
@@ -335,6 +335,7 @@ export default function AdminNavBar({ session, activeTab, onSelect }) {
         { key: 'acct:payments', label: 'Payments' },
         { key: 'acct:manual_connect_payment', label: 'Manually sent Stripe Connect Payment' },
         ...accountingSubmenus.map(item => ({ key: 'more_' + item.key, label: item.submenuLabel, submenu: item.submenu.map(o => ({ ...o, key: 'acct:' + o.key })) })),
+        { key: 'acct:sdp_atsg_revenue', label: 'SDP ATSG' },
       ],
     }] : []),
   ]

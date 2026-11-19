@@ -492,9 +492,9 @@ export default function OutstandingLinksPanel({ kind, embedded = false }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap' }}>
         <button type="button" onClick={() => load()}
-          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--vfo-accent-text)', fontWeight: 600, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+          style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-accent-text)', fontWeight: 600, cursor: 'pointer' }}>
           Refresh
         </button>
       </div>

@@ -18,6 +18,10 @@ const LONG_TIMEOUT_ACTIONS = {
   // waits up to ~25s for the signing link before the client email goes.
   sdp_atsg_send_agreement: 90000,
   sdp_atsg_agreement_preview: 60000,
+  // Held Payouts' Retry now (2026-11-19): chains one leg through its payout
+  // engine (Stripe transfer + the payee's email) before it answers. A WRITE,
+  // never auto-retried; pressing again is safe (a paid leg is a no-op).
+  held_payout_retry: 90000,
   // The test site's resets: a WRITE, never auto-retried. Pressing again is safe.
   staging_reset_mine: 120000,
   staging_reset_all: 120000,
