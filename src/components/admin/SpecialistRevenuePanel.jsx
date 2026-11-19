@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
+import { CARD_FEE_COL, CARD_FEE_LABEL } from './cardFeeColumn'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money, requestDate, RequestRow, MarkReceivedButton, DeleteRequestButton, canDeleteSpecrevRequest, memberShareNote, shareNoteStyle, isHeldLine } from './specialistRevenueShared'
 import { PENDING_COLOR } from './shareLegState'
@@ -95,6 +96,7 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
   const memberDeals = memberGroups.reduce((s, g) => s + (Number(g.deals) || 0), 0)
   const memberHeld = memberGroups.reduce((s, g) => s + g.items.reduce((t, it) => t + (isHeldLine(it) ? Number(it.member_share) || 0 : 0), 0), 0)
   const periodGross = receivedFiltered.reduce((s, r) => s + (Number(r.gross_amount) || 0), 0)
+  const periodFee = receivedFiltered.reduce((s, r) => s + (Number(r.card_processing_fee) || 0), 0)
   const periodMember = receivedFiltered.reduce((s, r) => s + (Number(r.total_member_share) || 0), 0)
   const periodErt = receivedFiltered.reduce((s, r) => s + (Number(r.total_ert_share) || 0), 0)
   const periodVfos = receivedFiltered.reduce((s, r) => s + (Number(r.total_vfos_share) || 0), 0)
@@ -150,7 +152,7 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
       {!loading && !error && viewMode === 'specialist' && (
         <div style={tableStyle}>
           <div style={{ ...headerRowStyle, gridTemplateColumns: SPECIALIST_GRID }}>
-            <span>Specialist</span><span>Date</span><span style={{ textAlign: 'right' }}>Recipients</span><span style={{ textAlign: 'right' }}>Deals</span><span style={{ textAlign: 'right' }}>Member $</span><span style={{ textAlign: 'right' }}>ERT $</span><span style={{ textAlign: 'right' }}>VFOS $</span><span style={{ textAlign: 'right' }}>Gross</span><span style={{ textAlign: 'right' }}>Status</span>
+            <span>Specialist</span><span>Date</span><span style={{ textAlign: 'right' }}>Recipients</span><span style={{ textAlign: 'right' }}>Deals</span><span style={{ textAlign: 'right' }}>Member $</span><span style={{ textAlign: 'right' }}>ERT $</span><span style={{ textAlign: 'right' }}>VFOS $</span><span style={{ textAlign: 'right' }}>Gross</span><span style={{ textAlign: 'right' }}>{CARD_FEE_LABEL}</span><span style={{ textAlign: 'right' }}>Status</span>
           </div>
           <div style={{ ...totalsRowStyle, gridTemplateColumns: SPECIALIST_GRID }}>
             <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>{periodLabel} · received + recorded deals</span></span>
@@ -159,6 +161,7 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
             <span style={{ textAlign: 'right' }}>{money(periodErt)}</span>
             <span style={{ textAlign: 'right' }}>{money(periodVfos)}</span>
             <span style={{ textAlign: 'right' }}>{money(periodGross)}</span>
+            <span style={{ textAlign: 'right' }}>{periodFee ? money(periodFee) : '—'}</span>
             <span />
           </div>
           {filtered.length === 0 && (
@@ -205,7 +208,7 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
 // surfaces read the same: bordered card, uppercase header row, Totals above the data.
 // Nine columns inside the 1200px Specialists shell, so the fixed widths are trimmed
 // rather than letting the ERT column push the table into a horizontal scroll.
-const SPECIALIST_GRID = '1.4fr 104px 72px 56px 100px 100px 100px 100px 185px'
+const SPECIALIST_GRID = `1.4fr 104px 72px 56px 100px 100px 100px 100px ${CARD_FEE_COL} 185px`
 const MEMBER_GRID = '1.6fr 140px 66px 118px 118px 118px'
 export const tableStyle = { border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }
 export const headerRowStyle = { display: 'grid', gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }

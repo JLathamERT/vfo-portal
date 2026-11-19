@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
+import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell } from './cardFeeColumn'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, money } from './specialistRevenueShared'
 import { inPeriod } from './holisticShared'
@@ -145,7 +146,8 @@ export default function TaxRevenuePanel({ embedded = false }) {
 
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1100px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
   const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
-  const grid = '92px 1.2fr 1.1fr 92px 96px 96px 96px 92px 100px 88px'
+  const grid = `92px 1.2fr 1.1fr 92px 96px ${CARD_FEE_COL} 96px 96px 92px 100px 88px`
+  const totFee = filtered.reduce((s, p) => s + (p.fee || 0), 0)
 
   return (
     <div style={wrap}>
@@ -167,18 +169,18 @@ export default function TaxRevenuePanel({ embedded = false }) {
         <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
-      {loading && <AccountingTableSkeleton cols={10} />}
+      {loading && <AccountingTableSkeleton cols={11} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && (
         <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
-            <span>Cleared</span><span>Client</span><span>Connected Member</span><span>Program</span><span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-border-strong)', paddingRight: '12px' }}>Received</span><span style={{ textAlign: 'right' }}>Member Revenue Share</span><span style={{ textAlign: 'right' }}>Member Money Mapping</span><span style={{ textAlign: 'right' }}>Tax Planner</span><span style={{ textAlign: 'right' }}>Elite VFO Income</span><span style={{ textAlign: 'right' }}>Strategic Partner Revenue Share</span>
+            <span>Cleared</span><span>Client</span><span>Connected Member</span><span>Program</span><span style={{ textAlign: 'right' }}>Received</span><span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-border-strong)', paddingRight: '12px' }}>{CARD_FEE_LABEL}</span><span style={{ textAlign: 'right' }}>Member Revenue Share</span><span style={{ textAlign: 'right' }}>Member Money Mapping</span><span style={{ textAlign: 'right' }}>Tax Planner</span><span style={{ textAlign: 'right' }}>Elite VFO Income</span><span style={{ textAlign: 'right' }}>Strategic Partner Revenue Share</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '2px solid var(--vfo-border)', background: 'var(--vfo-input)', alignItems: 'center', fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>Totals</span>
             <span /><span /><span />
-            <span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-border-strong)', paddingRight: '12px' }}>{money(totGross)}</span>
+            <span style={{ textAlign: 'right' }}>{money(totGross)}</span><span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-border-strong)', paddingRight: '12px' }}>{totFee ? money(totFee) : '—'}</span>
             <span style={{ textAlign: 'right' }}>{totMemberRev ? money(totMemberRev) : '—'}<PendingNote amount={pendMemberRev} money={money} /><HeldNote total={heldMemberRev} money={money} /></span>
             <span style={{ textAlign: 'right' }}>{totMM ? money(totMM) : '—'}<PendingNote amount={pendMM} money={money} /><HeldNote total={heldMM} money={money} /></span>
             <span style={{ textAlign: 'right' }}>{totPlanner ? money(totPlanner) : '—'}<PendingNote amount={pendPlanner} money={money} /></span>
@@ -195,7 +197,8 @@ export default function TaxRevenuePanel({ embedded = false }) {
               <span style={{ fontWeight: 600 }}><ClientNameLink clientId={p.clientId} program={p.programId}>{p.clientName}</ClientNameLink><span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · {p.kind}</span></span>
               <span>{p.memberName ? <MemberNameLink memberNumber={p.memberNumber}>{p.memberName}</MemberNameLink> : '—'}{p.memberNumber && <span style={{ color: 'var(--vfo-faint)' }}> · {p.memberNumber}</span>}</span>
               <span><ProgramTag label={p.tier} /></span>
-              <span style={{ textAlign: 'right', fontWeight: 700, borderRight: '1px solid var(--vfo-tint)', paddingRight: '12px' }}>{money(p.amount)}<SubNote text={p.paymentNote} /><SubNote text={p.licence > 0 ? `${money(p.licence)} to VFO Portal (Premium portal licence)` : null} /></span>
+              <span style={{ textAlign: 'right', fontWeight: 700 }}>{money(p.amount)}<SubNote text={p.paymentNote} /><SubNote text={p.licence > 0 ? `${money(p.licence)} to VFO Portal (Premium portal licence)` : null} /></span>
+              <span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-tint)', paddingRight: '12px' }}><CardFeeCell fee={p.fee} /></span>
               {/* A 3-payment plan's INITIAL retainer moves no share at all — every leg
                   fires later, on the full retainer, when the final payment settles. Its
                   slices are zero, so the cells keep their dashes and carry the leg note

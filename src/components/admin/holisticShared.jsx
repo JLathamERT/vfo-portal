@@ -56,6 +56,7 @@ export function clearedPayments(rows) {
       out.push({
         id: `${r.id}-${i}`,
         installment: i,
+        fee: Number(r.installment_card_fees?.[i - 1]) || 0,
         plan: q ? 'Quarterly' : 'Pay in full',
         clearedAt,
         amount,

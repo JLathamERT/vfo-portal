@@ -1,4 +1,5 @@
 import { useState, useMemo, useLayoutEffect } from 'react'
+import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell } from './cardFeeColumn'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
@@ -85,7 +86,7 @@ export default function SdpAtsgRevenuePanel({ embedded = false }) {
   const sum = k => filtered.reduce((s, p) => s + (Number(p[k]) || 0), 0)
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1150px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
   const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
-  const grid = '104px 1.3fr 1.1fr 1fr 104px 104px 104px 104px'
+  const grid = `104px 1.3fr 1.1fr 1fr 104px ${CARD_FEE_COL} 104px 104px 104px`
 
   return (
     <div style={wrap}>
@@ -100,21 +101,23 @@ export default function SdpAtsgRevenuePanel({ embedded = false }) {
         <button onClick={() => load()} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
-      {loading && <AccountingTableSkeleton cols={8} />}
+      {loading && <AccountingTableSkeleton cols={9} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && (
         <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'auto', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
-          <div style={{ minWidth: '880px' }}>
+          <div style={{ minWidth: '980px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
               <span>Cleared</span><span>Client</span><span>Connected Member</span><span>Payment</span>
-              <span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-border-strong)', paddingRight: '12px' }}>Received</span>
+              <span style={{ textAlign: 'right' }}>Received</span>
+              <span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-border-strong)', paddingRight: '12px' }}>{CARD_FEE_LABEL}</span>
               <span style={{ textAlign: 'right' }}>SDP Share</span><span style={{ textAlign: 'right' }}>Member Share</span><span style={{ textAlign: 'right' }}>VFO Services</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '2px solid var(--vfo-border)', background: 'var(--vfo-input)', alignItems: 'center', fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)' }}>
               <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>Totals</span>
               <span /><span /><span />
-              <span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-border-strong)', paddingRight: '12px' }}>{money(sum('amount'))}</span>
+              <span style={{ textAlign: 'right' }}>{money(sum('amount'))}</span>
+              <span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-border-strong)', paddingRight: '12px' }}>{sum('card_fee') ? money(sum('card_fee')) : '—'}</span>
               <span style={{ textAlign: 'right' }}>{money(sum('sdp_share'))}</span>
               <span style={{ textAlign: 'right' }}>{money(sum('member_share'))}</span>
               <span style={{ textAlign: 'right' }}>{money(sum('vfos_share'))}</span>
@@ -135,10 +138,8 @@ export default function SdpAtsgRevenuePanel({ embedded = false }) {
                   {p.period_label || (p.kind === 'retainer' ? 'Retainer' : 'Impact fee')}
                   {p.strategy_name && <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{p.strategy_name}</div>}
                 </span>
-                <span style={{ textAlign: 'right', fontWeight: 700, borderRight: '1px solid var(--vfo-tint)', paddingRight: '12px' }}>
-                  {money(p.amount)}
-                  {p.card_fee > 0 && <div style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--vfo-faint)' }}>+ {money(p.card_fee)} card fee</div>}
-                </span>
+                <span style={{ textAlign: 'right', fontWeight: 700 }}>{money(p.amount)}</span>
+                <span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-tint)', paddingRight: '12px' }}><CardFeeCell fee={p.card_fee} /></span>
                 <Share value={p.sdp_share} status={p.sdp_payout_status} color="#e06717" />
                 <Share value={p.member_share} status={p.member_payout_status} color="#16a34a" />
                 <Share value={p.vfos_share} status="paid" color="var(--vfo-ink)" />

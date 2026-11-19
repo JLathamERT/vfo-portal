@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
+import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell } from './cardFeeColumn'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { Skeleton, TableSkeleton } from '../shared/Skeleton'
@@ -61,7 +62,9 @@ export default function GrowthCreditsAccountingPanel() {
   ]
 
   const tableWrap = { border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)', marginBottom: '22px' }
-  const txCols = '120px 1.1fr 110px 80px 90px 1fr 1.4fr'
+  const txCols = `120px 1.1fr 110px 80px 90px ${CARD_FEE_COL} 1fr 1.4fr`
+  // amount_usd is what Stripe took, the card fee included; the fee has its own column.
+  const gcFee = t => Number(t.card_fee) || 0
   const balCols = '1fr 120px'
 
   return (
@@ -82,7 +85,7 @@ export default function GrowthCreditsAccountingPanel() {
             ))}
           </div>
           <div style={{ marginBottom: '22px' }}>
-            <TableSkeleton cols={[1.2, 1.1, 1, 0.8, 0.9, 1, 1.4]} rows={4} />
+            <TableSkeleton cols={[1.2, 1.1, 1, 0.8, 0.9, 0.9, 1, 1.4]} rows={4} />
           </div>
           <Skeleton width={130} height={13} style={{ margin: '4px 2px 10px' }} />
           <TableSkeleton cols={[3, 1]} rows={3} />
@@ -103,7 +106,7 @@ export default function GrowthCreditsAccountingPanel() {
 
           <div style={tableWrap}>
             <div style={{ display: 'grid', gridTemplateColumns: txCols, gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
-              <span>Date</span><span>Member</span><span>Type</span><span style={{ textAlign: 'right' }}>Credits</span><span style={{ textAlign: 'right' }}>Amount</span><span>By</span><span>Description</span>
+              <span>Date</span><span>Member</span><span>Type</span><span style={{ textAlign: 'right' }}>Credits</span><span style={{ textAlign: 'right' }}>Amount</span><span style={{ textAlign: 'right' }}>{CARD_FEE_LABEL}</span><span>By</span><span>Description</span>
             </div>
             {(data.transactions || []).length === 0 && (
               <div style={{ textAlign: 'center', padding: '36px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No transactions yet.</div>
@@ -114,7 +117,8 @@ export default function GrowthCreditsAccountingPanel() {
                 <span><MemberNameLink memberNumber={t.member_number} style={{ fontWeight: 600 }}>{t.member_name}</MemberNameLink></span>
                 <span>{gcTypeChip(t)}</span>
                 <span style={{ textAlign: 'right', fontWeight: 700, color: (t.amount || 0) < 0 ? '#d93025' : 'var(--vfo-success-text-2)' }}>{(t.amount || 0) > 0 ? '+' : ''}{t.amount}</span>
-                <span style={{ textAlign: 'right' }}>{t.amount_usd != null ? money(t.amount_usd) : '—'}</span>
+                <span style={{ textAlign: 'right' }}>{t.amount_usd != null ? money(Number(t.amount_usd) - gcFee(t)) : '—'}</span>
+                <span style={{ textAlign: 'right' }}><CardFeeCell fee={gcFee(t)} /></span>
                 <span style={{ color: 'var(--vfo-muted)' }}>{gcActorLabel(t)}</span>
                 <span style={{ color: 'var(--vfo-muted)' }}>{t.description || '—'}</span>
               </div>

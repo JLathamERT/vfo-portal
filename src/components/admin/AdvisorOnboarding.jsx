@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
+import { useSearchParams, useLocation } from 'react-router-dom'
 import { callApi, getSession } from '../../lib/api'
 import { AdvisorOnboardingListSkeleton, AdvisorOnboardingDetailSkeleton } from '../shared/Skeleton'
-import { TrackHero, PhaseBadge, ListHeader } from '../shared/TrackKit'
+import { PhaseBadge } from '../shared/TrackKit'
 import NewModelSaleModal from './NewModelSaleModal'
 
 // The Team Member Responsible step offers only the people who run preliminary
@@ -11,12 +11,12 @@ import NewModelSaleModal from './NewModelSaleModal'
 const ONBOARDING_TEAM_MEMBER_NAMES = ['Ian Welham', 'Vanessa Smith', 'Rachael Hopson', 'Jake Latham']
 import OnboardingExtraMeetingCard from './OnboardingExtraMeetingCard'
 import StepEmailsChip from '../shared/StepEmailsChip'
-import { MemberNameLink } from '../shared/personLinks'
-import { formatDate as formatFullDate } from '../../lib/dates'
+import OnboardingListTable from './OnboardingListTable'
+import OnboardingHero from './OnboardingHero'
 import { stage1Lock, createMemberLock, isTier1Onboarding, FC_ADVISOR_TYPE } from './onboardingOrder'
 import { readable } from '../shared/readableColor'
 
-const STAGE_NAMES = ['', 'Preliminary Meeting', 'PC Admin', 'Add New Advisor']
+const STAGE_NAMES = ['', 'Preliminary Meeting', 'Automated steps', 'Add New Advisor']
 
 // Read-only per-step email previews (see StepEmailsChip).
 const ADVISOR_PIPELINE = 'ADVISOR_ONBOARDING'
@@ -115,8 +115,6 @@ export default function AdvisorOnboarding() {
   const [newEmail, setNewEmail] = useState('')
   const [newAdvisorType, setNewAdvisorType] = useState('')
   const [creating, setCreating] = useState(false)
-  const [showCompleted, setShowCompleted] = useState(false)
-  const [showStopped, setShowStopped] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
   const session = getSession()
@@ -170,13 +168,20 @@ export default function AdvisorOnboarding() {
     }} />
   }
 
+  const openOnboarding = (ob) => { setSelectedId(ob.id); setView('detail'); const n = new URLSearchParams(searchParams); n.set('onboarding', String(ob.id)); setSearchParams(n, { replace: true }) }
+
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
-      <ListHeader
-        title="Advisor Onboarding"
-        count={onboardings.length}
-        action={<button onClick={() => setShowNew(!showNew)} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>+ New Onboarding</button>}
-      />
+    <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
+      <div style={{ marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
+        <div>
+          <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Advisors</p>
+          <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            Advisor Onboarding
+            {!loading && <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{onboardings.length}</span>}
+          </h2>
+        </div>
+        <button onClick={() => setShowNew(!showNew)} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>+ New Onboarding</button>
+      </div>
 
       {showNew && (
         <div style={{ ...sectionStyle, marginBottom: '24px' }}>
@@ -211,85 +216,21 @@ export default function AdvisorOnboarding() {
 
       {loading ? (
         <AdvisorOnboardingListSkeleton />
-      ) : onboardings.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--vfo-muted)' }}>No onboarding records yet. Click "+ New Onboarding" to start.</div>
-      ) : (() => {
-        // status is the single source of truth for stopped now (backfilled, and
-        // written by every stop-meaning branch). The old inline derivation missed
-        // 'Auto-Declined', so 14-day implicit-No rows rendered as in-progress.
-        const classify = ob => {
-          if (ob.member_created_at) return 'completed'
-          if (ob.status === 'stopped') return 'stopped'
-          return 'in_progress'
-        }
-        const inProgress = onboardings.filter(o => classify(o) === 'in_progress')
-        const completed = onboardings.filter(o => classify(o) === 'completed')
-        const stopped = onboardings.filter(o => classify(o) === 'stopped')
-
-        const renderRow = (ob, variant) => {
-          const stage = ob.member_created_at ? 3 : ob.prelim_meeting_decision ? 2 : 1
-          const isDone = variant === 'completed'
-          const isStopped = variant === 'stopped'
-          const stageColor = isStopped ? '#e74c3c' : isDone ? '#1b9254' : '#0095ff'
-          const labelText = isDone ? 'Done' : isStopped ? 'Stopped' : STAGE_NAMES[stage]
-          const bg = isStopped ? 'rgba(231,76,60,0.15)' : isDone ? 'rgba(27,146,84,0.15)' : 'rgba(0,149,255,0.15)'
-          const border = isStopped ? 'rgba(231,76,60,0.3)' : isDone ? 'rgba(27,146,84,0.3)' : 'rgba(0,149,255,0.3)'
-          return (
-            <div key={ob.id} onClick={() => { setSelectedId(ob.id); setView('detail'); const n = new URLSearchParams(searchParams); n.set('onboarding', String(ob.id)); setSearchParams(n, { replace: true }) }} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '18px', marginBottom: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,149,255,0.4)'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border)'}>
-              <div>
-                <div style={{ fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: '500', marginBottom: '4px' }}><MemberNameLink memberNumber={ob.member_number}>{ob.first_name} {ob.last_name}</MemberNameLink>{ob.member_number ? <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontFamily: 'monospace', marginLeft: '8px' }}>#{ob.member_number}</span> : null}</div>
-                <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{ob.email || 'No email'} · Started {formatFullDate(ob.created_at)}</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: bg, color: stageColor, border: `1px solid ${border}` }}>
-                  {labelText}
-                </span>
-              </div>
-            </div>
-          )
-        }
-
-        const SectionHeader = ({ title, count, open, onToggle, color }) => (
-          <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', marginTop: '20px', marginBottom: '10px', borderRadius: '8px', cursor: 'pointer', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: color, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</span>
-              <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>({count})</span>
-            </div>
-          </div>
-        )
-
-        return (
-          <div>
-            {inProgress.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '20px', color: 'var(--vfo-muted)', fontSize: '13px' }}>No active onboardings in progress.</div>
-            )}
-            {inProgress.map(ob => renderRow(ob, 'in_progress'))}
-
-            {completed.length > 0 && (
-              <>
-                <SectionHeader title="Completed" count={completed.length} open={showCompleted} onToggle={() => setShowCompleted(v => !v)} color="#1b9254" />
-                {showCompleted && completed.map(ob => renderRow(ob, 'completed'))}
-              </>
-            )}
-
-            {stopped.length > 0 && (
-              <>
-                <SectionHeader title="Stopped" count={stopped.length} open={showStopped} onToggle={() => setShowStopped(v => !v)} color="#e74c3c" />
-                {showStopped && stopped.map(ob => renderRow(ob, 'stopped'))}
-              </>
-            )}
-          </div>
-        )
-      })()}
+      ) : (
+        <OnboardingListTable
+          pipeline="advisor"
+          onboardings={onboardings}
+          stageNames={STAGE_NAMES}
+          stageOf={ob => (ob.member_created_at ? 3 : ob.prelim_meeting_decision ? 2 : 1)}
+          onOpen={openOnboarding}
+          emptyText={'No onboarding records yet. Click "+ New Onboarding" to start.'}
+        />
+      )}
     </div>
   )
 }
 
 function OnboardingDetail({ id, onBack }) {
-  const navigate = useNavigate()
   const [ob, setOb] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -747,7 +688,6 @@ function OnboardingDetail({ id, onBack }) {
       {showPaymentLinkRow && (
         <>
           <AutoRow label="Payment link sent (ACH or Card choice)" done={!!ob.payment_link_sent_at} date={ob.payment_link_sent_at} emails={tier1 ? ADVISOR_TIER1_PAYMENT_LINK_EMAILS : ADVISOR_PAYMENT_LINK_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
-          {tier1 && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '2px 0 4px 14px' }}>First month of the Financial Collaborator membership: $145 (Membership Fee $120 + VFO Portal Licence $25). Membership Fees charges month 2 onwards on the same card or bank account.</div>}
           <StallRows ob={ob} setOb={setOb} stall="payment" />
         </>
       )}
@@ -772,19 +712,13 @@ function OnboardingDetail({ id, onBack }) {
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
       <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to list</button>
-      <TrackHero
-        eyebrow="Advisor Onboarding"
-        title={`${ob.first_name} ${ob.last_name}`}
-        meta={
-          <>
-            {tier1 && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>Financial Collaborator</span>}
-            <span>{ob.email || 'No email'} · Started {formatFullDate(ob.created_at) || ''}</span>
-            {ob.member_number && <button onClick={() => navigate(`/admin?member=${encodeURIComponent(ob.member_number)}&_n=${Date.now()}`)} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', padding: 0, whiteSpace: 'nowrap' }}>Open member profile →</button>}
-          </>
-        }
+      <OnboardingHero
+        ob={ob}
+        pipeline="advisor"
+        feeNote={tier1 ? '$145/month (incl. $25 VFO Portal licence)' : null}
         steps={[
           { label: 'Preliminary Meeting', state: stage1State() },
-          { label: 'PC Admin', state: stage2State() },
+          { label: 'Automated steps', state: stage2State() },
           { label: 'Add New Advisor', state: stage3State() },
         ]}
         action={!ob.member_created_at && (
@@ -859,7 +793,7 @@ function OnboardingDetail({ id, onBack }) {
         </Row>
       </StageBlock>
 
-      <StageBlock stage={2} title="PC Admin" state={stage2State()} expanded={expanded[2]} onToggle={() => setExpanded(p => ({ ...p, 2: !p[2] }))}>
+      <StageBlock stage={2} title="Automated steps" state={stage2State()} expanded={expanded[2]} onToggle={() => setExpanded(p => ({ ...p, 2: !p[2] }))}>
         {!decision && <Row label="Engagement agreement created and sent for signing" done={false} locked lockedHint='Complete "Preliminary Meeting Decision" first' />}
 
         {decision === 'Yes' && yesRows(true)}

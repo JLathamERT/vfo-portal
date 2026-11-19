@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react'
+import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell, sumFees } from './cardFeeColumn'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, BLUE, money, StatusPill } from './specialistRevenueShared'
 import { OnboardingListSkeleton } from '../shared/Skeleton'
@@ -720,7 +721,24 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
     onChanged?.()
   }
 
-  const grid = '1.2fr 110px 110px 110px 120px 1.4fr'
+  const grid = `1.2fr 110px 110px ${CARD_FEE_COL} 110px 120px 1.4fr`
+  // The card fee of each paid month, shown ONCE per Stripe payment: a catch-up
+  // charge covering several months stamps the same total fee on every row it paid
+  // (as the Payments page counts it, all-payments-load.ts).
+  const feeOfRow = (() => {
+    const seen = new Set()
+    const out = {}
+    for (const r of shownSched) {
+      if (r.kind === 'pause' || !(r.status === 'paid' || r.status === 'processing')) continue
+      const fee = Number(r.card_processing_fee) || 0
+      if (!fee) continue
+      const pi = r.stripe_payment_intent_id
+      if (pi && seen.has(pi)) continue
+      if (pi) seen.add(pi)
+      out[r.id] = fee
+    }
+    return out
+  })()
 
   return (
     <div ref={cardRef} style={{ ...card, marginBottom: '10px', overflow: 'hidden', opacity: closed ? 0.7 : 1 }}>
@@ -802,7 +820,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
-                <div>Period</div><div>Due date</div><div>Amount</div><div>Credit</div><div>Status</div><div style={{ textAlign: 'right' }}>Payment</div>
+                <div>Period</div><div>Due date</div><div>Amount</div><div>{CARD_FEE_LABEL}</div><div>Credit</div><div>Status</div><div style={{ textAlign: 'right' }}>Payment</div>
               </div>
               {shownSched.map(row => {
                 // Pause markers ride in the same grid — positioned by due_date
@@ -813,6 +831,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                     <div key={row.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: PAUSE_TINT, borderRadius: '6px' }}>
                       <div style={{ fontWeight: 600 }}>{row.period_label}</div>
                       <div>{fmtDate(row.due_date)}</div>
+                      <div style={{ color: 'var(--vfo-faint)' }}>—</div>
                       <div style={{ color: 'var(--vfo-faint)' }}>—</div>
                       <div style={{ color: 'var(--vfo-faint)' }}>—</div>
                       <div><StatusPill label="Paused" color={PAUSE_COLOR} /></div>
@@ -841,6 +860,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                         </div>
                       )}
                     </div>
+                    <div><CardFeeCell fee={feeOfRow[row.id]} /></div>
                     <div style={{ color: 'var(--vfo-faint)' }}>{Number(row.credit_applied) > 0 ? money(row.credit_applied) : '—'}</div>
                     <div>
                       {canMarkRows && row.kind === 'membership' ? (
@@ -895,6 +915,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                     </div>
                   )}
                 </div>
+                <div>{money(sumFees(Object.values(feeOfRow), f => f))}</div>
                 <div>{money(shownSched.reduce((s, r) => s + Number(r.credit_applied || 0), 0))}</div>
                 <div style={{ color: 'var(--vfo-success-text-2)' }}>{money(shownSched.filter(r => r.status === 'paid').reduce((s, r) => s + faceOf(r), 0))} paid</div>
                 <div />
