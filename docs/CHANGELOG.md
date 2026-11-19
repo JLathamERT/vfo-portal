@@ -8,6 +8,29 @@
 
 ---
 
+## 2026-11-19 (d) — Set Up Membership for an existing VFO Associate / FC (Portal licence Yes / No), Card on file for every plan — by Jake
+
+**Why.** Existing Financial Collaborators move off Skool billing onto the portal at a grandfathered rate with no licence, and a member downgrading to FC keeps paying by the card already on file (the standard $120 + $25 licence). Until now a month-to-month Tier 1 plan could only be made by a Tier 1 onboarding. The member-by-member jobs are Issues #599 and #600 (private repo).
+
+**Built.**
+- **Set Up Membership, member type in `TIER1_PAYING_MEMBER_TYPES`:** Brand new or Track billing on old system only; the monthly membership value + **Portal licence No / Yes** (+$25); no credit note, frequency, Money Mapping or year start. `membership_plan_save { tier1: true }` → `membershipTier1PlanSave` (new `actions/membership/tier1-plan-save.ts`). The setup link collects month 1, then `activateMembershipPlan`'s new Tier 1 arm writes twelve months on the day they paid (clamped) and sends a card month's $25 at once.
+- **New plan columns** (migration `20261119180000_tier1_manual_membership.sql`, test site 2026-11-19, live at release): `vfo_portal_licence_amount` (25 / 0; NULL on older onboarding plans reads as 25, no backfill) and `portal_access_emailed_at`. Every Tier 1 reader now keys on the plan's licence (`tier1PlanLicence`): Stripe text ("ERT Membership - …" with no licence), `vfo_portal_licence_cents` metadata, invoice / receipt lines, pass 1's roll-over rows, the payment page, the plan card. A licence-No plan never transfers anything.
+- **Every month an invoice AND a receipt** for a plan set up by hand (no `onboarding_ref`): `tier1InvoiceHtml` (closing line "Month-to-month membership, billed monthly.") + receipt, new email `MEMBERSHIP_invoicereceipt_email|monthly|tier1` (the `|tier1` receipt email with "Your invoice and receipt are attached", wording approved by Jake). Onboarding plans keep receipt-only months.
+- **Portal set-up email** for a plan with the licence: once month 1 has cleared (after the invoice / receipt), or at create on Track billing. `sendTier1PortalAccessOnce` (new `utils/tier1-portal-access.ts`) claims the latch, skips a member who already has a login, and drafts the existing `MANUAL_login_setup` email through the new `draftMemberLoginSetupEmail` (the login-setup handler's body moved into a core both share).
+- **Card on file, any member type** (Jake's ask during testing): *How will they pay?* on Brand new / Transfer offers the card or bank of the member's earlier plan. `loadCardOnFile` (new `utils/membership-card-on-file.ts`) checks ownership, method, sandbox mode and, for a Tier 1 plan, the ERT account. No setup link: the plan starts at once with the first payment due today, which the next morning sweep takes.
+- **`/membership-pay`** shows the server's `fee_lines` for a Tier 1 plan (Membership Fee $120 + VFO Portal Licence $25, then the card fee), as the onboarding pay pages already did. **The $25 transfer's description** is now *VFO Portal Licence - (<member#>) <name> - <Month YYYY>* for every licence transfer.
+
+**Tested on the test site (Jake's click-through + the database, all passed).**
+- Setup link with licence (10019): $145 + $4.64 card fee, INV/REC-10019-0001, $25 sent, portal email sent.
+- Card on file on an FC (10020) and a New Model Catalyst (10023): first charge by a hand-run sweep against `vfo-admin-api`, card fees $4.64 / $20.23, documents sent; 10023's next payment fell on 1 Jan (paid after the 15th, the normal rule).
+- Track billing with licence (10021): $124 rows, no charge, portal email sent.
+- Licence No (10022): $99 + $3.27, one Membership Fee line, nothing transferred, no portal email.
+- **Not exercised:** an ACH month 1 on a hand-set Tier 1 plan (its first-payment confirmation email), card on file on a Transfer or an annual plan, and a licence-No plan's yearly roll-over — Issue filed.
+
+**Test builds.** `vfo-admin-api-jake` v51 → v53; shared test `vfo-admin-api` v113 → v115 for the Stripe and sweep steps, then main put back (`staging-backend.yml` rerun).
+
+**Hub.** The `send_mode` line read 257 of 365 (stale: live had 259 of 367); now 259 of 367, 260 of 368 after this release. New gotcha #771 (a test member needs a `member_plugin_settings` row too).
+
 ## 2026-11-19 (c) — VFO Associate / FC: a real price from creation, onboarding lists + record header, sign buttons, the Tier 1 invoice's Status column, and a Card fee column in every Accounting table — by Jake
 
 Started as a status question ("is the VFO Associate / Financial Collaborator onboarding live, and was it a switch?"). Answer: live for all since 2026-10-30 (decision 107), switches `tier1_onboarding` + `member_tiers` removed from the code (rows kept `true`); on live one real Associate onboarding had started (47, not yet signed) and no $25 transfer had ever run.
