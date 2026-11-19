@@ -883,10 +883,10 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     const qs = new URLSearchParams(window.location.search)
     const paid = qs.get('intake') && qs.get('paid') === '1'
     if (!paid) return
-    // ach=1: the member chose ACH on the choice page. Nothing exists yet — the
-    // client is created only when the transfer SETTLES (2026-09-23).
+    // ach=1: the member chose ACH on the choice page. The client and plan are
+    // created at submit while the transfer clears (2026-10-30).
     setDoneMessage(qs.get('ach') === '1'
-      ? 'Bank transfer submitted. The client will be created once it clears (3-5 business days).'
+      ? 'Your bank payment is on its way. The client is being created now, and the deposit clears in 3-5 business days.'
       : 'Client created. We have emailed you a confirmation.')
     setMode('done')
     loadClients()

@@ -4291,7 +4291,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : pending ? '#e06717' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : pending ? '#e06717' : 'var(--vfo-border-mid)'}` }} />
           <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}{chip && <span style={{ marginLeft: '8px' }}>{chip}</span>}</span>
           {done && <span style={{ ...chipStyle('#1b9254'), marginLeft: 'auto' }}>Done</span>}
-          {!done && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717', marginLeft: 'auto' }}>{typeof pending === 'string' ? pending : 'Pending — ACH clearing'}</span>}
+          {!done && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717', marginLeft: 'auto' }}>{typeof pending === 'string' ? pending : 'Bank payment clearing'}</span>}
           {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
         </div>
       )
@@ -4856,7 +4856,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : pending ? '#e06717' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : pending ? '#e06717' : 'var(--vfo-border-mid)'}` }} />
           <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}{chip && <span style={{ marginLeft: '8px' }}>{chip}</span>}</span>
           {done && <span style={{ ...chipStyle('#1b9254'), marginLeft: 'auto' }}>Done</span>}
-          {!done && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717', marginLeft: 'auto' }}>Pending — ACH clearing</span>}
+          {!done && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717', marginLeft: 'auto' }}>Bank payment clearing</span>}
           {!done && !pending && <span style={{ ...neutralChipStyle, marginLeft: 'auto' }}>Not completed</span>}
           {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
         </div>
@@ -5111,7 +5111,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         {memberRefundOpen
           ? <span style={chipStyle(memberRowColor)}>Refund requested - waiting for the VFO team</span>
           : isDone
-          ? <span style={chipStyle(statusColor)}>{p.status}</span>
+          ? <span style={chipStyle(statusColor)}>{task.status_options === 'tax_deposit_pi' && p.status === DEPOSIT_PROCESSING_STATUS ? 'Clearing' : p.status}</span>
           : <span style={neutralChipStyle}>Not started</span>
         }
         <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
@@ -5186,7 +5186,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           {depositWaived ? (
             <span style={neutralChipStyle} title="No deposit was taken: the member already had two qualifying tax clients">N/A — No Deposit</span>
           ) : depositClearing ? (
-            <span style={chipStyle('#e06717')} title="Paid by bank transfer. It completes on its own when the transfer settles (usually 3-5 business days).">Processing — bank transfer clearing</span>
+            <span style={chipStyle('#e06717')} title="Paid by bank transfer. It completes on its own when it clears (usually 3-5 business days).">Bank payment clearing</span>
           ) : readOnly ? (
             depositBounced
               ? <span style={chipStyle('#d93025')}>Bank transfer failed</span>
@@ -5409,7 +5409,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       async function handlePick(value) {
         if (!value) return
         if (value === 'Continue - Revenue Share' && !confirm(decision1ThreePay
-          ? "Mark client as Continue?\n\nThis sends them an email with a green Confirm button and a red Refund button. Either click only counts once they enter the code we email them. When they confirm, their FINAL RETAINER is collected from the payment method on file, and the retainer revenue share fires once that payment settles. A confirmed Refund is a request: they get the refund request email and an admin then confirms or cancels it here. After 2 business days with no click they get a reminder email, after 4 business days the PF is notified to reach out."
+          ? "Mark client as Continue?\n\nThis sends them an email with a green Confirm button and a red Refund button. Either click only counts once they enter the code we email them. When they confirm, their FINAL RETAINER is collected from the payment method on file, and the retainer revenue share fires once that payment clears. A confirmed Refund is a request: they get the refund request email and an admin then confirms or cancels it here. After 2 business days with no click they get a reminder email, after 4 business days the PF is notified to reach out."
           : "Mark client as Continue?\n\nThis sends them an email with a green Confirm button and a red Refund button. Either click only counts once they enter the code we email them. The revenue share fires ONLY when they confirm; a confirmed Refund is a request: they get the refund request email and an admin then confirms or cancels it here. After 2 business days with no click they get a reminder email, after 4 business days the PF is notified to reach out.")) return
         if (value === 'Stop - Refund' && !confirm("Stop - Refund?\n\nNothing is refunded yet. The client is sent the refund request email, and an admin then confirms the refund or cancels it (continuing with revenue shares) on this step.")) return
         if (value === 'Undecided' && !confirm("Mark client as Undecided?\n\nThey'll get an email with two buttons (Proceed / Refund). Either click only counts once they enter the code we email them; a confirmed Refund is a request an admin then confirms or cancels here. After 2 business days with no click we send a reminder, after 4 business days we notify you to call the client.")) return

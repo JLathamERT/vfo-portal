@@ -97,13 +97,13 @@ function BgRequestPay() {
           <div style={{ ...iconCircleStyle, background: 'rgba(34,197,94,0.15)' }}>
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
           </div>
-          <h1 style={titleStyle}>{received ? 'Payment received' : 'Thank you — payment submitted'}</h1>
+          <h1 style={titleStyle}>{received ? 'Payment received' : bankInFlight ? 'Thank you - your bank payment is on its way' : 'Thank you'}</h1>
           <p style={subtitleStyle}>
             {received
               ? `Thanks, ${data.first_name}. Your Background Check payment of $${formatMoney(amount)} has been received. Your invoice and receipt are on their way by email.`
               : bankInFlight
                 ? `Thanks, ${data.first_name}. Your Background Check payment of $${formatMoney(amount)} is on its way. Bank payments take 3-5 business days to clear; we'll email your invoice and receipt once it has.`
-                : `Thanks, ${data.first_name}. Your Background Check payment of $${formatMoney(amount)} has been submitted. We'll email your invoice and receipt as soon as it clears.`}
+                : `Thanks, ${data.first_name}. Your Background Check payment of $${formatMoney(amount)} is on its way. We'll email your invoice and receipt as soon as it has cleared.`}
           </p>
         </div>
       </TokenShell>
@@ -139,7 +139,7 @@ function BgRequestPay() {
             { label: lineLabel, value: `$${formatMoney(amount)}`, valueColor: 'var(--vfo-ink-2)' },
             { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
           ]}
-          footer='Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. Takes 3-5 business days to process.'
+          footer='Funds transfer directly from your bank account — choose "Sign in to your bank" on the next page. Takes 3-5 business days to clear.'
         />
 
         <div style={dividerStyle}>— or —</div>
@@ -276,7 +276,7 @@ function OnboardingOrLicensePay() {
           ]}
           footer={isContinuation
             ? `Funds transfer directly from your bank account. Nothing is charged today — your first payment collects on the ${dayText} (next month's if this month's has already passed) and monthly on that day after that.`
-            : isLicense ? 'Funds transfer directly from your bank account. Your license renews automatically each month.' : 'Funds transfer directly from your bank account. Takes 3-5 business days to process.'}
+            : isLicense ? 'Funds transfer directly from your bank account. Your license renews automatically each month.' : 'Funds transfer directly from your bank account. Takes 3-5 business days to clear.'}
         />
 
         <div style={dividerStyle}>— or —</div>

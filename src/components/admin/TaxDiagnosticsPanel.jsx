@@ -626,7 +626,7 @@ function LeadBox({ d, members, onChanged }) {
       )}
 
       {clearing && (
-        <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '10px' }}>The bank transfer is still clearing. Choose the member or Deny once it has settled.</div>
+        <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '10px' }}>The bank transfer is still clearing. Choose the member or Deny once it has cleared.</div>
       )}
 
       {err && <div style={{ marginTop: '12px', fontSize: '12.5px', color: '#d93025' }}>{err}</div>}
@@ -640,7 +640,7 @@ function LeadBox({ d, members, onChanged }) {
 
 // The confirmed diagnostic's deposit as a step track (the Automated-steps look):
 // link sent → payment made → payment cleared → client created. Chip wording is
-// the portal's own ("Pending — ACH clearing" / "Pending — bank verification",
+// the portal's own ("Bank payment clearing" / "Pending — bank verification",
 // TaxPrioritiesTab + the onboarding/PIP tracks). Read from the intake row the
 // Confirm produced; nothing here writes.
 // payFirst (2026-09-30): the payer went straight from the form to the deposit
@@ -698,7 +698,7 @@ function DepositTrack({ intake, payer, payFirst = false, createdAt = null, membe
             : intake.deposit_bank_verification_pending_at
               ? chip('Pending — bank verification', orange)
               : intake.deposit_processing_at
-                ? chip('Pending — ACH clearing', orange)
+                ? chip('Bank payment clearing', orange)
                 : null,
         },
       ]

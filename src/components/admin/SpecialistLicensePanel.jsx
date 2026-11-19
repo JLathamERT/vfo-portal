@@ -7,6 +7,7 @@ import { tableStyle, headerRowStyle, totalsRowStyle, totalsLabelStyle, totalsSub
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink, specialistProfilePath } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 // Accounting > Specialists > VFO Specialist License Fees. Pick year + month to see the
 // $99/mo specialist license payments that cleared that period (read from the
@@ -34,7 +35,7 @@ export function LicenseStatusTag({ status }) {
   const paid = status === 'succeeded'
   return (
     <span style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
-      <StatusPill label={paid ? 'Payment received' : (status || '—')} color={paid ? '#16a34a' : 'var(--vfo-muted)'} />
+      <StatusPill label={paid ? 'Payment received' : (paymentStatusLabel(status) || '—')} color={paid ? '#16a34a' : 'var(--vfo-muted)'} />
     </span>
   )
 }

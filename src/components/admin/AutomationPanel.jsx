@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { ClientNameLink, clientPagePath } from '../shared/personLinks'
 import { formatDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 const STAGE_LABELS = {
   c81: 'PIP 1 — Reconfirmation Email',
@@ -66,7 +67,7 @@ function PaymentButtons({ row, onRefresh }) {
   const [err, setErr] = useState('')
 
   async function clickPaidByCheck() {
-    if (!window.confirm('Mark this client as paying by check?\n\nThis will:\n  • Set pay1_status to "check_pending"\n  • Block the Stripe /pay link (customer can no longer pay online unless this is undone manually in SQL)\n  • Draft a Gmail to the client with the check mailing address\n\nProceed?')) return
+    if (!window.confirm('Mark this client as paying by check?\n\nThis will:\n  • Mark payment 1 as check clearing\n  • Block the Stripe /pay link (customer can no longer pay online unless this is undone manually in SQL)\n  • Draft a Gmail to the client with the check mailing address\n\nProceed?')) return
     setBusy('paidbycheck'); setErr('')
     try {
       await callApi('automation_CONTRACT_paidbycheck', { client_id: row.client_id })
@@ -77,8 +78,8 @@ function PaymentButtons({ row, onRefresh }) {
 
   async function clickCheckCleared(n) {
     const note = n === 1
-      ? 'This sets pay1_status to "succeeded" and fires the confirmation email, invoice/receipt PDFs, and revshare chain.'
-      : `This sets pay${n}_status to "succeeded" and fires the invoice/receipt PDFs and revshare chain for P${n}.`
+      ? 'This marks payment 1 as paid and fires the confirmation email, invoice/receipt PDFs, and revshare chain.'
+      : `This marks payment ${n} as paid and fires the invoice/receipt PDFs and revshare chain for P${n}.`
     if (!window.confirm(`Mark P${n} check as cleared?\n\n${note}\n\nOnly click this AFTER your bank has actually cleared the check.`)) return
     setBusy(`cleared-${n}`); setErr('')
     try {
@@ -283,7 +284,7 @@ function ExpandedRow({ row, onRefresh }) {
             <Detail l="Method" v={row.payment_method_type} />
             <Detail l="Account" v={row.acct_last4 ? `****${row.acct_last4}` : null} />
             <Detail l="Payment amount" v={fmtMoney(perPaymentAmount)} />
-            <Detail l="Payment 1 status" v={row.pay1_status} />
+            <Detail l="Payment 1 status" v={paymentStatusLabel(row.pay1_status)} />
             <Detail l="Payment 1 received" v={fmtDate(row.pay1_date)} />
             <PaymentButtons row={row} onRefresh={onRefresh} />
           </>
@@ -486,7 +487,7 @@ export default function AutomationPanel({ section }) {
                       </td>
                       <td style={{ padding: '12px', fontSize: '13px', color: 'var(--vfo-muted)' }}>{row.c15_final_decision || row.c13_decision || '—'}</td>
                       <td style={{ padding: '12px', fontSize: '13px', color: 'var(--vfo-muted)' }}>{row.service_level || row.c15_service_level || '—'}</td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: 'var(--vfo-muted)' }}>{row.pay1_status || '—'}</td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: 'var(--vfo-muted)' }}>{paymentStatusLabel(row.pay1_status) || '—'}</td>
                       <td style={{ padding: '12px', fontSize: '12px', color: 'var(--vfo-muted)' }}>{row.updated_at ? formatDate(row.updated_at) : '—'}</td>
                     </tr>
                     {isExpanded && (

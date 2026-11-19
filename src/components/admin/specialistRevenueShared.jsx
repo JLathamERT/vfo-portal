@@ -26,7 +26,7 @@ const REQ_STATUS = {
   // Bank details submitted but hand-keyed, so Stripe is holding the payment until the
   // specialist verifies a microdeposit. No money has moved — distinct from processing.
   awaiting_verification: { label: 'Awaiting bank verification', color: '#e06717' },
-  processing: { label: 'Payment processing', color: '#e06717' },
+  processing: { label: 'Bank payment clearing', color: '#e06717' },
   received: { label: 'Payment received', color: '#16a34a' },
   failed: { label: 'Payment failed', color: '#ef4444' },
   // A deal record with no money (+ New Payment → "Record deals — no payment"). Terminal;
@@ -125,7 +125,7 @@ export function MarkReceivedButton({ request, onDone }) {
     try {
       const res = await callApi('specialist_revenue_confirm_received', { request_id: request.id })
       if (res?.ok) { setMsg({ tone: 'success', text: 'Payment received — member payouts have been sent.' }); onDone?.() }
-      else if (res?.not_funded) setMsg({ tone: 'amber', text: res.message || 'The funds have not landed in the VFO account yet. Try again once the transfer settles.' })
+      else if (res?.not_funded) setMsg({ tone: 'amber', text: res.message || 'The funds have not cleared in the VFO account yet. Try again once the transfer has cleared.' })
       else setMsg({ tone: 'error', text: res?.error || 'Could not confirm the payment.' })
     } catch (e) {
       setMsg({ tone: 'error', text: e?.message || 'Could not confirm the payment.' })
@@ -257,7 +257,7 @@ export function RequestRow({ request, actions, grid }) {
   // Recurring rows relabel the two states they use; everything else (incl. the
   // house-account 'pending' = Awaiting bank transfer) keeps its non-recurring meta.
   const RECURRING_STATUS = {
-    processing: { label: 'Pending', color: '#e06717' },
+    processing: { label: 'Clearing', color: '#e06717' },
     received: { label: 'Payment received', color: '#16a34a' },
   }
   const req = (isRecurring && RECURRING_STATUS[request.payment_status])

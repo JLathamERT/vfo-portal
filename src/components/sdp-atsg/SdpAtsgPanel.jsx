@@ -34,7 +34,7 @@ const FREQ_COUNT = { annual: 1, quarterly: 4, monthly: 12 }
 const PAY_STATUS = {
   scheduled: { label: 'Scheduled', color: '#6b7280' },
   requested: { label: 'Awaiting payment', color: '#0095ff' },
-  processing: { label: 'Processing', color: '#e06717' },
+  processing: { label: 'Clearing', color: '#e06717' },
   paid: { label: 'Paid', color: '#16a34a' },
   missed: { label: 'Missed', color: '#ef4444' },
   declined: { label: 'Declined', color: '#ef4444' },
@@ -480,7 +480,7 @@ function AutoStep({ label, done, pending, at, action }) {
       <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
         {action}
         {done && <span style={chipStyle(GREEN)}>Done</span>}
-        {!done && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>{typeof pending === 'string' ? pending : 'Pending — ACH clearing'}</span>}
+        {!done && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>{typeof pending === 'string' ? pending : 'Bank payment clearing'}</span>}
         {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{mmdd(at)}</span>}
       </span>
     </div>

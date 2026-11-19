@@ -136,7 +136,7 @@ export default function SdpAtsgPayPage() {
           badgeClass="green"
           amount={baseAmount}
           breakdown={[...lineRows, { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' }]}
-          footer={`Funds transfer directly from your bank account. Takes 3-5 business days to process.${data.saves_method ? ' Your later advisory retainer payments are collected from this account.' : ''}`}
+          footer={`Funds transfer directly from your bank account. Takes 3-5 business days to clear.${data.saves_method ? ' Your later advisory retainer payments are collected from this account.' : ''}`}
         />
 
         <div style={dividerStyle}>— or —</div>

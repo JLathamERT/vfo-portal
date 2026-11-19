@@ -26,7 +26,7 @@ export function clientPlanPath(r) {
 
 const STATUS = {
   paid:       { label: 'Paid',              fg: '#1a7f5a', bg: '#e7f5ee' },
-  processing: { label: 'Processing',        fg: '#9a6700', bg: '#fdf3d8' },
+  processing: { label: 'Clearing',          fg: '#9a6700', bg: '#fdf3d8' },
   failed:     { label: 'Failed',            fg: '#b42318', bg: '#fdecea' },
   refunded:   { label: 'Refunded',          fg: 'var(--vfo-ink-soft)', bg: 'var(--vfo-tint)' },
   scheduled:  { label: 'Scheduled',         fg: '#1570ef', bg: '#e3effd' },

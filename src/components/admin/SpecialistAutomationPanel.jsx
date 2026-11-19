@@ -3,11 +3,12 @@ import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
 import StripeAccountPill from './StripeAccountPill'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 const STAGE_LABELS = {
   new: 'New', sif_sent: 'SIF Sent', sif_review: 'SIF Submitted', voting: 'Exec Voting',
   approved: 'Approved', declined: 'Declined', stopped: 'Stopped',
-  awaiting_payment: 'Awaiting Payment', payment_processing: 'Payment Processing',
+  awaiting_payment: 'Awaiting Payment', payment_processing: 'Bank payment clearing',
   paid: 'Paid', complete: 'Complete',
 }
 const STAGE_COLORS = {
@@ -169,7 +170,7 @@ function SpecialistPipelineRow({ row, expanded, onToggle }) {
                 <Detail l="Background check" v={row.background_check_type} />
                 <Detail l="Method" v={row.bg_payment_method_type} />
                 <Detail l="Account" v={row.bg_acct_last4 ? `****${row.bg_acct_last4}` : null} />
-                <Detail l="Status" v={row.bg_payment_status} />
+                <Detail l="Status" v={paymentStatusLabel(row.bg_payment_status)} />
                 <Detail l="Confirmation email sent" v={fmtDate(row.bg_confirmation_email_sent_at)} />
                 <Detail l="Payment cleared" v={fmtDate(row.bg_payment_completed_at)} />
                 <Detail l="Routed to" v={checkProcess} />

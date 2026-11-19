@@ -84,7 +84,7 @@ export default function AccountantPayPage() {
   const cardFee = Math.round((cardTotal - baseAmount) * 100) / 100
   const isDeposit = data.kind === 'deposit'
   const depositPaid = Number(data.deposit_paid) || 0
-  const lineLabel = isDeposit ? 'Membership Deposit' : depositPaid > 0 ? 'Balance Payment' : 'Accountant Onboarding'
+  const lineLabel = isDeposit ? 'Membership Deposit' : depositPaid > 0 ? 'Balance Payment' : 'Accountant Implementation'
   // A VFO Associate's link pays the first month of the membership. The
   // server's fee lines are shown only when they add up to the amount charged.
   const tier1 = !isDeposit && data.tier1 === true
@@ -102,7 +102,7 @@ export default function AccountantPayPage() {
         <div style={{ ...iconCircleStyle, width: '64px', height: '64px', background: 'rgba(34,197,94,0.15)' }}>
           <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
         </div>
-        <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>{isDeposit ? 'VFO Accountant Onboarding Deposit' : tier1 ? (data.paid_by_advisor ? 'VFO Portal Licence Payment' : 'VFO Associate Membership Payment') : 'VFO Accountant Onboarding Payment'}</h1>
+        <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>{isDeposit ? 'ERT Membership Deposit' : tier1 ? (data.paid_by_advisor ? 'VFO Portal Licence Payment' : 'VFO Associate Membership Payment') : 'VFO Accountant Implementation Payment'}</h1>
         <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: '12px' }}>Choose your preferred payment method</p>
         <p style={{ ...subtitleStyle, textAlign: 'center', marginBottom: (depositPaid > 0 && !isDeposit) || paidBy ? '6px' : '32px', fontSize: '13px', color: 'var(--vfo-muted)' }}>
           {isDeposit ? 'Membership Deposit' : data.selected_plans} · {data.accountant_name}
@@ -131,7 +131,7 @@ export default function AccountantPayPage() {
             ...amountRows,
             { label: 'Processing Fee', value: '$0.00', valueColor: '#16a34a' },
           ]}
-          footer="Funds transfer directly from your bank account. Takes 3-5 business days to process."
+          footer="Funds transfer directly from your bank account. Takes 3-5 business days to clear."
         />
 
         <div style={dividerStyle}>— or —</div>

@@ -66,7 +66,7 @@ const CARDS = [
         'All five Premium portal emails are To the member, Cc Tracy, Bcc Paul and Anton, and are sent automatically (since 11/02/2026). Invoices and receipts are numbered INV-PREM- / REC-PREM-.',
       ]],
       ['Tax clients', [
-        'A 12-month Premium portal licence for every tax client whose retainer is paid on a tax plan created from 11/02/2026 on (card, ACH when it settles, check when it clears). Every paid retainer buys a full 12 months: a second one while a licence is running starts when the running one ends.',
+        'A 12-month Premium portal licence for every tax client whose retainer is paid on a tax plan created from 11/02/2026 on (card at once, bank payment or check when it clears). Every paid retainer buys a full 12 months: a second one while a licence is running starts when the running one ends.',
         'A client portal login is created on that payment, with a separate "Your VFO Premium portal is ready" email (sent automatically) — "Set up my portal login", or "Sign in to my portal" if they already have one.',
         'The client portal gets a Home screen ("Welcome back") showing the licence expiry date.',
         '$300 of every paid retainer goes to VFO Portal before the revenue share is split, shown on the revenue-share emails and split screens (it stays in the VFO Services balance until the VFO Portal Stripe account exists).',

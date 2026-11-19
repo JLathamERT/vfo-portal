@@ -44,7 +44,7 @@ export default function ClientPaymentsTab({ clientId, sectionStyle }) {
         slot: cs.slot,
       })
       setCancelMsg(d?.status === 'processing'
-        ? { tone: 'success', text: `${row.label}: bank payment of ${fmtMoney(cs.amount)} started. It shows as Processing until it clears (a few business days).` }
+        ? { tone: 'success', text: `${row.label}: bank payment of ${fmtMoney(cs.amount)} started. It shows as Clearing until it has cleared (a few business days).` }
         : { tone: 'success', text: `${row.label}: ${fmtMoney(cs.amount)} charged. The receipt follows automatically.` })
       await load()
     } catch (e) {

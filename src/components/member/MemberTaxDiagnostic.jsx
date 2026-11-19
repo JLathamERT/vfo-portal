@@ -65,7 +65,7 @@ export default function MemberTaxDiagnostic({ member }) {
     const url = new URL(window.location.href)
     if (url.searchParams.get('deposit_paid') !== '1') return
     setPaidMessage(url.searchParams.get('ach') === '1'
-      ? 'Bank transfer submitted. The client will be created once it clears (3-5 business days).'
+      ? 'Your bank payment is on its way. The client is being created now, and the deposit clears in 3-5 business days.'
       : 'Payment received. Client created. We have emailed you a confirmation.')
     ;['tab', 'deposit_paid', 'ach'].forEach(k => url.searchParams.delete(k))
     window.history.replaceState({}, '', url.toString())

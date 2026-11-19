@@ -17,7 +17,7 @@ const PENDING_STATUS = {
   setup_pending: { label: 'Setup pending', color: '#0095ff' },
   scheduled: { label: 'Awaiting first payment', color: '#0095ff' },
   awaiting_verification: { label: 'Awaiting bank verification', color: '#e06717' },
-  processing: { label: 'Payment processing', color: '#e06717' },
+  processing: { label: 'Bank payment clearing', color: '#e06717' },
   past_due: { label: 'Past due', color: '#ef4444' },
   failed: { label: 'Payment failed', color: '#ef4444' },
 }
