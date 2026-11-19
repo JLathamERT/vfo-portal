@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useMemo } from 'react'
+import { useState, useLayoutEffect, useMemo, useEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
@@ -134,6 +134,48 @@ function RetryButton({ r, result, onResult }) {
   )
 }
 
+// The red count on each "Held Payouts" sub-tab pill (2026-11-19, Jake), so a held
+// share is visible without opening the tab. It reads the same answer the list
+// does (held_payouts_load, same last-seen snapshot) and the list tells it about
+// every reload and every Retry that pays (the 'vfo-held-count' event).
+const HELD_COUNT_EVENT = 'vfo-held-count'
+const heldSnapKey = engine => `heldpayouts2:${engine}:`
+
+function announceHeldCount(engine, count) {
+  try { window.dispatchEvent(new CustomEvent(HELD_COUNT_EVENT, { detail: { engine, count } })) } catch { /* no window */ }
+}
+
+export function HeldCountBadge({ engine }) {
+  const [count, setCount] = useState(() => {
+    const snap = getLastSeen(heldSnapKey(engine))
+    return snap ? (snap.open || []).length : 0
+  })
+  useEffect(() => {
+    let alive = true
+    const onCount = e => { if (e.detail?.engine === engine) setCount(Number(e.detail.count) || 0) }
+    window.addEventListener(HELD_COUNT_EVENT, onCount)
+    callApi('held_payouts_load', { engine })
+      .then(res => {
+        if (!alive || res?.error) return
+        setLastSeen(heldSnapKey(engine), res)
+        setCount((res.open || []).length)
+      })
+      .catch(() => { /* the badge is a hint; the list shows any error */ })
+    return () => { alive = false; window.removeEventListener(HELD_COUNT_EVENT, onCount) }
+  }, [engine])
+  if (!count) return null
+  return (
+    <span title={`${count} held`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '18px', height: '18px', padding: '0 5px', marginLeft: '7px', borderRadius: '999px', background: '#ef4444', color: '#fff', fontSize: '10.5px', fontWeight: 800, lineHeight: 1, verticalAlign: 'middle', boxSizing: 'border-box' }}>
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
+// A sub-tab label with the count beside it: { label: <HeldPayoutsLabel engine="tax" /> }.
+export function HeldPayoutsLabel({ engine }) {
+  return <>Held Payouts<HeldCountBadge engine={engine} /></>
+}
+
 export default function HeldPayoutsPanel({ engine, embedded = false }) {
   const navigate = useNavigate()
   const isPhone = useIsPhone()
@@ -144,7 +186,7 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
   const rowProps = (r) => (r.client_id && TAB_BY_ENGINE[engine]
     ? { onClick: () => navigate(clientPagePath(r.client_id, { program: engine === 'tax' ? r.program_id || undefined : 1, tab: TAB_BY_ENGINE[engine] })), title: 'Open plan', ...hoverRowProps }
     : {})
-  const snapKey = `heldpayouts2:${engine}:`
+  const snapKey = heldSnapKey(engine)
   const [data, setData] = useState({ open: [], released: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -165,6 +207,7 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
       if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
       setData({ open: res.open || [], released: res.released || [] })
       setLastSeen(snapKey, res)
+      announceHeldCount(engine, (res.open || []).length)
     } catch (e) {
       if (quiet === true) console.error(e)
       else setError(e?.message || 'Failed to load')
@@ -177,6 +220,10 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
   // has a visible answer; a still-held row refreshes behind the scenes.
   function onResult(id, res) {
     setResults(prev => ({ ...prev, [id]: res }))
+    if (res?.outcome === 'released') {
+      const paid = new Set([id, ...Object.keys(results).filter(k => results[k]?.outcome === 'released').map(Number)])
+      announceHeldCount(engine, data.open.filter(r => !paid.has(r.id)).length)
+    }
     if (res?.outcome === 'held') load(true)
   }
 

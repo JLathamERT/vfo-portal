@@ -48,7 +48,7 @@ import SdpAtsgRevenuePanel from '../components/admin/SdpAtsgRevenuePanel'
 import MembershipFeesPanel from '../components/admin/MembershipFeesPanel'
 import AccountingCombinedPanel, { PILL_KEY as ACCOUNTING_PILL_KEY } from '../components/admin/AccountingCombinedPanel'
 import OutstandingLinksPanel from '../components/admin/OutstandingLinksPanel'
-import HeldPayoutsPanel from '../components/admin/HeldPayoutsPanel'
+import HeldPayoutsPanel, { HeldPayoutsLabel } from '../components/admin/HeldPayoutsPanel'
 import SpecialistRevenueAutomationPanel from '../components/admin/SpecialistRevenueAutomationPanel'
 import GrowthCreditsPanel from '../components/admin/GrowthCreditsPanel'
 import GrowthCreditsAccountingPanel from '../components/admin/GrowthCreditsAccountingPanel'
@@ -731,7 +731,7 @@ export default function AdminPortal() {
                 { key: 'specialist_reconciliation', label: 'VFO Specialist Reconciliation', render: () => <SpecialistReconciliationPanel allMembers={allMembers} embedded /> },
                 { key: 'specialist_recurring', label: 'VFO Specialist Recurring Revenue Payments', render: () => <SpecialistRecurringPanel embedded /> },
                 { key: 'specialist_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="specrev" embedded /> },
-                { key: 'specialist_held_payouts', label: 'Held Payouts', render: () => <HeldPayoutsPanel engine="specrev" embedded /> },
+                { key: 'specialist_held_payouts', label: <HeldPayoutsLabel engine="specrev" />, render: () => <HeldPayoutsPanel engine="specrev" embedded /> },
               ]}
             />
           )}
@@ -765,7 +765,7 @@ export default function AdminPortal() {
                 { key: 'holistic_revenue', label: 'Holistic Planning Revenue', render: () => <HolisticRevenuePanel embedded /> },
                 { key: 'holistic_reconciliation', label: 'Holistic Planning Reconciliation', render: () => <HolisticReconciliationPanel embedded /> },
                 { key: 'holistic_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="map1" embedded /> },
-                { key: 'holistic_held_payouts', label: 'Held Payouts', render: () => <HeldPayoutsPanel engine="map1" embedded /> },
+                { key: 'holistic_held_payouts', label: <HeldPayoutsLabel engine="map1" />, render: () => <HeldPayoutsPanel engine="map1" embedded /> },
               ]}
             />
           )}
@@ -777,7 +777,7 @@ export default function AdminPortal() {
                 { key: 'tax_revenue', label: 'Tax Planning Revenue', render: () => <TaxRevenuePanel embedded /> },
                 { key: 'tax_reconciliation', label: 'Tax Planning Reconciliation', render: () => <TaxReconciliationPanel embedded /> },
                 { key: 'tax_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="tax" embedded /> },
-                { key: 'tax_held_payouts', label: 'Held Payouts', render: () => <HeldPayoutsPanel engine="tax" embedded /> },
+                { key: 'tax_held_payouts', label: <HeldPayoutsLabel engine="tax" />, render: () => <HeldPayoutsPanel engine="tax" embedded /> },
               ]}
             />
           )}
@@ -788,7 +788,7 @@ export default function AdminPortal() {
               tabs={[
                 { key: 'pip_revenue', label: 'Additional PIP Revenue', render: () => <PipRevenuePanel embedded /> },
                 { key: 'pip_reconciliation', label: 'Additional PIP Reconciliation', render: () => <PipReconciliationPanel embedded /> },
-                { key: 'pip_held_payouts', label: 'Held Payouts', render: () => <HeldPayoutsPanel engine="pip" embedded /> },
+                { key: 'pip_held_payouts', label: <HeldPayoutsLabel engine="pip" />, render: () => <HeldPayoutsPanel engine="pip" embedded /> },
               ]}
             />
           )}
@@ -798,7 +798,7 @@ export default function AdminPortal() {
               maxWidth="1150px" initialKey={accountingSection}
               tabs={[
                 { key: 'sdp_atsg_revenue', label: 'SDP ATSG Revenue', render: () => <SdpAtsgRevenuePanel embedded /> },
-                { key: 'sdp_atsg_held_payouts', label: 'Held Payouts', render: () => <HeldPayoutsPanel engine="sdp_atsg" embedded /> },
+                { key: 'sdp_atsg_held_payouts', label: <HeldPayoutsLabel engine="sdp_atsg" />, render: () => <HeldPayoutsPanel engine="sdp_atsg" embedded /> },
               ]}
             />
           )}
