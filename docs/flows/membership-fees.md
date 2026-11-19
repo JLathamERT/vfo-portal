@@ -972,10 +972,7 @@ member on `pay_with_mm`.
 - From the 2026-07-17 audit, still open (everything else — H4/M1/M2/M4, Outstanding dead-end
   button, timestamptz dates, M3 suspended-flag separation, M8 link expiry+resend — was FIXED
   across v619/620/621): combined-pull charges aren't grouped/gross-up-explained in the
-  ledger UI; a `terminated` plan blocks creating a new plan for the same member — only
-  `canceled` frees the slot, and the FE surfaces this as a bare "duplicate key value violates
-  unique constraint `member_payment_plans_one_live_idx`" with no hint of the cause (gotcha
-  #283); transfer credit spread is estimated at plan-save, not pay time.
+  ledger UI; transfer credit spread is estimated at plan-save, not pay time.
 - **Go-live steps** (order matters — the flip trap is #1: every charge site reads the plan's
   snapshotted `sandbox`, so an ACTIVE plan set up under sandbox keeps charging the SANDBOX
   account forever after the flip, green-but-fake):
