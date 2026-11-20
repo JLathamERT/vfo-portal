@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-11-20 (b) — Onboarding list: a blue "Ready to Create" phase and a Team Member column — by Jake
+
+**Why.** After the Create-while-clearing release Jake wanted the list to show at a glance who can be created now, and who owns each onboarding.
+
+**Built (website only, `OnboardingListTable.jsx`).** A row whose Create button is open (`createMemberLock` null: paid, or a bank payment clearing, not yet created) reads *Ready to Create Advisor* / *Ready to Create Accountant* with a blue dot in the portal's action blue (Jake chose blue over orange: orange already means "clearing", red "stopped / failed"); it sits in the Phase filter between the numbered phases and Complete and is shown by default. A sortable **Team Member** column (`onboarding_team_member`) sits between Phase and Started. Saved view key `…OnboardingListView3`.
+
+**Tested.** Jake's desktop click-through on the test site (column + sort). The blue phase was not seen on the test site (no row was ready to create there); it is the same `createMemberLock` the record's Create button uses.
+
+**Hub.** NOOP (admin-only list, no state the hub carries).
+
 ## 2026-11-20 — Advisor / Accountant Onboarding: Create while a bank payment clears, no reminder on a clearing payment, payment-failed emails, member numbers that skip taken ones, list polish — by Jake
 
 **Why.** An accountant on live paid by bank on 11-17 and got the "complete your payment" reminder on 11-20 while the payment was still clearing (an advisor had the same in September): the stall ladder chased anything not `succeeded`. Jake also wanted the onboardings to work like VFO Services' flows — announce and create the new member once the payment is IN, not days later when the bank clears — and the onboarding lists tidied.

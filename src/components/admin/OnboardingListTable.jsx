@@ -4,20 +4,23 @@ import { MemberNameLink } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { formatDate } from '../../lib/dates'
-import { onboardingTypeLabel } from './onboardingOrder'
+import { onboardingTypeLabel, createMemberLock } from './onboardingOrder'
 
 // The Advisor / Accountant Onboarding list in the Client Overview style (2026-11-19):
 // one table with search, a filter and sortable columns, no sub-tabs. Columns Name ·
 // Email · Type · Phase · Started (2026-11-20), each in-progress phase numbered. The Phase filter opens on the
 // in-progress phases and Complete; tick Stopped, or untick all, to see the stopped
 // ones. Complete and Stopped carry Client Overview's green and red dots. Search,
-// filter and sort survive a trip into a record and back.
+// filter and sort survive a trip into a record and back. A row whose Create button
+// is open (paid, or a bank payment clearing — createMemberLock is null) reads
+// "Ready to Create Advisor / Accountant" in the portal's action blue, and the
+// Team Member Responsible has its own column (2026-11-20).
 
-const GRID = 'minmax(200px, 260px) minmax(220px, 1fr) 170px 170px 110px'
+const GRID = 'minmax(200px, 260px) minmax(220px, 1fr) 170px 200px 150px 110px'
 const DONE = 'Complete'
 const STOPPED = 'Stopped'
 const dot = (color) => ({ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: color, display: 'inline-block' })
-const MIN_WIDTH = '860px'
+const MIN_WIDTH = '1040px'
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Started: Newest' },
@@ -40,14 +43,18 @@ export default function OnboardingListTable({ pipeline, onboardings, stageNames,
   // Each in-progress phase carries its stage number: "1 - Initial Meeting" (2026-11-20).
   const phaseLabel = n => `${n} - ${stageNames[n]}`
   const livePhases = stageNames.slice(1).map((_, i) => phaseLabel(i + 1))
-  const phaseOptions = [...livePhases, DONE, STOPPED]
-  const phaseOf = ob => (ob.member_created_at ? DONE : ob.status === 'stopped' ? STOPPED : phaseLabel(stageOf(ob)))
+  const READY = `Ready to Create ${pipeline === 'advisor' ? 'Advisor' : 'Accountant'}`
+  const phaseOptions = [...livePhases, READY, DONE, STOPPED]
+  const phaseOf = ob => (ob.member_created_at ? DONE
+    : ob.status === 'stopped' ? STOPPED
+    : !createMemberLock(ob, pipeline) ? READY
+    : phaseLabel(stageOf(ob)))
   const typeOf = ob => onboardingTypeLabel(ob, pipeline) || '(none)'
 
-  // v2: Complete is shown by default since 2026-11-20, so a view saved before it
-  // (which left Done out) is not carried over.
-  const viewKey = `${pipeline}OnboardingListView2`
-  const defaultPhases = [...livePhases, DONE]
+  // v3: Complete and Ready to Create are shown by default since 2026-11-20, so a
+  // view saved before them (which left them out) is not carried over.
+  const viewKey = `${pipeline}OnboardingListView3`
+  const defaultPhases = [...livePhases, READY, DONE]
   const defaultView = { search: '', filter: { phase: defaultPhases }, sort: 'newest', colSort: null }
   const [initialView] = useState(() => readView(viewKey, defaultView))
   const [search, setSearch] = useState(initialView.search)
@@ -96,6 +103,7 @@ export default function OnboardingListTable({ pipeline, onboardings, stageNames,
     type: { type: 'text', get: typeOf },
     phase: { type: 'number', get: ob => phaseOptions.indexOf(phaseOf(ob)) },
     email: { type: 'text', get: ob => ob.email || '' },
+    team: { type: 'text', get: ob => ob.onboarding_team_member || '' },
     started: { type: 'date', get: ob => ob.created_at || '' },
   })
 
@@ -116,6 +124,7 @@ export default function OnboardingListTable({ pipeline, onboardings, stageNames,
             <SortHeader label="Email" sortKey="email" sort={colSort} onSort={onSort} />
             <SortHeader label="Type" sortKey="type" sort={colSort} onSort={onSort} />
             <SortHeader label="Phase" sortKey="phase" sort={colSort} onSort={onSort} />
+            <SortHeader label="Team Member" sortKey="team" sort={colSort} onSort={onSort} />
             <SortHeader label="Started" sortKey="started" sort={colSort} onSort={onSort} />
           </div>
 
@@ -140,12 +149,15 @@ export default function OnboardingListTable({ pipeline, onboardings, stageNames,
                 <span style={{ fontSize: '12.5px' }}>
                   {phase === DONE ? (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--vfo-success-text)', fontWeight: 600 }}><span style={dot('#1b9254')} />{DONE}</span>
+                  ) : phase === READY ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#125ecc', fontWeight: 600 }}><span style={dot('#125ecc')} />{READY}</span>
                   ) : phase === STOPPED ? (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#b23c30', fontWeight: 600 }}><span style={dot('#b23c30')} />{STOPPED}</span>
                   ) : (
                     <span style={{ color: 'var(--vfo-ink)' }}>{phase}</span>
                   )}
                 </span>
+                <span style={{ fontSize: '12.5px', color: ob.onboarding_team_member ? 'var(--vfo-ink)' : 'var(--vfo-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ob.onboarding_team_member || ''}>{ob.onboarding_team_member || '—'}</span>
                 <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{formatDate(ob.created_at) || '—'}</span>
               </div>
             )
