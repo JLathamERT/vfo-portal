@@ -178,9 +178,13 @@ from the old system and linked by hand), the confirmation-email row is hidden an
 
 **2026-08-19 (v760) — the `discovery` checkbox that sentence described did not actually exist until now.** `<stall> ∈ discovery / ft / decision` was true of the *backend* whitelist from day one, but `DiscoveryViewer` rendered neither the 4-business-day escalation row nor its **"Reached out?"** box, so the discovery stall had no surface at all — the doc above was describing the intended set, not the built one. It now renders the same `autoStep` + `StallAckRow` pair the decision/FT stalls carry, gated on `discovery_pf_notified_at`, in **both** of `DiscoveryViewer`'s branches (form awaiting completion, and form submitted), hidden in `readOnly`. Render + persist were click-tested this time. Two live consequences: ticking it now also **clears that step's unread bells** and `pft/sweep.ts` **stops re-minting** the discovery PF bell (`.is("discovery_pf_ack_at", null)`) — but `automation_PFT_meetingemail` still **nulls `discovery_pf_notified_at`** on a non-`reschedule` send, which erases the row the checkbox hangs on. That null-out is flagged, not fixed.
 
-Phase 6 indicators (matching section only): **"Sent to Accountant Onboarding"** (green once
-`accountant_onboarding_id` exists) + **"Accountant onboarding progress"** (live stage from
-`pft_load_engagement` + a **View onboarding →** deep-link to that record).
+Phase 6 indicators (matching section only): **"Sent to Accountant Onboarding"** (green once an onboarding
+row is found) + **"Accountant onboarding progress"** (the onboarding list's Phase from `pft_load_engagement`,
+in `OnboardingPhaseChip`: *1 - Preliminary Meeting* ... *Ready to Create Accountant* in blue, *Complete · #N* in
+green, *Stopped* in red; + a **View onboarding →** deep-link). The phase and its tracker step turn **Done** once
+the member is created. **(2026-11-20)** The row is found through `accountant_onboarding_id`, else the one
+onboarding row with the client's email (`utils/pft-linked-onboarding.ts`): an accountant moved over from the old
+system can have no `pft_engagement` row at all (#777).
 
 ## VFO Fast Track / VFO Associate recipient response
 `automation_PFT_ftresponse` (PUBLIC, token, idempotent on `ft_response`) — shared by BOTH the VFO FT and (as
