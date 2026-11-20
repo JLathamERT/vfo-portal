@@ -14,14 +14,19 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 
+// The first part of a description (its Objective), shown as a two-line teaser.
+function serviceObjective(description) {
+  return String(description || '').split('|')[0].trim()
+}
+
 function formatServiceDetails(description) {
   if (!description) return ''
   const parts = description.split('|')
   const labels = ['Objective', 'Available to', 'Includes', 'Tailoring Options']
-  return parts.map((part, i) => part.trim() ? `<div style="margin-bottom:8px;text-align:left;"><span style="color:var(--vfo-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">${labels[i] || ''}</span><div style="color:#44557a;font-size:13px;margin-top:2px;">${escapeHtml(part.trim())}</div></div>` : '').join('')
+  return parts.map((part, i) => part.trim() ? `<div style="margin-bottom:8px;text-align:left;"><span style="color:var(--vfo-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">${labels[i] || ''}</span><div style="color:var(--vfo-ink-2);font-size:13px;margin-top:2px;">${escapeHtml(part.trim())}</div></div>` : '').join('')
 }
 
-const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }
+const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
 const bannerStyle = { background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.4)', color: 'var(--vfo-success-text)', fontWeight: 500, padding: '14px 20px', borderRadius: '10px', fontSize: '14px', marginBottom: '20px', textAlign: 'left' }
 // The hosts funnel failures through showBanner('Error: ...'), so the prefix is
 // the discriminator the historical single green banner never had.
@@ -87,6 +92,8 @@ export function gcTypeChip(tx) {
       : tx.type === 'refunded' ? ['Refunded', '0,149,255', '#0095ff']
         : tx.type === 'deducted' ? ['Deducted', '224,103,23', '#e06717']
         : tx.type === 'membership' ? ['Membership', '124,58,237', '#7c3aed']
+        // A sale's free credits (Black Friday, 2026-11-20).
+        : tx.type === 'bonus' ? ['Bonus', '255,159,28', '#d97706']
         : ['Redeemed', '231,76,60', '#d93025']
   return <span style={{ fontSize: '11px', padding: '2px 10px', borderRadius: '999px', background: `rgba(${rgb},0.15)`, color: hex, fontWeight: 600, border: `1px solid rgba(${rgb},0.3)`, whiteSpace: 'nowrap' }}>{label}</span>
 }
@@ -94,6 +101,7 @@ export function gcTypeChip(tx) {
 // The "By" column (gc_transactions.actor_name / actor_role, 2026-10-02). Rows
 // written before the column existed, and Stripe purchases, carry none.
 export function gcActorLabel(tx) {
+  if (tx.type === 'bonus') return 'System'
   if (tx.actor_role === 'system') return 'System (renewal)'
   if (!tx.actor_name) return '—'
   return tx.actor_role === 'admin' ? `${tx.actor_name} (admin)` : tx.actor_name
@@ -103,7 +111,7 @@ export function GCTransactionHistory({ transactions }) {
   const isPhone = useIsPhone()
   return (
     <div style={sectionStyle}>
-      <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Transaction History</div>
+      <div style={{ fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }}>Transaction History</div>
       {transactions === null
         ? Array.from({ length: 3 }).map((_, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
@@ -297,6 +305,12 @@ export function GCServicesView({
   if (!active) return null
 
   const pillBase = { padding: '4px 12px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap' }
+  // The member portal's card heading + eyebrow (as on the Dashboard), and the
+  // service tiles: two across, one on a phone (2026-11-20).
+  const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
+  const eyebrow = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }
+  const tileGrid = { display: 'grid', gridTemplateColumns: isPhone ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: isPhone ? '10px' : '14px' }
+  const tileStyle = { display: 'flex', flexDirection: 'column', padding: isPhone ? '14px' : '18px', borderRadius: '14px', border: '1px solid var(--vfo-border-soft)', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)', minWidth: 0 }
   const cancelBtnStyle = { padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: '#d93025', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }
   // Borderless on purpose. A second OUTLINED control beside Cancel widened the
   // right-hand cluster enough to wrap the service name onto two lines; a quiet
@@ -325,112 +339,101 @@ export function GCServicesView({
   return (
     <>
       {banner && <div style={banner.startsWith('Error') ? errorBannerStyle : bannerStyle}>{banner}</div>}
+      {/* The balance, so a member knows what they can redeem (2026-11-20). */}
+      <div style={{ ...sectionStyle, padding: 0, overflow: 'hidden' }}>
+        <div style={{ height: '4px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 55%, #0a85e8 100%)' }} />
+        <div style={{ padding: isPhone ? '14px 16px' : '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+          <div>
+            <div style={eyebrow}>{adminMode ? "Member's Balance" : 'Your Balance'}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <span style={{ fontWeight: 800, letterSpacing: '-0.03em', fontSize: '26px', color: 'var(--vfo-heading)', lineHeight: 1.15, minHeight: '30px', display: 'inline-flex', alignItems: 'center' }}>
+                {balance === null ? <Skeleton width={50} height={24} /> : balance}
+              </span>
+              {balance !== null && <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-muted)' }}>Growth {balance === 1 ? 'Credit' : 'Credits'}</span>}
+            </div>
+          </div>
+          {!adminMode && onBuyCredits && (
+            <button onClick={onBuyCredits} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-link)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>Buy credits</button>
+          )}
+        </div>
+      </div>
+
       {!servicesLoaded && Array.from({ length: 2 }).map((_, ci) => (
         <div key={ci} style={sectionStyle}>
-          <Skeleton width={150} height={12} style={{ marginBottom: '18px' }} />
-          {Array.from({ length: 4 }).map((_, ri) => (
-            <div key={ri} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '14px', borderBottom: '1px solid var(--vfo-border-soft)', marginBottom: '14px' }}>
-              <Skeleton width="42%" height={14} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Skeleton width={28} height={14} />
-                <Skeleton width={72} height={30} style={{ borderRadius: '6px' }} />
+          <Skeleton width={170} height={16} style={{ marginBottom: '22px' }} />
+          <div style={tileGrid}>
+            {Array.from({ length: 4 }).map((_, ri) => (
+              <div key={ri} style={{ ...tileStyle, cursor: 'default' }}>
+                <Skeleton width="70%" height={15} />
+                <Skeleton width={84} height={20} style={{ marginTop: '10px', borderRadius: '999px' }} />
+                <Skeleton width="92%" height={12} style={{ marginTop: '14px' }} />
+                <Skeleton width="60%" height={12} style={{ marginTop: '6px' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+                  <Skeleton width={50} height={12} />
+                  <Skeleton width={84} height={32} style={{ borderRadius: '8px' }} />
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ))}
+      {servicesLoaded && categories.length === 0 && (
+        <div style={{ ...sectionStyle, color: 'var(--vfo-muted)', fontSize: '14px' }}>No services are available right now.</div>
+      )}
       {servicesLoaded && categories.map(cat => (
         <div key={cat} style={sectionStyle}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>{cat}</div>
-          {catMap[cat].map(svc => {
-            const sub = liveSubByService[svc.id]
-            const noun = intervalNoun(svc.billing_interval)
-            const short = balance !== null && balance < svc.credit_cost
-            // Phone (2026-10-28): one balanced row per service - the name over its
-            // cost (and a subscription's status) on the left; a small round Details
-            // button and one fixed-size Redeem (or Cancel) on the right. The wrapped
-            // layout put Details and Redeem in a different place on every row.
-            if (isPhone) return (
-              <div key={svc.id} style={{ paddingBottom: '12px', borderBottom: '1px solid var(--vfo-border-soft)', marginBottom: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: 'var(--vfo-ink)', fontSize: '14px', lineHeight: 1.35 }}>{svc.name}</div>
-                    <div style={{ color: 'var(--vfo-muted)', fontSize: '12.5px', marginTop: '2px' }}>
-                      <strong style={{ color: 'var(--vfo-ink)', fontWeight: 700 }}>{svc.credit_cost}</strong> {noun ? `credits / ${noun}` : 'credits'}
+          <div style={cardTitle}>{cat}</div>
+          <div style={tileGrid}>
+            {catMap[cat].map(svc => {
+              const sub = liveSubByService[svc.id]
+              const noun = intervalNoun(svc.billing_interval)
+              const short = balance !== null && balance < svc.credit_cost
+              const free = Number(svc.credit_cost) === 0
+              const objective = serviceObjective(svc.description)
+              const open = !!openDetails[svc.id]
+              return (
+                <div key={svc.id} style={{ ...tileStyle, borderColor: sub ? 'rgba(27,146,84,0.45)' : 'var(--vfo-border-soft)' }}>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-ink)', lineHeight: 1.35 }}>{svc.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                    {free
+                      ? <span style={{ ...pillBase, background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)' }}>Free</span>
+                      : <span style={{ ...pillBase, background: 'rgba(18,94,204,0.1)', color: '#125ecc' }}>{svc.credit_cost} {creditWord(Number(svc.credit_cost))}{noun ? ` / ${noun}` : ''}</span>}
+                    {noun && <span style={{ ...pillBase, background: 'var(--vfo-tint)', color: 'var(--vfo-muted)' }}>Renews every {noun}</span>}
+                  </div>
+                  {objective && !open && (
+                    <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.5, marginTop: '10px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{objective}</div>
+                  )}
+                  {open && (
+                    <div style={{ marginTop: '12px', padding: '14px', background: 'var(--vfo-tint)', borderRadius: '10px', textAlign: 'left' }}
+                      dangerouslySetInnerHTML={{ __html: formatServiceDetails(svc.description) }} />
+                  )}
+                  {sub && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+                      {sub.status === 'active'
+                        ? <span style={{ ...pillBase, background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)' }}>Subscribed - renews {fmtDate(sub.next_charge_date)}</span>
+                        : <span style={{ ...pillBase, background: 'rgba(176,141,38,0.15)', color: '#b08d26' }}>On hold - add credits to resume</span>}
+                      {adminMode && <button onClick={() => { setRescheduleTarget({ sub, svc }); setRescheduleDate(subIntervalLocal(sub.next_charge_date, svc.billing_interval)) }} style={rescheduleBtnStyle}>Edit date</button>}
                     </div>
-                    {sub && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '5px' }}>
-                        {sub.status === 'active'
-                          ? <span style={{ ...pillBase, background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)' }}>Renews {fmtDate(sub.next_charge_date)}</span>
-                          : <span style={{ ...pillBase, background: 'rgba(176,141,38,0.15)', color: '#b08d26' }}>On hold - add credits</span>}
-                        {adminMode && <button onClick={() => { setRescheduleTarget({ sub, svc }); setRescheduleDate(subIntervalLocal(sub.next_charge_date, svc.billing_interval)) }} style={rescheduleBtnStyle}>Edit date</button>}
-                      </div>
-                    )}
-                  </div>
-                  {svc.description && (
-                    <button onClick={() => toggleDetails(svc.id)} title={openDetails[svc.id] ? 'Hide details' : 'Details'} aria-label={openDetails[svc.id] ? 'Hide details' : 'Details'} aria-expanded={!!openDetails[svc.id]}
-                      style={{ width: '30px', height: '30px', flexShrink: 0, borderRadius: '50%', border: '1px solid var(--vfo-border-mid)', background: openDetails[svc.id] ? 'var(--vfo-tint)' : 'transparent', color: 'var(--vfo-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><line x1="12" y1="11" x2="12" y2="16" /><line x1="12" y1="7.5" x2="12" y2="7.5" /></svg>
-                    </button>
                   )}
-                  {sub ? (
-                    <button onClick={() => setCancelTarget({ sub, svc })} style={{ ...cancelBtnStyle, width: '74px', padding: '6px 0', fontSize: '12px', flexShrink: 0 }}>Cancel</button>
-                  ) : (
-                    <button onClick={() => setConfirmService(svc)} title={short ? 'Not enough credits' : undefined}
-                      style={{ width: '74px', padding: '6px 0', flexShrink: 0, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', ...(short
-                        ? { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-muted)' }
-                        : { background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff' }) }}>Redeem</button>
-                  )}
-                </div>
-                {openDetails[svc.id] && (
-                  <div style={{ marginTop: '10px', padding: '12px', background: 'var(--vfo-tint)', borderRadius: '8px', textAlign: 'left' }}
-                    dangerouslySetInnerHTML={{ __html: formatServiceDetails(svc.description) }} />
-                )}
-              </div>
-            )
-            return (
-              <div key={svc.id} style={{ paddingBottom: '14px', borderBottom: '1px solid var(--vfo-border-soft)', marginBottom: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 240px', minWidth: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ color: 'var(--vfo-ink)', fontSize: '14px', textAlign: 'left' }}>{svc.name}</span>
-                    {svc.description && (
-                      <button onClick={() => toggleDetails(svc.id)}
-                        style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        {openDetails[svc.id] ? 'Hide' : 'Details'}
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
-                    <span style={{ color: 'var(--vfo-ink)', fontWeight: '700' }}>{svc.credit_cost}</span>
-                    <span style={{ color: 'var(--vfo-muted)', fontSize: '11px' }}>{noun ? `credits / ${noun}` : 'credits'}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: 'auto', paddingTop: '14px' }}>
+                    {svc.description
+                      ? <button onClick={() => toggleDetails(svc.id)} aria-expanded={open} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--vfo-link)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>{open ? 'Hide details' : 'Details'}</button>
+                      : <span />}
                     {sub ? (
-                      <>
-                        {sub.status === 'active' ? (
-                          <span style={{ ...pillBase, background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)' }}>Subscribed — renews {fmtDate(sub.next_charge_date)}</span>
-                        ) : (
-                          <span style={{ ...pillBase, background: 'rgba(176,141,38,0.15)', color: '#b08d26' }}>On hold — add credits to resume</span>
-                        )}
-                        {adminMode && <button onClick={() => { setRescheduleTarget({ sub, svc }); setRescheduleDate(subIntervalLocal(sub.next_charge_date, svc.billing_interval)) }} style={rescheduleBtnStyle}>Edit date</button>}
-                        <button onClick={() => setCancelTarget({ sub, svc })} style={cancelBtnStyle}>Cancel</button>
-                      </>
-                    ) : balance !== null && balance < svc.credit_cost ? (
-                      <button onClick={() => setConfirmService(svc)} title="Not enough credits"
-                        style={{ padding: '6px 18px', borderRadius: '6px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }}>Redeem</button>
+                      <button onClick={() => setCancelTarget({ sub, svc })} style={{ ...cancelBtnStyle, padding: '7px 16px', fontSize: '12.5px', borderRadius: '8px' }}>Cancel</button>
                     ) : (
-                      <button onClick={() => setConfirmService(svc)} style={{ padding: '6px 18px', borderRadius: '6px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '12px', cursor: 'pointer' }}>Redeem</button>
+                      <button onClick={() => setConfirmService(svc)} title={short ? 'Not enough credits' : undefined}
+                        style={{ padding: '8px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', ...(short
+                          ? { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-muted)' }
+                          : { background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff' }) }}>Redeem</button>
                     )}
                   </div>
                 </div>
-                {openDetails[svc.id] && (
-                  <div style={{ marginTop: '12px', padding: '16px', background: 'var(--vfo-tint)', borderRadius: '8px', textAlign: 'left' }}
-                    dangerouslySetInnerHTML={{ __html: formatServiceDetails(svc.description) }} />
-                )}
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       ))}
-
       {confirmService && (
         <div onClick={() => { if (!redeeming) setConfirmService(null) }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(9,14,26,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>

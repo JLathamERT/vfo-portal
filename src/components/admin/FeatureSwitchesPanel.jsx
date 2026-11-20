@@ -95,6 +95,19 @@ const CARDS = [
     onConfirm: 'ON for SDP\'s tax planners and team members, starting immediately.',
     offConfirm: 'OFF for SDP\'s tax planners and team members. Admins keep More ▸ SDP ATSG.',
   },
+  {
+    id: 'gc_black_friday',
+    keys: ['gc_black_friday'],
+    title: 'Black Friday sale',
+    on: [
+      [null, 'Members see the Black Friday bar at the top of every portal page: "Starts in" before Fri 27 Nov 12:00am PT, then "Ends in" until Tue 1 Dec 12:00am PT. Clicking it opens the Growth Credits packages.'],
+      [null, 'During the sale the 1 and 10 credit packages are buy one, get one free (2 for $100, 20 for $950), each deal once per member.'],
+      [null, 'The public page vfoportal.com/black-friday takes orders from members who are not signed in. They appear in Growth Credits > Purchases to be allocated to a member.'],
+    ],
+    off: 'No bar, no free credits and no public page. Orders already paid keep their free credits, and Purchases > Allocate still works.',
+    onConfirm: 'ON for every member and the public page, starting immediately.',
+    offConfirm: 'OFF: the bar, the free credits and the public page disappear.',
+  },
 ]
 
 // Switches that are permanently ON and must not be flipped from this tab (Jake):

@@ -2,6 +2,7 @@ import { Fragment, useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { TableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
+import GCPurchasesTable from './GCPurchasesTable'
 
 // Growth Credits page (top-level admin tab, grantable per admin in the Admin
 // Editor via the 'growth_credits' allowed_tabs key). Two sub-tabs: Redemptions
@@ -18,6 +19,8 @@ const BLUE = '#125ecc'
 
 const SUBTABS = [
   { key: 'redemptions', label: 'Redemptions' },
+  // Every Growth Credits sale + allocating public Black Friday orders (2026-11-20).
+  { key: 'purchases', label: 'Purchases' },
   { key: 'menu', label: 'Menu' },
 ]
 
@@ -112,7 +115,7 @@ export default function GrowthCreditsRedemptionsPage() {
   })()
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1050px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ padding: '24px', maxWidth: '1320px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ ...card, marginBottom: '18px' }}>
         <p style={{ fontSize: '10.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 4px' }}>Admin</p>
         <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>Growth Credits</h2>
@@ -129,6 +132,8 @@ export default function GrowthCreditsRedemptionsPage() {
 
       {status && <div style={{ background: 'var(--vfo-accent-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-accent-text)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{status}</div>}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px', marginBottom: '14px' }}>{error}</div>}
+
+      {section === 'purchases' && <GCPurchasesTable />}
 
       {section === 'redemptions' && (<>
       <div style={card}>
