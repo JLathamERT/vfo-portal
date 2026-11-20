@@ -9,6 +9,7 @@ import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { TAILORED_PROGRAM } from '../../shared/accountantPrograms'
+import OnboardingPhaseChip from './OnboardingPhaseChip'
 
 // Tailored Route for Accountants (2026-11-12): two steps. The Tailored meeting
 // (Completed / No show, recorded only), then the Post Meeting Decision Email: the
@@ -339,7 +340,7 @@ function DecisionHistory({ eng, onboarding, readOnly, onAck, onReply, onOpenOnbo
             {onboarding && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
                 <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)', flex: 1 }}>Accountant onboarding progress</span>
-                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{onboarding.stage_label}</span>
+                <OnboardingPhaseChip onboarding={onboarding} />
                 {!readOnly && <button onClick={() => onOpenOnboarding(onboarding.id)} style={blueBtn}>View onboarding →</button>}
               </div>
             )}

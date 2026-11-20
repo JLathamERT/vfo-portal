@@ -9,6 +9,21 @@
 
 ---
 
+## 2026-11-20 (d) — New Model Sale "Agreement signed" date + the PFT onboarding step shows the list's phase — by Jake
+
+Branch `claude/pft-onboarding-step4` (both repos), the same chat as (a) and (b). Action count **694** (unchanged). No DDL, no template, no switch.
+
+**Agreement signed was n/a.** William Winter (live accountant 28) was created on 2026-11-20 while his bank payment cleared, and his New Model Sale email said *Agreement signed: n/a*. The VFO FT / PFT / Corporate email filled `[AGREEMENT_SIGNED_DATE]` from `invoice_sent_at`, a stand-in that held only while the invoice always went out before Create (#776). It now reads the date the accountant / advisor signed (`agreement_signed_by_accountant_at` / `_advisor_at`), as the Associate / FC emails already did.
+
+**The PFT page's onboarding step.** William's PFT page showed step 4 *In progress* with *Sent to Accountant Onboarding: Pending* and progress *—*: he came over from the old system with no `pft_engagement` row, and every reader found the onboarding only through `pft_engagement.accountant_onboarding_id` (#777). He was the only such client on live. Now:
+- `utils/pft-linked-onboarding.ts` finds the row through the link, else the one onboarding row with the client's email (two or more = no link), for `pft_load_engagement` and the PFT / Tailored Route Client Overview engines.
+- `accountantOnboardingPhase` (`utils/onboarding-order.ts`) gives the onboarding list's Phase - *1 - Preliminary Meeting*, *2 - Automated steps*, *3 - Add New Accountant*, *Ready to Create Accountant*, *Complete*, *Stopped* - in place of the old stage names (*PC Admin*), which never said Complete. `pft_load_engagement` returns it as `stage_label` + `phase_tone` + `member_number`.
+- PFT and Tailored Route pages: the progress row is a new `OnboardingPhaseChip` (green dot *Complete · #30010*, blue *Ready to Create Accountant*, red *Stopped*, a light blue chip while in progress). On the PFT page, the VFO-FT / VFO-Associate phase and its tracker step turn **Done** once the member is created.
+
+**Tested on the test site** (`vfo-admin-api-jake`, Jake): Jake PFT Client 10001-PFT1, which has no engagement row (like William), with its decision set to VFO FT confirmed by SQL - step 4 found onboarding 100049 by email and showed *1 - Preliminary Meeting*; then 100049 stamped as created (member 30999, display only) - step 4 Done, green tracker step, *Complete · #30999*. Both stamps undone after. **Not exercised:** the New Model Sale email with the signed date (it shows on the next accountant created while a bank payment clears), the Tailored Route page's chip, and the Client Overview label.
+
+---
+
 ## 2026-11-20 (c) — SDP ATSG: VFO Services on the agreement, Anton countersigns, VFO Services back to 10%, the retainer continues year after year — by Jake
 
 **Why.** After the 2026-11-17 SDP ATSG release, SDP asked for the agreement to be "normally headed up": VFO Services alone, "the Firm" = VFO Services, signed by Anton as CEO of VFO Services (not SDP's CEO). With VFO Services fronting it, Jake put its fixed share back to 10% (from 5%) on retainers and impact fees. And the retainer now continues year after year, with a reminder about 11 months in, a way to change a future year, and (Jake's notes while testing) a prompt to SDP well before the client is told next year's terms, plus an easy way to end it after the year under way.
