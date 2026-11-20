@@ -234,6 +234,24 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
   charged to the saved method immediately (whole dollars; New Model card gross-up), remaining
   scheduled rows voided, plan `terminated`. $0 fee just terminates. A failed fee charge still
   terminates and leaves a `declined` termination row visible for follow-up.
+- **Early termination, 90 days' notice** *(2026-11-20, Tracy's request)*: an ordinary active MONTHLY
+  plan (not `tier1_monthly`, tracking or Growth Credits) can end before its year is out with no fee.
+  The plan card's red **Early termination (90 days' notice)** button (anyone with the accounting tab,
+  like the auto-renew toggle) opens a **Final payment** dropdown of the plan's scheduled payments plus
+  *No further payments*; the default is this month's payment plus two more (the last scheduled one
+  before the 1st of the month three months on). `membership_end_early` (`actions/membership/end-early.ts`)
+  claims `ending_on` = the last day the final payment covers (Jan 4 -> Feb 3) + `auto_renew=false`,
+  cancels every scheduled row after the final payment, and drafts **`MEMBERSHIP_end_of_membership|early`**
+  (Send, Cc Tray, Bcc Paul + Anton; migration `20261120200000`). From then on the card shows a rose
+  *Ends <date>* pill and hides Pause, next year's terms and the auto-renew toggle (the handlers refuse
+  them too). **Sweep pass 3b** terminates it once `ending_on` has passed AND no row is still
+  `scheduled` / `processing` / `missed` / `declined`, so a failed final payment can still be paid from
+  the pay-now link (`setup-checkout` refuses a terminated plan). **Receipts** never count `canceled`
+  rows (`invoice-receipt.ts` filters them out of the year; before this a cancelled month still
+  counted as "remaining"), and an ending plan's receipt says when it ends instead of when it renews:
+  *"Your final payment of $X will be collected automatically on <date>. Your membership ends on <date>."*
+  / *"That is your final membership payment. Your membership ends on <date>."* Row pills: *Scheduled*
+  slate `#5b6b8c`, *Canceled* pale grey `#8a94a6`, *Waived* grey `#6b7280`.
 - **Update payment method**: an active plan's same `/membership-pay` link becomes an
   "Update Your Payment Method" page (the failed-email button target) — **save-only when nothing is
   owed; when the plan carries missed/declined rows it is "Update Your Payment Method & Pay Now"
@@ -830,7 +848,7 @@ Made by Create on a Tier 1 onboarding ([advisor-accountant-onboarding.md](adviso
 **What `tier1_monthly` changes in the sweep and the handlers:**
 - **Pass 0** (renewal notice) skips the plan. **Pass 1** rolls it into the next twelve months at the SAME price on its own day — no email, no next-year terms (decision 98).
 - **Pass 3** charges it like any plan, with the card fee keyed on the plan stamp (decision 103 — its members are Legacy Model), Stripe text `tier1PlanStripeDescription` (*ERT Membership + VFO Portal Licence ($25) - <type> - (<member#>) <name> - <Month YYYY>*; connected *VFO Portal Licence ($25) - VFO Associate (Connected) - …* + *- paid by (<#>) <advisor>*) and `metadata[vfo_portal_licence_cents]` + `metadata[tier1]=1`. Receipt `MEMBERSHIP_receipt_email|monthly|tier1` (or `|tier1_advisor_pays`) with the two lines and no *Payment X of Y*; when the advisor pays, failure email `MEMBERSHIP_payment_failed|tier1_advisor_pays`. Arrears handling is the usual one (decision 93).
-- **Pass 3b (new):** an active plan whose `ending_on` has passed → `terminated` (as Terminate leaves one, no fee).
+- **Pass 3b (new):** an active plan whose `ending_on` has passed → `terminated` (as Terminate leaves one, no fee). Since 2026-11-20 the pass also closes Early-terminated ordinary plans, but only once nothing is still owed or clearing (*Early termination* above); a `tier1_monthly` plan still closes on the date alone.
 - **Pass 3c (new):** the $25 transfer backstop (below).
 - **End membership (30 days' notice)** — `membership_end_with_notice` (AUTH + `TAB_ACTIONS.accounting`, `actions/membership/end-with-notice.ts`): claims `ending_on` = today (ET) + 30 days and `auto_renew=false` first (two clicks cannot both run), cancels every scheduled row due after it (rows due on or before are still collected), drafts `MEMBERSHIP_end_of_membership|tier1` with the final-payment line. Refuses a plan that is not `tier1_monthly`, not active, or already ending.
 - **Refused** with `TIER1_PLAN_REFUSAL`: `membership_pause`, `membership_terminate`, `membership_next_year_save`, and `membership_plan_cancel`'s `auto_renew_off` / `auto_renew_on` (`cancel_now` still allowed).

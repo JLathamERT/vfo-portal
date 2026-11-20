@@ -9,6 +9,24 @@
 
 ---
 
+## 2026-11-20 (g) — Membership Early termination (90 days' notice) + receipts stop counting cancelled payments + membership pill colours — by Jake
+
+Branch `claude/ert-membership-invoice-*` (both repos), one chat. Action count 699 -> **700** (`membership_end_early`). No DDL; one data migration, `20261120200000_membership_end_early_template.sql` (the new email), test site done, live at release. Hub: action count, DOC MAP membership row.
+
+**Why.** Operations asked (2026-11-20) for an "Early Termination - Three-Month Billing" option. A member on a monthly plan gave the 90 days' notice the agreement asks for after a failed payment; the only tools were Terminate (charges a fee now) and the auto-renew toggle (keeps the whole year), and the update-method email told the member the full year was still to come. That member's later months were cancelled by hand on live the same day (JLathamERT/vfo-edge-functions#612, which also holds the click owed after release).
+
+**Built.** `membership_end_early` (`actions/membership/end-early.ts`, AUTH + `TAB_ACTIONS.accounting`): active monthly plans only (refuses `tier1_monthly`, tracking, Growth Credits, annual). The admin picks the final payment (Jake: admin picks; the default is this month's payment plus two more) or *No further payments*. It claims `ending_on` (the last day the final payment covers) + `auto_renew=false`, cancels the scheduled rows after the final payment and drafts `MEMBERSHIP_end_of_membership|early` (wording approved by Jake; Send, Cc Tray, Bcc Paul + Anton). Sweep pass 3b, until now Tier 1 only, also closes these plans, but only once no row is still scheduled / clearing / missed / declined, so a failed final payment can still be paid from the pay-now link. Pause, next year's terms and auto-renew-on are refused on an ending plan. The plan card has the red *Early termination (90 days' notice)* button with a Final payment dropdown, a rose *Ends <date>* pill, and the paid counter leaves cancelled rows out.
+
+**Receipts (#779).** `invoice-receipt.ts` counted `canceled` rows in the year, so *Payment X of Y* and *Your remaining N payments* would have counted the cancelled months. It now filters them out, and an ending plan's receipt says when it ends instead of when it renews (wording approved by Jake).
+
+**Pill colours (Jake).** *Scheduled* and *Canceled* were the same grey: *Scheduled* is now slate `#5b6b8c`, *Canceled* (rows and plan status) pale grey `#8a94a6`; *Ends <date>* moved from the orange that *Clearing* / *Paused* / *Meeting requested* use to rose `#be123c` (Tier 1 plans too). The email help labels said "Bcc: Paul, Anna" — `aanderson@` is Anton (8 labels + one line in `tables/documents.md`).
+
+**Test deploys.** `vfo-admin-api-jake` v67 ran this branch; the shared test `vfo-admin-api` stayed on main. A test plan was seeded on test member 10001 shaped like the real one.
+
+**Tested on the test site (2026-11-20).** By Jake: Early termination with the default final payment (rows, end date, pill, hidden buttons, the confirmation draft), *No further payments*, the new pill colours. By Claude, through `vfo-admin-api-jake` with the scheduled-job key: a receipt for a payment on an ending plan (200, receipt only, `REC-10001-0001`); the sweep left the ended plan active while a payment was still open and terminated it once paid (no other plan was due). **Not exercised:** an Early-terminated plan whose final payment FAILS and is then paid from the pay-now link; a card plan's receipt fee wording on an ending plan (JLathamERT/vfo-edge-functions#613).
+
+---
+
 ## 2026-11-20 (f) — Black Friday deal becomes "buy any 1-10, get the same free" + the client's wording + no flash of the sale — by Jake
 
 Branch `claude/black-friday-edits` (both repos), the same chat as (e), after (e) was released (v1130 / live-322). Action count **699** (unchanged). No DDL; one data migration, `20261121120000_gc_black_friday_any_amount.sql` (the sale row's `bonus`), test site done, live at release. No template change. Hub: live `send_mode` templates 267 of 375 → **268 of 376** (the (e) buyer email, applied at its release).
