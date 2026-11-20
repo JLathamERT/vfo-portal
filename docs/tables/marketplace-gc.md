@@ -46,7 +46,7 @@ Append-only credit ledger. `balance_after` is captured per-tx so audits don't ne
 |---|---|---|
 | `id` | integer | pk |
 | `member_number` | text | not null. fk → `member_plugin_settings.plugin_member_number` (CASCADE). |
-| `type` | text | not null. Bare text, no CHECK. The values actually written are **`purchased`** / **`redeemed`** / **`refunded`** / **`deducted`** (an admin removal by `gc_deduct_credits`, negative amount, since 2026-10-13) / **`membership`** (a Corporate Member's annual membership paid in credits — `membership_gc_plan_save` at creation, actor = the admin, and the membership sweep's renewal, actor `System`; negative amount, since 2026-10-21; counted as `credits_membership` by `load-accounting.ts`) — NOT `'add'`/`'purchase'`, which this row claimed until 2026-09-03 and which nothing has ever written. **`purchased` covers TWO different events and cannot tell them apart:** a real Stripe sale (`fulfillGrowthCredits`) and an admin comp (`gc_add_credits`, which takes no money). The discriminator is **`stripe_session_id`** — present on a sale, NULL on a grant — and every reader that cares must test it, because the type alone reports a comp as a sale (#466). `load-accounting.ts` splits `credits_purchased` / `credits_granted` on exactly that test, and both credit-history renderers label the row from it. |
+| `type` | text | not null. Bare text, no CHECK. The values actually written are **`purchased`** / **`redeemed`** / **`refunded`** / **`deducted`** (an admin removal by `gc_deduct_credits`, negative amount, since 2026-10-13) / **`membership`** (a Corporate Member's annual membership paid in credits — `membership_gc_plan_save` at creation, actor = the admin, and the membership sweep's renewal, actor `System`; negative amount, since 2026-10-21; counted as `credits_membership` by `load-accounting.ts`) / **`bonus`** (a sale's FREE credits, 2026-11-20 — `creditGcPurchase` writes it right after the paid `purchased` row, positive amount, no `stripe_session_id`, no `amount_usd`, actor `System`; counted as `credits_bonus`, never as sold) — NOT `'add'`/`'purchase'`, which this row claimed until 2026-09-03 and which nothing has ever written. **`purchased` covers TWO different events and cannot tell them apart:** a real Stripe sale (`fulfillGrowthCredits`) and an admin comp (`gc_add_credits`, which takes no money). The discriminator is **`stripe_session_id`** — present on a sale, NULL on a grant — and every reader that cares must test it, because the type alone reports a comp as a sale (#466). `load-accounting.ts` splits `credits_purchased` / `credits_granted` on exactly that test, and both credit-history renderers label the row from it. |
 | `amount` | numeric(10,2) | not null. Signed (positive = credit, negative = debit). Quarter steps since 2026-10-13 (CHECK `gc_transactions_amount_quarter_check`). |
 | `balance_after` | numeric(10,2) | not null. Snapshot of `gc_balances.balance` after this tx. Quarter steps since 2026-10-13 (CHECK `gc_transactions_balance_after_quarter_check`). |
 | `description` | text | |
@@ -73,6 +73,43 @@ The once-per-checkout latch for the bank "payment started" email (`GC_purchase_a
 | `created_at` | timestamptz | not null, default `now()` |
 
 **Touched by:** `sendGcAchConfirmation` (`utils/gc-purchase-emails.ts`, from the Stripe webhook): an `ignoreDuplicates` upsert claims, a delete releases on failure.
+
+## `gc_promotions` *(NEW 2026-11-20)*
+
+One row per Growth Credits sale ([flows/gift-credits.md](../flows/gift-credits.md) Flow F). RLS on + deny-all (anon probe `*/0` on the test site, 2026-11-20). Migration `20261120120000_gc_promotions_orders.sql`, which also inserts the live row and the `gc_black_friday` switch (Off). Read through `utils/gc-promotions.ts` only, and only while `gc_black_friday` is On.
+
+| Column | Type | Notes |
+|---|---|---|
+| `key` | text | pk. `black_friday_2026`. |
+| `title` | text | not null. Shown everywhere: *"Black Friday"*. |
+| `starts_at` / `ends_at` | timestamptz | not null, CHECK `ends_at > starts_at`. Live: `2026-11-27 08:00Z` / `2026-12-01 08:00Z` (midnight to midnight PT, Fri-Mon). The test site's dates are moved by hand to test each phase. |
+| `bonus` | jsonb | not null. Package (credits, as text) → free credits: `{"1": 1, "10": 10}`. A package not named gets no bonus. |
+| `created_at` | timestamptz | default `now()` |
+
+## `gc_orders` *(NEW 2026-11-20)*
+
+Every Growth Credits checkout from 2026-11-20 — the member portal's (`source='portal'`) and the public Black Friday page's (`source='public'`). RLS on + deny-all (anon probe `*/0`, 2026-11-20). Same migration. The once-per-member deal rule reads it (statuses `clearing`, `paid`, `allocated` count as used), and Growth Credits → Purchases lists it.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigserial | pk. Stamped on the session as `metadata.gc_order_id`; the webhook acts only when this row's `stripe_session_id` is the event's session (#410). |
+| `source` | text | not null, CHECK `portal` \| `public`. |
+| `promo_key` | text | fk → `gc_promotions.key`. Set only when a bonus was given. |
+| `member_number` | text | Portal: at checkout. Public: set by `gc_allocate_order`. No foreign key. |
+| `buyer_first_name` / `buyer_last_name` / `buyer_email` / `buyer_phone` | text | Public only, as typed (names tidied by `formatPersonName`, phone by `formatPhone`, email lowercased). |
+| `credits` / `bonus_credits` | integer | The paid credits / the free ones decided at checkout (`bonus_credits` set to 0 by an Allocate *paid only*). |
+| `price` / `card_fee` / `amount_total` | numeric(10,2) | Package price, the card gross-up, what Stripe charged. |
+| `payment_method` | text | CHECK `card` \| `ach`. |
+| `stripe_session_id` | text | unique. |
+| `stripe_account` | text | CHECK `vfos` \| `ert`. |
+| `status` | text | not null, CHECK `checkout` (session open) \| `clearing` (bank on its way) \| `paid` (portal: credited; public: waiting to be allocated) \| `allocated` \| `failed` \| `expired` (replaced by a newer checkout, or Stripe refused it). |
+| `transaction_id` | bigint | The `purchased` `gc_transactions` row (no fk). The invoice handler finds the bonus through it. |
+| `paid_at` / `allocated_at` | timestamptz | |
+| `allocated_by` | text | The admin's NAME (`gcActorFor`). |
+| `buyer_email_sent_at` | timestamptz | The `GC_public_order_received` latch, claimed before the send (#611). |
+| `created_at` | timestamptz | default `now()` |
+
+**Touched by:** `gc_create_checkout`, `gc_public_checkout`, the Stripe webhook (GC branch + `async_payment_failed`), `gc_promo_member_claims`, `gc_purchases_load`, `gc_allocate_order`, `utils/gc-fulfil.ts`, `automation_GC_purchase_invoicereceipt` (reads the bonus), `sendGcPublicOrderEmail`.
 
 **Touched by:** `gc_load_transactions`, `gc_redeem`, `gc_add_credits`, `gc_deduct_credits`, `membership_gc_plan_save` + `automation_MEMBERSHIP_sweep` (type `membership`, 2026-10-21, via `utils/membership-gc.ts`), `gc_create_checkout` (after Stripe webhook confirms payment), `gc_update_redemption` (reject → `refunded` row), `automation_GC_recurring_sweep` (renewal `redeemed` rows).
 

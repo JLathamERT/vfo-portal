@@ -4,13 +4,14 @@ import { getSession, clearSession, callApi, loadCachedData, loadCachedAction, cl
 import MemberWebsitePlugin from '../components/shared/MemberWebsitePlugin'
 import MemberVault from '../components/shared/MemberVault'
 import MemberCIQ from '../components/shared/MemberCIQ'
-import MemberGCMarketplace from '../components/member/MemberGCMarketplace'
+import MemberGCMarketplace, { GCMarketplaceSkeleton } from '../components/member/MemberGCMarketplace'
 import MemberMSMTracking from '../components/member/MemberMSMTracking'
 import MemberTaxDiagnostic from '../components/member/MemberTaxDiagnostic'
 import ClientOverviewPanel from '../components/admin/ClientOverviewPanel'
 import MemberShowroom from '../components/member/MemberShowroom'
 import MemberGrowthPlan from '../components/member/MemberGrowthPlan'
 import PortalHeader from '../components/shared/PortalHeader'
+import { BlackFridayStrip } from '../components/shared/BlackFridayPromo'
 import MemberNavBar, { orderMemberPrograms, TIER1_TABS } from '../components/member/MemberNavBar'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { HeroAvatar } from '../components/shared/TrackKit'
@@ -51,6 +52,8 @@ export default function MemberPortal() {
     return sessionStorage.getItem('memberActiveTab') || 'profile'
   })
   const [showSettings, setShowSettings] = useState(false)
+  // The Black Friday strip's click opens Buy Credits on the GC Marketplace (2026-11-20).
+  const [gcBuyKey, setGcBuyKey] = useState(0)
   const [memberData, setMemberData] = useState(null)
   const [allMembers, setAllMembers] = useState([])
   const [memberConnections, setMemberConnections] = useState([])
@@ -154,6 +157,12 @@ export default function MemberPortal() {
         {!showSettings && <MemberNavBar activeTab={activeTab} onSelect={setActiveTab} programs={orderedEnabledPrograms} websiteEnabled={!!memberData?.website_enabled} tier1={tier1} />}
       </PortalHeader>
 
+      {/* Black Friday (2026-11-20): above every tab, for the members who have the
+          Growth Credits marketplace (Tier 1 has none). Hidden when no sale is on. */}
+      {tier1 === false && (
+        <BlackFridayStrip onShop={() => { setShowSettings(false); setActiveTab('gc'); setGcBuyKey(k => k + 1) }} />
+      )}
+
       {showSettings && <MemberSettings session={session} />}
 
       {!showSettings && (
@@ -169,7 +178,7 @@ export default function MemberPortal() {
           )}
 
           <div style={{ flex: 1, overflow: 'auto' }}>
-          {loading && activeTab && (activeTab === 'profile_edit' ? <MemberEditProfileSkeleton /> : <MemberProfileSkeleton />)}
+          {loading && activeTab && (activeTab === 'profile_edit' ? <MemberEditProfileSkeleton /> : activeTab === 'gc' ? <GCMarketplaceSkeleton /> : <MemberProfileSkeleton />)}
 
           {!loading && activeTab === 'profile' && memberData && (
             <MemberProfile member={memberData} allMembers={allMembers} memberConnections={memberConnections} />
@@ -202,8 +211,8 @@ export default function MemberPortal() {
               : <ComingSoon title="Growth Plan" />
           )}
           {!loading && activeTab === 'gc' && (
-            <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
-              <MemberGCMarketplace memberNumber={session.member_number} />
+            <div style={{ maxWidth: '980px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
+              <MemberGCMarketplace memberNumber={session.member_number} openBuyKey={gcBuyKey} />
             </div>
           )}
           {!loading && activeTab === 'vault' && (

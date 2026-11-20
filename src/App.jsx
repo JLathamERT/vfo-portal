@@ -58,6 +58,8 @@ const TaxQuestionPage = lazyPage(() => import('./pages/TaxQuestionPage'))
 const TaxIntakePage = lazyPage(() => import('./pages/TaxIntakePage'))
 const TaxDepositPayPage = lazyPage(() => import('./pages/TaxDepositPayPage'))
 const TaxDiagnosticPage = lazyPage(() => import('./pages/TaxDiagnosticPage'))
+const BlackFridayPage = lazyPage(() => import('./pages/BlackFridayPage'))
+const GrowthCreditsPayPage = lazyPage(() => import('./pages/GrowthCreditsPayPage'))
 const VaultUploadPage = lazyPage(() => import('./pages/VaultUploadPage'))
 import ClientLogin from './pages/ClientLogin'
 const ClientSetupPage = lazyPage(() => import('./pages/ClientSetupPage'))
@@ -133,6 +135,8 @@ export default function App() {
       <Route path="/tax-intake" element={<TaxIntakePage />} />
       <Route path="/tax-deposit-pay" element={<TaxDepositPayPage />} />
       <Route path="/tax-diagnostic" element={<TaxDiagnosticPage />} />
+        <Route path="/black-friday" element={<BlackFridayPage />} />
+        <Route path="/growth-credits-pay" element={<GrowthCreditsPayPage />} />
       <Route path="/vault-upload" element={<VaultUploadPage />} />
       <Route path="/client/login" element={<ClientLogin />} />
       <Route path="/client-setup" element={<ClientSetupPage />} />

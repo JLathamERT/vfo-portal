@@ -9,6 +9,10 @@ import { fileURLToPath } from 'node:url'
 // Every path emailed to a client or partner belongs in this list.
 const ROUTES = [
   'accountant-decide',
+  // The public Black Friday Growth Credits page (2026-11-20).
+  'black-friday',
+  // Buying Growth Credits: the bank-or-card page (2026-11-20).
+  'growth-credits-pay',
   'accountant-pay',
   'advisor-decide',
   'advisor-pay',
