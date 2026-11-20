@@ -12,6 +12,7 @@ import NewRequestModal from './backlog/NewRequestModal'
 import DenyDialog from './backlog/DenyDialog'
 import ArchiveDialog from './backlog/ArchiveDialog'
 import { inputStyle } from './backlog/BacklogModal'
+import { PortalBacklogSkeleton } from '../shared/skeletons'
 
 // More > Portal Backlog (2026-11-17): portal update requests, replacing the
 // "VFO Portal Update Requests" sheet. Every admin sees everything and can file a
@@ -153,12 +154,42 @@ export default function PortalBacklogPanel({ link }) {
     }
   }
 
+  const pageStyle = { maxWidth: '1800px', margin: '0 auto', padding: 'var(--vfo-gutter, 24px)', boxSizing: 'border-box', minWidth: 0 }
+
+  // The inner tabs sit above the hero, the way the Advisor KPIs page does it.
+  // They are chrome, so they show while the backlog loads too.
+  const viewTabs = (
+    <div role="tablist" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+      {[['tasks', 'Tasks'], ['requests', 'Requests']].map(([k, label]) => {
+        const active = view === k && !showArchive
+        return (
+          <button key={k} role="tab" aria-selected={active} onClick={() => { setView(k); setShowArchive(false) }}
+            style={{
+              padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+              fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap',
+              background: active ? 'var(--vfo-primary)' : 'var(--vfo-card)',
+              color: active ? '#ffffff' : 'var(--vfo-muted)',
+              border: `1px solid ${active ? 'var(--vfo-primary)' : 'var(--vfo-border-soft)'}`,
+            }}>
+            {label}{k === 'requests' && counts.pending > 0 ? ` (${counts.pending})` : ''}
+          </button>
+        )
+      })}
+    </div>
+  )
+
   if (!data) {
+    if (loadError) {
+      return (
+        <div style={pageStyle}>
+          <div style={{ color: '#e74c3c', fontWeight: 600 }}>{loadError} <button style={{ ...btnSecondary, marginLeft: '8px' }} onClick={load}>Try again</button></div>
+        </div>
+      )
+    }
     return (
-      <div style={{ maxWidth: '1180px', margin: '0 auto', padding: 'var(--vfo-gutter, 24px)' }}>
-        {loadError
-          ? <div style={{ color: '#e74c3c', fontWeight: 600 }}>{loadError} <button style={{ ...btnSecondary, marginLeft: '8px' }} onClick={load}>Try again</button></div>
-          : <div style={{ color: 'var(--vfo-faint)' }}>Loading the backlog…</div>}
+      <div style={pageStyle}>
+        {viewTabs}
+        <PortalBacklogSkeleton view={view} lensCount={LENSES.length} />
       </div>
     )
   }
@@ -166,25 +197,8 @@ export default function PortalBacklogPanel({ link }) {
   const showAssignFor = (r) => r === 'new' || (me && r.requester_admin_id === me.admin_id && r.review_status === 'pending')
 
   return (
-    <div style={{ maxWidth: '1800px', margin: '0 auto', padding: 'var(--vfo-gutter, 24px)', boxSizing: 'border-box', minWidth: 0 }}>
-      {/* The inner tabs sit above the hero, the way the Advisor KPIs page does it. */}
-      <div role="tablist" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        {[['tasks', 'Tasks'], ['requests', 'Requests']].map(([k, label]) => {
-          const active = view === k && !showArchive
-          return (
-            <button key={k} role="tab" aria-selected={active} onClick={() => { setView(k); setShowArchive(false) }}
-              style={{
-                padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap',
-                background: active ? 'var(--vfo-primary)' : 'var(--vfo-card)',
-                color: active ? '#ffffff' : 'var(--vfo-muted)',
-                border: `1px solid ${active ? 'var(--vfo-primary)' : 'var(--vfo-border-soft)'}`,
-              }}>
-              {label}{k === 'requests' && counts.pending > 0 ? ` (${counts.pending})` : ''}
-            </button>
-          )
-        })}
-      </div>
+    <div style={pageStyle}>
+      {viewTabs}
 
       <KpiHero
         title="Portal Backlog"

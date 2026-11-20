@@ -5,6 +5,7 @@ import { hexA } from '../KpiKit'
 import { departmentChipStyle, PORTAL_DEPARTMENTS } from './portalDepartments'
 import { fmtDate, fmtDateTime } from './backlogModel'
 import { inputStyle } from './BacklogModal'
+import { PortalBacklogArchiveRowsSkeleton } from '../../shared/skeletons'
 
 // The archive: announced requests and denied ones, newest first, read-only.
 // Search matches the title, the description and the requester. A superadmin
@@ -62,7 +63,7 @@ export default function BacklogArchive({ people, canManage, reloadKey, onOpen, o
         </select>
       </div>
       {error && <div style={{ color: '#e74c3c', fontSize: '13px', fontWeight: 600, marginBottom: '10px' }}>{error}</div>}
-      {!data && !error && <div style={{ color: 'var(--vfo-faint)', fontSize: '13.5px', padding: '10px 0' }}>Loading…</div>}
+      {!data && !error && <PortalBacklogArchiveRowsSkeleton />}
       {data && rows.length === 0 && <div style={{ color: 'var(--vfo-faint)', fontSize: '13.5px', padding: '10px 0' }}>Nothing in the archive{query || department || show !== 'all' ? ' matches' : ' yet'}.</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {rows.map((r) => {
