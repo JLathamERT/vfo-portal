@@ -1,10 +1,12 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 
 // Tax Plan KPI Tracker (2026-11-16, Jake's Workbench spec): the body under a plan
 // row on Client Overview > Tax Planning. Every rule (statuses, day counts, fee
 // path, deposit waiver, the split) is computed by the SQL function tax_plan_kpis
-// behind tax_plan_kpis_load; this only formats and lays it out.
+// behind tax_plan_kpis_load; this only formats and lays it out. Six steps, no gaps
+// (round 3, 2026-11-20): each step counts from the previous step's end to its own,
+// so Steps 1-6 add up to Total days.
 
 const TONES = {
   green: { bg: 'rgba(27,146,84,0.13)', color: 'var(--vfo-success-text)', rail: '#1b9254' },
@@ -25,23 +27,25 @@ function fmtKpiMoney(v) {
 
 const bigNumber = { fontSize: '26px', fontWeight: 800, letterSpacing: '-0.5px' }
 
-// One day count: { state: value | na | hidden | dash | blocked | not_started, kind: between | in_step, days }.
-// The number is the tile's headline; it measures only that step (the header's is the whole process).
+// One day count: { state: value | na | hidden | dash | blocked, kind: between | in_step, days, tone? }.
+// The number is the tile's headline: the days since the previous step finished (the header's is the whole process).
 // 'hidden' (a plan without reliable step dates) shows nothing but keeps the line's height.
+const DAY_TONES = { red: '#e74c3c', grey: 'var(--vfo-muted)' }
 function DayLine({ day }) {
   if (!day) return null
   const base = { fontSize: '12px', fontWeight: 600 }
   if (day.state === 'hidden') return <span aria-hidden="true" style={{ display: 'inline-block', height: '29px' }} />
   if (day.state === 'na') return <span title={NA_TIP} style={{ ...base, fontWeight: 500, color: 'var(--vfo-faint)' }}>{NA_TEXT}</span>
   if (day.state === 'blocked') return <span style={{ ...base, color: '#e06717' }}>Awaiting deposit</span>
-  if (day.state === 'not_started') return <span style={{ ...base, fontSize: '13px', color: 'var(--vfo-faint)' }}>Not started</span>
   if (day.state !== 'value') return <span style={{ ...base, color: 'var(--vfo-faint)', fontSize: '20px' }}>—</span>
-  // A step still running counts up, in amber; a finished one reads in ink.
-  const color = day.kind === 'in_step' ? '#e06717' : 'var(--vfo-ink)'
+  // A step still running counts up, in amber, "so far"; a stopped strategy takes its tag's
+  // tone; a finished step reads in ink.
+  const running = day.kind === 'in_step'
+  const color = running ? '#e06717' : DAY_TONES[day.tone] || 'var(--vfo-ink)'
   return (
     <span style={{ color, whiteSpace: 'nowrap', lineHeight: 1.1 }}>
       <span style={bigNumber}>{day.days}</span>
-      <span style={{ fontSize: '12px', fontWeight: 700, marginLeft: '4px' }}>{day.days === 1 ? 'day' : 'days'}</span>
+      <span style={{ fontSize: '12px', fontWeight: 700, marginLeft: '4px' }}>{day.days === 1 ? 'day' : 'days'}{running ? ' so far' : ''}</span>
     </span>
   )
 }
@@ -108,57 +112,15 @@ function StepTile({ step, strategies, blockedReason }) {
   )
 }
 
-// The days between two steps: { from_step: 'start' | 0-5, to_step: 1-6, days, state: value | waiting | missing | hidden }.
-// Each gap has a fixed slot that is the ONLY space between two tiles, so its connector is
-// always centred between them; a gap with no count shows a faint dash. 'waiting' counts up to today, in amber.
-const SLOT_W = 44 // a slot between two tiles
-const SLOT_H = 18 // a slot above a tile, on a phone
+// The six steps sit side by side with no connectors between them (round 3: each
+// step's count already includes the wait before it).
+const TILE_GAP = 10
 const TILE_MIN = 120 // the narrowest a tile gets before the row wraps
 const TILE_MIN_PHONE = 140
-function GapSlot({ gap, vertical, noDates }) {
-  const slot = vertical
-    ? { flex: 'none', height: `${SLOT_H}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }
-    : { flex: 'none', width: `${SLOT_W}px`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }
-  // No gap at all (Set Up's cell in the grid) leaves the slot empty; a gap with no count
-  // fills it with the faint dash the tiles use, and on a plan with no step dates
-  // (pre-12 Aug / migrated) the arrow alone (Paxton 2026-11-17).
-  if (!gap) return <div aria-hidden="true" style={slot} />
-  const noCount = gap.state === 'hidden'
-  const waiting = gap.state === 'waiting'
-  const text = noCount && noDates
-    ? null
-    : noCount || gap.state === 'missing' || gap.days === null || gap.days === undefined
-      ? '—'
-      : `${gap.days} ${gap.days === 1 ? 'day' : 'days'}`
-  const title = noCount
-    ? undefined
-    : waiting
-      ? `Waiting to start Step ${gap.to_step}`
-      : gap.from_step === 'start' ? 'Days from plan start to Step 1' : `Days between Step ${gap.from_step} and Step ${gap.to_step}`
-  // An arrow-only slot keeps an invisible label, so its arrow lines up with the others.
-  const label = <span style={{ fontSize: '10.5px', fontWeight: 600, lineHeight: 1.1, whiteSpace: 'nowrap', visibility: text === null ? 'hidden' : undefined }}>{text === null ? '—' : text}</span>
-  return (
-    <div title={title} style={{ ...slot, color: waiting ? '#e06717' : noCount ? 'var(--vfo-faint)' : 'var(--vfo-muted)' }}>
-      {vertical ? (
-        <>
-          <svg width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="M4 1v11M1 9l3 3 3-3" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          {label}
-        </>
-      ) : (
-        <>
-          {label}
-          <svg width="28" height="8" viewBox="0 0 28 8" aria-hidden="true"><path d="M2 4h22M20 1l4 3-4 3" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </>
-      )}
-    </div>
-  )
-}
 
-// The step tiles and the gaps between them, laid out from the row's measured width.
-// When every tile fits at TILE_MIN with its slots, they sit on ONE row at equal widths
-// (Implementation twice as wide when it lists strategies). Otherwise each step and the
-// slot that leads into it form one cell of an even grid, so a connector always wraps
-// with its own tile (on its left, or above it on a phone); Set Up's slot is empty.
+// The step tiles, laid out from the row's measured width. When every tile fits at
+// TILE_MIN, they sit on ONE row at equal widths (Implementation twice as wide when it
+// lists strategies). Otherwise they wrap into an even grid.
 function StepRow({ plan, isPhone }) {
   const ref = useRef(null)
   const [width, setWidth] = useState(0)
@@ -175,32 +137,26 @@ function StepRow({ plan, isPhone }) {
 
   const steps = plan.steps || []
   const strategies = plan.strategies || []
-  const gapFor = (n) => (plan.gaps || []).find(g => g.to_step === n)
   const isWide = (s) => s.number === 6 && strategies.length > 0
-  const noDates = plan.timing_eligible === false
   const units = steps.reduce((n, s) => n + (isWide(s) ? 2 : 1), 0)
   const tile = (s) => <StepTile step={s} strategies={strategies} blockedReason={plan.timing_blocked_reason} />
 
-  const oneRow = !isPhone && width > 0 && width >= units * TILE_MIN + Math.max(steps.length - 1, 0) * SLOT_W
-  const cellMin = isPhone ? TILE_MIN_PHONE : TILE_MIN + SLOT_W
-  const cols = Math.max(1, Math.floor((width || cellMin) / cellMin))
+  const oneRow = !isPhone && width > 0 && width >= units * TILE_MIN + Math.max(steps.length - 1, 0) * TILE_GAP
+  const cellMin = isPhone ? TILE_MIN_PHONE : TILE_MIN
+  const cols = Math.max(1, Math.floor(((width || cellMin) + TILE_GAP) / (cellMin + TILE_GAP)))
 
   return (
     <div ref={ref}>
       {oneRow ? (
-        <div style={{ display: 'flex', alignItems: 'stretch' }}>
-          {steps.map((s, i) => (
-            <Fragment key={s.number}>
-              {i > 0 && <GapSlot gap={gapFor(s.number)} noDates={noDates} />}
-              <div style={{ flex: `${isWide(s) ? 2 : 1} 1 0`, minWidth: 0, display: 'flex' }}>{tile(s)}</div>
-            </Fragment>
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: `${TILE_GAP}px` }}>
+          {steps.map(s => (
+            <div key={s.number} style={{ flex: `${isWide(s) ? 2 : 1} 1 0`, minWidth: 0, display: 'flex' }}>{tile(s)}</div>
           ))}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, rowGap: '10px', columnGap: isPhone ? '10px' : 0 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: `${TILE_GAP}px` }}>
           {steps.map(s => (
-            <div key={s.number} style={{ display: 'flex', flexDirection: isPhone ? 'column' : 'row', minWidth: 0, gridColumn: isWide(s) && cols > 1 ? 'span 2' : undefined }}>
-              <GapSlot gap={s.number === 0 ? null : gapFor(s.number)} vertical={isPhone} noDates={noDates} />
+            <div key={s.number} style={{ display: 'flex', minWidth: 0, gridColumn: isWide(s) && cols > 1 ? 'span 2' : undefined }}>
               {tile(s)}
             </div>
           ))}

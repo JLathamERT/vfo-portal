@@ -9,6 +9,22 @@
 
 ---
 
+## 2026-11-20 (h) — Tax Plan KPI Tracker, feedback round 3: six steps, no gaps — by Paxton
+
+**Why.** Jake's Workbench card *Update Task timer Ticker* (spec *Tax Plan KPI Tracker – six steps, no gaps*): each step should own every day from the previous step's finish to its own, waiting included, like a relay baton, so the six step counts add up to Total days and can later be averaged across plans without adding gap days by hand.
+
+**Decided (Paxton, 20 Nov, in the spec).** Step 1 counts from the plan start, so the wait from deposit paid to the first Tax 1 task belongs to Step 1 (in Jake's example plan Step 1 reads 29, not his 28, and the steps add up to the total of 85). Stopped strategies (Stop / N/A) count to the day they were stopped. The KPI Summary page (its own card, not built) will average only steps that finished normally. **Beyond the spec, decided while building:** a plan whose every strategy stopped takes its stop date from the last of them (else Step 6 and Total days read "—"); on bad dates Total days ends at the same clamped date as the last step, so the sum still holds; a stopped strategy's count takes its tag's tone (red Stop, grey N/A); the new warnings fire only on plans that are timing-eligible.
+
+**Backend.** Migration `20261121150000_tax_plan_kpis_six_steps.sql` (functions only, no table, same grants): `create or replace` of `tax_plan_kpis` and `tax_plan_kpi_day`. Step N runs from `e(N-1)` to `e(N)`, where the ends (`d1`-`d6`, unchanged) are a running max from `plan_start`; the step the plan is in runs to today (`kind: 'in_step'`); a stopped step runs to the stop date, which every stop branch now counts (only Step 2's did). An end before the previous end counts 0 days with a warning; a finished step with no end date leaves itself and the next step a dash, with a warning. Strategies count from Step 5's end, and a stopped strategy's day carries `tone`. Removed: the first-ticked-task queries (`s1`-`s6` and the per-strategy lateral), `gaps[]`, the overlap warning and the `not_started` state. No handler change. `scripts/tax-plan-kpis-check.sql`: check 2 drops its `gaps` clause, and a new check 3 asserts no `gaps` key, no `not_started` day, and Steps 1-6 = Total days on every eligible plan with no dash.
+
+**Website.** `TaxPlanKpiPanel.jsx`: `GapSlot`, its 44px slots and `gapFor` are gone; the tiles sit side by side with a 10px gap (one row when every tile fits at 120px, else an even grid). `DayLine` drops `Not started`, adds "so far" to a running count, and colours a stopped strategy by its `tone`.
+
+**Release order.** Either order is safe (the old page shows an empty slot where `gaps` is missing; the new page shows "—" for an old `not_started`); website first, then the migration on live from the file's exact text, as round 2 did.
+
+**Tested** on the test site (the function bodies' md5 match the file) with `vfo-admin-api-paxton` still on v8 from another chat's build (no backend code changed, and the counts come from the shared test database). K06 *KPI Under 30k Done* reads 7 + 8 + 5 + 27 + 6 + 8 = 61; K05 *KPI Thirty K Exact* (round 2's "—" on Steps 2, 3, 5 gone) reads 8 + 2 + 8 + 31 + 9 + 21 so far = 79, its in-process strategy 21 so far; K10 *KPI Refund Tax 4* reads a stopped Step 4 of 18 days, 5 + 2 + 4 + 18 = 29. Two fake strategies added to K05 (tagged `KPI round 3 test`) read Stop 7 days in red and N/A 13 days in grey. Checks 2 and 3 PASS on the test site (11 plans, 7 summed); the security advisor is at its baseline. Paxton clicked it through on the dev server at desktop widths (admin-only screen, no phone check). **Not exercised:** a finished step with no end date, an end before the previous end, and a stopped strategy with no date (no such plan on the test site; the warnings are read in the browser console), and the numbers of Jake's example plan (it is only on live; Issue JLathamERT/vfo-edge-functions#569 names it).
+
+---
+
 ## 2026-11-20 (g) — Membership Early termination (90 days' notice) + receipts stop counting cancelled payments + membership pill colours — by Jake
 
 Branch `claude/ert-membership-invoice-*` (both repos), one chat. Action count 699 -> **700** (`membership_end_early`). No DDL; one data migration, `20261120200000_membership_end_early_template.sql` (the new email), test site done, live at release. Hub: action count, DOC MAP membership row.
