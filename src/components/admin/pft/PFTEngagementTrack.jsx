@@ -8,6 +8,7 @@ import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
+import OnboardingPhaseChip from './OnboardingPhaseChip'
 
 // Read-only per-step email previews (see StepEmailsChip). Meeting 1 uses the
 // member-declined variant; Meetings 2/3 use the ERT/VFOS-declined variant.
@@ -546,11 +547,11 @@ function Phase6Indicators({ onboarding, onOpen, readOnly }) {
           : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Pending</span>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
-        <Dot done={false} color="#0095ff" />
-        <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>Accountant onboarding progress</span>
+        <Dot done={!!onboarding?.member_created_at} color="#1b9254" />
+        <span className="vfo-stepname" style={{ fontSize: '13px', color: onboarding?.member_created_at ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>Accountant onboarding progress</span>
         {handed
           ? <>
-              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{onboarding.stage_label}</span>
+              <OnboardingPhaseChip onboarding={onboarding} />
               {!readOnly && <button onClick={() => onOpen(onboarding.id)} style={blueBtn}>View onboarding →</button>}
             </>
           : <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>—</span>}
@@ -789,7 +790,7 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, mem
     const matched6 = (isAssociatePhase && decisionStatus === 'VFO Associate confirmed') || (isFTPhase && decisionStatus === 'VFO FT confirmed')
     if (isPhase6 && decisionStatus && !matched6) return
     let state = getPhaseState(phase)
-    if (isPhase6) state = matched6 ? 'active' : 'pending'
+    if (isPhase6) state = !matched6 ? 'pending' : onboarding?.member_created_at ? 'done' : 'active'
     heroSteps.push({ id: phase.id, label: phase.name.replace(/^Accountant /, ''), state })
   })
 
@@ -928,7 +929,7 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, mem
         const phaseGreyedOut = isPhase6 && !matched6
 
         let state = getPhaseState(phase)
-        if (isPhase6) state = matched6 ? 'active' : 'pending'
+        if (isPhase6) state = !matched6 ? 'pending' : onboarding?.member_created_at ? 'done' : 'active'
 
         const isExpanded = expanded[phase.id]
         const tasks = phase.program_client_tasks || []
@@ -948,7 +949,9 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, mem
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {(!readOnly || memberNotes) && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'PFT').length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
                 {isPhase6
-                  ? (state === 'active'
+                  ? (state === 'done'
+                      ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
+                      : state === 'active'
                       ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress</span>
                       : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>)
                   : <>
