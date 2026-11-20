@@ -8,6 +8,25 @@
 
 ---
 
+## 2026-11-20 — Advisor / Accountant Onboarding: Create while a bank payment clears, no reminder on a clearing payment, payment-failed emails, member numbers that skip taken ones, list polish — by Jake
+
+**Why.** An accountant on live paid by bank on 11-17 and got the "complete your payment" reminder on 11-20 while the payment was still clearing (an advisor had the same in September): the stall ladder chased anything not `succeeded`. Jake also wanted the onboardings to work like VFO Services' flows — announce and create the new member once the payment is IN, not days later when the bank clears — and the onboarding lists tidied.
+
+**Built.**
+- **Reminder fix** (`actions/{advisor,accountant}/sweep.ts`): the payment email and the 4-day bell chase only an UNPAID payment (`UNPAID_PAYMENT_FILTER`: NULL, `failed`, `declined`, `canceled`) — gotcha #773. On live the affected row's bell stamp was set by hand, then moved to its reached-out stamp so the screen shows no false "team member notified" row.
+- **Create while clearing** (`utils/onboarding-order.ts` ↔ `onboardingOrder.js`, `create-member.ts` both): `createMemberLock` passes when the payment is IN (`paymentInOrClearing`: paid or clearing, incl. a balance parked on a clearing deposit); the invoice step is waited on only once the money has cleared. Tier 1 rows too — decision 100 amended by decision 116 (portal-licensing plan). Create skips a Tier 1 member's monthly plan while month 1 clears; `invoice-receipt.ts` sets it up at clearing (`afterOnboardingPaymentCleared`, new `utils/onboarding-ready-bell.ts`).
+- **"Ready to create" bell**: raised when the money is in (*… — bank payment clearing*: the webhook's ACH checkout branch, a bank `charge-balance`, a parked balance), one unread per record, none once created, taken back on every onboarding payment failure (gotcha #774). Short wording on Jake's ask.
+- **Bounce after Create**: Jake's failure bell adds *"They were already created as member N … decide whether to pause them"*; nothing else changes (Jake: bell only).
+- **Payment-failed email** (new `utils/onboarding-payment-failed-email.ts`, migration `20261120120000_onboarding_payment_failed_emails.sql`, five Send rows: `<PREFIX>_payment_failed`, `|tier1`, `ACCOUNTANT_payment_failed|tier1_advisor_pays`): wording approved by Jake from Tax's `TAX_implementation_charge_failed`, with the same payment link. Sent only by the failure event that wins a guarded `processing` → `failed` claim, so Stripe's two failure events send one email.
+- **Screens**: a red *Payment failed* chip on the payment row; a note under Create while the payment clears (the invoice row stays *Not completed*, as on live). The onboarding list: Name · Email · Type · Phase · Started, a narrower Name column, the member number beside the name, numbered phases (*1 - …*), *Complete* (green dot) shown by default and *Stopped* (red dot) as Client Overview; saved view key `…OnboardingListView2`.
+- **Member numbers** (`utils/member-number.ts`): the next number steps past any number already used by any `members` / `member_plugin_settings` row (exact text lookups) — gotcha #772, found when a test Create collided with a hand-made member.
+
+**Tested on the test site (Jake's click-through + the database).** List items 1-4 and the numbered phases; Create while clearing on a VFO FT accountant (bell, member, team email, invoice at clearing with the same numbers, no second bell); a Financial Collaborator created while its bank payment cleared, its $145/month plan + $25 VFO Services transfer made at clearing; a real failing bank payment (bell, Ready bell taken back, red chip); a bounce after Create (bell naming the member, one payment-failed email, none from the second event, the link reopens the pay page); the reminder sweep run against `vfo-admin-api-jake` (a clearing payment not chased, a failed one chased). **Not exercised** (Issue JLathamERT/vfo-edge-functions#604): the `|tier1` and `|tier1_advisor_pays` failed emails, a deposit or balance failure taking back the Ready bell, and the live sweep's next run.
+
+**Test builds.** `vfo-admin-api-jake` v53 → v58; shared test `vfo-admin-api` v118-v124 for the Stripe steps, main put back twice (`staging-backend.yml` rerun, last v125).
+
+**Hub.** `send_mode` line 260 of 368 (live), 265 of 373 after this release. Curated #463 demoted to make room for #773. New gotchas #772-#774.
+
 ## 2026-11-19 (d) — Set Up Membership for an existing VFO Associate / FC (Portal licence Yes / No), Card on file for every plan — by Jake
 
 **Why.** Existing Financial Collaborators move off Skool billing onto the portal at a grandfathered rate with no licence, and a member downgrading to FC keeps paying by the card already on file (the standard $120 + $25 licence). Until now a month-to-month Tier 1 plan could only be made by a Tier 1 onboarding. The member-by-member jobs are Issues #599 and #600 (private repo).
