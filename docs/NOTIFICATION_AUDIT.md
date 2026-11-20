@@ -431,9 +431,9 @@
 > (payment method updated) is still open — that is the SUCCESS side of the same flow; what shipped is
 > the STALL side. Gotchas #296 / #298 / #299 / #300.
 
-### SDP ATSG (7 bells + 10 emails) *(new area, 2026-11-17)*
+### SDP ATSG (9 bells + 12 emails) *(new area, 2026-11-17; renewal bells 2026-11-20)*
 
-All bells go to Jake only (`notification_rules` area `SDP ATSG`, `default_recipients` Jake), pipeline `SDP_ATSG`, drawn in their own fuchsia. The failure, held and transfer bells end their title with the payment's label (#758). Emails: [flows/sdp-atsg.md](flows/sdp-atsg.md#emails-and-bells).
+All bells go to Jake only except the heads-up (`notification_rules` area `SDP ATSG`, `default_recipients` Jake), pipeline `SDP_ATSG`, drawn in their own fuchsia. The failure, held and transfer bells end their title with the payment's label (#758). Emails: [flows/sdp-atsg.md](flows/sdp-atsg.md#emails-and-bells).
 
 | Notification | Type | Who gets it (default) | When it fires |
 |---|---|---|---|
@@ -444,6 +444,8 @@ All bells go to Jake only (`notification_rules` area `SDP ATSG`, `default_recipi
 | `SDP_ATSG_payment_failed` | bell | Jake | A declined card / bounced bank payment (sweep or webhook) |
 | `SDP_ATSG_payout_failed` | bell | Jake | SDP's or the member's transfer failed (the sweep retries) |
 | `SDP_ATSG_member_share_held` | bell | Jake | The member has no working payout account |
+| `SDP_ATSG_renewal_heads_up` | bell | Jake + the SDP people ticked on the case (while the planner switch is On; their link opens the planner tab) | 30 days before the client is emailed next year's terms: change them or end after this year |
+| `SDP_ATSG_renewal_reminder` | bell | Jake | The yearly "your retainer continues" email went to the client (or failed; retried daily) |
 
 ## Gap analysis — places that arguably SHOULD notify but currently do not
 

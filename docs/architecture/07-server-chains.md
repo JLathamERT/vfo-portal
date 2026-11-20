@@ -470,6 +470,7 @@ SDP - Advanced Tax Strategy Governance never enters our pipelines' chains ([flow
 - **BoldSign:** both `boldsign-webhook` and the embedded handler look the document up in `sdp_atsg_cases.boldsign_doc_id` FIRST and, on a match, chain `automation_SDP_ATSG_boldsign_event` (service role) and return — no other branch sees an SDP document.
 - **Stripe:** `router/webhooks.ts` calls `maybeHandleSdpAtsgStripeEvent` first for every VFO Services event; anything stamped `metadata.pipeline = SDP_ATSG` (a Checkout session, its PaymentIntent / SetupIntent, a sweep charge) is handled there and stops.
 - **Settle:** a row moving to `paid` chains `automation_SDP_ATSG_settle` in the background (`chainAtsg`, `adminApiUrl()`, #748). The daily `sdp-atsg-sweep-daily` (13:20 UTC) retries any paid row whose documents, transfers or emails are not done, 10+ minutes after `paid_at`.
+- **Renewal (2026-11-20):** the same sweep's first pass (`renewAtsgCases`, in-process, no chain) sets up each case's next retainer year 11 months in and emails the client; the year's first payment is then charged by the sweep's own charge pass on its due date like any other row. *(v: 2026-11-20)*
 
 ### Admin-driven paths (no webhook involved)
 
