@@ -118,10 +118,24 @@ export function paymentStepLabel(ob) {
 
 const INVOICE_STEP = 'Invoice and receipt created and emailed to client'
 
+// The payment is in: paid, or a bank payment still clearing — including a
+// balance parked on a deposit that is itself clearing. Mirror of
+// utils/onboarding-order.ts.
+export function paymentInOrClearing(ob) {
+  return ob.payment_status === 'succeeded' || ob.payment_status === 'processing'
+    || ob.balance_charge_status === 'awaiting_deposit' || ob.balance_charge_status === 'processing'
+}
+
+// In, but not cleared yet: the invoice and receipt wait for the money to clear.
+export function paymentClearing(ob) {
+  return paymentInOrClearing(ob) && ob.payment_status !== 'succeeded'
+}
+
 // Stage 3 (create the advisor / accountant) stays locked until every Stage 2
 // step above it is done. A VFO Associate accountant on today's path (no Tier 1
-// stamp) skips Stages 1-2 entirely; a Tier 1 row pays its first month before
-// Create like every other row.
+// stamp) skips Stages 1-2 entirely. Since 2026-11-20 Create opens once the
+// payment is IN (paid, or a bank payment clearing), Tier 1 rows included; the
+// invoice and receipt step is only waited on once the money has cleared.
 export function createMemberLock(ob, pipeline) {
   if (!isTier1Onboarding(ob, pipeline) && pipeline === 'accountant' && ob.accountant_type === 'VFO Associate') return null
   const decision = ob.prelim_meeting_decision
@@ -133,8 +147,8 @@ export function createMemberLock(ob, pipeline) {
     ['Engagement agreement created and sent for signing', !!ob.agreement_sent_at],
     ['Engagement agreement signed', !!signedAt],
     ['Engagement agreement signed by CEO', !!ob.agreement_signed_by_ceo_at],
-    [paymentStepLabel(ob), ob.payment_status === 'succeeded'],
-    [INVOICE_STEP, !!ob.invoice_sent_at],
+    [paymentStepLabel(ob), paymentInOrClearing(ob)],
+    [INVOICE_STEP, !!ob.invoice_sent_at || paymentClearing(ob)],
   ]
   // Named by the step directly above Create (the last Stage 2 row) while that is
   // open; once it is done, by the first open step above it (a paid, invoiced row

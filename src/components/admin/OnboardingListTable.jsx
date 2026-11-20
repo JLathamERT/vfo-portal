@@ -7,12 +7,16 @@ import { formatDate } from '../../lib/dates'
 import { onboardingTypeLabel } from './onboardingOrder'
 
 // The Advisor / Accountant Onboarding list in the Client Overview style (2026-11-19):
-// one table with search, a filter and sortable columns, no sub-tabs. The Phase
-// filter opens on the in-progress phases, as the old list did (Completed and
-// Stopped sat folded away); tick Done / Stopped, or untick all, to see them.
-// Search, filter and sort survive a trip into a record and back.
+// one table with search, a filter and sortable columns, no sub-tabs. Columns Name ·
+// Email · Type · Phase · Started (2026-11-20), each in-progress phase numbered. The Phase filter opens on the
+// in-progress phases and Complete; tick Stopped, or untick all, to see the stopped
+// ones. Complete and Stopped carry Client Overview's green and red dots. Search,
+// filter and sort survive a trip into a record and back.
 
-const GRID = 'minmax(180px, 1.2fr) 170px 160px minmax(200px, 1.4fr) 110px'
+const GRID = 'minmax(200px, 260px) minmax(220px, 1fr) 170px 170px 110px'
+const DONE = 'Complete'
+const STOPPED = 'Stopped'
+const dot = (color) => ({ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: color, display: 'inline-block' })
 const MIN_WIDTH = '860px'
 
 const SORT_OPTIONS = [
@@ -33,20 +37,25 @@ function readView(key, fallback) {
 // stageOf(ob) -> 1 | 2 | 3 for a row still in progress.
 export default function OnboardingListTable({ pipeline, onboardings, stageNames, stageOf, onOpen, emptyText }) {
   const isPhone = useIsPhone()
-  const livePhases = stageNames.slice(1)
-  const phaseOptions = [...livePhases, 'Done', 'Stopped']
-  const phaseOf = ob => (ob.member_created_at ? 'Done' : ob.status === 'stopped' ? 'Stopped' : stageNames[stageOf(ob)])
+  // Each in-progress phase carries its stage number: "1 - Initial Meeting" (2026-11-20).
+  const phaseLabel = n => `${n} - ${stageNames[n]}`
+  const livePhases = stageNames.slice(1).map((_, i) => phaseLabel(i + 1))
+  const phaseOptions = [...livePhases, DONE, STOPPED]
+  const phaseOf = ob => (ob.member_created_at ? DONE : ob.status === 'stopped' ? STOPPED : phaseLabel(stageOf(ob)))
   const typeOf = ob => onboardingTypeLabel(ob, pipeline) || '(none)'
 
-  const viewKey = `${pipeline}OnboardingListView`
-  const defaultView = { search: '', filter: { phase: livePhases }, sort: 'newest', colSort: null }
+  // v2: Complete is shown by default since 2026-11-20, so a view saved before it
+  // (which left Done out) is not carried over.
+  const viewKey = `${pipeline}OnboardingListView2`
+  const defaultPhases = [...livePhases, DONE]
+  const defaultView = { search: '', filter: { phase: defaultPhases }, sort: 'newest', colSort: null }
   const [initialView] = useState(() => readView(viewKey, defaultView))
   const [search, setSearch] = useState(initialView.search)
   // A saved Phase pick naming a phase that no longer exists (PC Admin became
   // Automated steps, 2026-11-19) falls back to the default, so no row hides.
   const [listFilter, setListFilter] = useState(() => {
     const f = initialView.filter || {}
-    return (f.phase || []).some(p => !phaseOptions.includes(p)) ? { ...f, phase: livePhases } : f
+    return (f.phase || []).some(p => !phaseOptions.includes(p)) ? { ...f, phase: defaultPhases } : f
   })
   const [listSort, setListSort] = useState(initialView.sort)
   const { sort: colSort, onSort, reset: resetColSort } = useHeaderSort(initialView.colSort)
@@ -104,9 +113,9 @@ export default function OnboardingListTable({ pipeline, onboardings, stageNames,
         <div style={{ minWidth: MIN_WIDTH }}>
           <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: '10px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
             <SortHeader label="Name" sortKey="name" sort={colSort} onSort={onSort} />
+            <SortHeader label="Email" sortKey="email" sort={colSort} onSort={onSort} />
             <SortHeader label="Type" sortKey="type" sort={colSort} onSort={onSort} />
             <SortHeader label="Phase" sortKey="phase" sort={colSort} onSort={onSort} />
-            <SortHeader label="Email" sortKey="email" sort={colSort} onSort={onSort} />
             <SortHeader label="Started" sortKey="started" sort={colSort} onSort={onSort} />
           </div>
 
@@ -122,13 +131,21 @@ export default function OnboardingListTable({ pipeline, onboardings, stageNames,
             return (
               <div key={ob.id} onClick={() => onOpen(ob)} {...rowHoverProps}
                 style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: GRID, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
-                <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                <span style={{ display: 'flex', alignItems: 'baseline', gap: '8px', minWidth: 0, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 600, color: 'var(--vfo-link)' }}>{nameOf(ob) || '—'}</span>
-                  {ob.member_number && <MemberNameLink memberNumber={ob.member_number} style={{ fontSize: '11px', color: 'var(--vfo-muted)', alignSelf: 'flex-start' }}>#{ob.member_number}</MemberNameLink>}
+                  {ob.member_number && <MemberNameLink memberNumber={ob.member_number} style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>#{ob.member_number}</MemberNameLink>}
                 </span>
-                <span style={{ fontSize: '12.5px', color: type ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{type || '—'}</span>
-                <span style={{ fontSize: '12.5px', color: 'var(--vfo-ink)' }}>{phase}</span>
                 <span style={{ fontSize: '12.5px', color: ob.email ? 'var(--vfo-ink)' : 'var(--vfo-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ob.email || ''}>{ob.email || 'No email'}</span>
+                <span style={{ fontSize: '12.5px', color: type ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{type || '—'}</span>
+                <span style={{ fontSize: '12.5px' }}>
+                  {phase === DONE ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--vfo-success-text)', fontWeight: 600 }}><span style={dot('#1b9254')} />{DONE}</span>
+                  ) : phase === STOPPED ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#b23c30', fontWeight: 600 }}><span style={dot('#b23c30')} />{STOPPED}</span>
+                  ) : (
+                    <span style={{ color: 'var(--vfo-ink)' }}>{phase}</span>
+                  )}
+                </span>
                 <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{formatDate(ob.created_at) || '—'}</span>
               </div>
             )

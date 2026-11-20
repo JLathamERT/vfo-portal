@@ -13,7 +13,7 @@ import OnboardingExtraMeetingCard from './OnboardingExtraMeetingCard'
 import StepEmailsChip from '../shared/StepEmailsChip'
 import OnboardingListTable from './OnboardingListTable'
 import OnboardingHero from './OnboardingHero'
-import { stage1Lock, createMemberLock, isTier1Onboarding, FC_ADVISOR_TYPE } from './onboardingOrder'
+import { stage1Lock, createMemberLock, isTier1Onboarding, FC_ADVISOR_TYPE, paymentClearing } from './onboardingOrder'
 import { readable } from '../shared/readableColor'
 
 const STAGE_NAMES = ['', 'Preliminary Meeting', 'Automated steps', 'Add New Advisor']
@@ -50,6 +50,7 @@ const ADVISOR_PAYMENT_LINK_EMAILS = [
 const ADVISOR_CONFIRMATION_EMAILS = [
   { name: 'ADVISOR_payment_confirmation|card', when: 'No longer sent automatically — card gets the invoice/receipt instead' },
   { name: 'ADVISOR_payment_confirmation|ach', when: 'If paid by bank transfer (ACH) — the only method that gets a confirmation' },
+  { name: 'ADVISOR_payment_failed', when: 'If the bank payment does not go through — the payment link again' },
 ]
 const ADVISOR_INVOICE_EMAILS = [
   { name: 'ADVISOR_invoice_receipt', when: 'Automatic — invoice + receipt' },
@@ -72,6 +73,7 @@ const ADVISOR_TIER1_PAYMENT_LINK_EMAILS = [
 ]
 const ADVISOR_TIER1_CONFIRMATION_EMAILS = [
   { name: 'ADVISOR_payment_confirmation|tier1', when: 'If paid by bank transfer (ACH) — bank confirmation' },
+  { name: 'ADVISOR_payment_failed|tier1', when: 'If the bank payment does not go through — the payment link again' },
 ]
 const ADVISOR_TIER1_INVOICE_EMAILS = [
   { name: 'ADVISOR_invoice_receipt|tier1', when: 'Automatic — first month invoice + receipt' },
@@ -272,7 +274,7 @@ function OnboardingDetail({ id, onBack }) {
       const no = fin === 'No'
       const s1 = !row.prelim_meeting_status ? 'pending' : !row.prelim_meeting_decision ? 'active' : 'done'
       const s2 = !dec ? 'pending' : (no && row.decline_email_sent_at) ? 'done' : (yes && row.invoice_sent_at) ? 'done' : 'active'
-      const s3 = row.member_created_at ? 'done' : (yes && row.invoice_sent_at) ? 'active' : 'pending'
+      const s3 = row.member_created_at ? 'done' : (yes && (row.invoice_sent_at || paymentClearing(row))) ? 'active' : 'pending'
       setExpanded({ 1: s1 !== 'done', 2: s2 !== 'done', 3: s3 !== 'done' })
     } catch (err) {
       // A stale deep-link to a deleted onboarding 404s — bounce to the list
@@ -650,7 +652,7 @@ function OnboardingDetail({ id, onBack }) {
   }
   function stage3State() {
     if (ob.member_created_at) return 'done'
-    if (yesPath && ob.invoice_sent_at) return 'active'
+    if (yesPath && (ob.invoice_sent_at || paymentClearing(ob))) return 'active'
     return 'pending'
   }
 
@@ -694,7 +696,7 @@ function OnboardingDetail({ id, onBack }) {
       {emRequested && emStage === 'payment' && emCard}
       {/* The ACH confirmation email no longer gets its own row — preview it here. */}
       {!depositCoversAll && (
-        <AutoRow label={depositPaid > 0 ? 'Remaining payment collected after deposit' : 'Payment collected'} done={ob.payment_status === 'succeeded'} pending={ob.payment_status === 'processing'} date={ob.payment_completed_at} tag={withTags ? (ob.payment_method_type ? ob.payment_method_type.toUpperCase() : null) : undefined} emails={tier1 ? ADVISOR_TIER1_CONFIRMATION_EMAILS : ADVISOR_CONFIRMATION_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
+        <AutoRow label={depositPaid > 0 ? 'Remaining payment collected after deposit' : 'Payment collected'} done={ob.payment_status === 'succeeded'} pending={ob.payment_status === 'processing'} failed={['failed', 'declined', 'canceled'].includes(ob.payment_status)} date={ob.payment_completed_at} tag={withTags ? (ob.payment_method_type ? ob.payment_method_type.toUpperCase() : null) : undefined} emails={tier1 ? ADVISOR_TIER1_CONFIRMATION_EMAILS : ADVISOR_CONFIRMATION_EMAILS} pipeline={ADVISOR_PIPELINE} emailCtx={emailCtx} />
       )}
       {!depositCoversAll && depositPaid > 0 && balanceStatus === 'awaiting_deposit' && (
         <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '2px 0 4px 14px' }}>Waiting for the deposit to clear before charging the balance</div>
@@ -848,6 +850,9 @@ function OnboardingDetail({ id, onBack }) {
             <button onClick={() => setShowSaleModal(true)} disabled={creatingMember} style={{ padding: '10px 24px', borderRadius: '8px', background: creatingMember ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: creatingMember ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
               {creatingMember ? 'Creating & sending...' : 'Create Advisor & Send Setup Link'}
             </button>
+            {paymentClearing(ob) && (
+              <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '8px' }}>The bank payment is still clearing. You can create them now; the invoice and receipt are emailed when it clears.</div>
+            )}
           </div>
         )}
       </StageBlock>
@@ -954,11 +959,13 @@ function Row({ label, done, date, children, emails, pipeline, emailCtx, onDateCh
   )
 }
 
-function AutoRow({ label, done, date, tag, emails, pipeline, emailCtx, pending = false }) {
+// failed: a red "Payment failed" chip (a bank payment that bounced, a declined
+// card) in place of "Not completed" (2026-11-20).
+function AutoRow({ label, done, date, tag, emails, pipeline, emailCtx, pending = false, failed = false }) {
   const tags = tag == null ? [] : Array.isArray(tag) ? tag.filter(Boolean) : [tag]
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : pending ? '#e06717' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : pending ? '#e06717' : 'var(--vfo-border-mid)'}` }} />
+      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : pending ? '#e06717' : failed ? '#b23c30' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : pending ? '#e06717' : failed ? '#b23c30' : 'var(--vfo-border-mid)'}` }} />
       <span style={{ fontSize: '12px', color: 'var(--vfo-ink)', flex: 1 }}>{label}{emails && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline={pipeline} title={label} templates={emails} context={emailCtx} /></span>}</span>
       <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
         {done && tags.length > 0 && tags.map((t, i) => (
@@ -966,6 +973,8 @@ function AutoRow({ label, done, date, tag, emails, pipeline, emailCtx, pending =
         ))}
         {!done && pending
           ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>Bank payment clearing</span>
+          : !done && failed
+          ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(178,60,48,0.12)', border: '1px solid rgba(178,60,48,0.3)', color: '#b23c30', fontWeight: 600 }}>Payment failed</span>
           : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: done ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: done ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: done ? 'var(--vfo-success-text)' : 'var(--vfo-muted)' }}>{done ? 'Done' : 'Not completed'}</span>}
         <span style={dateTextStyle}>{done && date ? formatDate(date) : ''}</span>
       </span>
