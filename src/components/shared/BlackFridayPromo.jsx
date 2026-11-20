@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useIsPhone } from '../../lib/useMediaQuery'
-import { pad2, promoDayLabel, promoLastDayLabel, splitCountdown, useGcPromo } from '../../lib/gcPromo'
+import { pad2, promoDayLabel, promoEndsLine, splitCountdown, useGcPromo } from '../../lib/gcPromo'
 
 // The Black Friday look (2026-11-20): a near-black band with the portal's blue
 // glow and one warm gold accent for the deal. Used by the member portal's strip
@@ -90,8 +90,8 @@ export function BlackFridayStrip({ onShop }) {
   if (!promo || (phase !== 'upcoming' && phase !== 'live')) return null
   const live = phase === 'live'
   const sub = live
-    ? `Ends ${promoLastDayLabel(promo.ends_at)} at midnight PT`
-    : `${promoDayLabel(promo.starts_at)} to ${promoLastDayLabel(promo.ends_at)}`
+    ? promoEndsLine(promo.ends_at)
+    : `Starts ${promoDayLabel(promo.starts_at)} at 12:00 AM PST`
   return (
     <>
       <style>{BF_KEYFRAMES}</style>
@@ -115,7 +115,7 @@ export function BlackFridayStrip({ onShop }) {
               <BfCountdown ms={remainingMs} size={isPhone ? 'sm' : 'md'} tone={dark ? 'light' : 'dark'} />
             </div>
             <span className="vfo-bf-anim" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: isPhone ? '8px 12px' : '9px 16px', borderRadius: '999px', background: `linear-gradient(135deg, ${BF.gold} 0%, ${BF.goldDeep} 100%)`, color: BF.ink, fontWeight: 800, fontSize: '13px', whiteSpace: 'nowrap', animation: live ? 'vfoBfPulse 2.2s ease-in-out infinite' : 'none' }}>
-              {live ? 'Shop the deal' : 'See the deal'}
+              Shop Black Friday Deal
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
             </span>
           </div>
@@ -125,19 +125,43 @@ export function BlackFridayStrip({ onShop }) {
   )
 }
 
-// The deal banner above the packages (member portal): what the sale gives, and
-// which deals this member has already used.
-export function BlackFridayBuyBanner({ claimed = [] }) {
+// - 3 + stepper for the deal's credit count (portal banner and public page).
+export function QtyStepper({ value, min = 1, max, onChange, tone = 'light', size = 'md' }) {
+  const dark = tone === 'dark'
+  const big = size === 'lg'
+  const btn = (disabled) => ({
+    width: big ? '46px' : '38px', height: big ? '46px' : '38px', borderRadius: '50%', border: `1px solid ${dark ? 'rgba(255,255,255,0.28)' : 'var(--vfo-border-strong)'}`,
+    background: dark ? 'rgba(255,255,255,0.08)' : 'var(--vfo-card)', color: dark ? '#fff' : 'var(--vfo-ink)', fontSize: big ? '22px' : '18px', fontWeight: 700,
+    cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.35 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif', lineHeight: 1, padding: 0,
+  })
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: big ? '16px' : '12px' }}>
+      <button type="button" aria-label="Fewer credits" disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))} style={btn(value <= min)}>-</button>
+      <span style={{ minWidth: big ? '56px' : '40px', textAlign: 'center', fontSize: big ? '40px' : '28px', fontWeight: 900, letterSpacing: '-0.03em', color: dark ? '#fff' : 'var(--vfo-ink)', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+      <button type="button" aria-label="More credits" disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))} style={btn(value >= max)}>+</button>
+    </div>
+  )
+}
+
+const money = (n) => '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 })
+
+// The deal above the usual packages (member portal): what the sale gives, the
+// countdown, and - while it runs - a picker for 1 to the member's free credits
+// left (10 per member per sale, across purchases). onBuy(n) opens the pay page.
+export function BlackFridayBuyBanner({ freeLeft = null, onBuy }) {
   const isPhone = useIsPhone()
   const dark = useIsDarkTheme()
-  const c = bfTone(dark ? 'light' : 'dark')
-  const { promo, phase, remainingMs, plannedBonusFor } = useGcPromo()
-  if (!promo || (phase !== 'upcoming' && phase !== 'live')) return null
-  const live = phase === 'live'
-  const deals = Object.keys(promo.bonus || {}).map(Number).filter(n => plannedBonusFor(n) > 0).sort((a, b) => a - b)
-  const used = [...claimed].sort((a, b) => a - b)
+  const tone = dark ? 'light' : 'dark'
+  const c = bfTone(tone)
+  const { promo, phase, live, remainingMs, deal } = useGcPromo()
+  const max = deal ? Math.max(0, Math.min(deal.maxFree, freeLeft ?? deal.maxFree)) : 0
+  const [qty, setQty] = useState(1)
+  useEffect(() => { if (max > 0 && qty > max) setQty(max) }, [max])
+  if (!promo || !deal || (phase !== 'upcoming' && phase !== 'live')) return null
+  const pay = qty * deal.creditPrice
   return (
     <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '16px', background: c.band, padding: isPhone ? '16px' : '20px 24px', marginBottom: '18px', border: `1px solid ${c.edge}` }}>
+      <style>{BF_KEYFRAMES}</style>
       <div style={{ display: 'flex', alignItems: isPhone ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '14px', flexDirection: isPhone ? 'column' : 'row' }}>
         <div>
           <BfTag small>{live ? 'Black Friday - live now' : 'Black Friday'}</BfTag>
@@ -145,17 +169,46 @@ export function BlackFridayBuyBanner({ claimed = [] }) {
             Buy 1, Get 1 <span style={{ color: c.gold }}>Free</span>
           </div>
           <div style={{ color: c.sub, fontSize: '12.5px', marginTop: '4px', lineHeight: 1.5 }}>
-            {deals.map(n => `${n} + ${n} free`).join(' and ')}, each deal once per member.
-            {!live && ` Starts ${promoDayLabel(promo.starts_at)}, 12:00am PT.`}
-            {live && ` Ends ${promoLastDayLabel(promo.ends_at)} at midnight PT.`}
-            {used.length > 0 && ` You've used the ${used.map(n => `${n}-credit`).join(' and ')} deal.`}
+            Buy up to {deal.maxFree} credits at {money(deal.creditPrice)} each and get the same number free.
+            {!live && ` Starts ${promoDayLabel(promo.starts_at)} at 12:00 AM PST.`}
+            {live && ` ${promoEndsLine(promo.ends_at)}.`}
           </div>
         </div>
         <div style={{ flexShrink: 0 }}>
           <div style={{ color: c.label, fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: '6px' }}>{live ? 'Ends in' : 'Starts in'}</div>
-          <BfCountdown ms={remainingMs} size="md" tone={dark ? 'light' : 'dark'} />
+          <BfCountdown ms={remainingMs} size="md" tone={tone} />
         </div>
       </div>
+
+      {live && (
+        <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: `1px solid ${dark ? 'rgba(10,15,31,0.1)' : 'rgba(255,255,255,0.12)'}` }}>
+          {max === 0 ? (
+            <div style={{ color: c.text, fontSize: '14px', fontWeight: 600 }}>You've had all {deal.maxFree} free credits in this sale. Thank you!</div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isPhone ? '14px' : '20px', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ color: c.label, fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: '6px' }}>Credits to buy</div>
+                  <QtyStepper value={qty} max={max} onChange={setQty} tone={tone} />
+                </div>
+                <div>
+                  <div style={{ color: c.text, fontSize: isPhone ? '20px' : '24px', fontWeight: 900, letterSpacing: '-0.02em' }}>
+                    {qty * 2} <span style={{ fontSize: '14px', fontWeight: 700, color: c.sub }}>Growth Credits</span>
+                  </div>
+                  <div style={{ color: c.sub, fontSize: '12.5px', marginTop: '2px' }}>
+                    {qty} + <span style={{ color: c.gold, fontWeight: 700 }}>{qty} free</span> for {money(pay)}
+                    {freeLeft !== null && freeLeft < deal.maxFree && ` · ${freeLeft} free left`}
+                  </div>
+                </div>
+              </div>
+              <button type="button" onClick={() => onBuy?.(qty)} className="vfo-bf-anim"
+                style={{ padding: '11px 22px', borderRadius: '999px', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 800, color: BF.ink, background: `linear-gradient(135deg, ${BF.gold} 0%, ${BF.goldDeep} 100%)`, animation: 'vfoBfPulse 2.2s ease-in-out infinite', whiteSpace: 'nowrap' }}>
+                Get the deal
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

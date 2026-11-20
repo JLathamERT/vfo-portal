@@ -180,6 +180,8 @@ function MemberCell({ row, members, onDone }) {
   const [open, setOpen] = useState(false)
   const [confirm, setConfirm] = useState(false)
   const [alreadyUsed, setAlreadyUsed] = useState('')
+  // Free credits the picked member has left in the sale, when fewer than the order carries.
+  const [freeLeft, setFreeLeft] = useState(0)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -205,14 +207,14 @@ function MemberCell({ row, members, onDone }) {
     ? members.filter(m => m.name.toLowerCase().includes(q) || m.member_number.includes(q) || (m.email || '').toLowerCase().includes(q)).slice(0, 8)
     : []
 
-  async function allocate(withoutBonus = false) {
+  async function allocate(capBonus = false) {
     if (!picked) return
     setBusy(true); setErr('')
     try {
-      const res = await callApi('gc_allocate_order', { order_id: row.order_id, member_number: picked.member_number, without_bonus: withoutBonus })
+      const res = await callApi('gc_allocate_order', { order_id: row.order_id, member_number: picked.member_number, cap_bonus: capBonus })
       onDone(`${res.credited} credits added to ${picked.name}. They've been emailed their invoice and receipt.`)
     } catch (e) {
-      if (e?.data?.already_used) { setAlreadyUsed(e.message); setConfirm(false) }
+      if (e?.data?.already_used) { setAlreadyUsed(e.message); setFreeLeft(Number(e.data.remaining) || 0); setConfirm(false) }
       else setErr(e?.message || 'Allocation failed')
     } finally { setBusy(false) }
   }
@@ -259,9 +261,9 @@ function MemberCell({ row, members, onDone }) {
       )}
       {alreadyUsed && (
         <div style={{ background: 'rgba(224,103,23,0.08)', border: '1px solid rgba(224,103,23,0.3)', borderRadius: '8px', padding: '8px 10px', fontSize: '11.5px', color: 'var(--vfo-ink)' }}>
-          {alreadyUsed} Add the {row.credits} paid {row.credits === 1 ? 'credit' : 'credits'} only (no free credits), or refund the order in Stripe.
+          {alreadyUsed} Add the {row.credits} paid {row.credits === 1 ? 'credit' : 'credits'}{freeLeft > 0 ? ` + ${freeLeft} free` : ' only (no free credits)'}, or refund the order in Stripe.
           <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
-            <button type="button" disabled={busy} onClick={() => allocate(true)} style={btn(true)}>{busy ? 'Allocating...' : `Add ${row.credits} paid only`}</button>
+            <button type="button" disabled={busy} onClick={() => allocate(true)} style={btn(true)}>{busy ? 'Allocating...' : freeLeft > 0 ? `Add ${row.credits} + ${freeLeft} free` : `Add ${row.credits} paid only`}</button>
             <button type="button" disabled={busy} onClick={() => setAlreadyUsed('')} style={btn(false)}>Cancel</button>
           </div>
         </div>
