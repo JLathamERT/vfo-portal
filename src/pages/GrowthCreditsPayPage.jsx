@@ -17,37 +17,42 @@ export default function GrowthCreditsPayPage() {
   const [params] = useSearchParams()
   const credits = Number(params.get('credits'))
   const isPublic = params.get('public') === '1'
-  const price = GC_NET_PRICES[credits]
+  // The Black Friday deal (any 1-10 credits, the same free) - always on the public page.
+  const isDeal = isPublic || params.get('deal') === '1'
   const session = getSession()
   const member = !isPublic && session?.role === 'member' && session?.member_number ? session : null
   const [buyer] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('gcPublicBuyer') || 'null') } catch { return null }
   })
   const promo = useGcPromo()
-  const [claimed, setClaimed] = useState(null)
+  const [freeLeft, setFreeLeft] = useState(null)
   const [status, setStatus] = useState('ready')
   const [error, setError] = useState('')
   const [hoveredOption, setHoveredOption] = useState(null)
 
   useEffect(() => {
-    if (!member) { setClaimed([]); return }
-    callApi('gc_promo_member_claims', { member_number: member.member_number }).then(r => setClaimed(r.claimed || [])).catch(() => setClaimed([]))
+    if (!member || !isDeal) { setFreeLeft(Infinity); return }
+    callApi('gc_promo_member_claims', { member_number: member.member_number }).then(r => setFreeLeft(Number(r.remaining) || 0)).catch(() => setFreeLeft(0))
   }, [])
 
   const backHref = isPublic ? '/black-friday' : '/member'
   const backLabel = isPublic ? 'Back to the Black Friday deals' : 'Back to Growth Credits'
 
-  if (!price) return <Message icon="!" tone="red" title="Something went wrong" text="That credit package doesn't exist." backHref={backHref} backLabel={backLabel} />
+  if (!isDeal && !GC_NET_PRICES[credits]) return <Message icon="!" tone="red" title="Something went wrong" text="That credit package doesn't exist." backHref={backHref} backLabel={backLabel} />
   if (isPublic && !buyer?.email) return <Message icon="!" tone="red" title="Your details are missing" text="Please start again from the Black Friday page." backHref={backHref} backLabel={backLabel} />
   if (!isPublic && !member) return <Message icon="i" tone="grey" title="Please sign in" text="Sign in to your VFO portal to buy Growth Credits." backHref="/member/login" backLabel="Go to sign in" />
-  if (!promo.loaded || claimed === null) return (
+  if (!promo.loaded || freeLeft === null) return (
     <TokenShell>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '15px', textAlign: 'center', margin: 0 }}>Loading…</p>
     </TokenShell>
   )
 
-  const bonus = claimed.includes(credits) ? 0 : promo.bonusFor(credits)
-  if (isPublic && bonus === 0) return <Message icon="i" tone="grey" title="This deal isn't available" text="The Black Friday sale is not running right now." backHref={backHref} backLabel={backLabel} />
+  const deal = promo.live ? promo.deal : null
+  if (isDeal && !deal) return <Message icon="i" tone="grey" title="This deal isn't available" text="The Black Friday sale is not running right now." backHref={backHref} backLabel={backLabel} />
+  if (isDeal && (!Number.isInteger(credits) || credits < 1 || credits > deal.maxFree)) return <Message icon="!" tone="red" title="Something went wrong" text={`Choose between 1 and ${deal.maxFree} credits.`} backHref={backHref} backLabel={backLabel} />
+  if (isDeal && credits > freeLeft) return <Message icon="i" tone="grey" title="Over your free credits" text={freeLeft > 0 ? `You can get up to ${freeLeft} more free ${freeLeft === 1 ? 'credit' : 'credits'} in this sale.` : "You've had all your free credits in this sale."} backHref={backHref} backLabel={backLabel} />
+  const price = isDeal ? credits * deal.creditPrice : GC_NET_PRICES[credits]
+  const bonus = isDeal ? credits : 0
 
   const firstName = isPublic ? buyer.first_name : String(member.name || '').split(' ')[0]
   const cardTotal = gcCardTotal(price)
@@ -64,7 +69,7 @@ export default function GrowthCreditsPayPage() {
     try {
       const res = isPublic
         ? await callApi('gc_public_checkout', { ...buyer, amount: credits, payment_method: method }, 1)
-        : await callApi('gc_create_checkout', { member_number: member.member_number, amount: credits, payment_method: method }, 1)
+        : await callApi('gc_create_checkout', { member_number: member.member_number, amount: credits, payment_method: method, ...(isDeal ? { deal: true } : {}) }, 1)
       if (res.url) { window.location.href = res.url; return }
       setError('Failed to start the secure payment.')
       setStatus('error')

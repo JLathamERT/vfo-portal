@@ -83,12 +83,12 @@ One row per Growth Credits sale ([flows/gift-credits.md](../flows/gift-credits.m
 | `key` | text | pk. `black_friday_2026`. |
 | `title` | text | not null. Shown everywhere: *"Black Friday"*. |
 | `starts_at` / `ends_at` | timestamptz | not null, CHECK `ends_at > starts_at`. Live: `2026-11-27 08:00Z` / `2026-12-01 08:00Z` (midnight to midnight PT, Fri-Mon). The test site's dates are moved by hand to test each phase. |
-| `bonus` | jsonb | not null. Package (credits, as text) → free credits: `{"1": 1, "10": 10}`. A package not named gets no bonus. |
+| `bonus` | jsonb | not null. The deal: `{"max_free": 10, "credit_price": 100}` — buy 1 to `max_free` credits at `credit_price` each, the same number free, up to `max_free` free per member per sale (`utils/gc-promotions.ts promoDeal`; migration `20261121120000`). Until 2026-11-21 it was a package → bonus map, `{"1": 1, "10": 10}`. |
 | `created_at` | timestamptz | default `now()` |
 
 ## `gc_orders` *(NEW 2026-11-20)*
 
-Every Growth Credits checkout from 2026-11-20 — the member portal's (`source='portal'`) and the public Black Friday page's (`source='public'`). RLS on + deny-all (anon probe `*/0`, 2026-11-20). Same migration. The once-per-member deal rule reads it (statuses `clearing`, `paid`, `allocated` count as used), and Growth Credits → Purchases lists it.
+Every Growth Credits checkout from 2026-11-20 — the member portal's (`source='portal'`) and the public Black Friday page's (`source='public'`). RLS on + deny-all (anon probe `*/0`, 2026-11-20). Same migration. The 10-free-per-member cap adds up its `bonus_credits` (statuses `clearing`, `paid`, `allocated` count), and Growth Credits → Purchases lists it.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -97,7 +97,7 @@ Every Growth Credits checkout from 2026-11-20 — the member portal's (`source='
 | `promo_key` | text | fk → `gc_promotions.key`. Set only when a bonus was given. |
 | `member_number` | text | Portal: at checkout. Public: set by `gc_allocate_order`. No foreign key. |
 | `buyer_first_name` / `buyer_last_name` / `buyer_email` / `buyer_phone` | text | Public only, as typed (names tidied by `formatPersonName`, phone by `formatPhone`, email lowercased). |
-| `credits` / `bonus_credits` | integer | The paid credits / the free ones decided at checkout (`bonus_credits` set to 0 by an Allocate *paid only*). |
+| `credits` / `bonus_credits` | integer | The paid credits / the free ones decided at checkout (cut to what the member has left by an Allocate with `cap_bonus`). |
 | `price` / `card_fee` / `amount_total` | numeric(10,2) | Package price, the card gross-up, what Stripe charged. |
 | `payment_method` | text | CHECK `card` \| `ach`. |
 | `stripe_session_id` | text | unique. |

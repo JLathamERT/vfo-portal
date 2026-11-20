@@ -11,20 +11,21 @@ import { BF, BlackFridayBuyBanner } from '../shared/BlackFridayPromo'
 // The member's Growth Credits marketplace. The packages are always on the
 // Dashboard as cards (2026-11-20, replacing the Buy Credits table behind a
 // button); a card opens /growth-credits-pay, the house-style pay page where the
-// member picks bank or card. During a sale (Black Friday) the packages it
-// covers carry the free credits, each deal once per member - the server decides
-// the bonus at checkout, this is display.
+// member picks bank or card. During a sale (Black Friday) a deal banner above the
+// packages lets the member buy 1-10 credits and get the same free, up to 10 free
+// per member per sale; the packages themselves never carry a bonus. The server
+// decides the bonus at checkout - this is display.
 
 export default function MemberGCMarketplace({ memberNumber, openBuyKey = 0 }) {
   const isPhone = useIsPhone()
   const navigate = useNavigate()
   const promo = useGcPromo()
-  const [claimed, setClaimed] = useState([])
+  // The sale's free credits this member has left (10 per member per sale).
+  const [freeLeft, setFreeLeft] = useState(null)
   useEffect(() => {
     if (!promo.promo) return
-    callApi('gc_promo_member_claims', { member_number: memberNumber }).then(r => setClaimed(r.claimed || [])).catch(() => {})
+    callApi('gc_promo_member_claims', { member_number: memberNumber }).then(r => setFreeLeft(Number(r.remaining) || 0)).catch(() => {})
   }, [promo.promo?.key, memberNumber])
-  const dealBonus = (credits) => claimed.includes(credits) ? 0 : promo.bonusFor(credits)
   const [gcTab, setGcTab] = useState('dashboard')
   const [balance, setBalance] = useState(null)
   const [transactions, setTransactions] = useState(null)
@@ -109,12 +110,12 @@ export default function MemberGCMarketplace({ memberNumber, openBuyKey = 0 }) {
   }
 
   // The pay page: back (or Stripe's cancel) lands on this tab again.
-  function buy(amount) {
+  function buy(amount, deal = false) {
     try {
       sessionStorage.setItem('memberActiveTab', 'gc')
-      sessionStorage.setItem('gcPendingBuy', JSON.stringify({ credits: amount, bonus: dealBonus(amount), balance }))
+      sessionStorage.setItem('gcPendingBuy', JSON.stringify({ credits: amount, bonus: deal ? amount : 0, balance }))
     } catch { /* private mode */ }
-    navigate(`/growth-credits-pay?credits=${amount}`)
+    navigate(`/growth-credits-pay?credits=${amount}${deal ? '&deal=1' : ''}`)
   }
 
   function showBanner(msg) { setBanner(msg); setTimeout(() => setBanner(''), 5000) }
@@ -160,10 +161,10 @@ export default function MemberGCMarketplace({ memberNumber, openBuyKey = 0 }) {
 
           <div ref={buyRef} style={{ ...sectionStyle, scrollMarginTop: '16px' }}>
             <div style={cardTitle}>Buy Credits</div>
-            <BlackFridayBuyBanner claimed={claimed} />
+            <BlackFridayBuyBanner freeLeft={freeLeft} onBuy={(n) => buy(n, true)} />
             <div style={{ display: 'grid', gridTemplateColumns: isPhone ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: isPhone ? '10px' : '14px' }}>
               {GC_PACKAGES.map(pkg => (
-                <PackageCard key={pkg.amount} pkg={pkg} bonus={dealBonus(pkg.amount)} used={claimed.includes(pkg.amount) && promo.bonusFor(pkg.amount) > 0}
+                <PackageCard key={pkg.amount} pkg={pkg} bonus={0} used={false}
                   hovered={hoverPkg === pkg.amount} onHover={setHoverPkg} onBuy={() => buy(pkg.amount)} isPhone={isPhone} />
               ))}
             </div>

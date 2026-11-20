@@ -2,23 +2,23 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import VfoWordmark from '../components/shared/VfoWordmark'
 import { BF, BF_KEYFRAMES, BfCountdown, BfTag } from '../components/shared/BlackFridayPromo'
-import { promoDayLabel, promoLastDayLabel, useGcPromo } from '../lib/gcPromo'
+import { promoDayLabel, promoEndsLine, useGcPromo } from '../lib/gcPromo'
 import { useIsPhone } from '../lib/useMediaQuery'
 
 // The public Black Friday page (2026-11-20): /black-friday, no sign-in. A member
 // picks a deal and gives their name, email and phone; bank or card is chosen on
 // the house pay page (/growth-credits-pay?public=1 -> gc_public_checkout), which
 // reads the details from sessionStorage. Nobody is credited at payment: the team allocates the
-// order to the member in Growth Credits > Purchases. Prices mirror the server's
-// GC_PACKAGES for display only.
+// order to the member in Growth Credits > Purchases. The deal's price and cap come
+// from gc_promo_status, display only; the server re-prices every checkout.
 
-const PRICES = { 1: 100, 10: 950 }
+const money = (n) => '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 })
 
 export default function BlackFridayPage() {
   const isPhone = useIsPhone()
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
-  const { loaded, promo, phase, remainingMs, plannedBonusFor } = useGcPromo()
+  const { loaded, promo, phase, remainingMs, deal } = useGcPromo()
   const [pick, setPick] = useState(null)
   const [form, setForm] = useState(() => {
     const blank = { first_name: '', last_name: '', email: '', phone: '' }
@@ -28,21 +28,23 @@ export default function BlackFridayPage() {
   const paid = params.get('paid') === '1'
   const paidMethod = params.get('m')
 
-  useEffect(() => { document.title = 'Black Friday - Growth Credits | VFO' }, [])
+  // The tab title names the sale only once the server says one is on.
+  useEffect(() => { document.title = promo ? 'Black Friday - Growth Credits | VFO' : 'Growth Credits | VFO' }, [promo])
 
-  const deals = promo ? Object.keys(promo.bonus || {}).map(Number).filter(n => plannedBonusFor(n) > 0 && PRICES[n]).sort((a, b) => a - b) : []
   const live = phase === 'live'
+  const maxFree = deal?.maxFree || 10
+  const creditPrice = deal?.creditPrice || 100
 
   // The bank-or-card choice is the house pay page; it reads these details back.
   function submit(e) {
     e.preventDefault()
     setError('')
-    if (!pick) { setError('Choose a deal first.'); return }
+    if (!pick) { setError('Choose how many credits first.'); return }
     if (['first_name', 'last_name', 'email', 'phone'].some(k => !String(form[k] || '').trim())) { setError('Please fill in every field.'); return }
     if (String(form.phone).replace(/\D/g, '').length < 10) { setError('Please enter a full phone number.'); return }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError('Please enter a valid email address.'); return }
     try { sessionStorage.setItem('gcPublicBuyer', JSON.stringify({ ...form, email: form.email.trim() })) } catch { /* private mode */ }
-    navigate(`/growth-credits-pay?credits=${pick}&public=1`)
+    navigate(`/growth-credits-pay?credits=${pick}&public=1&deal=1`)
   }
 
   const input = { width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '14px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', boxSizing: 'border-box' }
@@ -56,9 +58,13 @@ export default function BlackFridayPage() {
         <VfoWordmark size={17} light />
       </div>
       <div style={{ position: 'relative', maxWidth: '920px', margin: '0 auto', padding: isPhone ? '32px var(--vfo-gutter) 36px' : '56px 24px 60px', textAlign: 'center' }}>
-        {/* With no sale (the gc_black_friday switch Off) the page says nothing about one. */}
-        {loaded && !promo && !paid ? (
-          <h1 style={{ fontSize: isPhone ? '30px' : '44px', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05, margin: '6px 0 0' }}>VFO Growth Credits</h1>
+        {/* Nothing about a sale until the server has said one is on: while it loads
+            the hero is empty, and with no sale (the gc_black_friday switch Off) it
+            says only "Growth Credits" (no flash of the deal, Jake 2026-11-20). */}
+        {!loaded ? (
+          <div style={{ minHeight: isPhone ? '96px' : '140px' }} />
+        ) : !promo ? (
+          <h1 style={{ fontSize: isPhone ? '30px' : '44px', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05, margin: '6px 0 0' }}>Growth Credits</h1>
         ) : (
           <>
             <BfTag>{live ? 'Black Friday - live now' : 'Black Friday'}</BfTag>
@@ -66,7 +72,7 @@ export default function BlackFridayPage() {
               Buy 1, Get 1 <span style={{ background: `linear-gradient(135deg, ${BF.gold} 0%, ${BF.goldDeep} 100%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Free</span>
             </h1>
             <p style={{ fontSize: isPhone ? '15px' : '18px', color: 'rgba(255,255,255,0.78)', maxWidth: '620px', margin: '0 auto', lineHeight: 1.5 }}>
-              Double your Growth Credits for the VFO Marketplace. Buy 1 credit and get 1 free, or buy 10 and get 10 free.
+              Get twice the Growth Credits to put toward the marketing and business development services available in the VFO Marketplace.
             </p>
           </>
         )}
@@ -77,7 +83,7 @@ export default function BlackFridayPage() {
             </div>
             <BfCountdown ms={remainingMs} size={isPhone ? 'md' : 'lg'} />
             <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
-              {promoDayLabel(promo.starts_at)} to {promoLastDayLabel(promo.ends_at)}, midnight to midnight Pacific
+              {promoEndsLine(promo.ends_at)}
             </div>
           </div>
         )}
@@ -116,33 +122,50 @@ export default function BlackFridayPage() {
   } else {
     body = (
       <>
-        <div style={{ display: 'grid', gridTemplateColumns: isPhone ? '1fr' : `repeat(${deals.length || 1}, 1fr)`, gap: isPhone ? '14px' : '20px', marginBottom: '22px' }}>
-          {deals.map(n => {
-            const bonus = plannedBonusFor(n)
-            const selected = pick === n
-            return (
-              <button key={n} type="button" disabled={!live} onClick={() => { setPick(n); setError('') }}
-                style={{ position: 'relative', textAlign: 'left', cursor: live ? 'pointer' : 'default', padding: isPhone ? '20px' : '26px', borderRadius: '18px', fontFamily: 'Inter, sans-serif', background: 'var(--vfo-card)', border: selected ? `2px solid ${BF.goldDeep}` : '2px solid var(--vfo-border-soft)', boxShadow: selected ? '0 10px 30px rgba(255,159,28,0.25)' : 'var(--vfo-shadow-card)', transform: selected ? 'translateY(-2px)' : 'none', transition: 'all 0.18s ease', color: 'var(--vfo-ink)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <BfTag small>Buy {n} Get {bonus} Free</BfTag>
-                  <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: selected ? `6px solid ${BF.goldDeep}` : '2px solid var(--vfo-border-strong)', boxSizing: 'border-box' }} />
+        {/* The deal: pick 1-10 credits, get the same number free (Jake, 2026-11-20). */}
+        <div style={{ ...card, marginBottom: '22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '6px' }}>
+            <div style={{ fontSize: '18px', fontWeight: 800 }}>How many credits would you like?</div>
+            <BfTag small>Buy 1 Get 1 Free</BfTag>
+          </div>
+          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginBottom: '16px', lineHeight: 1.5 }}>
+            {money(creditPrice)} per credit. Buy up to {maxFree} and get the same number free.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isPhone ? 5 : 10}, minmax(0, 1fr))`, gap: isPhone ? '8px' : '10px' }}>
+            {Array.from({ length: maxFree }, (_, i) => i + 1).map(n => {
+              const selected = pick === n
+              return (
+                <button key={n} type="button" disabled={!live} onClick={() => { setPick(n); setError('') }} aria-pressed={selected}
+                  style={{ padding: isPhone ? '12px 0' : '14px 0', borderRadius: '12px', cursor: live ? 'pointer' : 'default', fontFamily: 'Inter, sans-serif', fontSize: '18px', fontWeight: 800,
+                    border: selected ? `2px solid ${BF.goldDeep}` : '2px solid var(--vfo-border-soft)',
+                    background: selected ? `linear-gradient(135deg, ${BF.gold} 0%, ${BF.goldDeep} 100%)` : 'var(--vfo-card)',
+                    color: selected ? BF.ink : 'var(--vfo-ink)', boxShadow: selected ? '0 8px 20px rgba(255,159,28,0.3)' : 'none', transition: 'all 0.15s ease' }}>
+                  {n}
+                </button>
+              )
+            })}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--vfo-border-soft)', minHeight: '44px' }}>
+            {pick ? (
+              <>
+                <div>
+                  <span style={{ fontSize: isPhone ? '30px' : '36px', fontWeight: 900, letterSpacing: '-0.03em' }}>{pick * 2}</span>
+                  <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-muted)', marginLeft: '8px' }}>Growth Credits</span>
+                  <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{pick} {pick === 1 ? 'credit' : 'credits'} + <strong style={{ color: BF.goldDeep }}>{pick} free</strong></div>
                 </div>
-                <div style={{ fontSize: isPhone ? '40px' : '48px', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1 }}>
-                  {n + bonus}<span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-muted)', marginLeft: '8px', letterSpacing: 0 }}>Growth Credits</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                  <span style={{ fontSize: '28px', fontWeight: 800 }}>{money(pick * creditPrice)}</span>
+                  <span style={{ fontSize: '14px', color: 'var(--vfo-faint)', textDecoration: 'line-through' }}>{money(pick * 2 * creditPrice)}</span>
                 </div>
-                <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px' }}>{n} {n === 1 ? 'credit' : 'credits'} + <strong style={{ color: BF.goldDeep }}>{bonus} free</strong></div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--vfo-border-soft)' }}>
-                  <span style={{ fontSize: '26px', fontWeight: 800 }}>${PRICES[n].toLocaleString('en-US')}</span>
-                  <span style={{ fontSize: '14px', color: 'var(--vfo-faint)', textDecoration: 'line-through' }}>${((n + bonus) * 100).toLocaleString('en-US')}</span>
-                </div>
-              </button>
-            )
-          })}
+              </>
+            ) : (
+              <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>{live ? 'Pick a number above.' : ''}</div>
+            )}
+          </div>
         </div>
-
         {!live && (
           <div style={{ ...card, textAlign: 'center', padding: '22px' }}>
-            <div style={{ fontSize: '15px', fontWeight: 700 }}>The deals open {promoDayLabel(promo.starts_at)} at 12:00am Pacific.</div>
+            <div style={{ fontSize: '15px', fontWeight: 700 }}>The deals open {promoDayLabel(promo.starts_at)} at 12:00 AM PST.</div>
             <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '6px' }}>Come back to this page then. Each deal can be used once per member.</div>
           </div>
         )}
@@ -151,7 +174,8 @@ export default function BlackFridayPage() {
           <form onSubmit={submit} style={card}>
             <div style={{ fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>Your details</div>
             <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginBottom: '18px', lineHeight: 1.5 }}>
-              For ERT members. Use the name you're known by at ERT so we can add the credits to your portal. Each deal can be used once per member. All fields are required.
+              <p style={{ margin: '0 0 8px' }}>Enter your information below to add your Growth Credits to your VFO Portal. Please use the name and email address associated with your ERT membership.</p>
+              <p style={{ margin: 0 }}>This offer is available to ERT members only. Each member may get up to {maxFree} free credits in total.</p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isPhone ? '1fr' : '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
               <div><label style={label} htmlFor="bf-first">First name <span style={req}>*</span></label><input id="bf-first" required autoComplete="given-name" value={form.first_name} onChange={e => setForm({ ...form, first_name: e.target.value })} style={input} /></div>
@@ -164,7 +188,7 @@ export default function BlackFridayPage() {
 
             <button type="submit" disabled={!pick}
               style={{ width: '100%', padding: '15px', borderRadius: '12px', border: 'none', cursor: !pick ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '15px', fontWeight: 800, color: BF.ink, background: `linear-gradient(135deg, ${BF.gold} 0%, ${BF.goldDeep} 100%)`, opacity: !pick ? 0.55 : 1, boxShadow: '0 8px 24px rgba(255,159,28,0.3)' }}>
-              {pick ? `Continue to payment - ${pick + plannedBonusFor(pick)} credits` : 'Choose a deal above'}
+              {pick ? `Continue to payment - ${pick * 2} credits` : 'Select a Growth Credit Package'}
             </button>
             <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', textAlign: 'center', marginTop: '10px' }}>Next you'll choose bank or card. Payments are processed securely by Stripe.</div>
           </form>

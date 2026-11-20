@@ -50,12 +50,13 @@ export function useGcPromo() {
   const promo = state?.promo || null
   const phase = promoPhaseAt(promo, now)
   const target = phase === 'upcoming' ? Date.parse(promo.starts_at) : phase === 'live' ? Date.parse(promo.ends_at) : now
-  const bonusFor = (credits) => {
-    const n = Number(promo?.bonus?.[String(credits)] || 0)
-    return phase === 'live' && n > 0 ? n : 0
-  }
-  const plannedBonusFor = (credits) => Number(promo?.bonus?.[String(credits)] || 0)
-  return { loaded: !!state, promo, phase, remainingMs: Math.max(0, target - now), bonusFor, plannedBonusFor }
+  // The deal (2026-11-20): buy 1 to maxFree credits at creditPrice each, get the
+  // same number free, up to maxFree free credits per member per sale. Display
+  // only - the server decides at checkout.
+  const maxFree = Number(promo?.bonus?.max_free) || 0
+  const creditPrice = Number(promo?.bonus?.credit_price) || 0
+  const deal = maxFree > 0 && creditPrice > 0 ? { maxFree, creditPrice } : null
+  return { loaded: !!state, promo, phase, live: phase === 'live', remainingMs: Math.max(0, target - now), deal }
 }
 
 export function splitCountdown(ms) {
@@ -68,6 +69,17 @@ export const pad2 = n => String(n).padStart(2, '0')
 // "Fri, Nov 27" in Pacific time, the sale's own clock.
 export function promoDayLabel(iso) {
   try { return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' }) } catch { return '' }
+}
+
+// "Offer ends November 30 at 11:59 PM PST": the sale's last minute, Pacific time
+// (ends_at is midnight at the start of the next day).
+export function promoEndsLine(iso) {
+  try {
+    const last = new Date(Date.parse(iso) - 60 * 1000)
+    const day = last.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' })
+    const time = last.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles', timeZoneName: 'short' })
+    return `Offer ends ${day} at ${time}`
+  } catch { return '' }
 }
 
 // The last day of the sale: ends_at is midnight at the START of the next day.
