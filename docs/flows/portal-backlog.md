@@ -22,6 +22,7 @@ Styled like the Advisor KPIs page: the **Tasks / Requests** pills on top, then t
 - **Forms:** `NewRequestModal.jsx` (Title, Department multi-select, Urgency and Importance 1–5, Description, and an optional, muted **Assign to** that only the requester sets while the request is pending), `DenyDialog.jsx` (a reason is required), `ArchiveDialog.jsx` (Announced on, today by default and never in the future, plus an optional note).
 - **Departments:** `backlog/portalDepartments.js` (with the chip colours) and the backend's `constants/portal-departments.ts` are the same eleven names. Change both together.
 - **Drag and drop** is native HTML5 (no library). A drag into another column lets the server place the card by priority; a drag up or down inside one column saves that position.
+- **Loading** (2026-11-20): while `portal_backlog_load` runs, the real Tasks / Requests pills show above `PortalBacklogSkeleton` (`shared/skeletons/admin.jsx`): the navy hero with its title and placeholder counts, the toolbar, then the board (at the same 1280 / 768 px breakpoints, two lanes) or the Requests lists. The archive shows `PortalBacklogArchiveRowsSkeleton` while it loads. There is no "Loading…" text. A change to the board's layout changes its skeleton too.
 
 ## The rules (all enforced by the backend)
 

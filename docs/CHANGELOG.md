@@ -9,6 +9,16 @@
 
 ---
 
+## 2026-11-20 (i) — Portal Backlog: a loading skeleton shaped like the page — by Paxton
+
+**Why.** Workbench item *Backlog 1a*: while `portal_backlog_load` ran, More ▾ → Portal Backlog showed "Loading the backlog…" in a narrow box and then jumped to the full page, against the house loading rule (`architecture/02-frontend-shell.md`, *Loading UX*: real chrome at once, page-shaped placeholders, no "Loading…" text).
+
+**Website only.** New in `src/components/shared/skeletons/admin.jsx`: `KpiHeroSkeleton` (the navy `KpiHero` with its real title, and white shimmer placeholders for the count, the bar and the lens chips), `BacklogCardSkeleton`, `PortalBacklogBoardSkeleton` (the board at its 1280 / 768 px breakpoints, two lanes because the assignees are unknown before the load), `PortalBacklogRequestsSkeleton`, `PortalBacklogArchiveRowsSkeleton` and `PortalBacklogSkeleton` (the hero, the toolbar, then the board or the Requests lists). `PortalBacklogPanel.jsx`: the Tasks / Requests pills are real while loading (clicking Requests switches the skeleton), and the loading and error states use the loaded page's 1800 px container. `BacklogArchive.jsx`: three skeleton rows instead of "Loading…". No backend, SQL, email or action change.
+
+**Tested** on the dev server against `vfo-admin-api-paxton` v9 (main, deployed at chat start; it had been on the 2026-11-17 backlog build). Paxton clicked it through on slow network: the board skeleton, Requests while loading, the stacked and lane-picker widths, the archive rows, dark mode, and a bell deep link after the load. Admin-only screen, so no phone check (TEAM_RULES §9).
+
+---
+
 ## 2026-11-20 (h) — Tax Plan KPI Tracker, feedback round 3: six steps, no gaps — by Paxton
 
 **Why.** Jake's Workbench card *Update Task timer Ticker* (spec *Tax Plan KPI Tracker – six steps, no gaps*): each step should own every day from the previous step's finish to its own, waiting included, like a relay baton, so the six step counts add up to Total days and can later be averaged across plans without adding gap days by hand.
