@@ -27,18 +27,18 @@ import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 const PLAN_STATUS = {
   setup_pending: { label: 'Awaiting first payment', color: '#0095ff' },
   active: { label: 'Active', color: '#16a34a' },
-  canceled: { label: 'Canceled', color: '#6b7280' },
+  canceled: { label: 'Canceled', color: '#8a94a6' },
   terminated: { label: 'Terminated', color: '#ef4444' },
 }
 
 const SCHED_STATUS = {
-  scheduled: { label: 'Scheduled', color: '#6b7280' },
+  scheduled: { label: 'Scheduled', color: '#5b6b8c' },
   processing: { label: 'Clearing', color: '#e06717' },
   paid: { label: 'Paid', color: '#16a34a' },
   missed: { label: 'Missed', color: '#ef4444' },
   declined: { label: 'Declined', color: '#ef4444' },
   waived: { label: 'Waived', color: '#6b7280' },
-  canceled: { label: 'Canceled', color: '#6b7280' },
+  canceled: { label: 'Canceled', color: '#8a94a6' },
 }
 
 // Paused months (kind='pause' marker rows) get their own amber so a pause reads
@@ -471,6 +471,8 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
   const [nyCredit, setNyCredit] = useState(plan.next_year_credit_note ? String(plan.next_year_credit_note) : '')
   const [nyType, setNyType] = useState(plan.next_year_member_type || plan.member?.member_type || '')
   const [showPause, setShowPause] = useState(false)
+  const [showEndEarly, setShowEndEarly] = useState(false)
+  const [endFinal, setEndFinal] = useState('')
   const [pauseMonths, setPauseMonths] = useState('1')
   const [pausePreview, setPausePreview] = useState(null)
   const [pausePreviewBusy, setPausePreviewBusy] = useState(false)
@@ -489,7 +491,8 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
   // A row's face value: amount_due is only what the card / bank pays once a Money
   // Mapping balance has paid part of it (mm_applied, 2026-10-30).
   const faceOf = r => Number(r.amount_due || 0) + Number(r.mm_applied || 0)
-  const payable = currentRows.filter(r => faceOf(r) > 0 || (plan.paid_with_gc && r.kind === 'membership'))
+  const payable = currentRows.filter(r => (faceOf(r) > 0 || (plan.paid_with_gc && r.kind === 'membership'))
+    && !(plan.ending_on && r.status === 'canceled'))
   const paidCount = payable.filter(r => r.status === 'paid').length
   const missedCount = currentRows.filter(r => r.status === 'missed' || r.status === 'declined').length
   const perPull = Number(plan.per_pull_amount) || 0
@@ -517,7 +520,22 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
   const payerNumber = tier1 && plan.paid_by_member_number && plan.paid_by_member_number !== plan.member_number ? plan.paid_by_member_number : null
   const payer = payerNumber ? (allMembers || []).find(x => x.member_number === payerNumber) : null
   const payerName = [payer?.first_name, payer?.last_name].filter(Boolean).join(' ')
-  const endingOn = tier1 && !closed && plan.ending_on ? plan.ending_on : null
+  const endingOn = !closed && plan.ending_on ? plan.ending_on : null
+  // Early termination (90 days' notice, 2026-11-20): an ordinary monthly plan ends
+  // after a final payment the admin picks. The pick defaults to the payment in the
+  // month two after this one (this month's payment + two more), else the last one
+  // before it, else the first one scheduled.
+  const canEndEarly = !tier1 && !tracking && !gc && plan.frequency === 'monthly' && plan.status === 'active' && !endingOn
+  const endEarlyRows = allSched.filter(r => r.kind === 'membership' && r.status === 'scheduled')
+  const endEarlyDefault = (() => {
+    if (!endEarlyRows.length) return 'none'
+    const lastOk = addMonthsIso(todayIso().slice(0, 8) + '01', 3)
+    const fit = endEarlyRows.filter(r => String(r.due_date).slice(0, 10) < lastOk)
+    return String((fit.length ? fit[fit.length - 1] : endEarlyRows[0]).due_date).slice(0, 10)
+  })()
+  const endPick = endFinal || endEarlyDefault
+  const endKept = endPick === 'none' ? [] : endEarlyRows.filter(r => String(r.due_date).slice(0, 10) <= endPick)
+  const endCut = endEarlyRows.length - endKept.length
   // Month to month reads as months, not a 12-month year: the months that have
   // happened plus the next scheduled one. The later scheduled rows (the rolling
   // schedule) and rows cancelled by a notice are hidden here only.
@@ -626,6 +644,23 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
     if (!res) return
     if (res.fee_status === 'declined') setMsg({ tone: 'amber', text: `Plan terminated, but the fee charge FAILED: ${res.fee_error || 'declined'}. The declined fee row stays in the grid for follow-up.` })
     setShowTerminate(false)
+    onChanged?.()
+  }
+
+  async function endEarly() {
+    const finalLine = endKept.length
+      ? `Final payment ${money(faceOf(endKept[endKept.length - 1]))} on ${fmtDate(endPick)}.`
+      : 'No further payments.'
+    const res = await run('membership_end_early', { plan_id: plan.id, final_due_date: endPick },
+      `End ${plan.member_name}'s membership early (90 days' notice)?\n\n${finalLine} ${endCut} later payment${endCut === 1 ? ' is' : 's are'} cancelled and it will not renew. No termination fee.\n\nThe End of Membership Confirmation email goes to the member.`)
+    if (!res) return
+    const doneLine = res.final_payment
+      ? `Final payment ${money(res.final_payment.amount_due)} on ${fmtDate(res.final_payment.due_date)}.`
+      : 'No further payments.'
+    setMsg(res.emailed
+      ? { tone: 'success', text: `Early termination recorded — the membership ends ${fmtDate(res.ending_on)}. ${doneLine} End of Membership Confirmation email created.` }
+      : { tone: 'amber', text: `Early termination recorded — the membership ends ${fmtDate(res.ending_on)}. ${doneLine} The confirmation email could not be created — send it by hand.` })
+    setShowEndEarly(false)
     onChanged?.()
   }
 
@@ -758,7 +793,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
             {gc && <StatusPill label="Growth Credits" color="#7c3aed" />}
             {tier1 && <StatusPill label="Month to month" color="#0d9488" />}
             {mmOn && <StatusPill label="Money Mapping" color={MM_COLOR} />}
-            {endingOn && <StatusPill label={`Ends ${fmtDate(endingOn)}`} color="#e06717" />}
+            {endingOn && <StatusPill label={`Ends ${fmtDate(endingOn)}`} color="#be123c" />}
             {openMeeting && <StatusPill label="Meeting requested" color="#e06717" />}
             {m.suspended && <StatusPill label="Suspended" color="#ef4444" />}
             {m.paused && <StatusPill label="Paused" color="#e06717" />}
@@ -1050,21 +1085,29 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                       {busy ? 'Working…' : 'Send payment update link'}
                     </button>
                   )}
-                  {!tier1 && (
+                  {!tier1 && !(endingOn && !plan.auto_renew) && (
                     <button type="button" disabled={busy} style={ghostBtn}
                       onClick={() => run('membership_plan_cancel', { plan_id: plan.id, mode: plan.auto_renew ? 'auto_renew_off' : 'auto_renew_on' }).then(r => r && onChanged?.())}>
                       {plan.auto_renew ? 'Turn auto-renew off' : 'Turn auto-renew on'}
                     </button>
                   )}
-                  {!gc && !tier1 && (
+                  {!gc && !tier1 && !endingOn && (
                     <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowNextYear(v => !v)}>
                       Edit next year's terms
                     </button>
                   )}
-                  {!tracking && !gc && !tier1 && (
+                  {!tracking && !gc && !tier1 && !endingOn && (
                     <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowPause(v => !v)}>
                       Pause Membership Payments
                     </button>
+                  )}
+                  {canEndEarly && (
+                    <button type="button" disabled={busy} style={dangerBtn} onClick={() => setShowEndEarly(v => !v)}>
+                      Early termination (90 days' notice)
+                    </button>
+                  )}
+                  {!tier1 && endingOn && (
+                    <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Ending early — ends {fmtDate(endingOn)}. Payments due up to then are still collected.</span>
                   )}
                   {!tier1 ? (
                     <button type="button" disabled={busy} style={dangerBtn} onClick={() => setShowTerminate(v => !v)}>
@@ -1105,6 +1148,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                   { name: 'MEMBERSHIP_transfer_setup_link|monthly-saveonly', when: 'Transfer plan with fixed charge day — setup link (save-only)' },
                   { name: 'MEMBERSHIP_update_link', when: 'Active plan — update payment method link' },
                   { name: 'MEMBERSHIP_next_year_terms', when: "Active plan — next year's terms saved" },
+                  { name: 'MEMBERSHIP_end_of_membership|early', when: "Early termination (90 days' notice)" },
                 ]} /></span>
               )}
             </div>
@@ -1187,6 +1231,34 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {showEndEarly && canEndEarly && (
+            <div style={{ marginTop: '12px', padding: '14px 16px', borderRadius: '10px', background: 'var(--vfo-card)', border: '1px solid #f3c0c0' }}>
+              <div style={{ ...label, marginBottom: '10px', color: '#b91c1c' }}>Early termination — {plan.member_name}</div>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div style={{ width: '260px' }}>
+                  <div style={label}>Final payment</div>
+                  <select value={endPick} onChange={e => setEndFinal(e.target.value)} style={input}>
+                    {endEarlyRows.map(r => (
+                      <option key={r.id} value={String(r.due_date).slice(0, 10)}>{fmtDate(r.due_date)} — {money(faceOf(r))}</option>
+                    ))}
+                    <option value="none">No further payments</option>
+                  </select>
+                </div>
+                <button type="button" disabled={busy} onClick={endEarly}
+                  style={{ ...primaryBtn(busy), background: busy ? '#c7d2e4' : '#ef4444' }}>
+                  {busy ? 'Working…' : 'Confirm early termination'}
+                </button>
+                <button type="button" disabled={busy} style={ghostBtn} onClick={() => setShowEndEarly(false)}>Back</button>
+              </div>
+              <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
+                {endKept.length
+                  ? <>{endKept.length} more payment{endKept.length === 1 ? '' : 's'} collected as scheduled ({endKept.map(r => fmtDate(r.due_date)).join(', ')}). </>
+                  : <>Nothing more is collected. </>}
+                {endCut} later payment{endCut === 1 ? '' : 's'} cancelled. Auto-renew goes off, there is no termination fee, and any missed payment is still owed. The member gets the End of Membership Confirmation email.
+              </div>
             </div>
           )}
 
