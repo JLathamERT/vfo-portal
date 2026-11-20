@@ -3,12 +3,11 @@ import { useSearchParams } from 'react-router-dom'
 import TokenShell from '../components/shared/TokenShell'
 
 // The SDP ATSG client payment page (2026-11-17): a copy of /tax-pay — ACH with no
-// fee or card with 2.9% + $0.30 — branded SDP & VFO Services. One link per
+// fee or card with 2.9% + $0.30 — branded VFO Services (2026-11-20). One link per
 // client covers the first advisory retainer payment, any missed payment and
 // "update payment method" (?update=1, saves only); a Strategy Impact Fee has its own.
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
-const SDP_ORANGE = '#fd681d'
 
 async function post(body) {
   const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -77,7 +76,7 @@ export default function SdpAtsgPayPage() {
         <span style={{ fontSize: '28px', lineHeight: 1 }}>🔒</span>
       </div>
       <h1 style={{ ...titleStyle, fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>
-        <span style={{ color: SDP_ORANGE }}>SDP</span> &amp; VFO Services Payment
+        VFO Services Payment
       </h1>
     </>
   )
@@ -93,12 +92,12 @@ export default function SdpAtsgPayPage() {
         <OptionCard isHovered={hoveredOption === 'ach'} onHover={() => setHoveredOption('ach')} onLeave={() => setHoveredOption(null)} onClick={() => handleChoice('ach')}
           title="ACH Bank Account" badgeText="No Fee" badgeClass="green" amount={null}
           breakdown={[{ label: 'Charged today', value: '$0.00', valueColor: '#16a34a' }]}
-          footer="Your remaining payments are collected from this bank account with no fee." />
+          footer="Your future payments are collected from this bank account with no fee." />
         <div style={dividerStyle}>— or —</div>
         <OptionCard isHovered={hoveredOption === 'card'} onHover={() => setHoveredOption('card')} onLeave={() => setHoveredOption(null)} onClick={() => handleChoice('card')}
           title="Credit / Debit Card" badgeText="2.9% + $0.30 Fee" badgeClass="blue" amount={null}
           breakdown={[{ label: 'Charged today', value: '$0.00', valueColor: '#16a34a' }]}
-          footer="Your remaining payments are collected from this card, each with the 2.9% + $0.30 card processing fee." />
+          footer="Your future payments are collected from this card, each with the 2.9% + $0.30 card processing fee." />
         <p style={securityNoteStyle}>Your payment details are handled securely by Stripe.<br />We never see or store your payment information.</p>
       </div>
     </TokenShell>

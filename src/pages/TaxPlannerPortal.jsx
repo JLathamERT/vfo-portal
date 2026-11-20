@@ -13,7 +13,11 @@ export default function TaxPlannerPortal() {
   const navigate = useNavigate()
   const session = getSession()
   usePortalTheme()
-  const [tab, setTab] = useState(() => sessionStorage.getItem('taxPlannerActiveTab') || '')
+  // ?tab= wins (a bell can open a tab, e.g. the SDP heads-up's ?tab=sdp_atsg&case=N).
+  const [tab, setTab] = useState(() => {
+    try { const t = new URLSearchParams(window.location.search).get('tab'); if (t) return t } catch { /* no URL */ }
+    return sessionStorage.getItem('taxPlannerActiveTab') || ''
+  })
 
   useEffect(() => {
     if (!session || session.role !== 'tax_planner') navigate('/tax-planner/login')
