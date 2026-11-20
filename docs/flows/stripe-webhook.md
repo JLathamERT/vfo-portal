@@ -99,6 +99,8 @@ The handler `if`-checks `event.type === "checkout.session.completed"` and `event
 3. INSERTs `gc_transactions` row: `type='purchased'`, `amount=<credits>`, `balance_after=<new balance>`, `description="<credits> credits purchased via Stripe"`, plus `payment_method` (`card` / `ach`) and `card_fee` (2026-11-10).
 4. Chains `automation_GC_purchase_invoicereceipt {transaction_id}` (the member's invoice + receipt, 2026-11-10).
 
+**2026-11-20 (the Black Friday sale, [gift-credits.md](gift-credits.md) Flow F):** steps 1-4 are `utils/gc-fulfil.ts creditGcPurchase`, which also writes a sale's free credits as a separate `type='bonus'` row and moves the `gc_orders` row to `paid`. Every session from then names its `gc_orders` row (`metadata.gc_order_id`), and the branch acts only when that row carries the event's session id (the mode / environment guard, #410; older sessions fall back to `event.livemode` vs the `GROWTH_CREDITS` sandbox flag). A **public** order (`metadata.payment_kind='gc_public'`, no member number) credits nobody: it is marked `paid` / `clearing` and the buyer gets `GC_public_order_received`; an admin allocates it later. `async_payment_failed` marks the order `failed`.
+
 A bank purchase reaches step 1 only at `checkout.session.async_payment_succeeded`. At `checkout.session.completed` with the payment still clearing, the webhook instead sends the "Bank payment started" email (`sendGcAchConfirmation`, latched per session in `gc_purchase_notices`) — #287. Detail: [gift-credits.md](gift-credits.md) Step 4.
 
 **Tables read:** `gc_balances`.

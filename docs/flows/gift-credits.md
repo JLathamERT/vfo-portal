@@ -18,7 +18,7 @@ Growth Credit purchases are one of the three money flows now billed on the **ERT
 
 A GC purchase is a **one-shot Checkout Session**: there is no saved customer and nothing to charge again, so the stamp is a record, not a routing key. **An admin comp (`gc_add_credits`) takes no money and leaves both `stripe_session_id` and `stripe_account` NULL** — which is consistent with the `#466` discriminator rule (`stripe_session_id` present = a real sale).
 
-> **Pre-existing gap, flagged not fixed:** the GC webhook branch has **no `event.livemode`-vs-row guard** of the kind the membership and SpecRev branches carry. That was true before this change and is unchanged by it.
+> **The mode guard (2026-11-20, Issue #410).** Every session from 2026-11-20 names its `gc_orders` row (`metadata.gc_order_id`) and the webhook acts only when that row carries THIS session's id — so an event from the other Stripe mode, or the other environment (whose order ids overlap), is refused. An older session with no order falls back to `event.livemode === !GROWTH_CREDITS.sandbox_mode`.
 
 **VERIFIED LIVE 2026-09-11** (sandbox ON + `stripe_account='ert'` for a short window, then reverted): a **1-credit purchase on Test Member 59524** minted on ERT, `gc_transactions` **86** stamped `ert`, **$103.30**, balance **950 → 951**.
 
@@ -32,7 +32,7 @@ Member opens [MemberPortal](src/pages/MemberPortal.jsx) → GC Marketplace tab �
 
 **Handler:** `gc_create_checkout({member_number, amount, payment_method})` ([MemberGCMarketplace.jsx](src/components/member/MemberGCMarketplace.jsx) → [actions/gc/create-checkout.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/actions/gc/create-checkout.ts)).
 
-**Four fixed packages, priced SERVER-SIDE.** `GC_PACKAGES` in that handler is the single source of truth; the client-sent `amount` must be one of its keys and **any client-sent price is ignored**.
+**Four fixed packages, priced SERVER-SIDE.** `GC_PACKAGES` in [utils/gc-promotions.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/utils/gc-promotions.ts) (moved there 2026-11-20 so the public checkout shares it) is the single source of truth; the client-sent `amount` must be one of its keys and **any client-sent price is ignored**.
 
 | Credits | Price | vs. the $100-per-credit headline |
 |---|---|---|
@@ -41,7 +41,7 @@ Member opens [MemberPortal](src/pages/MemberPortal.jsx) → GC Marketplace tab �
 | 20 | `$1,800` | **10% off** ($2,000) |
 | 50 | `$4,000` | **20% off** ($5,000) *(added 2026-09-01)* |
 
-The **member** Buy Credits modal ([MemberGCMarketplace.jsx](src/components/member/MemberGCMarketplace.jsx)) renders these as a **4-column comparison table** — struck-through headline price, an *"N% off"* line, the net price, and a **Select** button per column — computing the headline and the discount from `GC_NET_PRICES`, which mirrors the server list **for display only**. The **admin** panel ([GrowthCreditsPanel.jsx](src/components/admin/GrowthCreditsPanel.jsx)) shows the same four as reference cards with a *"Save N%"* line. **All three lists must move together when a package changes**, and the server one is the only one that decides what is charged.
+The **member** GC Marketplace Dashboard ([MemberGCMarketplace.jsx](src/components/member/MemberGCMarketplace.jsx), redesigned 2026-11-20) shows a slim **Credit Balance** card and, straight under it with no button to press, a **Buy Credits** card of four **package cards** (credits, price, the struck $100-a-credit value, the price per credit, *Save N%*). A card opens **`/growth-credits-pay?credits=<n>`** ([GrowthCreditsPayPage.jsx](src/pages/GrowthCreditsPayPage.jsx)) — the bank-or-card choice as a house pay page (a copy of `MembershipPayPage`'s option cards) — which calls `gc_create_checkout`. Display prices come from `src/lib/gcPackages.js` (`GC_NET_PRICES`, display only). The **admin** panel ([GrowthCreditsPanel.jsx](src/components/admin/GrowthCreditsPanel.jsx)) shows the same four as reference cards with a *"Save N%"* line. **All three lists must move together when a package changes**, and the server one is the only one that decides what is charged.
 
 **ACH or card, and the card price is grossed up.** `payment_method` is required and must be `'ach'` or `'card'`. ACH charges the flat package price; **card grosses the charge up so Stripe's 2.9% + $0.30 nets to the flat price** — `chargeCents = round((price + 0.30) / (1 - 0.029) * 100)`, the same formula as `tax/stripe-checkout.ts` and `pipeline/contract-stripe-checkout.ts`. The gross-up amount rides along as `metadata.card_processing_fee`. `payment_method_types[]` is `card` or `us_bank_account`, and the ACH session additionally sets `payment_method_options[us_bank_account][verification_method] = instant`.
 
@@ -66,6 +66,10 @@ metadata.card_processing_fee: <fee>        # card only
 
 Returns the Checkout URL. Frontend redirects via `window.location.href`.
 
+Since 2026-11-20 every checkout also writes a **`gc_orders`** row (`source='portal'`, `status='checkout'`, the session id once Stripe answers) and carries `metadata.gc_order_id`; during a sale it also stamps `metadata.bonus_credits` / `promo_key` / `promo_title` and the memo reads *"1 Growth Credit + 1 Free (Black Friday) - (59012) Name"* — see **Flow F**.
+
+**The return (2026-11-20).** The package click saves `gcPendingBuy` (`{credits, bonus, balance}` BEFORE buying) in sessionStorage. Back on `?gc_success=1`, the Dashboard shows a **purchase card** (blue *Adding your credits…* → green *Purchase complete* with the credits added and the new balance; amber *Your bank payment is on its way* for ACH; *Payment processed* if 30 s pass) and polls `gc_load_balance` until it passes the SAVED balance — never the first read on return, which a card purchase has usually already raised (#778).
+
 > **`<base>` is the REQUEST's Origin when allowlisted.** The handler reads the `Origin` header and uses it when it appears in `ALLOWED_ORIGINS` (`constants/allowed-origins.ts`), else falls back to `https://vfoportal.com` — so local dev returns to localhost rather than production.
 
 > **GC purchases DO have a sandbox path — and, since 2026-09-11, an account path too.** The Stripe key comes from **`getStripeKeyFor(stripeAccount, isSandbox)`**, with **both** `isSandbox` and `stripeAccount` loaded from the **`GROWTH_CREDITS`** row of `pipeline_sandbox_config` via `loadSandboxConfig`. (An older note here claimed `STRIPE_SECRET_KEY` unconditionally with no sandbox path; that is no longer true.)
@@ -88,6 +92,8 @@ The helper is **idempotent against Stripe retries** via a `stripe_session_id` gu
 2. UPSERTs `gc_balances` with `balance = current + credits`.
 3. INSERTs `gc_transactions` row: `type='purchased'`, `amount=<credits>`, `balance_after=<new>`, `description="<credits> credits purchased via Stripe"`, and since 2026-11-10 **`payment_method`** (`ach` when the session's `payment_method_types` holds `us_bank_account`, else `card`) and **`card_fee`** (the session's `metadata.card_processing_fee`, card only). **No `actor_name` / `actor_role`** — the webhook has no caller session, so a purchase reads *"—"* in the History tab's **By** column (see [Who did it](#who-did-it--the-actor-stamp-2026-10-02-v937)).
 4. Chains the invoice + receipt (below), then the FYI bell to the member's MSM.
+
+Steps 1-4 live in [utils/gc-fulfil.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/utils/gc-fulfil.ts) `creditGcPurchase` since 2026-11-20, shared with `gc_allocate_order` (Flow F). A sale's free credits go in as a SECOND row, **`type='bonus'`** (no session id, no money, actor *System*, *"Black Friday bonus: 1 free credit"*), so Revenue and Credits Sold stay true (#466); the order row moves to `paid` with its `transaction_id`.
 
 See [stripe-webhook.md](stripe-webhook.md#sub-branch-a1--gc-credit-purchase) for full handler detail.
 
@@ -226,6 +232,26 @@ An admin can move a live subscription's schedule from the *"Subscribed - renews 
 
 Both surfaces render the **same component**, [GCMarketplaceViews.jsx](src/components/shared/GCMarketplaceViews.jsx) (`GCServicesView` + `GCTransactionHistory`), so they cannot drift; `adminMode` only changes copy and hides Buy-credits. A recurring row reads `N credits / month|year`; a live subscription replaces Redeem with a **Subscribed — renews \<date\>** pill (or **On hold — add credits to resume**) plus a Cancel behind a confirm modal, and the recurring redeem modal spells the repeat charge out before anything is spent.
 
+## Flow F — Sales, the public Black Friday page, and Purchases (2026-11-20)
+
+**The switch.** `portal_feature_flags.gc_black_friday` (More ▾ → Feature Switches → *Black Friday sale*, Off / On for all). Released **Off** on live. Off = `loadCurrentPromotion` returns null, so there is no sale ANYWHERE: no bar, no bonus at checkout, and `/black-friday` reads *"VFO Growth Credits - There is no sale running right now"* with nothing about Black Friday. Orders already checked out keep their bonus and Allocate still works.
+
+**The sale window.** `gc_promotions` (one row per sale: `starts_at`, `ends_at`, `bonus` = `{"1": 1, "10": 10}`). Live row `black_friday_2026`: Fri 27 Nov 2026 12:00am PT → Tue 1 Dec 12:00am PT (`08:00Z` both ends). Read by [utils/gc-promotions.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/utils/gc-promotions.ts). To end a sale early, set `ends_at` to now; on the test site the dates are moved freely to test each phase.
+
+**Rules (Jake, 2026-11-20).** Only the 1 and 10 packs, same price, double the credits (2 for $100, 20 for $950); each deal **once per member** per sale. A deal counts as used while its order is `clearing`, `paid` or `allocated` (a failed bank payment frees it). The bonus is decided at CHECKOUT and stamped on the session, so a bank payment that clears after the sale still gets it. A second checkout for the same deal expires the member's older unpaid session (Stripe `…/expire`). 20 and 50 packs are never in the sale.
+
+**What a member sees** ([BlackFridayPromo.jsx](src/components/shared/BlackFridayPromo.jsx), [src/lib/gcPromo.js](src/lib/gcPromo.js) — one `gc_promo_status` fetch, the countdown runs on the server's clock): a bar under the member portal header on EVERY tab for members with the marketplace (not Tier 1) — *"Starts in"* before the sale, *"Ends in"* during it, gone after; a dark band on a light portal, a LIGHT band in dark mode. Click = GC Marketplace with the packages in view. The 1 and 10 cards turn gold (*Buy 1 Get 1 Free*, *"1 + 1 free"*, *Get the deal*); a used deal reads *Black Friday deal used*. `gc_promo_member_claims` (MEMBER_SCOPED) says which deals the member has used.
+
+**The public page `/black-friday`** ([BlackFridayPage.jsx](src/pages/BlackFridayPage.jsx), no sign-in, emitted as a route file): countdown hero, the two deal cards, then first name, last name, email and phone (all required) under *"For ERT members. Use the name you're known by at ERT…"*. *Continue to payment* saves the details in sessionStorage `gcPublicBuyer` and opens `/growth-credits-pay?credits=<n>&public=1`, which calls **`gc_public_checkout`** (PUBLIC, rate-limited 10/h per platform IP #531, only a running sale's bonus packages, refuses an email that has already used that deal — including a member who used it in the portal under that email). Its session has `metadata.payment_kind='gc_public'` and **no member number**; memo *"1 Growth Credit + 1 Free (Black Friday) - Public page - <name as typed>"*. Stripe returns to `/black-friday?paid=1&m=<method>` (a thank-you card).
+
+**The webhook for a public order credits NOBODY.** `checkout.session.completed` → order `paid` (card) or `clearing` (bank); `async_payment_succeeded` → `paid`; `async_payment_failed` → `failed` (frees the deal). The first of these sends the buyer **`GC_public_order_received`** (*"Growth Credits - Black Friday order received - <buyer>"*, To the typed email, Cc Tray, Bcc Paul/Anton/Daniel; `[PAYMENT_LINE]` card vs bank; latch `gc_orders.buyer_email_sent_at`, #611).
+
+**Growth Credits → Purchases** (admin, the `growth_credits` tab grant; sub-tabs **Redemptions · Purchases · Menu**, all 1320 wide; [GCPurchasesTable.jsx](src/components/admin/GCPurchasesTable.jsx) in the Advisor Onboarding list's style). `gc_purchases_load` lists every sale — `gc_orders` from 2026-11-20 plus older portal sales from `gc_transactions` — Name · Email · Source (Portal / Public page) · Amount Paid (method + card fee) · Credits (*"10 + 10 free"*) · Date · Member. A public order that has cleared reads **Needs allocation**, opened on the best suggestion from [utils/name-match.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/utils/name-match.ts) (email on any member address/login/contact, phone on contacts, last name + first name / ~100 nickname groups such as *Jacob = Jake* / first 3 letters, company email domain) with its reasons, and a search over every member. **Allocate → Confirm** = `gc_allocate_order` (ADMIN_ONLY + tab): claims the order `paid → allocated` first, refuses a member with no `member_plugin_settings` row, and if that member already used the deal returns `already_used` — the screen then offers **Add N paid only** (`without_bonus`, the order's bonus set to 0). Credits through `creditGcPurchase`, so the member gets the usual invoice + receipt, Cc'd to the buyer's typed email when it is not theirs. No bell (Jake).
+
+**Email wording.** `[PROMO]` in `GC_purchase_invoicereceipt` and `GC_purchase_ach_confirmation` (subject *"Growth Credits - [PROMO]Invoice & Receipt - …"*, body *"Thank you for your [PROMO]purchase of [Credits]…"*) fills as *"Black Friday "* on a sale purchase and blank otherwise; `[Credits]` reads *"1 Growth Credit + 1 free"*; both PDFs gain a *"Black Friday Bonus: N free"* line.
+
+**Not exercised on the test site:** a portal BOGO paid by BANK (the `[PROMO]` bank-started email), a failed bank payment freeing a deal, the older-session expiry, the rate limit — JLathamERT/vfo-edge-functions#609.
+
 ## Who did it — the actor stamp (2026-10-02, v937)
 
 `gc_transactions` gained **`actor_name`** + **`actor_role`** (`member` | `admin` | `system`, nullable) in `20261002190000_gc_transactions_actor.sql`. Resolved by [utils/gc-actor.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/utils/gc-actor.ts) `gcActorFor(supabase, auth)`, which never throws (an unresolvable caller stamps NULL). **The actor is stored as a NAME, never an email**, because `gc_load_transactions` is `select("*")` and member-callable — whatever is in the row reaches the member's own portal (#577).
@@ -250,8 +276,8 @@ Both surfaces render the **same component**, [GCMarketplaceViews.jsx](src/compon
 
 ## Tables touched (composite)
 
-- **Read:** `gc_services`, `gc_balances`, `gc_transactions`, `gc_redemptions`, `gc_subscriptions`.
-- **Written:** `gc_balances` (upsert), `gc_transactions` (insert; `docs_emailed_at` / `invoice_number` / `receipt_number` update), `gc_purchase_notices` (insert/delete), `document_numbers` (insert), `gc_redemptions` (insert/update), `gc_services` (insert/update/delete), `gc_subscriptions` (insert/update).
+- **Read:** `gc_services`, `gc_balances`, `gc_transactions`, `gc_redemptions`, `gc_subscriptions`, `gc_promotions`, `gc_orders`, `portal_feature_flags` (`gc_black_friday`), and for the Allocate suggestions `members`, `member_logins`, `member_contacts`.
+- **Written:** `gc_orders` (insert/update, 2026-11-20), `public_rate_hits` (the public checkout), `gc_balances` (upsert), `gc_transactions` (insert incl. `type='bonus'`; `docs_emailed_at` / `invoice_number` / `receipt_number` update), `gc_purchase_notices` (insert/delete), `document_numbers` (insert), `gc_redemptions` (insert/update), `gc_services` (insert/update/delete), `gc_subscriptions` (insert/update).
 
 ## Downstream chains
 
@@ -260,13 +286,15 @@ Both surfaces render the **same component**, [GCMarketplaceViews.jsx](src/compon
 
 ## Frontend touch-points
 
-- [MemberGCMarketplace.jsx](src/components/member/MemberGCMarketplace.jsx) — member view. Calls `gc_load_balance`, `gc_load_transactions`, `gc_create_checkout`; its Services/History tabs are the shared views below.
-- [GCMarketplaceViews.jsx](src/components/shared/GCMarketplaceViews.jsx) — the shared Services + History views. Calls `gc_load_services`, `gc_load_subscriptions`, `gc_redeem`, `gc_cancel_subscription`.
+- [MemberGCMarketplace.jsx](src/components/member/MemberGCMarketplace.jsx) — member view: balance card + package cards (no Buy button), its own loading skeleton (`GCMarketplaceSkeleton`, also the portal's while it loads on this tab). Calls `gc_load_balance`, `gc_load_transactions`, `gc_promo_member_claims`; the purchase itself is `/growth-credits-pay` (`gc_create_checkout`). Its Services/History tabs are the shared views below.
+- [GrowthCreditsPayPage.jsx](src/pages/GrowthCreditsPayPage.jsx) (`/growth-credits-pay`), [BlackFridayPage.jsx](src/pages/BlackFridayPage.jsx) (`/black-friday`), [BlackFridayPromo.jsx](src/components/shared/BlackFridayPromo.jsx) (the bar + banner), [GCPurchasesTable.jsx](src/components/admin/GCPurchasesTable.jsx) (Purchases) — Flow F.
+- [GCMarketplaceViews.jsx](src/components/shared/GCMarketplaceViews.jsx) — the shared Services + History views (2026-11-20: a balance card, then each category under the portal's card heading with services as tiles — cost pill, *Renews every month* pill, two-line Objective, *Details* inside the tile, Redeem / Cancel). Calls `gc_load_services`, `gc_load_subscriptions`, `gc_redeem`, `gc_cancel_subscription`.
 - [MembersPanel.jsx](src/components/admin/MembersPanel.jsx) `MemberGC` — admin view per-member, sub-tabs **Dashboard | Services | History**. Dashboard is admin-only (balance, stats, `gc_add_credits`); Services and History are the shared views, passed the member's number so an admin can redeem or cancel on their behalf.
 
 ## Auth
 
 - `gc_add_credits` and `gc_deduct_credits` ARE in `ADMIN_ONLY_ACTIONS` (corrected 2026-10-13 — this line said otherwise); `gc_redeem` and `gc_create_checkout` are NOT. `gc_create_checkout` sits in **`MEMBER_SCOPED_ACTIONS`** ([constants/role-gates.ts](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/constants/role-gates.ts)), so a member calls it for their own `member_number` — the router rewrites `body.member_number` to the caller's — and the price is derived server-side from `GC_PACKAGES` rather than from the request. An earlier admin-only gate here **did** 403 the member purchase flow; it was fixed together with server-side pricing (**GOTCHAS #210**).
+- 2026-11-20: `gc_promo_status` and `gc_public_checkout` are PUBLIC and in no gate list by design (the first reads only `gc_promotions` and the switch; the second chooses nothing but a sale package and the buyer's own details, credits nobody, and is rate-limited). `gc_promo_member_claims` is in `MEMBER_SCOPED_ACTIONS` + `MEMBER_TIER2_ACTIONS` (reads by `member_number` alone, so the rewrite is its fence). `gc_purchases_load` and `gc_allocate_order` are `ADMIN_ONLY_ACTIONS` + `TAB_ACTIONS.growth_credits`.
 
 ## Failure modes
 

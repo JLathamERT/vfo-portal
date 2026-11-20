@@ -40,7 +40,7 @@ cd C:\vfo-react;          git fetch --tags -q; git tag -l 'live-*'         --sor
 cd C:\vfo-edge-functions; git fetch --tags -q; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
-#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-20 → 6 + 688 = **694**; past values in CHANGELOG)
+#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-20 → 6 + 693 = **699**; past values in CHANGELOG)
 cd C:\vfo-edge-functions   # or the worktree
 $logins   = (Select-String -Path supabase/functions/vfo-admin-api/index.ts          -Pattern '^\s*if \(action === '            -AllMatches).Matches.Count
 $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatch.ts -Pattern '^\s*"([a-zA-Z0-9_]+)":\s*\(c\)'  -AllMatches).Matches.Count
@@ -49,7 +49,7 @@ $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatc
 # 4. Type-check baseline — must be 0; --no-lock avoids the v5 deno.lock the bundler rejects (#112)
 & "$env:USERPROFILE\.deno\bin\deno.exe" check --no-lock supabase/functions/vfo-admin-api/index.ts   # or plain `deno` when it is on PATH
 
-# 5. Frontend build — expect exit 0. (v: 2026-11-18 → **51** route pages, the dev-only `/phone-preview` never among them; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
+# 5. Frontend build — expect exit 0. (v: 2026-11-20 → **53** route pages, the dev-only `/phone-preview` never among them; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
 cd C:\vfo-react; npm run build
 
 # 6. Pipeline smoke gate — hand it to the person running the chat in EXACTLY this form: THEIR portal email (TEAM table, TEAM_RULES.md), a literal <password>, never a token, never Read-Host
@@ -94,7 +94,7 @@ Labels: `owed` a job to do · `watch` waits on a real event · `parked` don't fi
 - **`boldsign-webhook`** — standalone. **Deploy with `--no-verify-jwt` (mandatory)** and **only with explicit approval** (#10, #180). **Helper functions** — `draft-agreement-pdfs` (on-demand Gmail drafts, no business logic) and `boldsign-template-fields` (a throwaway that reads a BoldSign template's field coordinates back for `agreement_templates.field_map`; `verify_jwt=true`, no business logic, safe to delete) — versions derived in step 1, never written here. *(v: 2026-09-14)*
 - **Key entry points** — `index.ts` (logins) · `router/dispatch.ts` (PUBLIC_HANDLERS + AUTH_HANDLERS) · `router/webhooks.ts` (Stripe + BoldSign by shape) · `middleware/auth.ts` (six login types, role precedence) · `constants/role-gates.ts` (every gate list) · `utils/notify.ts` (all bells + the business-day helpers).
 - **Storage buckets** — every bucket, public or private, and what reads it: [integrations/supabase.md](integrations/supabase.md) (derive: `select id, public from storage.buckets`); older per-bucket prose in [CHANGELOG.md](CHANGELOG.md) under the 2026-08-14 restructure heading. *(v: 2026-11-17)*
-- **NOT in the system:** no automated tests, no test runner, no CI beyond the deploy button and staging's self-update (`.github/workflows`, they run no tests), no frontend TypeScript, no Supabase Auth (custom session tokens over `admin_sessions`, six login types / five portals, salted PBKDF2-HMAC-SHA256), no React Context (just a promise cache + token-keyed last-seen snapshots in `src/lib/api.js`, #579), no structured logging (frontend errors go to Sentry only). **Email is Gmail DRAFTS by default** — but **265 of 373** `email_templates` rows on live have `send_mode=true`, 267 of 375 once the two SDP ATSG yearly emails are applied at release (#325; derive with `select count(*) from email_templates where send_mode`, past values in CHANGELOG) *(v: 2026-11-20)*
+- **NOT in the system:** no automated tests, no test runner, no CI beyond the deploy button and staging's self-update (`.github/workflows`, they run no tests), no frontend TypeScript, no Supabase Auth (custom session tokens over `admin_sessions`, six login types / five portals, salted PBKDF2-HMAC-SHA256), no React Context (just a promise cache + token-keyed last-seen snapshots in `src/lib/api.js`, #579), no structured logging (frontend errors go to Sentry only). **Email is Gmail DRAFTS by default** — but **267 of 375** `email_templates` rows on live have `send_mode=true`, 268 of 376 once the Black Friday buyer email is applied at release (#325; derive with `select count(*) from email_templates where send_mode`) *(v: 2026-11-20)*
 
 ---
 
@@ -196,7 +196,7 @@ Money, auth/security, data-loss and cross-repo contracts only, **one lead rule p
 | PIP Meetings | [flows/pip-meetings.md](flows/pip-meetings.md) |
 | CIQ · the **$25/month CIQ licence** (Premium client portal — *Standard* until 2026-10-28 — `ciq_licence`, portal licensing L4 — turn on/off, `/portal-license-pay`, Update payment method, failed-payment email + reminder, tax takeover, My One Page Plan … | [flows/ciq.md](flows/ciq.md) · [tables/ciq.md](tables/ciq.md) · licence → [flows/ciq-licence.md](flows/ciq-licence.md) |
 | 90 Day Plan / training tracks · the MSM Home meeting log + meeting types (*v: 2026-11-11*) | [flows/msm-tracking.md](flows/msm-tracking.md) |
-| Growth Credits | [flows/gift-credits.md](flows/gift-credits.md) · [tables/marketplace-gc.md](tables/marketplace-gc.md) |
+| Growth Credits · the Black Friday sale + Purchases (Flow F) | [flows/gift-credits.md](flows/gift-credits.md) · [tables/marketplace-gc.md](tables/marketplace-gc.md) |
 | The member **Help (?) button** / the **FAQ Editor** tab / `faq_items` + `faq_categories` / FAQ PDF documents / any new grantable tab key | [flows/member-help-faq.md](flows/member-help-faq.md) · [tables/faq.md](tables/faq.md) |
 | Card/bank updates, Payment Continuation · the global **Payments** ledger (Accounting → Payments, `all_payments_load` — every charge, payout and refund, #646, *v: 2026-10-21*) → [architecture/05-api-action-catalog.md](architecture/05-api-action-catalog.md) | [flows/payment-method-change.md](flows/payment-method-change.md) |
 | Bells, rules, recipients · **who the `TEAM` email token reaches** (Automation & Config → Team Notification Emails, `team_notification_recipients`, *v: 2026-11-02*) … | [flows/notifications.md](flows/notifications.md) · [tables/notifications.md](tables/notifications.md) · [NOTIFICATION_AUDIT.md](NOTIFICATION_AUDIT.md) · `vault_upload_tokens` → [tables/pipeline.md](tables/pipeline.md) |

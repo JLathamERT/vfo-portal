@@ -9,6 +9,28 @@
 
 ---
 
+## 2026-11-20 (e) — Black Friday Growth Credits sale (buy one, get one), the public /black-friday page, Purchases + Allocate, and the GC Marketplace redesign — by Jake
+
+Branch `claude/black-friday-bogo-campaign-a1c802` (react) / `claude/black-friday-bogo-campaign-8b4df9` (edge), one chat. Action count **694 → 699**. DDL: migration `20261120120000_gc_promotions_orders.sql` (two deny-all tables + the `gc_black_friday` switch, Off) — on the test site, on live at release. Templates: NEW `GC_public_order_received` + `[PROMO]` in `GC_purchase_invoicereceipt` / `GC_purchase_ach_confirmation` (all approved by Jake; test site done, live in `supabase/migrations/PENDING_gc_black_friday_template.sql.txt`, AFTER the code). Flow: [flows/gift-credits.md](flows/gift-credits.md) Flow F.
+
+**What Jake asked for.** A Black Friday buy-one-get-one on Growth Credits: a countdown on every member portal page (to the start, then to the end), clicking through to the marketplace with the 1 and 10 packs doubled, and a public link for members who are not signed in, with a way to tie their order to a member when the name or email does not match ("Joe" vs "Joseph").
+
+**Decisions (Jake, 2026-11-20).** All of Fri 27 Nov to Mon 30 Nov, midnight to midnight PT. Only the 1 and 10 packs, same price, double credits (kept to 1 and 10 so the team is not swamped with credits to act on); each deal once per member. Card or bank as usual. Members only. The public form asks first / last name, email and phone only (all required); no member number, firm or free text. No bell for a public order: a new **Purchases** sub-tab (Redemptions · Purchases · Menu) in the Advisor Onboarding list's style, with a member search + Allocate on each public row. A buyer email in the Growth Credits style. Behind a feature switch, Off on live until Jake turns it On.
+
+**Built.**
+- **Backend:** `gc_promotions` (the window + bonus map) and `gc_orders` (every checkout from now, portal or public). `utils/gc-promotions.ts` (packages moved here, the window, the once-per-deal check by member or by email, the memo), `utils/gc-fulfil.ts creditGcPurchase` (paid row + a separate `type='bonus'` row, then the invoice/receipt — shared by the webhook and Allocate), `utils/name-match.ts` (the suggestions: email, phone, last name + first name / nicknames / first 3 letters, company domain). Five actions: `gc_promo_status` (PUBLIC), `gc_public_checkout` (PUBLIC, rate-limited), `gc_promo_member_claims` (MEMBER_SCOPED), `gc_purchases_load` + `gc_allocate_order` (ADMIN_ONLY + the `growth_credits` tab). `gc_create_checkout` stamps the bonus at checkout and expires an older unpaid checkout for the same deal. The webhook credits a public order to nobody, sends the buyer email, and now refuses a session that is not its `gc_orders` row's (**Fixes #410**, the GC livemode gap). Invoice / receipt: `[PROMO]`, *"1 Growth Credit + 1 free"*, a *Black Friday Bonus* PDF line, the buyer Cc'd on an allocated public order. Accounting totals count `bonus` separately (`credits_bonus`).
+- **Website:** the countdown bar (dark band, a light one in dark mode) on every member tab for members with the marketplace; the GC Marketplace Dashboard redesigned (a slim balance card + package cards always on screen, no Buy button, no quick stats, its own loading skeleton); the bank-or-card choice moved to a house pay page, `/growth-credits-pay`, shared with the public flow; the purchase result as a card (adding → complete, bank on its way, processed) that compares against the balance saved BEFORE buying (#778 — it stuck on *Adding your credits…* before); Services as tiles under the portal's card headings with a balance card; History's heading matched; `/black-friday`; Purchases; the *Black Friday sale* Feature Switches card. 51 → **53** route pages.
+
+**Hub values moved here.** Action count 694 → 699; route pages 51 → 53; live `send_mode` templates **265 of 373** → **267 of 375** (the SDP ATSG yearly emails had been applied at their release; 268 of 376 once this release's buyer email is applied).
+
+**Stripe memo.** *"1 Growth Credit + 1 Free (Black Friday) - (59012) Name"*; public: *"… - Public page - <name as typed>"*; 20 / 50 packs and outside the sale unchanged.
+
+**Test deploys.** The test site's shared `vfo-admin-api` v134 → v136 and `vfo-admin-api-jake` v62 → v65 ran this branch (Stripe reports payments to the shared one); main was put back on the shared one after the tests.
+
+**Tested on the test site by Jake (2026-11-20).** The bar before / during (the phase switch with the page open), dark mode, phone; the package cards and pay page; a portal 1-pack BOGO by card (Purchased + Bonus rows, invoice/receipt wording + PDF line); a normal 20-pack by card and the new purchase card; the public page (required fields, the ERT wording), a public 10-pack by bank, the buyer email, the email's repeat-deal refusal; Purchases, the suggestion (*Jacob = Jake*), Allocate (credits, invoice/receipt with the Black Friday subject, buyer Cc); a public 1-pack by card allocated to a member who had used the deal → *Add 1 paid only*; the switch Off (no bar, no deal, the neutral public page) and On. **Not exercised:** a portal BOGO paid by BANK (the `[PROMO]` bank-started email), a failed bank payment freeing a deal, the older-session expiry, the public rate limit — JLathamERT/vfo-edge-functions#609 (with the first live sales to watch and the release order: the migration BEFORE the code, the templates after it).
+
+---
+
 ## 2026-11-20 (d) — New Model Sale "Agreement signed" date + the PFT onboarding step shows the list's phase — by Jake
 
 Branch `claude/pft-onboarding-step4` (both repos), the same chat as (a) and (b). Action count **694** (unchanged). No DDL, no template, no switch.
