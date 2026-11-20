@@ -9,6 +9,24 @@
 
 ---
 
+## 2026-11-20 (f) — Black Friday deal becomes "buy any 1-10, get the same free" + the client's wording + no flash of the sale — by Jake
+
+Branch `claude/black-friday-edits` (both repos), the same chat as (e), after (e) was released (v1130 / live-322). Action count **699** (unchanged). No DDL; one data migration, `20261121120000_gc_black_friday_any_amount.sql` (the sale row's `bonus`), test site done, live at release. No template change. Hub: live `send_mode` templates 267 of 375 → **268 of 376** (the (e) buyer email, applied at its release).
+
+**Why.** The client asked whether members could "just buy 3 and get 6" instead of fixed bundles. Jake (2026-11-20): $100 a credit, buy any number from 1 to 10 and get the same number free, up to **10 free credits per member across any number of purchases** (2 + 6 + 1 + 1 is fine); the usual packages go back to normal prices with no bonus.
+
+**Built.** `gc_promotions.bonus` = `{"max_free": 10, "credit_price": 100}` read by `promoDeal`; `promoFreeUsedByMember` / `promoFreeUsedByEmail` add up the free credits already had. `gc_create_checkout` takes `deal: true` (refused over what is left, `remaining` in the 409); `gc_public_checkout` is the deal only; `gc_promo_member_claims` returns `{free_used, max_free, remaining}`; `gc_allocate_order` takes `cap_bonus` (the old `without_bonus` is gone) and the screen offers *Add N + R free*. Website: the portal's Black Friday banner holds a − n + picker; the public page a 1-10 picker; the pay page prices `deal=1` from the sale. The two package-bonus cards are gone.
+
+**Wording (Jake, 2026-11-20).** Public page: *"Get twice the Growth Credits to put toward the marketing and business development services available in the VFO Marketplace."*; the details text (*"Enter your information below… associated with your ERT membership."* / *"This offer is available to ERT members only. Each member may get up to 10 free credits in total."* — the client's "each purchase option may be redeemed once per member" no longer held, so Claude reworded it); *Select a Growth Credit Package*; *"Offer ends November 30 at 11:59 PM PST"* (bar, banner and page; `promoEndsLine`); the bar button *Shop Black Friday Deal*; the no-sale heading *Growth Credits* (no "VFO").
+
+**No flash of the sale.** `/black-friday` drew the *Buy 1, Get 1 Free* heading while it was still asking whether a sale was on, so with the switch Off it flashed before *There is no sale running right now*. The hero now stays empty until `gc_promo_status` answers, and the tab title names Black Friday only during a sale.
+
+**Test deploys.** The test site's shared `vfo-admin-api` and `vfo-admin-api-jake` ran this branch; main was put back on the shared one after the tests. Test member 10001's three earlier test orders were unlinked from the sale (`promo_key` NULL, not deleted) to give him 10 free credits again.
+
+**Tested on the test site by Jake (2026-11-20).** The cap-reached banner; a portal 3 + 3 by card (*7 free left*, the picker stopping at 7); a public 2 + 2 allocated straight through; a public 8 allocated to a member with 5 left → *Add 8 + 5 free*; the wording, the end line, the button, the no-flash page with the switch Off; phone. **Not exercised:** still JLathamERT/vfo-edge-functions#609 (a deal paid by bank, a failed bank payment, the older-session expiry, the rate limit).
+
+---
+
 ## 2026-11-20 (e) — Black Friday Growth Credits sale (buy one, get one), the public /black-friday page, Purchases + Allocate, and the GC Marketplace redesign — by Jake
 
 Branch `claude/black-friday-bogo-campaign-a1c802` (react) / `claude/black-friday-bogo-campaign-8b4df9` (edge), one chat. Action count **694 → 699**. DDL: migration `20261120120000_gc_promotions_orders.sql` (two deny-all tables + the `gc_black_friday` switch, Off) — on the test site, on live at release. Templates: NEW `GC_public_order_received` + `[PROMO]` in `GC_purchase_invoicereceipt` / `GC_purchase_ach_confirmation` (all approved by Jake; test site done, live in `supabase/migrations/PENDING_gc_black_friday_template.sql.txt`, AFTER the code). Flow: [flows/gift-credits.md](flows/gift-credits.md) Flow F.
