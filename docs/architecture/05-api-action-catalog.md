@@ -336,7 +336,7 @@ All dispatched AFTER `middleware/auth.ts::authenticate()` validates body.token. 
 
 ### Portal Backlog (More ▾ → Portal Backlog — added 2026-11-17, [flows/portal-backlog.md](../flows/portal-backlog.md))
 
-Every action is `ADMIN_ONLY_ACTIONS` with **no tab key** (open to every admin) and refuses a non-admin `callerRole` in-handler; the seven marked superadmin are also `SUPERADMIN_ONLY_ACTIONS` and re-check `auth.isSuperadmin`. Files `actions/portal-backlog/{load,write,shared}.ts`. Every write goes through SQL `portal_request_apply` (the change + its `portal_request_events` rows in one transaction; a changed request → 409). Bells: `bellAdmin` → `notifyByRule` (`BACKLOG_*`, `forceRecipients`).
+Every action is `ADMIN_ONLY_ACTIONS` with **no tab key** (open to every admin) and refuses a non-admin `callerRole` in-handler; the eight marked superadmin are also `SUPERADMIN_ONLY_ACTIONS` and re-check `auth.isSuperadmin`. Files `actions/portal-backlog/{load,write,shared}.ts`. Every write goes through SQL `portal_request_apply` (the change + its `portal_request_events` rows in one transaction; a changed request → 409). Bells: `bellAdmin` → `notifyByRule` (`BACKLOG_*`, `forceRecipients`).
 
 | Action | R | W | Notes |
 |---|---|---|---|
@@ -347,11 +347,12 @@ Every action is `ADMIN_ONLY_ACTIONS` with **no tab key** (open to every admin) a
 | `portal_request_update` | — | same | Own + pending, or any request for a superadmin; the same checks as create. A task: superadmin only (403), not archived, title / description / departments / `due_on`. `edited` event names the fields. |
 | `portal_request_withdraw` | — | same | The requester only, while pending. A task → 409. |
 | `portal_request_review` (**superadmin**) | — | same | A task → 409. `decision` `approve` (pending → To do of the picked superadmin or Unassigned, placed by priority; bells `BACKLOG_approved` + `BACKLOG_assigned`) / `deny` (`note` required; bell `BACKLOG_denied`) / `reopen` (denied → pending). |
-| `portal_request_move` (**superadmin**) | the destination column | same | `progress`, `assignee_admin_id`, optional `before_id` / `after_id` (a manual position in the same column; else by priority). Only To do may be unassigned, and a task never (400); Ready to announce needs the write-up (a task's is optional). Bells `BACKLOG_assigned` ("a task" for a task) / `BACKLOG_ready_to_announce` (requests only). |
+| `portal_request_move` (**superadmin**) | the destination column | same | `progress`, `assignee_admin_id`, optional `before_id` / `after_id` (a manual position in the same column; else by priority). Only To do may be unassigned, and a task never (400); Ready to announce needs the write-up (a task's is optional). **Live** (2026-11-23, Backlog 5a) only from Done or Ready to announce (else 400): from Ready to announce it is Mark as announced and needs `announced_on` (valid, not in the future; else 400) + optional `announce_note` and `release_importance`, event `announced`; from Done no write-up, a `normal` release importance becomes `minor`, event `went_live` (+ a `release_importance` event when it changed). Stamps `live_at` on first entry; Ready to announce and Live keep the assignee. Bells `BACKLOG_assigned` ("a task" for a task; never into a pool) / `BACKLOG_ready_to_announce` (requests only); none for Live. |
 | `portal_backlog_resort` (**superadmin**) | — | `portal_requests.sort_key` | One column back to priority order, via SQL `portal_backlog_resort` (tasks on top, in their order). |
 | `portal_request_writeup_save` (**superadmin**, 2026-11-23) | — | `portal_requests.announcement`, events | Not archived or withdrawn; cannot clear it in Ready to announce (a task can). |
-| `portal_request_archive` (**superadmin**, 2026-11-23) | — | same | Ready to announce only; `announced_on` (not in the future) + optional `announce_note`. |
-| `portal_request_restore` (**superadmin**) | the Ready to announce pool | same | Clears the archive fields; the old values stay in the `restored` event. |
+| `portal_request_archive` (**superadmin**, 2026-11-23) | — | same | `{id}` only. Live only (409 "Only a live item can be archived."), since Backlog 5a; the announced date and note come from Mark as announced. |
+| `portal_request_restore` (**superadmin**) | the Live pool | same | Back to Live (Backlog 5a): clears `archived_at` / `archived_by_admin_id`, sets `live_at` if empty, keeps `announced_on` / `announce_note` (also copied into the `restored` event). |
+| `portal_request_importance_set` (**superadmin**, 2026-11-23, Backlog 5b) | — | `portal_requests.release_importance`, events | `{id, release_importance}`: `big` / `normal` / `minor` (else 400). Any stage, archived included; withdrawn → 409. Event `release_importance`; no bell. |
 
 ### Admins (uses auth)
 
