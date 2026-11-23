@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { fileToLogoPng, logoUrl } from './logoPng'
-import { Skeleton, SkeletonText } from './skeletons/primitives'
+import { BrandingBodySkeleton } from './Skeleton'
 
 // The Branding card (editing): the member's logo (shown on their clients' ROI
 // presentations), the "show my logo" switch and the agreement-name choice.
@@ -120,12 +120,7 @@ export default function MemberBrandingCard({ memberNumber, mode = 'member', styl
     return (
       <div style={sectionStyle}>
         <div style={cardTitle}>Branding</div>
-        <SkeletonText lines={2} />
-        <div style={{ display: 'flex', gap: '12px', margin: '14px 0' }}>
-          <Skeleton width="50%" height={96} style={{ borderRadius: '10px' }} />
-          <Skeleton width="50%" height={96} style={{ borderRadius: '10px' }} />
-        </div>
-        <Skeleton width={120} height={34} style={{ borderRadius: '8px' }} />
+        <BrandingBodySkeleton />
       </div>
     )
   }

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useIsPhone } from '../../../lib/useMediaQuery'
+import { Skeleton } from '../../shared/Skeleton'
 
 // Tax Plan KPI Tracker (2026-11-16, Jake's Workbench spec): the body under a plan
 // row on Client Overview > Tax Planning. Every rule (statuses, day counts, fee
@@ -232,7 +233,7 @@ export default function TaxPlanKpiPanel({ plan, loading = false, error = '', fit
     padding: isPhone ? '12px var(--vfo-gutter) 16px' : '12px 18px 16px 52px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', cursor: 'default',
     ...(fitWidth ? { position: 'sticky', left: 0, width: `${fitWidth}px`, boxSizing: 'border-box' } : null),
   }
-  if (loading) return <div style={{ ...wrap, fontSize: '12.5px', color: 'var(--vfo-muted)' }}>Loading tax plan progress...</div>
+  if (loading) return <div style={wrap}><Skeleton width={220} height={13} style={{ marginBottom: '14px' }} /><Skeleton height={64} style={{ borderRadius: '10px' }} /></div>
   if (error) return <div style={{ ...wrap, fontSize: '12.5px', color: '#c0392b' }}>Could not load tax plan progress: {error}</div>
   if (!plan) return <div style={{ ...wrap, fontSize: '12.5px', color: 'var(--vfo-faint)' }}>No progress data for this plan.</div>
 

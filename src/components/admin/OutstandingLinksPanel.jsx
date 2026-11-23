@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen, redraftInstallmentEmail, resendContinuationSetupLink, resendFirstPaymentLink } from '../../lib/api'
 import { money, StatusPill } from './specialistRevenueShared'
-import { OnboardingListSkeleton } from '../shared/Skeleton'
+import { OutstandingLinksSkeleton } from '../shared/Skeleton'
 import { MemberNameLink, ClientNameLink, SpecialistNameLink, clientPagePath } from '../shared/personLinks'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
@@ -499,7 +499,7 @@ export default function OutstandingLinksPanel({ kind, embedded = false }) {
         </button>
       </div>
 
-      {loading && <OnboardingListSkeleton rows={3} />}
+      {loading && <OutstandingLinksSkeleton />}
       {!loading && error && (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>
       )}

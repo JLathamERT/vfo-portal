@@ -44,7 +44,11 @@ const pill = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' 
 const input = { padding: '9px 11px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }
 
 function ListSkeleton() {
-  return Array.from({ length: 5 }).map((_, i) => (
+  return Array.from({ length: 6 }).map((_, i) => i === 0 ? (
+    <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '6px 4px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+      <Skeleton width={16} height={16} style={{ borderRadius: '4px' }} /><Skeleton width={200} height={10} />
+    </div>
+  ) : (
     <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '13px 4px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
       <Skeleton width={16} height={16} style={{ borderRadius: '4px' }} />
       <div style={{ flex: 1 }}>

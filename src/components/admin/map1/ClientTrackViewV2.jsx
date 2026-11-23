@@ -430,7 +430,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, memb
     return phase ? [phase.id, `notes_${phase.id}`] : null
   }, setExpanded)
 
-  if (loading) return <Map1TrackSkeleton />
+  if (loading) return <Map1TrackSkeleton readOnly={readOnly} />
 
 
   const totalTasks = phases.reduce((s, p) => {

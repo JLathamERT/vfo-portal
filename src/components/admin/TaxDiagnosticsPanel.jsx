@@ -8,6 +8,7 @@ import { readable } from '../shared/readableColor'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { statusPillStyle } from '../shared/statusColors'
 import { PORTAL_URL } from '../../lib/environment'
+import { StackedCardsSkeleton } from '../shared/Skeleton'
 
 // Tax Diagnostics — the queue of public /tax-diagnostic submissions (grantable
 // tab `tax_diagnostics`, backend TAB_ACTIONS.tax_diagnostics).
@@ -205,7 +206,7 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
       </div>
 
       {error && <div style={{ ...card, color: '#d93025', fontSize: '13px' }}>{error}</div>}
-      {!data && !error && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>Loading...</div>}
+      {!data && !error && <StackedCardsSkeleton cards={4} />}
       {data && rows.length === 0 && (
         <div style={{ ...card, fontSize: '13px', color: 'var(--vfo-muted)' }}>Nothing here.</div>
       )}

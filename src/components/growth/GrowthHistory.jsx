@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { TrackHero } from '../shared/TrackKit'
 import { NAVY, INK, MUTED, BLUE, cardStyle, accentStrip } from './ui'
-import { SkeletonText } from '../shared/Skeleton'
+import { SkeletonText, StackedCardsSkeleton } from '../shared/Skeleton'
 
 const EVENT_LABEL = {
   scored: 'Plan scored',
@@ -55,7 +55,7 @@ export default function GrowthHistory({ memberNumber, onNavigate }) {
     return () => { alive = false }
   }, [memberNumber])
 
-  if (loading) return <GpMsg text="Loading history…" />
+  if (loading) return <StackedCardsSkeleton cards={3} gap="14px" />
   if (error) return <GpMsg text={error} />
 
   return (

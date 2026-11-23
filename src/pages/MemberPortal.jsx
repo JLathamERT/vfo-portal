@@ -5,7 +5,7 @@ import MemberWebsitePlugin from '../components/shared/MemberWebsitePlugin'
 import MemberVault from '../components/shared/MemberVault'
 import MemberCIQ from '../components/shared/MemberCIQ'
 import MemberGCMarketplace, { GCMarketplaceSkeleton } from '../components/member/MemberGCMarketplace'
-import MemberMSMTracking from '../components/member/MemberMSMTracking'
+import MemberMSMTracking, { MemberProgramLoading } from '../components/member/MemberMSMTracking'
 import MemberTaxDiagnostic from '../components/member/MemberTaxDiagnostic'
 import ClientOverviewPanel from '../components/admin/ClientOverviewPanel'
 import MemberShowroom from '../components/member/MemberShowroom'
@@ -25,12 +25,13 @@ const HEADSHOT_SUPABASE = HEADSHOTS_URL
 const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:\/\//i.test(s) ? 'https://' + s : s }
 import vfoCertifiedSeal from '../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../assets/vfo-accredited-emblem.png'
-import { MemberProfileSkeleton, MemberEditProfileSkeleton } from '../components/shared/Skeleton'
+import { MemberEditProfileSkeleton, MemberProfileDetailsSkeleton, MemberTabSkeleton } from '../components/shared/Skeleton'
 import { CORPORATE_TYPES, leadMemberNumberOf, findLeadMember } from '../components/shared/corporateMember'
 import { formatDate } from '../lib/dates'
 import MemberBrandingCard from '../components/shared/MemberBrandingCard'
 import MemberProfileDetails, { PayoutStatusLine } from '../components/shared/MemberProfileDetails'
 import ImageCropModal from '../components/admin/ImageCropModal'
+import PasswordInput from '../components/shared/PasswordInput'
 
 export default function MemberPortal() {
   const navigate = useNavigate()
@@ -178,7 +179,7 @@ export default function MemberPortal() {
           )}
 
           <div style={{ flex: 1, overflow: 'auto' }}>
-          {loading && activeTab && (activeTab === 'profile_edit' ? <MemberEditProfileSkeleton /> : activeTab === 'gc' ? <GCMarketplaceSkeleton /> : <MemberProfileSkeleton />)}
+          {loading && activeTab && (activeTab === 'profile_edit' ? <MemberEditProfileSkeleton /> : activeTab === 'gc' ? <GCMarketplaceSkeleton /> : activeTab.startsWith('msm_') && activeTab !== 'msm_home' ? <MemberProgramLoading tab={activeTab} /> : <MemberTabSkeleton tab={activeTab} />)}
 
           {!loading && activeTab === 'profile' && memberData && (
             <MemberProfile member={memberData} allMembers={allMembers} memberConnections={memberConnections} />
@@ -569,6 +570,7 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
       {/* The read-only body is SHARED with the admin member profile's Details
           tab (shared/MemberProfileDetails) so the two always mirror. */}
       {profileLoadError && <div style={{ ...sectionStyle, color: '#d93025', fontSize: '13px' }}>{profileLoadError}</div>}
+      {!profileRow && !profileLoadError && <MemberProfileDetailsSkeleton />}
       {profileRow && (
         <MemberProfileDetails
           profile={profileRow}
@@ -609,26 +611,26 @@ function MemberSettings({ session }) {
 
   return (
     <div style={{ maxWidth: '500px', margin: '0 auto', padding: '32px var(--vfo-gutter)' }}>
-      <div style={sectionStyle}>
+      <form onSubmit={e => { e.preventDefault(); update() }} style={sectionStyle}>
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Account Settings</div>
         <div style={{ marginBottom: '12px' }}>
           <label style={labelStyle}>Email</label>
-          <input value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
+          <input id="username" name="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
         </div>
         {/* Phone: the two passcode boxes stack (side by side, their hints were cut off). */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexDirection: isPhone ? 'column' : 'row' }}>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>New Passcode</label>
-            <input value={newPasscode} onChange={e => setNewPasscode(e.target.value)} placeholder="Leave blank to keep current" style={inputStyle} />
+            <PasswordInput id="new-password" name="new-password" value={newPasscode} autoComplete="new-password" onChange={e => setNewPasscode(e.target.value)} placeholder="Leave blank to keep current" style={inputStyle} />
           </div>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>Confirm Passcode</label>
-            <input value={confirmPasscode} onChange={e => setConfirmPasscode(e.target.value)} placeholder="Confirm new passcode" style={inputStyle} />
+            <PasswordInput id="confirm-password" name="confirm-password" value={confirmPasscode} autoComplete="new-password" onChange={e => setConfirmPasscode(e.target.value)} placeholder="Confirm new passcode" style={inputStyle} />
           </div>
         </div>
-        <button onClick={update} style={{ padding: isPhone ? '8px 20px' : '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer' }}>Update</button>
+        <button type="submit" style={{ padding: isPhone ? '8px 20px' : '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer' }}>Update</button>
         {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
-      </div>
+      </form>
       <AppearanceCard />
     </div>
   )

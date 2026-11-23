@@ -764,7 +764,7 @@ function PFTEngagementTrack({ clientId, programId, client, readOnly = false, mem
     return phase ? [phase.id, `notes_${phase.id}`] : null
   }, setExpanded)
 
-  if (loading) return <PFTTrackSkeleton />
+  if (loading) return <PFTTrackSkeleton readOnly={readOnly} />
 
   const allTasksFlat = phases.flatMap(p => p.program_client_tasks || [])
   const gateTask = allTasksFlat.find(t => t.name === 'Does the Accountant need a third meeting?')

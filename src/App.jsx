@@ -9,9 +9,14 @@ function RouteFallback() {
   const [show, setShow] = useState(false)
   useEffect(() => { const t = setTimeout(() => setShow(true), 300); return () => clearTimeout(t) }, [])
   if (!show) return null
+  // A portal's chunk: its navy top bar is drawn at once, as every portal page does.
+  const portal = /^\/(admin|member|client|specialist|tax-planner)(\/|$)/.test(window.location.pathname)
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px 24px' }}>
-      <CardShell><SkeletonText lines={4} /></CardShell>
+    <div style={{ minHeight: '100vh', background: 'var(--vfo-page)' }}>
+      {portal && <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', height: '58px' }} />}
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px var(--vfo-gutter)' }}>
+        <CardShell><SkeletonText lines={4} /></CardShell>
+      </div>
     </div>
   )
 }
@@ -41,6 +46,7 @@ const PftDecidePage = lazyPage(() => import('./pages/PftDecidePage'))
 const PftDiscoveryPage = lazyPage(() => import('./pages/PftDiscoveryPage'))
 const TailoredDecidePage = lazyPage(() => import('./pages/TailoredDecidePage'))
 const PayPage = lazyPage(() => import('./pages/PayPage'))
+const PaymentCompletePage = lazyPage(() => import('./pages/PaymentCompletePage'))
 const TaxPayPage = lazyPage(() => import('./pages/TaxPayPage'))
 const SdpAtsgPayPage = lazyPage(() => import('./pages/SdpAtsgPayPage'))
 const AdvisorPayPage = lazyPage(() => import('./pages/AdvisorPayPage'))
@@ -109,6 +115,7 @@ export default function App() {
       <Route path="/pft-discovery" element={<PftDiscoveryPage />} />
       <Route path="/tailored-decide" element={<TailoredDecidePage />} />
       <Route path="/pay" element={<PayPage />} />
+      <Route path="/payment-complete" element={<PaymentCompletePage />} />
       <Route path="/tax-pay" element={<TaxPayPage />} />
       <Route path="/sdp-atsg-pay" element={<SdpAtsgPayPage />} />
       <Route path="/advisor-pay" element={<AdvisorPayPage />} />

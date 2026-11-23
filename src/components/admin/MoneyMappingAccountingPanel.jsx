@@ -92,7 +92,10 @@ export default function MoneyMappingAccountingPanel() {
       </div>
 
       {loading && (
-        <TableSkeleton cols={[1.5, 1, 1, 1, 1.1]} rows={5} />
+        <>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '4px 2px 10px' }}>Member Balances</div>
+          <TableSkeleton cols={cols} rows={5} />
+        </>
       )}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 

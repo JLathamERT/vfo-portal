@@ -85,10 +85,10 @@ export default function GrowthCreditsAccountingPanel() {
             ))}
           </div>
           <div style={{ marginBottom: '22px' }}>
-            <TableSkeleton cols={[1.2, 1.1, 1, 0.8, 0.9, 0.9, 1, 1.4]} rows={4} />
+            <TableSkeleton cols={txCols} rows={4} />
           </div>
           <Skeleton width={130} height={13} style={{ margin: '4px 2px 10px' }} />
-          <TableSkeleton cols={[3, 1]} rows={3} />
+          <TableSkeleton cols={balCols} rows={3} />
         </>
       )}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}

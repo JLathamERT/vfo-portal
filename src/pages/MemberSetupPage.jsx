@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { TokenFormSkeleton } from '../components/shared/Skeleton'
+import { SetupFormSkeleton } from '../components/shared/Skeleton'
+import PasswordInput from '../components/shared/PasswordInput'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -109,7 +110,7 @@ export default function MemberSetupPage() {
 
   if (status === 'loading') return (
     <div style={containerStyle}>
-      <TokenFormSkeleton />
+      <SetupFormSkeleton />
     </div>
   )
 
@@ -153,10 +154,9 @@ export default function MemberSetupPage() {
           <input value={data.email} readOnly style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }} />
 
           <label style={{ ...labelStyle, marginTop: '16px' }}>Passcode (min 6 characters)</label>
-          <input
+          <PasswordInput
             value={passcode}
             onChange={e => setPasscode(e.target.value)}
-            type="password"
             autoComplete="new-password"
             required
             minLength={6}
@@ -164,10 +164,9 @@ export default function MemberSetupPage() {
           />
 
           <label style={{ ...labelStyle, marginTop: '16px' }}>Confirm Passcode</label>
-          <input
+          <PasswordInput
             value={confirm}
             onChange={e => setConfirm(e.target.value)}
-            type="password"
             autoComplete="new-password"
             required
             minLength={6}

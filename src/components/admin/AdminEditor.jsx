@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
+import PasswordInput from '../shared/PasswordInput'
+import { Skeleton } from '../shared/Skeleton'
 
 // The superadmin-managed "other" tabs a superadmin can grant to another admin.
 // Keys must match the tab keys used by AdminPortal + the backend TAB_ACTIONS map.
@@ -92,9 +94,9 @@ export default function AdminEditor({ onBack }) {
       <div style={sectionStyle}>
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Add Admin</div>
         <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
-          <input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Email" style={inputStyle} />
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name" style={inputStyle} />
-          <input value={newPasscode} onChange={e => setNewPasscode(e.target.value)} placeholder="Passcode" style={inputStyle} />
+          <input value={newEmail} autoComplete="off" onChange={e => setNewEmail(e.target.value)} placeholder="Email" style={inputStyle} />
+          <input value={newName} autoComplete="off" onChange={e => setNewName(e.target.value)} placeholder="Name" style={inputStyle} />
+          <PasswordInput value={newPasscode} autoComplete="new-password" onChange={e => setNewPasscode(e.target.value)} placeholder="Passcode" style={inputStyle} />
         </div>
         <button onClick={createAdmin} style={{ padding: '10px 24px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
           Create Admin
@@ -107,7 +109,7 @@ export default function AdminEditor({ onBack }) {
         <p style={{ fontSize: '12px', color: 'var(--vfo-faint)', margin: '0 0 16px' }}>
           The four key tabs (Advisors, Accountants, Strategic Members, Specialists) are open to every admin. Tick the boxes below to grant an admin access to any of the three managed tabs.
         </p>
-        {loading && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>Loading...</p>}
+        {loading && [0, 1, 2].map(i => <div key={i} style={{ padding: '14px 0', borderTop: '1px solid var(--vfo-border-soft)' }}><Skeleton width={150} height={14} /><Skeleton width={210} height={11} style={{ margin: '7px 0 12px' }} /><Skeleton width="80%" height={22} /></div>)}
         {admins.map(admin => {
           // load_admins marks every email on the backend's superadmin list.
           const isSuper = admin.is_superadmin === true

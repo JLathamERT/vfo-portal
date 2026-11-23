@@ -56,7 +56,7 @@ import MoneyMappingAccountingPanel from '../components/admin/MoneyMappingAccount
 import ManualConnectPaymentPanel from '../components/admin/ManualConnectPaymentPanel'
 import NotificationsPage from '../components/admin/NotificationsPage'
 import GrowthCreditsRedemptionsPage from '../components/admin/GrowthCreditsRedemptionsPage'
-import { DirectoryListSkeleton } from '../components/shared/Skeleton'
+import { AccountingPageSkeleton, AccountingRowsSkeleton, AccountingTableSkeleton, DirectoryListSkeleton, KpiPageSkeleton, MemberEditFormSkeleton, MemberOverviewSkeleton, MemberPageSkeleton, OnboardingPageSkeleton, SearchFilterSkeleton, ShowroomSkeleton, Skeleton, SpecialistDirectorySkeleton, StrategicPartnersSkeleton } from '../components/shared/Skeleton'
 
 // A staging build only: a live build holds none of this tab's code.
 const StagingPanel = IS_STAGING ? lazy(() => import('../components/admin/StagingPanel')) : null
@@ -566,6 +566,16 @@ export default function AdminPortal() {
               <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.02em', fontSize: '38px', color: 'var(--vfo-heading)', margin: 0 }}>{session.name}</p>
               <div style={{ width: '46px', height: '4px', borderRadius: '99px', background: '#fb895a', margin: '18px auto 0' }} />
               {StagingHome && <Suspense fallback={null}><StagingHome /></Suspense>}
+              {!StagingHome && loading && (
+                <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '40px' }}>
+                  {[0, 1, 2, 3].map(i => (
+                    <div key={i} style={{ width: '170px', padding: '20px 14px 16px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', boxSizing: 'border-box' }}>
+                      <Skeleton width={46} height={30} style={{ margin: '0 auto' }} />
+                      <Skeleton width={112} height={10} style={{ margin: '10px auto 2px' }} />
+                    </div>
+                  ))}
+                </div>
+              )}
               {!StagingHome && !loading && (() => {
                 // Mirrors MemberKpiPanel: null status counts as Active, and the
                 // separate buckets (advisor: VFO Reconciliation (Free); accountant:
@@ -828,10 +838,43 @@ export default function AdminPortal() {
             </div>
           )}
 
-          {loading && viewNeedsLoadData && <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px' }}><DirectoryListSkeleton /></div>}
+          {loading && viewNeedsLoadData && loadDataSkeleton(activeTab, { advisors: advisorsSection, accountants: accountantsSection, strategic: strategicSection, specialists: specialistsSection, accounting: accountingSection }[activeTab])}
           </div>
         </>
       )}
     </div>
   )
+}
+
+// What a view that waits for load_data shows until it arrives: that view's own shape.
+// A member left open before a refresh is restored from sessionStorage, so its page
+// (not the list) is what comes next.
+function loadDataSkeleton(tab, section) {
+  const wrap = (maxWidth, body) => <div style={{ maxWidth, margin: '0 auto', padding: '24px' }}>{body}</div>
+  if (tab === 'member_overview') return <MemberOverviewSkeleton />
+  if (tab === 'accounting') {
+    if (section === 'advisor_membership_fees' || section === 'accountant_membership_fees') {
+      return <AccountingPageSkeleton maxWidth="1050px" pills={5}><AccountingRowsSkeleton search={260} boxes={[210]} blocks={[110, 110, 80]} pill={150} /></AccountingPageSkeleton>
+    }
+    const ledger = section === 'specialist_license' || section === 'specialist_bg'
+    return (
+      <AccountingPageSkeleton maxWidth={section === 'specialist_bg' ? '900px' : '1200px'} pills={ledger ? 3 : 5}>
+        <SearchFilterSkeleton search={110} boxes={[120, 90]} />
+        <AccountingTableSkeleton cols={ledger ? '1.4fr 118px 112px 96px 178px' : '1.4fr 104px 72px 56px 100px 100px 100px 100px 96px 185px'} />
+      </AccountingPageSkeleton>
+    )
+  }
+  if (section === 'advisor_kpis') return <KpiPageSkeleton title="Advisor KPIs" subTabs />
+  if (section === 'accountant_kpis') return <KpiPageSkeleton title="Accountant KPIs" subTabs />
+  if (section === 'strategic_member_kpis') return <KpiPageSkeleton title="Strategic Member KPIs" layout="single" />
+  if (section === 'specialist_kpis') return <KpiPageSkeleton title="Specialist KPIs" layout="specialist" chips={4} />
+  if (section === 'advisor_onboarding' || section === 'accountant_onboarding') return <OnboardingPageSkeleton />
+  if (section === 'specialist_onboarding') return <OnboardingPageSkeleton specialist />
+  if (section === 'strategic_partners') return wrap('900px', <StrategicPartnersSkeleton />)
+  if (section === 'specialist_showroom') return <ShowroomSkeleton />
+  if (String(section || '').startsWith('add_')) return wrap(tab === 'specialists' ? '800px' : '900px', <MemberEditFormSkeleton />)
+  if (tab === 'specialists') return <SpecialistDirectorySkeleton />
+  const openKey = { advisors: 'adminSelectedMember', accountants: 'adminSelectedAccountant', strategic: 'adminSelectedStrategicMember' }[tab]
+  if (openKey && sessionStorage.getItem(openKey)) return <MemberPageSkeleton />
+  return wrap('900px', <DirectoryListSkeleton />)
 }

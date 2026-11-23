@@ -4,6 +4,7 @@ import { GrowthTabs } from '../growth/ui'
 import GrowthOnePage from '../growth/GrowthOnePage'
 import GrowthAddPriority from '../growth/GrowthAddPriority'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { GrowthPlanSkeleton } from '../shared/Skeleton'
 
 // Member-portal Growth Plan. The member sees their One Page Plan (G5) — read-only
 // normally; once their coach turns on Accountability Mode, the per-row progress
@@ -37,7 +38,7 @@ export default function MemberGrowthPlan({ memberNumber, variant = 'advisor' }) 
 
   useEffect(() => { setLoading(true); reload() }, [reload])
 
-  if (loading) return <Msg text="Loading your Growth Plan…" />
+  if (loading) return <GrowthPlanSkeleton />
   if (error) return <Msg text={error} />
   if (!bundle.score) return <Msg text="Your Growth Plan hasn't been set up yet — your coach will build it with you." />
 

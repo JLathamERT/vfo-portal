@@ -183,9 +183,13 @@ export default function ManualConnectPaymentPanel() {
       <div style={card}>
         {loading ? (
           <>
-            <Skeleton width={260} height={14} />
-            <Skeleton height={38} style={{ marginTop: '14px' }} />
-            <Skeleton height={38} style={{ marginTop: '14px' }} />
+            <div style={label}>Pay to</div>
+            <Skeleton height={40} style={{ borderRadius: '8px' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, 200px) 1fr', gap: '14px', marginTop: '14px' }}>
+              <div><div style={label}>Amount $</div><Skeleton height={40} style={{ borderRadius: '8px' }} /></div>
+              <div><div style={label}>Memo (shown in their email)</div><Skeleton height={40} style={{ borderRadius: '8px' }} /></div>
+            </div>
+            <Skeleton width={140} height={40} style={{ borderRadius: '8px', marginTop: '16px' }} />
           </>
         ) : (
           <>
@@ -234,7 +238,7 @@ export default function ManualConnectPaymentPanel() {
       </div>
 
       <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '0 2px 10px' }}>History</div>
-      {loading ? <TableSkeleton cols={[1.2, 1.3, 0.8, 1.6, 1.1, 1.2]} rows={3} /> : (
+      {loading ? <TableSkeleton cols={histCols} rows={3} /> : (
         <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)', overflowX: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: histCols, gap: '10px', padding: '10px 16px', background: 'var(--vfo-tint)', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', minWidth: '760px' }}>
             <div>Date</div><div>Paid to</div><div style={{ textAlign: 'right' }}>Amount</div><div>Memo</div><div>Sent by</div><div>Status</div>

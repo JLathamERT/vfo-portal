@@ -124,7 +124,7 @@ export default function TaxReconciliationPanel({ embedded = false }) {
         <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
-      {loading && <AccountingTableSkeleton cols={7} />}
+      {loading && <AccountingTableSkeleton cols={grid} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
       {!loading && !error && (
         <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>

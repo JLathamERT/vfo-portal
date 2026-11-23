@@ -1,6 +1,6 @@
 import { useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
-import { VaultRowsSkeleton, SharedDocsSkeleton } from '../shared/Skeleton'
+import { SharedDocsSkeleton, VaultRowsSkeleton } from '../shared/Skeleton'
 
 // Specialist "Shared with Me": the clients who have >=1 document shared to THIS
 // specialist → pick a client → that client's shared documents → open in-portal
@@ -83,7 +83,7 @@ export default function SpecialistShared({ onUnreadChange }) {
             <button onClick={backToClients} style={{ background: 'transparent', border: 'none', color: 'var(--vfo-accent-text)', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '14px', fontWeight: 600 }}>← All clients</button>
             <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '4px' }}>{active.name || `Client #${active.client_id}`}{active.member_name ? ` (${active.member_name})` : ''}</div>
             <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '16px' }}>Documents shared with you. Click View — they open securely in your browser.</p>
-            {docsLoading ? <VaultRowsSkeleton rows={2} /> : (
+            {docsLoading ? <VaultRowsSkeleton rows={2} icon={false} /> : (
               <>
                 {docs.length === 0 && <div style={{ color: 'var(--vfo-muted)', fontSize: '13px' }}>No documents shared.</div>}
                 {docs.map(doc => (

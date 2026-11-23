@@ -120,7 +120,7 @@ export default function PipReconciliationPanel({ embedded = false }) {
         <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
-      {loading && <AccountingTableSkeleton cols={5} />}
+      {loading && <AccountingTableSkeleton cols={grid} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && (

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { STRATEGIC_SPLITS } from '../../lib/strategicSplits'
-import { Skeleton } from '../shared/Skeleton'
+import { StrategicPartnersSkeleton } from '../shared/Skeleton'
 
 // Strategic Partners (the "companies": Action Coach, Tax Plan IQ, …). Each has a
 // profile showing its holistic/tax split blurb + a Stripe Connect payout account
@@ -20,7 +20,7 @@ export default function StrategicPartnersPanel() {
   useEffect(() => { load() }, [])
 
   if (error) return <p style={{ color: '#d93025', fontSize: '13px' }}>{error}</p>
-  if (!groups) return <Skeleton height={140} />
+  if (!groups) return <StrategicPartnersSkeleton />
 
   return (
     <div>

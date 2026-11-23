@@ -272,7 +272,7 @@ export default function EmailTemplatesPanel() {
     finally { setBulkBusy('') }
   }
 
-  if (loading) return <EmailTemplatesSkeleton />
+  if (loading) return <EmailTemplatesSkeleton sections={SECTIONS.length} />
 
   // index templates by pipeline + template_name
   const byPipeline = {}

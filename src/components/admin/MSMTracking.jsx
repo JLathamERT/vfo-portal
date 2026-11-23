@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import DirectPill from '../shared/DirectPill'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession, loadCachedAction, getLastSeen, setLastSeen, getWriteCount } from '../../lib/api'
-import { ClientsListSkeleton, TrainingTrackSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, AdminMsmHomeSkeleton, ProgramNotesSkeleton, AdminProgramViewSkeleton, SkeletonText, PhaseListSkeleton } from '../shared/Skeleton'
+import { AdminMsmHomeSkeleton, AdminProgramViewSkeleton, ClientsListSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, PhaseCardsSkeleton, ProgramNotesSkeleton, SkeletonText, TrainingTrackSkeleton } from '../shared/Skeleton'
 import { TrackHero, PhaseBadge, noMultiClickSelect } from '../shared/TrackKit'
 import { countedTasks, countedDone, phaseState, isPositiveStatus, planStatusLabel } from '../shared/trainingStatus'
 import { isTrackerTask } from '../shared/trackerSteps'
@@ -212,7 +212,7 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
 
   if (loading) {
     if (activeTab === 'home') return <AdminMsmHomeSkeleton />
-    return <AdminProgramViewSkeleton />
+    return <AdminProgramViewSkeleton edit={!['coaching', 'standard'].includes(activeProgramKey)} tabs={['tax', 'tailored', 'standard'].includes(activeProgramKey) ? 2 : 3} />
   }
 
   const advancedCount = coachingCounts['Advanced Coaching'] || 0
@@ -1210,7 +1210,7 @@ function ClientTrack({ client, program }) {
   const STATUS_OPTIONS = ['', 'Completed', 'In Progress', 'Confirmed', 'Yes', 'No', 'N/A', 'Pending', 'Scheduled']
   const statusColors = { Completed: '#1b9254', Confirmed: '#1b9254', Yes: '#1b9254', 'In Progress': '#e06717', Scheduled: '#0095ff', No: '#e74c3c', 'N/A': 'var(--vfo-muted)', Pending: '#e06717' }
 
-  if (loading) return <PhaseListSkeleton phases={3} rowsPerPhase={3} />
+  if (loading) return <PhaseCardsSkeleton phases={[3, 3, 3]} />
   if (phases.length === 0) return <div style={{ color: 'var(--vfo-muted)', fontSize: '13px', padding: '16px' }}>No client track defined for this program yet.</div>
 
   return (
@@ -1408,7 +1408,7 @@ function CoachingMeetings({ enrollment, member, eyebrow = 'Advanced Coaching' })
   const scheduledCount = meetings.filter(m => m.status === 'scheduled').length
   const nextScheduled = meetings.filter(m => m.status === 'scheduled').sort((a, b) => a.meeting_date.localeCompare(b.meeting_date))[0]
 
-  if (loading) return <CoachingMeetingsSkeleton />
+  if (loading) return <CoachingMeetingsSkeleton action />
 
   return (
     <div>
@@ -1599,7 +1599,7 @@ function CoachingRenewal({ enrollment, member }) {
 
   const actionColors = { renewed: '#1b9254', cancelled: '#e74c3c' }
 
-  if (loading) return <CoachingRenewalSkeleton />
+  if (loading) return <CoachingRenewalSkeleton action />
 
 
   return (

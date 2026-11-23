@@ -5,7 +5,7 @@ import ClientTrackViewV2 from '../admin/map1/ClientTrackViewV2'
 import RegularPrioritiesTab from '../admin/regular/RegularPrioritiesTab'
 import TaxPrioritiesTab from '../admin/tax/TaxPrioritiesTab'
 import PipMeetingsTab from '../admin/pip/PipMeetingsTab'
-import { PhaseListSkeleton } from '../shared/Skeleton'
+import { ClientProgressSkeleton } from '../shared/Skeleton'
 
 // Portal licensing L8 (2026-10-28): the client portal's My Progress tab - the
 // mirrored-member view of the member's own client screen (decisions 63-66): the
@@ -72,7 +72,7 @@ export default function ClientProgressTab({ specialists = [] }) {
   }, [])
 
   const wrap = children => <div style={{ maxWidth: '980px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>{children}</div>
-  if (!state) return wrap(<PhaseListSkeleton phases={6} rowsPerPhase={2} />)
+  if (!state) return wrap(<ClientProgressSkeleton />)
   if (state.error) return wrap(<div style={{ textAlign: 'center', padding: '40px', color: '#d93025', fontSize: '14px' }}>{state.error}</div>)
   if (!state.programs.length || !view) {
     return wrap(<div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)', fontSize: '14px' }}>Your progress will appear here once your planning has started.</div>)

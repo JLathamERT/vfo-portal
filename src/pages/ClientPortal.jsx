@@ -9,7 +9,7 @@ import ChangePasswordCard from '../components/shared/ChangePasswordCard'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { usePortalTheme } from '../lib/theme'
 import { lazyPage } from '../lib/lazyPage'
-import { ShowroomSkeleton, PhaseListSkeleton } from '../components/shared/Skeleton'
+import { ClientProgressSkeleton, OnePagePlanSkeleton, ShowroomSkeleton, VaultSectionsSkeleton } from '../components/shared/Skeleton'
 import OnePagePlanView from '../components/shared/OnePagePlanView'
 // Portal licensing L8: My Progress pulls in the member screen's track tabs, so it is
 // its own chunk, loaded only when a Premium client opens the tab.
@@ -194,15 +194,21 @@ export default function ClientPortal() {
           ? <ShowroomSkeleton />
           : <MemberShowroom experts={showroom.experts} exclusions={showroom.exclusions} ecoMap={showroom.ecoMap} introRequest={introRequest} clientView />
       )}
+      {/* A refresh on a granted tab: its shape until the server has confirmed the grant. */}
+      {showroomLoading && !loadError && ((tab === 'progress' && !progressAllowed) || (tab === 'plan' && !planAllowed) || (tab === 'vault' && !vaultAllowed)) && (
+        <div style={{ maxWidth: tab === 'progress' ? '980px' : '880px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
+          {tab === 'progress' ? <ClientProgressSkeleton /> : tab === 'plan' ? <OnePagePlanSkeleton /> : <VaultSectionsSkeleton />}
+        </div>
+      )}
       {tab === 'progress' && progressAllowed && (
-        <Suspense fallback={<div style={{ maxWidth: '980px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}><PhaseListSkeleton phases={6} rowsPerPhase={2} /></div>}>
+        <Suspense fallback={<div style={{ maxWidth: '980px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}><ClientProgressSkeleton /></div>}>
           <ClientProgressTab specialists={showroom?.experts || []} />
         </Suspense>
       )}
       {tab === 'plan' && planAllowed && (
         <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
           {!plan
-            ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)', fontSize: '14px' }}>Loading your plan…</div>
+            ? <OnePagePlanSkeleton />
             : plan.error
               ? <div style={{ textAlign: 'center', padding: '40px', color: '#d93025', fontSize: '14px' }}>{plan.error}</div>
               : <OnePagePlanView plans={plan.plans} title="My One Page Plan" subtitle={plan.member_name ? `with ${plan.member_name}` : ''} emptyText="Your One Page Plan will appear here once it has been prepared with you." />}

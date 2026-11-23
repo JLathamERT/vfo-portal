@@ -230,7 +230,7 @@ export default function NotificationEditorPanel() {
     finally { setLoading(false) }
   }
 
-  if (loading) return <EmailTemplatesSkeleton />
+  if (loading) return <EmailTemplatesSkeleton sections={AREA_ORDER.length} buttons={false} introLines={4} />
 
   const adminsByEmail = Object.fromEntries(admins.map(a => [a.email, a]))
   const byArea = {}

@@ -447,7 +447,7 @@ export default function TailoredRouteTrack({ clientId, programId, client, readOn
     return phase ? [phase.id, `notes_${phase.id}`] : null
   }, setExpanded)
 
-  if (loading) return <PFTTrackSkeleton />
+  if (loading) return <PFTTrackSkeleton phases={[1, 1]} readOnly={readOnly} />
 
   const eng = engagement?.engagement || null
   const onboarding = engagement?.onboarding || null

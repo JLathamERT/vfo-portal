@@ -2,7 +2,7 @@ import { useState, useMemo, useLayoutEffect } from 'react'
 import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell } from './cardFeeColumn'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, BLUE, money, StatusPill } from './specialistRevenueShared'
-import { OnboardingListSkeleton } from '../shared/Skeleton'
+import { AccountingRowsSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
 import { useIsPhone } from '../../lib/useMediaQuery'
 
@@ -140,7 +140,7 @@ export default function ImplementationPanel({ kind = 'advisor', title }) {
         ))}
       </div>
 
-      {loading && <OnboardingListSkeleton rows={3} />}
+      {loading && <AccountingRowsSkeleton />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && section === 'members' && <MembersSection rows={rows} />}

@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { callApi, getSession } from '../../lib/api'
 import { wistiaEmbedUrl } from '../shared/wistia'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { Skeleton } from '../shared/Skeleton'
 
 // The member portal Help button: a fixed blue circle bottom-right on every
 // /member page (mounted once from App.jsx via MemberHelpMount, so it follows
@@ -141,7 +142,7 @@ export default function MemberHelpButton() {
           </div>
 
           <div style={{ overflowY: 'auto', padding: '6px 16px 16px', flex: 1 }}>
-            {items === null && !loadError && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', margin: '14px 0' }}>Loading…</p>}
+            {items === null && !loadError && [0, 1, 2, 3, 4].map(i => <div key={i} style={{ padding: '14px 0', borderBottom: '1px solid var(--vfo-tint)' }}><Skeleton width={i % 2 ? '60%' : '80%'} height={14} /></div>)}
             {loadError && <p style={{ color: '#d93025', fontSize: '13px', margin: '14px 0' }}>Could not load help content — please try again later.</p>}
             {items !== null && !loadError && filtered.length === 0 && (
               <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', margin: '14px 0' }}>{emptyText}</p>

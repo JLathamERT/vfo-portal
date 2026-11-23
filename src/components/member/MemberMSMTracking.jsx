@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import DirectPill from '../shared/DirectPill'
 import { useNavigate } from 'react-router-dom'
 import { callApi, loadCachedAction, getLastSeen, setLastSeen, getWriteCount } from '../../lib/api'
-import { Skeleton, ClientsListSkeleton, TrainingTrackSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, MsmHomeSkeleton } from '../shared/Skeleton'
+import { ClientsListSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, MemberProgramSkeleton, MsmHomeSkeleton, Skeleton, TeamNotesSkeleton, TrainingTrackSkeleton } from '../shared/Skeleton'
 import { TrackHero, PhaseBadge } from '../shared/TrackKit'
 import { countedTasks, countedDone, phaseState, isPositiveStatus, isTrackStopped, planStatusLabel, STATUS_STOPPED, STATUS_NOT_APPLICABLE } from '../shared/trainingStatus'
 import { isTrackerTask } from '../shared/trackerSteps'
@@ -241,36 +241,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 
   if (loading) {
     if (activeTab === 'msm_home') return <MsmHomeSkeleton />
-    const isCoach = activeTab === 'msm_coaching' || activeTab === 'msm_standard'
-    const inner =
-      isCoach ? <CoachingMeetingsSkeleton /> :
-      (activeTab === 'msm_tax' || activeTab === 'msm_tailored') ? <ClientsListSkeleton /> :
-      (activeTab === 'msm_holistic' || activeTab === 'msm_partnership') ? <TrainingTrackSkeleton /> :
-      <TrainingTrackSkeleton phaseCount={3} rowsPerPhase={3} />
-    return (
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
-        <Skeleton width={240} height={28} style={{ marginBottom: '20px' }} />
-        <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <Skeleton width={90} height={11} />
-              <Skeleton width={100} height={15} />
-            </div>
-            {!isCoach && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <Skeleton width={110} height={11} />
-                <Skeleton width={100} height={15} />
-              </div>
-            )}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', paddingBottom: '10px', borderBottom: '1px solid var(--vfo-border)' }}>
-          <Skeleton width={80} height={20} />
-          {activeTab !== 'msm_tax' && activeTab !== 'msm_tailored' && <Skeleton width={80} height={20} />}
-        </div>
-        {inner}
-      </div>
-    )
+    return <MemberProgramLoading tab={activeTab} />
   }
 
   const activeProgramKey = activeTab === 'msm_home' ? null
@@ -951,7 +922,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     </div>
   )
 
-  if (loading) return <ClientsListSkeleton />
+  if (loading) return <ClientsListSkeleton add={intakeOn} />
 
 
   return (
@@ -1322,7 +1293,7 @@ function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
   const scheduledMeetings = meetings.filter(m => m.status === 'scheduled').sort((a, b) => a.meeting_date.localeCompare(b.meeting_date))
   const nextScheduled = scheduledMeetings[0]
 
-  if (loading) return <CoachingMeetingsSkeleton hero={!isPhone} />
+  if (loading) return <CoachingMeetingsSkeleton />
 
   // Phone (2026-10-28): no hero card - it repeated the program header just above
   // it. Its two counts sit on the history card's title line (titled just History,
@@ -1435,7 +1406,7 @@ function MemberCoachingRenewal({ enrollment }) {
 
   const actionColors = { renewed: '#1b9254', cancelled: '#e74c3c' }
 
-  if (loading) return <CoachingRenewalSkeleton phone={isPhone} />
+  if (loading) return <CoachingRenewalSkeleton />
 
   const endsText = !nextDate ? '' : daysUntilRenewal !== null && daysUntilRenewal < 0 ? `Overdue ${Math.abs(daysUntilRenewal)} days` : `Ends ${formatFullDate(nextDate)}${daysUntilRenewal !== null ? ` (${daysUntilRenewal} days)` : ''}`
 
@@ -1511,5 +1482,19 @@ function MemberCoachingRenewal({ enrollment }) {
         }
       </div>
     </div>
+  )
+}
+
+// A program page while the member's enrollments (or the portal itself) load: its
+// heading, its tabs and the tab it opens on.
+export function MemberProgramLoading({ tab }) {
+  const isPhone = useIsPhone()
+  const coaching = tab === 'msm_coaching' || tab === 'msm_standard'
+  const clientsOnly = tab === 'msm_tax' || tab === 'msm_tailored'
+  const tabs = clientsOnly ? (isPhone ? 0 : 1) : tab === 'msm_coaching' ? 3 : 2
+  return (
+    <MemberProgramSkeleton tabs={tabs}>
+      {coaching ? <TeamNotesSkeleton /> : clientsOnly ? <ClientsListSkeleton add={tab === 'msm_tax'} /> : <TrainingTrackSkeleton />}
+    </MemberProgramSkeleton>
   )
 }

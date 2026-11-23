@@ -87,7 +87,7 @@ export default function PlannerMemberView() {
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
         <button onClick={handleBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>{backLabel}</button>
 
-        {loading && <MemberProfileDetailsSkeleton />}
+        {loading && <MemberProfileDetailsSkeleton hero />}
 
         {!loading && error && (
           <div style={sectionStyle}>

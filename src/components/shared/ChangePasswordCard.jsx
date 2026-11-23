@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { callApi, getSession } from '../../lib/api'
+import PasswordInput from './PasswordInput'
 
 // Self-service change-passcode card for the specialist, client and tax-planner
 // portals. The action (specialist_update_login / client_update_login /
@@ -34,9 +35,9 @@ export default function ChangePasswordCard({ action }) {
       <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Change Passcode</div>
       <input id="username" name="email" autoComplete="username" type="email" value={getSession()?.email || ''} readOnly tabIndex={-1} style={hiddenFieldStyle} />
       <label style={labelStyle}>New Passcode (min 6 characters)</label>
-      <input id="new-password" name="new-password" value={passcode} onChange={e => setPasscode(e.target.value)} type="password" autoComplete="new-password" style={inputStyle} />
+      <PasswordInput id="new-password" name="new-password" value={passcode} onChange={e => setPasscode(e.target.value)} autoComplete="new-password" style={inputStyle} />
       <label style={{ ...labelStyle, marginTop: '14px' }}>Confirm Passcode</label>
-      <input id="confirm-password" name="confirm-password" value={confirm} onChange={e => setConfirm(e.target.value)} type="password" autoComplete="new-password" style={inputStyle} />
+      <PasswordInput id="confirm-password" name="confirm-password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" style={inputStyle} />
       {msg && <p style={{ fontSize: '13px', marginTop: '12px', marginBottom: 0, color: msg.ok ? '#1f9d55' : '#d93025' }}>{msg.text}</p>}
       <button type="submit" disabled={busy} style={{ marginTop: '18px', padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: busy ? 'default' : 'pointer' }}>{busy ? 'Saving…' : 'Update Passcode'}</button>
     </form>

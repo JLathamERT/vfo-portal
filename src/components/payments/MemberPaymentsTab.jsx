@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
-import { Skeleton } from '../shared/Skeleton'
+import { PaymentsTabSkeleton } from '../shared/Skeleton'
 import PaymentsTable from './PaymentsTable'
 import PaymentsHeader from './PaymentsHeader'
 
@@ -36,10 +36,7 @@ export default function MemberPaymentsTab({ member }) {
   if (loading) {
     return (
       <div style={cardStyle}>
-        <Skeleton width={140} height={22} />
-        <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {[0, 1, 2].map(i => <Skeleton key={i} width="100%" height={42} />)}
-        </div>
+        <PaymentsTabSkeleton />
       </div>
     )
   }

@@ -221,7 +221,7 @@ export default function AccountantAutomationPanel() {
     finally { setLoading(false) }
   }
 
-  if (loading) return <AutomationTrackerSkeleton cols={7} />
+  if (loading) return <AutomationTrackerSkeleton />
 
   const inProgress = rows.filter(r => {
     const s = getCurrentStage(r)

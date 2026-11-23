@@ -218,7 +218,7 @@ export default function GrowthCreditsPanel() {
 
       <div style={card}>
         <div style={cardTitle}>Services</div>
-        {loading && <TableSkeleton cols={[2, 1, 1, 1, 1, 1, 1, 1]} rows={3} />}
+        {loading && <TableSkeleton card={false} header={false} cols={cols} rows={4} pad="22px 4px" twoLine />}
         {!loading && !error && (
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: cols, gap: '10px', padding: '8px 4px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', borderBottom: '1px solid var(--vfo-border-soft)' }}>

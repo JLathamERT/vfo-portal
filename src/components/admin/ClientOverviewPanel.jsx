@@ -2,7 +2,6 @@ import { Fragment, useEffect, useMemo, useRef, useState, useLayoutEffect } from 
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import ListFilterButton, { matchesFilter, SortSelect, useHeaderSort, sortByColumn, SortHeader } from './ListFilterButton'
-import { ClientOverviewSkeleton } from '../shared/skeletons/admin'
 import { MemberNameLink } from '../shared/personLinks'
 import { taxDisplayName } from '../shared/taxDisplayNames'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
@@ -10,6 +9,7 @@ import AddClientForm from '../shared/AddClientForm'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { STATUS_COLORS, statusPillStyle } from '../shared/statusColors'
 import TaxPlanKpiPanel from './tax/TaxPlanKpiPanel'
+import { ClientOverviewSkeleton } from '../shared/Skeleton'
 
 // Client Overview — a mirror of Member Overview, but oriented around clients and
 // their program tracks. Four sub-tabs, each lazily loaded from the backend
@@ -458,7 +458,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
 
       {error && <div style={{ padding: '10px 14px', marginBottom: '12px', background: 'rgba(231,76,60,0.1)', border: '1px solid rgba(231,76,60,0.3)', borderRadius: '8px', color: '#c0392b', fontSize: '13px' }}>Could not load this section: {error}</div>}
 
-      {isLoading ? <ClientOverviewSkeleton /> : phoneCards ? (
+      {isLoading ? <ClientOverviewSkeleton cards={phoneCards} grid={grid} minWidth={(memberMode ? MEMBER_MIN_WIDTH_BY_SECTION : MIN_WIDTH_BY_SECTION)[activeSection]} twoLine={!memberMode} /> : phoneCards ? (
         <div>
           {rows.length === 0 && !error && (
             <div style={{ padding: '12px 2px', color: 'var(--vfo-muted)', fontSize: '14px' }}>
