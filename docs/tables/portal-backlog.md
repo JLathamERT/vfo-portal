@@ -1,6 +1,6 @@
 # Portal Backlog tables
 
-> The More ▾ → Portal Backlog tab ([flows/portal-backlog.md](../flows/portal-backlog.md)). Migrations `20261117190000_portal_backlog.sql`, `20261117190100_portal_backlog_title_writeup.sql`, `20261123190000_portal_backlog_tasks.sql` and `20261123200000_portal_backlog_live_importance.sql` (Live + release importance, Backlog 5a / 5b; edge repo). Both tables are RLS deny-all; only `vfo-admin-api` (service role) reads and writes them. *(v: 2026-11-23)*
+> The More ▾ → Portal Backlog tab ([flows/portal-backlog.md](../flows/portal-backlog.md)). Migrations `20261117190000_portal_backlog.sql`, `20261117190100_portal_backlog_title_writeup.sql`, `20261123190000_portal_backlog_tasks.sql` and `20261123200000_portal_backlog_live_importance.sql` (Live + release importance, Backlog 5a / 5b) and `20261123210000_portal_backlog_likes.sql` (likes, the cap, Sort by likes, Backlog 7a / 7b / 7c; edge repo). All four tables are RLS deny-all; only `vfo-admin-api` (service role) reads and writes them. *(v: 2026-11-23)*
 
 ## `portal_requests`
 
@@ -39,9 +39,18 @@ Indexes: `(review_status, progress, assignee_admin_id, sort_key)`, `(archived_at
 
 The history. `request_id` (on delete cascade), `actor_admin_id` (null for the import and the title clean-up), `kind` (`created`, `edited`, `withdrawn`, `approved`, `denied`, `reopened`, `moved`, `reordered`, `archived`, `restored`, `imported`, `writeup`, `task_created` — a task added, `to_value` its column; `announced` — Mark as announced, `from_value` the column it left, `to_value` the announced date, `note` the note; `went_live` — Done → Live, the two columns; `release_importance` — the old and new level, `note` "went straight to Live" when Done → Live set it), `from_value`, `to_value`, `note`, `created_at`. An `archived` row carried the announced date in `to_value` before 2026-11-23 and carries nothing since. A column is written `"<progress>:<assignee id>"` in `from_value` / `to_value` (`moved`, `reordered`, `approved`). `edited` names the changed fields in `note`, except the 2026-11-22 title clean-up's rows (no actor, `note` "Title replaced (imported title was cut off)", the old and new title in `from_value` / `to_value`, written by `scripts/portal-backlog-title-fix.sql`); `reopened` keeps the old denial reason in `from_value`; `restored` keeps the old announced date and note.
 
+## `portal_request_likes` (Backlog 7a, 2026-11-23)
+
+One like per admin per request. `request_id` (→ `portal_requests`, on delete cascade), `admin_id` (→ `allowed_admins`, on delete cascade, so a departed admin's likes go with them), `created_at`; primary key `(request_id, admin_id)`, index on `admin_id`. A row stays when its request is archived, denied or withdrawn (the count still shows in the archive). Written only by `portal_request_like_set`, never by `portal_request_apply`, and never with an event row.
+
+## `portal_backlog_settings` (Backlog 7b, 2026-11-23)
+
+One row (`id = 1`, checked). `like_cap` smallint 1–20, default **5**: how many active likes each admin may hold. `updated_by_admin_id` (on delete set null), `updated_at`. Written by `portal_backlog_settings_save`.
+
 ## Functions
 
+- `portal_request_like_set(p_id, p_admin, p_liked)` — like or unlike in one transaction (Backlog 7a / 7b). Takes a per-admin advisory lock (`hashtext('portal_like:' || admin)`) then the request row. A like on a task, or on an archived, denied or withdrawn request, raises `portal_like_not_allowed`; a like that would be active (pending, or approved in `todo` / `working`) when the admin already holds `like_cap` active likes raises `portal_like_cap_reached` with the cap as DETAIL; a missing request raises `portal_request_not_found`. Liking twice or unliking a missing like changes nothing. Returns `{ id, like_count, liked_by_me, like_cap, likes_left }`.
 - `portal_request_apply(p_id, p_set, p_expect, p_events)` — the only write path: inserts (`p_id` null) or updates one request from `p_set` (`kind` on insert only, `due_on`, `live_at` and `release_importance` on both), refuses with `portal_request_conflict` when a `p_expect` value no longer matches, and inserts the event rows, all in one transaction. **It writes only the columns it lists**: a new column needs the function re-created with it in both the INSERT and the UPDATE list, or `p_set` silently drops it.
-- `portal_backlog_resort(p_progress, p_assignee)` — Sort by priority for one column: tasks first in their current order, then requests by priority. `ready_to_announce` and `live` are shared pools (every card in that progress, whoever it is assigned to).
+- `portal_backlog_resort(p_progress, p_assignee, p_order default 'priority')` — Sort by priority for one column: tasks first in their current order, then requests by priority. `p_order = 'likes'` (Backlog 7c) puts the requests in order of like count first, then the priority key; tasks still first. Any other `p_order` raises `portal_resort_bad_order`. `ready_to_announce` and `live` are shared pools (every card in that progress, whoever it is assigned to). The two-argument form was dropped 2026-11-23; two-argument calls still resolve through the default.
 
-Both are SECURITY INVOKER with `search_path` pinned; execute is revoked from `public`, `anon` and `authenticated` and granted to `service_role`.
+All three are SECURITY INVOKER with `search_path` pinned; execute is revoked from `public`, `anon` and `authenticated` and granted to `service_role`.
