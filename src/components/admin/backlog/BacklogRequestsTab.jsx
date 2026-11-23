@@ -3,8 +3,9 @@ import ListFilterButton, { useHeaderSort, sortByColumn, SortHeader, SortSelect }
 import { clickableRowStyle, rowHoverProps } from '../../shared/rowHover'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { departmentChipStyle } from './portalDepartments'
-import { fmtDate, sortRequests, REQUEST_SORT_OPTIONS } from './backlogModel'
+import { fmtDate, isTask, sortRequests, REQUEST_SORT_OPTIONS } from './backlogModel'
 import ScorePill from './ScorePill'
+import { TaskTag } from './TaskBits'
 import BacklogDetails from './BacklogDetails'
 
 // The Requests tab, laid out like Client Overview: search, Filter and Sort, then
@@ -28,7 +29,8 @@ export default function BacklogRequestsTab({ list = 'new', requests, people, ass
   const q = search.trim().toLowerCase()
   const matches = (r) => !q || [r.title, r.request_text, r.requester_name].some((v) => String(v || '').toLowerCase().includes(q))
 
-  const allPending = requests.filter((r) => r.review_status === 'pending')
+  // Tasks are never pending; one in Ready to announce lists with its Task tag (Backlog 4a).
+  const allPending = requests.filter((r) => r.review_status === 'pending' && !isTask(r))
   const allReady = requests.filter((r) => r.review_status === 'approved' && !r.archived_at && r.progress === 'ready_to_announce')
   const pending = sortRequests(allPending.filter(matches), sortValue)
   const ready = sortRequests(allReady.filter(matches), sortValue)
@@ -111,6 +113,7 @@ function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, o
                   onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onToggle(r.id) } }}
                   style={{ padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', scrollMarginTop: '80px' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
+                    {isTask(r) && <div style={{ marginBottom: '5px' }}><TaskTag /></div>}
                     <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-link)', lineHeight: 1.3, overflowWrap: 'anywhere' }}>{r.title}</div>
                     <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px' }}>{r.requester_name} · {fmtDate(r.requested_on)}</div>
                     {(r.departments || []).length > 0 && (
@@ -118,10 +121,12 @@ function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, o
                         {r.departments.map((d) => <span key={d} style={departmentChipStyle(d)}>{d}</span>)}
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: '5px', marginTop: '6px' }}>
-                      <ScorePill label="Urgency" value={r.urgency} />
-                      <ScorePill label="Importance" value={r.importance} />
-                    </div>
+                    {!isTask(r) && (
+                      <div style={{ display: 'flex', gap: '5px', marginTop: '6px' }}>
+                        <ScorePill label="Urgency" value={r.urgency} />
+                        <ScorePill label="Importance" value={r.importance} />
+                      </div>
+                    )}
                     <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '8px' }}>
                       {assigned != null
                         ? <>Assigned to <span style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{people[assigned] || 'A former admin'}</span></>
@@ -179,7 +184,9 @@ function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, o
                     {open ? '▾' : '▸'}
                   </button>
                   <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                    <span style={{ fontWeight: 600, color: 'var(--vfo-link)', overflowWrap: 'anywhere' }}>{r.title}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--vfo-link)', overflowWrap: 'anywhere' }}>
+                      {isTask(r) && <><TaskTag />{' '}</>}{r.title}
+                    </span>
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{r.requester_name}</span>
                   </span>
                   <span style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', minWidth: 0 }}>
