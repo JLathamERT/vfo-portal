@@ -17,8 +17,9 @@ import { PortalBacklogSkeleton } from '../shared/skeletons'
 // More > Portal Backlog (2026-11-17): portal update requests, replacing the
 // "VFO Portal Update Requests" sheet. Every admin sees everything and can file a
 // request; the superadmins (the server's `can_manage`) review, move and restore.
-// Styled like the KPI pages: a lens hero, breakdown cards, then the Tasks board
-// or the Requests lists. The server owns every rule; this page reads and asks.
+// Styled like the KPI pages: the Tasks board, or the Requests lists under a lens
+// hero (Requests only; the board ignores the lens). The server owns every rule;
+// this page reads and asks.
 async function call(action, payload) {
   const d = await callApi(action, payload)
   if (d?.error) throw new Error(d.error)
@@ -65,7 +66,7 @@ export default function PortalBacklogPanel({ link }) {
   const canManage = !!data?.can_manage
   const me = data?.me || null
 
-  // Department narrows everything on the page; the lens narrows what is under the hero.
+  // Department narrows everything on the page; the lens narrows the Requests lists only.
   const pool = useMemo(() => {
     const rows = data?.requests || []
     return department ? rows.filter((r) => (r.departments || []).includes(department)) : rows
@@ -200,15 +201,17 @@ export default function PortalBacklogPanel({ link }) {
     <div style={pageStyle}>
       {viewTabs}
 
-      <KpiHero
-        title="Portal Backlog"
-        subtitle="Update requests for the VFO Portal"
-        lenses={LENSES}
-        counts={counts}
-        lens={lens}
-        setLens={setLens}
-        unitLabel="requests"
-      />
+      {view === 'requests' && !showArchive && (
+        <KpiHero
+          title="Portal Backlog"
+          subtitle="Update requests for the VFO Portal"
+          lenses={LENSES}
+          counts={counts}
+          lens={lens}
+          setLens={setLens}
+          unitLabel="requests"
+        />
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -234,7 +237,7 @@ export default function PortalBacklogPanel({ link }) {
         <BacklogArchive people={people} canManage={canManage} reloadKey={archiveKey} busyId={busyId}
           onOpen={(r) => setOpenId(r.id)} onRestore={restore} onReopen={reopen} onBack={() => setShowArchive(false)} onLoaded={onArchiveLoaded} />
       ) : view === 'tasks' ? (
-        <BacklogBoard requests={scoped} assignees={assignees} people={people} canManage={canManage}
+        <BacklogBoard requests={pool} assignees={assignees} people={people} canManage={canManage}
           onOpen={(r) => setOpenId(r.id)} onMove={move} onResort={resort} onArchive={setArchiving} />
       ) : (
         <BacklogRequestsTab requests={scoped} people={people} canManage={canManage} busyId={busyId}
