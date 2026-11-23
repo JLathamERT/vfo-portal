@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { callApi } from '../../lib/api'
 import AppearanceCard from '../shared/AppearanceCard'
+import PasswordInput from '../shared/PasswordInput'
 
 export default function AdminSettings({ onBack, session }) {
   const [newPasscode, setNewPasscode] = useState('')
@@ -30,27 +31,27 @@ export default function AdminSettings({ onBack, session }) {
 
   return (
     <div style={{ maxWidth: '500px', margin: '0 auto', padding: '32px 24px' }}>
-      <div style={sectionStyle}>
+      <form onSubmit={e => { e.preventDefault(); updatePasscode() }} style={sectionStyle}>
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Account Settings</div>
         <div style={{ marginBottom: '12px' }}>
           <label style={labelStyle}>Email</label>
-          <input value={session?.email || ''} readOnly style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }} />
+          <input id="username" name="email" autoComplete="username" type="email" value={session?.email || ''} readOnly style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }} />
         </div>
         <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>New Passcode</label>
-            <input value={newPasscode} onChange={e => setNewPasscode(e.target.value)} placeholder="Leave blank to keep current" style={inputStyle} />
+            <PasswordInput id="new-password" name="new-password" value={newPasscode} autoComplete="new-password" onChange={e => setNewPasscode(e.target.value)} placeholder="Leave blank to keep current" style={inputStyle} />
           </div>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>Confirm Passcode</label>
-            <input value={confirmPasscode} onChange={e => setConfirmPasscode(e.target.value)} placeholder="Confirm new passcode" style={inputStyle} />
+            <PasswordInput id="confirm-password" name="confirm-password" value={confirmPasscode} autoComplete="new-password" onChange={e => setConfirmPasscode(e.target.value)} placeholder="Confirm new passcode" style={inputStyle} />
           </div>
         </div>
-        <button onClick={updatePasscode} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
+        <button type="submit" style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
           Update Passcode
         </button>
         {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
-      </div>
+      </form>
       <AppearanceCard />
     </div>
   )

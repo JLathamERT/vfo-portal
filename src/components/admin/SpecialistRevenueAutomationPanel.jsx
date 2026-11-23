@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, BLUE, money, RequestRow, MarkReceivedButton, isErtLegOpen } from './specialistRevenueShared'
-import { TableSkeleton } from '../shared/Skeleton'
+import { RowCardsSkeleton } from '../shared/Skeleton'
 
 // Automation → VFO Specialist Revenue. One row per specialist payment request, with
 // where-everything-is-at status and a Retry-payout action.
@@ -115,7 +115,7 @@ export default function SpecialistRevenueAutomationPanel() {
         <div style={{ background: 'var(--vfo-accent-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-accent-text)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{retryMsg}</div>
       )}
 
-      {loading && <TableSkeleton cols={[2, 1, 1, 1]} rows={2} />}
+      {loading && <RowCardsSkeleton blocks={[90, 90, 90, 90]} pill={150} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
       {!loading && !error && requests.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No specialist payment requests yet.</div>

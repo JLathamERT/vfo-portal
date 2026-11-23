@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, BLUE, money, StatusPill, RecipientName } from './specialistRevenueShared'
-import { OnboardingListSkeleton } from '../shared/Skeleton'
+import { RowCardsSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink } from '../shared/personLinks'
 
 // Accounting → VFO Specialist Recurring Revenue Payments. Lists every recurring
@@ -68,7 +68,7 @@ export default function SpecialistRecurringPanel({ embedded = false }) {
         </div>
       )}
 
-      {loading && <OnboardingListSkeleton rows={3} />}
+      {loading && <RowCardsSkeleton blocks={[110]} pill={120} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
       {!loading && !error && plans.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px' }}>No recurring plans yet.</div>

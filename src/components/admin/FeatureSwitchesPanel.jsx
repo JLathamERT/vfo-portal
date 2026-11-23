@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
+import { StackedCardsSkeleton } from '../shared/Skeleton'
 
 // The Feature Switches tab (2026-09-28) — superadmin (Jake) only, under More ▾.
 // The backend (feature_switches_load / feature_switches_save,
@@ -249,7 +250,7 @@ export default function FeatureSwitchesPanel() {
         Features that are built but held back from real members. While a switch is off the portal behaves exactly as it did before the feature. "Test member only" turns it on for the test member ({testMember || '59524'}) alone, so it can be tried on the real portal. A change takes effect immediately — no deploy.
       </p>
 
-      {loading && <div style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>Loading…</div>}
+      {loading && <StackedCardsSkeleton cards={4} body={3} />}
       {error && <div style={{ color: '#e74c3c', fontSize: '14px', marginBottom: '16px' }}>{error}</div>}
 
       {!loading && cards.map(card => {

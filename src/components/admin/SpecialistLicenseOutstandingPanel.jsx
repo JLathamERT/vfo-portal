@@ -3,7 +3,7 @@ import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { ordinal } from '../../lib/ordinal'
 import { money } from './specialistRevenueShared'
 import { cardStyle, Detail, SectionHeader, EmptyLine, OutstandingCard, fmtDate, shortDate } from './OutstandingLinksPanel'
-import { OnboardingListSkeleton } from '../shared/Skeleton'
+import { OutstandingLinksSkeleton } from '../shared/Skeleton'
 
 // Accounting > Specialists > VFO Specialist License Fees > Outstanding Payment Links.
 // The same surface the SpecRev pill row carries, for license setup links: every
@@ -92,7 +92,7 @@ export default function SpecialistLicenseOutstandingPanel({ embedded = false }) 
         </button>
       </div>
 
-      {loading && <OnboardingListSkeleton rows={3} />}
+      {loading && <OutstandingLinksSkeleton groups={1} rows={3} />}
       {!loading && error && (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>
       )}

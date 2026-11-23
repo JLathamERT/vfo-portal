@@ -347,7 +347,7 @@ export default function TaxAutomationPanel({ programScope = 'holistic' }) {
     sandbox: rows.filter(p => p.sandbox).length,
   }
 
-  if (loading) return <AutomationTrackerSkeleton cols={8} />
+  if (loading) return <AutomationTrackerSkeleton cols="30px 1.4fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr" />
 
   return (
     <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>

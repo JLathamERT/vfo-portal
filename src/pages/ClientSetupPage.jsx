@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { TokenFormSkeleton } from '../components/shared/Skeleton'
+import PasswordInput from '../components/shared/PasswordInput'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -64,8 +65,8 @@ export default function ClientSetupPage() {
         <h2 style={{fontFamily:'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em',marginBottom:'6px',fontSize:'23px'}}>Set Up Your Portal Login</h2>
         <p style={{color:'var(--vfo-muted)',fontSize:'13px',marginBottom:'20px'}}>{data?.client_name} · {data?.email}</p>
         <form onSubmit={handleSubmit} style={{display:'flex',flexDirection:'column',gap:'12px'}}>
-          <input value={passcode} onChange={e=>setPasscode(e.target.value)} placeholder="Choose a passcode (min 6 chars)" type="password" required style={input} />
-          <input value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Confirm passcode" type="password" required style={input} />
+          <PasswordInput value={passcode} onChange={e=>setPasscode(e.target.value)} placeholder="Choose a passcode (min 6 chars)" required style={input} />
+          <PasswordInput value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Confirm passcode" required style={input} />
           {error && <p style={{color:'#d93025', fontWeight: 500,fontSize:'13px',margin:0}}>{error}</p>}
           <button type="submit" disabled={submitting} style={{...input,background:'#125ecc',cursor:'pointer',fontWeight:500,marginTop:'4px'}}>{submitting ? 'Creating…' : 'Create Login'}</button>
         </form>

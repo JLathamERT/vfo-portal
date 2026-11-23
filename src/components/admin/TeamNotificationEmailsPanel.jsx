@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
-import { EmailTemplatesSkeleton } from '../shared/Skeleton'
+import { TeamNotificationEmailsSkeleton } from '../shared/Skeleton'
 import { TEMPLATE_META } from '../shared/templateMeta'
 
 // Team Notification Emails (2026-11-02) — the people the "Team" recipient on an
@@ -123,7 +123,7 @@ export default function TeamNotificationEmailsPanel() {
     setNewName(a.name || ''); setNewEmail(a.email || ''); setAddErr('')
   }
 
-  if (loading) return <EmailTemplatesSkeleton />
+  if (loading) return <TeamNotificationEmailsSkeleton />
 
   const onList = new Set(people.map(p => p.email.toLowerCase()))
   const addable = admins.filter(a => a.email && !onList.has(a.email.toLowerCase()))

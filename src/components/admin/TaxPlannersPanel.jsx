@@ -8,7 +8,7 @@ import VaultDropLink from '../shared/VaultDropLink'
 import ImageCropModal from './ImageCropModal'
 import ListFilterButton, { matchesFilter, sortByJoin, SortSelect } from './ListFilterButton'
 import TaxPlannerKpiPanel from './TaxPlannerKpiPanel'
-import { DirectoryListSkeleton } from '../shared/Skeleton'
+import { DirectoryListSkeleton, KpiPageSkeleton, StrategicPartnersSkeleton, TableSkeleton } from '../shared/Skeleton'
 import { TrackHero, HeroAvatar, ListHeader } from '../shared/TrackKit'
 import { FeatureTabDropdown } from './MembersPanel'
 import SendSetupEmailButton from './SendSetupEmailButton'
@@ -391,13 +391,13 @@ export default function TaxPlannersPanel({ section }) {
 
   // ---- Section: Tax Planner KPIs ----
   if (section === 'tax_planner_kpis') {
-    if (loading) return <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '24px' }}><DirectoryListSkeleton /></div>
+    if (loading) return <KpiPageSkeleton title="Tax Planner KPIs" layout="planner" chips={4} />
     return <TaxPlannerKpiPanel planners={planners} groups={groups} />
   }
 
   // ---- Section: Tax Planning Partners (group list + connect) ----
   if (section === 'tax_planning_partners') {
-    if (loading) return <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}><DirectoryListSkeleton /></div>
+    if (loading) return <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}><StrategicPartnersSkeleton /></div>
     return <TaxPlanningPartnersPanel groups={groups} loadError={loadError} onSaved={load} />
   }
 
@@ -428,7 +428,7 @@ export default function TaxPlannersPanel({ section }) {
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
       {cropState && <ImageCropModal src={cropState.src} onApply={applyCrop} onCancel={() => setCropState(null)} />}
 
-      {loading && <DirectoryListSkeleton />}
+      {loading && <DirectoryListSkeleton numbered={false} chip />}
       {!loading && loadError && (
         <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: 'rgba(231,76,60,0.1)', color: '#e74c3c', border: '1px solid rgba(231,76,60,0.3)' }}>{loadError}</div>
       )}
@@ -678,7 +678,7 @@ function TaxPlannerPaymentsTab({ plannerId }) {
   const td = { padding: '12px', fontSize: '13px', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-border-soft)', verticalAlign: 'top' }
 
   if (loading) {
-    return <div style={cardStyle}><h3 style={titleStyle}>Payments</h3><div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>Loading…</div></div>
+    return <div style={cardStyle}><h3 style={titleStyle}>Payments</h3><TableSkeleton card={false} cols={4} rows={3} pad="12px" /></div>
   }
   if (error) {
     return <div style={cardStyle}><h3 style={titleStyle}>Payments</h3><div style={{ marginTop: '12px', padding: '14px 16px', background: '#fdecea', border: '1px solid #f7c4bd', borderRadius: '10px', color: '#b42318', fontSize: '13px' }}>{error}</div></div>
@@ -814,7 +814,7 @@ function TaxPlannerClientsTab({ plannerId }) {
   const td = { padding: '12px', fontSize: '13px', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-border-soft)', verticalAlign: 'top' }
 
   if (loading) {
-    return <div style={cardStyle}><h3 style={titleStyle}>Clients</h3><div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>Loading…</div></div>
+    return <div style={cardStyle}><h3 style={titleStyle}>Clients</h3><TableSkeleton card={false} cols={6} rows={3} pad="12px" /></div>
   }
   if (error) {
     return <div style={cardStyle}><h3 style={titleStyle}>Clients</h3><div style={{ marginTop: '12px', padding: '14px 16px', background: '#fdecea', border: '1px solid #f7c4bd', borderRadius: '10px', color: '#b42318', fontSize: '13px' }}>{error}</div></div>

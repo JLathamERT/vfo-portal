@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel, useOpenLinkedNote } from '../../shared/PhaseNotes'
-import { PipMeetingsListSkeleton, PipMeetingDetailSkeleton } from '../../shared/Skeleton'
+import { PipMeetingDetailSkeleton, PipMeetingsListSkeleton } from '../../shared/Skeleton'
 import { TrackHero, PhaseBadge, ListHeader, noMultiClickSelect } from '../../shared/TrackKit'
 import PipPurchaseDecisionForm from './PipPurchaseDecisionForm'
 import StepDate from '../../shared/StepDate'
@@ -567,8 +567,8 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
   const rowStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', boxShadow: '0 2px 10px rgba(20,45,95,0.05)', padding: '14px 18px', marginBottom: '8px' }
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
 
-  if (loading && selectedTrack) return <PipMeetingDetailSkeleton />
-  if (loading) return <PipMeetingsListSkeleton />
+  if (loading && selectedTrack) return <PipMeetingDetailSkeleton back readOnly={readOnly} />
+  if (loading) return <PipMeetingsListSkeleton action={!readOnly} />
 
   // Clicked while the list was still refreshing: go to the page at once and show
   // its skeleton; it opens with the fresh data the moment that lands.
@@ -576,7 +576,7 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
     return (
       <div>
         <button onClick={() => setPendingOpenId(null)} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to PIP Meetings</button>
-        <PipMeetingDetailSkeleton />
+        <PipMeetingDetailSkeleton readOnly={readOnly} />
       </div>
     )
   }

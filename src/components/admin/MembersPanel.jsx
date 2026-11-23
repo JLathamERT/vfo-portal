@@ -13,7 +13,7 @@ import StrategicPartnersPanel from './StrategicPartnersPanel'
 import AdminGrowthPlan from '../growth/AdminGrowthPlan'
 import SendSetupEmailButton from './SendSetupEmailButton'
 import ListFilterButton, { matchesFilter, sortMembers, SortSelect, MEMBER_SORT_OPTIONS } from './ListFilterButton'
-import { MemberProfileDetailsSkeleton, Skeleton, SkeletonText } from '../shared/Skeleton'
+import { MemberEditFormSkeleton, MemberProfileDetailsSkeleton, ProgramNotesSkeleton, Skeleton, SkeletonText } from '../shared/Skeleton'
 import { TrackHero, HeroAvatar, ListHeader } from '../shared/TrackKit'
 import ExportButton from '../shared/ExportButton'
 import { splitName, exportDate } from '../../lib/exportXlsx'
@@ -1149,7 +1149,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
   const typeOptions = (typeOptionsOverride && typeOptionsOverride.length) ? typeOptionsOverride : (isAccountant ? ACCOUNTANT_TYPES : MEMBER_TYPES)
   const statusColors = STATUS_COLORS
 
-  if (loading) return <MemberProfileDetailsSkeleton />
+  if (loading) return activeTab === 'edit' ? <MemberEditFormSkeleton /> : activeTab === 'history' ? <ProgramNotesSkeleton rows={3} add={false} /> : <MemberProfileDetailsSkeleton />
   if (!profile) return null
 
   // Introduction stays a one-way slot: introduced_by_member_number points at who

@@ -11,6 +11,7 @@ import GrowthBuildPlan from './GrowthBuildPlan'
 import GrowthOnePage from './GrowthOnePage'
 import GrowthHistory from './GrowthHistory'
 import { GP_STEPS, variantForMember } from './constants'
+import { GrowthPlanSkeleton } from '../shared/Skeleton'
 
 // Container for the Advisor Growth Plan tab in the admin member-detail view.
 // Loads the member's current plan bundle once, then routes the active sub-tab
@@ -43,7 +44,7 @@ export default function AdminGrowthPlan({ member, activeStep, onNavigate }) {
   // Parking Garage is no longer a standalone tab — it lives in the One Page Plan.
   if (step === 'gp_parking') step = 'gp_onepage'
 
-  if (initialLoading) return <GpMsg text="Loading growth plan…" />
+  if (initialLoading) return <GrowthPlanSkeleton tabs={false} />
   if (error) return <GpMsg text={error} retry={reload} />
 
   // Gate: until an MSM is assigned, only the hub (menu) and Get Started are

@@ -4,7 +4,7 @@ import ListFilterButton, { matchesFilter, SortSelect, useHeaderSort, sortByColum
 import { MemberNameLink } from '../shared/personLinks'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { formatDate } from '../../lib/dates'
-import { TableSkeleton } from '../shared/Skeleton'
+import { SearchFilterSkeleton, TableSkeleton } from '../shared/Skeleton'
 
 // Growth Credits > Purchases (2026-11-20): every Growth Credits sale in the
 // Advisor Onboarding list's style (OnboardingListTable.jsx): search, filter,
@@ -103,7 +103,7 @@ export default function GCPurchasesTable() {
   const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
 
   if (error && !data) return <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>
-  if (!data) return <TableSkeleton rows={6} />
+  if (!data) return <><SearchFilterSkeleton boxes={[84, 150]} /><TableSkeleton cols={GRID} rows={6} minWidth="1240px" pad="11px 18px" twoLine /></>
 
   return (
     <>

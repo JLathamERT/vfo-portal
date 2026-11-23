@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { TokenFormSkeleton } from '../components/shared/Skeleton'
+import { SetupFormSkeleton } from '../components/shared/Skeleton'
 import { useIsPhone } from '../lib/useMediaQuery'
+import PasswordInput from '../components/shared/PasswordInput'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -78,7 +79,7 @@ export default function SetPasswordPage() {
   const portal = PORTAL[loginType] || PORTAL.member
 
   if (status === 'loading') return (
-    <div style={containerStyle}><TokenFormSkeleton /></div>
+    <div style={containerStyle}><SetupFormSkeleton /></div>
   )
   if (status === 'error') return (
     <div style={containerStyle}>
@@ -106,9 +107,9 @@ export default function SetPasswordPage() {
           <label style={labelStyle}>Email</label>
           <input id="email" name="email" autoComplete="username" type="email" value={data?.email || ''} readOnly style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }} />
           <label style={{ ...labelStyle, marginTop: '16px' }}>Passcode (min 6 characters)</label>
-          <input id="new-password" name="new-password" value={passcode} onChange={e => setPasscode(e.target.value)} type="password" autoComplete="new-password" required minLength={6} style={inputStyle} />
+          <PasswordInput id="new-password" name="new-password" value={passcode} onChange={e => setPasscode(e.target.value)} autoComplete="new-password" required minLength={6} style={inputStyle} />
           <label style={{ ...labelStyle, marginTop: '16px' }}>Confirm Passcode</label>
-          <input id="confirm-password" name="confirm-password" value={confirm} onChange={e => setConfirm(e.target.value)} type="password" autoComplete="new-password" required minLength={6} style={inputStyle} />
+          <PasswordInput id="confirm-password" name="confirm-password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" required minLength={6} style={inputStyle} />
           {error && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '12px', marginBottom: 0 }}>{error}</p>}
           <button type="submit" className="vfo-tokenbtn" disabled={submitting} style={{ ...primaryButtonStyle, marginTop: '24px', opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>{submitting ? 'Setting up…' : 'Set up my login'}</button>
         </form>

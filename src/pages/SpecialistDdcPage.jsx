@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { fileSizeError } from '../lib/fileUpload'
-import { TokenFormSkeleton } from '../components/shared/Skeleton'
+import { PublicFormSkeleton } from '../components/shared/Skeleton'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -117,8 +117,8 @@ export default function SpecialistDdcPage() {
   }
 
   if (state === 'loading') return (
-    <div style={{ ...pageStyle, alignItems: 'center' }}>
-      <div style={{ maxWidth: '480px', width: '100%', padding: '48px 32px' }}><TokenFormSkeleton /></div>
+    <div style={pageStyle}>
+      <PublicFormSkeleton />
     </div>
   )
 

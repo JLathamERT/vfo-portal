@@ -174,7 +174,7 @@ export default function PipAutomationPanel() {
     finally { setLoading(false) }
   }
 
-  if (loading) return <AutomationTrackerSkeleton cols={7} />
+  if (loading) return <AutomationTrackerSkeleton stats={4} />
 
   const stats = [
     { label: 'TOTAL', value: rows.length, color: 'var(--vfo-ink)' },

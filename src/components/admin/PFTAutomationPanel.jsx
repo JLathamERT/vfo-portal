@@ -192,7 +192,7 @@ export default function PFTAutomationPanel() {
     finally { setLoading(false) }
   }
 
-  if (loading) return <AutomationTrackerSkeleton cols={6} />
+  if (loading) return <AutomationTrackerSkeleton />
 
   const stats = [
     { label: 'TOTAL', value: rows.length, color: 'var(--vfo-ink)' },

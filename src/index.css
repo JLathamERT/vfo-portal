@@ -41,6 +41,8 @@
   /* skeleton shimmer */
   --vfo-skel-a: #e8eef8;
   --vfo-skel-b: #f6f9fd;
+  --vfo-skel-tint-a: #dae3f0;
+  --vfo-skel-tint-b: #e9eff8;
 
   /* misc */
   --vfo-scrollbar: #c3d0e5;
@@ -100,6 +102,8 @@
   /* skeleton shimmer */
   --vfo-skel-a: #0d3684;
   --vfo-skel-b: #1a4494;
+  --vfo-skel-tint-a: #1a4494;
+  --vfo-skel-tint-b: #2955a6;
 
   /* misc */
   --vfo-scrollbar: #2a52a5;
@@ -342,7 +346,19 @@ input::placeholder, textarea::placeholder {
   background-size: 200% 100%;
   border-radius: 6px;
   animation: vfo-skeleton-shimmer 1.6s ease-in-out infinite;
-  display: inline-block;
+  display: block;
+}
+
+/* On a tinted card the standard shimmer all but disappears: a step darker. */
+.vfo-skel-on-tint {
+  --vfo-skel-a: var(--vfo-skel-tint-a);
+  --vfo-skel-b: var(--vfo-skel-tint-b);
+}
+
+/* PasswordInput draws its own eye; Edge would add a second one. */
+.vfo-password::-ms-reveal,
+.vfo-password::-ms-clear {
+  display: none;
 }
 
 input[type="search"] {

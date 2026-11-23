@@ -18,7 +18,7 @@ import AddGeneralNote from '../components/shared/AddGeneralNote'
 import { PhaseNotesButton, PhaseNotesPanel, useScrollToLinkedNote } from '../components/shared/PhaseNotes'
 import { NoteText, MentionTextarea, mentionEmails, pickedFromNote } from '../components/shared/MentionTextarea'
 import { VisibilityBadge, noteTint, SaveVisibilityButtons, MemberBadge, isMemberNote } from '../components/shared/NoteVisibility'
-import { Skeleton, ProfileTabSkeleton, PhaseListSkeleton } from '../components/shared/Skeleton'
+import { CiqListSkeleton, ClientHeaderSkeleton, ClientProfileTabSkeleton, Map1TrackSkeleton, PFTTrackSkeleton, PaymentsTabSkeleton, PipMeetingsListSkeleton, Skeleton, TaxPlanListSkeleton, TaxPlanTrackSkeleton, VaultSectionsSkeleton } from '../components/shared/Skeleton'
 import { TrackHero, HeroAvatar } from '../components/shared/TrackKit'
 import { MemberNameLink } from '../components/shared/personLinks'
 import PortalHeader from '../components/shared/PortalHeader'
@@ -361,16 +361,7 @@ export default function ClientDetail() {
 
         {/* Client header */}
         {loading ? (
-          <div style={{ marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--vfo-border)' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
-              <Skeleton width={260} height={32} />
-            </div>
-            <div style={{ display: 'flex', gap: '16px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <Skeleton width={90} height={14} />
-              <Skeleton width={130} height={14} />
-              <Skeleton width={70} height={20} style={{ borderRadius: '4px' }} />
-            </div>
-          </div>
+          <ClientHeaderSkeleton />
         ) : isPhone ? (
           // Phone: the member Profile header exactly (MemberPortal, 2026-10-28) -
           // number + status on one line, then the programs, then the member and
@@ -431,9 +422,7 @@ export default function ClientDetail() {
         <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: isPhone ? '16px' : '24px', gap: '4px', paddingBottom: '10px', ...(isPhone ? { flexWrap: 'wrap', rowGap: '6px' } : {}) }}>
           {loading ? (
             <>
-              <Skeleton width={70} height={20} />
-              <Skeleton width={80} height={20} />
-              <Skeleton width={110} height={20} />
+              {[84, 64, 150].map(w => <Skeleton key={w} width={w} height={30} style={{ borderRadius: '999px' }} />)}
             </>
           ) : (
             isPlanner ? (
@@ -500,9 +489,9 @@ export default function ClientDetail() {
         </div>
 
         {loading ? (
-          // Heading for a program tab (a plan / track link): draw a track-shaped
-          // skeleton, not the Profile one, so the profile never flashes first.
-          PROGRAM_TABS.includes(activeTab) ? <PhaseListSkeleton phases={6} rowsPerPhase={2} /> : <ProfileTabSkeleton sections={isMember ? 3 : 4} />
+          // Each tab draws its own shape; a program tab (a plan / track link) its track
+          // or list, so the profile never flashes first.
+          <ClientTabSkeleton tab={activeTab} readOnly={isMember} planner={isPlanner} openPlan={!!initialPlanId || fromBell} phoneRows={isMember && isPhone} sectionStyle={sectionStyle} />
         ) : !client ? (
           // The load failed (network, timeout, a deleted client): say so instead of
           // drawing the tabs, which read client.id and crashed the page to blank
@@ -1294,4 +1283,19 @@ function RemoveProspect({ client, isAdmin, onRemoved }) {
       )}
     </>
   )
+}
+
+// The client page's body while it loads, by the tab it is heading to. `openPlan` = a
+// link or bell that opens one plan / track rather than the tab's list.
+function ClientTabSkeleton({ tab, readOnly, planner, openPlan, phoneRows, sectionStyle }) {
+  if (tab === 'map1') return <Map1TrackSkeleton readOnly={readOnly} />
+  if (tab === 'pft') return <PFTTrackSkeleton readOnly={readOnly} />
+  if (tab === 'tailored') return <PFTTrackSkeleton phases={[1, 1]} readOnly={readOnly} />
+  if (tab === 'tax') return openPlan ? <TaxPlanTrackSkeleton back readOnly={readOnly || planner} /> : <TaxPlanListSkeleton action={!readOnly && !planner} />
+  if (tab === 'regular') return <TaxPlanListSkeleton titleWidth={170} action={!readOnly} />
+  if (tab === 'pip') return <PipMeetingsListSkeleton action={!readOnly} />
+  if (tab === 'ciq') return <CiqListSkeleton single />
+  if (tab === 'vault') return <VaultSectionsSkeleton sections={3} />
+  if (tab === 'payments') return <div style={sectionStyle}><PaymentsTabSkeleton /></div>
+  return <ClientProfileTabSkeleton phoneRows={phoneRows} />
 }

@@ -286,7 +286,7 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
         </label>
       </div>
 
-      {loading && <AccountingTableSkeleton cols={6} />}
+      {loading && <AccountingTableSkeleton cols={grid} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
       {!loading && !error && (
         <div style={card}>

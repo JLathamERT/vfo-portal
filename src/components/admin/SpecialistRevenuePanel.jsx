@@ -4,7 +4,7 @@ import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money, requestDate, RequestRow, MarkReceivedButton, DeleteRequestButton, canDeleteSpecrevRequest, memberShareNote, shareNoteStyle, isHeldLine } from './specialistRevenueShared'
 import { PENDING_COLOR } from './shareLegState'
 import SpecialistPaymentInput from './SpecialistPaymentInput'
-import { OnboardingListSkeleton } from '../shared/Skeleton'
+import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink, SpecialistNameLink } from '../shared/personLinks'
 
 // Accounting → VFO Specialist Revenue. Pick year + month to see the specialist
@@ -146,7 +146,7 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
         ))}
       </div>
 
-      {loading && <OnboardingListSkeleton rows={3} />}
+      {loading && <AccountingTableSkeleton cols={SPECIALIST_GRID} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && viewMode === 'specialist' && (

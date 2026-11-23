@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react'
 import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell, sumFees } from './cardFeeColumn'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, BLUE, money, StatusPill } from './specialistRevenueShared'
-import { OnboardingListSkeleton } from '../shared/Skeleton'
+import { AccountingRowsSkeleton } from '../shared/Skeleton'
 import StripeAccountPill from './StripeAccountPill'
 import StepEmailsChip from '../shared/StepEmailsChip'
 import { MemberNameLink } from '../shared/personLinks'
@@ -390,7 +390,7 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
         </div>
       )}
 
-      {loading && <OnboardingListSkeleton rows={3} />}
+      {loading && <AccountingRowsSkeleton search={260} boxes={[210]} blocks={[110, 110, 80]} pill={150} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && section === 'members' && (

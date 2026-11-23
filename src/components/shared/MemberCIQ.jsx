@@ -1553,14 +1553,14 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
   }
 
   // ─── CIQ access gate ──────────────────────────────────
-  if (!settingsLoaded) return <CiqListSkeleton />
+  if (!settingsLoaded) return <CiqListSkeleton single={!!lockedClient} />
 
 
   // Members can always VIEW their CIQs. localCiqEnabled now only gates whether
   // a member can START new CIQs (the "+ Start New CIQ" button below).
 
   // ─── CIQ list view ────────────────────────────────────
-  if (loading) return <CiqListSkeleton />
+  if (loading) return <CiqListSkeleton single={!!lockedClient} />
 
 
   // Group CIQs by client

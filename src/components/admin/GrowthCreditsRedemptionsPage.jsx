@@ -139,7 +139,7 @@ export default function GrowthCreditsRedemptionsPage() {
       <div style={card}>
         <div style={cardTitle}>Pending ({redemptions === null ? '…' : pending.length})</div>
         <p style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', margin: '0 0 14px' }}>Services members have redeemed credits for that have not been delivered yet. Check one off once the work is complete; rejecting refunds the credits.</p>
-        {redemptions === null && !error && <TableSkeleton cols={[1.5, 1.7, 1, 1.2]} rows={3} />}
+        {redemptions === null && !error && <TableSkeleton card={false} header={false} cols={rowGrid.gridTemplateColumns} rows={3} pad="14px 4px" />}
         {redemptions !== null && !error && (
           <div>
             <div style={{ ...rowGrid, padding: '6px 4px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
@@ -166,7 +166,7 @@ export default function GrowthCreditsRedemptionsPage() {
 
       <div style={card}>
         <div style={cardTitle}>History</div>
-        {redemptions === null && !error && <TableSkeleton cols={[1.5, 1.7, 1, 1.2]} rows={3} />}
+        {redemptions === null && !error && <TableSkeleton card={false} header={false} cols={rowGrid.gridTemplateColumns} rows={3} pad="14px 4px" />}
         {redemptions !== null && !error && (
           <div>
             {done.length === 0 && <div style={{ textAlign: 'center', padding: '28px', color: 'var(--vfo-faint)', fontSize: '13px' }}>No completed or rejected redemptions yet.</div>}
@@ -188,7 +188,7 @@ export default function GrowthCreditsRedemptionsPage() {
       <div style={card}>
         <div style={cardTitle}>Marketplace menu</div>
         <p style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', margin: '0 0 14px' }}>The active services members can redeem against, and who on the team handles each one. Allocations are edited in Automation &amp; Config &rarr; Growth Credits.</p>
-        {services === null && <TableSkeleton cols={[2, 1, 1.4, 1]} rows={4} />}
+        {services === null && <TableSkeleton card={false} header={false} cols={menuCols} rows={6} pad="12px 0" />}
         {services !== null && services.length === 0 && (
           <div style={{ textAlign: 'center', padding: '28px', color: 'var(--vfo-faint)', fontSize: '13px' }}>No active services.</div>
         )}

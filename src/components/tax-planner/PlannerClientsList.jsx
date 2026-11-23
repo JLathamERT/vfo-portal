@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession } from '../../lib/api'
 import { ListHeader } from '../shared/TrackKit'
-import { DirectoryListSkeleton } from '../shared/Skeleton'
+import { PlannerClientsSkeleton } from '../shared/Skeleton'
 
 const STORAGE_KEY = 'taxPlannerListIncluded'
 const ROSTER_KEY = 'taxPlannerListRoster'
@@ -159,7 +159,7 @@ export default function PlannerClientsList() {
   if (loading && rows.length === 0) {
     return (
       <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
-        <DirectoryListSkeleton />
+        <PlannerClientsSkeleton />
       </div>
     )
   }

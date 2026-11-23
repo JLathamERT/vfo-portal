@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect, useMemo } from 'react'
 import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell } from '../admin/cardFeeColumn'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
-import { OnboardingListSkeleton } from '../shared/Skeleton'
+import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { useOpenMember, specialistProfilePath } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import AccountingCombinedPanel from '../admin/AccountingCombinedPanel'
@@ -160,7 +160,7 @@ function PaymentsLedger({ direction }) {
         </div>
       )}
 
-      {loading && <OnboardingListSkeleton rows={3} />}
+      {loading && <AccountingTableSkeleton cols={GRID} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && (

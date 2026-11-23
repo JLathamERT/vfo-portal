@@ -226,7 +226,7 @@ export default function SpecialistAutomationPanel() {
     finally { setLoading(false) }
   }
 
-  if (loading) return <AutomationTrackerSkeleton cols={7} />
+  if (loading) return <AutomationTrackerSkeleton />
 
   const stats = [
     { label: 'TOTAL', value: rows.length, color: 'var(--vfo-ink)' },

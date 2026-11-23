@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
-import { Skeleton } from './Skeleton'
+import { Skeleton, TableSkeleton } from './Skeleton'
 import { useIsPhone } from '../../lib/useMediaQuery'
 
 // The member-facing Growth Credits Services and History views, shared verbatim
@@ -113,7 +113,7 @@ export function GCTransactionHistory({ transactions }) {
     <div style={sectionStyle}>
       <div style={{ fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }}>Transaction History</div>
       {transactions === null
-        ? Array.from({ length: 3 }).map((_, i) => (
+        ? !isPhone ? <TableSkeleton card={false} header={false} cols={TX_GRID.gridTemplateColumns} rows={4} pad="14px 0" /> : Array.from({ length: 3 }).map((_, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
             <div style={{ flex: 1, textAlign: 'left' }}>
               <Skeleton width={160} height={14} />

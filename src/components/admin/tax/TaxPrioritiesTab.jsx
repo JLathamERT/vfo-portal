@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, cloneElement, Fragment, useLayoutEffect } from 'react'
 import DirectPill from '../../shared/DirectPill'
 import { callApi, loadCachedAction, getSession, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
-import { TaxPlanListSkeleton, PhaseListSkeleton } from '../../shared/Skeleton'
+import { TaxPlanListSkeleton, TaxPlanTrackSkeleton } from '../../shared/Skeleton'
 import { PhaseNotesButton, PhaseNotesPanel, noteInScope, useOpenLinkedNote } from '../../shared/PhaseNotes'
 import { TrackHero, PhaseBadge, ListHeader, noMultiClickSelect } from '../../shared/TrackKit'
 import { hasStrategicSplit, computeStrategicShares } from '../../../lib/strategicSplits'
@@ -6662,8 +6662,8 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
   const stateColors = { 'not started': 'var(--vfo-muted)', 'in progress': '#0095ff', 'completed': '#1b9254' }
   const statePillHex = { 'not started': null, 'in progress': '#0095ff', 'completed': '#1b9254' }
 
-  if (deepLinkPending && !selectedPlan) return <PhaseListSkeleton phases={6} rowsPerPhase={2} />
-  if (loading) return <TaxPlanListSkeleton />
+  if (deepLinkPending && !selectedPlan) return <TaxPlanTrackSkeleton back readOnly={readOnly || plannerMode} />
+  if (loading) return <TaxPlanListSkeleton action={!readOnly && !plannerMode} />
 
   // Clicked while the list was still refreshing: go to the page at once and show
   // its skeleton; it opens with the fresh data the moment that lands.
@@ -6671,7 +6671,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
     return (
       <div>
         <button onClick={() => setPendingOpenId(null)} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Tax Plans</button>
-        <PhaseListSkeleton phases={6} rowsPerPhase={2} />
+        <TaxPlanTrackSkeleton readOnly={readOnly || plannerMode} />
       </div>
     )
   }

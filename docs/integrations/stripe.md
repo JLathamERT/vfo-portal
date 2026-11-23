@@ -219,7 +219,7 @@ line_items[0]:
   price_data.unit_amount: <chargeAmount cents>
   price_data.product_data.name: "MAP 1 - (<client_ref>) <Client Name> - Payment 1"   (one-time plans: "- One-Time Payment")
   quantity: 1
-success_url: https://www.vfo-services.com/payment-successful/   (hardcoded)
+success_url: https://vfoportal.com/payment-complete?m=card   (utils/payment-complete-url.ts; ?m=ach&verify=1 for a bank payment)
 cancel_url:  https://vfoportal.com/pay?token=<token>
 payment_intent_data.description: <same memo as the product name>
 payment_intent_data.setup_future_usage: off_session
@@ -679,7 +679,7 @@ A Corporate Member (`58147-C1`) has no Connect account of their own, and their r
 
 | Value | Where |
 |---|---|
-| `https://www.vfo-services.com/payment-successful/` | MAP1 checkout success URL ([line 1120](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)) |
+| `https://vfoportal.com/payment-complete` | Success URL of ten Checkouts (`utils/payment-complete-url.ts`) |
 | `https://vfoportal.com/?gc_success=1` | GC checkout success URL ([line 2815](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)) |
 | Card processing fee constants | `2.9%` and `$0.30` — embedded in the gross-up math at line 1116 and PayPage:79; since 2026-09-23 also shared as `CARD_FEE_PERCENT` / `CARD_FEE_FIXED` / `cardChargeCents()` in `constants/card-fee.ts` (used by the tax intake deposit and the Background Check requests; the older builders keep their inline copies) |
 | 5-minute timestamp tolerance | Stripe webhook replay guard ([line 243](C:/vfo-edge-functions/supabase/functions/vfo-admin-api/index.ts)) |

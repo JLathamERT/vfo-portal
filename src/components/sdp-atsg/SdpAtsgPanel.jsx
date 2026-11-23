@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { ListHeader, PhaseBadge, TrackHero, noMultiClickSelect } from '../shared/TrackKit'
-import { DirectoryListSkeleton } from '../shared/Skeleton'
+import { SdpAtsgCaseSkeleton, SdpAtsgListSkeleton } from '../shared/Skeleton'
 import { money, StatusPill } from '../admin/specialistRevenueShared'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { useIsPhone } from '../../lib/useMediaQuery'
@@ -144,7 +144,7 @@ function CaseList({ mode, onOpen, onAdd }) {
         action={<button type="button" onClick={onAdd} style={primaryBtn(false)}>+ Add Client</button>}
       />
       {err && <div style={{ ...card, padding: '14px 18px', color: '#ef4444', fontSize: '13px' }}>{err}</div>}
-      {!rows && !err && <DirectoryListSkeleton />}
+      {!rows && !err && <SdpAtsgListSkeleton />}
       {rows && (
         <>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search clients, refs or members" style={{ ...inputStyle, maxWidth: '360px', marginBottom: '14px' }} />
@@ -519,7 +519,7 @@ function CaseView({ caseId, mode, onBack }) {
 
   const back = <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0, fontFamily: 'Inter, sans-serif' }}>← Back to clients</button>
   if (err) return <div>{back}<div style={{ ...card, padding: '14px 18px', color: '#ef4444', fontSize: '13px' }}>{err}</div></div>
-  if (!d) return <div>{back}<DirectoryListSkeleton /></div>
+  if (!d) return <div>{back}<SdpAtsgCaseSkeleton /></div>
 
   const c = d.case
   const payments = d.payments || []

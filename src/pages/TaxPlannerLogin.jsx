@@ -4,6 +4,7 @@ import { callApi, setSession } from '../lib/api'
 import AuthShell from '../components/shared/AuthShell'
 import { PhoneNoticeGate } from '../components/shared/PhoneNotReady'
 import LoginError from '../components/shared/LoginError'
+import PasswordInput from '../components/shared/PasswordInput'
 
 const inputStyle = { width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px' }
 const labelStyle = { display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.8px' }
@@ -56,7 +57,7 @@ export default function TaxPlannerLogin() {
         </div>
         <div>
           <label style={labelStyle}>Passcode</label>
-          <input ref={passRef} id="password" name="password" autoComplete="current-password" value={passcode} onChange={e=>setPasscode(e.target.value)} placeholder="••••••••" type="password" required style={inputStyle} />
+          <PasswordInput ref={passRef} id="password" name="password" autoComplete="current-password" value={passcode} onChange={e=>setPasscode(e.target.value)} placeholder="••••••••" required style={inputStyle} />
         </div>
         <LoginError message={error} portalLabel="Tax Planner" />
         <button type="submit" disabled={loading} style={{ padding: '13px', borderRadius: '10px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 4px 14px rgba(18,94,204,0.35)', color: '#fff', fontSize: '15px', fontWeight: 600, cursor: 'pointer', marginTop: '4px' }}>{loading ? 'Signing in...' : 'Sign In'}</button>

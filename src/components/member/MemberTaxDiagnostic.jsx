@@ -3,6 +3,7 @@ import { callApi } from '../../lib/api'
 import TaxIntakeForm from './TaxIntakeForm'
 import { DiagnosticCard } from '../admin/TaxDiagnosticsPanel'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { StackedCardsSkeleton } from '../shared/Skeleton'
 
 // The member portal's Tax Diagnostic tab (2026-10-14) — open to EVERY member, no
 // feature switch. Two views:
@@ -138,7 +139,7 @@ export default function MemberTaxDiagnostic({ member }) {
       {view === 'submitted' && (
         <>
           {loadError && <div style={{ ...card, color: '#d93025', fontSize: '13px' }}>{loadError}</div>}
-          {!forms && !loadError && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>Loading...</div>}
+          {!forms && !loadError && <StackedCardsSkeleton cards={3} />}
           {forms && forms.length === 0 && (
             <div style={{ ...card, fontSize: isPhone ? '14px' : '13px', color: 'var(--vfo-muted)' }}>No Tax Diagnostics submitted yet.</div>
           )}

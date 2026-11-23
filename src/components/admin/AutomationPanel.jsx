@@ -416,7 +416,7 @@ export default function AutomationPanel({ section }) {
     } catch (err) { if (quiet === true) console.error(err); else setError(err.message) }
   }
 
-  if (loading) return <AutomationTrackerSkeleton cols={9} />
+  if (loading) return <AutomationTrackerSkeleton cols="30px 1.4fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr" />
 
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel, noteInScope, useOpenLinkedNote } from '../../shared/PhaseNotes'
-import { TaxPlanListSkeleton, PhaseListSkeleton } from '../../shared/Skeleton'
+import { RegularPriorityTrackSkeleton, TaxPlanListSkeleton } from '../../shared/Skeleton'
 import { TrackHero, PhaseBadge, ListHeader, noMultiClickSelect } from '../../shared/TrackKit'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
@@ -824,7 +824,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
     return ctx
   })()
 
-  if (loading) return <TaxPlanListSkeleton />
+  if (loading) return <TaxPlanListSkeleton titleWidth={170} action={!readOnly} />
 
 
   // Clicked while the list was still refreshing: go to the page at once and show
@@ -833,7 +833,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
     return (
       <div>
         <button onClick={() => setPendingOpenId(null)} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Priorities</button>
-        <PhaseListSkeleton phases={5} rowsPerPhase={2} />
+        <RegularPriorityTrackSkeleton readOnly={readOnly} />
       </div>
     )
   }

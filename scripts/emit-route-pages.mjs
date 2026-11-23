@@ -26,6 +26,8 @@ const ROUTES = [
   'membership-pay',
   'onboarding-meeting',
   'pay',
+  // Where Stripe sends a payer after a hosted Checkout (2026-11-23).
+  'payment-complete',
   'payout-setup',
   'pft-decide',
   'pft-discovery',

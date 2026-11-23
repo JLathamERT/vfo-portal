@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { callApi, getSession } from '../../lib/api'
 import { isWistiaLink, wistiaEmbedUrl } from '../shared/wistia'
+import { Skeleton } from '../shared/Skeleton'
 
 // The FAQ Editor tab — grantable per admin (allowed_tabs 'faq_editor'). Backs
 // the member portal's Help button: every row here is a question, with an
@@ -256,7 +257,8 @@ export default function FaqEditorPanel() {
           <input value={newCategory} onChange={e => setNewCategory(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCategory() }} placeholder="New category, e.g. Getting started" style={{ ...inputStyle, flex: 1 }} />
           <button onClick={addCategory} disabled={catBusy} style={{ ...primaryBtn(catBusy), whiteSpace: 'nowrap' }}>Add category</button>
         </div>
-        {categories.length === 0 && <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', margin: 0 }}>No categories yet — every FAQ shows in one list until you add some.</p>}
+        {loading && <Skeleton width="45%" height={30} style={{ borderRadius: '8px' }} />}
+        {!loading && categories.length === 0 && <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', margin: 0 }}>No categories yet — every FAQ shows in one list until you add some.</p>}
         {categories.map((cat, index) => {
           const count = items.filter(i => i.category_id === cat.id).length
           const editing = catEditId === cat.id
@@ -361,10 +363,16 @@ export default function FaqEditorPanel() {
       <div style={sectionStyle}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '6px' }}>
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Current FAQs</div>
-          <div style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>{items.length} item{items.length === 1 ? '' : 's'} · {items.filter(i => i.active).length} visible</div>
+          <div style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>{loading ? '' : <>{items.length} item{items.length === 1 ? '' : 's'} · {items.filter(i => i.active).length} visible</>}</div>
         </div>
         <p style={{ fontSize: '12px', color: 'var(--vfo-faint)', margin: '0 0 12px' }}>Members see them in this order within each category. Use the arrows to reorder.</p>
-        {loading && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>Loading…</p>}
+        {loading && Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}><Skeleton width={30} height={22} style={{ borderRadius: '6px' }} /><Skeleton width={30} height={22} style={{ borderRadius: '6px' }} /></div>
+            <div style={{ flex: 1, minWidth: 0 }}><Skeleton width={i % 2 ? '40%' : '55%'} height={14} style={{ marginBottom: '8px' }} /><Skeleton width={110} height={11} style={{ marginBottom: '8px' }} /><Skeleton width="85%" height={12} /></div>
+            <Skeleton width={120} height={28} style={{ borderRadius: '6px', flexShrink: 0 }} />
+          </div>
+        ))}
         {!loading && items.length === 0 && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No FAQs yet — add the first one above.</p>}
         {items.map((item, index) => {
           const busy = busyId === item.id

@@ -6,6 +6,7 @@ import { formatDate } from '../../lib/dates'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { readable } from '../shared/readableColor'
 import { STATUS_COLORS } from '../shared/statusColors'
+import { TableSkeleton } from '../shared/Skeleton'
 
 // Member Overview — one unified list of every member (advisor / accountant /
 // strategic) with at-a-glance columns, an expandable client drill-down, a
@@ -264,7 +265,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
                 {isOpen && (
                   <div style={{ padding: '4px 18px 14px 52px', borderBottom: '1px solid var(--vfo-border-soft)', background: 'var(--vfo-input)' }}>
                     {relLoading ? (
-                      <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', padding: '8px 0' }}>Loading clients…</div>
+                      <TableSkeleton cols={CLIENT_GRID} rows={2} minWidth="860px" pad="9px 14px" />
                     ) : clients.length === 0 ? (
                       <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', padding: '8px 0' }}>No clients attached.</div>
                     ) : (
