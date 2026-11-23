@@ -6,9 +6,35 @@ export const PROGRESS_LABELS = {
   working: 'Working on',
   done: 'Done',
   ready_to_announce: 'Ready to announce',
+  live: 'Live',
 }
 
 export const LANE_COLUMNS = ['todo', 'working', 'done']
+
+// Ready to announce and Live (Backlog 5a) are shared pools: one column each,
+// whoever the card is assigned to.
+export const isPool = (progress) => progress === 'ready_to_announce' || progress === 'live'
+
+// The release importance marker (Backlog 5b). Always labelled "Release
+// importance" on screen: the 1-5 Importance score is a different thing.
+export const RELEASE_IMPORTANCE = [
+  { key: 'big', label: 'Big news' },
+  { key: 'normal', label: 'Normal' },
+  { key: 'minor', label: 'Minor' },
+]
+export const releaseImportanceLabel = (v) => RELEASE_IMPORTANCE.find((o) => o.key === v)?.label || 'Normal'
+const RELEASE_RANK = { big: 0, normal: 1, minor: 2 }
+
+// The What's new tab's order in each section: Big news, then Normal, then
+// Minor; within a level, newest first by `field` (ready_at or live_at).
+export function byReleaseThenNewest(field) {
+  return (a, b) => {
+    const r = (RELEASE_RANK[a.release_importance] ?? 1) - (RELEASE_RANK[b.release_importance] ?? 1)
+    if (r) return r
+    const da = a[field] || '', db = b[field] || ''
+    return db.localeCompare(da) || (b.id - a.id)
+  }
+}
 
 export const LENSES = [
   { key: 'pending', label: 'Pending review', color: '#c98a14', desc: 'of total' },
@@ -17,7 +43,8 @@ export const LENSES = [
   { key: 'working', label: 'Working on', color: '#125ecc', desc: 'of total' },
   { key: 'done', label: 'Done', color: '#1b9254', desc: 'of total' },
   { key: 'ready', label: 'Ready to announce', color: '#7c4dcc', desc: 'of total' },
-  { key: 'all', label: 'Total', color: '#125ecc', desc: 'pending or on the board (denied and announced requests are in the archive)' },
+  { key: 'live', label: 'Live', color: '#0e8a8a', desc: 'of total' },
+  { key: 'all', label: 'Total', color: '#125ecc', desc: 'pending or on the board (denied and archived requests are in the archive)' },
 ]
 
 const approved = (r) => r.review_status === 'approved' && !r.archived_at
@@ -29,7 +56,7 @@ export const isTask = (r) => r?.kind === 'task'
 // Overdue: the due date has passed and the task is not yet in Ready to announce
 // or the archive. Dates compare as YYYY-MM-DD strings in the viewer's day.
 export function isOverdue(r) {
-  if (!r?.due_on || r.archived_at || r.progress === 'ready_to_announce') return false
+  if (!r?.due_on || r.archived_at || isPool(r.progress)) return false
   return String(r.due_on).slice(0, 10) < todayLocal()
 }
 
@@ -49,6 +76,7 @@ export const LENS_PREDICATE = {
   working: (r) => approved(r) && r.progress === 'working',
   done: (r) => approved(r) && r.progress === 'done',
   ready: (r) => approved(r) && r.progress === 'ready_to_announce',
+  live: (r) => approved(r) && r.progress === 'live',
 }
 
 export function lensCounts(rows) {
@@ -137,6 +165,7 @@ export function placeLabel(r, people) {
 
 export function columnName(progress, assignee, people) {
   if (progress === 'ready_to_announce') return 'Ready to announce'
+  if (progress === 'live') return 'Live'
   if (progress === 'todo' && assignee == null) return 'Approved but unassigned'
   const who = people?.[assignee] || 'Someone'
   return `${who} · ${PROGRESS_LABELS[progress] || progress}`

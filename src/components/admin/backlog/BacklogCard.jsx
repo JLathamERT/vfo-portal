@@ -2,6 +2,7 @@ import { departmentChipStyle } from './portalDepartments'
 import { fmtDate, isTask } from './backlogModel'
 import ScorePill from './ScorePill'
 import { DueChip, TaskTag } from './TaskBits'
+import { ReleaseImportancePill } from './BigNewsBadge'
 
 // One request on the board or in a list, Workbench style: the title, who asked
 // and when, then the key pills (departments, urgency, importance). The
@@ -16,6 +17,7 @@ export default function BacklogCard({ request: r, people, onOpen, draggable, onD
   const from = task && r.requester_admin_id !== r.assignee_admin_id
     ? (people[r.requester_admin_id] || 'a former admin') : null
   const needsWriteup = !task && r.review_status === 'approved' && !r.archived_at && r.progress === 'done' && !String(r.announcement || '').trim()
+  const liveOn = r.progress === 'live' && r.live_at ? fmtDate(String(r.live_at).slice(0, 10)) : null
   return (
     <div
       data-request-id={r.id}
@@ -32,7 +34,10 @@ export default function BacklogCard({ request: r, people, onOpen, draggable, onD
         opacity: dragging ? 0.45 : 1, minWidth: 0,
       }}
     >
-      {task && <div style={{ marginBottom: '6px' }}><TaskTag /></div>}
+      <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '6px' }}>
+        {task && <TaskTag />}
+        <ReleaseImportancePill request={r} />
+      </div>
       <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-ink)', lineHeight: 1.35, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{r.title}</div>
       <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', fontWeight: 600, marginTop: '5px', overflowWrap: 'anywhere' }}>
         {r.requester_name} · {fmtDate(r.requested_on)}
@@ -48,11 +53,12 @@ export default function BacklogCard({ request: r, people, onOpen, draggable, onD
           )}
         </div>
       )}
-      {(requestedFor || from || doneBy || needsWriteup) && (
+      {(requestedFor || from || doneBy || needsWriteup || liveOn) && (
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '9px' }}>
           {requestedFor && <span style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', fontWeight: 600 }}>Requested for: {requestedFor}</span>}
           {from && <span style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', fontWeight: 600 }}>From {from}</span>}
           {doneBy && <span style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', fontWeight: 600 }}>Done by {doneBy}</span>}
+          {liveOn && <span style={{ fontSize: '12.5px', color: '#0e8a8a', fontWeight: 700 }}>Live {liveOn}</span>}
           {needsWriteup && <span style={{ fontSize: '12.5px', color: '#c98a14', fontWeight: 700 }}>Needs its write-up</span>}
         </div>
       )}

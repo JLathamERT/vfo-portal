@@ -3,7 +3,7 @@ import { callApi } from '../../lib/api'
 import { KpiHero } from './KpiKit'
 import { btnPrimary, btnSecondary } from '../shared/buttonStyles'
 import { PORTAL_DEPARTMENTS } from './backlog/portalDepartments'
-import { LENSES, LENS_PREDICATE, lensCounts, EMPTY_BACKLOG_FILTER, backlogFilterGroups, filterIsOn, isTask } from './backlog/backlogModel'
+import { LENSES, LENS_PREDICATE, lensCounts, EMPTY_BACKLOG_FILTER, backlogFilterGroups, filterIsOn, isPool, isTask } from './backlog/backlogModel'
 import ListFilterButton, { matchesFilter } from './ListFilterButton'
 import BacklogBoard from './backlog/BacklogBoard'
 import BacklogRequestsTab, { requestRowId } from './backlog/BacklogRequestsTab'
@@ -12,16 +12,18 @@ import BacklogDrawer from './backlog/BacklogDrawer'
 import NewRequestModal from './backlog/NewRequestModal'
 import TaskModal from './backlog/TaskModal'
 import DenyDialog from './backlog/DenyDialog'
-import ArchiveDialog from './backlog/ArchiveDialog'
+import AnnounceDialog from './backlog/AnnounceDialog'
+import AnnounceTab from './backlog/AnnounceTab'
 import { PortalBacklogSkeleton } from '../shared/skeletons'
 
 // More > Portal Backlog (2026-11-17): portal update requests, replacing the
 // "VFO Portal Update Requests" sheet. Every admin sees everything and can file a
 // request; the superadmins (the server's `can_manage`) review, move and restore.
-// Styled like the KPI pages: the Tasks board, or the Requests tables under a lens
-// hero (Requests only; the board ignores the lens). A board or archive card opens
-// the drawer; a Requests row drops its details open under it instead. The server
-// owns every rule; this page reads and asks.
+// Styled like the KPI pages: the Tasks board, the Requests tables under a lens
+// hero (Requests only; the board ignores the lens), or What's new (Backlog 5a:
+// Ready to announce and Live as announcement cards). A board, What's new or
+// archive card opens the drawer; a Requests row drops its details open under it
+// instead. The server owns every rule; this page reads and asks.
 async function call(action, payload) {
   const d = await callApi(action, payload)
   if (d?.error) throw new Error(d.error)
@@ -46,11 +48,11 @@ export default function PortalBacklogPanel({ link }) {
   const [editing, setEditing] = useState(null) // 'new' | request | task
   const [addingTask, setAddingTask] = useState(null) // null | { assignee }
   const [denying, setDenying] = useState(null)
-  const [archiving, setArchiving] = useState(null)
+  const [announcing, setAnnouncing] = useState(null) // Mark as announced (Ready to announce -> Live)
   const [busyId, setBusyId] = useState(null)
-  // The Requests tab: which list shows (New requests / Ready to announce), its
-  // search, the rows dropped open, and one to scroll to.
-  const [requestsList, setRequestsList] = useState('new')
+  // The Requests tab (requests waiting for review only; Ready to announce lives
+  // on What's new since 2026-11-23): its sort, search, the rows dropped open,
+  // and one to scroll to.
   const [requestsSort, setRequestsSort] = useState('added_asc')
   const [search, setSearch] = useState('')
   const [openIds, setOpenIds] = useState(() => new Set())
@@ -95,10 +97,8 @@ export default function PortalBacklogPanel({ link }) {
   const counts = useMemo(() => lensCounts(pool.filter((r) => !isTask(r))), [pool])
   const filtered = useMemo(() => pool.filter((r) => matchesFilter(r, filterGroups, filter)), [pool, filterGroups, filter])
   const scoped = useMemo(() => filtered.filter(LENS_PREDICATE[lens]), [filtered, lens])
-  const listCounts = useMemo(() => ({
-    new: scoped.filter(LENS_PREDICATE.pending).length,
-    ready: scoped.filter(LENS_PREDICATE.ready).length,
-  }), [scoped])
+  // The What's new pill: Ready to announce + Live, tasks included.
+  const whatsNewCount = useMemo(() => pool.filter((r) => LENS_PREDICATE.ready(r) || LENS_PREDICATE.live(r)).length, [pool])
 
   // An open Requests row that the filter or lens hides closes.
   useEffect(() => {
@@ -126,13 +126,13 @@ export default function PortalBacklogPanel({ link }) {
 
   const toggleRow = (id) => setOpenIds((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
   const closeRow = (id) => setOpenIds((s) => { if (!s.has(id)) return s; const n = new Set(s); n.delete(id); return n })
-  const onRequestsTab = (r) => r.review_status === 'pending' || (r.review_status === 'approved' && !r.archived_at && r.progress === 'ready_to_announce')
+  const onRequestsTab = (r) => r.review_status === 'pending'
+  const onWhatsNew = (r) => r.review_status === 'approved' && !r.archived_at && isPool(r.progress)
 
   // Show a Requests tab row dropped open and scrolled to, clearing whatever would hide it.
   const revealRow = (r) => {
     setView('requests')
     setShowArchive(false)
-    setRequestsList(r.review_status === 'pending' ? 'new' : 'ready')
     if (!LENS_PREDICATE[lens](r)) setLens('all')
     if (!matchesFilter(r, filterGroups, filter)) setFilter(EMPTY_BACKLOG_FILTER)
     setSearch('')
@@ -150,8 +150,9 @@ export default function PortalBacklogPanel({ link }) {
   // A green line after an action takes a request off the Requests tab.
   const doneOnRequests = (msg) => { if (view === 'requests' && !showArchive) setSuccess(msg) }
 
-  // A bell's ?request= link: a request on the Requests tab drops its row open
-  // there; one on the board opens its drawer on the Tasks tab.
+  // A bell's ?request= link: a pending request drops its row open on Requests;
+  // one in Ready to announce or Live opens its drawer on What's new; one on the
+  // rest of the board opens its drawer on the Tasks tab.
   useEffect(() => {
     const id = deepLink.current
     if (!id || !data) return
@@ -160,7 +161,7 @@ export default function PortalBacklogPanel({ link }) {
       deepLink.current = null
       if (onRequestsTab(r)) revealRow(r)
       else {
-        setView('tasks')
+        setView(onWhatsNew(r) ? 'announce' : 'tasks')
         setShowArchive(false)
         setOpenId(id)
       }
@@ -201,7 +202,7 @@ export default function PortalBacklogPanel({ link }) {
   const quiet = (p) => p.catch(() => {})
 
   const move = (r, progress, assignee, position = {}) => {
-    if (isTask(r) && progress !== 'ready_to_announce' && assignee == null) {
+    if (isTask(r) && !isPool(progress) && assignee == null) {
       setNotice('A task always belongs to someone. Assign it to a lane instead.')
       return Promise.resolve()
     }
@@ -210,10 +211,26 @@ export default function PortalBacklogPanel({ link }) {
       setOpenId(r.id)
       return Promise.resolve()
     }
+    // Ready to announce -> Live is Mark as announced: ask for the date first
+    // (Backlog 5a). Cancelling leaves the card where it was. Done -> Live needs
+    // no write-up and no date.
+    if (progress === 'live' && r.progress === 'ready_to_announce') {
+      setAnnouncing(r)
+      return Promise.resolve()
+    }
     return quiet(act(r, 'portal_request_move',
     { id: r.id, progress, assignee_admin_id: assignee, ...position },
-    { optimistic: { progress, assignee_admin_id: progress === 'ready_to_announce' ? r.assignee_admin_id : assignee } }))
+    { optimistic: { progress, assignee_admin_id: isPool(progress) ? r.assignee_admin_id : assignee } }))
   }
+  // Only a Live item is archived (Backlog 5a), with no dialog.
+  const archive = async (r) => {
+    await quiet(act(r, 'portal_request_archive', { id: r.id }).then(() => {
+      setArchiveKey((k) => k + 1)
+      setSuccess(`Archived "${r.title}".`)
+    }))
+  }
+  const setImportance = (r, value) => act(r, 'portal_request_importance_set', { id: r.id, release_importance: value },
+    { optimistic: { release_importance: value } })
   const approve = (r) => quiet(act(r, 'portal_request_review', { id: r.id, decision: 'approve' }).then(() => {
     closeRow(r.id)
     doneOnRequests('Approved: now on the Tasks board.')
@@ -262,9 +279,11 @@ export default function PortalBacklogPanel({ link }) {
     onDeny: () => setDenying(r),
     onReopen: () => reopen(r),
     onMove: (progress, assignee) => move(r, progress, assignee),
-    onArchive: () => setArchiving(r),
+    onAnnounce: () => setAnnouncing(r),
+    onArchive: () => archive(r),
     onRestore: () => restore(r),
     onSaveWriteup: (announcement) => act(r, 'portal_request_writeup_save', { id: r.id, announcement }),
+    onSetImportance: (value) => setImportance(r, value),
   })
 
   const pageStyle = { maxWidth: '1800px', margin: '0 auto', padding: 'var(--vfo-gutter, 24px)', boxSizing: 'border-box', minWidth: 0 }
@@ -273,7 +292,7 @@ export default function PortalBacklogPanel({ link }) {
   // They are chrome, so they show while the backlog loads too.
   const viewTabs = (
     <div role="tablist" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
-      {[['tasks', 'Tasks'], ['requests', 'Requests']].map(([k, label]) => {
+      {[['tasks', 'Tasks'], ['requests', 'Requests'], ['announce', "What's new"]].map(([k, label]) => {
         const active = view === k && !showArchive
         return (
           <button key={k} role="tab" aria-selected={active} onClick={() => { setView(k); if (showArchive) closeArchive() }}
@@ -284,7 +303,7 @@ export default function PortalBacklogPanel({ link }) {
               color: active ? '#ffffff' : 'var(--vfo-muted)',
               border: `1px solid ${active ? 'var(--vfo-primary)' : 'var(--vfo-border-soft)'}`,
             }}>
-            {label}{k === 'requests' && counts.pending > 0 ? ` (${counts.pending})` : ''}
+            {label}{k === 'requests' && counts.pending > 0 ? ` (${counts.pending})` : ''}{k === 'announce' && data && whatsNewCount > 0 ? ` (${whatsNewCount})` : ''}
           </button>
         )
       })}
@@ -327,22 +346,8 @@ export default function PortalBacklogPanel({ link }) {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          {view === 'tasks' && !showArchive && (
+          {(view === 'tasks' || view === 'announce') && !showArchive && (
             <ListFilterButton groups={filterGroups} value={filter} onChange={setFilter} align="left" />
-          )}
-          {view === 'requests' && !showArchive && (
-            <div role="tablist" aria-label="Requests list" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {[['new', 'New requests'], ['ready', 'Ready to announce']].map(([k, label]) => {
-                const on = requestsList === k
-                return (
-                  <button key={k} role="tab" aria-selected={on} onClick={() => setRequestsList(k)}
-                    style={{ padding: '7px 14px', borderRadius: '999px', border: `1px solid ${on ? '#125ecc' : 'var(--vfo-border-strong)'}`, background: on ? '#125ecc' : 'var(--vfo-input)', color: on ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    {label}
-                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '1px 7px', borderRadius: '999px', background: on ? 'rgba(255,255,255,0.22)' : 'var(--vfo-tint)', color: on ? '#ffffff' : 'var(--vfo-muted)' }}>{listCounts[k]}</span>
-                  </button>
-                )
-              })}
-            </div>
           )}
           <button style={btnSecondary} onClick={showArchive ? closeArchive : openArchive}>{showArchive ? 'Close archive' : 'Archive'}</button>
         </div>
@@ -373,10 +378,13 @@ export default function PortalBacklogPanel({ link }) {
           department={archiveDepartment} onDepartmentChange={setArchiveDepartment} />
       ) : view === 'tasks' ? (
         <BacklogBoard requests={filtered} assignees={assignees} people={people} canManage={canManage} me={me}
-          onOpen={(r) => setOpenId(r.id)} onMove={move} onResort={resort} onArchive={setArchiving}
+          onOpen={(r) => setOpenId(r.id)} onMove={move} onResort={resort} onAnnounce={setAnnouncing} onArchive={archive}
           onAddTask={canManage ? (assignee) => setAddingTask({ assignee }) : null} />
+      ) : view === 'announce' ? (
+        <AnnounceTab requests={filtered} people={people} canManage={canManage} busyId={busyId}
+          onOpen={(r) => setOpenId(r.id)} onAnnounce={setAnnouncing} onArchive={archive} />
       ) : (
-        <BacklogRequestsTab list={requestsList} requests={scoped} people={people} assignees={assignees} canManage={canManage} me={me} busyId={busyId}
+        <BacklogRequestsTab requests={scoped} people={people} assignees={assignees} canManage={canManage} me={me} busyId={busyId}
           search={search} onSearch={setSearch} openIds={openIds} onToggle={toggleRow} detailProps={detailHandlers}
           filterGroups={filterGroups} filter={filter} onFilterChange={setFilter} filtering={filterIsOn(filter)}
           sortValue={requestsSort} onSortChange={setRequestsSort} />
@@ -405,14 +413,12 @@ export default function PortalBacklogPanel({ link }) {
             doneOnRequests('Denied: moved to the Archive.')
           }} />
       )}
-      {archiving && (
-        <ArchiveDialog request={archiving} onClose={() => setArchiving(null)}
-          onArchive={async (announced_on, announce_note) => {
-            await act(archiving, 'portal_request_archive', { id: archiving.id, announced_on, announce_note })
-            closeRow(archiving.id)
-            setArchiving(null)
-            setArchiveKey((k) => k + 1)
-            doneOnRequests('Archived.')
+      {announcing && (
+        <AnnounceDialog request={announcing} onClose={() => setAnnouncing(null)}
+          onAnnounce={async (announced_on, announce_note, release_importance) => {
+            await act(announcing, 'portal_request_move', { id: announcing.id, progress: 'live', announced_on, announce_note, release_importance })
+            setAnnouncing(null)
+            setSuccess(`Marked as announced: "${announcing.title}" is now Live.`)
           }} />
       )}
     </div>

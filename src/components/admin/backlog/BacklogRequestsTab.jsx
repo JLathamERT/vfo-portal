@@ -6,34 +6,32 @@ import { departmentChipStyle } from './portalDepartments'
 import { fmtDate, isTask, sortRequests, REQUEST_SORT_OPTIONS } from './backlogModel'
 import ScorePill from './ScorePill'
 import { TaskTag } from './TaskBits'
+import BigNewsBadge from './BigNewsBadge'
 import BacklogDetails from './BacklogDetails'
 
 // The Requests tab, laid out like Client Overview: search, Filter and Sort, then
-// one table, New requests or Ready to announce, picked by the pills beside the
-// Archive button. Both default to the order added, oldest first (the Sort
-// dropdown); a clicked column header overrides it for that table until the
+// one table of the requests waiting for review (Ready to announce moved to the
+// What's new tab, Paxton 2026-11-23). It defaults to the order added, oldest
+// first (the Sort dropdown); a clicked column header overrides it until the
 // dropdown changes. A row (or its chevron) drops its full details down under
 // it, with every drawer action; several rows can be open. The drawer is for the
-// Tasks board and the Archive only.
+// Tasks board, What's new and the Archive.
 
 export const REQUESTS_GRID = '32px minmax(260px, 2.4fr) minmax(180px, 1.6fr) 90px 100px 120px 150px'
 export const REQUESTS_MIN_WIDTH = 990
 
 export const requestRowId = (id) => `backlog-request-${id}`
 
-export default function BacklogRequestsTab({ list = 'new', requests, people, assignees, canManage, me, busyId, search, onSearch, openIds, onToggle, detailProps, filterGroups, filter, onFilterChange, filtering, sortValue = 'added_asc', onSortChange }) {
+export default function BacklogRequestsTab({ requests, people, assignees, canManage, me, busyId, search, onSearch, openIds, onToggle, detailProps, filterGroups, filter, onFilterChange, filtering, sortValue = 'added_asc', onSortChange }) {
   const isPhone = useIsPhone()
   const pendingSort = useHeaderSort()
-  const readySort = useHeaderSort()
 
   const q = search.trim().toLowerCase()
   const matches = (r) => !q || [r.title, r.request_text, r.requester_name].some((v) => String(v || '').toLowerCase().includes(q))
 
-  // Tasks are never pending; one in Ready to announce lists with its Task tag (Backlog 4a).
+  // Tasks are never pending (Backlog 4a).
   const allPending = requests.filter((r) => r.review_status === 'pending' && !isTask(r))
-  const allReady = requests.filter((r) => r.review_status === 'approved' && !r.archived_at && r.progress === 'ready_to_announce')
   const pending = sortRequests(allPending.filter(matches), sortValue)
-  const ready = sortRequests(allReady.filter(matches), sortValue)
 
   const nameOf = (id) => (id == null ? '' : (people[id] || 'A former admin'))
   const columnsFor = (field) => ({
@@ -61,20 +59,13 @@ export default function BacklogRequestsTab({ list = 'new', requests, people, ass
           style={{ flex: isPhone ? '1 1 100%' : 1, minWidth: 0, padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }} />
         <ListFilterButton groups={filterGroups} value={filter} onChange={onFilterChange} align={isPhone ? 'left' : 'right'} />
         <SortSelect value={sortValue} options={REQUEST_SORT_OPTIONS}
-          onChange={(v) => { onSortChange(v); pendingSort.reset(); readySort.reset() }} />
+          onChange={(v) => { onSortChange(v); pendingSort.reset() }} />
       </div>
 
-      {list === 'ready' ? (
-        <RequestsTable key="ready" rows={sortByColumn(ready, readySort.sort, columnsFor('assignee_admin_id'))}
-          emptyText={emptyFor(allReady, 'Nothing is ready to announce.')}
-          sort={readySort.sort} onSort={readySort.onSort} people={people} assignedField="assignee_admin_id"
-          openIds={openIds} onToggle={onToggle} renderDetails={renderDetails} />
-      ) : (
-        <RequestsTable key="new" rows={sortByColumn(pending, pendingSort.sort, columnsFor('requested_assignee_admin_id'))}
-          emptyText={emptyFor(allPending, 'No requests waiting for review.')}
-          sort={pendingSort.sort} onSort={pendingSort.onSort} people={people} assignedField="requested_assignee_admin_id"
-          openIds={openIds} onToggle={onToggle} renderDetails={renderDetails} />
-      )}
+      <RequestsTable rows={sortByColumn(pending, pendingSort.sort, columnsFor('requested_assignee_admin_id'))}
+        emptyText={emptyFor(allPending, 'No requests waiting for review.')}
+        sort={pendingSort.sort} onSort={pendingSort.onSort} people={people} assignedField="requested_assignee_admin_id"
+        openIds={openIds} onToggle={onToggle} renderDetails={renderDetails} />
     </div>
   )
 }
@@ -113,7 +104,12 @@ function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, o
                   onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onToggle(r.id) } }}
                   style={{ padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', scrollMarginTop: '80px' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {isTask(r) && <div style={{ marginBottom: '5px' }}><TaskTag /></div>}
+                    {(isTask(r) || r.release_importance === 'big') && (
+                      <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '5px' }}>
+                        {isTask(r) && <TaskTag />}
+                        <BigNewsBadge request={r} />
+                      </div>
+                    )}
                     <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-link)', lineHeight: 1.3, overflowWrap: 'anywhere' }}>{r.title}</div>
                     <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px' }}>{r.requester_name} · {fmtDate(r.requested_on)}</div>
                     {(r.departments || []).length > 0 && (
@@ -185,7 +181,7 @@ function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, o
                   </button>
                   <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                     <span style={{ fontWeight: 600, color: 'var(--vfo-link)', overflowWrap: 'anywhere' }}>
-                      {isTask(r) && <><TaskTag />{' '}</>}{r.title}
+                      {isTask(r) && <><TaskTag />{' '}</>}{r.release_importance === 'big' && <><BigNewsBadge request={r} />{' '}</>}{r.title}
                     </span>
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{r.requester_name}</span>
                   </span>
