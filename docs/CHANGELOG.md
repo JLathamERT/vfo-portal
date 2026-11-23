@@ -9,6 +9,22 @@
 
 ---
 
+## 2026-11-23 (a) — Loading skeletons on every portal, the payment-complete page, a passcode eye, and one sentence out of nine emails — by Jake
+
+**Why.** Jake's four points: skeletons no longer matched the restyled pages (onboarding was the one he noticed); the "do not close or navigate away from the page" sentence should leave every email; passcodes should be showable; and many payments still ended on vfo-services.com's thank-you page instead of the portal's check-mark screen.
+
+**Skeletons (website only).** Three read-only audits compared every loading state with its page; nearly all predated the facelifts. `shared/skeletons/`: `HeroSkeleton` now mirrors `TrackHero` (avatar, % + caption, bar, step bar, Live switch; it used to draw a stat row no hero has), new `PanelHeroSkeleton`, `PhaseCardSkeleton`, `RowCardsSkeleton`, `RuledTitleSkeleton`; `TableSkeleton` takes the page's own grid string and can put the totals row under the header, as the accounting tables do. New files `adminLists.jsx` and `adminPages.jsx`; `tracks.jsx` and `portal.jsx` rewritten with their phone shapes. Removed: `SkeletonCard`, `ProfileTabSkeleton`, `PhaseListSkeleton` (nothing uses them). `.vfo-skeleton` is `display: block` (two bars in a plain div used to sit side by side) and `.vfo-skel-on-tint` is a step darker for tinted cards. A refresh now draws the tab it is heading to: `loadDataSkeleton` (AdminPortal, was always the directory list), `MemberTabSkeleton` / `MemberProgramLoading` (was always the Profile), `ClientTabSkeleton` (ClientDetail). Client Overview and SDP ATSG no longer draw their title and toolbar twice. Skeletons in place of plain "Loading…" text: Tax Diagnostics, FAQ Editor, Feature Switches, admin home tiles, Growth Plan, One Page Plan, and a client refreshing on Progress / Plan / Vault (was a blank page). Left alone: the emailed-link pages' "Loading…" line (Jake), and two test-site-only screens (Staging tab, your test logins).
+
+**Payment-complete page.** New public `/payment-complete` (`PaymentCompletePage.jsx`, 54 route pages): `m=card` / `m=ach`, `verify=1` (typed-in bank details possible), `setup=1` (nothing charged today). It reads nothing and carries no token, so a payer can't pay twice from it. Backend `utils/payment-complete-url.ts` is now the success URL of ten Checkouts: Holistic, Tax, PIP, Advisor, Accountant, specialist background check, licence, licence continuation, specialist revenue one-off and monthly. Only `success_url` changed: no amount, metadata, webhook or email. **Release order: website first, then backend**, or payers land on a page that isn't there (#564 / #578).
+
+**Passcode eye.** `shared/PasswordInput.jsx` on the five logins, three set-up pages and Change Passcode; also the admin's and the member's Account Settings and Admin Editor, which showed the passcode as plain text. The two Account Settings became forms with the autofill field identity (#354). Edge's own reveal eye is hidden.
+
+**Emails (data, no schema).** "Important: After clicking, please do not close or navigate away…" removed from nine `email_templates` rows: 4, 46, 61, 64, 73, 118, 150, 333, 336 (with "This is how your response is confirmed and recorded." where it followed). One blank line is left before the buttons; subjects and Draft / Send modes unchanged. Test site 2026-11-23; live at release, on Jake's word.
+
+**Tested.** Dev server + `vfo-admin-api-jake` v68. About 100 loading states opened with the data held back: no error, no sideways scroll at 390 and 360. Jake: the eye on the admin login and Settings, the two email templates, the skeletons on admin, member, client and specialist at desktop and phone width, one card payment through specialist revenue (received), and the three versions of the page. **Not exercised:** a bank payment, a monthly set-up, the other nine Checkouts, and the tax planner portal by hand (edge Issue #617 watches each).
+
+---
+
 ## 2026-11-22 (a) — Portal Backlog: real titles for the cut-off imported requests, and a title counter — by Paxton
 
 **Why.** Workbench item *Backlog 6a* (Jake's point 6 in *Portal Backlog Request*: "almost every task ends in ..."). The page never cut titles short: the sheet import had titled each row with the first eight words of the request + "...", so 55 of the 64 imported requests read as cut-off sentences, on the test site and on live alike (the import had already run on live). The 140-character limit stays (Paxton's decision in the spec).

@@ -45,6 +45,7 @@ All previously-inline helpers have been extracted to per-file modules:
 | `gmailDraftFetch()` / `maybeSendDraft()` / `deliverRaw()` / `isSendMode()` | `utils/email-delivery.ts` | **2026-07-03 (gotcha #181):** the Draft/Send delivery layer — creates the Gmail draft (fetch-compatible drop-in for the old inline drafts.create) then auto-sends via Gmail `drafts.send` iff `email_templates.send_mode` is true for that (pipeline, template_name). `draftGmail()` in `utils/gmail-draft.ts` gained the equivalent optional `sendMode` opt. |
 | `consumeDecisionCode()` / `maskEmail()` / `DECISION_CODE_KINDS` | `utils/decision-code.ts` | **2026-10-27 (#672).** The emailed-code check for the two Tax money decision handlers (`decision_codes`, HMAC keyed by the service-role key, 15 min, single use, decision-bound, 5 tries). |
 | `serviceRoleRefusal()` | `utils/service-role-only.ts` | **2026-10-27 (#673).** First line of every PUBLIC handler that moves money and is reached only by a chain: 401 unless the bearer is exactly the service-role key. The dispatch entry must pass `c.req`. |
+| `paymentCompleteUrl(method, { verify, setup })` | `utils/payment-complete-url.ts` | **2026-11-23.** The Stripe success URL of ten Checkouts: the portal's static `/payment-complete` page (no token). Copy it for a new Checkout whose pay page has no thank-you state of its own. |
 | `generateToken()` | `utils/crypto.ts` | 32-byte crypto-random hex — used for sessions, `c15_token`, `checkout_token`. |
 | `hashPasscodeSalted()` / `verifyPasscodeSalted()` / `isSaltedHash()` | `utils/crypto.ts` | **Salted PBKDF2-HMAC-SHA256** (210k iterations) — produce/verify `allowed_admins.passcode_hash` and `member_logins.passcode_hash` (`pbkdf2$sha256$<iter>$<salt>$<hash>`). The legacy unsalted-SHA-256 `hashPasscode()` + `passcode` column were removed 2026-05-29 (v335). |
 | `verifyPasscode(passcode, row)` | `utils/passcode-verify.ts` | Shared salted-hash verify used by `admin_login` / `member_login` / legacy `login` (fetch-by-email then verify). |
@@ -204,7 +205,7 @@ These remain hardcoded in their respective handler files (preserved verbatim —
 | `tracy@vfo-services.com` | `actions/pipeline/contract-invoice-receipt.ts` | CC on `automation_CONTRACT_invoicereceipt` (separate address from above) |
 | `aipc@vfo-services.com` | `actions/pipeline/contract-send-agreement.ts` | `From:` on `automation_CONTRACT_sendagreement` Gmail draft |
 | `https://vfoportal.com/pay?token=...` | `actions/pipeline/contract-payment-email.ts`, `contract-stripe-checkout.ts` | Pay-page redirect URL |
-| `https://www.vfo-services.com/payment-successful/` | `actions/pipeline/contract-stripe-checkout.ts` | Stripe Checkout success URL |
+| `<PORTAL_BASE>/payment-complete?m=…` | `utils/payment-complete-url.ts` (ten Checkouts) | Stripe Checkout success URL (2026-11-23) |
 | ~~`MASTER_SHEET_ID`~~ | ~~`actions/pipeline/contract-revshare.ts`~~ | **REMOVED 2026-07-01 (gotcha #164)** — the Revenue-Master read is gone; no code reads a Google Sheet anymore |
 | `BrandId = "f6b2e092-73a4-438e-b786-ebd20e472732"` | `actions/pipeline/contract-send-agreement.ts` | BoldSign brand for `automation_CONTRACT_sendagreement` |
 

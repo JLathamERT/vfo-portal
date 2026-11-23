@@ -49,7 +49,7 @@ $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatc
 # 4. Type-check baseline — must be 0; --no-lock avoids the v5 deno.lock the bundler rejects (#112)
 & "$env:USERPROFILE\.deno\bin\deno.exe" check --no-lock supabase/functions/vfo-admin-api/index.ts   # or plain `deno` when it is on PATH
 
-# 5. Frontend build — expect exit 0. (v: 2026-11-20 → **53** route pages, the dev-only `/phone-preview` never among them; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
+# 5. Frontend build — expect exit 0. (v: 2026-11-23 → **54** route pages, the dev-only `/phone-preview` never among them; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
 cd C:\vfo-react; npm run build
 
 # 6. Pipeline smoke gate — hand it to the person running the chat in EXACTLY this form: THEIR portal email (TEAM table, TEAM_RULES.md), a literal <password>, never a token, never Read-Host

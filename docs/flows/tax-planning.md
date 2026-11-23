@@ -1031,7 +1031,7 @@ BoldSign fires `event.eventType='Signed'` with CEO email AND eventually `event.e
    - Any other resolved state → `"Payment already completed"` 400 error.
 
    Returns Stripe URL.
-3. Client redirected to Stripe → enters payment → Stripe charges → Stripe redirects to `https://www.vfo-services.com/payment-successful/` (leaves SPA).
+3. Client redirected to Stripe → enters payment → Stripe charges → Stripe redirects to the portal's own `/payment-complete?m=card` / `?m=ach&verify=1` (static, no token; 2026-11-23).
 
 > **The ACH session no longer pins `verification_method='instant'` (2026-09-08, v816)** — identical change to `/pay`, same reasoning. `instant` restricted Stripe's hosted page to the Financial Connections bank-login flow and locked out every bank it does not support (**#298**); omitting it falls back to Stripe's `automatic` default = **bank sign-in first, manual account/routing entry with 1-2 business-day micro-deposits as the fallback**. The builder now appends **`custom_text[submit][message]`** from `constants/ach-checkout-note.ts` `ACH_BANK_SIGN_IN_NOTE` (bold first sentence, rendered bold on Stripe's page) asking the client not to use manual entry unless sign-in fails. Stripe's *"Enter bank details manually (may take 1-2 business days)"* link text is Stripe's and **cannot** be edited, so that sentence is the only lever. Card sessions get no `custom_text`.
 >
