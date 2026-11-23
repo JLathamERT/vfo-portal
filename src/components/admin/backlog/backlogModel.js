@@ -22,6 +22,25 @@ export const LENSES = [
 
 const approved = (r) => r.review_status === 'approved' && !r.archived_at
 
+// A superadmin task (Backlog 4a): born approved, no urgency, importance or
+// review, always in a lane. The hero counts requests only (Paxton 2026-11-23).
+export const isTask = (r) => r?.kind === 'task'
+
+// Overdue: the due date has passed and the task is not yet in Ready to announce
+// or the archive. Dates compare as YYYY-MM-DD strings in the viewer's day.
+export function isOverdue(r) {
+  if (!r?.due_on || r.archived_at || r.progress === 'ready_to_announce') return false
+  return String(r.due_on).slice(0, 10) < todayLocal()
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+// "5 Dec", with the year when it is not this year.
+export function fmtDue(d) {
+  const [y, m, day] = String(d || '').slice(0, 10).split('-').map(Number)
+  if (!y || !m || !day) return String(d || '')
+  return `${day} ${MONTHS[m - 1]}${y !== new Date().getFullYear() ? ` ${y}` : ''}`
+}
+
 export const LENS_PREDICATE = {
   all: () => true,
   pending: (r) => r.review_status === 'pending',
@@ -40,8 +59,12 @@ export function lensCounts(rows) {
 
 // The Filter button on the Tasks board and the Requests tab (one filter, shared).
 // Department matches when ANY of a request's departments is ticked. Assigned to
-// is the requester's pick while pending, the real assignee once approved.
-export const EMPTY_BACKLOG_FILTER = { department: [], requester: [], assignee: [] }
+// is the requester's pick while pending, the real assignee once approved. Type
+// shows requests or tasks alone (Backlog 4a); a task with no department matches
+// no Department tick.
+export const EMPTY_BACKLOG_FILTER = { type: [], department: [], requester: [], assignee: [] }
+export const TYPE_REQUESTS = 'Requests'
+export const TYPE_TASKS = 'Tasks'
 export const UNASSIGNED = 'Unassigned'
 
 export const filterIsOn = (f) => Object.values(f).some((v) => v.length > 0)
@@ -60,6 +83,7 @@ export function backlogFilterGroups(requests, people, assignees, departments) {
     if (id != null && !superadmins.includes(nameOf(id))) others.add(nameOf(id))
   }
   return [
+    { key: 'type', label: 'Type', options: [TYPE_REQUESTS, TYPE_TASKS], get: (r) => (isTask(r) ? TYPE_TASKS : TYPE_REQUESTS) },
     { key: 'department', label: 'Department', options: departments, get: (r) => r.departments || [] },
     { key: 'requester', label: 'Requester', options: requesters, get: (r) => r.requester_name },
     {

@@ -3,13 +3,14 @@ import { callApi } from '../../lib/api'
 import { KpiHero } from './KpiKit'
 import { btnPrimary, btnSecondary } from '../shared/buttonStyles'
 import { PORTAL_DEPARTMENTS } from './backlog/portalDepartments'
-import { LENSES, LENS_PREDICATE, lensCounts, EMPTY_BACKLOG_FILTER, backlogFilterGroups, filterIsOn } from './backlog/backlogModel'
+import { LENSES, LENS_PREDICATE, lensCounts, EMPTY_BACKLOG_FILTER, backlogFilterGroups, filterIsOn, isTask } from './backlog/backlogModel'
 import ListFilterButton, { matchesFilter } from './ListFilterButton'
 import BacklogBoard from './backlog/BacklogBoard'
 import BacklogRequestsTab, { requestRowId } from './backlog/BacklogRequestsTab'
 import BacklogArchive from './backlog/BacklogArchive'
 import BacklogDrawer from './backlog/BacklogDrawer'
 import NewRequestModal from './backlog/NewRequestModal'
+import TaskModal from './backlog/TaskModal'
 import DenyDialog from './backlog/DenyDialog'
 import ArchiveDialog from './backlog/ArchiveDialog'
 import { PortalBacklogSkeleton } from '../shared/skeletons'
@@ -42,7 +43,8 @@ export default function PortalBacklogPanel({ link }) {
   const [archiveKey, setArchiveKey] = useState(0)
   const [archiveRows, setArchiveRows] = useState([])
   const [openId, setOpenId] = useState(null)
-  const [editing, setEditing] = useState(null) // 'new' | request
+  const [editing, setEditing] = useState(null) // 'new' | request | task
+  const [addingTask, setAddingTask] = useState(null) // null | { assignee }
   const [denying, setDenying] = useState(null)
   const [archiving, setArchiving] = useState(null)
   const [busyId, setBusyId] = useState(null)
@@ -89,7 +91,8 @@ export default function PortalBacklogPanel({ link }) {
     const deps = filter.department
     return deps.length ? rows.filter((r) => (r.departments || []).some((d) => deps.includes(d))) : rows
   }, [data, filter.department])
-  const counts = useMemo(() => lensCounts(pool), [pool])
+  // Tasks stay out of the hero: it counts requests (Backlog 4a, Paxton 2026-11-23).
+  const counts = useMemo(() => lensCounts(pool.filter((r) => !isTask(r))), [pool])
   const filtered = useMemo(() => pool.filter((r) => matchesFilter(r, filterGroups, filter)), [pool, filterGroups, filter])
   const scoped = useMemo(() => filtered.filter(LENS_PREDICATE[lens]), [filtered, lens])
   const listCounts = useMemo(() => ({
@@ -198,7 +201,11 @@ export default function PortalBacklogPanel({ link }) {
   const quiet = (p) => p.catch(() => {})
 
   const move = (r, progress, assignee, position = {}) => {
-    if (progress === 'ready_to_announce' && r.progress !== 'ready_to_announce' && !String(r.announcement || '').trim()) {
+    if (isTask(r) && progress !== 'ready_to_announce' && assignee == null) {
+      setNotice('A task always belongs to someone. Assign it to a lane instead.')
+      return Promise.resolve()
+    }
+    if (progress === 'ready_to_announce' && r.progress !== 'ready_to_announce' && !isTask(r) && !String(r.announcement || '').trim()) {
       setNotice(`Write up what "${r.title}" does before moving it to Ready to announce.`)
       setOpenId(r.id)
       return Promise.resolve()
@@ -229,6 +236,18 @@ export default function PortalBacklogPanel({ link }) {
       setEditing(null)
       if (d?.request?.id) revealRow(d.request)
       else setView('requests')
+    } else {
+      await act(editing, 'portal_request_update', { id: editing.id, ...fields })
+      setEditing(null)
+    }
+  }
+
+  // A task (Backlog 4b): Add task puts it at the top of the creator's own To do;
+  // Edit keeps it where it is. The page stays on the board.
+  const saveTask = async (fields) => {
+    if (addingTask) {
+      await act(null, 'portal_task_create', fields)
+      setAddingTask(null)
     } else {
       await act(editing, 'portal_request_update', { id: editing.id, ...fields })
       setEditing(null)
@@ -330,6 +349,9 @@ export default function PortalBacklogPanel({ link }) {
         {view === 'requests' && !showArchive && (
           <button style={btnPrimary} onClick={() => setEditing('new')}>+ New request</button>
         )}
+        {view === 'tasks' && !showArchive && canManage && (
+          <button style={btnPrimary} onClick={() => setAddingTask({ assignee: me?.admin_id ?? null })}>+ Add task</button>
+        )}
       </div>
 
       {notice && (
@@ -350,8 +372,9 @@ export default function PortalBacklogPanel({ link }) {
           onOpen={(r) => setOpenId(r.id)} onRestore={restore} onReopen={reopen} onBack={closeArchive} onLoaded={onArchiveLoaded}
           department={archiveDepartment} onDepartmentChange={setArchiveDepartment} />
       ) : view === 'tasks' ? (
-        <BacklogBoard requests={filtered} assignees={assignees} people={people} canManage={canManage}
-          onOpen={(r) => setOpenId(r.id)} onMove={move} onResort={resort} onArchive={setArchiving} />
+        <BacklogBoard requests={filtered} assignees={assignees} people={people} canManage={canManage} me={me}
+          onOpen={(r) => setOpenId(r.id)} onMove={move} onResort={resort} onArchive={setArchiving}
+          onAddTask={canManage ? (assignee) => setAddingTask({ assignee }) : null} />
       ) : (
         <BacklogRequestsTab list={requestsList} requests={scoped} people={people} assignees={assignees} canManage={canManage} me={me} busyId={busyId}
           search={search} onSearch={setSearch} openIds={openIds} onToggle={toggleRow} detailProps={detailHandlers}
@@ -364,7 +387,11 @@ export default function PortalBacklogPanel({ link }) {
           onClose={() => setOpenId(null)} {...detailHandlers(open)} />
       )}
 
-      {editing && (
+      {(addingTask || (editing && isTask(editing))) && (
+        <TaskModal initial={addingTask ? null : editing} assignees={assignees} me={me} presetAssignee={addingTask?.assignee}
+          onSave={saveTask} onClose={() => { setAddingTask(null); setEditing(null) }} />
+      )}
+      {editing && !isTask(editing) && (
         <NewRequestModal initial={editing === 'new' ? null : editing} assignees={assignees} showAssign={showAssignFor(editing)}
           onSave={saveRequest} onClose={() => setEditing(null)} />
       )}

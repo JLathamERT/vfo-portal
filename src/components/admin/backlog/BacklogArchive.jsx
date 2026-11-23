@@ -3,7 +3,8 @@ import { callApi } from '../../../lib/api'
 import { btnSecondary } from '../../shared/buttonStyles'
 import { hexA } from '../KpiKit'
 import { departmentChipStyle, PORTAL_DEPARTMENTS } from './portalDepartments'
-import { fmtDate, fmtDateTime } from './backlogModel'
+import { fmtDate, fmtDateTime, isTask } from './backlogModel'
+import { TaskTag } from './TaskBits'
 import { inputStyle } from './BacklogModal'
 import { PortalBacklogArchiveRowsSkeleton } from '../../shared/skeletons'
 
@@ -78,6 +79,7 @@ export default function BacklogArchive({ people, canManage, reloadKey, onOpen, o
               <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <StatusPill denied={denied} />
+                  {isTask(r) && <TaskTag />}
                   <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--vfo-ink)', overflowWrap: 'anywhere' }}>{r.title}</span>
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginTop: '3px' }}>{r.requester_name} · {fmtDate(r.requested_on)}</div>

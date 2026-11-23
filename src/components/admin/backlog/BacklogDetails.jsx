@@ -2,15 +2,17 @@ import { useEffect, useId, useState } from 'react'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { btnDanger, btnPrimary, btnSecondary, btnState } from '../../shared/buttonStyles'
 import { departmentChipStyle } from './portalDepartments'
-import { PROGRESS_LABELS, columnName, fmtDate, fmtDateTime, parseColumn, placeLabel } from './backlogModel'
+import { PROGRESS_LABELS, columnName, fmtDate, fmtDateTime, isTask, parseColumn, placeLabel } from './backlogModel'
 import ScorePill from './ScorePill'
+import { DueChip, TaskTag } from './TaskBits'
 import { fieldLabel, inputStyle } from './BacklogModal'
 
 // A request's details: every field, the write-up, the review, the Move to /
 // Assign to selects (what dragging does, for a touch screen), the announcement
 // and the history. The drawer (Tasks board, Archive) stacks the cards in one
 // column; a Requests tab row dropdown lays them out in a grid across the row,
-// with a header line in place of the drawer's blue header.
+// with a header line in place of the drawer's blue header. A task (Backlog 4a)
+// has no review: its Review card is one "Task added by" line.
 export default function BacklogDetails({ request: r, people, assignees, canManage, me, busy, layout = 'stack', onEdit, onWithdraw, onApprove, onDeny, onReopen, onMove, onArchive, onRestore, onSaveWriteup }) {
   const uid = useId()
   const isPhone = useIsPhone()
@@ -22,11 +24,13 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
   useEffect(() => { setWriteup(r.announcement || ''); setWriteupState('') }, [r.id, r.announcement])
   useEffect(() => { setMoveTo(r.progress || 'todo'); setAssignTo(r.assignee_admin_id ?? '') }, [r.id, r.progress, r.assignee_admin_id])
 
+  const task = isTask(r)
   const own = me && r.requester_admin_id === me.admin_id
   const pending = r.review_status === 'pending'
   const onBoard = r.review_status === 'approved' && !r.archived_at
   const isReady = onBoard && r.progress === 'ready_to_announce'
-  const canEdit = !r.archived_at && r.review_status !== 'withdrawn' && (canManage || (own && pending))
+  // A task is edited by a superadmin only, with the task form (Backlog 4b).
+  const canEdit = !r.archived_at && r.review_status !== 'withdrawn' && (canManage || (!task && own && pending))
 
   const moveAssignee = moveTo === 'ready_to_announce' ? (r.assignee_admin_id ?? null) : (assignTo === '' ? null : Number(assignTo))
   const moveValid = moveTo === 'todo' || moveTo === 'ready_to_announce' || moveAssignee != null
@@ -39,6 +43,9 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
   // The review: a card in the drawer; in a row dropdown it sits right under the
   // status line, where a pending request's Approve / Deny need no "Waiting" line.
   const reviewBody = (inline) => {
+    if (task) {
+      return <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.55 }}>Task added by {r.requester_name || 'a former admin'}, {fmtDateTime(r.created_at)}</div>
+    }
     const buttons = canManage && pending
     const line = pending ? (inline && buttons ? null : 'Waiting for Jake or Paxton to review.')
       : r.review_status === 'withdrawn' ? 'Withdrawn by the requester.'
@@ -72,14 +79,19 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
         {!flat && (
           <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '10px' }}>
             {(r.departments || []).map((d) => <span key={d} style={departmentChipStyle(d)}>{d}</span>)}
-            <ScorePill label="Urgency" value={r.urgency} size="md" />
-            <ScorePill label="Importance" value={r.importance} size="md" />
+            {task ? <DueChip request={r} size="md" /> : (
+              <>
+                <ScorePill label="Urgency" value={r.urgency} size="md" />
+                <ScorePill label="Importance" value={r.importance} size="md" />
+              </>
+            )}
           </div>
         )}
         <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{r.request_text}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginTop: '14px' }}>
           <Field label="Assignee" value={r.assignee_admin_id != null ? (people[r.assignee_admin_id] || 'A former admin') : '–'} />
           {requestedFor && <Field label="Requested for" value={requestedFor} />}
+          {task && r.requester_admin_id !== r.assignee_admin_id && <Field label="From" value={people[r.requester_admin_id] || 'A former admin'} />}
         </div>
         {canEdit && (
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '14px' }}>
@@ -97,7 +109,7 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
           ) : (
             <>
               <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginBottom: '8px', lineHeight: 1.45 }}>
-                What the finished change does, in words ready to announce. Things change between the request and the work, so keep it current. Needed before Ready to announce.
+                What the finished change does, in words ready to announce. Things change between the request and the work, so keep it current. {task ? 'Optional for a task.' : 'Needed before Ready to announce.'}
               </div>
               <textarea aria-label="What it does" rows={5} value={writeup} onChange={(e) => { setWriteup(e.target.value); setWriteupState('') }}
                 placeholder="For example: Members can now..." style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
@@ -115,7 +127,7 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
         </Card>
       )}
 
-      {layout !== 'grid' && <Card flat={flat} title="Review">{reviewBody(false)}</Card>}
+      {layout !== 'grid' && <Card flat={flat} title={task ? 'Added' : 'Review'}>{reviewBody(false)}</Card>}
 
       {canManage && onBoard && (
         <Card flat={flat} title="Move">
@@ -130,7 +142,7 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
               <label style={fieldLabel} htmlFor={assignId}>Assign to</label>
               <select id={assignId} value={moveTo === 'ready_to_announce' ? (r.assignee_admin_id ?? '') : assignTo}
                 disabled={moveTo === 'ready_to_announce'} onChange={(e) => setAssignTo(e.target.value)} style={inputStyle}>
-                <option value="">No one (Unassigned)</option>
+                {!task && <option value="">No one (Unassigned)</option>}
                 {assignees.map((a) => <option key={a.admin_id} value={a.admin_id}>{a.name}</option>)}
               </select>
             </div>
@@ -170,8 +182,9 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
       <div>
         <div style={{ marginBottom: '12px' }}>
           <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '8px', overflowWrap: 'anywhere' }}>
+            {task && <><TaskTag />{' '}</>}
             <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--vfo-accent-text)' }}>{placeLabel(r, people)}</span>
-            {' · '}{r.requester_name} · Requested {fmtDate(r.requested_on)}{r.imported ? ' · Imported from sheet' : ''}
+            {' · '}{r.requester_name} · {task ? 'Added' : 'Requested'} {fmtDate(r.requested_on)}{r.imported ? ' · Imported from sheet' : ''}
           </div>
           {reviewBody(true)}
         </div>
@@ -227,9 +240,10 @@ const EVENT_LABEL = {
   archived: 'Archived',
   restored: 'Restored from the archive',
   imported: 'Imported from sheet',
+  task_created: 'Added the task',
 }
 
-const FIELD_NAMES = { title: 'title', request_text: 'description', departments: 'departments', urgency: 'urgency', importance: 'importance', requested_assignee_admin_id: 'assign to' }
+const FIELD_NAMES = { title: 'title', request_text: 'description', departments: 'departments', urgency: 'urgency', importance: 'importance', requested_assignee_admin_id: 'assign to', due_on: 'due date' }
 
 // Written by scripts/portal-backlog-title-fix.sql (edge repo), with no actor.
 const TITLE_FIX_NOTE = 'Title replaced (imported title was cut off)'

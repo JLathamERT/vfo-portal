@@ -13,7 +13,9 @@ import { LANE_COLUMNS, PROGRESS_LABELS, bySortKey } from './backlogModel'
 // drag up or down inside one column saves that position.
 const colKey = (progress, assignee) => `${progress}:${progress === 'ready_to_announce' ? '' : (assignee ?? '')}`
 
-export default function BacklogBoard({ requests, assignees, people, canManage, onOpen, onMove, onResort, onArchive }) {
+// `onAddTask(assigneeId)` (superadmins, Backlog 4b / 4c): a "+" on each lane's
+// To do opens the task form with that lane picked.
+export default function BacklogBoard({ requests, assignees, people, canManage, onOpen, onMove, onResort, onArchive, onAddTask }) {
   const wide = useMediaQuery('(min-width: 1280px)')
   const tablet = useMediaQuery('(min-width: 768px)')
   const [laneId, setLaneId] = useState(null)
@@ -73,7 +75,10 @@ export default function BacklogBoard({ requests, assignees, people, canManage, o
     <div key={a.admin_id} style={{ background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', padding: '12px', minWidth: 0 }}>
       {tablet && <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--vfo-ink)', margin: '2px 4px 12px' }}>{a.name}</div>}
       <div style={{ display: 'grid', gridTemplateColumns: tablet ? 'repeat(3, minmax(0, 1fr))' : 'minmax(0, 1fr)', gap: '12px' }}>
-        {LANE_COLUMNS.map((p) => <Column {...columnProps(p, a.admin_id, PROGRESS_LABELS[p])} inLane />)}
+        {LANE_COLUMNS.map((p) => (
+          <Column {...columnProps(p, a.admin_id, PROGRESS_LABELS[p])} inLane
+            onAdd={p === 'todo' && onAddTask ? () => onAddTask(a.admin_id) : null} />
+        ))}
       </div>
     </div>
   ))
@@ -112,7 +117,7 @@ export default function BacklogBoard({ requests, assignees, people, canManage, o
   )
 }
 
-function Column({ colId, title, cards, people, canManage, onOpen, draggingId, setDraggingId, indicator, setIndicator, onDropAt, onResort, tall, inLane, showDoneBy, cardFooter }) {
+function Column({ colId, title, cards, people, canManage, onOpen, draggingId, setDraggingId, indicator, setIndicator, onDropAt, onResort, tall, inLane, showDoneBy, cardFooter, onAdd }) {
   const listRef = useRef(null)
   const over = indicator?.key === colId
 
@@ -154,6 +159,12 @@ function Column({ colId, title, cards, people, canManage, onOpen, draggingId, se
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
           <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{title}</span>
           <span style={{ fontSize: '12px', fontWeight: 700, padding: '1px 9px', borderRadius: '999px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{cards.length}</span>
+          {onAdd && (
+            <button type="button" onClick={onAdd} title="Add a task here" aria-label="Add a task here"
+              style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-link)', fontSize: '16px', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontFamily: 'Inter, sans-serif' }}>
+              +
+            </button>
+          )}
         </span>
         {onResort && cards.length > 1 && (
           <button onClick={onResort} title="Put this column back in urgency + importance order"
@@ -164,16 +175,23 @@ function Column({ colId, title, cards, people, canManage, onOpen, draggingId, se
       </div>
       <div ref={listRef} style={{ display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
         {visible.length === 0 && !over && <div style={{ fontSize: '13px', color: 'var(--vfo-faint)', padding: '8px 2px' }}>Nothing here</div>}
-        {visible.map((r, i) => (
-          <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {over && indicator.index === i && line}
-            <BacklogCard request={r} people={people} onOpen={onOpen} showDoneBy={showDoneBy}
-              draggable={canManage}
-              onDragStart={(e, req) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(req.id)); setTimeout(() => setDraggingId(req.id), 0) }}
-              onDragEnd={() => { setDraggingId(null); setIndicator(null) }}
-              footer={cardFooter ? cardFooter(r) : null} />
-          </div>
-        ))}
+        {/* The dragged card stays on the page, only hidden: a drop outside every
+            column still ends the drag on it (dragend), so it snaps back. Taking it
+            off the page lost that event and the card vanished until a reload. */}
+        {cards.map((r) => {
+          const hidden = r.id === draggingId
+          const i = hidden ? -1 : visible.indexOf(r)
+          return (
+            <div key={r.id} style={{ display: hidden ? 'none' : 'flex', flexDirection: 'column', gap: '10px' }}>
+              {!hidden && over && indicator.index === i && line}
+              <BacklogCard request={r} people={people} onOpen={onOpen} showDoneBy={showDoneBy}
+                draggable={canManage}
+                onDragStart={(e, req) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(req.id)); setTimeout(() => setDraggingId(req.id), 0) }}
+                onDragEnd={() => { setDraggingId(null); setIndicator(null) }}
+                footer={cardFooter ? cardFooter(r) : null} />
+            </div>
+          )
+        })}
         {over && indicator.index >= visible.length && line}
       </div>
     </div>
