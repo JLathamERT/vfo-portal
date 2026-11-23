@@ -85,11 +85,13 @@ export function HeroAvatar({ src, name, size = 60 }) {
 // `accent={false}` drops the gradient strip; omitting `title` turns the card
 // into a pure progress card (counter shown in the title slot) — use these for
 // nested cards so stacked heroes don't repeat the same treatment.
+// `bar={false}` (tax plan, 2026-11-23) drops the progress bar where the stepper
+// shows; a phone has no stepper, so it keeps the bar.
 // Phone: no phase stepper - a dozen phases ran ~1,100px wide and were cut off,
 // it is not tappable, and the bar + the phase list below already say where the
 // track is (2026-10-28). Also on a phone the % stays on the title's line (it had
 // wrapped onto a row of its own) and the 'n / m tasks' caption sits under the bar.
-export function TrackHero({ eyebrow, title, meta, action, completed, total, unitLabel = 'tasks completed', steps, accent = true, avatar = null }) {
+export function TrackHero({ eyebrow, title, meta, action, completed, total, unitLabel = 'tasks completed', steps, accent = true, avatar = null, bar = true }) {
   const isPhone = useIsPhone()
   const hasBar = typeof total === 'number' && total > 0
   const pct = hasBar ? Math.round(completed / total * 100) : 0
@@ -123,7 +125,7 @@ export function TrackHero({ eyebrow, title, meta, action, completed, total, unit
             {action}
           </div>
         </div>
-        {hasBar && (
+        {hasBar && (bar || isPhone) && (
           <div style={{ marginTop: '14px', height: '8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border)', overflow: 'hidden' }}>
             <div style={{ width: `${pct}%`, height: '100%', borderRadius: '999px', background: 'linear-gradient(90deg, #125ecc 0%, #0a85e8 100%)', transition: 'width 0.3s' }} />
           </div>

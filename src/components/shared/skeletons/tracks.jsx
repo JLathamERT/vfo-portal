@@ -313,9 +313,9 @@ export function ClientProfileTabSkeleton({ notes = true, phoneRows = false }) {
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
           {[130, 190].map(w => (
             <div key={w} style={{ flex: '1 1 300px', minWidth: '260px' }}>
-              <CardShell pad={pad} style={cardStyle}>
+              <CardShell pad={`14px ${pad}`} style={cardStyle}>
                 <RuledTitleSkeleton width={w} />
-                <Skeleton width={190} height={40} style={{ borderRadius: '8px', maxWidth: '100%' }} />
+                <Skeleton width={190} height={24}style={{ borderRadius: '8px', maxWidth: '100%' }} />
               </CardShell>
             </div>
           ))}

@@ -16,7 +16,9 @@ import { TAX_DISPLAY_NAMES, taxDisplayName } from '../../shared/taxDisplayNames'
 import { numberTaxIntakeQuestions, TAX_INTAKE_QUESTIONS, taxIntakeQuestionEditable, taxIntakeQuestionShown, formatTaxIntakeMoneyInput, formatTaxIntakeContactList } from '../../member/taxIntakeQuestions'
 import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
-import { statusPillStyle } from '../../shared/statusColors'
+import { btnPrimary, btnState } from '../../shared/buttonStyles'
+import { ChangeStatusModal, PlanStatusBanner, PlanStatusTag, planIsLive } from './TaxPlanStatus'
+import { PlanYearModal, StartPlanModal, TaxPlanCard, planTitle } from './TaxPlanCards'
 import { retainerShareGrossFor } from '../taxShared'
 
 // The automated cascade card. The STORED program_client_tasks.name is a lookup
@@ -596,6 +598,8 @@ const DIRECT_ACTION_MAP = {
   tax_client_question_ask: 'tax_direct_client_question_ask',
   tax_client_questions_load: 'tax_direct_client_questions_load',
   tax_save_task: 'tax_direct_save_task',
+  tax_plan_status_load: 'tax_direct_plan_status_load',
+  tax_plan_status_set: 'tax_direct_plan_status_set',
 }
 const actFor = (directMode) => (name) => (directMode ? DIRECT_ACTION_MAP[name] || name : name)
 
@@ -2434,7 +2438,7 @@ function ClientQuestionsCard({ planId, act }) {
   const list = questions || []
   const waiting = list.filter(q => !q.answered_at).length
   const summary = questions == null ? '' : list.length === 0 ? 'No questions asked'
-    : `${list.length} asked${waiting ? ` · ${waiting} waiting` : ' · all answered'}`
+    : `${list.length} asked${waiting ? ` · ${waiting} waiting` : ' · All answered'}`
   const btn = { padding: '8px 18px', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)' }
   return (
     <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden' }}>
@@ -2474,8 +2478,8 @@ function ClientQuestionsCard({ planId, act }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>
                   Asked {formatStamp(q.asked_at)}{q.asked_by_name ? ` by ${q.asked_by_name}` : ''}
-                  {q.email_result === 'drafted' ? ' · email drafted' : q.email_result === 'sent' ? ' · email sent' : ''}
-                  {q.reminder_sent_at ? ` · reminder ${formatStamp(q.reminder_sent_at)}` : ''}
+                  {q.email_result === 'drafted' ? ' · Email drafted' : q.email_result === 'sent' ? ' · Email sent' : ''}
+                  {q.reminder_sent_at ? ` · Reminder ${formatStamp(q.reminder_sent_at)}` : ''}
                 </span>
                 {q.answered_at
                   ? <span style={chipStyle('#1b9254')}>Answered {formatStamp(q.answered_at)}</span>
@@ -2519,7 +2523,7 @@ function TaxRouteCard({ rapid, international = false, canSwitch, busy, onChange 
   const pill = (on) => ({ padding: '4px 12px', borderRadius: '999px', border: 'none', fontSize: '11.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
     cursor: busy ? 'not-allowed' : 'pointer', background: on ? '#125ecc' : 'transparent', color: on ? '#fff' : 'var(--vfo-ink)' })
   return (
-    <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 18px', flexWrap: 'wrap' }}>
+    <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '5px 18px', minHeight: '45px', boxSizing: 'border-box', flexWrap: 'wrap' }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
         <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tax Planning Route</span>
         {international && <span style={chipStyle('#e06717')} title="The client answered Yes to the international tax question: the case begins with Matt Miller">International tax case</span>}
@@ -2792,7 +2796,7 @@ function TaxIntakeCard({ intake, questions, clientId, planId, canEdit = false, o
   )
 }
 
-function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxSpecialists = null, specialists, expertBios = {}, onBack, readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, plannerMode = false, directMode = false, notes = [], onNotesChange, clientId, programName, client, initialNoteId = null }) {
+function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxSpecialists = null, specialists, expertBios = {}, onBack, readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, plannerMode = false, directMode = false, notes = [], onNotesChange, clientId, programName, client, initialNoteId = null, onTaxStatusChange = null }) {
   // Phone (2026-10-28): slimmer phase bodies and full-width sub-step boxes.
   const isPhone = useIsPhone()
   // Phase notes belong to THIS plan (plus untagged older notes) — a client with
@@ -2847,8 +2851,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   const [refundReasonDrafts, setRefundReasonDrafts] = useState({})
   const [earlyRefundSending, setEarlyRefundSending] = useState(false)
   const [ackSaving, setAckSaving] = useState({})
-  const [trackStatus, setTrackStatus] = useState(plan.status || 'live')
-  const [togglingStatus, setTogglingStatus] = useState(false)
+  // Change status (2026-11-23): the window, and tax_plan_status_load's history for
+  // the banner of a plan that is not live. Admins, and the member of a Direct plan.
+  const [statusModal, setStatusModal] = useState('')
+  const [statusInfo, setStatusInfo] = useState(null)
+  const canChangeStatus = !mirror && ((!readOnly && !plannerMode) || directMode)
   const [taxPlanners, setTaxPlanners] = useState([])
   const [taxGroups, setTaxGroups] = useState([])
   // The allocation step's pending dropdown pick, per task id — nothing is written
@@ -2877,15 +2884,19 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     return ctx
   })()
 
-  async function toggleTrackStatus() {
-    const newStatus = trackStatus === 'live' ? 'stopped' : 'live'
-    setTogglingStatus(true)
-    try {
-      await callApi('msm_update_tax_status', { tax_plan_id: plan.id, status: newStatus })
-      setTrackStatus(newStatus)
-    } catch (err) { console.error(err) }
-    finally { setTogglingStatus(false) }
-  }
+  const planNow = livePlan || plan
+  // Steps lock while the plan is paused or stopped (notes stay open). The server
+  // refuses the sends behind them too (utils/tax-plan-open.ts denyIfPlanLocked).
+  const stepsLocked = !planIsLive(planNow)
+  useEffect(() => {
+    setStatusInfo(null)
+    if (!canChangeStatus) return
+    let on = true
+    callApi(act('tax_plan_status_load'), { tax_plan_id: plan.id })
+      .then(res => { if (on) setStatusInfo(res) })
+      .catch(err => console.error('tax_plan_status_load failed', err))
+    return () => { on = false }
+  }, [plan.id, canChangeStatus, stepsLocked, planNow.status, planNow.status_kind, planNow.next_tax_year, planNow.pause_check_back_on])
 
   async function refreshLivePlan() {
     try {
@@ -3841,7 +3852,21 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     )
   }
 
+  // What a paused or stopped plan leaves usable: the refunds. A plan closed while
+  // we hold money can still be refunded from its own steps.
+  const REFUND_STEP_CODES = ['tax_refund', 'tax_deposit_pi', 'tax_continue_stop']
   function renderTask(task, phase, taxSpecialistId = null) {
+    const row = renderTaskOpen(task, phase, taxSpecialistId)
+    if (!row || !stepsLocked || (readOnly && !directMode)) return row
+    if (!plannerMode && REFUND_STEP_CODES.includes(task?.status_options)) return row
+    return (
+      <div key={`locked_${taxSpecialistId ? `${task.id}_${taxSpecialistId}` : task.id}`} title={planNow.status === 'paused' ? 'Resume the plan to work on its steps' : 'Reopen the plan to work on its steps'} style={{ cursor: 'not-allowed' }}>
+        <div inert="" style={{ pointerEvents: 'none', opacity: 0.55 }}>{row}</div>
+      </div>
+    )
+  }
+
+  function renderTaskOpen(task, phase, taxSpecialistId = null) {
     const node = renderTaskBase(task, phase, taxSpecialistId)
     if (taxSpecialistId || !node || task?.name !== 'Detailed tax plan presentation') return node
     const bookends = renderBookendsRow(task)
@@ -5164,7 +5189,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       // a Stop the Tax Plan Red Light step is the refund; after a Proceed $250 has
       // gone to the planning group. The server refuses both cases too.
       const canEarlyRefund = !readOnly && !plannerMode && !!savedPi && !depositRefunded
-        && !reviewStatus && !livePlan?.deposit_team_share_status && (livePlan || plan)?.status !== 'stopped'
+        && !reviewStatus && !livePlan?.deposit_team_share_status
       const earlyRefundPayer = taxIntake?.payer === 'client' ? 'the client' : 'the member'
       async function sendEarlyRefund() {
         const name = client?.first_name ? `${client.first_name} ${client.last_name || ''}`.trim() : 'this client'
@@ -5963,30 +5988,38 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   const tax5bNoteCount = (notes || []).filter(n => n.phase_name === TAX5B_PHASE && n.tab_name === 'Tax Priorities' && noteInScope(n, noteScope)).length
   const tax5Expanded = expanded['tax5'] !== undefined ? expanded['tax5'] : (tax5State !== 'done')
 
+  const planState = heroTotalTasks > 0 && heroDoneTasks >= heroTotalTasks ? 'completed' : heroDoneTasks > 0 ? 'in progress' : 'not started'
   return (
     // vfo-track: the phone-only text floor in index.css (its 10px chips read 11px).
     <div className="vfo-track">
       <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Tax Plans</button>
       <TrackHero
         eyebrow={programName}
-        title="Tax Plan"
+        title={planTitle(planNow)}
         meta={<>
           <span>Started {formatFullDate(plan.created_at) || ''}</span>
-          {(livePlan || plan)?.tax_route === 'direct' && <DirectPill />}
+          {planNow.tax_route === 'direct' && <DirectPill />}
         </>}
         completed={heroDoneTasks}
         total={heroTotalTasks}
         steps={heroSteps}
-        action={!readOnly && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', fontWeight: '600' }}>{trackStatus === 'live' ? 'Live' : 'Stopped'}</span>
-            <div onClick={() => { if (!togglingStatus) toggleTrackStatus() }}
-              style={{ width: '44px', height: '24px', borderRadius: '12px', background: trackStatus === 'live' ? '#1b9254' : '#e74c3c', cursor: 'pointer', position: 'relative', opacity: togglingStatus ? 0.5 : 1 }}>
-              <div style={{ position: 'absolute', top: '2px', left: trackStatus === 'live' ? '22px' : '2px', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--vfo-card)', transition: 'left 0.2s' }} />
-            </div>
+        bar={false}
+        action={(canChangeStatus || !readOnly || stepsLocked) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <PlanStatusTag plan={planNow} state={planState} />
           </div>
         )}
       />
+      <PlanStatusBanner plan={planNow} state={planState} info={statusInfo} canChange={canChangeStatus} onPick={setStatusModal} />
+      {statusModal && (
+        <ChangeStatusModal plan={planNow} client={client} act={act} initialTo={statusModal} onClose={() => setStatusModal('')}
+          onSaved={(saved, extra) => {
+            if (saved) setLivePlan(p => ({ ...(p || plan), ...saved }))
+            onTaxStatusChange?.()
+            if (extra?.lost) window.location.reload()
+            else refreshLivePlan()
+          }} />
+      )}
 
       {/* Order at the top of the plan (Jake, 2026-09-25): Tax Planning Form,
           Tax Planning Route, Pricing & revenue split. The personal form link
@@ -6008,7 +6041,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       <TaxRouteCard
         rapid={!!(livePlan || plan)?.rapid_route}
         international={(livePlan || plan)?.international_tax === true}
-        canSwitch={(!readOnly || directMode) && !plannerMode && !roiSkipped && !(livePlan || plan)?.ready_for_tax3_decision && (livePlan || plan)?.status !== 'stopped'}
+        canSwitch={(!readOnly || directMode) && !plannerMode && !roiSkipped && !(livePlan || plan)?.ready_for_tax3_decision && !stepsLocked}
         busy={routeBusy}
         onChange={async (next) => {
           if (routeBusy || next === !!(livePlan || plan)?.rapid_route) return
@@ -6047,7 +6080,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       {/* Questions for the client (2026-10-15): the only way to ask the client
           anything once the review is answered and "Additional information
           required" has locked. Admin, planner portal and the Direct member. */}
-      {addlInfoLocked && (!readOnly || directMode) && (
+      {addlInfoLocked && !stepsLocked && (!readOnly || directMode) && (
         <ClientQuestionsCard planId={plan.id} act={act} />
       )}
 
@@ -6125,12 +6158,12 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               <span style={subTitle}>Specialist Allocation</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <PhasePill state={tax5aHeroState} />
-                {!readOnly && (
+                {!readOnly && !stepsLocked && (
                   <button onClick={() => setShowAddSpec(!showAddSpec)} style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff' }}>+ Add Specialist</button>
                 )}
               </div>
             </div>
-            {showAddSpec && (
+            {showAddSpec && !stepsLocked && (
               <div style={{ padding: '12px', background: 'var(--vfo-tint)', borderRadius: '8px', marginBottom: '12px' }}>
                 <select value={newSpecId} onChange={e => setNewSpecId(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)', width: '100%', marginBottom: '8px', padding: '8px 12px' }}>
                   <option value="">-- Select Specialist --</option>
@@ -6197,13 +6230,13 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                       ) : (
                         <>
                           <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{specDisplayName(spec)}</span>
-                          {!readOnly && spec.expert_id == null && (
+                          {!readOnly && !stepsLocked && spec.expert_id == null && (
                             <span onClick={e => { e.stopPropagation(); setRenameDrafts(p => ({ ...p, [spec.id]: customTypedName(spec) })) }}
                               title="Edit the typed name" style={{ fontSize: '11px', fontWeight: 500, color: '#0095ff', cursor: 'pointer' }}>Edit</span>
                           )}
                         </>
                       )}
-                      {!readOnly && !plannerMode ? (
+                      {!readOnly && !plannerMode && !stepsLocked ? (
                         <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                           <input
                             value={strategyDrafts[spec.id] !== undefined ? strategyDrafts[spec.id] : (spec.strategy || '')}
@@ -6221,7 +6254,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       {(!readOnly || memberNotes) && <PhaseNotesButton count={specNotesCount(spec)} isOpen={expanded[`notes_spec_${spec.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_spec_${spec.id}`]: !p[`notes_spec_${spec.id}`] }))} />}
-                      {!readOnly && (
+                      {!readOnly && !stepsLocked && (
                         <span onClick={e => { e.stopPropagation(); removeSpecialist(spec) }} style={{ fontSize: '11px', fontWeight: 500, color: '#e74c3c', cursor: removingSpec[spec.id] ? 'not-allowed' : 'pointer', opacity: removingSpec[spec.id] ? 0.6 : 1 }}>
                           {removingSpec[spec.id] ? 'Removing...' : 'Remove'}
                         </span>
@@ -6349,8 +6382,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
 // mirror (Client Mirroring, L5): a member viewing a client mirrored to them -
 // always with readOnly; the server masks every money value and this hides the
 // fee schedule, entered pricing, revenue-share rows, refund amount and PI id.
-function TaxPrioritiesTab({ clientId, programId, programName, client, specialists, ecosystems = [], readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, notes = [], onNotesChange, initialPlanId = null, openSinglePlan = false, plannerMode = false, directMode = false, onPlanInOtherProgram = null, initialNoteId = null }) {
-  const isPhone = useIsPhone()
+function TaxPrioritiesTab({ clientId, programId, programName, client, specialists, ecosystems = [], readOnly = false, memberNotes = false, memberCanAdd = false, mirror = false, notes = [], onNotesChange, initialPlanId = null, openSinglePlan = false, plannerMode = false, directMode = false, onPlanInOtherProgram = null, initialNoteId = null, onTaxStatusChange = null }) {
   const [taxPlans, setTaxPlans] = useState([])
   const [phases, setPhases] = useState([])
   const [loading, setLoading] = useState(true)
@@ -6360,6 +6392,12 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
   // Each plan's allocated specialists, for the list's per-specialist Tax 5a / Tax 6
   // counts (the same set the plan view's hero counts over).
   const [allSpecialists, setAllSpecialists] = useState({})
+  // Each plan's phase, next step and last status change (tax_load_plans details).
+  const [summaries, setSummaries] = useState({})
+  // An open plan under the client's OTHER tax program also blocks a new one.
+  const [openElsewhere, setOpenElsewhere] = useState(null)
+  const [startOpen, setStartOpen] = useState(false)
+  const [yearPlan, setYearPlan] = useState(null)
   const [plannerExperts, setPlannerExperts] = useState([])
   const autoSelectedRef = useRef(false)
   // Planners never receive load_data, so the Tax 5 "+ Add Specialist" picker
@@ -6437,7 +6475,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
     let match = null
     if (initialPlanId) match = taxPlans.find(p => p.id === initialPlanId)
     else if (openSinglePlan) {
-      const live = taxPlans.filter(p => p.status !== 'stopped')
+      const live = taxPlans.filter(p => p.status !== 'stopped' && p.status !== 'completed')
       match = live.length === 1 ? live[0] : taxPlans.length === 1 ? taxPlans[0] : null
     }
     if (match) { autoSelectedRef.current = true; setSelectedPlan(match) }
@@ -6482,6 +6520,11 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
       if (elsewhere) onPlanInOtherProgram(elsewhere.program_id || 1)
     }
     setTaxPlans(scopedPlans)
+    const scopedIds = new Set(scopedPlans.map(p => p.id))
+    setOpenElsewhere((plansData.plans || []).find(p => !scopedIds.has(p.id) && p.status !== 'stopped' && p.status !== 'completed' && plansData.details?.[String(p.id)]?.summary?.state !== 'complete') || null)
+    const sums = {}
+    scopedPlans.forEach(p => { sums[p.id] = plansData.details?.[String(p.id)]?.summary || null })
+    setSummaries(sums)
     const loadedPhases = phasesData.phases || []
     loadedPhases.forEach(p => p.program_client_tasks?.sort((a, b) => a.task_order - b.task_order))
     setPhases(loadedPhases)
@@ -6546,13 +6589,6 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
       else if (base) applyLoaded({ ...base, perPlan: null })
     }
     finally { setLoading(false); setSnapPending(false) }
-  }
-
-  async function startPlan() {
-    try {
-      await callApi('tax_start_plan', { client_id: clientId, program_id: programId })
-      loadData()
-    } catch (err) { console.error(err) }
   }
 
   function getPlanState(plan) {
@@ -6652,15 +6688,42 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
     const tax6 = nonAuto(byName('Tax 6 - Implementation'))
     const perSpec = (tasks) => specs.flatMap(s => tasks.map(t => !!prog[`${t.id}_${s.id}`]?.status))
     const flags = [...before.map(done), ...perSpec(tax5a), ...tax5b.map(done), ...perSpec(tax6)]
-    if (flags.length === 0) return 'not started'
-    if (flags.every(Boolean)) return 'completed'
-    if (flags.some(Boolean)) return 'in progress'
-    return 'not started'
+    const doneCount = flags.filter(Boolean).length
+    const at = (state) => ({ state, done: doneCount, total: flags.length })
+    if (flags.length === 0) return at('not started')
+    if (flags.every(Boolean)) return at('completed')
+    if (flags.some(Boolean)) return at('in progress')
+    return at('not started')
   }
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
-  const stateColors = { 'not started': 'var(--vfo-muted)', 'in progress': '#0095ff', 'completed': '#1b9254' }
-  const statePillHex = { 'not started': null, 'in progress': '#0095ff', 'completed': '#1b9254' }
+  // One open plan per client: live or paused, and not finished.
+  const planStates = new Map(taxPlans.map(p => [p.id, getPlanState(p)]))
+  const isOpenPlan = (p) => p.status !== 'stopped' && p.status !== 'completed' && planStates.get(p.id)?.state !== 'completed'
+  const newestFirst = (x, y) => String(y.created_at || '').localeCompare(String(x.created_at || ''))
+  const currentPlans = taxPlans.filter(isOpenPlan).sort(newestFirst)
+  const closedPlans = taxPlans.filter(p => !isOpenPlan(p)).sort(newestFirst)
+  const openPlan = currentPlans[0] || openElsewhere || null
+  const nextYearPlan = closedPlans.find(p => p.status === 'stopped' && p.status_kind === 'next_tax_year') || null
+  const isAdminView = !readOnly && !plannerMode
+  const groupHead = { fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', margin: '22px 0 10px' }
+  const removePlan = async (plan) => {
+    if (!window.confirm(`Remove this ${planTitle(plan).toLowerCase()}?\n\nNothing has been done on it. This can't be undone.`)) return
+    try {
+      await callApi('tax_plan_remove', { tax_plan_id: plan.id })
+      loadData(true)
+    } catch (err) { alert(err.message || 'The plan was not removed') }
+  }
+  const renderPlanCard = (plan) => {
+    const st = planStates.get(plan.id)
+    return (
+      <TaxPlanCard key={plan.id} plan={plan} state={st.state} done={st.done} total={st.total} summary={summaries[plan.id]}
+        canRemove={isAdminView && st.state === 'not started' && !plan.tax_planner_id && !plan.tax_team_member_id && !plan.deposit_payment_intent_id && !plan.retainer_status && !plan.legacy_migrated_at}
+        onOpen={() => snapPending ? setPendingOpenId(plan.id) : setSelectedPlan(plan)}
+        onYear={isAdminView ? () => setYearPlan(plan) : null}
+        onRemove={() => removePlan(plan)} />
+    )
+  }
 
   if (deepLinkPending && !selectedPlan) return <TaxPlanTrackSkeleton back readOnly={readOnly || plannerMode} />
   if (loading) return <TaxPlanListSkeleton action={!readOnly && !plannerMode} />
@@ -6679,6 +6742,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
   if (selectedPlan) {
     return (
       <TaxPlanTrackView
+        onTaxStatusChange={onTaxStatusChange}
         plan={selectedPlan}
         phases={phases}
         progress={allProgress[selectedPlan.id] || {}}
@@ -6715,55 +6779,24 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
           <ListHeader
             title="Tax Plans"
             count={taxPlans.length}
-            action={!readOnly && !plannerMode && <button onClick={startPlan} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>+ Start Tax Plan</button>}
+            action={!readOnly && !plannerMode && (
+              <button onClick={() => { if (!openPlan) setStartOpen(true) }} disabled={!!openPlan}
+                title={openPlan ? 'Stop the current tax plan first' : undefined}
+                style={btnState({ ...btnPrimary, padding: '9px 20px', fontSize: '13px' }, !!openPlan)}>+ Start Tax Plan</button>
+            )}
           />
 
           {taxPlans.length === 0 && (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No tax plans started yet.</div>
           )}
-          {taxPlans.map(plan => {
-            const state = getPlanState(plan)
-            const stateColor = stateColors[state]
-            // Phone (2026-10-28): the list card - the plan's name with its pills on
-            // the right of the same line, the date under it, a chevron at the far
-            // right, the whole card opening the plan.
-            if (isPhone) return (
-              <div key={plan.id} onClick={() => snapPending ? setPendingOpenId(plan.id) : setSelectedPlan(plan)}
-                style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '12px 14px', marginBottom: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-ink)', lineHeight: 1.3, minWidth: 0 }}>{plan.program_id === 4 ? 'VFO Tax Planning' : 'VFO Holistic Planning · Tax Priorities'}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                      {taxPlans.length > 1 && plan.tax_route === 'direct' && <DirectPill />}
-                      <span style={statusPillStyle(plan.status === 'stopped' ? '#e74c3c' : '#1b9254')}>{plan.status === 'stopped' ? 'Stopped' : 'Live'}</span>
-                      {plan.status !== 'stopped' && <span style={{ ...statusPillStyle(statePillHex[state]), textTransform: 'capitalize' }}>{state}</span>}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px' }}>{formatFullDate(plan.created_at)}</div>
-                </div>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--vfo-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><polyline points="9 6 15 12 9 18" /></svg>
-              </div>
-            )
-            return (
-              <div key={plan.id} onClick={() => snapPending ? setPendingOpenId(plan.id) : setSelectedPlan(plan)}
-                style={{ ...sectionStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>
-                <div>
-                  <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)', marginBottom: '4px' }}>{plan.program_id === 4 ? 'VFO Tax Planning' : 'VFO Holistic Planning · Tax Priorities'}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{formatFullDate(plan.created_at)}</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {/* Only when there is a choice to tell apart — a single plan
-                      carries the pill on its own header. */}
-                  {taxPlans.length > 1 && plan.tax_route === 'direct' && <DirectPill />}
-                  <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: plan.status === 'stopped' ? 'rgba(231,76,60,0.15)' : 'rgba(27,146,84,0.15)', color: plan.status === 'stopped' ? '#e74c3c' : 'var(--vfo-success-text)', border: `1px solid ${plan.status === 'stopped' ? 'rgba(231,76,60,0.3)' : 'rgba(27,146,84,0.3)'}` }}>{plan.status === 'stopped' ? 'Stopped' : 'Live'}</span>
-                  {plan.status !== 'stopped' && <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: `${stateColor}22`, color: readable(stateColor), border: `1px solid ${stateColor}44`, textTransform: 'capitalize' }}>{state}</span>}
-                  <span style={{ color: '#0095ff', fontWeight: 500, fontSize: '13px' }}>View →</span>
-                </div>
-              </div>
-            )
-          })}
+          {currentPlans.length > 0 && closedPlans.length > 0 && <div style={groupHead}>Current plan</div>}
+          {currentPlans.map(renderPlanCard)}
+          {closedPlans.length > 0 && <div style={groupHead}>Closed plans</div>}
+          {closedPlans.map(renderPlanCard)}
+
+          {startOpen && <StartPlanModal clientId={clientId} programId={programId} previousPlan={nextYearPlan} onClose={() => setStartOpen(false)}
+            onStarted={() => { setStartOpen(false); loadData(true); onTaxStatusChange?.() }} />}
+          {yearPlan && <PlanYearModal plan={yearPlan} onClose={() => setYearPlan(null)} onSaved={() => { setYearPlan(null); loadData(true) }} />}
         </>
       )}
     </div>

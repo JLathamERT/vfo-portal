@@ -97,6 +97,17 @@ const CARDS = [
     offConfirm: 'OFF for SDP\'s tax planners and team members. Admins keep More ▸ SDP ATSG.',
   },
   {
+    id: 'client_auto_status',
+    keys: ['client_auto_status'],
+    title: 'Automatic client status',
+    on: [
+      [null, 'Every client shows one status worked out from their programs: Pending (nothing started), Active (something in progress), Paused, Next tax year or Inactive (everything finished or stopped). Lost is still set by hand, on the profile.'],
+    ],
+    off: 'Clients show the hand-set Active / Pending / Lost as before. The automatic status is still worked out in the background.',
+    onConfirm: 'ON: every client list and profile shows the automatic status, starting immediately.',
+    offConfirm: 'OFF: every client list and profile goes back to the hand-set status.',
+  },
+  {
     id: 'gc_black_friday',
     keys: ['gc_black_friday'],
     title: 'Black Friday sale',

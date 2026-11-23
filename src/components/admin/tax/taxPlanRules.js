@@ -1,3 +1,5 @@
+import { taxDisplayName } from '../../shared/taxDisplayNames'
+
 // The tax plan's done-rules, phase states and hero counts — ONE copy, used by
 // the plan page (TaxPlanTrackView) and by every list that summarises a plan
 // (the Tax Planners -> Clients progress column). Moved VERBATIM out of
@@ -353,9 +355,9 @@ export function makeTaxPlanRules({ plan, livePlan, phases, localProgress, taxSpe
     ? 'done'
     : (tax5aHeroState !== 'pending' || tax5bState !== 'pending') ? 'active' : 'pending'
   const heroSteps = [
-    ...phasesBeforeSpec.map(ph => ({ number: phaseBadgeToken(ph.name), label: phaseShortLabel(ph.name), state: getPhaseState(ph) })),
+    ...phasesBeforeSpec.map(ph => ({ number: phaseBadgeToken(ph.name), label: phaseShortLabel(taxDisplayName(ph.name)), state: getPhaseState(ph) })),
     ...((tax5aPhase || tax5bPhase) ? [{ number: '5', label: 'Education & DD', state: tax5State }] : []),
-    ...phasesAfterSpec.map(ph => ({ number: phaseBadgeToken(ph.name), label: phaseShortLabel(ph.name), state: getPhaseState(ph) })),
+    ...phasesAfterSpec.map(ph => ({ number: phaseBadgeToken(ph.name), label: phaseShortLabel(taxDisplayName(ph.name)), state: getPhaseState(ph) })),
   ]
   // Task-level hero counts, mirroring the same per-phase visibility rules the
   // card pills use (Tax 1 children only when info required, hlm/presentation

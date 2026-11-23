@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { clientStatusHex, clientStatusKey, clientStatusLabel } from '../shared/clientStatus'
 import DirectPill from '../shared/DirectPill'
 import { useNavigate } from 'react-router-dom'
 import { callApi, loadCachedAction, getLastSeen, setLastSeen, getWriteCount } from '../../lib/api'
@@ -901,7 +902,6 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
   }
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
-  const statusColors = { pending: '#e06717', active: '#1b9254', declined: '#e74c3c' }
 
   if (intakeOn && mode === 'form') return (
     <TaxIntakeForm
@@ -930,7 +930,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '20px', width: '100%' }}>
         <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', paddingLeft: isPhone ? '4px' : '24px' }}>
           <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>TOTAL</div></div>
-          <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.filter(c => c.status === 'active').length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>ACTIVE</div></div>
+          <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.filter(c => clientStatusKey(c) === 'active').length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>ACTIVE</div></div>
         </div>
         {intakeOn && (
           <button type="button" onClick={() => setMode('form')}
@@ -956,7 +956,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
                   <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-ink)', lineHeight: 1.3 }}>{client.first_name} {client.last_name}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '3px' }}>
                     <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{client.client_ref}</span>
-                    {client.status && <span style={statusPillStyle(statusColors[client.status])}>{client.status.charAt(0).toUpperCase() + client.status.slice(1)}</span>}
+                    {client.status && <span style={statusPillStyle(clientStatusHex(clientStatusKey(client)))}>{clientStatusLabel(clientStatusKey(client))}</span>}
                     {intakeOn && client.pf_member_number && String(client.pf_member_number) === String(member?.member_number) && <DirectPill />}
                   </div>
                 </div>
@@ -979,7 +979,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{client.first_name} {client.last_name}</span>
                   <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{client.client_ref}</span>
-                  {client.status && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[client.status] || 'var(--vfo-faint)', flexShrink: 0 }} />{client.status.charAt(0).toUpperCase() + client.status.slice(1)}</span>}
+                  {client.status && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: clientStatusHex(clientStatusKey(client)) || 'var(--vfo-faint)', flexShrink: 0 }} />{clientStatusLabel(clientStatusKey(client))}</span>}
                   {intakeOn && client.pf_member_number && String(client.pf_member_number) === String(member?.member_number) && <DirectPill />}
                 </div>
                 {(client.email || client.phone) && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client.email}{client.email && client.phone ? ' · ' : ''}{client.phone}</div>}

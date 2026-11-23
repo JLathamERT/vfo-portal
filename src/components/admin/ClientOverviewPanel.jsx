@@ -7,8 +7,11 @@ import { taxDisplayName } from '../shared/taxDisplayNames'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import AddClientForm from '../shared/AddClientForm'
 import { useIsPhone } from '../../lib/useMediaQuery'
-import { STATUS_COLORS, statusPillStyle } from '../shared/statusColors'
+import { statusPillStyle } from '../shared/statusColors'
 import TaxPlanKpiPanel from './tax/TaxPlanKpiPanel'
+import NextTaxYearList from './tax/NextTaxYearList'
+import { NEXT_YEAR_HEX } from './tax/TaxPlanStatus'
+import { CLIENT_STATUS_LABELS, clientStatusColors, clientStatusHex, clientStatusLabel } from '../shared/clientStatus'
 import { ClientOverviewSkeleton } from '../shared/Skeleton'
 
 // Client Overview — a mirror of Member Overview, but oriented around clients and
@@ -103,20 +106,31 @@ const MEMBER_MIN_WIDTH_BY_SECTION = { map1: '820px', regular: '900px', tax_plann
 // in the dropdown orderings; a clicked column header sorts purely by that column.
 const isClosedTrack = (t) => t.state === 'closed'
 
-const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
-
-function clientStatusColors(status) {
-  const s = (status || '').toLowerCase()
-  if (s === 'active') return { bg: 'rgba(27,146,84,0.13)', color: 'var(--vfo-success-text)' }
-  if (s === 'lost') return { bg: 'rgba(231,76,60,0.13)', color: '#e74c3c' }
-  if (s === 'pending') return { bg: 'rgba(224,103,23,0.14)', color: '#e06717' }
-  return { bg: 'var(--vfo-tint)', color: 'var(--vfo-muted)' }
+// Tax Planning's own filter (2026-11-23): one pill per plan status.
+const TAX_PILLS = [
+  { key: 'all', label: 'All' },
+  { key: 'live', label: 'In progress' },
+  { key: 'paused', label: 'Paused' },
+  { key: 'next_tax_year', label: 'Next tax year' },
+  { key: 'stopped', label: 'Stopped' },
+  { key: 'completed', label: 'Completed' },
+]
+// A paused or closed tax plan in words: orange paused, orange-red next tax year, red stopped.
+function closedTaxText(t) {
+  if (t.track_status === 'paused') return { text: `Paused${t.pause_check_back_on ? ` - check back ${fmtDate(t.pause_check_back_on)}` : ''}`, color: '#e06717' }
+  if (t.status_kind === 'next_tax_year') return { text: t.closed_reason || 'Next tax year', color: NEXT_YEAR_HEX }
+  return { text: t.closed_reason || 'Closed', color: '#b23c30' }
+}
+function taxBucket(t) {
+  // Their next plan has been started: off the list, shown under All.
+  if (t.track_status === 'stopped' && t.status_kind === 'next_tax_year') return t.followed ? 'followed' : 'next_tax_year'
+  if (t.track_status === 'paused') return 'paused'
+  if (t.track_status === 'stopped' || t.state === 'closed') return 'stopped'
+  return t.state === 'complete' ? 'completed' : 'live'
 }
 
-const dot = (color) => ({ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: color, display: 'inline-block' })
 
-// The phone card's status pill (statusPillStyle takes a hex).
-const STATUS_HEX = { active: '#1b9254', pending: '#e06717', lost: '#e74c3c', removed: STATUS_COLORS.Removed }
+const dot = (color) => ({ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: color, display: 'inline-block' })
 
 // Member mode on a phone (2026-10-28): the Clients / Accountants lists as the
 // phone list card - name, then ref + status on the left, the programs (one per
@@ -133,7 +147,7 @@ function MemberClientCard({ c, onOpen }) {
           {c.mirrored_from && <div style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 600, marginTop: '2px' }}>Mirrored from {c.mirrored_from}</div>}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '3px' }}>
             {c.client_ref && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{c.client_ref}</span>}
-            {c.status && <span style={statusPillStyle(STATUS_HEX[String(c.status).toLowerCase()])}>{capitalize(c.status)}</span>}
+            {c.status && <span style={statusPillStyle(clientStatusHex(c.status))}>{clientStatusLabel(c.status)}</span>}
           </div>
         </div>
         <div style={{ minWidth: 0, fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.45 }}>
@@ -181,9 +195,10 @@ function readSection(key, sections) {
 // sorting, opening a client and pressing Back lost the sort), and clear with it
 // on a fresh visit from the nav. Default: every status shown, A to Z by name
 // (the name is "First Last", so A to Z is by first name).
-export const CLIENT_OVERVIEW_VIEW_KEY = 'clientOverviewView'
-const MEMBER_VIEW_KEY = 'memberClientOverviewView'
-const DEFAULT_VIEW = { search: '', filter: { status: ['Active', 'Pending', 'Lost', 'Removed'] }, sort: 'az', colSort: null }
+// '2': the status filter gained options, which a view saved before it would leave out.
+export const CLIENT_OVERVIEW_VIEW_KEY = 'clientOverviewView2'
+const MEMBER_VIEW_KEY = 'memberClientOverviewView2'
+const DEFAULT_VIEW = { search: '', taxPill: 'all', filter: { status: CLIENT_STATUS_LABELS }, sort: 'az', colSort: null }
 function readView(key) {
   try {
     const v = JSON.parse(sessionStorage.getItem(key) || 'null')
@@ -219,12 +234,13 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
   const [search, setSearch] = useState(initialView.search)
   const [listFilter, setListFilter] = useState(initialView.filter)
   const [listSort, setListSort] = useState(initialView.sort)
+  const [taxPill, setTaxPill] = useState(initialView.taxPill || 'all')
   // One header-sort state for this table instance; kept across sub-tab switches
   // (the client columns are identical in every section).
   const { sort: colSort, onSort, reset: resetColSort } = useHeaderSort(initialView.colSort)
   useEffect(() => {
-    try { sessionStorage.setItem(viewKey, JSON.stringify({ search, filter: listFilter, sort: listSort, colSort })) } catch { /* private mode */ }
-  }, [viewKey, search, listFilter, listSort, colSort])
+    try { sessionStorage.setItem(viewKey, JSON.stringify({ search, filter: listFilter, sort: listSort, colSort, taxPill })) } catch { /* private mode */ }
+  }, [viewKey, search, listFilter, listSort, colSort, taxPill])
 
   // Sections fetched fresh during this mount (a snapshot alone does not count).
   const freshSections = useRef({})
@@ -285,7 +301,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
   }, [clients])
 
   const filterGroups = [
-    { key: 'status', label: 'Status', options: ['Active', 'Pending', 'Lost', 'Removed'], get: c => capitalize(c.status) || 'Active' },
+    { key: 'status', label: 'Status', options: CLIENT_STATUS_LABELS, get: c => clientStatusLabel(c.status) || 'Active' },
     ...(pfOptions.length ? [{ key: 'pf', label: 'PF', options: pfOptions, get: c => c.assigned_pf || '(none)' }] : []),
     ...(programOptions.length ? [{ key: 'programs', label: 'Programs', options: programOptions, get: c => (c.programs || []).map(p => p.name) }] : []),
   ]
@@ -317,22 +333,27 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
   const isList = LIST_SECTIONS.includes(activeSection)
   const flatRows = isUnassigned || isCiq || isList
     ? sorted.map(c => ({ client: c, track: {} }))
-    : sorted.flatMap(c => (c.tracks || []).map(t => ({ client: c, track: t })))
+    : sorted.flatMap(c => (c.tracks || []).map(t => ({ client: c, track: activeSection === 'tax_planning' ? { ...t, followed: (c.tracks || []).some(o => o.id > t.id) } : t })))
   const liveFirst = [...flatRows.filter(r => !isClosedTrack(r.track)), ...flatRows.filter(r => isClosedTrack(r.track))]
   const sortColumns = {
     name: { type: 'text', get: r => r.client.name },
     member_name: { type: 'text', get: r => r.client.member_name },
-    status: { type: 'text', get: r => capitalize(r.client.status) || 'Active' },
+    status: { type: 'text', get: r => clientStatusLabel(r.client.status) || 'Active' },
     pf: { type: 'text', get: r => r.client.assigned_pf },
     phase: { type: 'number', get: r => r.track.phase_rank },
     ciq: { type: 'number', get: r => CIQ_STATE[r.client.ciq?.state]?.rank ?? -1 },
     ciq_at: { type: 'text', get: r => r.client.ciq?.last_at || '' },
     ciq_count: { type: 'number', get: r => r.client.ciq_count ?? -1 },
   }
-  const rows = sortByColumn(liveFirst, colSort, sortColumns)
+  const taxCounts = {}
+  if (activeSection === 'tax_planning') for (const r of flatRows) { const k = taxBucket(r.track); taxCounts[k] = (taxCounts[k] || 0) + 1 }
+  const pilled = activeSection === 'tax_planning' && taxPill !== 'all' ? liveFirst.filter(r => taxBucket(r.track) === taxPill) : liveFirst
+  const rows = sortByColumn(pilled, colSort, sortColumns)
 
   const isMap1 = activeSection === 'map1'
   const isTax = activeSection === 'tax_planning'
+  // The Next tax year list needs the team's details, so members get the plain table.
+  const isNextYearList = isTax && taxPill === 'next_tax_year' && !memberMode
   const secondCol = SECOND_COL[activeSection]
   const grid = (memberMode ? MEMBER_GRID_BY_SECTION : GRID_BY_SECTION)[activeSection]
 
@@ -456,6 +477,21 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
         <SortSelect value={listSort} onChange={v => { setListSort(v); resetColSort() }} options={CLIENT_SORT_OPTIONS} />
       </div>
 
+      {isTax && !isLoading && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          {TAX_PILLS.map(p => {
+            const on = taxPill === p.key
+            const count = p.key === 'all' ? flatRows.length : taxCounts[p.key] || 0
+            return (
+              <button key={p.key} onClick={() => setTaxPill(p.key)} aria-pressed={on}
+                style={{ padding: '5px 12px', borderRadius: '999px', border: `1px solid ${on ? 'var(--vfo-primary)' : 'var(--vfo-border-strong)'}`, background: on ? 'var(--vfo-accent-tint)' : 'var(--vfo-card)', color: on ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+                {p.label} ({count})
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {error && <div style={{ padding: '10px 14px', marginBottom: '12px', background: 'rgba(231,76,60,0.1)', border: '1px solid rgba(231,76,60,0.3)', borderRadius: '8px', color: '#c0392b', fontSize: '13px' }}>Could not load this section: {error}</div>}
 
       {isLoading ? <ClientOverviewSkeleton cards={phoneCards} grid={grid} minWidth={(memberMode ? MEMBER_MIN_WIDTH_BY_SECTION : MIN_WIDTH_BY_SECTION)[activeSection]} twoLine={!memberMode} /> : phoneCards ? (
@@ -467,6 +503,9 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
           )}
           {rows.map(({ client: c }) => <MemberClientCard key={c.id} c={c} onOpen={() => openProfile(c, {})} />)}
         </div>
+      ) : isNextYearList ? (
+        <NextTaxYearList rows={rows} total={taxCounts.next_tax_year || 0} onOpenTrack={openTrack} onOpenProfile={openProfile}
+          onChanged={() => { freshSections.current.tax_planning = false; setReloadTick(t => t + 1) }} />
       ) : (
         <div ref={setTableBox} style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
           <div style={{ minWidth: (memberMode ? MEMBER_MIN_WIDTH_BY_SECTION : MIN_WIDTH_BY_SECTION)[activeSection] }}>
@@ -510,7 +549,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
                   </span>
                   <span>
                     {c.status
-                      ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: sc.bg, color: sc.color }}>{capitalize(c.status)}</span>
+                      ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: sc.bg, color: sc.color, whiteSpace: 'nowrap' }}>{clientStatusLabel(c.status)}</span>
                       : <span style={{ color: 'var(--vfo-faint)' }}>—</span>}
                   </span>
                   <span style={{ fontSize: '12px', color: c.assigned_pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.assigned_pf || '—'}</span>
@@ -542,7 +581,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
                   </span>
                   <span>
                     {c.status
-                      ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: sc.bg, color: sc.color }}>{capitalize(c.status)}</span>
+                      ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: sc.bg, color: sc.color, whiteSpace: 'nowrap' }}>{clientStatusLabel(c.status)}</span>
                       : <span style={{ color: 'var(--vfo-faint)' }}>—</span>}
                   </span>
                   <span style={{ fontSize: '12px', color: c.assigned_pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.assigned_pf || '—'}</span>
@@ -570,7 +609,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
                   </span>
                   <span>
                     {c.status
-                      ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: sc.bg, color: sc.color }}>{capitalize(c.status)}</span>
+                      ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: sc.bg, color: sc.color, whiteSpace: 'nowrap' }}>{clientStatusLabel(c.status)}</span>
                       : <span style={{ color: 'var(--vfo-faint)' }}>—</span>}
                   </span>
                   <span style={{ fontSize: '12px', color: c.assigned_pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.assigned_pf || '—'}</span>
@@ -629,17 +668,22 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
                   )}
                   <span>
                     {c.status
-                      ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: sc.bg, color: sc.color }}>{capitalize(c.status)}</span>
+                      ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: sc.bg, color: sc.color, whiteSpace: 'nowrap' }}>{clientStatusLabel(c.status)}</span>
                       : <span style={{ color: 'var(--vfo-faint)' }}>—</span>}
                   </span>
                   <span style={{ fontSize: '12px', color: c.assigned_pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.assigned_pf || '—'}</span>
                   {isMap1 && <span style={{ fontSize: '12px', color: t.service_level ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.service_level || '—'}</span>}
-                  {isTax && (
+                  {isTax && (t.state === 'closed' ? (
+                    memberMode ? <span style={{ fontSize: '12px', fontWeight: 600, color: closedTaxText(t).color }}>{closedTaxText(t).text}</span>
+                      : <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)' }}>{t.reached_phase ? taxDisplayName(t.reached_phase) : '—'}</span>
+                  ) : (
                     <span style={{ fontSize: '12px', fontWeight: 600, color: t.state === 'closed' ? '#b23c30' : t.state === 'complete' ? 'var(--vfo-success-text)' : t.phase ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.phase ? taxDisplayName(t.phase) : '—'}</span>
-                  )}
+                  ))}
                   {!memberMode && <span style={{ fontSize: '12.5px' }}>
                     {t.state === 'complete' ? (
                       <span style={{ ...line, display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--vfo-success-text)', fontWeight: 600 }}><span style={dot('#1b9254')} />Complete</span>
+                    ) : t.state === 'closed' && isTax ? (
+                      <span style={{ ...line, display: 'inline-flex', alignItems: 'center', gap: '6px', color: closedTaxText(t).color, fontWeight: 600 }}><span style={dot(closedTaxText(t).color)} />{closedTaxText(t).text}</span>
                     ) : t.state === 'closed' ? (
                       <span style={{ ...line, display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#b23c30', fontWeight: 600 }}><span style={dot('#b23c30')} />{t.closed_reason || 'Closed'}</span>
                     ) : entries.length === 0 ? (
