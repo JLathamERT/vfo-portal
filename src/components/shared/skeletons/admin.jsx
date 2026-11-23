@@ -152,7 +152,7 @@ export function PortalBacklogWhatsNewSkeleton() {
 // Mirrors BacklogRequestsTab: the search box, Filter and Sort, then its one
 // table of requests waiting for review (same grid and min width, so nothing
 // jumps when the data lands).
-const REQUESTS_GRID = '32px minmax(260px, 2.4fr) minmax(180px, 1.6fr) 90px 100px 120px 150px'
+const REQUESTS_GRID = '32px minmax(260px, 2.4fr) 80px minmax(180px, 1.6fr) 90px 100px 120px 150px'
 export function PortalBacklogRequestsSkeleton() {
   const phone = useMediaQuery('(max-width: 640px)')
   const rows = 4
@@ -162,6 +162,7 @@ export function PortalBacklogRequestsSkeleton() {
         <Skeleton height={37} style={{ borderRadius: '8px', flex: phone ? '1 1 100%' : 1 }} />
         <Skeleton width={78} height={37} style={{ borderRadius: '8px' }} />
         <Skeleton width={160} height={37} style={{ borderRadius: '8px' }} />
+        {!phone && <Skeleton width={110} height={14} style={{ alignSelf: 'center' }} />}
       </div>
       <div>
           {phone ? (
@@ -181,10 +182,10 @@ export function PortalBacklogRequestsSkeleton() {
             </div>
           ) : (
           <div style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
-            <div style={{ minWidth: 990 }}>
+            <div style={{ minWidth: 1070 }}>
               <div style={{ display: 'grid', gridTemplateColumns: REQUESTS_GRID, gap: '10px', padding: '14px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                 <span />
-                {[50, 80, 50, 60, 70, 70].map((w, i) => <Skeleton key={i} width={w} height={9} />)}
+                {[50, 40, 80, 50, 60, 70, 70].map((w, i) => <Skeleton key={i} width={w} height={9} />)}
               </div>
               {Array.from({ length: rows }).map((_, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: REQUESTS_GRID, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center' }}>
@@ -193,6 +194,7 @@ export function PortalBacklogRequestsSkeleton() {
                     <Skeleton width={i % 2 ? '60%' : '80%'} height={13} />
                     <Skeleton width={90} height={10} />
                   </span>
+                  <Skeleton width={40} height={22} style={{ borderRadius: '999px' }} />
                   <Skeleton width={80} height={20} style={{ borderRadius: '999px' }} />
                   <Skeleton width={28} height={20} style={{ borderRadius: '999px' }} />
                   <Skeleton width={28} height={20} style={{ borderRadius: '999px' }} />

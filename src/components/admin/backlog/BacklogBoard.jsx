@@ -18,7 +18,7 @@ const colKey = (progress, assignee) => `${progress}:${isPool(progress) ? '' : (a
 // `onAddTask(assigneeId)` (superadmins, Backlog 4b / 4c): a "+" on each lane's
 // To do opens the task form with that lane picked. `onAnnounce(r)` opens Mark as
 // announced on a Ready to announce card; `onArchive(r)` archives a Live one.
-export default function BacklogBoard({ requests, assignees, people, canManage, onOpen, onMove, onResort, onAnnounce, onArchive, onAddTask }) {
+export default function BacklogBoard({ requests, assignees, people, canManage, likeFor, onOpen, onMove, onResort, onResortLikes, onAnnounce, onArchive, onAddTask }) {
   const wide = useMediaQuery('(min-width: 1280px)')
   const tablet = useMediaQuery('(min-width: 768px)')
   const [laneId, setLaneId] = useState(null)
@@ -57,10 +57,11 @@ export default function BacklogBoard({ requests, assignees, people, canManage, o
   const columnProps = (progress, assignee, title, extra = {}) => {
     const key = colKey(progress, assignee)
     return {
-      key, colId: key, title, cards: columns[key] || [], people, canManage, onOpen,
+      key, colId: key, title, cards: columns[key] || [], people, canManage, likeFor, onOpen,
       draggingId, setDraggingId, indicator, setIndicator,
       onDropAt: (index) => drop(progress, assignee, index),
       onResort: canManage ? () => onResort(progress, assignee) : null,
+      onResortLikes: canManage && onResortLikes ? () => onResortLikes(progress, assignee) : null,
       ...extra,
     }
   }
@@ -132,10 +133,12 @@ export default function BacklogBoard({ requests, assignees, people, canManage, o
   )
 }
 
+const sortLink = { background: 'transparent', border: 'none', padding: 0, fontSize: '12px', fontWeight: 700, color: 'var(--vfo-link)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }
+
 // `twoCol`: the cards sit two across (Approved but unassigned on a wide board).
 // A drop there lands before the card under the pointer's row and side, and the
 // column's border lights up instead of the between-cards line.
-function Column({ colId, title, cards, people, canManage, onOpen, draggingId, setDraggingId, indicator, setIndicator, onDropAt, onResort, tall, inLane, showDoneBy, cardFooter, onAdd, twoCol }) {
+function Column({ colId, title, cards, people, canManage, likeFor, onOpen, draggingId, setDraggingId, indicator, setIndicator, onDropAt, onResort, onResortLikes, tall, inLane, showDoneBy, cardFooter, onAdd, twoCol }) {
   const listRef = useRef(null)
   const over = indicator?.key === colId
 
@@ -189,10 +192,17 @@ function Column({ colId, title, cards, people, canManage, onOpen, draggingId, se
           )}
         </span>
         {onResort && cards.length > 1 && (
-          <button onClick={onResort} title="Put this column back in urgency + importance order"
-            style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '12px', fontWeight: 700, color: 'var(--vfo-link)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            Sort by priority
-          </button>
+          <span style={{ display: 'inline-flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button onClick={onResort} title="Put this column back in urgency + importance order" style={sortLink}>
+              Sort by priority
+            </button>
+            {/* Backlog 7c: a one-time re-order; later likes don't move cards. */}
+            {onResortLikes && (
+              <button onClick={onResortLikes} title="Put this column in order of most likes" style={sortLink}>
+                Sort by likes
+              </button>
+            )}
+          </span>
         )}
       </div>
       <div ref={listRef} style={twoCol
@@ -209,7 +219,7 @@ function Column({ colId, title, cards, people, canManage, onOpen, draggingId, se
             <div key={r.id} style={{ display: hidden ? 'none' : 'flex', flexDirection: 'column', gap: '10px' }}>
               {!hidden && over && indicator.index === i && line}
               <BacklogCard request={r} people={people} onOpen={onOpen} showDoneBy={showDoneBy}
-                draggable={canManage}
+                draggable={canManage} like={likeFor ? likeFor(r) : null}
                 onDragStart={(e, req) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(req.id)); setTimeout(() => setDraggingId(req.id), 0) }}
                 onDragEnd={() => { setDraggingId(null); setIndicator(null) }}
                 footer={cardFooter ? cardFooter(r) : null} />

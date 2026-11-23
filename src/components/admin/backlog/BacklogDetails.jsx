@@ -2,7 +2,8 @@ import { useEffect, useId, useState } from 'react'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { btnDanger, btnPrimary, btnSecondary, btnState } from '../../shared/buttonStyles'
 import { departmentChipStyle } from './portalDepartments'
-import { PROGRESS_LABELS, RELEASE_IMPORTANCE, columnName, fmtDate, fmtDateTime, isPool, isTask, parseColumn, placeLabel, releaseImportanceLabel } from './backlogModel'
+import { PROGRESS_LABELS, RELEASE_IMPORTANCE, columnName, fmtDate, fmtDateTime, isPool, isTask, likedByText, parseColumn, placeLabel, releaseImportanceLabel } from './backlogModel'
+import LikeButton from './LikeButton'
 import ScorePill from './ScorePill'
 import { DueChip, TaskTag } from './TaskBits'
 import BigNewsBadge from './BigNewsBadge'
@@ -16,7 +17,7 @@ import { fieldLabel, inputStyle } from './BacklogModal'
 // has no review: its Review card is one "Task added by" line. The Announcement
 // card (Backlog 5a / 5b) carries the Release importance at every stage, then
 // Mark as announced (Ready to announce), Archive (Live) or Restore (archived).
-export default function BacklogDetails({ request: r, people, assignees, canManage, me, busy, layout = 'stack', onEdit, onWithdraw, onApprove, onDeny, onReopen, onMove, onAnnounce, onArchive, onRestore, onSaveWriteup, onSetImportance }) {
+export default function BacklogDetails({ request: r, people, assignees, canManage, me, busy, layout = 'stack', onEdit, onWithdraw, onApprove, onDeny, onReopen, onMove, onAnnounce, onArchive, onRestore, onSaveWriteup, onSetImportance, like }) {
   const uid = useId()
   const isPhone = useIsPhone()
   const flat = layout === 'grid' && isPhone
@@ -108,6 +109,17 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
           {requestedFor && <Field label="Requested for" value={requestedFor} />}
           {task && r.requester_admin_id !== r.assignee_admin_id && <Field label="From" value={people[r.requester_admin_id] || 'A former admin'} />}
         </div>
+        {/* Backlog 7a: who liked it. The Archive's rows carry only the count. */}
+        {!task && (Array.isArray(r.liked_by) || r.like_count > 0) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '12px', fontSize: '13px', color: 'var(--vfo-muted)' }}>
+            {like && <LikeButton {...like} />}
+            <span>
+              {Array.isArray(r.liked_by)
+                ? (r.liked_by.length ? `Liked by ${likedByText(r, people, me)}` : 'No likes yet')
+                : `${r.like_count} ${r.like_count === 1 ? 'like' : 'likes'}`}
+            </span>
+          </div>
+        )}
         {canEdit && (
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '14px' }}>
             <button style={btnSecondary} onClick={onEdit}>Edit</button>

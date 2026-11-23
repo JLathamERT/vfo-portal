@@ -3,7 +3,8 @@ import { callApi } from '../../lib/api'
 import { KpiHero } from './KpiKit'
 import { btnPrimary, btnSecondary } from '../shared/buttonStyles'
 import { PORTAL_DEPARTMENTS } from './backlog/portalDepartments'
-import { LENSES, LENS_PREDICATE, lensCounts, EMPTY_BACKLOG_FILTER, backlogFilterGroups, filterIsOn, isPool, isTask } from './backlog/backlogModel'
+import { LENSES, LENS_PREDICATE, lensCounts, EMPTY_BACKLOG_FILTER, backlogFilterGroups, filterIsOn, isPool, isTask, likeable, likeCounts } from './backlog/backlogModel'
+import LikeCapDialog from './backlog/LikeCapDialog'
 import ListFilterButton, { matchesFilter } from './ListFilterButton'
 import BacklogBoard from './backlog/BacklogBoard'
 import BacklogRequestsTab, { requestRowId } from './backlog/BacklogRequestsTab'
@@ -201,6 +202,67 @@ export default function PortalBacklogPanel({ link }) {
   }
   const quiet = (p) => p.catch(() => {})
 
+  // Likes (Backlog 7a / 7b): flip at once, let the server confirm, flip back
+  // with its message if it refuses. No reload, and one click per request in flight.
+  const [likeBusy, setLikeBusy] = useState(() => new Set())
+  const [capOpen, setCapOpen] = useState(false)
+  const likesLeft = data?.likes_left ?? 0
+  const likeCap = data?.like_cap ?? 0
+  const toggleLike = async (r) => {
+    if (!me || likeBusy.has(r.id)) return
+    const liked = !r.liked_by_me
+    const counted = likeCounts(r)
+    setNotice('')
+    setLikeBusy((s) => new Set(s).add(r.id))
+    setData((d) => ({
+      ...d,
+      likes_left: counted ? Math.max(0, (d.likes_left ?? 0) + (liked ? -1 : 1)) : d.likes_left,
+      requests: d.requests.map((x) => (x.id !== r.id ? x : {
+        ...x,
+        liked_by_me: liked,
+        like_count: Math.max(0, (x.like_count || 0) + (liked ? 1 : -1)),
+        liked_by: liked ? [...(x.liked_by || []), me.admin_id] : (x.liked_by || []).filter((id) => id !== me.admin_id),
+      })),
+    }))
+    try {
+      const res = await call('portal_request_like', { id: r.id, liked })
+      setData((d) => ({
+        ...d,
+        like_cap: res.like_cap ?? d.like_cap,
+        likes_left: res.likes_left ?? d.likes_left,
+        requests: d.requests.map((x) => (x.id === r.id ? { ...x, like_count: res.like_count, liked_by_me: res.liked_by_me } : x)),
+      }))
+    } catch (e) {
+      setData((d) => ({ ...d, likes_left: data.likes_left, requests: d.requests.map((x) => (x.id === r.id ? r : x)) }))
+      setNotice(e.message || 'That like did not save')
+    } finally {
+      setLikeBusy((s) => { const n = new Set(s); n.delete(r.id); return n })
+    }
+  }
+  const capTitle = `You've used all ${likeCap} likes. Unlike something, or wait for a request you liked to be done.`
+  // The like button's props for a request, or null where there is no button (a task).
+  const likeFor = (r) => {
+    if (!likeable(r) || !me) return null
+    return {
+      count: r.like_count || 0,
+      liked: !!r.liked_by_me,
+      disabled: !r.liked_by_me && likesLeft <= 0 && likeCounts(r),
+      disabledTitle: capTitle,
+      busy: likeBusy.has(r.id),
+      onToggle: () => toggleLike(r),
+    }
+  }
+  const saveLikeCap = async (like_cap) => {
+    await act(null, 'portal_backlog_settings_save', { like_cap })
+    setCapOpen(false)
+    setSuccess(`Saved: ${like_cap} ${like_cap === 1 ? 'like' : 'likes'} each.`)
+  }
+  const likesLeftText = data && me && (
+    <span style={{ fontSize: '12.5px', fontWeight: 700, whiteSpace: 'nowrap', color: likesLeft <= 0 ? '#c98a14' : 'var(--vfo-muted)' }}>
+      {likesLeft} of {likeCap} likes left
+    </span>
+  )
+
   const move = (r, progress, assignee, position = {}) => {
     if (isTask(r) && !isPool(progress) && assignee == null) {
       setNotice('A task always belongs to someone. Assign it to a lane instead.')
@@ -237,6 +299,7 @@ export default function PortalBacklogPanel({ link }) {
   }))
   const reopen = async (r) => { await quiet(act(r, 'portal_request_review', { id: r.id, decision: 'reopen' })); setArchiveKey((k) => k + 1) }
   const resort = (progress, assignee) => quiet(act(null, 'portal_backlog_resort', { progress, assignee_admin_id: assignee }))
+  const resortLikes = (progress, assignee) => quiet(act(null, 'portal_backlog_resort', { progress, assignee_admin_id: assignee, order_by: 'likes' }))
   const restore = async (r) => { await quiet(act(r, 'portal_request_restore', { id: r.id })); setArchiveKey((k) => k + 1) }
   const withdraw = async (r) => {
     if (!window.confirm('Withdraw this request? It will disappear from the backlog.')) return
@@ -284,6 +347,7 @@ export default function PortalBacklogPanel({ link }) {
     onRestore: () => restore(r),
     onSaveWriteup: (announcement) => act(r, 'portal_request_writeup_save', { id: r.id, announcement }),
     onSetImportance: (value) => setImportance(r, value),
+    like: likeFor(r),
   })
 
   const pageStyle = { maxWidth: '1800px', margin: '0 auto', padding: 'var(--vfo-gutter, 24px)', boxSizing: 'border-box', minWidth: 0 }
@@ -350,12 +414,23 @@ export default function PortalBacklogPanel({ link }) {
             <ListFilterButton groups={filterGroups} value={filter} onChange={setFilter} align="left" />
           )}
           <button style={btnSecondary} onClick={showArchive ? closeArchive : openArchive}>{showArchive ? 'Close archive' : 'Archive'}</button>
+          {view === 'tasks' && !showArchive && likesLeftText}
         </div>
-        {view === 'requests' && !showArchive && (
-          <button style={btnPrimary} onClick={() => setEditing('new')}>+ New request</button>
-        )}
-        {view === 'tasks' && !showArchive && canManage && (
-          <button style={btnPrimary} onClick={() => setAddingTask({ assignee: me?.admin_id ?? null })}>+ Add task</button>
+        {(view === 'requests' || view === 'tasks') && !showArchive && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {canManage && (
+              <button type="button" onClick={() => setCapOpen(true)} title="How many likes each person can have on open requests"
+                style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '12.5px', fontWeight: 700, color: 'var(--vfo-link)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                Likes: {likeCap} each
+              </button>
+            )}
+            {view === 'requests' && (
+              <button style={btnPrimary} onClick={() => setEditing('new')}>+ New request</button>
+            )}
+            {view === 'tasks' && canManage && (
+              <button style={btnPrimary} onClick={() => setAddingTask({ assignee: me?.admin_id ?? null })}>+ Add task</button>
+            )}
+          </div>
         )}
       </div>
 
@@ -377,8 +452,8 @@ export default function PortalBacklogPanel({ link }) {
           onOpen={(r) => setOpenId(r.id)} onRestore={restore} onReopen={reopen} onBack={closeArchive} onLoaded={onArchiveLoaded}
           department={archiveDepartment} onDepartmentChange={setArchiveDepartment} />
       ) : view === 'tasks' ? (
-        <BacklogBoard requests={filtered} assignees={assignees} people={people} canManage={canManage} me={me}
-          onOpen={(r) => setOpenId(r.id)} onMove={move} onResort={resort} onAnnounce={setAnnouncing} onArchive={archive}
+        <BacklogBoard requests={filtered} assignees={assignees} people={people} canManage={canManage} me={me} likeFor={likeFor}
+          onOpen={(r) => setOpenId(r.id)} onMove={move} onResort={resort} onResortLikes={resortLikes} onAnnounce={setAnnouncing} onArchive={archive}
           onAddTask={canManage ? (assignee) => setAddingTask({ assignee }) : null} />
       ) : view === 'announce' ? (
         <AnnounceTab requests={filtered} people={people} canManage={canManage} busyId={busyId}
@@ -387,7 +462,7 @@ export default function PortalBacklogPanel({ link }) {
         <BacklogRequestsTab requests={scoped} people={people} assignees={assignees} canManage={canManage} me={me} busyId={busyId}
           search={search} onSearch={setSearch} openIds={openIds} onToggle={toggleRow} detailProps={detailHandlers}
           filterGroups={filterGroups} filter={filter} onFilterChange={setFilter} filtering={filterIsOn(filter)}
-          sortValue={requestsSort} onSortChange={setRequestsSort} />
+          sortValue={requestsSort} onSortChange={setRequestsSort} likeFor={likeFor} likesLeftText={likesLeftText} />
       )}
 
       {open && (
@@ -412,6 +487,9 @@ export default function PortalBacklogPanel({ link }) {
             setArchiveKey((k) => k + 1)
             doneOnRequests('Denied: moved to the Archive.')
           }} />
+      )}
+      {capOpen && (
+        <LikeCapDialog value={likeCap} onClose={() => setCapOpen(false)} onSave={saveLikeCap} />
       )}
       {announcing && (
         <AnnounceDialog request={announcing} onClose={() => setAnnouncing(null)}
