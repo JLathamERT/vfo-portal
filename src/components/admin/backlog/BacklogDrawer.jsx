@@ -210,10 +210,15 @@ const EVENT_LABEL = {
 
 const FIELD_NAMES = { title: 'title', request_text: 'description', departments: 'departments', urgency: 'urgency', importance: 'importance', requested_assignee_admin_id: 'assign to' }
 
+// Written by scripts/portal-backlog-title-fix.sql (edge repo), with no actor.
+const TITLE_FIX_NOTE = 'Title replaced (imported title was cut off)'
+const isTitleFix = (e) => e.kind === 'edited' && e.actor_admin_id == null && e.note === TITLE_FIX_NOTE
+
 function describe(e, people) {
   const col = (v) => { const c = parseColumn(v); return columnName(c.progress, c.assignee, people) }
   if (e.kind === 'moved') return `Moved from ${col(e.from_value)} to ${col(e.to_value)}`
   if (e.kind === 'approved' && e.to_value) return `Approved into ${col(e.to_value)}`
+  if (isTitleFix(e)) return TITLE_FIX_NOTE
   if (e.kind === 'edited' && e.note) return `Edited ${e.note.split(', ').map((f) => FIELD_NAMES[f] || f).join(', ')}`
   if (e.kind === 'archived') return `Archived, announced on ${fmtDate(e.to_value)}`
   if (e.kind === 'writeup' && e.note === 'cleared') return 'Cleared the write-up'
@@ -242,8 +247,11 @@ function History({ request, people }) {
             {e.kind === 'restored' && e.from_value && (
               <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>Had been announced on {fmtDate(e.from_value)}</div>
             )}
+            {isTitleFix(e) && e.from_value && (
+              <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '2px', overflowWrap: 'anywhere' }}>Was: {e.from_value}</div>
+            )}
             <div style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', marginTop: '2px' }}>
-              {e.kind === 'imported' ? 'Sheet import' : (people[e.actor_admin_id] || 'A former admin')} · {fmtDateTime(e.created_at)}
+              {e.kind === 'imported' ? 'Sheet import' : isTitleFix(e) ? 'Title clean-up' : (people[e.actor_admin_id] || 'A former admin')} · {fmtDateTime(e.created_at)}
             </div>
           </div>
         </div>

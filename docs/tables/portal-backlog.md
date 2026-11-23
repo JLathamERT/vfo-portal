@@ -34,7 +34,7 @@ Indexes: `(review_status, progress, assignee_admin_id, sort_key)`, `(archived_at
 
 ## `portal_request_events`
 
-The history. `request_id` (on delete cascade), `actor_admin_id` (null for the import), `kind` (`created`, `edited`, `withdrawn`, `approved`, `denied`, `reopened`, `moved`, `reordered`, `archived`, `restored`, `imported`, `writeup`), `from_value`, `to_value`, `note`, `created_at`. A column is written `"<progress>:<assignee id>"` in `from_value` / `to_value` (`moved`, `reordered`, `approved`). `edited` names the changed fields in `note`; `reopened` keeps the old denial reason in `from_value`; `restored` keeps the old announced date and note.
+The history. `request_id` (on delete cascade), `actor_admin_id` (null for the import and the title clean-up), `kind` (`created`, `edited`, `withdrawn`, `approved`, `denied`, `reopened`, `moved`, `reordered`, `archived`, `restored`, `imported`, `writeup`), `from_value`, `to_value`, `note`, `created_at`. A column is written `"<progress>:<assignee id>"` in `from_value` / `to_value` (`moved`, `reordered`, `approved`). `edited` names the changed fields in `note`, except the 2026-11-22 title clean-up's rows (no actor, `note` "Title replaced (imported title was cut off)", the old and new title in `from_value` / `to_value`, written by `scripts/portal-backlog-title-fix.sql`); `reopened` keeps the old denial reason in `from_value`; `restored` keeps the old announced date and note.
 
 ## Functions
 

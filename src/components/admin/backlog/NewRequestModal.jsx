@@ -6,6 +6,7 @@ import { PORTAL_DEPARTMENTS, departmentChipStyle } from './portalDepartments'
 const SCORES = [1, 2, 3, 4, 5]
 const MAX_TEXT = 4000
 const MAX_TITLE = 140
+const TITLE_WARN = 120
 
 // + New request, and Edit on a request (the requester's own while pending, or
 // any request for a superadmin). Name and date come from the session server-side.
@@ -65,6 +66,10 @@ export default function NewRequestModal({ initial, assignees, showAssign, onSave
           <label style={fieldLabel} htmlFor="backlog-title">Title</label>
           <input id="backlog-title" type="text" autoComplete="off" maxLength={MAX_TITLE} value={title} onChange={(e) => setTitle(e.target.value)}
             placeholder="A short name for the change" style={{ ...inputStyle, fontSize: '15px', fontWeight: 700 }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '11.5px', marginTop: '4px' }}>
+            <span style={{ color: 'var(--vfo-faint)' }}>A short name for the change. Put the details in the description.</span>
+            <span style={{ flexShrink: 0, fontWeight: title.length >= TITLE_WARN ? 700 : 400, color: title.length >= MAX_TITLE ? '#e74c3c' : title.length >= TITLE_WARN ? '#c98a14' : 'var(--vfo-faint)' }}>{title.length} / {MAX_TITLE}</span>
+          </div>
         </div>
 
         <div>
