@@ -9,6 +9,18 @@
 
 ---
 
+## 2026-11-22 (a) — Portal Backlog: real titles for the cut-off imported requests, and a title counter — by Paxton
+
+**Why.** Workbench item *Backlog 6a* (Jake's point 6 in *Portal Backlog Request*: "almost every task ends in ..."). The page never cut titles short: the sheet import had titled each row with the first eight words of the request + "...", so 55 of the 64 imported requests read as cut-off sentences, on the test site and on live alike (the import had already run on live). The 140-character limit stays (Paxton's decision in the spec).
+
+**Data (no schema change).** New `scripts/portal-backlog-title-fix.sql` (edge repo, private because it holds request text): one `(sheet_row, old_title, new_title)` line per request, applied only where the row is still imported and still holds its old title (a second run changes nothing), `updated_at` stamped, and one `portal_request_events` row each: kind `edited`, no actor, note "Title replaced (imported title was cut off)", the old and new title in `from_value` / `to_value`. No bell, no description touched. Claude proposed the 55 titles from each request's description; Paxton approved them unedited (2026-11-22; Jake's review not needed, Paxton's call). Run on the test site, then on live on Paxton's word, the same day: 55 titles and 55 history rows each; afterwards no title ends in "..." or "…", the 9 other imported titles and every description are byte-identical (md5 before and after), and the bell count did not move. `scripts/portal-backlog-sheet-import.sql` now carries the approved titles in its VALUES list (swapped by script, one line per `sheet_row`) and its header states the rule for a row with no approved title, so a re-run cannot bring "..." back.
+
+**Website.** `NewRequestModal.jsx` (new and edit): under the title box, the hint "A short name for the change. Put the details in the description." and an "n / 140" counter, amber (`#c98a14`) from 120 characters and red at 140, where `maxLength` stops the box as before. `BacklogDrawer.jsx` History: the clean-up's rows (`isTitleFix`: kind `edited`, no actor, that exact note) read "Title replaced (imported title was cut off)", with "Was: <old title>" under them and "Title clean-up" as who did it; without this they would read "Edited Title replaced…" by "A former admin". Every other row is unchanged. The task form of *Backlog 4b* is not built yet; its spec should copy the counter.
+
+**Tested** on the dev server against `vfo-admin-api-paxton` v10 (main, deployed at chat start; no backend code change in this work). Paxton clicked it through: the new titles on the board and Requests, a fixed request's History, quotes in a title, the counter at 0 / 120 / 140 on a new request and on an edit, and no bells. Admin-only screen, so no phone check (TEAM_RULES §9). Until the website is released, live's History shows the 55 clean-up rows the old way ("Edited Title replaced…" by "A former admin").
+
+---
+
 ## 2026-11-20 (i) — Portal Backlog: a loading skeleton shaped like the page — by Paxton
 
 **Why.** Workbench item *Backlog 1a*: while `portal_backlog_load` ran, More ▾ → Portal Backlog showed "Loading the backlog…" in a narrow box and then jumped to the full page, against the house loading rule (`architecture/02-frontend-shell.md`, *Loading UX*: real chrome at once, page-shaped placeholders, no "Loading…" text).
