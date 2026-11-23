@@ -1,62 +1,212 @@
-import { btnPrimary, btnSecondary, btnDanger } from '../../shared/buttonStyles'
-import BacklogCard from './BacklogCard'
-import { bySortKey } from './backlogModel'
+import { Fragment, useEffect, useState } from 'react'
+import ListFilterButton, { useHeaderSort, sortByColumn, SortHeader, SortSelect } from '../ListFilterButton'
+import { clickableRowStyle, rowHoverProps } from '../../shared/rowHover'
+import { useIsPhone } from '../../../lib/useMediaQuery'
+import { departmentChipStyle } from './portalDepartments'
+import { fmtDate, sortRequests, REQUEST_SORT_OPTIONS } from './backlogModel'
+import ScorePill from './ScorePill'
+import BacklogDetails from './BacklogDetails'
 
-// The Requests tab: New requests (oldest first) with Approve / Deny for a
-// superadmin, then the Ready to announce pool with its Archive button (superadmin). A
-// denied request goes straight to the archive view.
-const byRequested = (a, b) => (String(a.requested_on || '9999').localeCompare(String(b.requested_on || '9999'))) || (a.id - b.id)
+// The Requests tab, laid out like Client Overview: search, Filter and Sort, then
+// one table, New requests or Ready to announce, picked by the pills beside the
+// Archive button. Both default to the order added, oldest first (the Sort
+// dropdown); a clicked column header overrides it for that table until the
+// dropdown changes. A row (or its chevron) drops its full details down under
+// it, with every drawer action; several rows can be open. The drawer is for the
+// Tasks board and the Archive only.
 
-export default function BacklogRequestsTab({ requests, people, canManage, busyId, onOpen, onApprove, onDeny, onArchive }) {
-  const pending = requests.filter((r) => r.review_status === 'pending').sort(byRequested)
-  const ready = requests.filter((r) => r.review_status === 'approved' && !r.archived_at && r.progress === 'ready_to_announce').sort(bySortKey)
+export const REQUESTS_GRID = '32px minmax(260px, 2.4fr) minmax(180px, 1.6fr) 90px 100px 120px 150px'
+export const REQUESTS_MIN_WIDTH = 990
 
-  const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }
+export const requestRowId = (id) => `backlog-request-${id}`
+
+export default function BacklogRequestsTab({ list = 'new', requests, people, assignees, canManage, me, busyId, search, onSearch, openIds, onToggle, detailProps, filterGroups, filter, onFilterChange, filtering, sortValue = 'added_asc', onSortChange }) {
+  const isPhone = useIsPhone()
+  const pendingSort = useHeaderSort()
+  const readySort = useHeaderSort()
+
+  const q = search.trim().toLowerCase()
+  const matches = (r) => !q || [r.title, r.request_text, r.requester_name].some((v) => String(v || '').toLowerCase().includes(q))
+
+  const allPending = requests.filter((r) => r.review_status === 'pending')
+  const allReady = requests.filter((r) => r.review_status === 'approved' && !r.archived_at && r.progress === 'ready_to_announce')
+  const pending = sortRequests(allPending.filter(matches), sortValue)
+  const ready = sortRequests(allReady.filter(matches), sortValue)
+
+  const nameOf = (id) => (id == null ? '' : (people[id] || 'A former admin'))
+  const columnsFor = (field) => ({
+    title: { get: (r) => r.title },
+    departments: { get: (r) => (r.departments || []).join(', ') },
+    urgency: { get: (r) => r.urgency, type: 'number' },
+    importance: { get: (r) => r.importance, type: 'number' },
+    requested_on: { get: (r) => r.requested_on, type: 'date' },
+    assigned: { get: (r) => nameOf(r[field]) },
+  })
+
+  const renderDetails = (r) => (
+    <BacklogDetails request={r} people={people} assignees={assignees} canManage={canManage} me={me}
+      busy={busyId === r.id} layout="grid" {...detailProps(r)} />
+  )
+  // The filter is applied before this tab gets the rows, so with any tick on an
+  // empty table says so; with only a search, the search does.
+  const emptyFor = (all, none) => (filtering ? 'No requests match the current filters.' : q && all.length ? 'No requests match your search.' : none)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-      <Section title="New requests" count={pending.length}>
-        {pending.length === 0 ? <Empty>No requests waiting for review.</Empty> : (
-          <div style={grid}>
-            {pending.map((r) => (
-              <BacklogCard key={r.id} request={r} people={people} onOpen={onOpen}
-                footer={canManage ? (
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    <button style={{ ...btnPrimary, padding: '5px 12px', fontSize: '12px', opacity: busyId === r.id ? 0.6 : 1 }} disabled={busyId === r.id} onClick={() => onApprove(r)}>Approve</button>
-                    <button style={{ ...btnDanger, padding: '5px 12px', fontSize: '12px' }} disabled={busyId === r.id} onClick={() => onDeny(r)}>Deny</button>
-                  </div>
-                ) : null} />
-            ))}
-          </div>
-        )}
-      </Section>
-
-      <Section title="Ready to announce" count={ready.length}>
-        {ready.length === 0 ? <Empty>Nothing is ready to announce.</Empty> : (
-          <div style={grid}>
-            {ready.map((r) => (
-              <BacklogCard key={r.id} request={r} people={people} onOpen={onOpen} showDoneBy
-                footer={canManage ? <button style={{ ...btnSecondary, padding: '5px 12px', fontSize: '12px' }} onClick={() => onArchive(r)}>Archive</button> : null} />
-            ))}
-          </div>
-        )}
-      </Section>
-    </div>
-  )
-}
-
-function Section({ title, count, children }) {
-  return (
-    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '16px 18px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{title}</span>
-        <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{count}</span>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input type="search" name="search" autoComplete="off" aria-label="Search requests"
+          placeholder="Search by title, description or requester..." value={search} onChange={(e) => onSearch(e.target.value)}
+          style={{ flex: isPhone ? '1 1 100%' : 1, minWidth: 0, padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }} />
+        <ListFilterButton groups={filterGroups} value={filter} onChange={onFilterChange} align={isPhone ? 'left' : 'right'} />
+        <SortSelect value={sortValue} options={REQUEST_SORT_OPTIONS}
+          onChange={(v) => { onSortChange(v); pendingSort.reset(); readySort.reset() }} />
       </div>
-      {children}
+
+      {list === 'ready' ? (
+        <RequestsTable key="ready" rows={sortByColumn(ready, readySort.sort, columnsFor('assignee_admin_id'))}
+          emptyText={emptyFor(allReady, 'Nothing is ready to announce.')}
+          sort={readySort.sort} onSort={readySort.onSort} people={people} assignedField="assignee_admin_id"
+          openIds={openIds} onToggle={onToggle} renderDetails={renderDetails} />
+      ) : (
+        <RequestsTable key="new" rows={sortByColumn(pending, pendingSort.sort, columnsFor('requested_assignee_admin_id'))}
+          emptyText={emptyFor(allPending, 'No requests waiting for review.')}
+          sort={pendingSort.sort} onSort={pendingSort.onSort} people={people} assignedField="requested_assignee_admin_id"
+          openIds={openIds} onToggle={onToggle} renderDetails={renderDetails} />
+      )}
     </div>
   )
 }
 
-function Empty({ children }) {
-  return <div style={{ padding: '14px 0', color: 'var(--vfo-faint)', fontSize: '13.5px' }}>{children}</div>
+function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, openIds, onToggle, renderDetails }) {
+  const isPhone = useIsPhone()
+  // The table scrolls sideways below its min width, so an open dropdown is sized
+  // to the table's VISIBLE width (and stuck to its left edge) to wrap on screen.
+  const [box, setBox] = useState(null)
+  const [visibleWidth, setVisibleWidth] = useState(null)
+  useEffect(() => {
+    if (!box || typeof ResizeObserver === 'undefined') return
+    const measure = () => setVisibleWidth(box.clientWidth || null)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(box)
+    return () => ro.disconnect()
+  }, [box])
+
+  const faint = { color: 'var(--vfo-faint)' }
+
+  // A phone gets one card per request instead of the wide table: the same facts,
+  // and the details drop open inside the card.
+  if (isPhone) {
+    return (
+      <div>
+        {rows.length === 0 && <div style={{ padding: '12px 2px', color: 'var(--vfo-faint)', fontSize: '13px' }}>{emptyText}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {rows.map((r) => {
+            const open = openIds.has(r.id)
+            const assigned = r[assignedField]
+            return (
+              <div key={r.id} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', overflow: 'hidden' }}>
+                <div id={requestRowId(r.id)} role="button" tabIndex={0} aria-expanded={open}
+                  onClick={() => onToggle(r.id)}
+                  onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onToggle(r.id) } }}
+                  style={{ padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', scrollMarginTop: '80px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-link)', lineHeight: 1.3, overflowWrap: 'anywhere' }}>{r.title}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px' }}>{r.requester_name} · {fmtDate(r.requested_on)}</div>
+                    {(r.departments || []).length > 0 && (
+                      <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '8px' }}>
+                        {r.departments.map((d) => <span key={d} style={departmentChipStyle(d)}>{d}</span>)}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '5px', marginTop: '6px' }}>
+                      <ScorePill label="Urgency" value={r.urgency} />
+                      <ScorePill label="Importance" value={r.importance} />
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '8px' }}>
+                      {assigned != null
+                        ? <>Assigned to <span style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{people[assigned] || 'A former admin'}</span></>
+                        : <span style={{ color: 'var(--vfo-faint)' }}>Unassigned</span>}
+                    </div>
+                  </div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--vfo-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                    style={{ flexShrink: 0, marginTop: '2px', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms ease' }}><polyline points="9 6 15 12 9 18" /></svg>
+                </div>
+                {open && (
+                  <div style={{ padding: '12px', background: 'var(--vfo-input)', borderTop: '1px solid var(--vfo-border-soft)', cursor: 'default' }}>
+                    {renderDetails(r)}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div ref={setBox} style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
+        <div style={{ minWidth: REQUESTS_MIN_WIDTH }}>
+          <div style={{ display: 'grid', gridTemplateColumns: REQUESTS_GRID, gap: '10px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
+            <span />
+            <SortHeader label="Title" sortKey="title" sort={sort} onSort={onSort} />
+            <SortHeader label="Departments" sortKey="departments" sort={sort} onSort={onSort} />
+            <SortHeader label="Urgency" sortKey="urgency" sort={sort} onSort={onSort} />
+            <SortHeader label="Importance" sortKey="importance" sort={sort} onSort={onSort} />
+            <SortHeader label="Requested on" sortKey="requested_on" sort={sort} onSort={onSort} />
+            <SortHeader label="Assigned to" sortKey="assigned" sort={sort} onSort={onSort} />
+          </div>
+
+          {rows.length === 0 && (
+            <div style={{ padding: '28px 18px', textAlign: 'center', color: 'var(--vfo-faint)', fontSize: '13px' }}>{emptyText}</div>
+          )}
+
+          {rows.map((r) => {
+            const open = openIds.has(r.id)
+            const assigned = r[assignedField]
+            return (
+              <Fragment key={r.id}>
+                <div id={requestRowId(r.id)} role="button" tabIndex={0} aria-expanded={open}
+                  onClick={() => onToggle(r.id)}
+                  onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onToggle(r.id) } }}
+                  {...rowHoverProps}
+                  style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: REQUESTS_GRID, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)', scrollMarginTop: '80px' }}>
+                  <button type="button" tabIndex={-1}
+                    onClick={(ev) => { ev.stopPropagation(); onToggle(r.id) }}
+                    title={open ? 'Hide the request details' : 'Show the request details'}
+                    style={{ width: '24px', height: '24px', border: '1px solid var(--vfo-border-strong)', background: open ? 'var(--vfo-tint)' : 'var(--vfo-card)', borderRadius: '6px', cursor: 'pointer', color: 'var(--vfo-muted)', fontSize: '11px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {open ? '▾' : '▸'}
+                  </button>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                    <span style={{ fontWeight: 600, color: 'var(--vfo-link)', overflowWrap: 'anywhere' }}>{r.title}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{r.requester_name}</span>
+                  </span>
+                  <span style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', minWidth: 0 }}>
+                    {(r.departments || []).length
+                      ? r.departments.map((d) => <span key={d} style={departmentChipStyle(d)}>{d}</span>)
+                      : <span style={faint}>–</span>}
+                  </span>
+                  <span>{r.urgency == null ? <span style={faint}>–</span> : <ScorePill label="Urgency" value={r.urgency} numberOnly />}</span>
+                  <span>{r.importance == null ? <span style={faint}>–</span> : <ScorePill label="Importance" value={r.importance} numberOnly />}</span>
+                  <span style={{ fontSize: '12px', color: r.requested_on ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{fmtDate(r.requested_on)}</span>
+                  <span style={{ fontSize: '12px', color: assigned != null ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>
+                    {assigned != null ? (people[assigned] || 'A former admin') : 'Unassigned'}
+                  </span>
+                </div>
+                {open && (
+                  <div style={{
+                    padding: '14px 18px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', cursor: 'default',
+                    ...(visibleWidth ? { position: 'sticky', left: 0, width: `${visibleWidth}px`, boxSizing: 'border-box' } : null),
+                  }}>
+                    {renderDetails(r)}
+                  </div>
+                )}
+              </Fragment>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
 }

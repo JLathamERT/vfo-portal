@@ -107,22 +107,61 @@ export function PortalBacklogBoardSkeleton({ lanes = 2 }) {
   )
 }
 
-// Mirrors BacklogRequestsTab: the New requests and Ready to announce cards.
+// Mirrors BacklogRequestsTab: the search box and Filter, then the one table the
+// New requests / Ready to announce pills pick (same grid and min width, so
+// nothing jumps when the data lands).
+const REQUESTS_GRID = '32px minmax(260px, 2.4fr) minmax(180px, 1.6fr) 90px 100px 120px 150px'
 export function PortalBacklogRequestsSkeleton() {
-  const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }
+  const phone = useMediaQuery('(max-width: 640px)')
+  const rows = 4
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-      {[[120, 3], [150, 1]].map(([label, cards]) => (
-        <div key={label} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '16px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-            <Skeleton width={label} height={12} />
-            <Skeleton width={30} height={20} style={{ borderRadius: '999px' }} />
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <Skeleton height={37} style={{ borderRadius: '8px', flex: phone ? '1 1 100%' : 1 }} />
+        <Skeleton width={78} height={37} style={{ borderRadius: '8px' }} />
+        <Skeleton width={160} height={37} style={{ borderRadius: '8px' }} />
+      </div>
+      <div>
+          {phone ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {Array.from({ length: rows }).map((_, i) => (
+                <div key={i} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <Skeleton width={i % 2 ? '65%' : '85%'} height={15} />
+                  <Skeleton width={120} height={11} />
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    <Skeleton width={70} height={20} style={{ borderRadius: '999px' }} />
+                    <Skeleton width={80} height={20} style={{ borderRadius: '999px' }} />
+                    <Skeleton width={90} height={20} style={{ borderRadius: '999px' }} />
+                  </div>
+                  <Skeleton width={110} height={11} />
+                </div>
+              ))}
+            </div>
+          ) : (
+          <div style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
+            <div style={{ minWidth: 990 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: REQUESTS_GRID, gap: '10px', padding: '14px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+                <span />
+                {[50, 80, 50, 60, 70, 70].map((w, i) => <Skeleton key={i} width={w} height={9} />)}
+              </div>
+              {Array.from({ length: rows }).map((_, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: REQUESTS_GRID, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center' }}>
+                  <Skeleton width={24} height={24} style={{ borderRadius: '6px' }} />
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <Skeleton width={i % 2 ? '60%' : '80%'} height={13} />
+                    <Skeleton width={90} height={10} />
+                  </span>
+                  <Skeleton width={80} height={20} style={{ borderRadius: '999px' }} />
+                  <Skeleton width={28} height={20} style={{ borderRadius: '999px' }} />
+                  <Skeleton width={28} height={20} style={{ borderRadius: '999px' }} />
+                  <Skeleton width={70} height={12} />
+                  <Skeleton width={80} height={12} />
+                </div>
+              ))}
+            </div>
           </div>
-          <div style={grid}>
-            {Array.from({ length: cards }).map((_, i) => <BacklogCardSkeleton key={i} titleWidth={i % 2 ? '70%' : '88%'} />)}
-          </div>
-        </div>
-      ))}
+          )}
+      </div>
     </div>
   )
 }
@@ -162,7 +201,9 @@ export function PortalBacklogSkeleton({ view = 'tasks', lensCount = 7 }) {
       {view === 'requests' && <KpiHeroSkeleton title="Portal Backlog" subtitle="Update requests for the VFO Portal" chips={lensCount} />}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <Skeleton width={150} height={34} style={{ borderRadius: '8px' }} />
+          {view === 'tasks' && <Skeleton width={78} height={36} style={{ borderRadius: '8px' }} />}
+          {view === 'requests' && <Skeleton width={136} height={32} style={{ borderRadius: '999px' }} />}
+          {view === 'requests' && <Skeleton width={160} height={32} style={{ borderRadius: '999px' }} />}
           <Skeleton width={82} height={34} style={{ borderRadius: '8px' }} />
         </div>
         {view === 'requests' && <Skeleton width={132} height={34} style={{ borderRadius: '8px' }} />}

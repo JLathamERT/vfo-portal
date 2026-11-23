@@ -13,10 +13,14 @@ import { PortalBacklogArchiveRowsSkeleton } from '../../shared/skeletons'
 // denied one (back to New requests).
 const SHOW = [['all', 'Announced and denied'], ['announced', 'Announced'], ['denied', 'Denied']]
 
-export default function BacklogArchive({ people, canManage, reloadKey, onOpen, onRestore, onReopen, onBack, busyId, onLoaded }) {
+// `department` / `onDepartmentChange`: the page holds the department so a single
+// ticked department in the board's Filter carries in, and back out (Backlog 3b).
+export default function BacklogArchive({ people, canManage, reloadKey, onOpen, onRestore, onReopen, onBack, busyId, onLoaded, department: departmentProp, onDepartmentChange }) {
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
-  const [department, setDepartment] = useState('')
+  const [ownDepartment, setOwnDepartment] = useState('')
+  const department = departmentProp ?? ownDepartment
+  const setDepartment = onDepartmentChange ?? setOwnDepartment
   const [show, setShow] = useState('all')
   const [offset, setOffset] = useState(0)
   const [data, setData] = useState(null)

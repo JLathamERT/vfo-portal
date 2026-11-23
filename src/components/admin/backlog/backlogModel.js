@@ -38,10 +38,68 @@ export function lensCounts(rows) {
   return out
 }
 
-export const bySortKey = (a, b) => (a.sort_key - b.sort_key) || (a.id - b.id)
+// The Filter button on the Tasks board and the Requests tab (one filter, shared).
+// Department matches when ANY of a request's departments is ticked. Assigned to
+// is the requester's pick while pending, the real assignee once approved.
+export const EMPTY_BACKLOG_FILTER = { department: [], requester: [], assignee: [] }
+export const UNASSIGNED = 'Unassigned'
+
+export const filterIsOn = (f) => Object.values(f).some((v) => v.length > 0)
+
+const assignedIdOf = (r) => (r.review_status === 'pending' ? r.requested_assignee_admin_id : r.assignee_admin_id)
+const byName = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })
+
+export function backlogFilterGroups(requests, people, assignees, departments) {
+  const nameOf = (id) => people?.[id] || 'A former admin'
+  const live = requests.filter((r) => r.review_status === 'pending' || (r.review_status === 'approved' && !r.archived_at))
+  const requesters = [...new Set(live.map((r) => r.requester_name).filter(Boolean))].sort(byName)
+  const superadmins = assignees.map((a) => a.name).sort(byName)
+  const others = new Set()
+  for (const r of live) {
+    const id = assignedIdOf(r)
+    if (id != null && !superadmins.includes(nameOf(id))) others.add(nameOf(id))
+  }
+  return [
+    { key: 'department', label: 'Department', options: departments, get: (r) => r.departments || [] },
+    { key: 'requester', label: 'Requester', options: requesters, get: (r) => r.requester_name },
+    {
+      key: 'assignee', label: 'Assigned to', options: [...superadmins, ...[...others].sort(byName), UNASSIGNED],
+      get: (r) => { const id = assignedIdOf(r); return id == null ? UNASSIGNED : nameOf(id) },
+    },
+  ]
+}
+
+export const bySortKey =(a, b) => (a.sort_key - b.sort_key) || (a.id - b.id)
 
 export function priority(r) {
   return (r.urgency || 0) + (r.importance || 0)
+}
+
+// The Requests tab's order (Backlog 3c). "Added" is the date the request was
+// filed (requested_on), then the id; a request with no date (some sheet imports)
+// goes last. created_at is not used: the sheet import stamped every row alike.
+const addedCmp = (a, b, dir) => {
+  const da = a.requested_on || '', db = b.requested_on || ''
+  if (!da !== !db) return da ? -1 : 1
+  return dir * (da.localeCompare(db) || (a.id - b.id))
+}
+export const byAdded = (a, b) => addedCmp(a, b, 1)
+
+export const REQUEST_SORT_OPTIONS = [
+  { value: 'added_asc', label: 'Date added: Oldest' },
+  { value: 'added_desc', label: 'Date added: Newest' },
+  { value: 'priority', label: 'Priority: Highest' },
+  { value: 'title', label: 'Title: A to Z' },
+]
+
+export function sortRequests(rows, value) {
+  const list = [...rows]
+  switch (value) {
+    case 'added_desc': return list.sort((a, b) => addedCmp(a, b, -1))
+    case 'priority': return list.sort((a, b) => (priority(b) - priority(a)) || byAdded(a, b))
+    case 'title': return list.sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), undefined, { sensitivity: 'base' }) || (a.id - b.id))
+    default: return list.sort(byAdded)
+  }
 }
 
 // Where a request is now, for the drawer, the deep link and the history.
