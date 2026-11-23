@@ -1,18 +1,18 @@
 # Portal Backlog (More ▾ → Portal Backlog)
 
-> Built 2026-11-17 from Jake's Workbench card *VFOS Portal Backlog Tracker*, with Paxton's decisions. It replaces the "VFO Portal Update Requests" Google Sheet. Tables: [tables/portal-backlog.md](../tables/portal-backlog.md). Actions: [architecture/05-api-action-catalog.md](../architecture/05-api-action-catalog.md) *Portal Backlog*. *(v: 2026-11-22)*
+> Built 2026-11-17 from Jake's Workbench card *VFOS Portal Backlog Tracker*, with Paxton's decisions. It replaces the "VFO Portal Update Requests" Google Sheet. Tables: [tables/portal-backlog.md](../tables/portal-backlog.md). Actions: [architecture/05-api-action-catalog.md](../architecture/05-api-action-catalog.md) *Portal Backlog*. *(v: 2026-11-23)*
 
 ## What it is
 
 Any admin files a request for a change to the portal. A superadmin (`constants/superadmin.ts`, today Jake and Paxton) approves or denies it. An approved request moves across a board until the work is done and announced, then it is archived.
 
 - **Who sees it:** every admin. The More ▾ entry is never gated by `allowed_tabs` and has no `TAB_ACTIONS` key, so it is not on the Admin Editor's list. Members, clients, specialists and tax planners never reach it (every action is in `ADMIN_ONLY_ACTIONS`, is in no other portal's allowlist, and each handler also refuses a non-admin `callerRole`).
-- **What any admin can do:** see every request, file one (+ New request), edit or withdraw their OWN request while it is pending, write the "What it does" write-up, and archive a request in Ready to announce.
-- **What only a superadmin can do** (`SUPERADMIN_ONLY_ACTIONS`, re-checked in the handler): approve, deny and reopen; edit any request; move and reorder cards; Sort by priority; restore from the archive.
+- **What any admin can do:** see every request, file one (+ New request), and edit or withdraw their OWN request while it is pending. The rest of the board is read-only for them: the write-up shows as text ("No write-up yet." when there is none) and there is no Archive button (2026-11-23, Backlog 2b).
+- **What only a superadmin can do** (`SUPERADMIN_ONLY_ACTIONS`, re-checked in the handler): approve, deny and reopen; edit any request; move and reorder cards; Sort by priority; write the "What it does" write-up; archive a request in Ready to announce; restore from the archive.
 
 ## The page (`src/components/admin/PortalBacklogPanel.jsx` + `backlog/`)
 
-Styled like the Advisor KPIs page: the **Tasks / Requests** pills on top, then the navy `KpiHero` (lenses Pending review, Unassigned, To do, Working on, Done, Ready to announce, Total), then a row with the department filter, **Archive** and **+ New request**. A lens filters the board and the lists; the department filter narrows the whole page, the counts included. Total counts pending requests and those on the board — denied and announced requests are in the archive.
+Styled like the Advisor KPIs page: the **Tasks / Requests** pills on top, then the navy `KpiHero` (lenses Pending review, Unassigned, To do, Working on, Done, Ready to announce, Total), then a row with the department filter, **Archive** and, on the Requests tab only, **+ New request**. The Tasks board and the Archive have no + New request for anyone, superadmins included: the board is a progress view (2026-11-23, Backlog 2a). A lens filters the board and the lists; the department filter narrows the whole page, the counts included. Total counts pending requests and those on the board — denied and announced requests are in the archive.
 
 - **Tasks** (`BacklogBoard.jsx`): Approved but unassigned on the left, one lane per superadmin (To do / Working on / Done) stacked in the middle, the shared Ready to announce pool on the right. The lanes come from the server's `assignees`, never from React. Below 1280 px the two tall columns sit above and below the lanes; below 768 px one lane shows at a time with a lane picker. The page grows to 1800 px.
 - **Requests** (`BacklogRequestsTab.jsx`): New requests (oldest first, Approve / Deny for a superadmin), then the Ready to announce pool.

@@ -336,7 +336,7 @@ All dispatched AFTER `middleware/auth.ts::authenticate()` validates body.token. 
 
 ### Portal Backlog (More ▾ → Portal Backlog — added 2026-11-17, [flows/portal-backlog.md](../flows/portal-backlog.md))
 
-Every action is `ADMIN_ONLY_ACTIONS` with **no tab key** (open to every admin) and refuses a non-admin `callerRole` in-handler; the four marked superadmin are also `SUPERADMIN_ONLY_ACTIONS` and re-check `auth.isSuperadmin`. Files `actions/portal-backlog/{load,write,shared}.ts`. Every write goes through SQL `portal_request_apply` (the change + its `portal_request_events` rows in one transaction; a changed request → 409). Bells: `bellAdmin` → `notifyByRule` (`BACKLOG_*`, `forceRecipients`).
+Every action is `ADMIN_ONLY_ACTIONS` with **no tab key** (open to every admin) and refuses a non-admin `callerRole` in-handler; the six marked superadmin are also `SUPERADMIN_ONLY_ACTIONS` and re-check `auth.isSuperadmin`. Files `actions/portal-backlog/{load,write,shared}.ts`. Every write goes through SQL `portal_request_apply` (the change + its `portal_request_events` rows in one transaction; a changed request → 409). Bells: `bellAdmin` → `notifyByRule` (`BACKLOG_*`, `forceRecipients`).
 
 | Action | R | W | Notes |
 |---|---|---|---|
@@ -348,8 +348,8 @@ Every action is `ADMIN_ONLY_ACTIONS` with **no tab key** (open to every admin) a
 | `portal_request_review` (**superadmin**) | — | same | `decision` `approve` (pending → To do of the picked superadmin or Unassigned, placed by priority; bells `BACKLOG_approved` + `BACKLOG_assigned`) / `deny` (`note` required; bell `BACKLOG_denied`) / `reopen` (denied → pending). |
 | `portal_request_move` (**superadmin**) | the destination column | same | `progress`, `assignee_admin_id`, optional `before_id` / `after_id` (a manual position in the same column; else by priority). Only To do may be unassigned; Ready to announce needs the write-up. Bells `BACKLOG_assigned` / `BACKLOG_ready_to_announce`. |
 | `portal_backlog_resort` (**superadmin**) | — | `portal_requests.sort_key` | One column back to priority order, via SQL `portal_backlog_resort`. |
-| `portal_request_writeup_save` | — | `portal_requests.announcement`, events | Any admin, not archived or withdrawn; cannot clear it in Ready to announce. |
-| `portal_request_archive` | — | same | Any admin; Ready to announce only; `announced_on` (not in the future) + optional `announce_note`. |
+| `portal_request_writeup_save` (**superadmin**, 2026-11-23) | — | `portal_requests.announcement`, events | Not archived or withdrawn; cannot clear it in Ready to announce. |
+| `portal_request_archive` (**superadmin**, 2026-11-23) | — | same | Ready to announce only; `announced_on` (not in the future) + optional `announce_note`. |
 | `portal_request_restore` (**superadmin**) | the Ready to announce pool | same | Clears the archive fields; the old values stay in the `restored` event. |
 
 ### Admins (uses auth)

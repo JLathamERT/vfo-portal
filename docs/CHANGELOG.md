@@ -9,6 +9,18 @@
 
 ---
 
+## 2026-11-23 (b) — Portal Backlog: + New request on Requests only, and the board read-only for regular admins — by Paxton
+
+**Why.** Workbench items *Backlog 2a* and *2b* (Jake's point 2 in *Portal Backlog Request*: the board is "really just for people to see what we are doing", and only Jake and Paxton should edit it).
+
+**2a (website only).** `PortalBacklogPanel.jsx` draws "+ New request" only on the Requests tab with the archive closed: never on the Tasks board or in the Archive, superadmins included. `PortalBacklogSkeleton` draws the button's placeholder on the Requests view only. `portal_request_create` is unchanged and still open to every admin.
+
+**2b (backend + website).** `portal_request_writeup_save` and `portal_request_archive` join `SUPERADMIN_ONLY_ACTIONS` (they stay in `ADMIN_ONLY_ACTIONS`, like the other four) and call `superadminOnly` in the handler right after the admin check, before the request is read, as Restore does. Every other rule in the two handlers is unchanged. Website: a regular admin sees the write-up as text ("No write-up yet." when empty, no box or Save), and no Archive button on Ready to announce cards on the board, on the Requests tab or in the drawer (whose line reads just "Ready to announce."). "Needs its write-up" still shows to everyone (the spec's default). Superadmins see no change. No schema change, no bell change.
+
+**Tested** on the dev server against `vfo-admin-api-paxton` v12: `deno check` 0, action count 700 (unchanged), build exit 0. Paxton reported both click-throughs passed as superadmin. **Not exercised:** the regular-admin view and the two new 403s (Paxton has no non-superadmin login; skipped on his call); and no write from either click-through reached the test site's database (no new request, write-up, move or archive), so those save paths rest on unchanged code. Edge Issue #582 carries them. Admin-only screens, so no phone check (TEAM_RULES §9).
+
+---
+
 ## 2026-11-23 (a) — Loading skeletons on every portal, the payment-complete page, a passcode eye, and one sentence out of nine emails — by Jake
 
 **Why.** Jake's four points: skeletons no longer matched the restyled pages (onboarding was the one he noticed); the "do not close or navigate away from the page" sentence should leave every email; passcodes should be showable; and many payments still ended on vfo-services.com's thank-you page instead of the portal's check-mark screen.
