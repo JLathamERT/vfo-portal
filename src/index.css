@@ -63,6 +63,7 @@
   --vfo-nav-muted: #97a3ba;
   --vfo-success-text: #1b9254;
   --vfo-success-text-2: #16a34a;
+  --vfo-gold-text: #a86f08;
 
   /* payments table rows (2026-11-13: were literal light fills, white on navy in dark) */
   --vfo-row-child: #fbfcfe;   /* a group's expanded payment rows */
@@ -121,6 +122,7 @@
   --vfo-nav-muted: #eef3ff;
   --vfo-success-text: #5fd99a;
   --vfo-success-text-2: #5fd99a;
+  --vfo-gold-text: #f2bd52;
 
   --vfo-row-child: #03307d;
   --vfo-row-sub: #0a3179;

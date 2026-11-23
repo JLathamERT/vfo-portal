@@ -5,14 +5,16 @@ import { hexA } from '../KpiKit'
 import { departmentChipStyle, PORTAL_DEPARTMENTS } from './portalDepartments'
 import { fmtDate, fmtDateTime, isTask } from './backlogModel'
 import { TaskTag } from './TaskBits'
+import BigNewsBadge from './BigNewsBadge'
 import { inputStyle } from './BacklogModal'
 import { PortalBacklogArchiveRowsSkeleton } from '../../shared/skeletons'
 
-// The archive: announced requests and denied ones, newest first, read-only.
-// Search matches the title, the description and the requester. A superadmin
-// can Restore an announced request (back to Ready to announce) or Reopen a
-// denied one (back to New requests).
-const SHOW = [['all', 'Announced and denied'], ['announced', 'Announced'], ['denied', 'Denied']]
+// The archive: archived items (from Live since Backlog 5a, from Ready to
+// announce before it) and denied requests, newest first, read-only. Search
+// matches the title, the description and the requester. A superadmin can
+// Restore an archived item (back to Live) or Reopen a denied one (back to New
+// requests). An item that went Live without being announced shows "Live".
+const SHOW = [['all', 'Archived and denied'], ['announced', 'Archived'], ['denied', 'Denied']]
 
 // `department` / `onDepartmentChange`: the page holds the department so a single
 // ticked department in the board's Filter carries in, and back out (Backlog 3b).
@@ -78,8 +80,9 @@ export default function BacklogArchive({ people, canManage, reloadKey, onOpen, o
               style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap', padding: '10px 12px', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', cursor: 'pointer', background: 'var(--vfo-card)' }}>
               <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <StatusPill denied={denied} />
+                  <StatusPill denied={denied} announced={!!r.announced_on} />
                   {isTask(r) && <TaskTag />}
+                  <BigNewsBadge request={r} />
                   <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--vfo-ink)', overflowWrap: 'anywhere' }}>{r.title}</span>
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginTop: '3px' }}>{r.requester_name} · {fmtDate(r.requested_on)}</div>
@@ -101,7 +104,9 @@ export default function BacklogArchive({ people, canManage, reloadKey, onOpen, o
                   </>
                 ) : (
                   <>
-                    <div><strong style={{ color: 'var(--vfo-ink)' }}>Announced on {fmtDate(r.announced_on)}</strong></div>
+                    {r.announced_on
+                      ? <div><strong style={{ color: 'var(--vfo-ink)' }}>Announced on {fmtDate(r.announced_on)}</strong></div>
+                      : r.live_at && <div><strong style={{ color: 'var(--vfo-ink)' }}>Live {fmtDate(String(r.live_at).slice(0, 10))}</strong></div>}
                     {r.announce_note && <div style={{ overflowWrap: 'anywhere' }}>{r.announce_note}</div>}
                     <div>Archived by {people[r.archived_by_admin_id] || 'a former admin'}, {fmtDateTime(r.archived_at)}</div>
                     {canManage && (
@@ -126,12 +131,12 @@ export default function BacklogArchive({ people, canManage, reloadKey, onOpen, o
   )
 }
 
-function StatusPill({ denied }) {
-  const color = denied ? '#e74c3c' : '#1b9254'
+function StatusPill({ denied, announced }) {
+  const color = denied ? '#e74c3c' : announced ? '#1b9254' : '#0e8a8a'
   return (
     <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', whiteSpace: 'nowrap',
-      background: hexA(color, 0.12), border: `1px solid ${hexA(color, 0.4)}`, color: denied ? color : 'var(--vfo-success-text)' }}>
-      {denied ? 'Denied' : 'Announced'}
+      background: hexA(color, 0.12), border: `1px solid ${hexA(color, 0.4)}`, color: denied || !announced ? color : 'var(--vfo-success-text)' }}>
+      {denied ? 'Denied' : announced ? 'Announced' : 'Live'}
     </span>
   )
 }

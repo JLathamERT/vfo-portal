@@ -9,6 +9,75 @@
 
 ---
 
+## 2026-11-23 (f) — Portal Backlog: a Live stage, the What's new tab, and the release importance marker (5a, 5b) — by Paxton
+
+**Why.** Workbench items *Backlog 5a* and *5b* (Jake's point 5 in *Portal Backlog Request*: "a ready to announce sub tab that lists in order new features that have gone live" and "some way to mark importance", so a minor change is not highlighted while big news "needs to be very visible and stand out so team members know to let members know"). 5b depends on 5a; built together and click-tested together. Built on top of 4a–4c (#622 / #648), which merged while this chat was mid-build. The migration and the backend were re-layered onto it, so tasks follow the same flow.
+
+**5a — Live.**
+- **Migration** `20261123200000_portal_backlog_live_importance.sql` (edge repo, after `…190000_portal_backlog_tasks.sql`):
+  - Progress `live` and `live_at`.
+  - The archive check accepts `live`; rows archived from Ready to announce stay valid. The unassigned check also allows `live`.
+  - Event kinds `announced` / `went_live`.
+  - `portal_request_apply` re-created with the new columns. It writes only the columns it lists, so a new column must be added there or `p_set` silently drops it. Spec 5a missed this, and the event-kind check. The first draft was refused on the test site because 4a's uncommitted migration had already changed both: rebuilt on the live definitions (#781).
+  - `portal_backlog_resort` treats Live as a shared pool.
+- **Server:**
+  - `portal_request_move` enters Live only from Done (no write-up) or from Ready to announce. The latter is Mark as announced, with `announced_on` (not in the future, 400 without it) + optional note.
+  - `portal_request_archive` takes `{id}` and archives Live only (409).
+  - `portal_request_restore` puts the item back in Live, keeping its announced date.
+  - `parseAnnouncedOn` and `isPool` live in `shared.ts`.
+- **Website:**
+  - A **Live** column on the board after Ready to announce.
+  - Ready to announce cards: **Mark as announced** (`AnnounceDialog.jsx`, replacing `ArchiveDialog.jsx`). Live cards: **Archive** with no dialog. A drag or Move from Ready to announce into Live opens the dialog first, and Cancel leaves the card.
+  - A third tab, **What's new** (`AnnounceTab.jsx`): Ready to announce and Live sections of full-width announcement cards, newest first.
+  - The hero gains a **Live** lens.
+  - The Archive shows a teal **Live** pill on items that were never announced. Restore goes to Live.
+  - History lines for the new kinds; the skeleton mirrors the new layout.
+
+**5b — Release importance.**
+- **Database:** `release_importance` (`big` / `normal` default / `minor`, a check, event kind `release_importance`) in the same migration. It is always labelled "Release importance", to keep it apart from the 1–5 Importance score.
+- **Server:** new action `portal_request_importance_set` (ADMIN_ONLY + SUPERADMIN_ONLY + the in-handler check; 701 → 702 actions). It works at any stage except withdrawn (409). Done → Live turns Normal into Minor. Mark as announced takes the level too.
+- **Website:**
+  - A Release importance select at the top of the drawer's Announcement card. It auto-saves and shows "Saved".
+  - The select is also in the Mark as announced dialog.
+  - On What's new: Big news first with a gold border, tint and larger title; Minor last and muted.
+  - A gold Big news badge (`BigNewsBadge.jsx`, new `--vfo-gold-text` token for light and dark) on the Requests rows and the Archive.
+
+**Decided (Paxton).**
+- No bell when an item goes Live (spec 5a's first open question for Jake).
+- The tab is called **What's new**, not "Ready to announce" (the second).
+- No hero on that tab, like Tasks after #646.
+- A restore keeps the announced date and note.
+
+**Changed in testing (Paxton).**
+- Every card on the Tasks board and on What's new shows its release importance as a pill: gold Big news, blue Normal, grey Minor (`ReleaseImportancePill`).
+- From 1280 px, Approved but unassigned is two columns wide with its cards two across, so the board's ends match (grid 2 : 3 : 1 : 1). A drop there lands by row and side.
+- The Requests tab lost its Ready to announce list and the New requests / Ready to announce pills: What's new holds it now, so Requests is only the requests waiting for review. A bell link to a Ready to announce or Live item opens its drawer on What's new.
+
+**Tested** on the dev server, against the test site:
+- **Setup:** `vfo-admin-api-paxton` v15 = this branch. The migration was applied on the test site; the security advisor is at its baseline, both functions keep `search_path` pinned and service-role-only execute, and all 125 rows defaulted to `normal`.
+- **Checks:** `deno check` 0, action count 702, build exit 0 (54 route pages).
+- **Passed by Paxton:**
+  - Mark as announced, from the button, a drag and Cancel.
+  - Done → Live, with no write-up and auto-Minor.
+  - What's new.
+  - Archive from Live, and Restore, including an item archived the old way.
+  - Release importance in the drawer and the dialog.
+  - Dark mode.
+  - The two changes above.
+- **Not exercised:**
+  - A regular admin's view (no buttons, no select).
+  - Their crafted calls to `portal_request_importance_set` / `portal_request_archive`.
+  - The API refusals (archive from Ready to announce → 409, Live without a date or from To do → 400).
+
+  These ticks were added to Issue #582. Admin-only screens: no phone check (TEAM_RULES §9).
+- **Owed:** the pipeline smoke gate, against the test site after the merge, then live after the release (`dispatch.ts` and `role-gates.ts` changed).
+
+**Also.**
+- On the test site, at Paxton's word, the 61 test tasks from 4a–4c and this testing were deleted (with their 91 history rows; their 4 bells were left).
+- Issue #582's body had been flattened into one paragraph by a later edit; its 16 ticks were rebuilt one per line.
+
+---
+
 ## 2026-11-23 (e) — Portal Backlog: superadmin tasks — a Task kind, Add task, assigning (4a, 4b, 4c), and a dropped card that vanished — by Paxton
 
 **Why.** Workbench items *Backlog 4a*, *4b* and *4c* (Jake's point 4 in *Portal Backlog Request*: "a separate place for you and I to add our own tasks … which bypasses the urgency, importance, and possibly department options", added from an "Add task" button only we can click, given to ourselves or each other). Built and click-tested one spec at a time, shipped together. The website half waited for 3a / 3b / 3c (#647), which merged while this chat was setting up.

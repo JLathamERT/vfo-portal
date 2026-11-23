@@ -55,26 +55,29 @@ export function BacklogCardSkeleton({ titleWidth = '85%' }) {
   )
 }
 
-function BacklogColumnSkeleton({ cards, inLane, tall, label = 110 }) {
+function BacklogColumnSkeleton({ cards, inLane, tall, label = 110, twoCol = false }) {
+  const list = Array.from({ length: cards }).map((_, i) => <BacklogCardSkeleton key={i} titleWidth={i % 2 ? '70%' : '88%'} />)
   return (
     <div style={{ background: inLane ? 'var(--vfo-card)' : 'var(--vfo-tint)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0, minHeight: tall ? '100%' : '90px', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
         <Skeleton width={label} height={11} />
         <Skeleton width={26} height={18} style={{ borderRadius: '999px' }} />
       </div>
-      {Array.from({ length: cards }).map((_, i) => <BacklogCardSkeleton key={i} titleWidth={i % 2 ? '70%' : '88%'} />)}
+      {twoCol ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px', alignItems: 'start' }}>{list}</div> : list}
     </div>
   )
 }
 
-// Mirrors BacklogBoard at its breakpoints: Approved but unassigned | the
-// superadmin lanes (To do / Working on / Done) | Ready to announce. Two lanes,
-// since the real assignees are unknown until the load lands.
+// Mirrors BacklogBoard at its breakpoints: Approved but unassigned (two columns
+// wide, cards two across, from 1280px) | the superadmin lanes (To do / Working on
+// / Done) | Ready to announce | Live. Two lanes, since the real assignees are
+// unknown until the load lands.
 export function PortalBacklogBoardSkeleton({ lanes = 2 }) {
   const wide = useMediaQuery('(min-width: 1280px)')
   const tablet = useMediaQuery('(min-width: 768px)')
-  const unassigned = <BacklogColumnSkeleton cards={3} tall={wide} label={150} />
+  const unassigned = <BacklogColumnSkeleton cards={wide ? 4 : 3} tall={wide} label={150} twoCol={wide} />
   const ready = <BacklogColumnSkeleton cards={2} tall={wide} label={120} />
+  const live = <BacklogColumnSkeleton cards={1} tall={wide} label={40} />
   const laneBoxes = Array.from({ length: tablet ? lanes : 1 }).map((_, i) => (
     <div key={i} style={{ background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', padding: '12px', minWidth: 0 }}>
       {tablet && <Skeleton width={130} height={15} style={{ display: 'block', margin: '2px 4px 12px' }} />}
@@ -90,10 +93,11 @@ export function PortalBacklogBoardSkeleton({ lanes = 2 }) {
   )
   if (wide) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 3fr) minmax(0, 1fr)', gap: '16px', alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1fr)', gap: '16px', alignItems: 'stretch' }}>
         {unassigned}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>{laneBoxes}</div>
         {ready}
+        {live}
       </div>
     )
   }
@@ -103,13 +107,51 @@ export function PortalBacklogBoardSkeleton({ lanes = 2 }) {
       {lanePicker}
       {laneBoxes}
       {ready}
+      {live}
     </div>
   )
 }
 
-// Mirrors BacklogRequestsTab: the search box and Filter, then the one table the
-// New requests / Ready to announce pills pick (same grid and min width, so
-// nothing jumps when the data lands).
+// Mirrors AnnounceTab (What's new, Backlog 5a): a section header with its count,
+// then full-width announcement cards (title, chips, write-up lines, meta line,
+// a button on the right); twice, for Ready to announce and Live.
+export function PortalBacklogWhatsNewSkeleton() {
+  const section = (label, cards) => (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+        <Skeleton width={label} height={12} />
+        <Skeleton width={26} height={18} style={{ borderRadius: '999px' }} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {Array.from({ length: cards }).map((_, i) => (
+          <div key={i} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap', padding: '16px 18px', borderRadius: '14px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', boxShadow: 'var(--vfo-shadow-card)' }}>
+            <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+              <Skeleton width={i % 2 ? '45%' : '60%'} height={16} style={{ display: 'block' }} />
+              <div style={{ display: 'flex', gap: '5px', marginTop: '10px' }}>
+                <Skeleton width={74} height={20} style={{ borderRadius: '999px' }} />
+                <Skeleton width={90} height={20} style={{ borderRadius: '999px' }} />
+              </div>
+              <Skeleton width="92%" height={12} style={{ display: 'block', marginTop: '12px' }} />
+              <Skeleton width="80%" height={12} style={{ display: 'block', marginTop: '6px' }} />
+              <Skeleton width={200} height={11} style={{ display: 'block', marginTop: '12px' }} />
+            </div>
+            <Skeleton width={140} height={34} style={{ borderRadius: '8px' }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+      {section(140, 2)}
+      {section(40, 2)}
+    </div>
+  )
+}
+
+// Mirrors BacklogRequestsTab: the search box, Filter and Sort, then its one
+// table of requests waiting for review (same grid and min width, so nothing
+// jumps when the data lands).
 const REQUESTS_GRID = '32px minmax(260px, 2.4fr) minmax(180px, 1.6fr) 90px 100px 120px 150px'
 export function PortalBacklogRequestsSkeleton() {
   const phone = useMediaQuery('(max-width: 640px)')
@@ -193,22 +235,20 @@ export function PortalBacklogArchiveRowsSkeleton({ rows = 3 }) {
 }
 
 // The Portal Backlog page body while portal_backlog_load runs, under the
-// page's real Tasks / Requests pills: the hero (Requests only), the toolbar, then
-// the board or the Requests lists.
+// page's real Tasks / Requests / What's new pills: the hero (Requests only), the
+// toolbar, then the board, the Requests lists or the What's new cards.
 export function PortalBacklogSkeleton({ view = 'tasks', lensCount = 7 }) {
   return (
     <>
       {view === 'requests' && <KpiHeroSkeleton title="Portal Backlog" subtitle="Update requests for the VFO Portal" chips={lensCount} />}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          {view === 'tasks' && <Skeleton width={78} height={36} style={{ borderRadius: '8px' }} />}
-          {view === 'requests' && <Skeleton width={136} height={32} style={{ borderRadius: '999px' }} />}
-          {view === 'requests' && <Skeleton width={160} height={32} style={{ borderRadius: '999px' }} />}
+          {(view === 'tasks' || view === 'announce') && <Skeleton width={78} height={36} style={{ borderRadius: '8px' }} />}
           <Skeleton width={82} height={34} style={{ borderRadius: '8px' }} />
         </div>
         {view === 'requests' && <Skeleton width={132} height={34} style={{ borderRadius: '8px' }} />}
       </div>
-      {view === 'requests' ? <PortalBacklogRequestsSkeleton /> : <PortalBacklogBoardSkeleton />}
+      {view === 'requests' ? <PortalBacklogRequestsSkeleton /> : view === 'announce' ? <PortalBacklogWhatsNewSkeleton /> : <PortalBacklogBoardSkeleton />}
     </>
   )
 }
