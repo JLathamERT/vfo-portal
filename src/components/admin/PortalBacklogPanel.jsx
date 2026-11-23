@@ -218,7 +218,9 @@ export default function PortalBacklogPanel({ link }) {
           </select>
           <button style={btnSecondary} onClick={() => setShowArchive((v) => !v)}>{showArchive ? 'Close archive' : 'Archive'}</button>
         </div>
-        <button style={btnPrimary} onClick={() => setEditing('new')}>+ New request</button>
+        {view === 'requests' && !showArchive && (
+          <button style={btnPrimary} onClick={() => setEditing('new')}>+ New request</button>
+        )}
       </div>
 
       {notice && (

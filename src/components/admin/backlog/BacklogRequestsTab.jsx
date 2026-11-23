@@ -3,7 +3,7 @@ import BacklogCard from './BacklogCard'
 import { bySortKey } from './backlogModel'
 
 // The Requests tab: New requests (oldest first) with Approve / Deny for a
-// superadmin, then the Ready to announce pool with its Archive button. A
+// superadmin, then the Ready to announce pool with its Archive button (superadmin). A
 // denied request goes straight to the archive view.
 const byRequested = (a, b) => (String(a.requested_on || '9999').localeCompare(String(b.requested_on || '9999'))) || (a.id - b.id)
 
@@ -36,7 +36,7 @@ export default function BacklogRequestsTab({ requests, people, canManage, busyId
           <div style={grid}>
             {ready.map((r) => (
               <BacklogCard key={r.id} request={r} people={people} onOpen={onOpen} showDoneBy
-                footer={<button style={{ ...btnSecondary, padding: '5px 12px', fontSize: '12px' }} onClick={() => onArchive(r)}>Archive</button>} />
+                footer={canManage ? <button style={{ ...btnSecondary, padding: '5px 12px', fontSize: '12px' }} onClick={() => onArchive(r)}>Archive</button> : null} />
             ))}
           </div>
         )}
