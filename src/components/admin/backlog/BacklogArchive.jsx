@@ -6,6 +6,7 @@ import { departmentChipStyle, PORTAL_DEPARTMENTS } from './portalDepartments'
 import { fmtDate, fmtDateTime, isTask } from './backlogModel'
 import { TaskTag } from './TaskBits'
 import BigNewsBadge from './BigNewsBadge'
+import LikeButton from './LikeButton'
 import { inputStyle } from './BacklogModal'
 import { PortalBacklogArchiveRowsSkeleton } from '../../shared/skeletons'
 
@@ -84,6 +85,7 @@ export default function BacklogArchive({ people, canManage, reloadKey, onOpen, o
                   {isTask(r) && <TaskTag />}
                   <BigNewsBadge request={r} />
                   <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--vfo-ink)', overflowWrap: 'anywhere' }}>{r.title}</span>
+                  <LikeButton count={r.like_count || 0} />
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginTop: '3px' }}>{r.requester_name} · {fmtDate(r.requested_on)}</div>
                 {r.departments?.length > 0 && <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '5px' }}>{r.departments.map((d) => <span key={d} style={departmentChipStyle(d)}>{d}</span>)}</div>}

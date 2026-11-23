@@ -9,6 +9,27 @@
 
 ---
 
+## 2026-11-23 (g) — Portal Backlog: likes, a cap on likes per person, and Sort by likes (7a, 7b, 7c) — by Paxton
+
+**Why.** Workbench items *Backlog 7a*, *7b* and *7c* (Jake's point 7 in *Portal Backlog Request*: "a like feature so other team members can express what they like the sound of", limited "so they can only choose a couple and we can really see what a lot of people want and not just what 1 person thinks is important"). 7a and 7b shipped together (spec decision), so no one is ever over the cap at launch; 7c rides on 7a. 7a + 7b were click-tested together, then 7c.
+
+**Paxton's decisions (2026-11-23).**
+- **Requests only.** Jake's open question in spec 7a was whether tasks are likeable: they are not. No button on a task, the server refuses a like on one, and Sort by likes keeps tasks on top as Sort by priority does (spec 7c had mixed them in at priority 0).
+- **The cap starts at 5** (spec 7b proposed 3).
+- The specs predate 5a: the Requests tab now has one table, so 7c's Likes column and sort apply to it; Live counts as done for the cap.
+
+**Migration** `20261123210000_portal_backlog_likes.sql` (edge repo, after `…200000_portal_backlog_live_importance.sql`):
+- `portal_request_likes` (request, admin; both cascade) and the one-row `portal_backlog_settings` (`like_cap` 1–20, default 5). Both RLS deny-all with the deny policy in the same migration (the specs had left the policy out); the anon-key probe returns `*/0` for both and the security advisor is at its baseline.
+- `portal_request_like_set(p_id, p_admin, p_liked)`: the likeable test, the active-like count and the write in one transaction under a per-admin advisory lock (precedent: `money_mapping_ledger`). Proven in SQL on the test site: 5 likes, a 6th refused, a Live like allowed without counting, denied and missing refused, a repeat like idempotent, an unlike freeing one.
+- `portal_backlog_resort` dropped and re-created with `p_order text default 'priority'` (`'likes'`: like count, then the priority key), so the two-argument calls on main and other test builds keep working.
+- No `portal_request_apply` change: likes write no event rows.
+
+**Server** (`actions/portal-backlog/`): `portal_request_like` (any admin) and `portal_backlog_settings_save` (superadmin, also in `SUPERADMIN_ONLY_ACTIONS`); `portal_backlog_resort` takes `order_by`; `portal_backlog_load` adds `like_count` / `liked_by` / `liked_by_me` per request and `like_cap` / `likes_left`; the archive load adds `like_count`. Action count 702 → 704. No bells.
+
+**Website:** `LikeButton.jsx` on Requests rows (its own **Likes** column after Title), request cards on the board and the details ("Liked by You, …"), a read-only count in the Archive; "k of N likes left"; the superadmin "Likes: N each" link and `LikeCapDialog.jsx`; "Likes: Most" in the Sort dropdown and a sortable Likes header; "Sort by likes" beside "Sort by priority" on board columns. The like flips at once and reverts with the server's message; a press on it never opens the row, the drawer or a drag. The Requests skeleton gained the column.
+
+**Not proven on the test site** (Issue #582): a regular admin's view and their crafted `portal_backlog_settings_save` / `order_by: 'likes'` calls (403), and "Liked by" with two admins.
+
 ## 2026-11-23 (f) — Portal Backlog: a Live stage, the What's new tab, and the release importance marker (5a, 5b) — by Paxton
 
 **Why.** Workbench items *Backlog 5a* and *5b* (Jake's point 5 in *Portal Backlog Request*: "a ready to announce sub tab that lists in order new features that have gone live" and "some way to mark importance", so a minor change is not highlighted while big news "needs to be very visible and stand out so team members know to let members know"). 5b depends on 5a; built together and click-tested together. Built on top of 4a–4c (#622 / #648), which merged while this chat was mid-build. The migration and the backend were re-layered onto it, so tasks follow the same flow.

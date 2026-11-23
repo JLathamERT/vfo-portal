@@ -40,7 +40,7 @@ cd C:\vfo-react;          git fetch --tags -q; git tag -l 'live-*'         --sor
 cd C:\vfo-edge-functions; git fetch --tags -q; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
-#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-23 → 6 + 696 = **702**; past values in CHANGELOG)
+#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-23 → 6 + 698 = **704**; past values in CHANGELOG)
 cd C:\vfo-edge-functions   # or the worktree
 $logins   = (Select-String -Path supabase/functions/vfo-admin-api/index.ts          -Pattern '^\s*if \(action === '            -AllMatches).Matches.Count
 $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatch.ts -Pattern '^\s*"([a-zA-Z0-9_]+)":\s*\(c\)'  -AllMatches).Matches.Count
@@ -182,7 +182,7 @@ Money, auth/security, data-loss and cross-repo contracts only, **one lead rule p
 | Tax pipeline (**any** step, incl. the **Rapid Route** — the TPOM replaced by a video, *v: 2026-09-25* — the **Feature Switches** `portal_licensing` / `tpom_additional_benefits` / `tax_reminders` … | [flows/tax-planning.md](flows/tax-planning.md) |
 | **The public VFO Tax Diagnostic** (`/tax-diagnostic`, **pay-first since 2026-09-30** — auto-approve, a lead's Confirm / Deny + refund, Dismiss, the admin Tax Diagnostics page (tabs … | [flows/tax-intake.md](flows/tax-intake.md) · plan of record [plans/direct-tax-planning/README.md](plans/direct-tax-planning/README.md) |
 | **SDP - Advanced Tax Strategy Governance** — SDP's own clients: agreement, retainer (runs year after year), impact fees, sweep, split, Accounting > SDP ATSG; `sdp_atsg_*` tables (*v: 2026-11-20*) | [flows/sdp-atsg.md](flows/sdp-atsg.md) · [tables/tax.md](tables/tax.md) (SDP ATSG tables) |
-| **Portal Backlog** — More ▾ tab: update requests, review, board, write-ups, archive, `BACKLOG_*` bells (*v: 2026-11-23*) | [flows/portal-backlog.md](flows/portal-backlog.md) · [tables/portal-backlog.md](tables/portal-backlog.md) |
+| **Portal Backlog** — More ▾ tab: requests, review, board, likes, write-ups, archive, `BACKLOG_*` bells (*v: 2026-11-23*) | [flows/portal-backlog.md](flows/portal-backlog.md) · [tables/portal-backlog.md](tables/portal-backlog.md) |
 | **The client portal's Basic tier** — the member's Send portal access, the client's Request an introduction, the Basic gate (`client_basic_portal`, portal licensing L2, *v: 2026-10-09*) … | [flows/client-portal.md](flows/client-portal.md) · [tables/tax.md](tables/tax.md) (`client_portal_licenses`, `client_intro_requests`) · plan [plans/portal-licensing/README.md](plans/portal-licensing/README.md) §3 L2 / L8 |
 | **Client Mirroring** — a member mirrors one client to another member (incl. the client's CIQs read-only + ERT/VFOS docs since 2026-10-22; `mirrored_clients`, portal licensing L5: the Client Mirroring card, `mirrorReadGate` + the money mask, *v: 2026-10-12*) … | [flows/client-mirroring.md](flows/client-mirroring.md) · [tables/clients.md](tables/clients.md) (`client_member_connections`) · plan [plans/portal-licensing/README.md](plans/portal-licensing/README.md) §3 L5 |
 | **Any tax FEE amount** — the per-plan **fee arrangement** (shares on an agreed figure, a final fee below what was collected, the refund + credit-note button, *v: 2026-10-23*), pricing, the 3-payment split, the amend steps, the final retainer … | [flows/tax-fee-process.md](flows/tax-fee-process.md) |

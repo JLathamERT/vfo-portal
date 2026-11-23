@@ -8,6 +8,7 @@ import ScorePill from './ScorePill'
 import { TaskTag } from './TaskBits'
 import BigNewsBadge from './BigNewsBadge'
 import BacklogDetails from './BacklogDetails'
+import LikeButton from './LikeButton'
 
 // The Requests tab, laid out like Client Overview: search, Filter and Sort, then
 // one table of the requests waiting for review (Ready to announce moved to the
@@ -17,12 +18,13 @@ import BacklogDetails from './BacklogDetails'
 // it, with every drawer action; several rows can be open. The drawer is for the
 // Tasks board, What's new and the Archive.
 
-export const REQUESTS_GRID = '32px minmax(260px, 2.4fr) minmax(180px, 1.6fr) 90px 100px 120px 150px'
-export const REQUESTS_MIN_WIDTH = 990
+// The Likes column (Backlog 7c) sits right after Title.
+export const REQUESTS_GRID = '32px minmax(260px, 2.4fr) 80px minmax(180px, 1.6fr) 90px 100px 120px 150px'
+export const REQUESTS_MIN_WIDTH = 1070
 
 export const requestRowId = (id) => `backlog-request-${id}`
 
-export default function BacklogRequestsTab({ requests, people, assignees, canManage, me, busyId, search, onSearch, openIds, onToggle, detailProps, filterGroups, filter, onFilterChange, filtering, sortValue = 'added_asc', onSortChange }) {
+export default function BacklogRequestsTab({ requests, people, assignees, canManage, me, busyId, search, onSearch, openIds, onToggle, detailProps, filterGroups, filter, onFilterChange, filtering, sortValue = 'added_asc', onSortChange, likeFor, likesLeftText }) {
   const isPhone = useIsPhone()
   const pendingSort = useHeaderSort()
 
@@ -36,6 +38,9 @@ export default function BacklogRequestsTab({ requests, people, assignees, canMan
   const nameOf = (id) => (id == null ? '' : (people[id] || 'A former admin'))
   const columnsFor = (field) => ({
     title: { get: (r) => r.title },
+    // Negated so the first click puts the most-liked first (Backlog 7c); ties keep
+    // the dropdown's order.
+    likes: { get: (r) => -(r.like_count || 0), type: 'number' },
     departments: { get: (r) => (r.departments || []).join(', ') },
     urgency: { get: (r) => r.urgency, type: 'number' },
     importance: { get: (r) => r.importance, type: 'number' },
@@ -60,17 +65,18 @@ export default function BacklogRequestsTab({ requests, people, assignees, canMan
         <ListFilterButton groups={filterGroups} value={filter} onChange={onFilterChange} align={isPhone ? 'left' : 'right'} />
         <SortSelect value={sortValue} options={REQUEST_SORT_OPTIONS}
           onChange={(v) => { onSortChange(v); pendingSort.reset() }} />
+        {likesLeftText}
       </div>
 
       <RequestsTable rows={sortByColumn(pending, pendingSort.sort, columnsFor('requested_assignee_admin_id'))}
         emptyText={emptyFor(allPending, 'No requests waiting for review.')}
         sort={pendingSort.sort} onSort={pendingSort.onSort} people={people} assignedField="requested_assignee_admin_id"
-        openIds={openIds} onToggle={onToggle} renderDetails={renderDetails} />
+        openIds={openIds} onToggle={onToggle} renderDetails={renderDetails} likeFor={likeFor} />
     </div>
   )
 }
 
-function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, openIds, onToggle, renderDetails }) {
+function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, openIds, onToggle, renderDetails, likeFor }) {
   const isPhone = useIsPhone()
   // The table scrolls sideways below its min width, so an open dropdown is sized
   // to the table's VISIBLE width (and stuck to its left edge) to wrap on screen.
@@ -97,6 +103,7 @@ function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, o
           {rows.map((r) => {
             const open = openIds.has(r.id)
             const assigned = r[assignedField]
+            const like = likeFor ? likeFor(r) : null
             return (
               <div key={r.id} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', overflow: 'hidden' }}>
                 <div id={requestRowId(r.id)} role="button" tabIndex={0} aria-expanded={open}
@@ -129,6 +136,7 @@ function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, o
                         : <span style={{ color: 'var(--vfo-faint)' }}>Unassigned</span>}
                     </div>
                   </div>
+                  {like && <LikeButton {...like} />}
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--vfo-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
                     style={{ flexShrink: 0, marginTop: '2px', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms ease' }}><polyline points="9 6 15 12 9 18" /></svg>
                 </div>
@@ -152,6 +160,7 @@ function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, o
           <div style={{ display: 'grid', gridTemplateColumns: REQUESTS_GRID, gap: '10px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
             <span />
             <SortHeader label="Title" sortKey="title" sort={sort} onSort={onSort} />
+            <SortHeader label="Likes" sortKey="likes" sort={sort} onSort={onSort} />
             <SortHeader label="Departments" sortKey="departments" sort={sort} onSort={onSort} />
             <SortHeader label="Urgency" sortKey="urgency" sort={sort} onSort={onSort} />
             <SortHeader label="Importance" sortKey="importance" sort={sort} onSort={onSort} />
@@ -166,6 +175,7 @@ function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, o
           {rows.map((r) => {
             const open = openIds.has(r.id)
             const assigned = r[assignedField]
+            const like = likeFor ? likeFor(r) : null
             return (
               <Fragment key={r.id}>
                 <div id={requestRowId(r.id)} role="button" tabIndex={0} aria-expanded={open}
@@ -185,6 +195,7 @@ function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, o
                     </span>
                     <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{r.requester_name}</span>
                   </span>
+                  <span>{like ? <LikeButton {...like} /> : <LikeButton count={r.like_count || 0} />}</span>
                   <span style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', minWidth: 0 }}>
                     {(r.departments || []).length
                       ? r.departments.map((d) => <span key={d} style={departmentChipStyle(d)}>{d}</span>)

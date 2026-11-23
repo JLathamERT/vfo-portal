@@ -53,6 +53,24 @@ const approved = (r) => r.review_status === 'approved' && !r.archived_at
 // review, always in a lane. The hero counts requests only (Paxton 2026-11-23).
 export const isTask = (r) => r?.kind === 'task'
 
+// Likes (Backlog 7a / 7b). Requests only, never a task (Paxton 2026-11-23). A
+// request can be liked until it is archived, withdrawn or denied; a like counts
+// toward the cap only while the request waits for review or sits in To do /
+// Working on. Mirrors the server's portal_request_like_set.
+export const likeable = (r) => !!r && !isTask(r) && !r.archived_at && (r.review_status === 'pending' || r.review_status === 'approved')
+export const likeCounts = (r) => likeable(r) && (r.review_status === 'pending' || r.progress === 'todo' || r.progress === 'working')
+
+// "You, Ana Ruiz and Sam Lee": you first, then A to Z.
+export function likedByText(r, people, me) {
+  const ids = r?.liked_by || []
+  if (!ids.length) return ''
+  const mine = me && ids.includes(me.admin_id)
+  const others = ids.filter((id) => !me || id !== me.admin_id).map((id) => people?.[id] || 'a former admin')
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+  const names = mine ? ['You', ...others] : others
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
 // Overdue: the due date has passed and the task is not yet in Ready to announce
 // or the archive. Dates compare as YYYY-MM-DD strings in the viewer's day.
 export function isOverdue(r) {
@@ -141,6 +159,7 @@ export const REQUEST_SORT_OPTIONS = [
   { value: 'added_asc', label: 'Date added: Oldest' },
   { value: 'added_desc', label: 'Date added: Newest' },
   { value: 'priority', label: 'Priority: Highest' },
+  { value: 'likes', label: 'Likes: Most' },
   { value: 'title', label: 'Title: A to Z' },
 ]
 
@@ -149,6 +168,7 @@ export function sortRequests(rows, value) {
   switch (value) {
     case 'added_desc': return list.sort((a, b) => addedCmp(a, b, -1))
     case 'priority': return list.sort((a, b) => (priority(b) - priority(a)) || byAdded(a, b))
+    case 'likes': return list.sort((a, b) => ((b.like_count || 0) - (a.like_count || 0)) || byAdded(a, b))
     case 'title': return list.sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), undefined, { sensitivity: 'base' }) || (a.id - b.id))
     default: return list.sort(byAdded)
   }
