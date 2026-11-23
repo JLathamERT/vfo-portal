@@ -9,6 +9,16 @@
 
 ---
 
+## 2026-11-23 (c) — Portal Backlog: the total-requests hero on the Requests tab only — by Paxton
+
+**Why.** Workbench item *Backlog: Show the total-requests hero on the Requests tab only* (Paxton): the Tasks tab should open straight onto the board, without the hero and its lens above it.
+
+**What changed (website only).** `PortalBacklogPanel.jsx` draws the `KpiHero` only on the Requests tab with the archive closed; the Tasks board and the Archive (from either tab) have none. The board now gets the department-filtered `pool` instead of the lens-filtered `scoped`, so it shows every approved card whatever lens is picked; the Requests lists still follow the lens, and the pick is kept across tab switches. `PortalBacklogSkeleton` draws the hero placeholder on the Requests view only. `KpiHero`, the lens list, the counts, the toolbar and the server are unchanged. The two open calls for Jake (trim the board-stage chips from the now Requests-only hero; a smaller total on the board) are edge Issue #620.
+
+**Tested** on the dev server against `vfo-admin-api-paxton` (v12, identical to main): build exit 0 (54 route pages). Paxton reported the click-through passed (no hero on Tasks or the Archive, the hero and its lens kept on Requests, the board ignoring the lens, the department filter on both, the skeleton per tab, the KPI pages unchanged). Admin-only screen, so no phone check (TEAM_RULES §9).
+
+---
+
 ## 2026-11-23 (b) — Portal Backlog: + New request on Requests only, and the board read-only for regular admins — by Paxton
 
 **Why.** Workbench items *Backlog 2a* and *2b* (Jake's point 2 in *Portal Backlog Request*: the board is "really just for people to see what we are doing", and only Jake and Paxton should edit it).
