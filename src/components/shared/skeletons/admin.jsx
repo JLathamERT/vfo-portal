@@ -154,12 +154,12 @@ export function PortalBacklogArchiveRowsSkeleton({ rows = 3 }) {
 }
 
 // The Portal Backlog page body while portal_backlog_load runs, under the
-// page's real Tasks / Requests pills: the hero, the toolbar, then the board or
-// the Requests lists.
+// page's real Tasks / Requests pills: the hero (Requests only), the toolbar, then
+// the board or the Requests lists.
 export function PortalBacklogSkeleton({ view = 'tasks', lensCount = 7 }) {
   return (
     <>
-      <KpiHeroSkeleton title="Portal Backlog" subtitle="Update requests for the VFO Portal" chips={lensCount} />
+      {view === 'requests' && <KpiHeroSkeleton title="Portal Backlog" subtitle="Update requests for the VFO Portal" chips={lensCount} />}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <Skeleton width={150} height={34} style={{ borderRadius: '8px' }} />
