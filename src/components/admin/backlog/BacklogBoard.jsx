@@ -63,9 +63,9 @@ export default function BacklogBoard({ requests, assignees, people, canManage, o
   const unassigned = <Column {...columnProps('todo', null, 'Approved but unassigned')} tall={wide} />
   const ready = (
     <Column {...columnProps('ready_to_announce', null, 'Ready to announce')} tall={wide} showDoneBy
-      cardFooter={(r) => (
+      cardFooter={canManage ? (r) => (
         <button style={{ ...btnSecondary, padding: '5px 12px', fontSize: '12px' }} onClick={() => onArchive(r)}>Archive</button>
-      )} />
+      ) : null} />
   )
 
   const activeLane = assignees.find((a) => a.admin_id === laneId) || assignees[0]

@@ -74,8 +74,8 @@ export default function BacklogDrawer({ request: r, people, assignees, canManage
 
           {r.review_status !== 'withdrawn' && (
             <Card title="What it does (for the announcement)">
-              {r.archived_at ? (
-                <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{r.announcement || 'No write-up was saved.'}</div>
+              {r.archived_at || !canManage ? (
+                <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{r.announcement || (r.archived_at ? 'No write-up was saved.' : 'No write-up yet.')}</div>
               ) : (
                 <>
                   <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginBottom: '8px', lineHeight: 1.45 }}>
@@ -159,8 +159,8 @@ export default function BacklogDrawer({ request: r, people, assignees, canManage
                 </div>
               ) : (
                 <>
-                  <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>Ready to announce. Archive it once it has been announced.</div>
-                  <button style={{ ...btnSecondary, marginTop: '10px' }} onClick={onArchive}>Archive</button>
+                  <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>{canManage ? 'Ready to announce. Archive it once it has been announced.' : 'Ready to announce.'}</div>
+                  {canManage && <button style={{ ...btnSecondary, marginTop: '10px' }} onClick={onArchive}>Archive</button>}
                 </>
               )}
             </Card>

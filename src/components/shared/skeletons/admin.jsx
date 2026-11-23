@@ -165,7 +165,7 @@ export function PortalBacklogSkeleton({ view = 'tasks', lensCount = 7 }) {
           <Skeleton width={150} height={34} style={{ borderRadius: '8px' }} />
           <Skeleton width={82} height={34} style={{ borderRadius: '8px' }} />
         </div>
-        <Skeleton width={132} height={34} style={{ borderRadius: '8px' }} />
+        {view === 'requests' && <Skeleton width={132} height={34} style={{ borderRadius: '8px' }} />}
       </div>
       {view === 'requests' ? <PortalBacklogRequestsSkeleton /> : <PortalBacklogBoardSkeleton />}
     </>
