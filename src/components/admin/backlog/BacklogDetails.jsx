@@ -36,6 +36,35 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
   const moveId = `${uid}-move-to`
   const assignId = `${uid}-assign`
 
+  // The review: a card in the drawer; in a row dropdown it sits right under the
+  // status line, where a pending request's Approve / Deny need no "Waiting" line.
+  const reviewBody = (inline) => {
+    const buttons = canManage && pending
+    const line = pending ? (inline && buttons ? null : 'Waiting for Jake or Paxton to review.')
+      : r.review_status === 'withdrawn' ? 'Withdrawn by the requester.'
+      : `${r.review_status === 'approved' ? 'Approved' : 'Denied'} by ${people[r.reviewed_by_admin_id] || (r.imported ? 'the sheet' : 'a former admin')}${r.reviewed_at ? `, ${fmtDateTime(r.reviewed_at)}` : ''}`
+    const gap = inline ? '8px' : '12px'
+    return (
+      <>
+        {line && <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.55 }}>{line}</div>}
+        {r.review_status === 'denied' && r.review_note && (
+          <div style={{ marginTop: '8px', padding: '9px 11px', borderRadius: '8px', background: 'rgba(231,76,60,0.08)', border: '1px solid rgba(231,76,60,0.25)', fontSize: '13px', color: 'var(--vfo-ink)', overflowWrap: 'anywhere' }}>
+            Reason: {r.review_note}
+          </div>
+        )}
+        {buttons && (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: line ? gap : 0 }}>
+            <button style={btnState(btnPrimary, busy)} disabled={busy} onClick={onApprove}>Approve</button>
+            <button style={btnState(btnDanger, busy)} disabled={busy} onClick={onDeny}>Deny</button>
+          </div>
+        )}
+        {canManage && r.review_status === 'denied' && (
+          <button style={{ ...btnState(btnSecondary, busy), marginTop: gap }} disabled={busy} onClick={onReopen}>Reopen</button>
+        )}
+      </>
+    )
+  }
+
   const cards = (
     <>
       <Card flat={flat} title="Description">
@@ -60,7 +89,8 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
         )}
       </Card>
 
-      {r.review_status !== 'withdrawn' && (
+      {/* The write-up is for work that was approved: not on a new, denied or withdrawn request. */}
+      {r.review_status === 'approved' && (
         <Card flat={flat} title="What it does (for the announcement)">
           {r.archived_at || !canManage ? (
             <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{r.announcement || (r.archived_at ? 'No write-up was saved.' : 'No write-up yet.')}</div>
@@ -85,32 +115,7 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
         </Card>
       )}
 
-      <Card flat={flat} title="Review">
-        <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.55 }}>
-          {pending && 'Waiting for Jake or Paxton to review.'}
-          {r.review_status === 'withdrawn' && 'Withdrawn by the requester.'}
-          {(r.review_status === 'approved' || r.review_status === 'denied') && (
-            <>
-              {r.review_status === 'approved' ? 'Approved' : 'Denied'} by {people[r.reviewed_by_admin_id] || (r.imported ? 'the sheet' : 'a former admin')}
-              {r.reviewed_at ? `, ${fmtDateTime(r.reviewed_at)}` : ''}
-            </>
-          )}
-        </div>
-        {r.review_status === 'denied' && r.review_note && (
-          <div style={{ marginTop: '8px', padding: '9px 11px', borderRadius: '8px', background: 'rgba(231,76,60,0.08)', border: '1px solid rgba(231,76,60,0.25)', fontSize: '13px', color: 'var(--vfo-ink)', overflowWrap: 'anywhere' }}>
-            Reason: {r.review_note}
-          </div>
-        )}
-        {canManage && pending && (
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-            <button style={btnState(btnPrimary, busy)} disabled={busy} onClick={onApprove}>Approve</button>
-            <button style={btnState(btnDanger, busy)} disabled={busy} onClick={onDeny}>Deny</button>
-          </div>
-        )}
-        {canManage && r.review_status === 'denied' && (
-          <button style={{ ...btnState(btnSecondary, busy), marginTop: '12px' }} disabled={busy} onClick={onReopen}>Reopen</button>
-        )}
-      </Card>
+      {layout !== 'grid' && <Card flat={flat} title="Review">{reviewBody(false)}</Card>}
 
       {canManage && onBoard && (
         <Card flat={flat} title="Move">
@@ -163,9 +168,12 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
   if (layout === 'grid') {
     return (
       <div>
-        <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '12px', overflowWrap: 'anywhere' }}>
-          <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--vfo-accent-text)' }}>{placeLabel(r, people)}</span>
-          {' · '}{r.requester_name} · Requested {fmtDate(r.requested_on)}{r.imported ? ' · Imported from sheet' : ''}
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '8px', overflowWrap: 'anywhere' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--vfo-accent-text)' }}>{placeLabel(r, people)}</span>
+            {' · '}{r.requester_name} · Requested {fmtDate(r.requested_on)}{r.imported ? ' · Imported from sheet' : ''}
+          </div>
+          {reviewBody(true)}
         </div>
         {flat ? <div>{cards}</div> : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '14px', alignItems: 'start' }}>
