@@ -49,6 +49,7 @@ export default function PortalBacklogPanel({ link }) {
   // The Requests tab: which list shows (New requests / Ready to announce), its
   // search, the rows dropped open, and one to scroll to.
   const [requestsList, setRequestsList] = useState('new')
+  const [requestsSort, setRequestsSort] = useState('added_asc')
   const [search, setSearch] = useState('')
   const [openIds, setOpenIds] = useState(() => new Set())
   const [scrollToId, setScrollToId] = useState(null)
@@ -354,7 +355,8 @@ export default function PortalBacklogPanel({ link }) {
       ) : (
         <BacklogRequestsTab list={requestsList} requests={scoped} people={people} assignees={assignees} canManage={canManage} me={me} busyId={busyId}
           search={search} onSearch={setSearch} openIds={openIds} onToggle={toggleRow} detailProps={detailHandlers}
-          filterGroups={filterGroups} filter={filter} onFilterChange={setFilter} filtering={filterIsOn(filter)} />
+          filterGroups={filterGroups} filter={filter} onFilterChange={setFilter} filtering={filterIsOn(filter)}
+          sortValue={requestsSort} onSortChange={setRequestsSort} />
       )}
 
       {open && (

@@ -119,6 +119,7 @@ export function PortalBacklogRequestsSkeleton() {
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         <Skeleton height={37} style={{ borderRadius: '8px', flex: phone ? '1 1 100%' : 1 }} />
         <Skeleton width={78} height={37} style={{ borderRadius: '8px' }} />
+        <Skeleton width={160} height={37} style={{ borderRadius: '8px' }} />
       </div>
       <div>
           {phone ? (

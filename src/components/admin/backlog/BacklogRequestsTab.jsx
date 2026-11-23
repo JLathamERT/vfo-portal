@@ -1,25 +1,26 @@
 import { Fragment, useEffect, useState } from 'react'
-import ListFilterButton, { useHeaderSort, sortByColumn, SortHeader } from '../ListFilterButton'
+import ListFilterButton, { useHeaderSort, sortByColumn, SortHeader, SortSelect } from '../ListFilterButton'
 import { clickableRowStyle, rowHoverProps } from '../../shared/rowHover'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { departmentChipStyle } from './portalDepartments'
-import { bySortKey, fmtDate } from './backlogModel'
+import { fmtDate, sortRequests, REQUEST_SORT_OPTIONS } from './backlogModel'
 import ScorePill from './ScorePill'
 import BacklogDetails from './BacklogDetails'
 
-// The Requests tab, laid out like Client Overview: a search box, then one table,
-// New requests (oldest first) or Ready to announce (board order), picked by the
-// pills beside the Archive button. A row (or its chevron) drops its full details
-// down under it, with every drawer action; several rows can be open. The drawer
-// is for the Tasks board and the Archive only.
-const byRequested = (a, b) => (String(a.requested_on || '9999').localeCompare(String(b.requested_on || '9999'))) || (a.id - b.id)
+// The Requests tab, laid out like Client Overview: search, Filter and Sort, then
+// one table, New requests or Ready to announce, picked by the pills beside the
+// Archive button. Both default to the order added, oldest first (the Sort
+// dropdown); a clicked column header overrides it for that table until the
+// dropdown changes. A row (or its chevron) drops its full details down under
+// it, with every drawer action; several rows can be open. The drawer is for the
+// Tasks board and the Archive only.
 
 export const REQUESTS_GRID = '32px minmax(260px, 2.4fr) minmax(180px, 1.6fr) 90px 100px 120px 150px'
 export const REQUESTS_MIN_WIDTH = 990
 
 export const requestRowId = (id) => `backlog-request-${id}`
 
-export default function BacklogRequestsTab({ list = 'new', requests, people, assignees, canManage, me, busyId, search, onSearch, openIds, onToggle, detailProps, filterGroups, filter, onFilterChange, filtering }) {
+export default function BacklogRequestsTab({ list = 'new', requests, people, assignees, canManage, me, busyId, search, onSearch, openIds, onToggle, detailProps, filterGroups, filter, onFilterChange, filtering, sortValue = 'added_asc', onSortChange }) {
   const isPhone = useIsPhone()
   const pendingSort = useHeaderSort()
   const readySort = useHeaderSort()
@@ -29,8 +30,8 @@ export default function BacklogRequestsTab({ list = 'new', requests, people, ass
 
   const allPending = requests.filter((r) => r.review_status === 'pending')
   const allReady = requests.filter((r) => r.review_status === 'approved' && !r.archived_at && r.progress === 'ready_to_announce')
-  const pending = allPending.filter(matches).sort(byRequested)
-  const ready = allReady.filter(matches).sort(bySortKey)
+  const pending = sortRequests(allPending.filter(matches), sortValue)
+  const ready = sortRequests(allReady.filter(matches), sortValue)
 
   const nameOf = (id) => (id == null ? '' : (people[id] || 'A former admin'))
   const columnsFor = (field) => ({
@@ -57,6 +58,8 @@ export default function BacklogRequestsTab({ list = 'new', requests, people, ass
           placeholder="Search by title, description or requester..." value={search} onChange={(e) => onSearch(e.target.value)}
           style={{ flex: isPhone ? '1 1 100%' : 1, minWidth: 0, padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }} />
         <ListFilterButton groups={filterGroups} value={filter} onChange={onFilterChange} align={isPhone ? 'left' : 'right'} />
+        <SortSelect value={sortValue} options={REQUEST_SORT_OPTIONS}
+          onChange={(v) => { onSortChange(v); pendingSort.reset(); readySort.reset() }} />
       </div>
 
       {list === 'ready' ? (

@@ -75,6 +75,33 @@ export function priority(r) {
   return (r.urgency || 0) + (r.importance || 0)
 }
 
+// The Requests tab's order (Backlog 3c). "Added" is the date the request was
+// filed (requested_on), then the id; a request with no date (some sheet imports)
+// goes last. created_at is not used: the sheet import stamped every row alike.
+const addedCmp = (a, b, dir) => {
+  const da = a.requested_on || '', db = b.requested_on || ''
+  if (!da !== !db) return da ? -1 : 1
+  return dir * (da.localeCompare(db) || (a.id - b.id))
+}
+export const byAdded = (a, b) => addedCmp(a, b, 1)
+
+export const REQUEST_SORT_OPTIONS = [
+  { value: 'added_asc', label: 'Date added: Oldest' },
+  { value: 'added_desc', label: 'Date added: Newest' },
+  { value: 'priority', label: 'Priority: Highest' },
+  { value: 'title', label: 'Title: A to Z' },
+]
+
+export function sortRequests(rows, value) {
+  const list = [...rows]
+  switch (value) {
+    case 'added_desc': return list.sort((a, b) => addedCmp(a, b, -1))
+    case 'priority': return list.sort((a, b) => (priority(b) - priority(a)) || byAdded(a, b))
+    case 'title': return list.sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), undefined, { sensitivity: 'base' }) || (a.id - b.id))
+    default: return list.sort(byAdded)
+  }
+}
+
 // Where a request is now, for the drawer, the deep link and the history.
 export function placeLabel(r, people) {
   if (r.archived_at) return 'Archived'
