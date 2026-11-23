@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react'
-import { useHeaderSort, sortByColumn, SortHeader } from '../ListFilterButton'
+import ListFilterButton, { useHeaderSort, sortByColumn, SortHeader } from '../ListFilterButton'
 import { clickableRowStyle, rowHoverProps } from '../../shared/rowHover'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { departmentChipStyle } from './portalDepartments'
@@ -7,11 +7,11 @@ import { bySortKey, fmtDate } from './backlogModel'
 import ScorePill from './ScorePill'
 import BacklogDetails from './BacklogDetails'
 
-// The Requests tab, laid out like Client Overview: a search box, then New
-// requests (oldest first) and Ready to announce (board order) as tables. A row
-// (or its chevron) drops its full details down under it, with every drawer
-// action; several rows can be open. The drawer is for the Tasks board and the
-// Archive only.
+// The Requests tab, laid out like Client Overview: a search box, then one table,
+// New requests (oldest first) or Ready to announce (board order), picked by the
+// pills beside the Archive button. A row (or its chevron) drops its full details
+// down under it, with every drawer action; several rows can be open. The drawer
+// is for the Tasks board and the Archive only.
 const byRequested = (a, b) => (String(a.requested_on || '9999').localeCompare(String(b.requested_on || '9999'))) || (a.id - b.id)
 
 export const REQUESTS_GRID = '32px minmax(260px, 2.4fr) minmax(180px, 1.6fr) 90px 100px 120px 150px'
@@ -19,7 +19,8 @@ export const REQUESTS_MIN_WIDTH = 990
 
 export const requestRowId = (id) => `backlog-request-${id}`
 
-export default function BacklogRequestsTab({ requests, people, assignees, canManage, me, busyId, search, onSearch, openIds, onToggle, detailProps }) {
+export default function BacklogRequestsTab({ list = 'new', requests, people, assignees, canManage, me, busyId, search, onSearch, openIds, onToggle, detailProps, filterGroups, filter, onFilterChange, filtering }) {
+  const isPhone = useIsPhone()
   const pendingSort = useHeaderSort()
   const readySort = useHeaderSort()
 
@@ -45,30 +46,35 @@ export default function BacklogRequestsTab({ requests, people, assignees, canMan
     <BacklogDetails request={r} people={people} assignees={assignees} canManage={canManage} me={me}
       busy={busyId === r.id} layout="grid" {...detailProps(r)} />
   )
-  const searchEmpty = 'No requests match your search.'
+  // The filter is applied before this tab gets the rows, so with any tick on an
+  // empty table says so; with only a search, the search does.
+  const emptyFor = (all, none) => (filtering ? 'No requests match the current filters.' : q && all.length ? 'No requests match your search.' : none)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
         <input type="search" name="search" autoComplete="off" aria-label="Search requests"
           placeholder="Search by title, description or requester..." value={search} onChange={(e) => onSearch(e.target.value)}
-          style={{ flex: 1, minWidth: 0, padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }} />
+          style={{ flex: isPhone ? '1 1 100%' : 1, minWidth: 0, padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }} />
+        <ListFilterButton groups={filterGroups} value={filter} onChange={onFilterChange} align={isPhone ? 'left' : 'right'} />
       </div>
 
-      <RequestsTable title="New requests" rows={sortByColumn(pending, pendingSort.sort, columnsFor('requested_assignee_admin_id'))}
-        emptyText={q && allPending.length ? searchEmpty : 'No requests waiting for review.'}
-        sort={pendingSort.sort} onSort={pendingSort.onSort} people={people} assignedField="requested_assignee_admin_id"
-        openIds={openIds} onToggle={onToggle} renderDetails={renderDetails} />
-
-      <RequestsTable title="Ready to announce" rows={sortByColumn(ready, readySort.sort, columnsFor('assignee_admin_id'))}
-        emptyText={q && allReady.length ? searchEmpty : 'Nothing is ready to announce.'}
-        sort={readySort.sort} onSort={readySort.onSort} people={people} assignedField="assignee_admin_id"
-        openIds={openIds} onToggle={onToggle} renderDetails={renderDetails} />
+      {list === 'ready' ? (
+        <RequestsTable key="ready" rows={sortByColumn(ready, readySort.sort, columnsFor('assignee_admin_id'))}
+          emptyText={emptyFor(allReady, 'Nothing is ready to announce.')}
+          sort={readySort.sort} onSort={readySort.onSort} people={people} assignedField="assignee_admin_id"
+          openIds={openIds} onToggle={onToggle} renderDetails={renderDetails} />
+      ) : (
+        <RequestsTable key="new" rows={sortByColumn(pending, pendingSort.sort, columnsFor('requested_assignee_admin_id'))}
+          emptyText={emptyFor(allPending, 'No requests waiting for review.')}
+          sort={pendingSort.sort} onSort={pendingSort.onSort} people={people} assignedField="requested_assignee_admin_id"
+          openIds={openIds} onToggle={onToggle} renderDetails={renderDetails} />
+      )}
     </div>
   )
 }
 
-function RequestsTable({ title, rows, emptyText, sort, onSort, people, assignedField, openIds, onToggle, renderDetails }) {
+function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, openIds, onToggle, renderDetails }) {
   const isPhone = useIsPhone()
   // The table scrolls sideways below its min width, so an open dropdown is sized
   // to the table's VISIBLE width (and stuck to its left edge) to wrap on screen.
@@ -84,19 +90,12 @@ function RequestsTable({ title, rows, emptyText, sort, onSort, people, assignedF
   }, [box])
 
   const faint = { color: 'var(--vfo-faint)' }
-  const heading = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{title}</span>
-      <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{rows.length}</span>
-    </div>
-  )
 
   // A phone gets one card per request instead of the wide table: the same facts,
   // and the details drop open inside the card.
   if (isPhone) {
     return (
       <div>
-        {heading}
         {rows.length === 0 && <div style={{ padding: '12px 2px', color: 'var(--vfo-faint)', fontSize: '13px' }}>{emptyText}</div>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {rows.map((r) => {
@@ -144,7 +143,6 @@ function RequestsTable({ title, rows, emptyText, sort, onSort, people, assignedF
 
   return (
     <div>
-      {heading}
       <div ref={setBox} style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
         <div style={{ minWidth: REQUESTS_MIN_WIDTH }}>
           <div style={{ display: 'grid', gridTemplateColumns: REQUESTS_GRID, gap: '10px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>

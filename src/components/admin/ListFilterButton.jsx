@@ -5,8 +5,9 @@ import { useState } from 'react'
 // { [key]: string[] }. An item matches a group when that group's selection is
 // empty (no filter) OR includes the item's value. The caller's initial `value`
 // sets the default (e.g. { status: ['Active'] }); "All" = untick everything in a
-// group.
-export default function ListFilterButton({ groups, value, onChange }) {
+// group. `align="left"` opens the menu from the button's left edge, for a
+// button that sits at the left of its row (the default opens leftwards).
+export default function ListFilterButton({ groups, value, onChange, align = 'right' }) {
   const [open, setOpen] = useState(false)
   const total = groups.reduce((n, g) => n + (value[g.key]?.length || 0), 0)
   // Say what's filtering rather than a cryptic count: one selection reads
@@ -28,7 +29,7 @@ export default function ListFilterButton({ groups, value, onChange }) {
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
-          <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '6px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '220px', zIndex: 200, padding: '8px 0', boxShadow: '0 14px 36px rgba(20,45,95,0.16)', maxHeight: '380px', overflowY: 'auto' }}>
+          <div style={{ position: 'absolute', top: '100%', ...(align === 'left' ? { left: 0 } : { right: 0 }), marginTop: '6px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '220px', zIndex: 200, padding: '8px 0', boxShadow: '0 14px 36px rgba(20,45,95,0.16)', maxHeight: '380px', overflowY: 'auto' }}>
             {groups.map(g => (
               <div key={g.key} style={{ padding: '6px 14px 10px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{g.label}</div>

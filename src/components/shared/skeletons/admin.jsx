@@ -107,20 +107,20 @@ export function PortalBacklogBoardSkeleton({ lanes = 2 }) {
   )
 }
 
-// Mirrors BacklogRequestsTab: the search box, then the New requests and Ready to
-// announce tables (same grid and min width, so nothing jumps when the data lands).
+// Mirrors BacklogRequestsTab: the search box and Filter, then the one table the
+// New requests / Ready to announce pills pick (same grid and min width, so
+// nothing jumps when the data lands).
 const REQUESTS_GRID = '32px minmax(260px, 2.4fr) minmax(180px, 1.6fr) 90px 100px 120px 150px'
 export function PortalBacklogRequestsSkeleton() {
   const phone = useMediaQuery('(max-width: 640px)')
+  const rows = 4
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-      <Skeleton height={37} style={{ borderRadius: '8px' }} />
-      {[[120, 3], [150, 1]].map(([label, rows]) => (
-        <div key={label}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-            <Skeleton width={label} height={12} />
-            <Skeleton width={30} height={20} style={{ borderRadius: '999px' }} />
-          </div>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <Skeleton height={37} style={{ borderRadius: '8px', flex: phone ? '1 1 100%' : 1 }} />
+        <Skeleton width={78} height={37} style={{ borderRadius: '8px' }} />
+      </div>
+      <div>
           {phone ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {Array.from({ length: rows }).map((_, i) => (
@@ -160,8 +160,7 @@ export function PortalBacklogRequestsSkeleton() {
             </div>
           </div>
           )}
-        </div>
-      ))}
+      </div>
     </div>
   )
 }
@@ -201,7 +200,9 @@ export function PortalBacklogSkeleton({ view = 'tasks', lensCount = 7 }) {
       {view === 'requests' && <KpiHeroSkeleton title="Portal Backlog" subtitle="Update requests for the VFO Portal" chips={lensCount} />}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <Skeleton width={150} height={34} style={{ borderRadius: '8px' }} />
+          {view === 'tasks' && <Skeleton width={78} height={36} style={{ borderRadius: '8px' }} />}
+          {view === 'requests' && <Skeleton width={136} height={32} style={{ borderRadius: '999px' }} />}
+          {view === 'requests' && <Skeleton width={160} height={32} style={{ borderRadius: '999px' }} />}
           <Skeleton width={82} height={34} style={{ borderRadius: '8px' }} />
         </div>
         {view === 'requests' && <Skeleton width={132} height={34} style={{ borderRadius: '8px' }} />}

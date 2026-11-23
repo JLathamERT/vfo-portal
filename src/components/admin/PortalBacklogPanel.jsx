@@ -3,7 +3,8 @@ import { callApi } from '../../lib/api'
 import { KpiHero } from './KpiKit'
 import { btnPrimary, btnSecondary } from '../shared/buttonStyles'
 import { PORTAL_DEPARTMENTS } from './backlog/portalDepartments'
-import { LENSES, LENS_PREDICATE, lensCounts } from './backlog/backlogModel'
+import { LENSES, LENS_PREDICATE, lensCounts, EMPTY_BACKLOG_FILTER, backlogFilterGroups, filterIsOn } from './backlog/backlogModel'
+import ListFilterButton, { matchesFilter } from './ListFilterButton'
 import BacklogBoard from './backlog/BacklogBoard'
 import BacklogRequestsTab, { requestRowId } from './backlog/BacklogRequestsTab'
 import BacklogArchive from './backlog/BacklogArchive'
@@ -11,7 +12,6 @@ import BacklogDrawer from './backlog/BacklogDrawer'
 import NewRequestModal from './backlog/NewRequestModal'
 import DenyDialog from './backlog/DenyDialog'
 import ArchiveDialog from './backlog/ArchiveDialog'
-import { inputStyle } from './backlog/BacklogModal'
 import { PortalBacklogSkeleton } from '../shared/skeletons'
 
 // More > Portal Backlog (2026-11-17): portal update requests, replacing the
@@ -33,7 +33,10 @@ export default function PortalBacklogPanel({ link }) {
   const [notice, setNotice] = useState('')
   const [success, setSuccess] = useState('')
   const [lens, setLens] = useState('all')
-  const [department, setDepartment] = useState('')
+  // One Filter for the Tasks board and the Requests tab; the Archive keeps its
+  // own department dropdown, and a single department carries in and out.
+  const [filter, setFilter] = useState(EMPTY_BACKLOG_FILTER)
+  const [archiveDepartment, setArchiveDepartment] = useState('')
   const [view, setView] = useState('tasks')
   const [showArchive, setShowArchive] = useState(false)
   const [archiveKey, setArchiveKey] = useState(0)
@@ -43,7 +46,9 @@ export default function PortalBacklogPanel({ link }) {
   const [denying, setDenying] = useState(null)
   const [archiving, setArchiving] = useState(null)
   const [busyId, setBusyId] = useState(null)
-  // The Requests tab: its search, the rows dropped open, and one to scroll to.
+  // The Requests tab: which list shows (New requests / Ready to announce), its
+  // search, the rows dropped open, and one to scroll to.
+  const [requestsList, setRequestsList] = useState('new')
   const [search, setSearch] = useState('')
   const [openIds, setOpenIds] = useState(() => new Set())
   const [scrollToId, setScrollToId] = useState(null)
@@ -72,14 +77,44 @@ export default function PortalBacklogPanel({ link }) {
   const canManage = !!data?.can_manage
   const me = data?.me || null
 
-  // Department narrows everything on the page; the lens narrows the Requests lists only.
+  // The hero counts follow the Department ticks only; the whole Filter narrows
+  // the board and the Requests tables, and the lens the Requests tables only.
+  const filterGroups = useMemo(
+    () => backlogFilterGroups(data?.requests || [], data?.people || {}, data?.assignees || [], PORTAL_DEPARTMENTS.map((d) => d.name)),
+    [data],
+  )
   const pool = useMemo(() => {
     const rows = data?.requests || []
-    return department ? rows.filter((r) => (r.departments || []).includes(department)) : rows
-  }, [data, department])
+    const deps = filter.department
+    return deps.length ? rows.filter((r) => (r.departments || []).some((d) => deps.includes(d))) : rows
+  }, [data, filter.department])
   const counts = useMemo(() => lensCounts(pool), [pool])
-  const scoped = useMemo(() => pool.filter(LENS_PREDICATE[lens]), [pool, lens])
+  const filtered = useMemo(() => pool.filter((r) => matchesFilter(r, filterGroups, filter)), [pool, filterGroups, filter])
+  const scoped = useMemo(() => filtered.filter(LENS_PREDICATE[lens]), [filtered, lens])
+  const listCounts = useMemo(() => ({
+    new: scoped.filter(LENS_PREDICATE.pending).length,
+    ready: scoped.filter(LENS_PREDICATE.ready).length,
+  }), [scoped])
 
+  // An open Requests row that the filter or lens hides closes.
+  useEffect(() => {
+    const shown = new Set(scoped.map((r) => r.id))
+    setOpenIds((s) => {
+      if ([...s].every((id) => shown.has(id))) return s
+      return new Set([...s].filter((id) => shown.has(id)))
+    })
+  }, [scoped])
+
+  // Into the Archive: one ticked department becomes its dropdown. Out of it: its
+  // department becomes the only Department tick (Requester / Assigned to stay).
+  const openArchive = () => {
+    setArchiveDepartment(filter.department.length === 1 ? filter.department[0] : '')
+    setShowArchive(true)
+  }
+  const closeArchive = () => {
+    if (archiveDepartment) setFilter((f) => ({ ...f, department: [archiveDepartment] }))
+    setShowArchive(false)
+  }
 
   // The drawer reads the live row (or an archived one) by id, so it follows reloads.
   const allRows = useMemo(() => [...(data?.requests || []), ...(data?.my_withdrawn || []), ...archiveRows], [data, archiveRows])
@@ -93,8 +128,9 @@ export default function PortalBacklogPanel({ link }) {
   const revealRow = (r) => {
     setView('requests')
     setShowArchive(false)
+    setRequestsList(r.review_status === 'pending' ? 'new' : 'ready')
     if (!LENS_PREDICATE[lens](r)) setLens('all')
-    if (department && !(r.departments || []).includes(department)) setDepartment('')
+    if (!matchesFilter(r, filterGroups, filter)) setFilter(EMPTY_BACKLOG_FILTER)
     setSearch('')
     setOpenIds((s) => (s.has(r.id) ? s : new Set(s).add(r.id)))
     setScrollToId(r.id)
@@ -125,6 +161,7 @@ export default function PortalBacklogPanel({ link }) {
         setOpenId(id)
       }
     } else {
+      setArchiveDepartment('')
       setShowArchive(true)
       setArchiveKey((k) => k + 1)
     }
@@ -219,7 +256,7 @@ export default function PortalBacklogPanel({ link }) {
       {[['tasks', 'Tasks'], ['requests', 'Requests']].map(([k, label]) => {
         const active = view === k && !showArchive
         return (
-          <button key={k} role="tab" aria-selected={active} onClick={() => { setView(k); setShowArchive(false) }}
+          <button key={k} role="tab" aria-selected={active} onClick={() => { setView(k); if (showArchive) closeArchive() }}
             style={{
               padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
               fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap',
@@ -270,11 +307,24 @@ export default function PortalBacklogPanel({ link }) {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <select aria-label="Department" value={department} onChange={(e) => setDepartment(e.target.value)} style={{ ...inputStyle, width: 'auto', padding: '7px 10px', fontSize: '13px' }}>
-            <option value="">All departments</option>
-            {PORTAL_DEPARTMENTS.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
-          </select>
-          <button style={btnSecondary} onClick={() => setShowArchive((v) => !v)}>{showArchive ? 'Close archive' : 'Archive'}</button>
+          {view === 'tasks' && !showArchive && (
+            <ListFilterButton groups={filterGroups} value={filter} onChange={setFilter} align="left" />
+          )}
+          {view === 'requests' && !showArchive && (
+            <div role="tablist" aria-label="Requests list" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {[['new', 'New requests'], ['ready', 'Ready to announce']].map(([k, label]) => {
+                const on = requestsList === k
+                return (
+                  <button key={k} role="tab" aria-selected={on} onClick={() => setRequestsList(k)}
+                    style={{ padding: '7px 14px', borderRadius: '999px', border: `1px solid ${on ? '#125ecc' : 'var(--vfo-border-strong)'}`, background: on ? '#125ecc' : 'var(--vfo-input)', color: on ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    {label}
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '1px 7px', borderRadius: '999px', background: on ? 'rgba(255,255,255,0.22)' : 'var(--vfo-tint)', color: on ? '#ffffff' : 'var(--vfo-muted)' }}>{listCounts[k]}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          <button style={btnSecondary} onClick={showArchive ? closeArchive : openArchive}>{showArchive ? 'Close archive' : 'Archive'}</button>
         </div>
         {view === 'requests' && !showArchive && (
           <button style={btnPrimary} onClick={() => setEditing('new')}>+ New request</button>
@@ -296,13 +346,15 @@ export default function PortalBacklogPanel({ link }) {
 
       {showArchive ? (
         <BacklogArchive people={people} canManage={canManage} reloadKey={archiveKey} busyId={busyId}
-          onOpen={(r) => setOpenId(r.id)} onRestore={restore} onReopen={reopen} onBack={() => setShowArchive(false)} onLoaded={onArchiveLoaded} />
+          onOpen={(r) => setOpenId(r.id)} onRestore={restore} onReopen={reopen} onBack={closeArchive} onLoaded={onArchiveLoaded}
+          department={archiveDepartment} onDepartmentChange={setArchiveDepartment} />
       ) : view === 'tasks' ? (
-        <BacklogBoard requests={pool} assignees={assignees} people={people} canManage={canManage}
+        <BacklogBoard requests={filtered} assignees={assignees} people={people} canManage={canManage}
           onOpen={(r) => setOpenId(r.id)} onMove={move} onResort={resort} onArchive={setArchiving} />
       ) : (
-        <BacklogRequestsTab requests={scoped} people={people} assignees={assignees} canManage={canManage} me={me} busyId={busyId}
-          search={search} onSearch={setSearch} openIds={openIds} onToggle={toggleRow} detailProps={detailHandlers} />
+        <BacklogRequestsTab list={requestsList} requests={scoped} people={people} assignees={assignees} canManage={canManage} me={me} busyId={busyId}
+          search={search} onSearch={setSearch} openIds={openIds} onToggle={toggleRow} detailProps={detailHandlers}
+          filterGroups={filterGroups} filter={filter} onFilterChange={setFilter} filtering={filterIsOn(filter)} />
       )}
 
       {open && (
