@@ -5,7 +5,7 @@ import BacklogCard from './BacklogCard'
 import { LANE_COLUMNS, PROGRESS_LABELS, bySortKey, isPool } from './backlogModel'
 
 // The Tasks tab, per Paxton's sketch: Approved but unassigned on the left, the
-// superadmin lanes (To do / Working on / Done) stacked in the middle, then the
+// superadmin lanes (To do / Working on / Review) stacked in the middle, then the
 // shared Ready to announce and Live pools (Live: Backlog 5a) on the right. Below
 // 1280px the tall columns sit above and below the lanes, Live under Ready to
 // announce; below 768px one lane shows at a time.

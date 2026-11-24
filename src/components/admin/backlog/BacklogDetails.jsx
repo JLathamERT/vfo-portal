@@ -40,7 +40,7 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
   // A task is edited by a superadmin only, with the task form (Backlog 4b).
   const canEdit = !r.archived_at && r.review_status !== 'withdrawn' && (canManage || (!task && own && pending))
 
-  // Live is reached from Done or Ready to announce only (Backlog 5a), so the
+  // Live is reached from Review or Ready to announce only (Backlog 5a), so the
   // Move to list offers it there and on a Live card.
   const moveOptions = Object.entries(PROGRESS_LABELS)
     .filter(([k]) => k !== 'live' || ['done', 'ready_to_announce', 'live'].includes(r.progress))

@@ -1,6 +1,6 @@
 # Portal Backlog tables
 
-> The More ▾ → Portal Backlog tab ([flows/portal-backlog.md](../flows/portal-backlog.md)). Migrations `20261117190000_portal_backlog.sql`, `20261117190100_portal_backlog_title_writeup.sql`, `20261123190000_portal_backlog_tasks.sql` and `20261123200000_portal_backlog_live_importance.sql` (Live + release importance, Backlog 5a / 5b) and `20261123210000_portal_backlog_likes.sql` (likes, the cap, Sort by likes, Backlog 7a / 7b / 7c; edge repo). All four tables are RLS deny-all; only `vfo-admin-api` (service role) reads and writes them. *(v: 2026-11-23)*
+> The More ▾ → Portal Backlog tab ([flows/portal-backlog.md](../flows/portal-backlog.md)). Migrations `20261117190000_portal_backlog.sql`, `20261117190100_portal_backlog_title_writeup.sql`, `20261123190000_portal_backlog_tasks.sql` and `20261123200000_portal_backlog_live_importance.sql` (Live + release importance, Backlog 5a / 5b) and `20261123210000_portal_backlog_likes.sql` (likes, the cap, Sort by likes, Backlog 7a / 7b / 7c; edge repo). All four tables are RLS deny-all; only `vfo-admin-api` (service role) reads and writes them. *(v: 2026-11-24)*
 
 ## `portal_requests`
 
@@ -21,7 +21,7 @@ One row per request, or per superadmin task (`kind`, 2026-11-23).
 | `review_status` | `pending` / `approved` / `denied` / `withdrawn` |
 | `review_note` | the denial reason |
 | `reviewed_by_admin_id`, `reviewed_at` | who approved or denied, and when |
-| `progress` | `todo` / `working` / `done` / `ready_to_announce` / `live` (2026-11-23); not null exactly when approved |
+| `progress` | `todo` / `working` / `done` / `ready_to_announce` / `live` (2026-11-23); not null exactly when approved. `done` is labelled **Review** on screen since 2026-11-24 |
 | `assignee_admin_id` | the lane; null = Approved but unassigned (only with `todo`; kept in `ready_to_announce` and `live`, the table allows null there too; never on a task). On delete set null, which a task refuses: move or archive a superadmin's tasks before deleting their `allowed_admins` row |
 | `requested_assignee_admin_id` | the requester's optional pick, used at approval only |
 | `sort_key` | numeric, the position in the current column (lower first) |
@@ -30,7 +30,7 @@ One row per request, or per superadmin task (`kind`, 2026-11-23).
 | `archived_at`, `archived_by_admin_id` | set when archived; only allowed in `live` (and `ready_to_announce`, for rows archived before 2026-11-23); the API archives from `live` only |
 | `announced_on`, `announce_note` | from Mark as announced (Ready to announce → Live; note up to 1000); empty on an item that went Done → Live. Before 2026-11-23 the archive dialog set them. A restore keeps them |
 | `release_importance` | `big` / `normal` (default) / `minor` (`portal_requests_release_importance_check`), the What's new marker (Backlog 5b); Done → Live turns `normal` into `minor`. Not the 1–5 `importance` |
-| `imported`, `sheet_row` | the sheet import; `sheet_row` is unique and makes the import safe to re-run |
+| `imported`, `sheet_row` | the sheet import; `sheet_row` is unique and makes the import safe to re-run. Rows 91 and 92 were added to the sheet after the switch and imported on 2026-11-24 |
 | `created_at`, `updated_at` | |
 
 Indexes: `(review_status, progress, assignee_admin_id, sort_key)`, `(archived_at)`.

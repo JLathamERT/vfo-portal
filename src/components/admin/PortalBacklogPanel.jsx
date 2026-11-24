@@ -274,7 +274,7 @@ export default function PortalBacklogPanel({ link }) {
       return Promise.resolve()
     }
     // Ready to announce -> Live is Mark as announced: ask for the date first
-    // (Backlog 5a). Cancelling leaves the card where it was. Done -> Live needs
+    // (Backlog 5a). Cancelling leaves the card where it was. Review -> Live needs
     // no write-up and no date.
     if (progress === 'live' && r.progress === 'ready_to_announce') {
       setAnnouncing(r)

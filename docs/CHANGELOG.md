@@ -9,6 +9,22 @@
 
 ---
 
+## 2026-11-24 (h) — Portal Backlog: the Done column reads Review; two late sheet requests imported — by Paxton
+
+Branch `claude/portal-backlog-updates-458d44` (both repos). No migration, template or switch; action count **715** and **54** route pages (both unchanged). Admin-only screen, so no phone check. Flow: [flows/portal-backlog.md](flows/portal-backlog.md).
+
+**What Paxton asked for.** Rename the lanes' Done column to Review, and bring in two requests that were added to the old "VFO Portal Update Requests" sheet after the switch to the portal.
+
+**Built (website).** `backlog/backlogModel.js`: `PROGRESS_LABELS.done` and the hero's `done` lens read **Review**, so the lane headers, the Move to list, the history lines ("… to Review") and the hero chip all follow. A label only: the stored value is still `progress = 'done'` (and `done_at`), and "Done by …" on Ready to announce and Live cards is unchanged, since it names who did the work. Code comments that named the Done lane say Review.
+
+**Built (edge).** `portal-backlog/write.ts`: the refusal reads "Only a Review or Ready to announce item can go Live". `scripts/portal-backlog-sheet-import.sql` gains sheet rows 91 and 92 (typed in, pending, titles Paxton approved; the header says so). Run as a two-row insert of the same shape on the test site 2026-11-24 (ids 142, 143), and on live at release; keyed on `sheet_row`, so a re-run adds nothing, and no bells.
+
+**Note.** The drawer's approve / deny card is also called **Review**, so the word now means two things on the page; kept as asked.
+
+**Tested on the dev server by Paxton (2026-11-24),** against `vfo-admin-api-paxton` v20 (this branch): the three lane headers, a drag into Review and its history line, the Move to list offering Live from Review, Review → Live with no dialog, the hero's Review chip, and both new requests on the Requests tab with their requester, date, department, scores and a Sheet import history line.
+
+---
+
 ## 2026-11-24 (g) — Specialist Revenue: bank transfers with no email, the Bank Transfer Account tab, the deposit bell, one draw per payment; Client Overview tax row — by Jake
 
 Branches `claude/vfo-deposit-options-e55f63` (vfo-react) and `claude/vfo-deposit-options-43333c` (edge). Action count **715** (714 + `specialist_revenue_deposits_load`), **54** route pages (unchanged). No table change. One migration, data only: `20261124210000_specrev_deposit_cleared_bell.sql` (a `notification_rules` row), on the test site, live at release BEFORE the backend. Stripe: `customer_cash_balance_transaction.created` added by Jake to the VFO Services live and sandbox endpoints. Release order: rule row, backend, website. Owed: Issues JLathamERT/vfo-edge-functions#634, #635, #636. Admin-only screens, so no phone check.

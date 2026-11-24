@@ -4,7 +4,7 @@
 export const PROGRESS_LABELS = {
   todo: 'To do',
   working: 'Working on',
-  done: 'Done',
+  done: 'Review', // stored as 'done'; shown as Review since 2026-11-24
   ready_to_announce: 'Ready to announce',
   live: 'Live',
 }
@@ -41,7 +41,7 @@ export const LENSES = [
   { key: 'unassigned', label: 'Unassigned', color: '#8a9bbd', desc: 'of total' },
   { key: 'todo', label: 'To do', color: '#0a85e8', desc: 'of total' },
   { key: 'working', label: 'Working on', color: '#125ecc', desc: 'of total' },
-  { key: 'done', label: 'Done', color: '#1b9254', desc: 'of total' },
+  { key: 'done', label: 'Review', color: '#1b9254', desc: 'of total' },
   { key: 'ready', label: 'Ready to announce', color: '#7c4dcc', desc: 'of total' },
   { key: 'live', label: 'Live', color: '#0e8a8a', desc: 'of total' },
   { key: 'all', label: 'Total', color: '#125ecc', desc: 'pending or on the board (denied and archived requests are in the archive)' },
