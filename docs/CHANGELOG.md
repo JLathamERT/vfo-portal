@@ -9,6 +9,24 @@
 
 ---
 
+## 2026-11-24 (g) — Specialist Revenue: bank transfers with no email, the Bank Transfer Account tab, the deposit bell, one draw per payment; Client Overview tax row — by Jake
+
+Branches `claude/vfo-deposit-options-e55f63` (vfo-react) and `claude/vfo-deposit-options-43333c` (edge). Action count **715** (714 + `specialist_revenue_deposits_load`), **54** route pages (unchanged). No table change. One migration, data only: `20261124210000_specrev_deposit_cleared_bell.sql` (a `notification_rules` row), on the test site, live at release BEFORE the backend. Stripe: `customer_cash_balance_transaction.created` added by Jake to the VFO Services live and sandbox endpoints. Release order: rule row, backend, website. Owed: Issues JLathamERT/vfo-edge-functions#634, #635, #636. Admin-only screens, so no phone check.
+
+**Why.** A specialist whose own system pays by standing direct deposit paid into the SpecRev house account with no request in the portal. The money sat there unseen. Entering it as a Bank transfer would have emailed them asking for it again; Already paid would have paid the shares from our own balance and left the deposit uncollected, to be returned by Stripe after 75 days (#789).
+
+**Decided (Jake).** Bank transfer gets a second choice instead of widening Already paid. The deposits live in a sub-tab between Recurring Revenue Payments and Outstanding Payment Links, named **Bank Transfer Account**, with the account details two by two. No warning box on Already paid (clearer wording only) and no account details in New Payment: both were built and removed after a look.
+
+**Built (edge).** `send-request.ts`: `email_details:false` → `payment_method_type='bank_transfer_direct'`, no email (a new method value, so no column; `isBankTransferMethod` covers both). `confirm-received.ts`: one draw per request and the background chains. `delete-request.ts`: an unpaid no-email row can be deleted, Stripe asked first. `deposits-load.ts` (new). `webhooks.ts`: the deposit bell. `overview-tax.ts`: `team` on a tax track. Also fixed: a failed lines insert on a bank transfer no longer leaves a request with no lines.
+
+**Built (website).** `SpecialistDepositsPanel.jsx` (new), the two Bank transfer choices and the no-email result card in `SpecialistPaymentInput.jsx`, the delete rule and wording in `specialistRevenueShared.jsx`. **Client Overview > Tax Planning** (Jake's edits to the KPI panel): Tax plan team moved from the dropdown to a sortable column between PF and Phase; Current step and VFOS rev generated removed; a plan with no day counts keeps no empty line above its amounts; a Step 6 tag sits under its strategy; Name narrower and the columns re-spaced (min width 1240px).
+
+**Found while testing.** Mark payment received timed out at 20 s on a payment that had worked, and the second click read as an error (#788): it now answers once the money is booked. A test deploy ran beside the undo it was meant to carry and shipped the old code for a while on the test backend (#790); it sent one unused field.
+
+**Tested by Jake on the test site (2026-11-24),** `vfo-admin-api-jake` v86-v91: no-email save, not funded, funded and collected, part-used deposit, shares sent, one invoice and receipt, delete, the emailed choice, a repeat click, the tab, the Client Overview edits. The bell on the shared `vfo-admin-api` v153 (main put back, v154): one bell from a $20 deposit, a Stripe resend made no second one. **By Claude:** 18 checks of the three money handlers against a fake Stripe and database (simultaneous clicks, a failed booking and its retry, Stripe unreachable, delete refusals, the deposit arithmetic); the team rule gives the same team as `tax_plan_kpis` for all 113 live plans; `deno check` 0; drift check equal on both projects; security advisor at baseline. **Not exercised:** Issue #634 (a real sender name, the no-match bell, two real simultaneous clicks and the rest), and a no-days plan holding paid amounts (#636). The smoke gate runs on the test site after the merge and on live after the release.
+
+---
+
 ## 2026-11-24 (f) — Holistic tax plan: the Personal Tax Planning Form link row matches the rows around it — by Jake
 
 Branch `polish/tax-form-link-row` (vfo-react only). Website only, one file (`PersonalTaxFormLink.jsx`): no backend, migration, template or switch; action count **714** and **54** route pages (both unchanged). Admin-only screen, so no phone check.

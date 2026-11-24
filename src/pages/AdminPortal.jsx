@@ -30,6 +30,7 @@ import AdminNavBar from '../components/admin/AdminNavBar'
 import AllPaymentsTab from '../components/payments/AllPaymentsTab'
 import SpecialistRevenuePanel from '../components/admin/SpecialistRevenuePanel'
 import SpecialistRecurringPanel from '../components/admin/SpecialistRecurringPanel'
+import SpecialistDepositsPanel from '../components/admin/SpecialistDepositsPanel'
 import SpecialistLicensePanel from '../components/admin/SpecialistLicensePanel'
 import SpecialistLicenseReconciliationPanel from '../components/admin/SpecialistLicenseReconciliationPanel'
 import SpecialistLicenseOutstandingPanel from '../components/admin/SpecialistLicenseOutstandingPanel'
@@ -72,7 +73,7 @@ const PROFILE_ORIGIN_TABS = ['member_overview', 'client_overview', 'accounting']
 // the fallback card below, so a stale sessionStorage key can never blank the page.
 const ACCOUNTING_SECTIONS = [
   'payments', 'manual_connect_payment',
-  'specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_reconciliation', 'specialist_held_payouts',
+  'specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_deposits', 'specialist_reconciliation', 'specialist_held_payouts',
   'specialist_license', 'specialist_bg',
   'holistic_revenue', 'holistic_reconciliation', 'holistic_held_payouts',
   'tax_revenue', 'tax_reconciliation', 'tax_held_payouts',
@@ -291,7 +292,7 @@ export default function AdminPortal() {
   // Only these views read load_data (experts / members / exclusions / ecosystems);
   // every other panel loads its own data and mounts without waiting for it.
   const viewNeedsLoadData = ['specialists', 'member_overview', 'advisors', 'accountants', 'strategic'].includes(activeTab) ||
-    (activeTab === 'accounting' && ['specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_reconciliation', 'specialist_held_payouts',
+    (activeTab === 'accounting' && ['specialist_revenue', 'specialist_payment_input', 'specialist_recurring', 'specialist_deposits', 'specialist_reconciliation', 'specialist_held_payouts',
       'specialist_license', 'specialist_bg', 'advisor_membership_fees', 'accountant_membership_fees'].includes(accountingSection))
 
   // The return leg of openMemberProfile's `origin`: put the admin back on the tab
@@ -732,7 +733,7 @@ export default function AdminPortal() {
           {activeTab === 'accounting' && canSeeTab('accounting') && accountingSection === 'manual_connect_payment' && (
             <ManualConnectPaymentPanel />
           )}
-          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'specialist_revenue' || accountingSection === 'specialist_payment_input' || accountingSection === 'specialist_recurring' || accountingSection === 'specialist_reconciliation' || accountingSection === 'specialist_held_payouts') && (
+          {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'specialist_revenue' || accountingSection === 'specialist_payment_input' || accountingSection === 'specialist_recurring' || accountingSection === 'specialist_deposits' || accountingSection === 'specialist_reconciliation' || accountingSection === 'specialist_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · Specialists" title="VFO Specialist Revenue"
               maxWidth="1200px" initialKey={accountingSection === 'specialist_payment_input' ? 'specialist_revenue' : accountingSection}
@@ -740,6 +741,7 @@ export default function AdminPortal() {
                 { key: 'specialist_revenue', label: 'VFO Specialist Revenue', render: () => <SpecialistRevenuePanel allExperts={allExperts} allMembers={allMembers} embedded /> },
                 { key: 'specialist_reconciliation', label: 'VFO Specialist Reconciliation', render: () => <SpecialistReconciliationPanel allMembers={allMembers} embedded /> },
                 { key: 'specialist_recurring', label: 'VFO Specialist Recurring Revenue Payments', render: () => <SpecialistRecurringPanel embedded /> },
+                { key: 'specialist_deposits', label: 'Bank Transfer Account', render: () => <SpecialistDepositsPanel embedded /> },
                 { key: 'specialist_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="specrev" embedded /> },
                 { key: 'specialist_held_payouts', label: <HeldPayoutsLabel engine="specrev" />, render: () => <HeldPayoutsPanel engine="specrev" embedded /> },
               ]}

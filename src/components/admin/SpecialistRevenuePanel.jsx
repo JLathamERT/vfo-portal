@@ -169,7 +169,12 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
           )}
           {filtered.map(r => (
             <RequestRow key={r.id} request={r} grid={SPECIALIST_GRID} actions={({ request }) => (
-              request.payment_status === 'pending' ? <MarkReceivedButton request={request} onDone={load} />
+              request.payment_status === 'pending' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <MarkReceivedButton request={request} onDone={load} />
+                  {canDeleteSpecrevRequest(request) && <DeleteRequestButton request={request} onDone={load} />}
+                </div>
+              )
                 : canDeleteSpecrevRequest(request) ? <DeleteRequestButton request={request} onDone={load} />
                   : null
             )} />
@@ -208,7 +213,7 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
 // surfaces read the same: bordered card, uppercase header row, Totals above the data.
 // Nine columns inside the 1200px Specialists shell, so the fixed widths are trimmed
 // rather than letting the ERT column push the table into a horizontal scroll.
-const SPECIALIST_GRID = `1.4fr 104px 72px 56px 100px 100px 100px 100px ${CARD_FEE_COL} 185px`
+export const SPECIALIST_GRID = `1.4fr 104px 72px 56px 100px 100px 100px 100px ${CARD_FEE_COL} 185px`
 const MEMBER_GRID = '1.6fr 140px 66px 118px 118px 118px'
 export const tableStyle = { border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }
 export const headerRowStyle = { display: 'grid', gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }
