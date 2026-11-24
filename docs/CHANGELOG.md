@@ -9,6 +9,71 @@
 
 ---
 
+## 2026-11-24 (c) — /black-friday: the list of what Growth Credits buy, under the timer — by Jake
+
+Branch `claude/black-friday-services-list` (vfo-react only). Website only, one file (`BlackFridayPage.jsx`): no backend, migration, template or switch; action count **704** and **54** route pages (both unchanged). Public page only, not the member portal. Flow: [flows/gift-credits.md](flows/gift-credits.md) Flow F.
+
+**What was asked for.** The team wanted the page to sell more: a list of what Growth Credits can be used for, under the timer, without clutter. Marketing sent two Canva images and said to recreate them if they did not suit phones; Jake: use their text and match our style exactly.
+
+**Built.** The heading and six lines in code, in the countdown's own boxes and gold, wrapping on phones (an image would not, and its no-background version was white on white). It shows before and during the sale, Extended included; not on the thank-you page and not when there is no sale. **Added by Claude, kept by Jake:** during the sale the list put the credit picker 950px down at 1280x900, so a gold *Get the deal* button under the timer scrolls to it. Not built: a link to the GC Marketplace on the confirmation page, raised in the same email and not picked up.
+
+**Tested on the dev server by Jake (2026-11-24).** All three phases on desktop and in the phone preview, with the button and the picker, by moving the test site's sale dates (put back to live's dates after). **By Claude:** before the sale at 1280 and 390, the running sale at 1280, Extended at 1280, 390 and 360, and no list or button on the thank-you.
+
+---
+
+## 2026-11-24 (b) — /black-friday: a clean loading screen, and a dropped connection is retried — by Jake
+
+Branch `claude/black-friday-loading` (vfo-react only). Website only: no backend, migration, template or switch; action count **704** and **54** route pages (both unchanged). The sale switch is On on live since 2026-11-24 (Jake), so the page is public. Flow: [flows/gift-credits.md](flows/gift-credits.md) Flow F.
+
+**What Jake asked for.** The page looked wrong for a split second while loading: a short dark hero on top and *"Loading..."* on white below.
+
+**Built.** One full dark screen from the first paint to the content, which fades in; a spinner after half a second only. Three things drew the flash, so three were changed: the page's own loading state, `RouteFallback` while the chunk loads, and the route file before any code runs (`emit-route-pages.mjs` adds one `#root:empty` rule to `black-friday/index.html`; the background string moved to `src/lib/bfHeroBg.js` so all three paint the same).
+
+**Found while checking, fixed on Jake's yes.** A failed status request read *"There is no sale running right now"*. `useGcPromo` now retries until it is answered and reports `failed`; the page says *"We're having trouble connecting"* with Try again. The pay page had it too (*"The Black Friday sale is not running right now"*, and *"You've had all your free credits in this sale"* after a failed free-credits check). Gotcha **#783**.
+
+**Tested on the dev server by Jake (2026-11-24).** Reloads on desktop and the phone preview, Slow 4G, a blocked request (message, then recovery without a reload), and the bar and banner signed in as a member. **By Claude:** the delayed answer at 1280 and 390, the message at 1280 and 360, recovery with no calls after it, the sale running, no sale, the thank-you while offline, the public pay page's message and recovery, and the built route file with its scripts held back (a test-site build served locally). **Not exercised:** the 12-second message on a hung request, and the pay page's message after a failed free-credits check (signed in). Both are on JLathamERT/vfo-edge-functions#609.
+
+---
+
+## 2026-11-24 (a) — Black Friday sale: a first ending on Sunday, Extended through Cyber Monday, and the page before the sale — by Jake
+
+Branch `claude/black-friday-extended` (both repos). Website + one data migration, `20261124150000_gc_black_friday_first_end.sql` (the sale row's `bonus.first_ends_at`; test site done, live at release, BEFORE the website). No backend code, no DDL, no template, no switch; action count **704** (unchanged), **54** route pages (unchanged). Flow: [flows/gift-credits.md](flows/gift-credits.md) Flow F.
+
+**What Jake asked for.** Once the switch is On: a countdown to the start, then one to Sunday night, then from Monday 12:00 AM PST a new one to Monday night with "extended" in big letters.
+
+**Built.** `useGcPromo` reads an optional `first_ends_at` from the sale row and adds `extended` + `endsLine`; every phase flips by itself on an open page. The lettering is drawn in code (`BfExtended`, gold, a lighter-theme version for dark mode) rather than an image, so it matches the design. No backend change was needed because `gc_promo_status` already returns `bonus` whole, and the server sells the deal from `starts_at` to `ends_at` throughout. Phase 2 reads *"Weekend offer ends Sunday, November 29…"*, not *"Offer ends"*, because the sale does carry on.
+
+**Also (Jake, 2026-11-24).** Before the sale the public page is its top section alone, filling the screen (no picker, no *"The deals open"* card), and it no longer shows an end date. The sub text is the new 2027 wording. The end date carries its weekday, on its own line in the banner.
+
+**Found and fixed while checking.** In dark mode the banner's picker number was near-white on the light band (invisible; in v1131's website since 2026-11-20, behind the switch). On phones the bar's button was cut off at the right edge (same release). *"Each deal can be used once per member"* and *"Buy the other deal"* were left over from the old two-deal version. Gotcha **#782**.
+
+**Hub.** Live `send_mode` templates 268 of 376 → **269 of 377** (a release since; re-derived).
+
+**Tested on the test site by Jake (2026-11-24).** Phase 1 and phase 2 on the public page and in the portal (dark mode included); the phase 2 → 3 flip on both; the phone preview for phases 1-3. **By Claude:** each phase on the public page, the flip and the end of the sale on an open page, the bar and banner at 1280 / 390 / 360 in the phases that differ, and in both themes for Extended. **Not exercised:** the portal banner's picker in dark mode with a signed-in member who has free credits left (the test member had none; it was drawn on a blank page). Live's first Sunday-to-Monday flip is on JLathamERT/vfo-edge-functions#609.
+
+---
+
+## 2026-11-23 (g) — Portal Backlog: likes, a cap on likes per person, and Sort by likes (7a, 7b, 7c) — by Paxton
+
+**Why.** Workbench items *Backlog 7a*, *7b* and *7c* (Jake's point 7 in *Portal Backlog Request*: "a like feature so other team members can express what they like the sound of", limited "so they can only choose a couple and we can really see what a lot of people want and not just what 1 person thinks is important"). 7a and 7b shipped together (spec decision), so no one is ever over the cap at launch; 7c rides on 7a. 7a + 7b were click-tested together, then 7c.
+
+**Paxton's decisions (2026-11-23).**
+- **Requests only.** Jake's open question in spec 7a was whether tasks are likeable: they are not. No button on a task, the server refuses a like on one, and Sort by likes keeps tasks on top as Sort by priority does (spec 7c had mixed them in at priority 0).
+- **The cap starts at 5** (spec 7b proposed 3).
+- The specs predate 5a: the Requests tab now has one table, so 7c's Likes column and sort apply to it; Live counts as done for the cap.
+
+**Migration** `20261123210000_portal_backlog_likes.sql` (edge repo, after `…200000_portal_backlog_live_importance.sql`):
+- `portal_request_likes` (request, admin; both cascade) and the one-row `portal_backlog_settings` (`like_cap` 1–20, default 5). Both RLS deny-all with the deny policy in the same migration (the specs had left the policy out); the anon-key probe returns `*/0` for both and the security advisor is at its baseline.
+- `portal_request_like_set(p_id, p_admin, p_liked)`: the likeable test, the active-like count and the write in one transaction under a per-admin advisory lock (precedent: `money_mapping_ledger`). Proven in SQL on the test site: 5 likes, a 6th refused, a Live like allowed without counting, denied and missing refused, a repeat like idempotent, an unlike freeing one.
+- `portal_backlog_resort` dropped and re-created with `p_order text default 'priority'` (`'likes'`: like count, then the priority key), so the two-argument calls on main and other test builds keep working.
+- No `portal_request_apply` change: likes write no event rows.
+
+**Server** (`actions/portal-backlog/`): `portal_request_like` (any admin) and `portal_backlog_settings_save` (superadmin, also in `SUPERADMIN_ONLY_ACTIONS`); `portal_backlog_resort` takes `order_by`; `portal_backlog_load` adds `like_count` / `liked_by` / `liked_by_me` per request and `like_cap` / `likes_left`; the archive load adds `like_count`. Action count 702 → 704. No bells.
+
+**Website:** `LikeButton.jsx` on Requests rows (its own **Likes** column after Title), request cards on the board and the details ("Liked by You, …"), a read-only count in the Archive; "k of N likes left"; the superadmin "Likes: N each" link and `LikeCapDialog.jsx`; "Likes: Most" in the Sort dropdown and a sortable Likes header; "Sort by likes" beside "Sort by priority" on board columns. The like flips at once and reverts with the server's message; a press on it never opens the row, the drawer or a drag. The Requests skeleton gained the column.
+
+**Not proven on the test site** (Issue #582): a regular admin's view and their crafted `portal_backlog_settings_save` / `order_by: 'likes'` calls (403), and "Liked by" with two admins.
+
 ## 2026-11-23 (f) — Portal Backlog: a Live stage, the What's new tab, and the release importance marker (5a, 5b) — by Paxton
 
 **Why.** Workbench items *Backlog 5a* and *5b* (Jake's point 5 in *Portal Backlog Request*: "a ready to announce sub tab that lists in order new features that have gone live" and "some way to mark importance", so a minor change is not highlighted while big news "needs to be very visible and stand out so team members know to let members know"). 5b depends on 5a; built together and click-tested together. Built on top of 4a–4c (#622 / #648), which merged while this chat was mid-build. The migration and the backend were re-layered onto it, so tasks follow the same flow.
