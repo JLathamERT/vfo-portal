@@ -3,11 +3,14 @@ import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-do
 import { CardShell, SkeletonText } from './components/shared/Skeleton'
 // Each portal and each emailed-link page is its own chunk (src/lib/lazyPage.js).
 import { lazyPage } from './lib/lazyPage'
+import { BF_HERO_BG } from './lib/bfHeroBg'
 
 // Shown only if a page's chunk takes longer than a moment to arrive.
 function RouteFallback() {
   const [show, setShow] = useState(false)
   useEffect(() => { const t = setTimeout(() => setShow(true), 300); return () => clearTimeout(t) }, [])
+  // The Black Friday page is dark from the first paint, so it never flashes light.
+  if (/^\/black-friday\/?$/.test(window.location.pathname)) return <div style={{ minHeight: '100vh', background: BF_HERO_BG }} />
   if (!show) return null
   // A portal's chunk: its navy top bar is drawn at once, as every portal page does.
   const portal = /^\/(admin|member|client|specialist|tax-planner)(\/|$)/.test(window.location.pathname)

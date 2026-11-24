@@ -50,6 +50,8 @@ export function bfTone(tone) {
 export const BF_KEYFRAMES = `
 @keyframes vfoBfSheen { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } }
 @keyframes vfoBfPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,193,69,0.55) } 50% { box-shadow: 0 0 0 6px rgba(255,193,69,0) } }
+@keyframes vfoBfIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes vfoBfSpin { to { transform: rotate(360deg) } }
 @keyframes vfoBfShine { 0%, 55% { background-position: 150% 0 } 100% { background-position: -50% 0 } }
 @media (prefers-reduced-motion: reduce) { .vfo-bf-anim { animation: none !important } }
 `

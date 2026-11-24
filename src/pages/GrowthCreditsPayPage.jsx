@@ -32,7 +32,7 @@ export default function GrowthCreditsPayPage() {
 
   useEffect(() => {
     if (!member || !isDeal) { setFreeLeft(Infinity); return }
-    callApi('gc_promo_member_claims', { member_number: member.member_number }).then(r => setFreeLeft(Number(r.remaining) || 0)).catch(() => setFreeLeft(0))
+    callApi('gc_promo_member_claims', { member_number: member.member_number }).then(r => setFreeLeft(Number(r.remaining) || 0)).catch(() => setFreeLeft('failed'))
   }, [])
 
   const backHref = isPublic ? '/black-friday' : '/member'
@@ -41,11 +41,14 @@ export default function GrowthCreditsPayPage() {
   if (!isDeal && !GC_NET_PRICES[credits]) return <Message icon="!" tone="red" title="Something went wrong" text="That credit package doesn't exist." backHref={backHref} backLabel={backLabel} />
   if (isPublic && !buyer?.email) return <Message icon="!" tone="red" title="Your details are missing" text="Please start again from the Black Friday page." backHref={backHref} backLabel={backLabel} />
   if (!isPublic && !member) return <Message icon="i" tone="grey" title="Please sign in" text="Sign in to your VFO portal to buy Growth Credits." backHref="/member/login" backLabel="Go to sign in" />
-  if (!promo.loaded || freeLeft === null) return (
+  if (!promo.loaded || freeLeft === null || (isDeal && promo.failed && promo.failed < 3)) return (
     <TokenShell>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '15px', textAlign: 'center', margin: 0 }}>Loading…</p>
     </TokenShell>
   )
+
+  // No answer is not "no sale" or "no free credits left" (2026-11-24).
+  if (isDeal && (promo.failed || freeLeft === 'failed')) return <Message icon="!" tone="grey" title="We're having trouble connecting" text="Please check your internet connection and try again." backHref={window.location.pathname + window.location.search} backLabel="Try again" />
 
   const deal = promo.live ? promo.deal : null
   if (isDeal && !deal) return <Message icon="i" tone="grey" title="This deal isn't available" text="The Black Friday sale is not running right now." backHref={backHref} backLabel={backLabel} />

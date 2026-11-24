@@ -1,6 +1,7 @@
-import { mkdirSync, copyFileSync, existsSync } from 'node:fs'
+import { mkdirSync, copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { BF_HERO_BG } from '../src/lib/bfHeroBg.js'
 
 // GitHub Pages has no SPA rewrite: a request for a client-side route is a real
 // HTTP 404 rescued only by the JS in public/404.html. Humans never notice;
@@ -85,5 +86,16 @@ for (const route of ROUTES) {
   mkdirSync(dir, { recursive: true })
   copyFileSync(source, join(dir, 'index.html'))
 }
+
+// The Black Friday page is dark: its file paints the same background until React
+// draws into #root (the rule stops matching then), so it never opens on white.
+const bfPage = join(dist, 'black-friday', 'index.html')
+const bfHtml = readFileSync(bfPage, 'utf8')
+if (!bfHtml.includes('</head>')) {
+  console.error('emit-route-pages: no </head> in dist/index.html')
+  process.exit(1)
+}
+writeFileSync(bfPage, bfHtml.replace('</head>', () => `<style>#root:empty{min-height:100vh;background:${BF_HERO_BG}}</style>
+  </head>`))
 
 console.log(`emit-route-pages: wrote ${ROUTES.length} route pages`)
