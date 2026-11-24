@@ -9,6 +9,18 @@
 
 ---
 
+## 2026-11-24 (d) — Portal Backlog: no Release importance in a Requests row dropdown — by Paxton
+
+Branch `claude/portal-backlog-dropdown-f80832` (vfo-react only). Website only, one line in `backlog/BacklogDetails.jsx`: no backend, migration, template or switch; action count **705** and **54** route pages (both unchanged). Admin-only screen, so no phone check. Flow: [flows/portal-backlog.md](flows/portal-backlog.md).
+
+**What Paxton asked for.** Release importance should not show in the dropdown under a row on the Requests tab.
+
+**Built.** The Requests tab lists only requests waiting for review, so in a row dropdown the Announcement card held nothing but the Release importance select. That card is now left out of the row dropdown (`layout="grid"`). The drawer (Tasks board, What's new, Archive) and the Mark as announced dialog keep it, and the server is unchanged.
+
+**Tested on the dev server by Paxton (2026-11-24).** A Requests row dropdown with no Announcement card; a Tasks board drawer still setting Release importance; What's new and Archive unchanged.
+
+---
+
 ## 2026-11-24 (c) — /black-friday: the list of what Growth Credits buy, under the timer — by Jake
 
 Branch `claude/black-friday-services-list` (vfo-react only). Website only, one file (`BlackFridayPage.jsx`): no backend, migration, template or switch; action count **704** and **54** route pages (both unchanged). Public page only, not the member portal. Flow: [flows/gift-credits.md](flows/gift-credits.md) Flow F.
