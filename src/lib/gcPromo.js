@@ -31,7 +31,16 @@ export function promoPhaseAt(promo, now) {
   return 'ended'
 }
 
-// { promo, phase: 'upcoming' | 'live' | 'ended' | null, remainingMs, bonusFor(credits) }
+// The sale's first ending (gc_promotions.bonus.first_ends_at), or null. Until it
+// passes every countdown runs to it; from then to ends_at the sale is "extended"
+// (Sunday night, then Cyber Monday - Jake, 2026-11-24). Display only: the server
+// sells the deal from starts_at to ends_at throughout.
+export function promoFirstEnd(promo) {
+  const t = Date.parse(promo?.bonus?.first_ends_at || '')
+  return t > Date.parse(promo?.starts_at) && t < Date.parse(promo?.ends_at) ? t : null
+}
+
+// { promo, phase: 'upcoming' | 'live' | 'ended' | null, live, extended, endsLine, remainingMs, deal }
 export function useGcPromo() {
   const [state, setState] = useState(cache)
   const [now, setNow] = useState(() => Date.now() + (cache?.offset || 0))
@@ -49,14 +58,19 @@ export function useGcPromo() {
   }, [state])
   const promo = state?.promo || null
   const phase = promoPhaseAt(promo, now)
-  const target = phase === 'upcoming' ? Date.parse(promo.starts_at) : phase === 'live' ? Date.parse(promo.ends_at) : now
+  const firstEnd = promoFirstEnd(promo)
+  const extended = phase === 'live' && firstEnd !== null && now >= firstEnd
+  const weekend = firstEnd !== null && !extended
+  const endsAt = weekend ? firstEnd : Date.parse(promo?.ends_at)
+  const target = phase === 'upcoming' ? Date.parse(promo.starts_at) : phase === 'live' ? endsAt : now
   // The deal (2026-11-20): buy 1 to maxFree credits at creditPrice each, get the
   // same number free, up to maxFree free credits per member per sale. Display
   // only - the server decides at checkout.
   const maxFree = Number(promo?.bonus?.max_free) || 0
   const creditPrice = Number(promo?.bonus?.credit_price) || 0
   const deal = maxFree > 0 && creditPrice > 0 ? { maxFree, creditPrice } : null
-  return { loaded: !!state, promo, phase, live: phase === 'live', remainingMs: Math.max(0, target - now), deal }
+  const endsLine = promo ? promoEndsLine(endsAt, weekend ? 'Weekend offer ends' : 'Offer ends') : ''
+  return { loaded: !!state, promo, phase, live: phase === 'live', extended, endsLine, remainingMs: Math.max(0, target - now), deal }
 }
 
 export function splitCountdown(ms) {
@@ -71,18 +85,16 @@ export function promoDayLabel(iso) {
   try { return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' }) } catch { return '' }
 }
 
-// "Offer ends November 30 at 11:59 PM PST": the sale's last minute, Pacific time
-// (ends_at is midnight at the start of the next day).
-export function promoEndsLine(iso) {
-  try {
-    const last = new Date(Date.parse(iso) - 60 * 1000)
-    const day = last.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' })
-    const time = last.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles', timeZoneName: 'short' })
-    return `Offer ends ${day} at ${time}`
-  } catch { return '' }
-}
+// "Starts Fri, Nov 27 at 12:00 AM PST".
+export const promoStartsLine = iso => `Starts ${promoDayLabel(iso)} at 12:00 AM PST`
 
-// The last day of the sale: ends_at is midnight at the START of the next day.
-export function promoLastDayLabel(iso) {
-  try { return promoDayLabel(new Date(Date.parse(iso) - 60 * 1000).toISOString()) } catch { return '' }
+// "Offer ends Monday, November 30 at 11:59 PM PST": the last minute before `end` (ms),
+// Pacific time (an ending is stored as midnight at the start of the next day).
+export function promoEndsLine(end, lead = 'Offer ends') {
+  try {
+    const last = new Date(end - 60 * 1000)
+    const day = last.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' })
+    const time = last.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles', timeZoneName: 'short' })
+    return `${lead} ${day} at ${time}`
+  } catch { return '' }
 }
