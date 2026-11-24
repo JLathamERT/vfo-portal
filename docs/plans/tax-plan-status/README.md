@@ -8,8 +8,8 @@
 | 2 | Backend: change status, emails, payment blocks, one-open-plan rule, next year list | built, passed 2026-11-23 (emailed buttons, pay page, held payment email, cleared bells on a seeded plan) |
 | 3 | Plan page: Status bar, window, locked steps (the headline) | built, Jake's steps 1-17 passed 2026-11-23 |
 | 4 | Tax Plans screen, automatic client status, Client Overview filters + next year list, Set to Lost email, planner lists | built, passed 2026-11-23 except the planner portal list, Tax Planners > Clients and Regular Priorities tags (built, not clicked) |
-| 5 | Forms: the plan picker | not started |
-| 6 | Docs, release | not started |
+| 5 | Forms: the plan picker | built 2026-11-23; its migration (`20261124090000_tax_form_plan_pick.sql`, additive) is on the test site (Jake's go, 2026-11-24). Passed 2026-11-24 (Jake's click-through, card and bank payments, both refunds, the lead's Confirm; the Direct warning; the MAP 1 Tax Form button through the server only) |
+| 6 | Docs, release | not started. Also check the KPI Summary that landed on main 2026-11-24 (`tax_plan_kpi_summary`): it reads `stopped` only, so check what it does with a paused, next-tax-year or completed plan |
 
 Branches when it was written: react `claude/tax-planning-pause-stop-f58393`, edge `claude/tax-planning-pause-stop-7c81a6`.
 
@@ -66,6 +66,13 @@ Branches when it was written: react `claude/tax-planning-pause-stop-f58393`, edg
 | 26 | An agreement signed on a paused or closed plan **holds the payment email**; it goes when the plan is back in progress | 2026-11-23 |
 | 27 | The member-pays wording of the three emails is approved | 2026-11-23 |
 | 28 | **One automatic client status**, no separate tag: Pending (nothing started), Active (anything in progress in any program), Paused, Next tax year, Inactive (everything finished or stopped); Lost stays by hand and wins. Kept in `clients.auto_status`, shown while the `client_auto_status` switch is On, so all live clients can be checked against the old status before anyone sees it. A CIQ and nothing else reads Active, as today. A holistic client (MAP 1 finished, not stopped) stays Active between priorities, so stopping their tax plan never makes them Inactive. "Set them to Lost too?" is asked only when the stop leaves them Inactive. A moved plan leaves the Next tax year list once the client has a newer plan | 2026-11-23 |
+| 29 | A paid $500 is always refunded (base only) when the plan picked for its form takes no deposit | 2026-11-24 |
+| 30 | An existing plan takes a form's deposit only if it is VFO Tax Planning, in progress, not migrated, and has never had a deposit or retainer. The member's usual waiver still applies | 2026-11-24 |
+| 31 | No new email wording for the picker. A waiting form emails nobody; the team email goes at the pick; a form with no deposit sends the client confirmation only when its plan is in progress; a refund is told only by Stripe | 2026-11-24 |
+| 32 | The Vault's "Start the Tax Diagnostic" notice hides while any tax plan is open in either program, and returns when all are closed | 2026-11-24 |
+| 33 | A waiting form has a Dismiss button, which refunds a paid $500 | 2026-11-24 |
+| 34 | The picker's three bells (waiting for its plan, received on an existing plan, received on a paused plan) go to Tracy Miller only, whatever the route, on rules of their own: the ordinary Tax Diagnostics and new-case bells keep Tracy, Tray and Evan | 2026-11-24 |
+| 35 | The three thank-you messages (deposit paid, no deposit needed, form received) end "The tax planning team will be in touch." for everyone and promise no email: a waiting form may get none, and a different message would reveal who already has a plan. The bank-payment message keeps its invoice and receipt line | 2026-11-24 |
 
 **Still open:** nothing.
 
@@ -83,7 +90,7 @@ Branches when it was written: react `claude/tax-planning-pause-stop-f58393`, edg
 
 **The Tax Plans screen.** The current plan on top, closed plans below. Each card: tax year, one tag, step and who owns it, progress, route, planner, paid so far (never to members or clients), and the status banner (who, when, reason, email sent or why not). *Start Tax Plan* opens a window that asks for the tax year; while a plan is open it can't be used. A plan with nothing done can be removed. A blank tax year on an old plan is never guessed.
 
-**Forms.** Section 3, decisions 9-11. A form put on a paused plan rings the PF's bell and doesn't resume it; on a closed plan it is filed and the plan stays closed. One form per plan (decision 16). A replacement form never changes the plan's route or international setting. A Direct form shows the member a warning, because it creates a new client (#563) and the rule can't see a duplicate.
+**Forms.** Section 3, decisions 9-11. A form put on a paused plan rings Tracy Miller's bell, not the PF's (Jake 2026-11-24), and doesn't resume it; on a closed plan it is filed and the plan stays closed. One form per plan (decision 16). A replacement form never changes the plan's route or international setting. A Direct form shows the member a warning, because it creates a new client (#563) and the rule can't see a duplicate.
 
 ## 5. Emails (wording approved by Jake, 2026-11-23; the template rows are created at build)
 
