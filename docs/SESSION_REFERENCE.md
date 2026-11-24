@@ -40,7 +40,7 @@ cd C:\vfo-react;          git fetch --tags -q; git tag -l 'live-*'         --sor
 cd C:\vfo-edge-functions; git fetch --tags -q; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
-#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-23 → 6 + 699 = **705**; past values in CHANGELOG)
+#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-24 → 6 + 708 = **714**; past values in CHANGELOG)
 cd C:\vfo-edge-functions   # or the worktree
 $logins   = (Select-String -Path supabase/functions/vfo-admin-api/index.ts          -Pattern '^\s*if \(action === '            -AllMatches).Matches.Count
 $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatch.ts -Pattern '^\s*"([a-zA-Z0-9_]+)":\s*\(c\)'  -AllMatches).Matches.Count
@@ -49,7 +49,7 @@ $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatc
 # 4. Type-check baseline — must be 0; --no-lock avoids the v5 deno.lock the bundler rejects (#112)
 & "$env:USERPROFILE\.deno\bin\deno.exe" check --no-lock supabase/functions/vfo-admin-api/index.ts   # or plain `deno` when it is on PATH
 
-# 5. Frontend build — expect exit 0. (v: 2026-11-23 → **54** route pages, the dev-only `/phone-preview` never among them; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
+# 5. Frontend build — expect exit 0. (v: 2026-11-24 → **54** route pages, the dev-only `/phone-preview` never among them; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
 cd C:\vfo-react; npm run build
 
 # 6. Pipeline smoke gate — hand it to the person running the chat in EXACTLY this form: THEIR portal email (TEAM table, TEAM_RULES.md), a literal <password>, never a token, never Read-Host
@@ -63,7 +63,7 @@ select jobname, schedule from cron.job order by jobid;
 select pipeline, sandbox_mode, stripe_account from pipeline_sandbox_config order by pipeline;
 ```
 
-**9. Security advisor** — MCP `get_advisors { project_id: "ejpsprsmhpufwogbmxjv", type: "security" }`. **GREEN baseline = deny-all `rls_enabled_no_policy` INFO ×5 + the `pg_net` `extension_in_public` WARN, and nothing else.** Any `rls_disabled_in_public` / `sensitive_columns_exposed` ERROR or `rls_policy_always_true` WARN = a table regressed to anon-reachable → STOP. *(v: 2026-11-05, GREEN at the exact baseline. Earlier checks are in their own CHANGELOG entries.)*
+**9. Security advisor** — MCP `get_advisors { project_id: "ejpsprsmhpufwogbmxjv", type: "security" }`. **GREEN baseline = deny-all `rls_enabled_no_policy` INFO ×5 + the `pg_net` `extension_in_public` WARN, and nothing else.** Any `rls_disabled_in_public` / `sensitive_columns_exposed` ERROR or `rls_policy_always_true` WARN = a table regressed to anon-reachable → STOP. *(v: 2026-11-24, GREEN at the exact baseline on the test site.)*
 
 ---
 
@@ -179,7 +179,7 @@ Money, auth/security, data-loss and cross-repo contracts only, **one lead rule p
 | Logins, sessions, roles, gates · **member portal tiers** (Tier 1 / 2 / 3 positive lists, a type on none cannot sign in, `MEMBER_TIER2_ACTIONS`, gate 6d, portal licensing L6, *v: 2026-11-19*) | [architecture/04-auth-and-sessions.md](architecture/04-auth-and-sessions.md) · plan [plans/portal-licensing/README.md](plans/portal-licensing/README.md) §3 L6 |
 | **Feature switches** (`portal_feature_flags`): every key, what it gates, how it is flipped | [flows/feature-switches.md](flows/feature-switches.md) |
 | `api.js`, orchestration, caching, timeouts | [architecture/06-orchestration-files.md](architecture/06-orchestration-files.md) |
-| Tax pipeline (**any** step, incl. the **Rapid Route** — the TPOM replaced by a video, *v: 2026-09-25* — the **Feature Switches** `portal_licensing` / `tpom_additional_benefits` / `tax_reminders` … | [flows/tax-planning.md](flows/tax-planning.md) |
+| Tax pipeline (**any** step, incl. the **Rapid Route**, the **Feature Switches** `portal_licensing` / `tpom_additional_benefits` / `tax_reminders` … | [flows/tax-planning.md](flows/tax-planning.md) · plan status, form picker: [flows/tax-plan-status.md](flows/tax-plan-status.md) |
 | **The public VFO Tax Diagnostic** (`/tax-diagnostic`, **pay-first since 2026-09-30** — auto-approve, a lead's Confirm / Deny + refund, Dismiss, the admin Tax Diagnostics page (tabs … | [flows/tax-intake.md](flows/tax-intake.md) · plan of record [plans/direct-tax-planning/README.md](plans/direct-tax-planning/README.md) |
 | **SDP - Advanced Tax Strategy Governance** — SDP's own clients: agreement, retainer (runs year after year), impact fees, sweep, split, Accounting > SDP ATSG; `sdp_atsg_*` tables (*v: 2026-11-20*) | [flows/sdp-atsg.md](flows/sdp-atsg.md) · [tables/tax.md](tables/tax.md) (SDP ATSG tables) |
 | **Portal Backlog** — More ▾ tab: requests, review, board, likes, write-ups, archive, `BACKLOG_*` bells (*v: 2026-11-23*) | [flows/portal-backlog.md](flows/portal-backlog.md) · [tables/portal-backlog.md](tables/portal-backlog.md) |

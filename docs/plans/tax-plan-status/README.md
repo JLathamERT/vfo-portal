@@ -1,6 +1,6 @@
 # Tax plan status: Pause, Stop, Next tax year + the Tax Plans screen
 
-**Status: BUILDING (Jake's "go", 2026-11-23, which covers the phase 1 database changes).** Decisions below are dated. Nothing is released.
+**Status: BUILT, waiting to merge and release (2026-11-24).** Decisions below are dated. What is left after release: Issues JLathamERT/vfo-edge-functions#629 to #632.
 
 | Phase | What | State |
 |---|---|---|
@@ -9,9 +9,9 @@
 | 3 | Plan page: Status bar, window, locked steps (the headline) | built, Jake's steps 1-17 passed 2026-11-23 |
 | 4 | Tax Plans screen, automatic client status, Client Overview filters + next year list, Set to Lost email, planner lists | built, passed 2026-11-23 except the planner portal list, Tax Planners > Clients and Regular Priorities tags (built, not clicked) |
 | 5 | Forms: the plan picker | built 2026-11-23; its migration (`20261124090000_tax_form_plan_pick.sql`, additive) is on the test site (Jake's go, 2026-11-24). Passed 2026-11-24 (Jake's click-through, card and bank payments, both refunds, the lead's Confirm; the Direct warning; the MAP 1 Tax Form button through the server only) |
-| 6 | Docs, release | not started. Also check the KPI Summary that landed on main 2026-11-24 (`tax_plan_kpi_summary`): it reads `stopped` only, so check what it does with a paused, next-tax-year or completed plan |
+| 6 | Docs, release | docs written 2026-11-24 ([tax-plan-status.md](../../flows/tax-plan-status.md)). The KPI fix and the bell change (`20261124180000`, `20261124180100`) are on the test site and the KPI fix passed. Release: the six migrations in order on live, `client_auto_status` Off, `TAX_refund_email\|Yes` and its twin to Send, settle the client with two live plans |
 
-Branches when it was written: react `claude/tax-planning-pause-stop-f58393`, edge `claude/tax-planning-pause-stop-7c81a6`.
+Branches: react `claude/tax-plan-status-picker-f3f8de`, edge `claude/tax-plan-status-picker-8d4de0` (which carry `claude/tax-planning-pause-stop-*`).
 
 ## 1. What Jake asked for
 
@@ -73,6 +73,8 @@ Branches when it was written: react `claude/tax-planning-pause-stop-f58393`, edg
 | 33 | A waiting form has a Dismiss button, which refunds a paid $500 | 2026-11-24 |
 | 34 | The picker's three bells (waiting for its plan, received on an existing plan, received on a paused plan) go to Tracy Miller only, whatever the route, on rules of their own: the ordinary Tax Diagnostics and new-case bells keep Tracy, Tray and Evan | 2026-11-24 |
 | 35 | The three thank-you messages (deposit paid, no deposit needed, form received) end "The tax planning team will be in touch." for everyone and promise no email: a waiting form may get none, and a different message would reveal who already has a plan. The bank-payment message keeps its invoice and receipt line | 2026-11-24 |
+| 36 | A failed tax planning bank deposit rings Jake only (`FAILURE_tax_intake_deposit_ach`); Tracy, Tray and Evan had it | 2026-11-24 |
+| 37 | On the Tax Planner KPIs a plan closed as Completed is not in process: unticked steps read Not Decided with no days, nothing is due. Next tax year stays a Stop, and a paused plan's days keep counting | 2026-11-24 |
 
 **Still open:** nothing.
 
