@@ -78,6 +78,8 @@ export default function MemberTaxDiagnostic({ member }) {
   function finish(res) {
     setDoneMessage(res?.link_sent_to
       ? `We have emailed the Tax Planning Form link to ${res.link_sent_to}.`
+      : res?.filed_on_plan && res?.tax_plan_id
+        ? 'Thank you. The Tax Planning Form is on the plan you picked.'
       : res?.tax_plan_id
         ? (startFor ? 'Tax planning started. We have emailed you a confirmation.' : 'Client created. We have emailed you a confirmation.')
         : 'Thank you — your Tax Planning Form has been received.')

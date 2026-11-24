@@ -2598,7 +2598,7 @@ const intakeToolBtn = (enabled) => ({ display: 'inline-flex', alignItems: 'cente
 // with commas); the client's identity / contact / state and the member fields stay
 // read-only (TAX_INTAKE_EDIT_LOCKED, mirrored server-side). A changed answer
 // carries an "Edited" chip that opens its history (who, when, from, to).
-function TaxIntakeCard({ intake, questions, clientId, planId, canEdit = false, onSaved }) {
+function TaxIntakeCard({ intake, questions, earlier = [], clientId, planId, canEdit = false, onSaved }) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState({})
@@ -2606,6 +2606,7 @@ function TaxIntakeCard({ intake, questions, clientId, planId, canEdit = false, o
   const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState('')
   const [historyOpen, setHistoryOpen] = useState({})
+  const [earlierOpen, setEarlierOpen] = useState({})
   if (!intake) return null
 
   const answers = intake.answers || {}
@@ -2790,6 +2791,28 @@ function TaxIntakeCard({ intake, questions, clientId, planId, canEdit = false, o
               <button type="button" onClick={save} disabled={saving} style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '12.5px', cursor: saving ? 'not-allowed' : 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.18)', color: '#0095ff', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>{saving ? 'Saving…' : 'Save changes'}</button>
             </div>
           )}
+          {/* Forms this plan had before this one (2026-11-23). Read-only. */}
+          {!editing && earlier.length > 0 && (
+            <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--vfo-border)' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'var(--vfo-muted)', marginBottom: '6px' }}>Earlier forms</div>
+              {earlier.map(f => (
+                <div key={f.id} style={{ marginTop: '8px', padding: '10px 14px', borderRadius: '10px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)' }}>
+                  <div onClick={() => setEarlierOpen(o => ({ ...o, [f.id]: !o[f.id] }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', cursor: 'pointer', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>
+                      Submitted {formatFullDate(f.created_at)} by the {f.payer === 'client' ? 'client' : 'member'}{f.replaced_at ? ` · replaced ${formatFullDate(f.replaced_at)}` : ''}
+                    </span>
+                    <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: earlierOpen[f.id] ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
+                  </div>
+                  {earlierOpen[f.id] && numberTaxIntakeQuestions(questions || [], f.answers || {}, 0, true).map(({ q, num }) => (
+                    <div key={q.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '6px 0', borderTop: '1px solid var(--vfo-border-soft)', marginTop: num === 1 ? '8px' : 0 }}>
+                      <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flex: '1 1 300px', lineHeight: 1.5 }}>{num}. {q.label}</span>
+                      <span style={{ flex: '1 1 240px', fontSize: '12px', color: 'var(--vfo-ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{intakeAnswerText(q.id, (f.answers || {})[q.id]) || '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -2811,6 +2834,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   // the Deposit Paid step.
   const [taxIntake, setTaxIntake] = useState(null)
   const [taxIntakeQuestions, setTaxIntakeQuestions] = useState([])
+  const [earlierForms, setEarlierForms] = useState([])
   // The personal form link box waits for this read, then shows only while the plan
   // has no form — so it never flashes on a plan that already has one.
   const [taxIntakeLoaded, setTaxIntakeLoaded] = useState(false)
@@ -2825,7 +2849,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     // tax_plan_id: this plan's OWN form first (per-plan links, 2026-10-09), else
     // the client's latest form not tied to a plan.
     callApi('tax_intake_load', { client_id: clientId, tax_plan_id: plan.id })
-      .then(d => { if (!live) return; setTaxIntake(d?.intake || null); setTaxIntakeQuestions(d?.questions || []); setTaxIntakeLoaded(true) })
+      .then(d => { if (!live) return; setTaxIntake(d?.intake || null); setTaxIntakeQuestions(d?.questions || []); setEarlierForms(d?.earlier || []); setTaxIntakeLoaded(true) })
       .catch(() => { if (live) setTaxIntake(null) })
     return () => { live = false }
   }, [clientId, plan.id])
@@ -5158,7 +5182,10 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
 
     if (task.status_options === 'tax_deposit_pi') {
       const savedPi = livePlan?.deposit_payment_intent_id || ''
-      const paidViaPortal = !!taxIntake?.tax_plan_id && String(taxIntake.tax_plan_id) === String(livePlan?.id ?? plan?.id ?? '')
+      // The form the deposit came in on, which a replacement form is not; a deposit
+      // still clearing is not on the plan yet, so this plan's own form says it.
+      const paidViaPortal = taxIntake?.deposit_via_portal === true
+        || (!savedPi && !!taxIntake?.tax_plan_id && String(taxIntake.tax_plan_id) === String(livePlan?.id ?? plan?.id ?? ''))
       // A waived intake (2+ qualifying clients) writes this row as
       // "N/A — No Deposit": nothing to paste, the step is closed.
       const depositWaived = p.status === DEPOSIT_NA_STATUS
@@ -5190,7 +5217,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       // gone to the planning group. The server refuses both cases too.
       const canEarlyRefund = !readOnly && !plannerMode && !!savedPi && !depositRefunded
         && !reviewStatus && !livePlan?.deposit_team_share_status
-      const earlyRefundPayer = taxIntake?.payer === 'client' ? 'the client' : 'the member'
+      const depositPayer = taxIntake?.deposit_payer || taxIntake?.payer
+      const earlyRefundPayer = depositPayer === 'client' ? 'the client' : 'the member'
       async function sendEarlyRefund() {
         const name = client?.first_name ? `${client.first_name} ${client.last_name || ''}`.trim() : 'this client'
         if (!confirm(`Refund the tax planning deposit and stop tax planning for ${name}?\n\nThe deposit is refunded in Stripe to whoever paid it, the plan is closed, and an "as you requested" email goes to ${earlyRefundPayer}. Cannot be undone.`)) return
@@ -5207,7 +5235,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       return (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone && depositClosed ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone && depositClosed ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-          <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{canEarlyRefund && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title="Refund deposit" templates={[{ name: taxIntake?.payer === 'client' ? 'TAX_deposit_refund_requested|client' : 'TAX_deposit_refund_requested', when: 'Refund deposit — the client or member asked to stop before the planner review' }]} context={{ ...emailCtx, 'Refund Amount': '$500.00' }} /></span>}</span>
+          <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{canEarlyRefund && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title="Refund deposit" templates={[{ name: depositPayer === 'client' ? 'TAX_deposit_refund_requested|client' : 'TAX_deposit_refund_requested', when: 'Refund deposit — the client or member asked to stop before the planner review' }]} context={{ ...emailCtx, 'Refund Amount': '$500.00' }} /></span>}</span>
           {depositWaived ? (
             <span style={neutralChipStyle} title="No deposit was taken: the member already had two qualifying tax clients">N/A — No Deposit</span>
           ) : depositClearing ? (
@@ -6028,6 +6056,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       <TaxIntakeCard
         intake={taxIntake}
         questions={taxIntakeQuestions}
+        earlier={earlierForms}
         clientId={clientId}
         planId={plan.id}
         // Edit: admins, and in the planner portal only the plan's allocated Tax

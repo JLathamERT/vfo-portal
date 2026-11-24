@@ -97,7 +97,7 @@ export default function TaxIntakePage() {
     return <TokenShell maxWidth={520}><Message icon="✓" color="#64748b" title="Thank you." message="We have already received your Tax Planning Form, and your bank payment for the deposit is on its way. Bank transfers take 3-5 business days to clear; your invoice and receipt will follow by email." /></TokenShell>
   }
   if (status === 'thanks') {
-    return <TokenShell maxWidth={520}><Message icon="✓" color="#16a34a" title="Thank you." message="Your Tax Planning Form has been received. A confirmation email is on its way, and the tax planning team will be allocated in due course." /></TokenShell>
+    return <TokenShell maxWidth={520}><Message icon="✓" color="#16a34a" title="Thank you." message="Your Tax Planning Form has been received. The tax planning team will be in touch." /></TokenShell>
   }
 
   return (

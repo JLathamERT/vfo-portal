@@ -132,13 +132,13 @@ export default function TaxDepositPayPage() {
   // trusted here), or the row already records the deposit.
   if (state === 'paid' || state === 'completed' || (returnedPaid && state !== 'not_ready' && state !== 'waived')) return (
     <TokenShell maxWidth={520}>
-      <Message tone="green" title="Thank you." message="Your deposit has been received. A confirmation email is on its way, and the tax planning team will be allocated in due course." />
+      <Message tone="green" title="Thank you." message="Your deposit has been received. The tax planning team will be in touch." />
     </TokenShell>
   )
 
   if (state === 'waived') return (
     <TokenShell maxWidth={520}>
-      <Message tone="green" title="Thank you." message="No deposit is needed. A confirmation email is on its way, and the tax planning team will be allocated in due course." />
+      <Message tone="green" title="Thank you." message="No deposit is needed. The tax planning team will be in touch." />
     </TokenShell>
   )
 

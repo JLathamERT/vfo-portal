@@ -893,6 +893,8 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     // the "send my client a link" route, where nothing exists yet at all.
     setDoneMessage(res?.link_sent_to
       ? `We have emailed the Tax Planning Form link to ${res.link_sent_to}.`
+      : res?.filed_on_plan && res?.tax_plan_id
+        ? 'Thank you. The Tax Planning Form is on the plan you picked.'
       : res?.tax_plan_id
         ? 'Client created. We have emailed you a confirmation.'
         : 'Thank you — your Tax Planning Form has been received.')
