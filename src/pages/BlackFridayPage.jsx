@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import VfoWordmark from '../components/shared/VfoWordmark'
-import { BF, BF_KEYFRAMES, BfCountdown, BfTag } from '../components/shared/BlackFridayPromo'
-import { promoDayLabel, promoEndsLine, useGcPromo } from '../lib/gcPromo'
+import { BF, BF_KEYFRAMES, BfCountdown, BfExtended, BfTag, bfTagText } from '../components/shared/BlackFridayPromo'
+import { promoStartsLine, useGcPromo } from '../lib/gcPromo'
 import { useIsPhone } from '../lib/useMediaQuery'
 
 // The public Black Friday page (2026-11-20): /black-friday, no sign-in. A member
@@ -18,7 +18,7 @@ export default function BlackFridayPage() {
   const isPhone = useIsPhone()
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
-  const { loaded, promo, phase, remainingMs, deal } = useGcPromo()
+  const { loaded, promo, phase, live, extended, endsLine, remainingMs, deal } = useGcPromo()
   const [pick, setPick] = useState(null)
   const [form, setForm] = useState(() => {
     const blank = { first_name: '', last_name: '', email: '', phone: '' }
@@ -31,7 +31,9 @@ export default function BlackFridayPage() {
   // The tab title names the sale only once the server says one is on.
   useEffect(() => { document.title = promo ? 'Black Friday - Growth Credits | VFO' : 'Growth Credits | VFO' }, [promo])
 
-  const live = phase === 'live'
+  // Before the sale the page is the top section alone, filling the screen: no
+  // picker and no "deals open" card (Jake, 2026-11-24).
+  const topOnly = phase === 'upcoming' && !paid
   const maxFree = deal?.maxFree || 10
   const creditPrice = deal?.creditPrice || 100
 
@@ -52,12 +54,12 @@ export default function BlackFridayPage() {
   const label = { display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--vfo-muted)', marginBottom: '6px', letterSpacing: '0.3px' }
 
   const hero = (
-    <div style={{ position: 'relative', overflow: 'hidden', background: `radial-gradient(70% 120% at 85% 0%, rgba(10,133,232,0.5) 0%, rgba(10,133,232,0) 60%), radial-gradient(60% 120% at 0% 100%, rgba(18,94,204,0.4) 0%, rgba(18,94,204,0) 60%), linear-gradient(135deg, ${BF.ink} 0%, ${BF.ink2} 50%, #0d2350 100%)`, color: '#fff' }}>
+    <div style={{ position: 'relative', overflow: 'hidden', background: `radial-gradient(70% 120% at 85% 0%, rgba(10,133,232,0.5) 0%, rgba(10,133,232,0) 60%), radial-gradient(60% 120% at 0% 100%, rgba(18,94,204,0.4) 0%, rgba(18,94,204,0) 60%), linear-gradient(135deg, ${BF.ink} 0%, ${BF.ink2} 50%, #0d2350 100%)`, color: '#fff', ...(topOnly ? { minHeight: '100vh', display: 'flex', flexDirection: 'column' } : {}) }}>
       <div className="vfo-bf-anim" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(100deg, transparent 0%, transparent 42%, rgba(255,255,255,0.06) 50%, transparent 58%, transparent 100%)', backgroundSize: '200% 100%', animation: 'vfoBfSheen 7s linear infinite', pointerEvents: 'none' }} />
       <div style={{ position: 'relative', height: '58px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <VfoWordmark size={17} light />
       </div>
-      <div style={{ position: 'relative', maxWidth: '920px', margin: '0 auto', padding: isPhone ? '32px var(--vfo-gutter) 36px' : '56px 24px 60px', textAlign: 'center' }}>
+      <div style={{ position: 'relative', maxWidth: '920px', margin: topOnly ? 'auto' : '0 auto', padding: isPhone ? '32px var(--vfo-gutter) 36px' : '56px 24px 60px', textAlign: 'center' }}>
         {/* Nothing about a sale until the server has said one is on: while it loads
             the hero is empty, and with no sale (the gc_black_friday switch Off) it
             says only "Growth Credits" (no flash of the deal, Jake 2026-11-20). */}
@@ -67,12 +69,13 @@ export default function BlackFridayPage() {
           <h1 style={{ fontSize: isPhone ? '30px' : '44px', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05, margin: '6px 0 0' }}>Growth Credits</h1>
         ) : (
           <>
-            <BfTag>{live ? 'Black Friday - live now' : 'Black Friday'}</BfTag>
+            <BfTag>{bfTagText(live, extended)}</BfTag>
+            {extended && <div style={{ marginTop: '18px' }}><BfExtended size={isPhone ? 54 : 92} /></div>}
             <h1 style={{ fontSize: isPhone ? '34px' : '56px', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05, margin: '18px 0 12px' }}>
               Buy 1, Get 1 <span style={{ background: `linear-gradient(135deg, ${BF.gold} 0%, ${BF.goldDeep} 100%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Free</span>
             </h1>
             <p style={{ fontSize: isPhone ? '15px' : '18px', color: 'rgba(255,255,255,0.78)', maxWidth: '620px', margin: '0 auto', lineHeight: 1.5 }}>
-              Get twice the Growth Credits to put toward the marketing and business development services available in the VFO Marketplace.
+              Whether you're looking to strengthen your brand, expand your network, or generate more VFO opportunities, Growth Credits can help you put the right resources in place for 2027.
             </p>
           </>
         )}
@@ -83,7 +86,7 @@ export default function BlackFridayPage() {
             </div>
             <BfCountdown ms={remainingMs} size={isPhone ? 'md' : 'lg'} />
             <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
-              {promoEndsLine(promo.ends_at)}
+              {live ? endsLine : promoStartsLine(promo.starts_at)}
             </div>
           </div>
         )}
@@ -108,7 +111,7 @@ export default function BlackFridayPage() {
           {' '}We've emailed you a confirmation.
         </p>
         <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <button onClick={() => { params.delete('paid'); params.delete('m'); setParams(params) }} style={{ background: 'none', border: 'none', color: 'var(--vfo-link)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Buy the other deal</button>
+          <button onClick={() => { params.delete('paid'); params.delete('m'); setParams(params) }} style={{ background: 'none', border: 'none', color: 'var(--vfo-link)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Buy more credits</button>
         </div>
       </div>
     )
@@ -119,6 +122,8 @@ export default function BlackFridayPage() {
         <p style={{ fontSize: '14px', color: 'var(--vfo-muted)', textAlign: 'center', margin: 0 }}>Growth Credits are always available from the Growth Credits section of your VFO portal.</p>
       </div>
     )
+  } else if (topOnly) {
+    body = null
   } else {
     body = (
       <>
@@ -163,13 +168,6 @@ export default function BlackFridayPage() {
             )}
           </div>
         </div>
-        {!live && (
-          <div style={{ ...card, textAlign: 'center', padding: '22px' }}>
-            <div style={{ fontSize: '15px', fontWeight: 700 }}>The deals open {promoDayLabel(promo.starts_at)} at 12:00 AM PST.</div>
-            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '6px' }}>Come back to this page then. Each deal can be used once per member.</div>
-          </div>
-        )}
-
         {live && (
           <form onSubmit={submit} style={card}>
             <div style={{ fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>Your details</div>
@@ -201,9 +199,11 @@ export default function BlackFridayPage() {
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }}>
       <style>{BF_KEYFRAMES}</style>
       {hero}
-      <div style={{ maxWidth: '760px', margin: isPhone ? '-18px auto 0' : '-30px auto 0', padding: `0 ${isPhone ? 'var(--vfo-gutter)' : '24px'} 48px`, position: 'relative' }}>
-        {body}
-      </div>
+      {body && (
+        <div style={{ maxWidth: '760px', margin: isPhone ? '-18px auto 0' : '-30px auto 0', padding: `0 ${isPhone ? 'var(--vfo-gutter)' : '24px'} 48px`, position: 'relative' }}>
+          {body}
+        </div>
+      )}
     </div>
   )
 }
