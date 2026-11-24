@@ -83,7 +83,7 @@ One row per Growth Credits sale ([flows/gift-credits.md](../flows/gift-credits.m
 | `key` | text | pk. `black_friday_2026`. |
 | `title` | text | not null. Shown everywhere: *"Black Friday"*. |
 | `starts_at` / `ends_at` | timestamptz | not null, CHECK `ends_at > starts_at`. Live: `2026-11-27 08:00Z` / `2026-12-01 08:00Z` (midnight to midnight PT, Fri-Mon). The test site's dates are moved by hand to test each phase. |
-| `bonus` | jsonb | not null. The deal: `{"max_free": 10, "credit_price": 100}` — buy 1 to `max_free` credits at `credit_price` each, the same number free, up to `max_free` free per member per sale (`utils/gc-promotions.ts promoDeal`; migration `20261121120000`). Until 2026-11-21 it was a package → bonus map, `{"1": 1, "10": 10}`. |
+| `bonus` | jsonb | not null. The deal: `{"max_free": 10, "credit_price": 100}` — buy 1 to `max_free` credits at `credit_price` each, the same number free, up to `max_free` free per member per sale (`utils/gc-promotions.ts promoDeal`; migration `20261121120000`). Optional `first_ends_at` (an ISO time between `starts_at` and `ends_at`; migration `20261124150000`): the ending the website shows first, after which it counts to `ends_at` as *Extended* (`src/lib/gcPromo.js promoFirstEnd`); the server never reads it. Until 2026-11-21 it was a package → bonus map, `{"1": 1, "10": 10}`. |
 | `created_at` | timestamptz | default `now()` |
 
 ## `gc_orders` *(NEW 2026-11-20)*
