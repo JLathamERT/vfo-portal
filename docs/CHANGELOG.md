@@ -9,6 +9,20 @@
 
 ---
 
+## 2026-11-24 (b) — /black-friday: a clean loading screen, and a dropped connection is retried — by Jake
+
+Branch `claude/black-friday-loading` (vfo-react only). Website only: no backend, migration, template or switch; action count **704** and **54** route pages (both unchanged). The sale switch is On on live since 2026-11-24 (Jake), so the page is public. Flow: [flows/gift-credits.md](flows/gift-credits.md) Flow F.
+
+**What Jake asked for.** The page looked wrong for a split second while loading: a short dark hero on top and *"Loading..."* on white below.
+
+**Built.** One full dark screen from the first paint to the content, which fades in; a spinner after half a second only. Three things drew the flash, so three were changed: the page's own loading state, `RouteFallback` while the chunk loads, and the route file before any code runs (`emit-route-pages.mjs` adds one `#root:empty` rule to `black-friday/index.html`; the background string moved to `src/lib/bfHeroBg.js` so all three paint the same).
+
+**Found while checking, fixed on Jake's yes.** A failed status request read *"There is no sale running right now"*. `useGcPromo` now retries until it is answered and reports `failed`; the page says *"We're having trouble connecting"* with Try again. The pay page had it too (*"The Black Friday sale is not running right now"*, and *"You've had all your free credits in this sale"* after a failed free-credits check). Gotcha **#783**.
+
+**Tested on the dev server by Jake (2026-11-24).** Reloads on desktop and the phone preview, Slow 4G, a blocked request (message, then recovery without a reload), and the bar and banner signed in as a member. **By Claude:** the delayed answer at 1280 and 390, the message at 1280 and 360, recovery with no calls after it, the sale running, no sale, the thank-you while offline, the public pay page's message and recovery, and the built route file with its scripts held back (a test-site build served locally). **Not exercised:** the 12-second message on a hung request, and the pay page's message after a failed free-credits check (signed in). Both are on JLathamERT/vfo-edge-functions#609.
+
+---
+
 ## 2026-11-24 (a) — Black Friday sale: a first ending on Sunday, Extended through Cyber Monday, and the page before the sale — by Jake
 
 Branch `claude/black-friday-extended` (both repos). Website + one data migration, `20261124150000_gc_black_friday_first_end.sql` (the sale row's `bonus.first_ends_at`; test site done, live at release, BEFORE the website). No backend code, no DDL, no template, no switch; action count **704** (unchanged), **54** route pages (unchanged). Flow: [flows/gift-credits.md](flows/gift-credits.md) Flow F.
