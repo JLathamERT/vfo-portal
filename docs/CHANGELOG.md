@@ -9,6 +9,18 @@
 
 ---
 
+## 2026-11-24 (f) — Holistic tax plan: the Personal Tax Planning Form link row matches the rows around it — by Jake
+
+Branch `polish/tax-form-link-row` (vfo-react only). Website only, one file (`PersonalTaxFormLink.jsx`): no backend, migration, template or switch; action count **714** and **54** route pages (both unchanged). Admin-only screen, so no phone check.
+
+**What Jake asked for.** The row on a Holistic plan with no form yet should have the same format, height and size as the other header rows.
+
+**Built.** The *Tax Planning Route* row's card, title and pill, 45px high. The old sentence did not fit on one line: the row reads *"No $500 deposit, no duplicate client"* and the whole sentence, *"Never send an existing client the public diagnostic link"* included, is in the hover. Behaviour is unchanged.
+
+**Tested on the dev server by Jake (2026-11-24).** The row, Copy link and the hover. **By Claude:** at 1280 the row measures the same as Status, Tax Planning Route and Pricing & revenue split (height, width, title, corners, spacing). **Not exercised:** the Try again message when the link can't be loaded.
+
+---
+
 ## 2026-11-24 (e) — Tax plan status: Pause / Stop / Next tax year / Completed, one open plan per client, one automatic client status, and the forms picker — by Jake
 
 Branches `claude/tax-plan-status-picker-f3f8de` (vfo-react) and `claude/tax-plan-status-picker-8d4de0` (edge), carrying the work of `claude/tax-planning-pause-stop-*`. Plan of record with all 37 decisions: [plans/tax-plan-status/README.md](plans/tax-plan-status/README.md). Flow: [flows/tax-plan-status.md](flows/tax-plan-status.md) (new). Action count **714** (705 less `msm_update_tax_status`, plus 10), **54** route pages (unchanged). Six migrations, on the test site, live at release in this order, BEFORE the backend: `20261123180000`, `180100`, `180200`, `20261124090000`, `20261124180000`, `20261124180100`. Six new templates (Send). One new switch, `client_auto_status`, **Off** on live.
