@@ -101,7 +101,7 @@ const CARDS = [
     keys: ['gc_black_friday'],
     title: 'Black Friday sale',
     on: [
-      [null, 'Members see the Black Friday bar at the top of every portal page: "Starts in" before Fri 27 Nov 12:00am PT, then "Ends in" until Tue 1 Dec 12:00am PT. Clicking it opens the Growth Credits packages.'],
+      [null, 'Members see the Black Friday bar at the top of every portal page: "Starts in" until Fri 27 Nov 12:00 AM PST, then "Ends in" Sun 29 Nov 11:59 PM PST. At Mon 30 Nov 12:00 AM PST it turns to "Extended - through Cyber Monday" by itself and counts down to Mon 30 Nov 11:59 PM PST. The deal can be bought from Friday to Monday night without a break. Clicking the bar opens the Growth Credits packages.'],
       [null, 'During the sale members can buy any number of credits from 1 to 10 at $100 each and get the same number free, up to 10 free credits per member in total (several purchases are fine). The usual packages stay at their normal prices.'],
       [null, 'The public page vfoportal.com/black-friday takes orders from members who are not signed in. They appear in Growth Credits > Purchases to be allocated to a member.'],
     ],
