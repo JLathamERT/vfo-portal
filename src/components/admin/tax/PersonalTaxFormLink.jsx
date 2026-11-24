@@ -7,7 +7,9 @@ import { callApi } from '../../../lib/api'
 // the box mounts (which creates the plan's token the first time; a copied link never
 // changes), so the Copy click writes to the clipboard at once — the browser only
 // allows that inside the click itself. The URL is never shown, only copied.
-const cardStyle = { background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '20px 24px', marginBottom: '20px' }
+// One header row like its neighbours (Tax Planning Route): same height, title and pill.
+const cardStyle = { background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '5px 18px', minHeight: '45px', boxSizing: 'border-box', flexWrap: 'wrap' }
+const NOTE = 'For this tax plan — no $500 deposit and no duplicate client. Never send an existing client the public diagnostic link.'
 
 export default function PersonalTaxFormLink({ taxPlanId }) {
   const [url, setUrl] = useState(null)
@@ -43,23 +45,22 @@ export default function PersonalTaxFormLink({ taxPlanId }) {
 
   const ready = !!url && !loading
   return (
-    <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-      <div style={{ minWidth: 0, flex: '1 1 320px' }}>
-        <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-ink)', marginBottom: '4px' }}>Personal Tax Planning Form link</div>
-        <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>
-          For this tax plan — no $500 deposit and no duplicate client. Never send an existing client the public diagnostic link.
-        </div>
-        {error && (
-          <div style={{ fontSize: '12px', marginTop: '6px', color: '#d93025' }}>
-            {error}{' '}
-            {!url && <button onClick={() => setAttempt(a => a + 1)} style={{ background: 'none', border: 'none', color: '#0095ff', fontSize: '12px', cursor: 'pointer', padding: 0 }}>Try again</button>}
-          </div>
-        )}
+    <div style={cardStyle} title={NOTE}>
+      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>Personal Tax Planning Form link</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        {error
+          ? (
+            <span style={{ fontSize: '11px', color: '#d93025' }}>
+              {error}{' '}
+              {!url && <button type="button" onClick={() => setAttempt(a => a + 1)} style={{ background: 'none', border: 'none', color: '#0095ff', fontSize: '11px', cursor: 'pointer', padding: 0 }}>Try again</button>}
+            </span>
+          )
+          : <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>No $500 deposit, no duplicate client</span>}
+        <button type="button" onClick={copy} disabled={!ready}
+          style={{ padding: '6px 16px', borderRadius: '999px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '11.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: ready ? 'pointer' : 'default', opacity: ready ? 1 : 0.6, whiteSpace: 'nowrap' }}>
+          {loading ? 'Loading link…' : copied ? 'Copied ✓' : 'Copy link'}
+        </button>
       </div>
-      <button onClick={copy} disabled={!ready}
-        style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: ready ? 'pointer' : 'default', opacity: ready ? 1 : 0.6, whiteSpace: 'nowrap' }}>
-        {loading ? 'Loading link…' : copied ? 'Copied ✓' : 'Copy link'}
-      </button>
     </div>
   )
 }
