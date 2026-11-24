@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import VfoWordmark from '../components/shared/VfoWordmark'
 import { BF, BF_KEYFRAMES, BfCountdown, BfExtended, BfTag, bfTagText } from '../components/shared/BlackFridayPromo'
@@ -13,6 +13,16 @@ import { useIsPhone } from '../lib/useMediaQuery'
 // order to the member in Growth Credits > Purchases. The deal's price and cap come
 // from gc_promo_status, display only; the server re-prices every checkout.
 
+// What Growth Credits buy, under the timer (marketing's text, 2026-11-24).
+const GC_USES = [
+  'Website upgrades & VFO integration',
+  'Custom marketing campaigns, branded presentations, videos, & social media packages',
+  'Accountant partnership support and outreach programs',
+  'Targeted prospect list building and LinkedIn outreach automation',
+  'Personalized coaching, accountability, & tailored VFO planning programs',
+  'Done-for-you client marketing and email automation',
+]
+
 const money = (n) => '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 })
 
 export default function BlackFridayPage() {
@@ -21,6 +31,7 @@ export default function BlackFridayPage() {
   const navigate = useNavigate()
   const { loaded: answered, failed, retry, promo, phase, live, extended, endsLine, remainingMs, deal } = useGcPromo()
   const [pick, setPick] = useState(null)
+  const pickerRef = useRef(null)
   const [form, setForm] = useState(() => {
     const blank = { first_name: '', last_name: '', email: '', phone: '' }
     try { return { ...blank, ...(JSON.parse(sessionStorage.getItem('gcPublicBuyer') || 'null') || {}) } } catch { return blank }
@@ -93,7 +104,7 @@ export default function BlackFridayPage() {
             <BfTag>{bfTagText(live, extended)}</BfTag>
             {extended && <div style={{ marginTop: '18px' }}><BfExtended size={isPhone ? 54 : 92} /></div>}
             <h1 style={{ fontSize: isPhone ? '34px' : '56px', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05, margin: '18px 0 12px' }}>
-              Buy 1, Get 1 <span style={{ background: `linear-gradient(135deg, ${BF.gold} 0%, ${BF.goldDeep} 100%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Free</span>
+              Buy 1, Get 1 <span style={goldText}>Free</span>
             </h1>
             <p style={{ fontSize: isPhone ? '15px' : '18px', color: 'rgba(255,255,255,0.78)', maxWidth: '620px', margin: '0 auto', lineHeight: 1.5 }}>
               Whether you're looking to strengthen your brand, expand your network, or generate more VFO opportunities, Growth Credits can help you put the right resources in place for 2027.
@@ -109,6 +120,28 @@ export default function BlackFridayPage() {
             <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
               {live ? endsLine : promoStartsLine(promo.starts_at)}
             </div>
+            {/* The list below pushes the picker off the first screen. */}
+            {live && !paid && (
+              <button type="button" onClick={() => pickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                style={{ marginTop: '10px', padding: '13px 30px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '15px', fontWeight: 800, color: BF.ink, background: `linear-gradient(135deg, ${BF.gold} 0%, ${BF.goldDeep} 100%)`, boxShadow: '0 8px 24px rgba(255,159,28,0.3)' }}>Get the deal</button>
+            )}
+          </div>
+        )}
+        {promo && (live || phase === 'upcoming') && !paid && (
+          <div style={{ marginTop: isPhone ? '28px' : '36px', paddingTop: isPhone ? '26px' : '34px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <h2 style={{ fontSize: isPhone ? '23px' : '32px', fontWeight: 900, letterSpacing: '-0.025em', lineHeight: 1.15, margin: isPhone ? '0 0 20px' : '0 0 26px' }}>
+              Redeem your <span style={goldText}>Growth Credits</span><br />for services like...
+            </h2>
+            <ul style={{ listStyle: 'none', margin: '0 auto', padding: 0, width: 'fit-content', maxWidth: '100%', textAlign: 'left', display: 'grid', gap: isPhone ? '12px' : '13px' }}>
+              {GC_USES.map(use => (
+                <li key={use} style={{ display: 'flex', alignItems: 'center', gap: isPhone ? '12px' : '16px', fontSize: isPhone ? '14.5px' : '16.5px', fontWeight: 500, lineHeight: 1.4, color: 'rgba(255,255,255,0.92)' }}>
+                  <span aria-hidden="true" style={{ flexShrink: 0, width: isPhone ? '32px' : '36px', height: isPhone ? '28px' : '30px', borderRadius: '9px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={BF.gold} strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                  </span>
+                  {use}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
@@ -149,7 +182,7 @@ export default function BlackFridayPage() {
     body = (
       <>
         {/* The deal: pick 1-10 credits, get the same number free (Jake, 2026-11-20). */}
-        <div style={{ ...card, marginBottom: '22px' }}>
+        <div ref={pickerRef} style={{ ...card, marginBottom: '22px', scrollMarginTop: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '6px' }}>
             <div style={{ fontSize: '18px', fontWeight: 800 }}>How many credits would you like?</div>
             <BfTag small>Buy 1 Get 1 Free</BfTag>
@@ -229,4 +262,5 @@ export default function BlackFridayPage() {
   )
 }
 
+const goldText = { backgroundImage: `linear-gradient(135deg, ${BF.gold} 0%, ${BF.goldDeep} 100%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }
 const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '18px', boxShadow: 'var(--vfo-shadow-card)', padding: '28px' }
