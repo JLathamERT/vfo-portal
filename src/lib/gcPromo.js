@@ -6,22 +6,48 @@ import { callApi } from './api'
 // server's time so a wrong computer clock can't show the wrong phase. One fetch
 // is shared by every component on the page.
 
-let cache = null        // { promo, offset } once loaded
-let inflight = null
+let cache = null        // { promo, offset, failed: 0 } once loaded
+let inflight = false
+let failures = 0        // tries in a row that got no answer
+let retryTimer = null
+const listeners = new Set()
+
+// No answer is not "no sale" (2026-11-24): the status is asked for again, quickly
+// then every 10 seconds (and at once when the connection returns), until it answers
+// or nothing on screen needs it. `failed` is how many tries have missed so far.
+const RETRY_MS = [1500, 3000, 6000, 10000]
 
 function loadPromo() {
-  if (cache) return Promise.resolve(cache)
-  if (!inflight) {
-    inflight = callApi('gc_promo_status', {}, 1)
-      .then(res => {
-        const offset = res?.server_now ? Date.parse(res.server_now) - Date.now() : 0
-        cache = { promo: res?.promo || null, offset }
-        return cache
-      })
-      .catch(() => ({ promo: null, offset: 0 }))
-      .finally(() => { inflight = null })
+  clearTimeout(retryTimer)
+  if (cache || inflight || !listeners.size) return
+  inflight = true
+  callApi('gc_promo_status', {}, 1)
+    .then(res => {
+      const offset = res?.server_now ? Date.parse(res.server_now) - Date.now() : 0
+      failures = 0
+      cache = { promo: res?.promo || null, offset, failed: 0 }
+      listeners.forEach(fn => fn(cache))
+    })
+    .catch(() => {
+      failures++
+      listeners.forEach(fn => fn({ promo: null, offset: 0, failed: failures }))
+      if (listeners.size) retryTimer = setTimeout(loadPromo, RETRY_MS[Math.min(failures, RETRY_MS.length) - 1])
+    })
+    .finally(() => { inflight = false })
+}
+
+function watchPromo(fn) {
+  if (!listeners.size) window.addEventListener('online', loadPromo)
+  listeners.add(fn)
+  if (cache) fn(cache)
+  else loadPromo()
+  return () => {
+    listeners.delete(fn)
+    if (listeners.size) return
+    clearTimeout(retryTimer)
+    failures = 0
+    window.removeEventListener('online', loadPromo)
   }
-  return inflight
 }
 
 export function promoPhaseAt(promo, now) {
@@ -40,15 +66,12 @@ export function promoFirstEnd(promo) {
   return t > Date.parse(promo?.starts_at) && t < Date.parse(promo?.ends_at) ? t : null
 }
 
-// { promo, phase: 'upcoming' | 'live' | 'ended' | null, live, extended, endsLine, remainingMs, deal }
+// { loaded, failed, retry, promo, phase: 'upcoming' | 'live' | 'ended' | null, live, extended,
+//   endsLine, remainingMs, deal }
 export function useGcPromo() {
   const [state, setState] = useState(cache)
   const [now, setNow] = useState(() => Date.now() + (cache?.offset || 0))
-  useEffect(() => {
-    let alive = true
-    loadPromo().then(s => { if (alive) setState(s) })
-    return () => { alive = false }
-  }, [])
+  useEffect(() => watchPromo(setState), [])
   useEffect(() => {
     if (!state?.promo) return
     const tick = () => setNow(Date.now() + (state.offset || 0))
@@ -70,7 +93,7 @@ export function useGcPromo() {
   const creditPrice = Number(promo?.bonus?.credit_price) || 0
   const deal = maxFree > 0 && creditPrice > 0 ? { maxFree, creditPrice } : null
   const endsLine = promo ? promoEndsLine(endsAt, weekend ? 'Weekend offer ends' : 'Offer ends') : ''
-  return { loaded: !!state, promo, phase, live: phase === 'live', extended, endsLine, remainingMs: Math.max(0, target - now), deal }
+  return { loaded: !!state, failed: state?.failed || 0, retry: loadPromo, promo, phase, live: phase === 'live', extended, endsLine, remainingMs: Math.max(0, target - now), deal }
 }
 
 export function splitCountdown(ms) {

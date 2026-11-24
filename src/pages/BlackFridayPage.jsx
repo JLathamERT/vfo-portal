@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import VfoWordmark from '../components/shared/VfoWordmark'
 import { BF, BF_KEYFRAMES, BfCountdown, BfExtended, BfTag, bfTagText } from '../components/shared/BlackFridayPromo'
+import { BF_HERO_BG } from '../lib/bfHeroBg'
 import { promoStartsLine, useGcPromo } from '../lib/gcPromo'
 import { useIsPhone } from '../lib/useMediaQuery'
 
@@ -18,7 +19,7 @@ export default function BlackFridayPage() {
   const isPhone = useIsPhone()
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
-  const { loaded, promo, phase, live, extended, endsLine, remainingMs, deal } = useGcPromo()
+  const { loaded: answered, failed, retry, promo, phase, live, extended, endsLine, remainingMs, deal } = useGcPromo()
   const [pick, setPick] = useState(null)
   const [form, setForm] = useState(() => {
     const blank = { first_name: '', last_name: '', email: '', phone: '' }
@@ -28,12 +29,23 @@ export default function BlackFridayPage() {
   const paid = params.get('paid') === '1'
   const paidMethod = params.get('m')
 
+  // No answer from the server is not "no sale": keep loading, then say so after the
+  // third missed try (or 12 seconds), while the tries go on (2026-11-24). A buyer back from paying
+  // still gets the thank-you.
+  const loaded = answered && (!failed || paid)
+  const [slow, setSlow] = useState(false)
+  useEffect(() => { const t = setTimeout(() => setSlow(true), 12000); return () => clearTimeout(t) }, [])
+  const offline = !loaded && (failed >= 3 || slow)
+  const [trying, setTrying] = useState(false)
+  useEffect(() => { if (!trying) return; const t = setTimeout(() => setTrying(false), 1500); return () => clearTimeout(t) }, [trying])
+
   // The tab title names the sale only once the server says one is on.
   useEffect(() => { document.title = promo ? 'Black Friday - Growth Credits | VFO' : 'Growth Credits | VFO' }, [promo])
 
   // Before the sale the page is the top section alone, filling the screen: no
-  // picker and no "deals open" card (Jake, 2026-11-24).
-  const topOnly = phase === 'upcoming' && !paid
+  // picker and no "deals open" card (Jake, 2026-11-24). The same full dark screen
+  // while the server answers, so nothing jumps or flashes white.
+  const topOnly = !loaded || (phase === 'upcoming' && !paid)
   const maxFree = deal?.maxFree || 10
   const creditPrice = deal?.creditPrice || 100
 
@@ -54,17 +66,26 @@ export default function BlackFridayPage() {
   const label = { display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--vfo-muted)', marginBottom: '6px', letterSpacing: '0.3px' }
 
   const hero = (
-    <div style={{ position: 'relative', overflow: 'hidden', background: `radial-gradient(70% 120% at 85% 0%, rgba(10,133,232,0.5) 0%, rgba(10,133,232,0) 60%), radial-gradient(60% 120% at 0% 100%, rgba(18,94,204,0.4) 0%, rgba(18,94,204,0) 60%), linear-gradient(135deg, ${BF.ink} 0%, ${BF.ink2} 50%, #0d2350 100%)`, color: '#fff', ...(topOnly ? { minHeight: '100vh', display: 'flex', flexDirection: 'column' } : {}) }}>
+    <div style={{ position: 'relative', overflow: 'hidden', background: BF_HERO_BG, color: '#fff', ...(topOnly ? { minHeight: '100vh', display: 'flex', flexDirection: 'column' } : {}) }}>
       <div className="vfo-bf-anim" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(100deg, transparent 0%, transparent 42%, rgba(255,255,255,0.06) 50%, transparent 58%, transparent 100%)', backgroundSize: '200% 100%', animation: 'vfoBfSheen 7s linear infinite', pointerEvents: 'none' }} />
       <div style={{ position: 'relative', height: '58px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <VfoWordmark size={17} light />
       </div>
-      <div style={{ position: 'relative', maxWidth: '920px', margin: topOnly ? 'auto' : '0 auto', padding: isPhone ? '32px var(--vfo-gutter) 36px' : '56px 24px 60px', textAlign: 'center' }}>
+      <div key={loaded ? 'ready' : offline ? 'offline' : 'loading'} className="vfo-bf-anim" style={{ position: 'relative', animation: loaded || offline ? 'vfoBfIn 0.45s ease-out' : 'none', maxWidth: '920px', margin: topOnly ? 'auto' : '0 auto', padding: isPhone ? '32px var(--vfo-gutter) 36px' : '56px 24px 60px', textAlign: 'center' }}>
         {/* Nothing about a sale until the server has said one is on: while it loads
             the hero is empty, and with no sale (the gc_black_friday switch Off) it
             says only "Growth Credits" (no flash of the deal, Jake 2026-11-20). */}
-        {!loaded ? (
-          <div style={{ minHeight: isPhone ? '96px' : '140px' }} />
+        {offline ? (
+          <div role="alert">
+            <h1 style={{ fontSize: isPhone ? '24px' : '32px', fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1.15, margin: '0 0 12px' }}>We're having trouble connecting</h1>
+            <p style={{ fontSize: isPhone ? '14px' : '16px', color: 'rgba(255,255,255,0.78)', margin: '0 auto 24px', maxWidth: '440px', lineHeight: 1.5 }}>Please check your internet connection. This page keeps trying on its own.</p>
+            <button type="button" disabled={trying} onClick={() => { setTrying(true); retry() }} style={{ opacity: trying ? 0.6 : 1, padding: '12px 26px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 800, color: BF.ink, background: `linear-gradient(135deg, ${BF.gold} 0%, ${BF.goldDeep} 100%)` }}>{trying ? 'Trying...' : 'Try again'}</button>
+          </div>
+        ) : !loaded ? (
+          // Appears only on a slow connection (half a second in).
+          <div className="vfo-bf-anim" role="status" aria-label="Loading" style={{ animation: 'vfoBfIn 0.3s ease-out 0.5s both' }}>
+            <div className="vfo-bf-anim" style={{ width: '30px', height: '30px', margin: '0 auto', borderRadius: '50%', border: '3px solid rgba(255,193,69,0.22)', borderTopColor: BF.gold, animation: 'vfoBfSpin 0.8s linear infinite' }} />
+          </div>
         ) : !promo ? (
           <h1 style={{ fontSize: isPhone ? '30px' : '44px', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05, margin: '6px 0 0' }}>Growth Credits</h1>
         ) : (
@@ -96,7 +117,7 @@ export default function BlackFridayPage() {
 
   let body
   if (!loaded) {
-    body = <div style={{ textAlign: 'center', color: 'var(--vfo-muted)', padding: '40px 0' }}>Loading...</div>
+    body = null
   } else if (paid) {
     body = (
       <div style={card}>
@@ -200,7 +221,7 @@ export default function BlackFridayPage() {
       <style>{BF_KEYFRAMES}</style>
       {hero}
       {body && (
-        <div style={{ maxWidth: '760px', margin: isPhone ? '-18px auto 0' : '-30px auto 0', padding: `0 ${isPhone ? 'var(--vfo-gutter)' : '24px'} 48px`, position: 'relative' }}>
+        <div className="vfo-bf-anim" style={{ animation: 'vfoBfIn 0.45s ease-out', maxWidth: '760px', margin: isPhone ? '-18px auto 0' : '-30px auto 0', padding: `0 ${isPhone ? 'var(--vfo-gutter)' : '24px'} 48px`, position: 'relative' }}>
           {body}
         </div>
       )}
