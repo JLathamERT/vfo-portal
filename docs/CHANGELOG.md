@@ -9,6 +9,18 @@
 
 ---
 
+## 2026-11-24 (c) — /black-friday: the list of what Growth Credits buy, under the timer — by Jake
+
+Branch `claude/black-friday-services-list` (vfo-react only). Website only, one file (`BlackFridayPage.jsx`): no backend, migration, template or switch; action count **704** and **54** route pages (both unchanged). Public page only, not the member portal. Flow: [flows/gift-credits.md](flows/gift-credits.md) Flow F.
+
+**What was asked for.** The team wanted the page to sell more: a list of what Growth Credits can be used for, under the timer, without clutter. Marketing sent two Canva images and said to recreate them if they did not suit phones; Jake: use their text and match our style exactly.
+
+**Built.** The heading and six lines in code, in the countdown's own boxes and gold, wrapping on phones (an image would not, and its no-background version was white on white). It shows before and during the sale, Extended included; not on the thank-you page and not when there is no sale. **Added by Claude, kept by Jake:** during the sale the list put the credit picker 950px down at 1280x900, so a gold *Get the deal* button under the timer scrolls to it. Not built: a link to the GC Marketplace on the confirmation page, raised in the same email and not picked up.
+
+**Tested on the dev server by Jake (2026-11-24).** All three phases on desktop and in the phone preview, with the button and the picker, by moving the test site's sale dates (put back to live's dates after). **By Claude:** before the sale at 1280 and 390, the running sale at 1280, Extended at 1280, 390 and 360, and no list or button on the thank-you.
+
+---
+
 ## 2026-11-24 (b) — /black-friday: a clean loading screen, and a dropped connection is retried — by Jake
 
 Branch `claude/black-friday-loading` (vfo-react only). Website only: no backend, migration, template or switch; action count **704** and **54** route pages (both unchanged). The sale switch is On on live since 2026-11-24 (Jake), so the page is public. Flow: [flows/gift-credits.md](flows/gift-credits.md) Flow F.
