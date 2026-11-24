@@ -17,6 +17,7 @@ import { fieldLabel, inputStyle } from './BacklogModal'
 // has no review: its Review card is one "Task added by" line. The Announcement
 // card (Backlog 5a / 5b) carries the Release importance at every stage, then
 // Mark as announced (Ready to announce), Archive (Live) or Restore (archived).
+// It is drawer-only: a Requests row dropdown leaves it out (Paxton 2026-11-24).
 export default function BacklogDetails({ request: r, people, assignees, canManage, me, busy, layout = 'stack', onEdit, onWithdraw, onApprove, onDeny, onReopen, onMove, onAnnounce, onArchive, onRestore, onSaveWriteup, onSetImportance, like }) {
   const uid = useId()
   const isPhone = useIsPhone()
@@ -180,7 +181,7 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
         </Card>
       )}
 
-      {r.review_status !== 'withdrawn' && (
+      {r.review_status !== 'withdrawn' && layout !== 'grid' && (
         <Card flat={flat} title="Announcement">
           <div style={{ marginBottom: (isReady || isLive || r.archived_at) ? '12px' : 0 }}>
             {canManage ? (
