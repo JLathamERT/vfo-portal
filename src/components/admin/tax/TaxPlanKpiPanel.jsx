@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { Skeleton } from '../../shared/Skeleton'
+import { TONES, fmtKpiMoney } from './kpiFormat'
 
 // Tax Plan KPI Tracker (2026-11-16, Jake's Workbench spec): the body under a plan
 // row on Client Overview > Tax Planning. Every rule (statuses, day counts, fee
@@ -9,22 +10,8 @@ import { Skeleton } from '../../shared/Skeleton'
 // (round 3, 2026-11-20): each step counts from the previous step's end to its own,
 // so Steps 1-6 add up to Total days.
 
-const TONES = {
-  green: { bg: 'rgba(27,146,84,0.13)', color: 'var(--vfo-success-text)', rail: '#1b9254' },
-  amber: { bg: 'rgba(224,103,23,0.14)', color: '#e06717', rail: '#e06717' },
-  grey: { bg: 'var(--vfo-tint)', color: 'var(--vfo-muted)', rail: 'var(--vfo-border-strong)' },
-  red: { bg: 'rgba(231,76,60,0.13)', color: '#e74c3c', rail: '#e74c3c' },
-}
-
 const NA_TIP = 'Step dates unavailable for plans created before Aug 12, 2026 or migrated from the old system.'
 const NA_TEXT = 'Step dates unavailable for migrated accounts'
-
-function fmtKpiMoney(v) {
-  const n = Number(v)
-  if (v === null || v === undefined || !Number.isFinite(n)) return '$0'
-  const cents = Math.round(n * 100) % 100 !== 0
-  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: cents ? 2 : 0 })
-}
 
 const bigNumber = { fontSize: '26px', fontWeight: 800, letterSpacing: '-0.5px' }
 
