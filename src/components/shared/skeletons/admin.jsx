@@ -70,7 +70,7 @@ function BacklogColumnSkeleton({ cards, inLane, tall, label = 110, twoCol = fals
 
 // Mirrors BacklogBoard at its breakpoints: Approved but unassigned (two columns
 // wide, cards two across, from 1280px) | the superadmin lanes (To do / Working on
-// / Done) | Ready to announce | Live. Two lanes, since the real assignees are
+// / Review) | Ready to announce | Live. Two lanes, since the real assignees are
 // unknown until the load lands.
 export function PortalBacklogBoardSkeleton({ lanes = 2 }) {
   const wide = useMediaQuery('(min-width: 1280px)')
