@@ -6,6 +6,7 @@ import { formatDate } from '../../lib/dates'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { readable } from '../shared/readableColor'
 import { STATUS_COLORS } from '../shared/statusColors'
+import { clientStatusColors, clientStatusLabel } from '../shared/clientStatus'
 import { TableSkeleton } from '../shared/Skeleton'
 
 // Member Overview — one unified list of every member (advisor / accountant /
@@ -49,15 +50,6 @@ const GRID = '30px 84px 1.5fr 100px 1.1fr 96px 128px 110px 70px 1.3fr 176px'
 
 const CLIENT_GRID = '120px 1.4fr 96px 110px 130px 1.6fr'
 
-// Client status pill — capitalized + color-coded, matching the member status pills.
-function clientStatusColors(status) {
-  const s = (status || '').toLowerCase()
-  if (s === 'active') return { bg: 'rgba(27,146,84,0.13)', color: 'var(--vfo-success-text)' }
-  if (s === 'lost') return { bg: 'rgba(231,76,60,0.13)', color: '#e74c3c' }
-  if (s === 'pending') return { bg: 'rgba(224,103,23,0.14)', color: '#e06717' }
-  return { bg: 'var(--vfo-tint)', color: 'var(--vfo-muted)' }   // removed / unknown
-}
-const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
 export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onPatchMember }) {
   const navigate = useNavigate()
@@ -288,7 +280,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
                             <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{c.joined ? formatDate(c.joined) : '—'}</span>
                             <span>
                               {c.status
-                                ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, ...(() => { const s = clientStatusColors(c.status); return { background: s.bg, color: s.color } })() }}>{capitalize(c.status)}</span>
+                                ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, ...(() => { const s = clientStatusColors(c.status); return { background: s.bg, color: s.color, whiteSpace: 'nowrap' } })() }}>{clientStatusLabel(c.status)}</span>
                                 : <span style={{ color: 'var(--vfo-faint)' }}>—</span>}
                             </span>
                             <span style={{ fontSize: '12px', color: c.pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.pf || '—'}</span>

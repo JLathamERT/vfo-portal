@@ -412,6 +412,6 @@ export function openAdminSection(tab, section) {
     // (literal here so this small module does not pull those panels into the
     // client page's chunk).
     if (tab === 'accounting') sessionStorage.removeItem('adminAccountingPill')
-    if (tab === 'client_overview') { sessionStorage.removeItem('clientOverviewSection'); sessionStorage.removeItem('clientOverviewView') }
+    if (tab === 'client_overview') { sessionStorage.removeItem('clientOverviewSection'); sessionStorage.removeItem('clientOverviewView2') }
   } catch { /* private mode */ }
 }

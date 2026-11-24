@@ -136,6 +136,7 @@ These string values appear in pipeline columns. Only two are DB-CHECK-constraine
 | `members.elite_status` | `'Active'` default; other values not enumerated |
 | `members.revenue_decision` | `'Revenue Share'`, `'Money Mapping'` (read in revshare logic) |
 | `members` standing (three booleans, read by `utils/member-payout-hold.ts memberHoldReason`) | `suspended` (admin toggle; switched OFF automatically when `membership_arrears` clears, 2026-09-23) → **Suspended**; `paused` (admin toggle) → **Paused**; `membership_arrears` (automation only, 2026-09-15 — replaced `membership_suspended`) → **In Arrears**: a missed membership pull, NOT a suspension; the member's revenue-share legs park at `Held - Member Suspended` / `Held - Member Paused` / `Held - Member In Arrears` (`held_member_*` on SpecRev lines) until the reason clears. |
+| Tax plan status (`client_tax_plans.status`, 2026-11-23) | `live` (Not started / In progress), `paused`, `stopped`, `stopped` + `status_kind='next_tax_year'` (**Next tax year**), `completed` (closed by hand). A plan's *open* = live or paused and not finished; one per client. Not the client's status: that is `clients.auto_status` / Lost. [flows/tax-plan-status.md](flows/tax-plan-status.md) |
 | `coaching_meetings.status` | `'scheduled'` default; others UI-defined |
 | `client_priority_tracks.status` | `'live'` default; e.g., `'archived'` |
 | `client_tax_plans.status` | `'live'` default |

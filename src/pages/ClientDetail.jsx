@@ -34,6 +34,8 @@ import EmailText from '../components/shared/EmailText'
 import { btnPrimary, btnSecondary, btnDanger, btnState } from '../components/shared/buttonStyles'
 import { TAILORED_PROGRAM, ACCOUNTANT_FEATURE_TAB } from '../components/shared/accountantPrograms'
 import TailoredRouteTrack from '../components/admin/pft/TailoredRouteTrack'
+import { ChangeStatusModal } from '../components/admin/tax/TaxPlanStatus'
+import { clientStatusHex, clientStatusKey, clientStatusLabel } from '../components/shared/clientStatus'
 
 // Program names as programs.name holds them (single client profile tab strip).
 const HOLISTIC = 'VFO Holistic Planning'
@@ -256,6 +258,14 @@ export default function ClientDetail() {
     setActiveTab(key)
   }
 
+  // A plan's status changed on the Tax tab: refresh only the status in the header.
+  async function refreshShownStatus() {
+    try {
+      const data = await callApi('msm_load_client_home', { client_id: parseInt(clientId) })
+      setClient(c => c ? { ...c, status: data.client?.status, shown_status: data.client?.shown_status } : c)
+    } catch (err) { console.error(err) }
+  }
+
   async function reloadContacts() {
     try {
       const data = await callApi('msm_load_client_home', { client_id: parseInt(clientId) })
@@ -314,7 +324,6 @@ export default function ClientDetail() {
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: isPhone ? '14px' : '20px' }
   const tabStyle = (active) => ({ padding: '7px 12px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' })
-  const statusColors2 = { active: '#1b9254', pending: '#e06717', lost: '#e74c3c' }
 
   // Logged out (e.g. a deep link opened from an email in a new tab): render nothing
   // while the layout effect above sends you to the login page with ?next=. Drawing
@@ -383,8 +392,8 @@ export default function ClientDetail() {
                         {client?.status && <>
                           <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors2[client.status] || 'var(--vfo-faint)', flexShrink: 0 }} />
-                            {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: clientStatusHex(clientStatusKey(client)) || 'var(--vfo-faint)', flexShrink: 0 }} />
+                            {clientStatusLabel(clientStatusKey(client))}
                           </span>
                         </>}
                       </div>
@@ -411,7 +420,7 @@ export default function ClientDetail() {
                 {/* A member never needs their own name here (Jake, 2026-10-28); admins keep it. */}
                 {client?.member_name && !isMember && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Member:<MemberNameLink memberNumber={client.member_number}>{client.member_name}</MemberNameLink></span></>}
                 {contacts?.length > 0 && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ fontStyle: 'italic' }}>with {contacts.map(c => `${c.first_name} ${c.last_name}`).join(', ')}</span></>}
-                {client?.status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors2[client?.status] || 'var(--vfo-faint)', flexShrink: 0 }} />{client.status.charAt(0).toUpperCase() + client.status.slice(1)}</span></>}
+                {client?.status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: clientStatusHex(clientStatusKey(client)) || 'var(--vfo-faint)', flexShrink: 0 }} />{clientStatusLabel(clientStatusKey(client))}</span></>}
               </>
             }
           />
@@ -532,7 +541,7 @@ export default function ClientDetail() {
             {activeTab === 'pft' && program && !pfLocked && !isPlanner && !isMirror && <PFTEngagementTrack initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} notes={clientNotes} onNotesChange={setClientNotes} />}
             {activeTab === 'tailored' && program && !pfLocked && !isPlanner && !isMirror && <TailoredRouteTrack initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} notes={clientNotes} onNotesChange={setClientNotes} />}
             {activeTab === 'regular' && program && !pfLocked && !isPlanner && <RegularPrioritiesTab initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} specialists={specialists} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} notes={clientNotes} onNotesChange={setClientNotes} initialTrackId={initialTrackId} />}
-            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab key={program.id} initialNoteId={initialNoteId} onPlanInOtherProgram={handlePlanInOtherProgram} clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} openSinglePlan={fromBell} />}
+            {activeTab === 'tax' && program && !pfLocked && <TaxPrioritiesTab key={program.id} onTaxStatusChange={refreshShownStatus} initialNoteId={initialNoteId} onPlanInOtherProgram={handlePlanInOtherProgram} clientId={parseInt(clientId)} programId={program.id} programName={program.name} client={client} specialists={specialists} ecosystems={ecosystems} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} plannerMode={isPlanner} directMode={isDirect} notes={clientNotes} onNotesChange={setClientNotes} initialPlanId={initialPlanId} openSinglePlan={fromBell} />}
             {activeTab === 'pip' && program && !pfLocked && !isPlanner && <PipMeetingsTab initialNoteId={initialNoteId} clientId={parseInt(clientId)} programId={program.id} client={client} readOnly={isMember} memberNotes={isMember} memberCanAdd={memberCanAddNotes} mirror={isMirror} notes={clientNotes} onNotesChange={setClientNotes} />}
             {/* memberMode is its own flag, not a relaxed readOnly: a member gets
                 view on all three sections + add on the two client-owned ones,
@@ -568,6 +577,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
   // A tag bell on a Profile note (?tab=home&note=<id>) scrolls to it.
   useScrollToLinkedNote(initialNoteId, notes)
   const [status, setStatus] = useState(client?.status || 'pending')
+  const [lostPlan, setLostPlan] = useState(null)
   const [saving, setSaving] = useState(false)
   const [assignedPf, setAssignedPf] = useState(client?.assigned_pf || '')
   const [savingPf, setSavingPf] = useState(false)
@@ -628,14 +638,34 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
     } catch (err) { console.error(err) }
     finally { setSavingPf(false) }
   }
-  const statusColors = { active: '#1b9254', pending: '#e06717', lost: '#e74c3c' }
+  // The two one-line cards (status, PF): shorter than a full card (Jake, 2026-11-23).
+  const shortCard = { ...sectionStyle, flex: 1, padding: '14px var(--vfo-card-pad)' }
+  const shortTitle = { ...cardTitle, marginBottom: '10px', paddingBottom: '7px' }
+
+  // One automatic status (2026-11-23): only Lost is set by hand. shown_status is sent
+  // while the switch is On; without it the three-way dropdown stays.
+  const auto = client?.shown_status !== undefined && client?.shown_status !== null
+  const shown = status === 'lost' ? 'lost' : auto ? client.shown_status : status
+  const statusDot = <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: clientStatusHex(shown) || 'var(--vfo-faint)', flexShrink: 0 }} />
 
   // Lost stops every automatic payment for the client (backend utils/client-lost.ts):
   // remaining MAP 1 / tax payments are cancelled and the plans stopped. Going back
   // to Active restarts nothing, so the admin confirms first.
-  async function updateStatus(newStatus) {
+  // An open tax plan (2026-11-23): the Change status window instead, so the client
+  // gets the closing email (or a reason there is none) before they are set to Lost.
+  async function updateStatus(newStatus, confirmed = false) {
     const prev = status
-    if (newStatus === 'lost' && prev !== 'lost') {
+    if (newStatus === 'lost' && prev !== 'lost' && !confirmed) {
+      setSaving(true)
+      let openPlan = null
+      try {
+        const res = await callApi('tax_load_plans', { client_id: client.id, include_details: true })
+        openPlan = (res.plans || []).find(p => (!p.status || p.status === 'live' || p.status === 'paused') && res.details?.[String(p.id)]?.summary?.state !== 'complete') || null
+      } catch (err) {
+        setStatusNote({ tone: 'error', text: `Status not saved: ${err.message || 'could not read the tax plans'}` })
+        return
+      } finally { setSaving(false) }
+      if (openPlan) { setLostPlan(openPlan); return }
       const name = `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'this client'
       const ok = window.confirm(`Set ${name} to Lost?\n\nThis stops every automatic payment for this client. Their remaining Holistic (MAP 1) and Tax Planning payments are cancelled and their plans are stopped, so no charge, payment link or payment reminder can reach them. Payments already collected are not touched.\n\nSetting them back to Active later does NOT restart any payment.`)
       if (!ok) return
@@ -718,13 +748,19 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
       {/* Status + assigned PF — side by side. */}
       {!phoneRows && <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 300px', minWidth: '260px', display: 'flex' }}>
-          <div style={{ ...sectionStyle, flex: 1 }}>
-            <div style={cardTitle}>Client Status</div>
+          <div style={shortCard}>
+            <div style={shortTitle}>Client Status</div>
             {readOnly
-              ? <div style={{ display: 'flex', alignItems: 'center', minHeight: '42px' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--vfo-ink)' }}><span style={{ width: '10px', height: '10px', borderRadius: '50%', background: statusColors[status], flexShrink: 0 }} />{status.charAt(0).toUpperCase() + status.slice(1)}</span></div>
+              ? <div style={{ display: 'flex', alignItems: 'center', minHeight: '32px' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--vfo-ink)' }}>{statusDot}{clientStatusLabel(shown)}</span></div>
+              : auto ? <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', minHeight: '32px' }}>
+                  {statusDot}
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--vfo-ink)', flex: 1 }}>{clientStatusLabel(shown)}</span>
+                  {statusSaved && <span style={{ color: 'var(--vfo-success-text)', fontSize: '13px', fontWeight: '600' }}>Saved!</span>}
+                  <button style={btnState(btnSecondary, saving)} disabled={saving} onClick={() => updateStatus(status === 'lost' ? 'active' : 'lost')}>{status === 'lost' ? 'Undo Lost' : 'Set to Lost'}</button>
+                </div>
               : <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: statusColors[status], flexShrink: 0 }} />
-                  <select value={status} onChange={e => updateStatus(e.target.value)} disabled={saving} style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'Inter, sans-serif', minWidth: '160px', flex: 1 }}>
+                  {statusDot}
+                  <select value={status} onChange={e => updateStatus(e.target.value)} disabled={saving} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'Inter, sans-serif', minWidth: '160px', flex: 1 }}>
                     <option value="active">Active</option>
                     <option value="pending">Pending</option>
                     <option value="lost">Lost</option>
@@ -732,28 +768,29 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                   {statusSaved && <span style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600' }}>Saved!</span>}
                 </div>
             }
+            {lostPlan && <ChangeStatusModal plan={lostPlan} client={client} initialTo="stopped" lost onClose={() => setLostPlan(null)} onSaved={() => updateStatus('lost', true)} />}
             {!readOnly && statusNote && <div style={{ marginTop: '8px', fontSize: '13px', color: statusNote.tone === 'error' ? '#e74c3c' : 'var(--vfo-success-text)' }}>{statusNote.text}</div>}
             {!readOnly && !statusNote && status === 'lost' && <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--vfo-muted)' }}>Lost — automatic payments are stopped for this client.</div>}
             {memberOwnView && <div style={vfoNote}>Managed by VFO Services.</div>}
           </div>
         </div>
         <div style={{ flex: '1 1 300px', minWidth: '260px', display: 'flex' }}>
-          <div style={{ ...sectionStyle, flex: 1 }}>
-            <div style={cardTitle}>Proactive Facilitator</div>
+          <div style={shortCard}>
+            <div style={shortTitle}>Proactive Facilitator</div>
             {/* A DIRECT case's PF is the member themselves (clients.pf_member_number),
                 a name that is not in the dropdown — a select whose value has no
                 option silently reads "-- Select --", and an admin must not
                 reassign it from here anyway. */}
             {readOnly || client?.pf_member_number
-              ? <div style={{ display: 'flex', alignItems: 'center', minHeight: '42px', fontSize: '14px', color: 'var(--vfo-ink)' }}>{client?.pf_member_number ? `${client?.assigned_pf || '—'} (Member — Direct)` : (client?.assigned_pf || '—')}</div>
+              ? <div style={{ display: 'flex', alignItems: 'center', minHeight: '32px', fontSize: '14px', color: 'var(--vfo-ink)' }}>{client?.pf_member_number ? `${client?.assigned_pf || '—'} (Member — Direct)` : (client?.assigned_pf || '—')}</div>
               : <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <select value={assignedPf} onChange={e => setAssignedPf(e.target.value)} style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'Inter, sans-serif', minWidth: '160px', flex: 1 }}>
+                  <select value={assignedPf} onChange={e => setAssignedPf(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'Inter, sans-serif', minWidth: '160px', flex: 1 }}>
                     <option value="">-- Select --</option>
                     <option value="Evan Anderson">Evan Anderson</option>
                     <option value="Bridger Silvester">Bridger Silvester</option>
                     <option value="Ian Welham">Ian Welham</option>
                   </select>
-                  <button onClick={savePf} disabled={savingPf} style={{ padding: '8px 20px', borderRadius: '8px', background: savingPf ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '14px', cursor: savingPf ? 'not-allowed' : 'pointer' }}>{savingPf ? 'Saving...' : 'Save'}</button>
+                  <button onClick={savePf} disabled={savingPf} style={btnState(btnPrimary, savingPf)}>{savingPf ? 'Saving...' : 'Save'}</button>
                   {pfSaved && <span style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600' }}>Saved!</span>}
                 </div>
             }

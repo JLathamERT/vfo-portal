@@ -20,6 +20,7 @@ import {
 import PhoneInput from '../shared/PhoneInput'
 import { cleanText, formatPersonName } from '../../lib/formatters'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import TaxFormPlanPicker, { planPickBody, planPickProblem } from '../shared/TaxFormPlanPicker'
 
 // The VFO Tax Planning intake form (q1-q39).
 //
@@ -118,6 +119,24 @@ export default function TaxIntakeForm({
   const [ccDraft, setCcDraft] = useState({ first: '', last: '', email: '' })
   const [ccError, setCcError] = useState('')
 
+  // The client already has a tax plan (2026-11-23): theirs when the form was started
+  // for them, or found by email when it is sent. The plan is picked before anything
+  // is saved or paid. `planPick` = { clientName, plans, resume } while it is asked.
+  const [planPick, setPlanPick] = useState(null)
+  const [planChoice, setPlanChoice] = useState('')
+  const [replaceForm, setReplaceForm] = useState(false)
+  const [pickedPlan, setPickedPlan] = useState(null) // { body, plan } once picked
+  function askForPlan(err, resume) {
+    if (!err?.data?.needs_plan_pick) return false
+    setPlanChoice('')
+    setReplaceForm(false)
+    setPickedPlan(null)
+    setPlanPick({ clientName: err.data.client_name || '', plans: err.data.plans || [], resume })
+    setSubmitting(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    return true
+  }
+
   const [existingError, setExistingError] = useState('')
   useEffect(() => {
     if (publicMode) return
@@ -130,6 +149,9 @@ export default function TaxIntakeForm({
         if (!c) return
         setAnswers(a => ({ ...a, q2: c.first_name || a.q2, q3: c.last_name || a.q3, q4: c.email || a.q4, q5: c.phone || a.q5 }))
         setLinkForm({ first: c.first_name || '', last: c.last_name || '', email: c.email || '' })
+        if (Array.isArray(c.plans) && c.plans.length > 0) {
+          setPlanPick({ clientName: `${c.first_name || ''} ${c.last_name || ''}`.trim(), plans: c.plans, resume: null })
+        }
       })
       .catch(err => {
         if (!live) return
@@ -217,7 +239,7 @@ export default function TaxIntakeForm({
   }
   const ccDraftStarted = !!(ccDraft.first.trim() || ccDraft.last.trim() || ccDraft.email.trim())
 
-  async function submit() {
+  async function submit(picked = pickedPlan) {
     // A person typed into q42 but never added is added now rather than lost; one
     // who cannot be added stops the submit with the reason under the boxes.
     let toCheck = answers
@@ -245,18 +267,19 @@ export default function TaxIntakeForm({
       const normalized = normalizeTaxIntakeAnswers(toCheck)
       const res = publicMode
         ? await onPublicSubmit(normalized)
-        : await callApi('tax_intake_submit', { answers: normalized, ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}), ...(existingClient ? { client_id: existingClient.id } : {}) })
+        : await callApi('tax_intake_submit', { answers: normalized, ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}), ...(existingClient ? { client_id: existingClient.id } : {}), ...(picked?.body || {}) })
       // A url means the deposit is owed — since 2026-09-23 it is the card-or-ACH
       // choice page (/tax-deposit-pay), for route A and route B alike.
       if (res?.url) { window.location.assign(res.url); return }
       onDone?.(res)
     } catch (err) {
+      if (askForPlan(err, 'form')) return
       setFailed(err?.message || 'Something went wrong — please try again.')
       setSubmitting(false)
     }
   }
 
-  async function sendLink() {
+  async function sendLink(picked = pickedPlan) {
     setFailed('')
     const first = formatPersonName(linkForm.first)
     const last = formatPersonName(linkForm.last)
@@ -277,9 +300,11 @@ export default function TaxIntakeForm({
         client_email: email,
         ...(taxRoute === 'direct' ? { tax_route: 'direct' } : {}),
         ...(existingClient ? { client_id: existingClient.id } : {}),
+        ...(picked?.body || {}),
       })
       onDone?.({ link_sent_to: `${first} ${last}`.trim() })
     } catch (err) {
+      if (askForPlan(err, 'link')) return
       setFailed(err?.message || 'Something went wrong — please try again.')
       setSubmitting(false)
     }
@@ -388,13 +413,15 @@ export default function TaxIntakeForm({
   const baseDepositRequired = publicMode
     ? publicIntake?.deposit_required
     : eligibility?.deposit_required
-  const depositRequired = international && baseDepositRequired === false ? true : baseDepositRequired
+  // A plan picked that has a deposit, is Holistic or is not in progress takes none.
+  const planTakesNone = !!pickedPlan?.plan && !pickedPlan.plan.takes_deposit
+  const depositRequired = planTakesNone ? false : international && baseDepositRequired === false ? true : baseDepositRequired
   const depositAmount = publicMode ? (publicIntake?.deposit_amount || 500) : (eligibility?.deposit_amount || 500)
   // The member's own form, a deposit normally waived, and q41 Yes: say why it is due.
   // The public diagnostic page has no signed-in member, so a member filling it in
   // gets the hedged wording instead (whether a named member's deposit is waived is
   // never revealed to an unsigned-in page).
-  const waiverLostNote = !international ? ''
+  const waiverLostNote = !international || planTakesNone ? ''
     : !publicMode
       ? (eligibility && eligibility.deposit_required === false ? TAX_INTAKE_INTERNATIONAL_DEPOSIT_NOTE : '')
       : (memberFilling && !publicIntake ? TAX_INTAKE_INTERNATIONAL_DEPOSIT_NOTE_PUBLIC : '')
@@ -402,6 +429,8 @@ export default function TaxIntakeForm({
   // The public diagnostic page (no intake row yet) takes no payment and quotes none.
   const depositLine = lockClientIdentity || (publicMode && !publicIntake)
     ? null
+    : planTakesNone
+      ? 'Deposit: none, this plan does not need one'
     : international && (publicMode || eligibility != null)
       ? `Deposit: $${depositAmount} (international tax case)`
       : publicMode
@@ -441,15 +470,14 @@ export default function TaxIntakeForm({
     </div>
   )
 
-  // ─── Started for an existing client that cannot take a new case ─────────
-  // The server refuses both writes for these too; this only explains it.
-  if (existingClientId && (existingError || existingClient?.has_tax_case)) return (
+  // ─── Started for an existing client that could not be loaded ────────────
+  if (existingClientId && existingError) return (
     <div style={{ ...sectionStyle, borderColor: 'rgba(224,103,23,0.35)' }}>
       <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }}>
-        {existingError ? 'This client could not be loaded' : 'Tax planning has already started'}
+        This client could not be loaded
       </div>
       <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>
-        {existingError || `${existingName || 'This client'} already has a VFO Tax Planning case. You can follow it on their client page.`}
+        {existingError}
       </div>
       <button type="button" onClick={onCancel}
         style={{ marginTop: '16px', padding: '8px 18px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
@@ -457,6 +485,51 @@ export default function TaxIntakeForm({
       </button>
     </div>
   )
+
+  // ─── The client already has a tax plan ────────────────────────────────
+  if (planPick) {
+    const chosen = planPick.plans.find(p => String(p.id) === planChoice) || null
+    const problem = planPickProblem(planChoice, planPick.plans, replaceForm)
+    // Where the member was: the form or the link they were sending. Started from the
+    // client's Vault, the plan is asked first and the choices follow.
+    const back = () => {
+      if (planPick.resume === null) { onCancel?.(); return }
+      setPlanPick(null)
+    }
+    const next = () => {
+      const picked = { body: planPickBody(planChoice, planPick.plans, replaceForm), plan: chosen }
+      const resume = planPick.resume
+      setPickedPlan(picked)
+      setPlanPick(null)
+      if (resume === 'form') submit(picked)
+      else if (resume === 'link') sendLink(picked)
+    }
+    const willPay = planPick.resume === 'form' && (chosen ? chosen.takes_deposit : true) && (international || baseDepositRequired !== false)
+    return (
+      <div>
+        <div style={{ marginBottom: '20px' }}>
+          {!pageHeading && <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>VFO Tax Planning</div>}
+          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: pageHeading ? '18px' : '22px', color: 'var(--vfo-heading)' }}>{planPick.clientName || 'This client'} already has a tax plan</div>
+          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '8px', lineHeight: 1.6 }}>Which plan is this form for?</div>
+        </div>
+        <div style={sectionStyle}>
+          <TaxFormPlanPicker clientName={planPick.clientName} plans={planPick.plans} choice={planChoice}
+            onChoice={c => { setPlanChoice(c); setReplaceForm(false) }} replace={replaceForm} onReplace={setReplaceForm} disabled={submitting} />
+          {chosen && !chosen.takes_deposit && <div style={{ fontSize: '12.5px', fontWeight: 600, color: green, marginTop: '4px' }}>No deposit is needed for this plan.</div>}
+        </div>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginBottom: '32px' }}>
+          <button type="button" onClick={back} disabled={submitting}
+            style={{ padding: '10px 20px', borderRadius: '999px', fontSize: '13px', cursor: submitting ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
+            {planPick.resume === null ? 'Cancel' : 'Back'}
+          </button>
+          <button type="button" onClick={next} disabled={!!problem || submitting} title={problem || undefined}
+            style={{ padding: '10px 24px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: problem || submitting ? 'not-allowed' : 'pointer', border: 'none', background: problem || submitting ? 'var(--vfo-faint)' : '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
+            {planPick.resume === 'link' ? 'Send link' : planPick.resume === 'form' ? (willPay ? 'Submit and pay deposit' : 'Submit') : 'Continue'}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // ─── Step 1: who fills the form in? ───────────────────────────────────
   if (step === 'choose') {
@@ -545,6 +618,11 @@ export default function TaxIntakeForm({
                   <Toggle options={routeOptions} value={taxRoute} onChange={setTaxRoute} disabledKeys={directOk ? [] : ['direct']} />
                   <div style={explainStyle}>{routeOptions.find(o => o.key === taxRoute)?.body}</div>
                   <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{directNote}</div>
+                  {taxRoute === 'direct' && (
+                    <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#e06717', lineHeight: 1.55, marginTop: '8px', maxWidth: '640px' }}>
+                      Direct always creates a new client. If this person is already your client, choose VFO Services runs this case, so they are not added twice.
+                    </div>
+                  )}
                 </div>
               )}
               <div style={{ marginBottom: '24px' }}>
@@ -605,7 +683,7 @@ export default function TaxIntakeForm({
             style={{ padding: '10px 20px', borderRadius: '999px', fontSize: '13px', cursor: submitting ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>
             Back
           </button>
-          <button type="button" onClick={sendLink} disabled={submitting}
+          <button type="button" onClick={() => sendLink()} disabled={submitting}
             style={{ padding: '10px 24px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', border: 'none', background: submitting ? 'var(--vfo-faint)' : '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif', boxShadow: submitting ? 'none' : '0 2px 8px rgba(18,94,204,0.28)' }}>
             {submitting ? 'Sending...' : 'Send link'}
           </button>
@@ -686,7 +764,7 @@ export default function TaxIntakeForm({
             Back
           </button>
         )}
-        <button type="button" onClick={submit} disabled={submitting}
+        <button type="button" onClick={() => submit()} disabled={submitting}
           style={{ padding: '10px 24px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', border: 'none', background: submitting ? 'var(--vfo-faint)' : '#125ecc', color: '#fff', fontFamily: 'Inter, sans-serif', boxShadow: submitting ? 'none' : '0 2px 8px rgba(18,94,204,0.28)' }}>
           {submitting ? 'Submitting...' : (submitLabel || (depositRequired === false ? 'Submit' : 'Submit and pay deposit'))}
         </button>

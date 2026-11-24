@@ -18,7 +18,8 @@ import { formatDate } from '../../lib/dates'
 import ExportButton from '../shared/ExportButton'
 import { exportDate } from '../../lib/exportXlsx'
 
-import { STATUS_COLORS, statusColor } from '../shared/statusColors'
+import { STATUS_COLORS, statusColor, statusPillStyle } from '../shared/statusColors'
+import { planTag } from './tax/TaxPlanStatus'
 import { HEADSHOTS_URL } from '../../lib/environment'
 const HEADSHOT_SUPABASE = HEADSHOTS_URL
 
@@ -737,10 +738,9 @@ function TaxPlannerPaymentsTab({ plannerId }) {
 // even when they hold plans under more than one program.
 const PROGRAM_LABELS = { 1: 'Holistic', 4: 'VFO Tax Planning' }
 const programLabel = (id) => PROGRAM_LABELS[Number(id) || 1] || 'Holistic'
-// Same precedence as the planner portal's client list (PlannerClientsList): a
-// stopped plan is Stopped even if every step was ticked first; otherwise the
-// backend's is_complete — the shared step machine Client Overview runs — decides.
-const planState = (r) => (r.plan_status === 'stopped' ? 'Stopped' : r.is_complete ? 'Completed' : 'Live')
+// The plan's own tag (TaxPlanStatus planTag); the backend's is_complete, the shared
+// step machine Client Overview runs, decides Completed.
+const planState = (r) => planTag({ status: r.plan_status, status_kind: r.status_kind, next_tax_year: r.next_tax_year }, r.is_complete ? 'completed' : 'in progress')
 // Back from a client opened off a planner's Clients tab: the client page's Back
 // goes to location.state.from (the Tax Planners search), and this key tells the
 // panel which planner + tab to reopen. Consumed once on the next mount; a stale
@@ -757,11 +757,6 @@ function takePlannerReturn() {
     const r = raw ? JSON.parse(raw) : null
     return r && Date.now() - Number(r.at || 0) < 3600 * 1000 ? r : null
   } catch { return null }
-}
-const PLAN_STATE_STYLES = {
-  Live: { bg: 'rgba(0,149,255,0.12)', color: '#0095ff', border: 'rgba(0,149,255,0.3)' },
-  Completed: { bg: 'rgba(27,146,84,0.15)', color: '#1b9254', border: 'rgba(27,146,84,0.3)' },
-  Stopped: { bg: 'rgba(231,76,60,0.15)', color: '#e74c3c', border: 'rgba(231,76,60,0.3)' },
 }
 async function withPlanProgress(d) {
   const clients = d.clients || []
@@ -866,12 +861,11 @@ function TaxPlannerClientsTab({ plannerId }) {
                   <td style={td}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
                       {(c.planStates || []).map(p => {
-                        const s = PLAN_STATE_STYLES[p.state]
                         return (
                           <button key={p.id} type="button" title={`Open ${p.program} plan`}
                             onClick={() => { rememberPlannerReturn(plannerId); navigate(clientPagePath(c.client_id, { program: p.programId, tab: 'tax', plan: p.id }), { state: { from: PLANNER_RETURN_FROM } }) }}
-                            style={{ fontSize: '12px', lineHeight: '14px', height: '22px', boxSizing: 'border-box', padding: '3px 10px', borderRadius: '4px', whiteSpace: 'nowrap', background: s.bg, color: s.color, border: `1px solid ${s.border}`, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                            {p.state}
+                            style={{ ...statusPillStyle(p.state.hex), height: '22px', boxSizing: 'border-box', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                            {p.state.label}
                           </button>
                         )
                       })}

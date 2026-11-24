@@ -9,6 +9,26 @@
 
 ---
 
+## 2026-11-24 (e) — Tax plan status: Pause / Stop / Next tax year / Completed, one open plan per client, one automatic client status, and the forms picker — by Jake
+
+Branches `claude/tax-plan-status-picker-f3f8de` (vfo-react) and `claude/tax-plan-status-picker-8d4de0` (edge), carrying the work of `claude/tax-planning-pause-stop-*`. Plan of record with all 37 decisions: [plans/tax-plan-status/README.md](plans/tax-plan-status/README.md). Flow: [flows/tax-plan-status.md](flows/tax-plan-status.md) (new). Action count **714** (705 less `msm_update_tax_status`, plus 10), **54** route pages (unchanged). Six migrations, on the test site, live at release in this order, BEFORE the backend: `20261123180000`, `180100`, `180200`, `20261124090000`, `20261124180000`, `20261124180100`. Six new templates (Send). One new switch, `client_auto_status`, **Off** on live.
+
+**What Jake asked for.** A Pause beside Stop, a "moving to next tax year" stop with a list to come back to, a closing email with a middle the team writes that works at any step, something better than the Live / Stopped switch, and a Tax Plans screen where nobody has to guess which plan is which.
+
+**Built.** The Status bar on the plan page, with the email (or the reason there is none) before the status changes, and its history. A plan that is not in progress takes no payment, answers no emailed button, is never chased and has its steps locked, all by a status test that writes nothing to the payment slots. One open plan per client, refused at every place one can be made or reopened. The Tax Plans screen, the Next tax year list (continue the plan when money is held for work not done, else a new plan), and one automatic client status behind its switch. Tax planners no longer change a plan's status. ROI meeting declined and Not Implementing now stop the plan.
+
+**The forms picker.** A form for a client who already has a tax plan needs a plan picked: the member before paying, the team in Tax Diagnostics on every other route; never a client or the public. A paid $500 lands on a plan that can take it, else it is refunded (base only); a bank deposit still clearing can only go on a new plan. One form per plan, the old one kept as history. Three bells of their own, Tracy Miller only. No new email wording; the three thank-you pages no longer promise an email.
+
+**Also (Jake, 2026-11-24).** A failed bank deposit rings Jake only. The new-case bell and the team email say who really filled the form in.
+
+**Found while writing the docs, fixed.** `tax_plan_kpis` read `stopped` only, so a plan closed as Completed would have stayed in process with days running and money due; and it read the plan's newest form for the deposit, so a replaced form would have turned a paid plan into *Awaiting deposit*. Both in `20261124180000`; the function on the test site equals the file, every existing test-site row came out identical, and the 16 live plans with a form read the same either way. Gotchas **#785**, **#786**, **#787**.
+
+**Tested on the test site by Jake (2026-11-23/24).** Every status, the email window and the emailed buttons; the Tax Plans screen, client status and lists; every pick, refusal and replacement; card and bank payments, both refunds, the lead's Confirm, the bank payment while clearing; the Direct warning; the KPI change. **By Claude:** every no-payment route and refusal through the server; the KPI change and a replaced form in rolled-back transactions; the picker at 390 and 360 wide (drawn on its own, not in a member session). **Not exercised:** on JLathamERT/vfo-edge-functions#629, among them the planner portal's lists, the MAP 1 Tax Form button itself, the refunds looked at in Stripe, and the failed-deposit bell with its new recipient. Test builds: `vfo-admin-api-jake` v84, v85; the branch ran on the shared test backend for the payment tests and main was put back (v151).
+
+**Left over.** #630 (check the client status, then switch it On), #631 (the client with two live plans), #632 (KPI stop dates and paused days), #563 (Direct duplicates). Rollback: the schema only adds; set paused and completed plans to `stopped` first.
+
+---
+
 ## 2026-11-24 (d) — Portal Backlog: no Release importance in a Requests row dropdown — by Paxton
 
 Branch `claude/portal-backlog-dropdown-f80832` (vfo-react only). Website only, one line in `backlog/BacklogDetails.jsx`: no backend, migration, template or switch; action count **705** and **54** route pages (both unchanged). Admin-only screen, so no phone check. Flow: [flows/portal-backlog.md](flows/portal-backlog.md).

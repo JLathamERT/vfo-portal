@@ -9,6 +9,7 @@ import { useIsPhone } from '../../lib/useMediaQuery'
 import { statusPillStyle } from '../shared/statusColors'
 import { PORTAL_URL } from '../../lib/environment'
 import { StackedCardsSkeleton } from '../shared/Skeleton'
+import TaxFormPlanPicker, { planPickBody, planPickProblem } from '../shared/TaxFormPlanPicker'
 
 // Tax Diagnostics — the queue of public /tax-diagnostic submissions (grantable
 // tab `tax_diagnostics`, backend TAB_ACTIONS.tax_diagnostics).
@@ -48,6 +49,16 @@ const STATUS_CHIP = {
   portal: { label: 'Confirmed', color: '#1b9254' },
   denied: { label: 'Denied — $500 refunded', color: '#d93025' },
   awaiting: { label: 'Awaiting payment', color: '#e06717' },
+  pick: { label: 'Choose the tax plan', color: '#e06717' },
+  dismissed: { label: 'Dismissed', color: '#64748b' },
+}
+
+// A form whose client already has a tax plan, waiting for the team to pick which one
+// it belongs to (2026-11-23; formAwaitsPlan in utils/tax-form-plan.ts).
+function awaitsPlan(d) {
+  const i = d.intake
+  if (!i?.plan_pick_needed_at || i.tax_plan_id) return false
+  return i.status === 'paid' || i.status === 'waived' || (i.status === 'pending' && !!i.deposit_processing_at)
 }
 
 // A form with a deposit still to pay (2026-10-13 — one rule for public AND
@@ -68,8 +79,8 @@ function awaitingPayment(d) {
 // Which tab a card sits under. An unpaid form (public or portal) is Pending; any
 // other portal form never needs the team, so it is Confirmed. (A dismissed form is never shown — see isShown.)
 function tabOf(d) {
-  if (awaitingPayment(d)) return 'pending'
-  if (d.source === 'portal') return 'confirmed'
+  if (awaitingPayment(d) || awaitsPlan(d)) return 'pending'
+  if (d.source === 'portal') return d.intake?.status === 'refunded' ? 'denied' : 'confirmed'
   if (d.status === 'new') return 'pending'
   return d.status
 }
@@ -78,7 +89,9 @@ const cardKey = (d) => d.key || d.id
 // A form for an EXISTING client (the personal ?client= link or the member
 // portal's Holistic form): answers stored on that client — no deposit, no new
 // client, no plan.
-const isHolisticForm = (d) => d.source === 'portal' && !!d.intake?.client_id && !d.intake?.tax_plan_id && d.intake?.deposit_required === false
+const isHolisticForm = (d) => d.source === 'portal' && (
+  (!!d.intake?.client_id && !d.intake?.tax_plan_id && d.intake?.deposit_required === false)
+  || d.intake?.program_id === 1)
 
 function isShown(d) {
   if (d.status === 'dismissed') return false
@@ -231,9 +244,10 @@ function referrerText(d) {
 function memberChip(d) {
   const i = d.intake || {}
   if (awaitingPayment(d)) return { label: 'Awaiting payment', color: '#e06717' }
+  if (awaitsPlan(d)) return { label: 'With the VFO team', color: '#e06717' }
   if (i.deposit_processing_at) return { label: 'Payment clearing', color: '#e06717' }
   if (i.status === 'refunded') return { label: 'Deposit refunded', color: '#d93025' }
-  if (i.status === 'completed') return { label: isHolisticForm(d) ? 'Received' : 'Client created', color: '#1b9254' }
+  if (i.status === 'completed') return { label: isHolisticForm(d) || i.picked_plan_id ? 'Received' : 'Client created', color: '#1b9254' }
   if (i.status === 'paid' || i.status === 'waived') return { label: 'Creating the client', color: '#1b9254' }
   return { label: 'Submitted', color: '#64748b' }
 }
@@ -241,9 +255,10 @@ function memberChip(d) {
 export function DiagnosticCard({ d, members, open, onToggle, onChanged, card, memberMode = false }) {
   const portal = d.source === 'portal'
   const awaiting = awaitingPayment(d)
+  const pickPlan = awaitsPlan(d)
   const chip = memberMode
     ? memberChip(d)
-    : STATUS_CHIP[awaiting ? 'awaiting' : portal ? 'portal' : d.status] || { label: d.status, color: '#64748b' }
+    : STATUS_CHIP[awaiting ? 'awaiting' : pickPlan ? 'pick' : portal ? (d.intake?.status === 'refunded' ? 'denied' : 'portal') : d.status] || { label: d.status, color: '#64748b' }
   const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim() || '(no name)'
   const answers = d.answers || {}
   const navigate = useNavigate()
@@ -316,13 +331,14 @@ export function DiagnosticCard({ d, members, open, onToggle, onChanged, card, me
       {open && (
         <div style={{ marginTop: '18px', borderTop: '1px solid var(--vfo-border-soft)', paddingTop: '18px' }}>
           {memberMode && <MemberSummary d={d} onChanged={onChanged} />}
+          {!memberMode && pickPlan && <PickPlanBox d={d} onChanged={onChanged} />}
           {!memberMode && portal && !awaiting && <PortalSummary d={d} />}
           {!memberMode && awaiting && <AwaitingPaymentBox d={d} onChanged={onChanged} />}
           {!portal && !awaiting && d.status === 'new' && d.intake && <LeadBox d={d} members={members} onChanged={onChanged} />}
           {!portal && d.status === 'new' && !d.intake && <ConfirmBox d={d} members={members} onChanged={onChanged} />}
 
           {!portal && !awaiting && d.status === 'confirmed' && (
-            <ConfirmedSummary d={d} onChanged={onChanged} />
+            <ConfirmedSummary d={d} onChanged={onChanged} waitsForPlan={pickPlan} />
           )}
 
           {d.status === 'denied' && (
@@ -358,6 +374,7 @@ function ConfirmBox({ d, members, onChanged }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
+  const ask = usePlanAsk(memberNumber)
 
   const picked = members.find(m => m.member_number === memberNumber) || null
   const filtered = useMemo(() => {
@@ -369,11 +386,16 @@ function ConfirmBox({ d, members, onChanged }) {
   async function confirm() {
     if (!picked) { setErr('Choose the member this client belongs to.'); return }
     const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim()
-    if (!window.confirm(`Create ${clientName} under ${picked.name} (${picked.member_number})? The deposit will be paid by the ${payer}.`)) return
+    if (ask.plans && ask.problem) { setErr(ask.problem); return }
+    if (!window.confirm(ask.plans
+      ? `Confirm ${clientName} under ${picked.name} (${picked.member_number})${ask.plan ? ` and put the form on the ${planWords(ask.plan)}` : ' and start a new tax plan'}?`
+      : `Create ${clientName} under ${picked.name} (${picked.member_number})? The deposit will be paid by the ${payer}.`)) return
     setBusy(true); setErr(''); setMsg('')
     try {
-      const res = await callApi('tax_diagnostic_confirm', { id: d.id, member_number: picked.member_number, deposit_payer: payer })
-      const text = res?.waived
+      const res = await callApi('tax_diagnostic_confirm', { id: d.id, member_number: picked.member_number, deposit_payer: payer, ...ask.body })
+      const text = res?.filed_on_plan && res?.waived
+        ? 'Confirmed. The form is on the plan you picked. No deposit was needed.'
+        : res?.waived
         ? 'Confirmed. The deposit is waived for this member, so the case has been created and the confirmation email sent.'
         : res?.email_drafted
           ? `Confirmed. The deposit link email to the ${payer} has been ${res.email_sent ? 'sent' : 'drafted in Gmail'}.`
@@ -382,6 +404,7 @@ function ConfirmBox({ d, members, onChanged }) {
       window.alert(text)
       onChanged()
     } catch (e) {
+      if (ask.take(e)) { setBusy(false); return }
       setErr(e?.message || 'Could not confirm')
       setBusy(false)
     }
@@ -457,12 +480,127 @@ function ConfirmBox({ d, members, onChanged }) {
         Pre-set from the form ({d.completed_by === 'member' ? 'a VFO member completed it' : 'the client completed it'}). If the member&apos;s deposit is waived nobody pays and the case is created straight away.
       </div>
 
+      <PlanAsk ask={ask} heading="3. Which tax plan is it for?" disabled={busy} />
+
       {err && <div style={{ marginTop: '12px', fontSize: '12.5px', color: '#d93025' }}>{err}</div>}
       {msg && <div style={{ marginTop: '12px', fontSize: '12.5px', color: 'var(--vfo-success-text)' }}>{msg}</div>}
       <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
         <button type="button" onClick={confirm} disabled={busy || !picked} style={btn(true, busy || !picked)}>{busy ? 'Working...' : 'Confirm'}</button>
         <button type="button" onClick={dismiss} disabled={busy}
           style={{ ...btn(false, busy), border: 'none', background: busy ? 'var(--vfo-faint)' : '#d93025', color: '#fff' }}>Dismiss</button>
+      </div>
+    </div>
+  )
+}
+
+// The picker inside Confirm: asked only when the server says the client already has a
+// tax plan (its 409 carries the plans). Changing the member asks again.
+const planWords = (p) => p.tax_year ? `${p.tax_year} tax plan` : `tax plan started ${formatDate(p.created_at)}`
+function usePlanAsk(memberNumber) {
+  const [data, setData] = useState(null)
+  const [choice, setChoice] = useState('')
+  const [replace, setReplace] = useState(false)
+  useEffect(() => { setData(null); setChoice(''); setReplace(false) }, [memberNumber])
+  const plans = data?.plans || null
+  return {
+    plans, clientName: data?.client_name || '', choice, replace,
+    pick: c => { setChoice(c); setReplace(false) }, setReplace,
+    plan: plans?.find(p => String(p.id) === choice) || null,
+    problem: plans ? planPickProblem(choice, plans, replace) : null,
+    body: plans ? planPickBody(choice, plans, replace) : {},
+    take: e => { if (!e?.data?.needs_plan_pick) return false; setData(e.data); return true },
+  }
+}
+function PlanAsk({ ask, heading, disabled, paid = false }) {
+  if (!ask.plans) return null
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }}>{heading}</div>
+      <div style={{ fontSize: '12.5px', color: 'var(--vfo-ink)', marginBottom: '8px' }}>{ask.clientName} already has a tax plan with this member.</div>
+      <TaxFormPlanPicker clientName={ask.clientName} plans={ask.plans} choice={ask.choice} onChoice={ask.pick} replace={ask.replace} onReplace={ask.setReplace} staff disabled={disabled} />
+      {ask.plan && !ask.plan.takes_deposit && (
+        <div style={{ fontSize: '12.5px', fontWeight: 600, color: paid ? '#e06717' : 'var(--vfo-success-text)' }}>
+          {paid ? 'This plan does not need a deposit, so the $500 is refunded when you confirm.' : 'This plan does not need a deposit, so none is asked for.'}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// A form waiting for its plan: the client's plans, the pick, and Dismiss. A paid $500
+// the picked plan does not need is refunded with the pick, and the button says so.
+function PickPlanBox({ d, onChanged }) {
+  const intake = d.intake
+  const [data, setData] = useState(null)
+  const [choice, setChoice] = useState('')
+  const [replace, setReplace] = useState(false)
+  const [busy, setBusy] = useState('')
+  const [err, setErr] = useState('')
+  const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim() || 'this client'
+  useEffect(() => {
+    let live = true
+    callApi('tax_form_plan_options_load', { intake_id: intake.id })
+      .then(res => { if (live) setData(res) })
+      .catch(e => { if (live) setErr(e?.message || 'Could not load the plans') })
+    return () => { live = false }
+  }, [intake.id])
+  const plans = data?.plans || []
+  const plan = plans.find(p => String(p.id) === choice) || null
+  const problem = data ? planPickProblem(choice, plans, replace) : 'Loading'
+  const refund = data?.deposit === 'paid' && !!plan && !plan.takes_deposit
+  const waitForBank = data?.deposit === 'clearing' && !!plan && !plan.takes_deposit
+
+  async function pick() {
+    if (problem) { setErr(problem); return }
+    if (refund && !window.confirm(`Put the form on the ${planWords(plan)} and refund the $500? Any card fee is not refunded. This cannot be undone.`)) return
+    setBusy('pick'); setErr('')
+    try {
+      const res = await callApi('tax_form_pick_plan', { intake_id: intake.id, ...planPickBody(choice, plans, replace), ...(refund ? { refund_deposit: true } : {}) })
+      window.alert(res?.payment_due
+        ? 'Picked. That plan takes the $500 deposit, which has not been asked for yet, so the form is now under Awaiting payment.'
+        : `${res?.new_plan ? 'A new tax plan has been started with this form' : 'The form is on the plan'}${res?.refunded ? ' and the $500 has been refunded' : ''}.`)
+      onChanged()
+    } catch (e) {
+      if (e?.data?.needs_plan_pick) setData(x => ({ ...x, plans: e.data.plans || x.plans }))
+      setErr(e?.message || 'The form could not be put on the plan')
+      setBusy('')
+    }
+  }
+  async function dismiss() {
+    const paid = data?.deposit === 'paid'
+    const reason = window.prompt(`Dismiss ${clientName}'s form?${paid ? ' The $500 is refunded straight away (any card fee is not).' : ''} Optional reason (e.g. duplicate):`, '')
+    if (reason === null) return
+    setBusy('dismiss'); setErr('')
+    try {
+      const res = await callApi('tax_form_held_dismiss', { intake_id: intake.id, reason, ...(paid ? { refund_deposit: true } : {}) })
+      if (res?.refunded) window.alert(`Dismissed. $${Number(res.refund_amount || 0).toFixed(2)} refunded.`)
+      onChanged()
+    } catch (e) {
+      setErr(e?.message || 'Could not dismiss')
+      setBusy('')
+    }
+  }
+  const btn = (color, off) => ({ padding: '9px 20px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: off ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif', border: 'none', background: off ? 'var(--vfo-faint)' : color, color: '#fff' })
+  const pickOff = !!busy || !!problem || waitForBank
+  return (
+    <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: 'rgba(18,94,204,0.05)', border: '1px solid rgba(18,94,204,0.18)' }}>
+      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '4px' }}>Which tax plan is it for?</div>
+      <div style={{ fontSize: '12.5px', color: 'var(--vfo-ink)', marginBottom: '12px', lineHeight: 1.55 }}>
+        {data?.client ? `${data.client.name}${data.client.client_ref ? ` (${data.client.client_ref})` : ''}` : clientName} already has a tax plan, so this form waits until you pick one.
+        {data?.deposit === 'paid' ? ' The $500 deposit has been paid.' : data?.deposit === 'clearing' ? ' The $500 bank payment is clearing.' : ''}
+      </div>
+      {!data && !err && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)' }}>Loading the plans…</div>}
+      {data && <TaxFormPlanPicker clientName={data.client?.name} plans={plans} choice={choice} onChoice={c => { setChoice(c); setReplace(false); setErr('') }} replace={replace} onReplace={setReplace} staff disabled={!!busy} />}
+      {refund && <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#e06717' }}>This plan does not need a deposit, so the $500 is refunded.</div>}
+      {waitForBank && <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#e06717' }}>This plan does not need a deposit. Pick it once the bank payment has cleared, so the $500 can be refunded.</div>}
+      {err && <div style={{ marginTop: '10px', fontSize: '12.5px', color: '#d93025' }}>{err}</div>}
+      <div style={{ display: 'flex', gap: '10px', marginTop: '14px', flexWrap: 'wrap' }}>
+        <button type="button" onClick={pick} disabled={pickOff} style={btn('#1b9254', pickOff)}>
+          {busy === 'pick' ? 'Working…' : refund ? 'Put on this plan and refund $500' : choice === 'new' ? 'Start a new plan' : 'Put on this plan'}
+        </button>
+        <button type="button" onClick={dismiss} disabled={!!busy || !data || data.deposit === 'clearing'} style={btn('#d93025', !!busy || !data || data.deposit === 'clearing')}>
+          {busy === 'dismiss' ? 'Working…' : data?.deposit === 'paid' ? 'Dismiss and refund $500' : 'Dismiss'}
+        </button>
       </div>
     </div>
   )
@@ -550,6 +688,7 @@ function LeadBox({ d, members, onChanged }) {
   const [search, setSearch] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const ask = usePlanAsk(memberNumber)
   const paid = intake.status === 'paid' && !intake.member_number
   const clearing = !!intake.deposit_processing_at && intake.status !== 'paid'
   const clientName = `${d.client_first_name || ''} ${d.client_last_name || ''}`.trim()
@@ -568,15 +707,22 @@ function LeadBox({ d, members, onChanged }) {
       if (okText) window.alert(okText(res))
       onChanged()
     } catch (e) {
+      if (ask.take(e)) { setBusy(false); return }
       setErr(e?.message || 'Something went wrong')
       setBusy(false)
     }
   }
   function confirm() {
     if (!picked) { setErr('Choose the member this client belongs to.'); return }
-    if (!window.confirm(`Create ${clientName} under ${picked.name} (${picked.member_number})? The client has already paid the $500 deposit.`)) return
-    run('tax_diagnostic_confirm', { member_number: picked.member_number },
-      () => 'Confirmed. The case has been created and the confirmation email with the deposit invoice and receipt sent to the client.')
+    if (ask.plans && ask.problem) { setErr(ask.problem); return }
+    const refund = !!ask.plan && !ask.plan.takes_deposit
+    if (!window.confirm(ask.plans
+      ? `Confirm ${clientName} under ${picked.name} (${picked.member_number})${ask.plan ? ` and put the form on the ${planWords(ask.plan)}` : ' and start a new tax plan'}?${refund ? ' That plan does not need a deposit, so the $500 is refunded to the client (any card fee is not).' : ''}`
+      : `Create ${clientName} under ${picked.name} (${picked.member_number})? The client has already paid the $500 deposit.`)) return
+    run('tax_diagnostic_confirm', { member_number: picked.member_number, ...ask.body, ...(refund ? { refund_deposit: true } : {}) },
+      (res) => res?.filed_on_plan
+        ? `Confirmed. The form is on the plan you picked${res.refunded ? ' and the $500 has been refunded' : ''}.`
+        : 'Confirmed. The case has been created and the confirmation email with the deposit invoice and receipt sent to the client.')
   }
   function deny() {
     const reason = window.prompt(`Deny ${clientName}? The $500 deposit is refunded to the client straight away (any card fee is not refunded). Optional reason:`, '')
@@ -626,6 +772,8 @@ function LeadBox({ d, members, onChanged }) {
         </>
       )}
 
+      {paid && <PlanAsk ask={ask} heading="Which tax plan is it for?" disabled={busy} paid />}
+
       {clearing && (
         <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '10px' }}>The bank transfer is still clearing. Choose the member or Deny once it has cleared.</div>
       )}
@@ -658,13 +806,14 @@ function DepositTrack({ intake, payer, payFirst = false, createdAt = null, membe
   // Created at submit for a bank transfer (2026-10-30): see clientProfileUrl above.
   const clientCreated = (intake.status === 'completed' || !!intake.tax_plan_id) && intake.client_id
   const orange = '#e06717'
+  const onExistingPlan = !!intake.picked_plan_id || !!intake.plan_pick_needed_at
   const chip = (text, color) => (
     <span style={{ fontSize: '10.5px', padding: '2px 9px', borderRadius: '999px', background: color + '26', border: `1px solid ${color}4d`, color: readable(color), fontWeight: 600, whiteSpace: 'nowrap' }}>{text}</span>
   )
 
   const steps = waived
     ? [
-        { label: 'Deposit', done: true, right: chip(memberMode ? 'Waived — you have 2+ qualifying clients' : 'Waived — member has 2+ qualifying clients', '#1b9254') },
+        { label: 'Deposit', done: true, right: chip(onExistingPlan ? 'None due' : memberMode ? 'Waived — you have 2+ qualifying clients' : 'Waived — member has 2+ qualifying clients', '#1b9254') },
       ]
     : [
         payFirst
@@ -703,8 +852,9 @@ function DepositTrack({ intake, payer, payFirst = false, createdAt = null, membe
                 : null,
         },
       ]
+  const onExisting = !!intake.picked_plan_id || (!!intake.plan_pick_needed_at && !intake.picked_new_plan)
   steps.push({
-    label: 'Client created',
+    label: onExisting ? 'Put on a tax plan' : 'Client created',
     done: !!clientCreated,
     right: clientCreated
       ? (
@@ -714,10 +864,20 @@ function DepositTrack({ intake, payer, payFirst = false, createdAt = null, membe
           Open client profile
         </button>
       )
+      : intake.plan_pick_needed_at && !intake.tax_plan_id
+        ? chip(memberMode ? 'With the VFO team' : 'Choose the tax plan', orange)
       : intake.status === 'paid'
         ? chip(intake.member_number ? 'Creating the case…' : 'Choose the member', orange)
         : null,
   })
+
+  if (intake.deposit_refund_id || intake.deposit_refunded_at) {
+    steps.push({
+      label: `Deposit refunded${intake.deposit_refund_amount ? ` ($${Number(intake.deposit_refund_amount).toFixed(2)})` : ''}`,
+      done: true,
+      right: <span>{formatDate(intake.deposit_refunded_at)}</span>,
+    })
+  }
 
   return (
     <div style={{ margin: '12px 0 4px', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '6px 14px' }}>
@@ -826,7 +986,7 @@ function PortalSummary({ d }) {
     <div style={{ marginBottom: '18px', fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.7 }}>
       <div><strong>Member:</strong> {m ? `${m.name} (${m.member_number})` : d.confirmed_member_number}</div>
       {isHolisticForm(d) ? (
-        <div><strong>Deposit:</strong> none — an existing client; the answers are stored on their client record.</div>
+        <div><strong>Deposit:</strong> none — an existing client{awaitsPlan(d) ? '.' : '; the answers are stored on their client record.'}</div>
       ) : (
         <>
           <div><strong>Deposit paid by:</strong> {d.deposit_payer === 'member' ? 'The member' : 'The client'}</div>
@@ -837,7 +997,7 @@ function PortalSummary({ d }) {
   )
 }
 
-function ConfirmedSummary({ d, onChanged }) {
+function ConfirmedSummary({ d, onChanged, waitsForPlan = false }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const m = d.confirmed_member
@@ -867,7 +1027,7 @@ function ConfirmedSummary({ d, onChanged }) {
       <div><strong>Confirmed by:</strong> {auto ? 'Approved automatically by the form (one member named)' : d.confirmed_by} on {formatDate(d.confirmed_at)}</div>
       {d.intake && <DepositTrack intake={d.intake} payer={d.deposit_payer} payFirst={payFirst} createdAt={d.created_at} />}
       {!d.intake && stage && <div><strong>Status:</strong> {stage}</div>}
-      {(d.intake?.status === 'waived' || (d.intake?.status === 'invited' && !d.intake?.link_sent_at) || (d.intake?.status === 'paid' && d.intake?.member_number) || !d.intake) && (
+      {!waitsForPlan && (d.intake?.status === 'waived' || (d.intake?.status === 'invited' && !d.intake?.link_sent_at) || (d.intake?.status === 'paid' && d.intake?.member_number) || !d.intake) && (
         <button type="button" onClick={retry} disabled={busy}
           style={{ marginTop: '8px', padding: '7px 16px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', border: 'none', background: '#e06717', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
           {busy ? 'Retrying...' : (d.intake?.status === 'waived' || d.intake?.status === 'paid') ? 'Retry creating the case' : d.intake ? 'Retry the deposit link email' : 'Retry'}

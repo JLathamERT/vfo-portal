@@ -778,7 +778,6 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const stateColors = { 'not started': 'var(--vfo-muted)', 'in progress': '#0095ff', 'completed': '#1b9254' }
   const statePillHex = { 'not started': null, 'in progress': '#0095ff', 'completed': '#1b9254' }
 
   // A priority's title (the Custom rename edits it in place). `extra` styles it
@@ -907,19 +906,15 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
 
           {priorityTracks.map(track => {
             const state = getTrackState(track)
-            const stateColor = stateColors[state]
-            // Phone: the Tax plan list's card - title with the Live / Stopped and
-            // state pills, the date under it, a chevron instead of "View".
+            // Phone: title with the one state tag, the date under it, a chevron instead
+            // of "View".
             if (isPhone) return (
               <div key={track.id} onClick={() => snapPending ? setPendingOpenId(track.id) : setSelectedTrack(track)}
                 style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '12px 14px', marginBottom: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                     {renderTitle(track, { marginBottom: 0, lineHeight: 1.3, minWidth: 0 })}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                      <span style={statusPillStyle(track.status === 'stopped' ? '#e74c3c' : '#1b9254')}>{track.status === 'stopped' ? 'Stopped' : 'Live'}</span>
-                      {track.status !== 'stopped' && <span style={{ ...statusPillStyle(statePillHex[state]), textTransform: 'capitalize' }}>{state}</span>}
-                    </div>
+                    <span style={{ ...statusPillStyle(track.status === 'stopped' ? '#e74c3c' : statePillHex[state]), textTransform: 'capitalize' }}>{track.status === 'stopped' ? 'Stopped' : state}</span>
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px' }}>{new Date(track.created_at).toLocaleDateString()}</div>
                 </div>
@@ -936,8 +931,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
                   <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{new Date(track.created_at).toLocaleDateString()}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: track.status === 'stopped' ? 'rgba(231,76,60,0.15)' : 'rgba(27,146,84,0.15)', color: track.status === 'stopped' ? '#e74c3c' : 'var(--vfo-success-text)', border: `1px solid ${track.status === 'stopped' ? 'rgba(231,76,60,0.3)' : 'rgba(27,146,84,0.3)'}` }}>{track.status === 'stopped' ? 'Stopped' : 'Live'}</span>
-                  {track.status !== 'stopped' && <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: `${stateColor}22`, color: readable(stateColor), border: `1px solid ${stateColor}44`, textTransform: 'capitalize' }}>{state}</span>}
+                  <span style={{ ...statusPillStyle(track.status === 'stopped' ? '#e74c3c' : statePillHex[state]), textTransform: 'capitalize' }}>{track.status === 'stopped' ? 'Stopped' : state}</span>
                   <span style={{ color: '#0095ff', fontWeight: 500, fontSize: '13px' }}>View →</span>
                 </div>
               </div>

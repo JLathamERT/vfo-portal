@@ -22,6 +22,9 @@ const LONG_TIMEOUT_ACTIONS = {
   // engine (Stripe transfer + the payee's email) before it answers. A WRITE,
   // never auto-retried; pressing again is safe (a paid leg is a no-op).
   held_payout_retry: 90000,
+  // Change status on a tax plan (2026-11-23): sends the client's email before it
+  // answers. A WRITE, never auto-retried.
+  tax_plan_status_set: 60000,
   // The test site's resets: a WRITE, never auto-retried. Pressing again is safe.
   staging_reset_mine: 120000,
   staging_reset_all: 120000,

@@ -132,24 +132,30 @@ export default function PlannerClientsList() {
     )
   }, [visible, search])
 
-  // Three sections, in the order a planner works them: what is open, what is
-  // finished, what was stopped. Stopped wins over completion — a stopped plan is
+  // Sections in the order a planner works them: what is open, what is paused, what is
+  // finished, what moved to next tax year, what was stopped. Stopped wins over completion — a stopped plan is
   // Stopped even if every step happened to be ticked before it stopped (the
   // backend applies the same precedence when it sets is_complete's siblings).
   // Search and the planner filter have already been applied, so a section that
   // matches nothing simply disappears.
   const sections = useMemo(() => {
     const active = []
+    const paused = []
+    const nextYear = []
     const complete = []
     const stopped = []
     for (const r of filtered) {
-      if (r.plan_status === 'stopped') stopped.push(r)
+      if (r.plan_status === 'stopped' && r.status_kind === 'next_tax_year') nextYear.push(r)
+      else if (r.plan_status === 'stopped') stopped.push(r)
+      else if (r.plan_status === 'paused') paused.push(r)
       else if (r.is_complete) complete.push(r)
       else active.push(r)
     }
     return [
       { key: 'active', label: 'Active', rows: active, showNextStep: true },
+      { key: 'paused', label: 'Paused', rows: paused, showNextStep: false },
       { key: 'complete', label: 'Complete', rows: complete, showNextStep: false },
+      { key: 'nextYear', label: 'Next tax year', rows: nextYear, showNextStep: false },
       { key: 'stopped', label: 'Stopped', rows: stopped, showNextStep: false },
     ]
   }, [filtered])

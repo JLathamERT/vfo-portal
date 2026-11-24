@@ -173,6 +173,10 @@ The rule, **for public AND member-portal forms alike** (portal since the same da
 - **A `paid` intake WITH a member whose finalize failed** (a paid lead after Confirm): finalize again.
 - **An `invited` intake with no `link_sent_at`:** the link is drafted again.
 
+## A waiting form: pick the plan (2026-11-23)
+
+A form whose client already has a tax plan waits under **Pending** with the plan picker and its own **Dismiss** (a paid $500 is refunded, base only): [tax-plan-status.md](tax-plan-status.md#the-forms-picker-which-plan-a-form-belongs-to). A lead's Confirm takes the pick too. The `/tax-diagnostic?client=` Tax Form button without a plan waits the same way; with a plan it files as before, and a second form on one link is still refused.
+
 ## Dismiss and Deny (2026-09-30)
 
 **Dismiss** (`actions/tax/diagnostic-dismiss.ts`) closes a diagnostic that has taken **no money**: a `new` one, or an auto-approved `confirmed` one whose payer never paid. If it has an intake row, `closeUnpaidDiagnosticIntake` (`utils/tax-diagnostic-intake.ts`) first expires any open Checkout with the key it was minted on (#485 — a session Stripe reports COMPLETE means money is moving: refused, use Deny), then moves the intake to **`dismissed`** (guarded on a payable status and no ACH in flight). The choice page then reads **`closed`** and shows *"This payment link is no longer active."*; the checkout refuses with the same sentence. Refused: a paid or clearing deposit (*use Deny*), or a case already created. **The open-Checkout expiry arm is code-only** (the one live test closed the page before a session existed). **The admin page calls it from the queued Confirm box** (a two-member match, no intake row) **and, since 2026-10-13, from every *Awaiting payment* card** (an unpaid lead or automatic approval — from 2026-10-07 to 2026-10-13 those were hidden instead). The action itself is unchanged.
