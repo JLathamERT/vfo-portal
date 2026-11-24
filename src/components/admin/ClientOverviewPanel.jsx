@@ -71,12 +71,12 @@ const CLIENT_SORT_OPTIONS = [
   { value: 'za', label: 'Name: Z to A' },
 ]
 
-// Client (member beneath) · [Priority/Plan] · Status · PF · [Service level] · [Phase] · Next action · Owner
+// Client (member beneath) · [Priority/Plan] · Status · PF · [Service level] · [Tax plan team] · [Phase] · Next action · Owner
 // Tax Planning leads with the KPI chevron (admin only, 2026-11-16).
 const GRID_BY_SECTION = {
   map1: '1.1fr 96px 130px 1fr 1.9fr 1.1fr',
   regular: '1.1fr 1.7fr 96px 130px 1.9fr 1.1fr',
-  tax_planning: '24px 1.1fr 170px 96px 130px 90px 1.9fr 1.1fr',
+  tax_planning: '24px 190px 150px 84px 116px 168px 72px 1.8fr 1fr',
   pft: '1.1fr 96px 130px 1.9fr 1.1fr',
   tailored: '1.1fr 96px 130px 1.9fr 1.1fr',
   unassigned: '1.4fr 96px 160px 260px',
@@ -84,7 +84,7 @@ const GRID_BY_SECTION = {
   // where Next action is, CIQs where Owner is - so the columns line up pill to pill.
   ciq: '1.1fr 96px 130px 1fr 1.9fr 1.1fr',
 }
-const MIN_WIDTH_BY_SECTION = { map1: '980px', regular: '1000px', tax_planning: '1074px', pft: '860px', tailored: '860px', unassigned: '760px', ciq: '980px' }
+const MIN_WIDTH_BY_SECTION = { map1: '980px', regular: '1000px', tax_planning: '1240px', pft: '860px', tailored: '860px', unassigned: '760px', ciq: '980px' }
 // The member portal's Client Overview (mode='member', L5 phase 2): the same table
 // minus the Next action and Owner columns (decision 27). Fixed widths shared by
 // every pill (Name 280 · Priority/Plan 260 · Status 110 · PF 180 · Service level /
@@ -341,6 +341,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
     status: { type: 'text', get: r => clientStatusLabel(r.client.status) || 'Active' },
     pf: { type: 'text', get: r => r.client.assigned_pf },
     phase: { type: 'number', get: r => r.track.phase_rank },
+    team: { type: 'text', get: r => r.track.team },
     ciq: { type: 'number', get: r => CIQ_STATE[r.client.ciq?.state]?.rank ?? -1 },
     ciq_at: { type: 'text', get: r => r.client.ciq?.last_at || '' },
     ciq_count: { type: 'number', get: r => r.client.ciq_count ?? -1 },
@@ -516,6 +517,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
               <SortHeader label="Status" sortKey="status" sort={colSort} onSort={onSort} />
               <SortHeader label="PF" sortKey="pf" sort={colSort} onSort={onSort} />
               {isMap1 && <span>Service level</span>}
+              {showKpi && <SortHeader label="Tax plan team" sortKey="team" sort={colSort} onSort={onSort} />}
               {isTax && <SortHeader label="Phase" sortKey="phase" sort={colSort} onSort={onSort} />}
               {isCiq && <SortHeader label="CIQ" sortKey="ciq" sort={colSort} onSort={onSort} />}
               {isCiq && <SortHeader label="Last updated" sortKey="ciq_at" sort={colSort} onSort={onSort} />}
@@ -673,6 +675,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
                   </span>
                   <span style={{ fontSize: '12px', color: c.assigned_pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.assigned_pf || '—'}</span>
                   {isMap1 && <span style={{ fontSize: '12px', color: t.service_level ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.service_level || '—'}</span>}
+                  {showKpi && <span style={{ fontSize: '12px', color: t.team ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.team || 'Not allocated'}</span>}
                   {isTax && (t.state === 'closed' ? (
                     memberMode ? <span style={{ fontSize: '12px', fontWeight: 600, color: closedTaxText(t).color }}>{closedTaxText(t).text}</span>
                       : <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)' }}>{t.reached_phase ? taxDisplayName(t.reached_phase) : '—'}</span>

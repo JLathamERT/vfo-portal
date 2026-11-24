@@ -17,12 +17,11 @@ const bigNumber = { fontSize: '26px', fontWeight: 800, letterSpacing: '-0.5px' }
 
 // One day count: { state: value | na | hidden | dash | blocked, kind: between | in_step, days, tone? }.
 // The number is the tile's headline: the days since the previous step finished (the header's is the whole process).
-// 'hidden' (a plan without reliable step dates) shows nothing but keeps the line's height.
+// 'hidden' (a plan without reliable step dates) shows nothing and takes no room.
 const DAY_TONES = { red: '#e74c3c', grey: 'var(--vfo-muted)' }
 function DayLine({ day }) {
-  if (!day) return null
+  if (!day || day.state === 'hidden') return null
   const base = { fontSize: '12px', fontWeight: 600 }
-  if (day.state === 'hidden') return <span aria-hidden="true" style={{ display: 'inline-block', height: '29px' }} />
   if (day.state === 'na') return <span title={NA_TIP} style={{ ...base, fontWeight: 500, color: 'var(--vfo-faint)' }}>{NA_TEXT}</span>
   if (day.state === 'blocked') return <span style={{ ...base, color: '#e06717' }}>Awaiting deposit</span>
   if (day.state !== 'value') return <span style={{ ...base, color: 'var(--vfo-faint)', fontSize: '20px' }}>—</span>
@@ -79,7 +78,7 @@ function StepTile({ step, strategies, blockedReason }) {
       <span style={stepLabel}>{step.number === 0 ? 'Set Up' : `Step ${step.number}`}</span>
       <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-ink)', lineHeight: 1.25 }}>{step.name}</span>
       <StatusChip tone={step.tone}>{step.status}</StatusChip>
-      {step.day && <div style={{ marginTop: '2px' }}><DayLine day={step.day} /></div>}
+      {step.day && step.day.state !== 'hidden' && <div style={{ marginTop: '2px' }}><DayLine day={step.day} /></div>}
       {step.reason && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{step.reason}</span>}
       {step.number === 0 && blockedReason && <span style={{ fontSize: '12px', fontWeight: 600, color: '#e06717' }}>{blockedReason}</span>}
       {step.number === 0 && step.paid_date && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Paid {fmtShortDate(step.paid_date)}</span>}
@@ -88,10 +87,14 @@ function StepTile({ step, strategies, blockedReason }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
           {subs.map(s => (
             <div key={s.id} style={{ border: '1px solid var(--vfo-border-soft)', borderLeft: `3px solid ${(TONES[s.tone] || TONES.grey).rail}`, borderRadius: '8px', padding: '6px 9px', background: 'var(--vfo-input)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 10px', minWidth: 0 }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--vfo-ink)', overflowWrap: 'anywhere' }}>{s.strategy || 'Strategy'}</span>
-              <span style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', overflowWrap: 'anywhere' }}>{s.specialist_name || '—'}</span>
-              <StatusChip tone={s.tone}>{s.status}</StatusChip>
-              {s.day && <span style={{ marginLeft: 'auto' }}><DayLine day={s.day} /></span>}
+              <span style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+                <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0 10px', minWidth: 0 }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--vfo-ink)', overflowWrap: 'anywhere' }}>{s.strategy || 'Strategy'}</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', overflowWrap: 'anywhere' }}>{s.specialist_name || '—'}</span>
+                </span>
+                <StatusChip tone={s.tone}>{s.status}</StatusChip>
+              </span>
+              {s.day && s.day.state !== 'hidden' && <span style={{ marginLeft: 'auto' }}><DayLine day={s.day} /></span>}
             </div>
           ))}
         </div>
@@ -230,8 +233,6 @@ export default function TaxPlanKpiPanel({ plan, loading = false, error = '', fit
     <div style={wrap} onClick={e => e.stopPropagation()}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '10px 24px', marginBottom: '12px' }}>
         <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#0a85e8', whiteSpace: 'nowrap', alignSelf: 'center' }}>Tax Plan Progress</span>
-        <Meta label="Tax plan team">{plan.team}</Meta>
-        <Meta label="Current step">{plan.current_step?.label || '—'}</Meta>
         <Meta label="Total fee">
           {feeSet
             ? <span style={{ ...bigNumber, color: 'var(--vfo-ink)', lineHeight: 1.1, whiteSpace: 'nowrap' }}>{fmtKpiMoney(fee)}</span>
@@ -244,7 +245,6 @@ export default function TaxPlanKpiPanel({ plan, loading = false, error = '', fit
       <StepRow plan={plan} isPhone={isPhone} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed var(--vfo-border-strong)' }}>
-        <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0 10px', fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 700, letterSpacing: '0.4px' }}>VFOS REV GENERATED <span style={{ ...bigNumber, color: 'var(--vfo-ink)', lineHeight: 1.1, whiteSpace: 'nowrap' }}>{fmtKpiMoney(plan.vfos_share)}</span></span>
         <RevenueSplit split={plan.split} />
       </div>
     </div>

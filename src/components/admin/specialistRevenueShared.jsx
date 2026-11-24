@@ -125,7 +125,7 @@ export function MarkReceivedButton({ request, onDone }) {
     setBusy(true); setMsg(null)
     try {
       const res = await callApi('specialist_revenue_confirm_received', { request_id: request.id })
-      if (res?.ok) { setMsg({ tone: 'success', text: 'Payment received — member payouts have been sent.' }); onDone?.() }
+      if (res?.ok) { setMsg({ tone: 'success', text: res.already ? 'This payment was already marked received.' : 'Payment received. The invoice, receipt and revenue shares are going out now; Refresh in a minute to see them.' }); onDone?.() }
       else if (res?.not_funded) setMsg({ tone: 'amber', text: res.message || 'The funds have not cleared in the VFO account yet. Try again once the transfer has cleared.' })
       else setMsg({ tone: 'error', text: res?.error || 'Could not confirm the payment.' })
     } catch (e) {
@@ -176,8 +176,16 @@ export function isNoMoneyRecord(request) {
   return request?.payment_status === 'recorded' && request?.payment_method_type === 'none'
 }
 
+// A bank transfer recorded with no email to the specialist, still waiting for its money:
+// the one 'pending' row that is deletable, because nobody outside the team was asked for it.
+export function isUnpaidDirect(request) {
+  return request?.payment_status === 'pending' && request?.payment_method_type === 'bank_transfer_direct'
+    && !request?.stripe_payment_intent_id
+}
+
 export function canDeleteSpecrevRequest(request) {
   if (isNoMoneyRecord(request)) return !request?.stripe_payment_intent_id
+  if (isUnpaidDirect(request)) return true
   return request?.payment_status === 'requested'
     && !request?.recurring_plan_id
     && !request?.stripe_payment_intent_id
@@ -193,6 +201,8 @@ export function DeleteRequestButton({ request, onDone }) {
   async function go() {
     const prompt = isNoMoneyRecord(request)
       ? `Delete this deal record for ${request.specialist_name || 'this specialist'} (${request.total_deals || 0} deal(s), no payment)? This cannot be undone.`
+      : isUnpaidDirect(request)
+      ? `Delete the ${money(request.gross_amount)} bank transfer for ${request.specialist_name || 'this specialist'}? This removes it and its recipient lines completely. No email was sent and no money has been collected. This cannot be undone.`
       : `Delete the ${money(request.gross_amount)} payment request for ${request.specialist_name || 'this specialist'}? This removes the request and its recipient lines completely, and the payment link already emailed will stop working. This cannot be undone.`
     if (!window.confirm(prompt)) return
     setBusy(true); setMsg(null)
@@ -215,7 +225,7 @@ export function DeleteRequestButton({ request, onDone }) {
           style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #fecaca', background: busy ? 'var(--vfo-tint)' : '#fef2f2', color: busy ? 'var(--vfo-faint)' : '#b91c1c', fontWeight: 700, fontSize: '13px', cursor: busy ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
           {busy ? 'Deleting…' : (isNoMoneyRecord(request) ? 'Delete record' : 'Delete request')}
         </button>
-        <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>{isNoMoneyRecord(request) ? 'Removes this deal record and its recipient lines.' : 'Removes the request completely and kills the payment link that was emailed.'}</span>
+        <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>{isNoMoneyRecord(request) ? 'Removes this deal record and its recipient lines.' : isUnpaidDirect(request) ? 'Removes this payment and its recipient lines. No email was sent.' : 'Removes the request completely and kills the payment link that was emailed.'}</span>
       </div>
       {msg && <div style={{ fontSize: '12.5px', padding: '8px 12px', borderRadius: '8px', color: tone.c, border: `1px solid ${tone.b}`, background: tone.bg }}>{msg.text}</div>}
     </div>
@@ -223,7 +233,7 @@ export function DeleteRequestButton({ request, onDone }) {
 }
 
 // A labelled value with a small Copy button (bank-transfer details).
-function CopyField({ label, value }) {
+export function CopyField({ label, value }) {
   const [copied, setCopied] = useState(false)
   const copy = () => {
     navigator.clipboard.writeText(String(value || ''))
@@ -351,7 +361,7 @@ export function RecipientName({ line }) {
 // details and any caller-supplied actions. Shared by the card and table layouts above.
 function RequestDetail({ request, actions, received, heldMemberTotal }) {
   const lines = request.lines || []
-  const methodText = request.payment_method_type ? `${request.payment_method_type === 'bank_transfer' ? 'bank transfer' : request.payment_method_type === 'none' ? 'no payment' : request.payment_method_type === 'external' ? 'already paid' : request.payment_method_type}${request.acct_last4 ? ` ••${request.acct_last4}` : ''}` : ''
+  const methodText = request.payment_method_type ? `${request.payment_method_type === 'bank_transfer' ? 'bank transfer' : request.payment_method_type === 'bank_transfer_direct' ? 'bank transfer, no email' : request.payment_method_type === 'none' ? 'no payment' : request.payment_method_type === 'external' ? 'already paid' : request.payment_method_type}${request.acct_last4 ? ` ••${request.acct_last4}` : ''}` : ''
   // Status is sized to THIS request's widest pill (11px pill ≈ 6.6px a character +
   // padding) or its payment-method text, so a short "Pending" leaves no gap and
   // Transaction details takes the rest of the row.
@@ -403,7 +413,7 @@ function RequestDetail({ request, actions, received, heldMemberTotal }) {
           </div>
           {request.payment_status === 'pending' && request.account && (
             <div style={{ marginTop: '14px', padding: '14px 16px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px' }}>
-              <div style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '12px' }}>House account — give these to the specialist</div>
+              <div style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '12px' }}>{isUnpaidDirect(request) ? 'Bank transfer account — no email was sent' : 'House account — give these to the specialist'}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
                 <CopyField label="Bank name" value={request.account.bank_name} />
                 <CopyField label="Routing number" value={request.account.routing_number} />
