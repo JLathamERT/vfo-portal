@@ -9,6 +9,18 @@
 
 ---
 
+## 2026-11-24 (d) — Portal Backlog: no Release importance in a Requests row dropdown — by Paxton
+
+Branch `claude/portal-backlog-dropdown-f80832` (vfo-react only). Website only, one line in `backlog/BacklogDetails.jsx`: no backend, migration, template or switch; action count **705** and **54** route pages (both unchanged). Admin-only screen, so no phone check. Flow: [flows/portal-backlog.md](flows/portal-backlog.md).
+
+**What Paxton asked for.** Release importance should not show in the dropdown under a row on the Requests tab.
+
+**Built.** The Requests tab lists only requests waiting for review, so in a row dropdown the Announcement card held nothing but the Release importance select. That card is now left out of the row dropdown (`layout="grid"`). The drawer (Tasks board, What's new, Archive) and the Mark as announced dialog keep it, and the server is unchanged.
+
+**Tested on the dev server by Paxton (2026-11-24).** A Requests row dropdown with no Announcement card; a Tasks board drawer still setting Release importance; What's new and Archive unchanged.
+
+---
+
 ## 2026-11-24 (c) — /black-friday: the list of what Growth Credits buy, under the timer — by Jake
 
 Branch `claude/black-friday-services-list` (vfo-react only). Website only, one file (`BlackFridayPage.jsx`): no backend, migration, template or switch; action count **704** and **54** route pages (both unchanged). Public page only, not the member portal. Flow: [flows/gift-credits.md](flows/gift-credits.md) Flow F.
@@ -50,6 +62,28 @@ Branch `claude/black-friday-extended` (both repos). Website + one data migration
 **Hub.** Live `send_mode` templates 268 of 376 → **269 of 377** (a release since; re-derived).
 
 **Tested on the test site by Jake (2026-11-24).** Phase 1 and phase 2 on the public page and in the portal (dark mode included); the phase 2 → 3 flip on both; the phone preview for phases 1-3. **By Claude:** each phase on the public page, the flip and the end of the sale on an open page, the bar and banner at 1280 / 390 / 360 in the phases that differ, and in both themes for Extended. **Not exercised:** the portal banner's picker in dark mode with a signed-in member who has free credits left (the test member had none; it was drawn on a blank page). Live's first Sunday-to-Monday flip is on JLathamERT/vfo-edge-functions#609.
+
+---
+
+## 2026-11-23 (h) — Tax Planning KPI Summary: Cumulative Summary, Average Fees and Success Formula on Tax Planner KPIs — by Paxton
+
+**Why.** Workbench card *General Tax Planning KPis* (spec *Tax Planning KPI Summary (sub-tabs on Tax Planner KPIs)*, Paxton 2026-11-23, after Jake's layout sheet; copy in [specs/tax-planning-kpi-summary.md](specs/tax-planning-kpi-summary.md)): see across all tax plans where cases drop off or stall, what fees come in, and which tax teams convert best. The per-plan Tax Plan KPI Tracker (rounds 1-3) already had every rule; this summarises it.
+
+**Paxton's decisions (2026-11-23).**
+- **Access:** the spec's `tax_planner_kpis` key does not exist (Tax Planners is a key tab every admin sees). The page stays open to every admin; the three new sub-tabs use the per-plan tracker's fence, the Client Overview grant.
+- **VFO revenue card:** the Elite VFO Income split lives only in the browser (`clearedTaxPayments`), so the card reuses it over `tax_planning_load` (Accounting grant) instead of a second copy on the server.
+- **Jake's 8 open questions:** built on the spec's defaults, as constants; the questions are Issue JLathamERT/vfo-edge-functions#625.
+- **No Direct / VFOS split or Program filter:** the key the data has is program 4 vs program 1, not the Direct route (#784). Success Formula is one table.
+- **Click-through feedback:** every step's days show on the timeline (a minimum segment width), Compare teams fits the card, each tile's big number is labelled (*cases submitted* / *cases passed*), and both tables got a full grid.
+- Success Formula rows use the tax planner, else the team member (most test plans fill only the Team Member slot).
+
+**Migration** `20261123230000_tax_plan_kpi_summary.sql` (edge repo): `tax_plan_kpis` re-created from round 3's exact text with four added keys (`tax_planner_id` / `_name`, `tax_team_member_id` / `_name`); new `tax_plan_kpi_summary_rows()` (sql, stable, invoker, service role only). Applied on the test site; both stored bodies match the file (`md5(prosrc)`); `tax_plan_kpi_day` unchanged (`1287a7f3…`); test-site fingerprints `tax_plan_kpis` `b234b335…`, `tax_plan_kpi_summary_rows` `742b531c…`; security advisor at baseline. `scripts/tax-plan-kpis-check.sql` gains check 4 (PASS on the test site, 13 rows = 13 plans); check 3 still PASS.
+
+**Server:** `tax_plan_kpi_summary_load` (`actions/clients/tax-plan-kpi-summary.ts`), `ADMIN_ONLY_ACTIONS` + `TAB_ACTIONS.client_overview`; action count 704 → 705. 401 without a session; 400 on a bad date, `from` after `to` or a bad team list (checked on `vfo-admin-api-paxton`).
+
+**Website:** `TaxPlannerKpiPanel.jsx` (pills, no Stripe Connect donut, no `groups` prop), `tax/TaxPlanningKpiSummary.jsx` + `tax/kpiSummary/` (`CumulativeSummary`, `AverageFees`, `SuccessFormula`, `shared`), `tax/kpiFormat.js` (`TONES`, `fmtKpiMoney`, shared with `TaxPlanKpiPanel`), `SubTabButton` moved into `KpiKit.jsx`, `KpiPageSkeleton` takes pill widths. Checked on the test site at 1024 and 1280: the figures match the spec's staging numbers (tiles 46.2 / 83.3 / 100 / 40.0 / 100 / 50.0; averages 6.2 / 4.3 / 6.8 / 29.0 / 7.5 / 8.0 d), no page-level sideways scroll. Admin-only, so no phone check (TEAM_RULES §9).
+
+**Not proven:** Issue JLathamERT/vfo-edge-functions#626 (an admin without Client Overview or Accounting, `projected_total_fee` winning, a refund, the release check and the first look on live).
 
 ---
 

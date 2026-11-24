@@ -392,8 +392,8 @@ export default function TaxPlannersPanel({ section }) {
 
   // ---- Section: Tax Planner KPIs ----
   if (section === 'tax_planner_kpis') {
-    if (loading) return <KpiPageSkeleton title="Tax Planner KPIs" layout="planner" chips={4} />
-    return <TaxPlannerKpiPanel planners={planners} groups={groups} />
+    if (loading) return <KpiPageSkeleton title="Tax Planner KPIs" layout="single" chips={4} subTabs={[70, 170, 130, 140]} />
+    return <TaxPlannerKpiPanel planners={planners} />
   }
 
   // ---- Section: Tax Planning Partners (group list + connect) ----

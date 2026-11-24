@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { KpiHero, SplitDonut, BreakdownRows, BreakdownCard } from './KpiKit'
+import { KpiHero, SplitDonut, BreakdownRows, BreakdownCard, SubTabButton } from './KpiKit'
 import { MemberNameLink } from '../shared/personLinks'
 
 // ── Member-type families ──────────────────────────────────────────────
@@ -265,24 +265,6 @@ export default function MemberKpiPanel({ allMembers, category }) {
         </>
       )}
     </div>
-  )
-}
-
-// Sub-tab pill button (KPIs / Suspended & Paused).
-function SubTabButton({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-        fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap',
-        background: active ? 'var(--vfo-primary)' : 'var(--vfo-card)',
-        color: active ? '#ffffff' : 'var(--vfo-muted)',
-        border: `1px solid ${active ? 'var(--vfo-primary)' : 'var(--vfo-border-soft)'}`,
-      }}
-    >
-      {children}
-    </button>
   )
 }
 
