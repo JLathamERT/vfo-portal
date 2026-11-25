@@ -49,6 +49,7 @@ docs/
 │   ├── programs.md                   (programs + phases + tasks + enrollments + portal_feature_flags)
 │   ├── specialists.md                (experts + onboarding workflow)
 │   ├── coaching.md                   (coaching meetings + renewals)
+│   ├── events.md                     (events, event_*)
 │   ├── marketplace-gc.md             (gc_*)
 │   ├── faq.md                        (faq_items — member Help button content)
 │   ├── documents.md                  (agreement_templates + email_templates + document_numbers)

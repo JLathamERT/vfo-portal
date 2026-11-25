@@ -2,6 +2,7 @@ import { mkdirSync, copyFileSync, existsSync, readFileSync, writeFileSync } from
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { BF_HERO_BG } from '../src/lib/bfHeroBg.js'
+import { EVENT_HERO_BG } from '../src/lib/eventBg.js'
 
 // GitHub Pages has no SPA rewrite: a request for a client-side route is a real
 // HTTP 404 rescued only by the JS in public/404.html. Humans never notice;
@@ -14,6 +15,9 @@ const ROUTES = [
   'black-friday',
   // Buying Growth Credits: the bank-or-card page (2026-11-20).
   'growth-credits-pay',
+  // The public events page and its bank-or-card page (2026-11-25).
+  'events',
+  'event-pay',
   'accountant-pay',
   'advisor-decide',
   'advisor-pay',
@@ -87,15 +91,18 @@ for (const route of ROUTES) {
   copyFileSync(source, join(dir, 'index.html'))
 }
 
-// The Black Friday page is dark: its file paints the same background until React
-// draws into #root (the rule stops matching then), so it never opens on white.
-const bfPage = join(dist, 'black-friday', 'index.html')
-const bfHtml = readFileSync(bfPage, 'utf8')
-if (!bfHtml.includes('</head>')) {
-  console.error('emit-route-pages: no </head> in dist/index.html')
-  process.exit(1)
-}
-writeFileSync(bfPage, bfHtml.replace('</head>', () => `<style>#root:empty{min-height:100vh;background:${BF_HERO_BG}}</style>
+// The Black Friday and events pages are dark: each file paints the same background
+// until React draws into #root (the rule stops matching then), so it never opens on
+// white.
+for (const [route, bg] of [['black-friday', BF_HERO_BG], ['events', EVENT_HERO_BG]]) {
+  const page = join(dist, route, 'index.html')
+  const html = readFileSync(page, 'utf8')
+  if (!html.includes('</head>')) {
+    console.error('emit-route-pages: no </head> in dist/index.html')
+    process.exit(1)
+  }
+  writeFileSync(page, html.replace('</head>', () => `<style>#root:empty{min-height:100vh;background:${bg}}</style>
   </head>`))
+}
 
 console.log(`emit-route-pages: wrote ${ROUTES.length} route pages`)

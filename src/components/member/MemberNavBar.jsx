@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import CollapsibleNavBar from '../shared/CollapsibleNavBar'
+import EventsNavLabel from '../events/EventsNavLabel'
 import { callApi, loadCachedData, loadCachedAction, getLastSeen } from '../../lib/api'
 
 // The member portal's tab bar, moved out of MemberPortal.jsx on 2026-10-20 so the
@@ -16,7 +17,7 @@ export const MEMBER_TAB_LABELS = {
   msm_holistic: 'Holistic Planning', msm_partnership: 'Partnership Fast Track', msm_tailored: 'Tailored Route for Accountants',
   msm_tax: 'Tax Planning', msm_coaching: 'Advanced Coaching', msm_standard: 'Standard Coaching',
   specialists: 'Specialists', showroom: 'Showroom', website: 'Website Plugin',
-  ciq: 'CIQ', growthplan: 'Growth Plan', gc: 'GC Marketplace', vault: 'Vault'
+  events: 'Events', ciq: 'CIQ', growthplan: 'Growth Plan', gc: 'GC Marketplace', vault: 'Vault'
 }
 
 // ANY member may start a tax client once Jake flips portal_feature_flags.tax_intake;
@@ -38,7 +39,7 @@ export function useMemberNavData(session, enabled = true) {
   const memberNumber = session?.member_number
   const [nav, setNav] = useState(() => {
     const snap = enabled && memberNumber ? getLastSeen(`memberportal:${memberNumber}`) : null
-    return snap ? fromLoads(snap.data, snap.progData, snap.enabledData, memberNumber) : { programs: [], websiteEnabled: false, tier1: null }
+    return snap ? fromLoads(snap.data, snap.progData, snap.enabledData, memberNumber) : { programs: [], websiteEnabled: false, tier1: null, eventsEnabled: false }
   })
   useEffect(() => {
     if (!enabled || !memberNumber) return
@@ -60,6 +61,8 @@ function fromLoads(data, progData, enabledData, memberNumber) {
     websiteEnabled: !!me?.website_enabled,
     // L6: the member tier, from the member type.
     tier1: enabledData?.features?.member_tier === 1,
+    // The Events tab (2026-11-25): the events feature switch.
+    eventsEnabled: enabledData?.features?.events === true,
   }
 }
 
@@ -96,11 +99,11 @@ function NavDropdown({ label, isActive, options, activeTab, onSelect, onLabelCli
 // Portal licensing L6 (2026-10-28): the tabs a TIER 1 member keeps (Profile ▾ is
 // always drawn). Every other tab is hidden, and its actions are refused server-side
 // (MEMBER_TIER2_ACTIONS) - this list is only what the bar draws.
-export const TIER1_TABS = ['profile', 'profile_edit', 'client_overview', 'showroom']
+export const TIER1_TABS = ['profile', 'profile_edit', 'events', 'client_overview', 'showroom']
 
 // tier1 = null while the member's tier is not loaded yet: only Profile is drawn, so a
 // Tier 1 member never sees a Tier 2 tab, not even for the first paint.
-export default function MemberNavBar({ activeTab, onSelect, programs = [], websiteEnabled = false, tier1 = null }) {
+export default function MemberNavBar({ activeTab, onSelect, programs = [], websiteEnabled = false, tier1 = null, eventsEnabled = false }) {
   const tierKnown = tier1 !== null
   const tabBtn = (key, label) => (
     <button key={key} onClick={() => onSelect(key)} style={{ padding: '14px 20px', background: 'transparent', border: 'none', borderBottom: activeTab === key ? '2px solid var(--vfo-accent-text)' : '2px solid transparent', color: activeTab === key ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '14px', fontWeight: activeTab === key ? '600' : '400', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
@@ -118,14 +121,18 @@ export default function MemberNavBar({ activeTab, onSelect, programs = [], websi
     ...programs.map(p => ({ key: PROGRAM_KEYS[p.name], label: p.name })).filter(o => o.key)
   ]
   const pick = o => ({ key: o.key, label: o.label, active: activeTab === o.key, onSelect: () => onSelect(o.key) })
+  // Events sits right after Profile and shimmers (Jake, 2026-11-25), for every member.
+  const showEvents = eventsEnabled && tierKnown
   const menuItems = [
     { key: 'profile_group', label: 'Profile', options: profileOptions.map(pick) },
+    ...(showEvents ? [pick({ key: 'events', label: <EventsNavLabel /> })] : []),
     ...(!tierKnown || tier1 ? [] : [{ key: 'msm_group', label: 'MSM', options: msmOptions.map(pick) }]),
     ...flatTabs.map(key => pick({ key, label: tabLabel(key) })),
   ]
 
   return (
-    <CollapsibleNavBar items={menuItems} currentLabel={tabLabel(activeTab)}>
+    <CollapsibleNavBar items={menuItems} currentLabel={tabLabel(activeTab)}
+      collapsedExtra={showEvents && activeTab !== 'events' ? <button onClick={() => onSelect('events')} style={{ padding: '10px 4px', background: 'transparent', border: 'none', fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}><EventsNavLabel /></button> : null}>
       <NavDropdown
         label="Profile"
         isActive={activeTab === 'profile' || activeTab === 'profile_edit'}
@@ -134,6 +141,7 @@ export default function MemberNavBar({ activeTab, onSelect, programs = [], websi
         onSelect={onSelect}
         onLabelClick={() => onSelect('profile')}
       />
+      {showEvents && tabBtn('events', <EventsNavLabel />)}
       {tierKnown && !tier1 && (
         <NavDropdown
           label="MSM"

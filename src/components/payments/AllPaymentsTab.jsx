@@ -20,7 +20,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const CATEGORY_ORDER = [
   'MAP 1', 'Tax Priorities', 'Tax Planning', 'Tax deposit', 'PIP Meetings', 'Specialist Revenue',
   'Membership fee', 'Onboarding fee', 'Background check', 'Monthly license', 'Portal licence',
-  'Growth Credits', 'Manual payment',
+  'Growth Credits', 'Event tickets', 'Manual payment',
 ]
 
 const PTYPE_TAG = {
@@ -29,6 +29,7 @@ const PTYPE_TAG = {
   Specialist: { fg: '#0e7490', bg: '#cffafe' },
   'Tax Planner': { fg: '#1570ef', bg: '#e3effd' },
   'Strategic Partner': { fg: '#b45309', bg: '#fef3c7' },
+  'Event buyer': { fg: '#b4470d', bg: '#ffe9df' },
   ERT: { fg: 'var(--vfo-ink-soft)', bg: 'var(--vfo-tint)' },
 }
 

@@ -31,11 +31,11 @@ The admin allow-list. Passcodes are stored as a salted PBKDF2 hash in `passcode_
 | `name` | text | |
 | `passcode_hash` | text | Salted PBKDF2-HMAC-SHA256, format `pbkdf2$sha256$<iter>$<salt>$<hash>`. (Replaced the dropped unsalted `passcode` column.) |
 | `role` | text | default `'admin'`. Values seen in code: `'admin'`, `'superadmin'` (gates Admin Editor button). |
-| `allowed_tabs` | text[] | not null, default `'{}'`. Added 2026-07-01. Which of the 3 "other" tabs a NON-superadmin admin may access: any of `'accounting'`, `'automation'`, `'member_overview'`. Enforced server-side (`TAB_ACTIONS`/`tabForAction` in `role-gates.ts` + gate in `middleware/auth.ts`), returned by `admin-login` → session, set by `admin_update_tabs` (Admin Editor). Superadmin ignores it (full access). See gotcha #167. |
+| `allowed_tabs` | text[] | not null, default `'{}'`. Added 2026-07-01. Which of the per-admin tabs a NON-superadmin admin may access: any of `'accounting'`, `'automation'`, `'sdp_atsg'`, `'feature_switches'` (2026-11-25; every other tab is open to every admin, and an older key left in a row does nothing). Enforced server-side (`TAB_ACTIONS`/`tabForAction` in `role-gates.ts` + gate in `middleware/auth.ts`), returned by `admin-login` → session, set by `admin_update_tabs` (Admin Editor). Superadmin ignores it (full access). See gotcha #167. |
 | `member_number` | text | Optional link to `members.member_number` (admin-as-member case). |
 | `created_at` | timestamptz | default `now()` |
 
-**Status fields:** `role` controls UI gating in `AdminPortal.jsx` (`is_superadmin` checked from session); `allowed_tabs` gates the 3 "other" tabs for non-superadmin admins (gotcha #167).
+**Status fields:** `role` controls UI gating in `AdminPortal.jsx` (`is_superadmin` checked from session); `allowed_tabs` gates the four per-admin tabs for non-superadmin admins (gotchas #167, #795).
 
 **Touched by:** `admin_login`, `load_admins`, `create_admin`, `delete_admin`, `update_my_passcode`.
 

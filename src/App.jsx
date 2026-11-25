@@ -4,6 +4,7 @@ import { CardShell, SkeletonText } from './components/shared/Skeleton'
 // Each portal and each emailed-link page is its own chunk (src/lib/lazyPage.js).
 import { lazyPage } from './lib/lazyPage'
 import { BF_HERO_BG } from './lib/bfHeroBg'
+import { EVENT_HERO_BG } from './lib/eventBg'
 
 // Shown only if a page's chunk takes longer than a moment to arrive.
 function RouteFallback() {
@@ -11,6 +12,8 @@ function RouteFallback() {
   useEffect(() => { const t = setTimeout(() => setShow(true), 300); return () => clearTimeout(t) }, [])
   // The Black Friday page is dark from the first paint, so it never flashes light.
   if (/^\/black-friday\/?$/.test(window.location.pathname)) return <div style={{ minHeight: '100vh', background: BF_HERO_BG }} />
+  // So is the public events page.
+  if (/^\/events\/?$/.test(window.location.pathname)) return <div style={{ minHeight: '100vh', background: EVENT_HERO_BG }} />
   if (!show) return null
   // A portal's chunk: its navy top bar is drawn at once, as every portal page does.
   const portal = /^\/(admin|member|client|specialist|tax-planner)(\/|$)/.test(window.location.pathname)
@@ -69,6 +72,8 @@ const TaxDepositPayPage = lazyPage(() => import('./pages/TaxDepositPayPage'))
 const TaxDiagnosticPage = lazyPage(() => import('./pages/TaxDiagnosticPage'))
 const BlackFridayPage = lazyPage(() => import('./pages/BlackFridayPage'))
 const GrowthCreditsPayPage = lazyPage(() => import('./pages/GrowthCreditsPayPage'))
+const EventsPage = lazyPage(() => import('./pages/EventsPage'))
+const EventPayPage = lazyPage(() => import('./pages/EventPayPage'))
 const VaultUploadPage = lazyPage(() => import('./pages/VaultUploadPage'))
 import ClientLogin from './pages/ClientLogin'
 const ClientSetupPage = lazyPage(() => import('./pages/ClientSetupPage'))
@@ -147,6 +152,8 @@ export default function App() {
       <Route path="/tax-diagnostic" element={<TaxDiagnosticPage />} />
         <Route path="/black-friday" element={<BlackFridayPage />} />
         <Route path="/growth-credits-pay" element={<GrowthCreditsPayPage />} />
+      <Route path="/events" element={<EventsPage />} />
+      <Route path="/event-pay" element={<EventPayPage />} />
       <Route path="/vault-upload" element={<VaultUploadPage />} />
       <Route path="/client/login" element={<ClientLogin />} />
       <Route path="/client-setup" element={<ClientSetupPage />} />

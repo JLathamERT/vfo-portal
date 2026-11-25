@@ -618,7 +618,7 @@ The queue behind the public, no-login **VFO Tax Diagnostic** (`/tax-diagnostic`)
 
 **Indexes:** `tax_diagnostics_pkey`, `tax_diagnostics_status_idx` (`status, created_at desc`).
 
-**Touched by:** `tax_diagnostic_submit` (PUBLIC; insert, and a read-only count for the 60-per-hour global cap), `tax_diagnostic_list` / `tax_diagnostic_confirm` / `tax_diagnostic_dismiss` / `tax_diagnostic_deny` (AUTH, `ADMIN_ONLY_ACTIONS` + `TAB_ACTIONS.tax_diagnostics`). Frontend: `src/pages/TaxDiagnosticPage.jsx`, `src/components/admin/TaxDiagnosticsPanel.jsx`.
+**Touched by:** `tax_diagnostic_submit` (PUBLIC; insert, and a read-only count for the 60-per-hour global cap), `tax_diagnostic_list` / `tax_diagnostic_confirm` / `tax_diagnostic_dismiss` / `tax_diagnostic_deny` (AUTH, `ADMIN_ONLY_ACTIONS` (no tab key since 2026-11-25)). Frontend: `src/pages/TaxDiagnosticPage.jsx`, `src/components/admin/TaxDiagnosticsPanel.jsx`.
 
 ---
 

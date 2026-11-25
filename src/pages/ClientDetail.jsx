@@ -361,7 +361,7 @@ export default function ClientDetail() {
           { key: 'signout', label: 'Sign Out', onClick: () => { sessionStorage.clear(); navigate(isMember ? '/member/login' : isPlanner ? '/tax-planner/login' : '/admin/login') } },
         ]}>
         {isAdmin && <AdminNavBar session={session} activeTab={portalNavTab} onSelect={(tab, section) => { openAdminSection(tab, section); navigate('/admin') }} />}
-        {isMember && <MemberNavBar activeTab={portalNavTab} onSelect={key => { sessionStorage.setItem('memberActiveTab', key); navigate('/member') }} programs={memberNav.programs} websiteEnabled={memberNav.websiteEnabled} tier1={memberNav.tier1} />}
+        {isMember && <MemberNavBar activeTab={portalNavTab} onSelect={key => { sessionStorage.setItem('memberActiveTab', key); navigate('/member') }} programs={memberNav.programs} websiteEnabled={memberNav.websiteEnabled} tier1={memberNav.tier1} eventsEnabled={memberNav.eventsEnabled} />}
         {isPlanner && <PlannerNavBar activeTab={portalNavTab} onSelect={key => { sessionStorage.setItem('taxPlannerActiveTab', key); navigate('/tax-planner') }} />}
       </PortalHeader>
 

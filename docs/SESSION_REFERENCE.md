@@ -40,7 +40,7 @@ cd C:\vfo-react;          git fetch --tags -q; git tag -l 'live-*'         --sor
 cd C:\vfo-edge-functions; git fetch --tags -q; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
-#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-25 → 6 + 713 = **719**; past values in CHANGELOG)
+#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-25 → 6 + 724 = **730**; past values in CHANGELOG)
 cd C:\vfo-edge-functions   # or the worktree
 $logins   = (Select-String -Path supabase/functions/vfo-admin-api/index.ts          -Pattern '^\s*if \(action === '            -AllMatches).Matches.Count
 $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatch.ts -Pattern '^\s*"([a-zA-Z0-9_]+)":\s*\(c\)'  -AllMatches).Matches.Count
@@ -49,7 +49,7 @@ $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatc
 # 4. Type-check baseline — must be 0; --no-lock avoids the v5 deno.lock the bundler rejects (#112)
 & "$env:USERPROFILE\.deno\bin\deno.exe" check --no-lock supabase/functions/vfo-admin-api/index.ts   # or plain `deno` when it is on PATH
 
-# 5. Frontend build — expect exit 0. (v: 2026-11-25 → **54** route pages, the dev-only `/phone-preview` never among them; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
+# 5. Frontend build — expect exit 0. (v: 2026-11-25 → **56** route pages, the dev-only `/phone-preview` never among them; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
 cd C:\vfo-react; npm run build
 
 # 6. Pipeline smoke gate — hand it to the person running the chat in EXACTLY this form: THEIR portal email (TEAM table, TEAM_RULES.md), a literal <password>, never a token, never Read-Host
@@ -59,7 +59,7 @@ cd C:\vfo-react; npm run build
 ```sql
 -- 7. Cron inventory (MCP execute_sql).  (v: 2026-11-20 → 20 jobs on live, `sdp-atsg-sweep-daily` (13:20 UTC) among them; all active, each reading its key from the Vault at run time, #737. Money-bearing sweeps run daily 13:00–13:30 UTC, email-only sweeps Mon–Fri 13:40–14:50 UTC, the arrears digest Fridays 14:45 UTC. Any sweep with a reminder ladder must run 13:00–14:59 UTC or its reminders never fire, #552.)
 select jobname, schedule from cron.job order by jobid;
--- 8. Sandbox posture — every row should read false on live.  (v: 2026-11-05 → all 8 false. stripe_account = which account NEW customers mint on; EXISTING rows follow their OWN stamp, #485. 4 ert: MEMBER_MEMBERSHIP, GROWTH_CREDITS, ADVISOR_ONBOARDING, ACCOUNTANT_ONBOARDING. 4 vfos: MAP 1, TAX, PARTNERSHIP_FAST_TRACK, SPECIALIST_ONBOARDING.)
+-- 8. Sandbox posture — every row should read false on live.  (v: 2026-11-25 → all 9 false. stripe_account = which account NEW customers mint on; EXISTING rows follow their OWN stamp, #485. 5 ert: MEMBER_MEMBERSHIP, GROWTH_CREDITS, EVENTS, ADVISOR_ONBOARDING, ACCOUNTANT_ONBOARDING. 4 vfos: MAP 1, TAX, PARTNERSHIP_FAST_TRACK, SPECIALIST_ONBOARDING.)
 select pipeline, sandbox_mode, stripe_account from pipeline_sandbox_config order by pipeline;
 ```
 
@@ -94,7 +94,7 @@ Labels: `owed` a job to do · `watch` waits on a real event · `parked` don't fi
 - **`boldsign-webhook`** — standalone. **Deploy with `--no-verify-jwt` (mandatory)** and **only with explicit approval** (#10, #180). **Helper functions** — `draft-agreement-pdfs` (on-demand Gmail drafts, no business logic) and `boldsign-template-fields` (a throwaway that reads a BoldSign template's field coordinates back for `agreement_templates.field_map`; `verify_jwt=true`, no business logic, safe to delete) — versions derived in step 1, never written here. *(v: 2026-09-14)*
 - **Key entry points** — `index.ts` (logins) · `router/dispatch.ts` (PUBLIC_HANDLERS + AUTH_HANDLERS) · `router/webhooks.ts` (Stripe + BoldSign by shape) · `middleware/auth.ts` (six login types, role precedence) · `constants/role-gates.ts` (every gate list) · `utils/notify.ts` (all bells + the business-day helpers).
 - **Storage buckets** — every bucket, public or private, and what reads it: [integrations/supabase.md](integrations/supabase.md) (derive: `select id, public from storage.buckets`); older per-bucket prose in [CHANGELOG.md](CHANGELOG.md) under the 2026-08-14 restructure heading. *(v: 2026-11-17)*
-- **NOT in the system:** no automated tests, no test runner, no CI beyond the deploy button and staging's self-update (`.github/workflows`, they run no tests), no frontend TypeScript, no Supabase Auth (custom session tokens over `admin_sessions`, six login types / five portals, salted PBKDF2-HMAC-SHA256), no React Context (just a promise cache + token-keyed last-seen snapshots in `src/lib/api.js`, #579), no structured logging (frontend errors go to Sentry only). **Email is Gmail DRAFTS by default** — but **279 of 385** `email_templates` rows on live have `send_mode=true` (#325; derive with `select count(*) from email_templates where send_mode`) *(v: 2026-11-25)*
+- **NOT in the system:** no automated tests, no test runner, no CI beyond the deploy button and staging's self-update (`.github/workflows`, they run no tests), no frontend TypeScript, no Supabase Auth (custom session tokens over `admin_sessions`, six login types / five portals, salted PBKDF2-HMAC-SHA256), no React Context (just a promise cache + token-keyed last-seen snapshots in `src/lib/api.js`, #579), no structured logging (frontend errors go to Sentry only). **Email is Gmail DRAFTS by default** — but **286 of 392** `email_templates` rows on live have `send_mode=true` (#325; derive with `select count(*) from email_templates where send_mode`) *(v: 2026-11-25)*
 
 ---
 
@@ -118,7 +118,7 @@ Money, auth/security, data-loss and cross-repo contracts only, **one lead rule p
 - **#257 / #467** — `TAX_PLANNER_ALLOWED_ACTIONS` is the ONLY boundary for a planner caller, so every planner-callable action ALSO needs an in-handler group-scope guard. **#467 is the pair of traps that sit either side of a widening:** **#581** — a BATCHED loader re-applies each original call's PER-ITEM fence:
 - **#577** — a ledger a member can read (`gc_transactions`, `select("*")`) stores its actor as a NAME, never an email. **#445 / #207** — the two big payloads redact in OPPOSITE directions: **#664** — the client showroom also has a client-ONLY strip list (`stripClientHiddenDetails` ↔ FE `CLIENT_HIDDEN_FIELDS`, today `D&B_getting_started`).
 - **#385** — an allowlist entry is NOT the grant: **before widening any allowlist, grep the target handler for a second in-handler gate** (`isTaxAdmin`, `isSuperadmin`, a bare email compare). Inverse of #309.
-- **#256** — a gate entry matching no dispatched action protects nothing; grep `dispatch.ts` for the EXACT registered name. **#167** — a new action behind a tab-gated surface must join `TAB_ACTIONS[...]` or granted admins 403.
+- **#256** — a gate entry matching no dispatched action protects nothing; grep `dispatch.ts` for the EXACT registered name. **#167** — a new action behind a tab-gated surface must join `TAB_ACTIONS[...]` or granted admins 403 (only four tabs are gated; the rest: `ADMIN_ONLY_ACTIONS`, **#795**).
 - **#338** — the `accounting` grant is the WHOLE boundary for every control in the tab, money included. **#353** — the add-member restriction is FRONTEND-ONLY:
 - **#355** — `request_password_reset` is anti-enumeration by construction (always `{success:true}`, 1200 ms floor, throttle counts every request). **#144** — new login-type actions must join `LOGIN_ACTIONS`. **#259** — a new restricted role that allowlists the bell must scope BOTH load and mark-read to email, or admin broadcasts leak.
 - **#425 / #426** — **a session's role comes from `admin_sessions.login_type`, the portal that minted it, re-verified against that login table (row gone ⇒ 401, never a …**
@@ -141,7 +141,6 @@ Money, auth/security, data-loss and cross-repo contracts only, **one lead rule p
 - **#282** — `allocateDocNumber` returns its candidate even when the reservation INSERT fails. **#315** — a multi-period collection must change a row's AMOUNT, never the row COUNT. **#533** — an ACH payment that CREATES records (a client, a plan, anything a transfer keys on) creates them at `payment_intent.succeeded`, never at …
 - **#454** — **copying an id to route the money silently re-points every OTHER surface that reads it.** **#592** — the owning member is `clients.member_number`, never the client_ref PREFIX (a corporate number has a dash in it:
 - **#159 / #317 / #268 / #479** — verify `capabilities.transfers === 'active'` before a Connect transfer — **an account id is NOT a payable account** (the admin's "Set Up … **#488** — a Connect transfer flows **platform → its own connected account ONLY**, so a second company's share must be collected on the PLATFORM and FORWARDED, never … **#489** — a fixed `Idempotency-Key` replays Stripe's FIRST response for **24 h including an ERROR body**, so one environmental refusal locks the retry out until tomorrow …
-- **#626 / #627 / #630** — a Stripe SUBSCRIPTION started through Checkout sits on an INACTIVE `product_data` product (re-price onto a product you own) and is PINNED to the …
 - **#396 / #397 / #552** — reminder ladders count BUSINESS days via `businessDelayCutoffIso`. **#773** — a ladder chasing "not succeeded" chases CLEARING payments too.
 
 **Data loss**
@@ -197,6 +196,7 @@ Money, auth/security, data-loss and cross-repo contracts only, **one lead rule p
 | CIQ · the **$25/month CIQ licence** (Premium client portal — *Standard* until 2026-10-28 — `ciq_licence`, portal licensing L4 — turn on/off, `/portal-license-pay`, Update payment method, failed-payment email + reminder, tax takeover, My One Page Plan … | [flows/ciq.md](flows/ciq.md) · [tables/ciq.md](tables/ciq.md) · licence → [flows/ciq-licence.md](flows/ciq-licence.md) |
 | 90 Day Plan / training tracks · the MSM Home meeting log + meeting types (*v: 2026-11-11*) | [flows/msm-tracking.md](flows/msm-tracking.md) |
 | Growth Credits · the Black Friday sale + Purchases (Flow F) | [flows/gift-credits.md](flows/gift-credits.md) · [tables/marketplace-gc.md](tables/marketplace-gc.md) |
+| **Events** — tickets, free registration, `/events`, More ▾ → Events (*v: 2026-11-25*) | [flows/events.md](flows/events.md) · [tables/events.md](tables/events.md) |
 | The member **Help (?) button** / the **FAQ Editor** tab / `faq_items` + `faq_categories` / FAQ PDF documents / any new grantable tab key | [flows/member-help-faq.md](flows/member-help-faq.md) · [tables/faq.md](tables/faq.md) |
 | Card/bank updates, Payment Continuation · the global **Payments** ledger (Accounting → Payments, `all_payments_load` — every charge, payout and refund, #646, *v: 2026-10-21*) → [architecture/05-api-action-catalog.md](architecture/05-api-action-catalog.md) | [flows/payment-method-change.md](flows/payment-method-change.md) |
 | Bells, rules, recipients · **who the `TEAM` email token reaches** (Automation & Config → Team Notification Emails, `team_notification_recipients`, *v: 2026-11-02*) … | [flows/notifications.md](flows/notifications.md) · [tables/notifications.md](tables/notifications.md) · [NOTIFICATION_AUDIT.md](NOTIFICATION_AUDIT.md) · `vault_upload_tokens` → [tables/pipeline.md](tables/pipeline.md) |

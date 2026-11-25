@@ -4,9 +4,9 @@ import { TableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
 import GCPurchasesTable from './GCPurchasesTable'
 
-// Growth Credits page (top-level admin tab, grantable per admin in the Admin
-// Editor via the 'growth_credits' allowed_tabs key). Two sub-tabs: Redemptions
-// (the fulfillment queue) and Menu (read-only view of the marketplace).
+// Growth Credits page (top-level admin tab, open to every admin since 2026-11-25).
+// Sub-tabs: Redemptions (the fulfillment queue), Purchases and Menu (read-only view
+// of the marketplace).
 // Packages/services/sandbox editing lives in Automation & Config, and the money
 // view lives in Accounting > Members > Growth Credits.
 //
