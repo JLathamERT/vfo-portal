@@ -8,7 +8,7 @@ import { OutstandingLinksSkeleton } from '../shared/Skeleton'
 // Accounting > Specialists > VFO Specialist License Fees > Outstanding Payment Links.
 // The same surface the SpecRev pill row carries, for license setup links: every
 // specialist who was emailed a $99/mo ACH setup link and has not cleared a payment yet.
-// Read-only — the ledger tab owns the sending.
+// Read-only — the Set Up License tab owns the sending.
 
 // Where a specialist sits before their first license payment clears. Vocabulary is
 // borrowed rather than invented: setup_pending from the Specialist Recurring panel,

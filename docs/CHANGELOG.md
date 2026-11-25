@@ -9,6 +9,20 @@
 
 ---
 
+## 2026-11-25 (g) — VFO Specialist License Fees laid out like Membership Fees, with a Cancel license button — by Jake
+
+Branch `claude/license-fee-page-redesign-*` in both repos. Action count **731** (730 + `specialist_license_cancel`), **56** route pages (unchanged). Two migrations, on the test site, **live at release BEFORE the backend**: `20261125230000_specialist_license_canceled_at.sql` (DDL, new nullable `specialist_onboarding.lic_canceled_at`) and `20261125231000_specialist_license_cancel_email.sql` (data, the new `SPECIALIST_lic_cancel_confirmation` template, Send). Follow-ups: Issue JLathamERT/vfo-edge-functions#651.
+
+**What was asked.** A specialist's $99/mo licence could not be cancelled from the portal: the License Fees page was a monthly ledger with no per-specialist view, and no action ended a subscription (only Stripe's own lapse did). Jake: copy the Advisor Membership Fees look exactly, keep the first tab as the main page with more detail, give setup its own tab, drop License Reconciliation, keep Outstanding Payment Links.
+
+**Built.** Three pills: **Specialists** (one expandable card per licence: method, charge day, next payment, paid count, one status tag; opened, its payment history with invoice and receipt numbers, the next scheduled charge, totals and **Cancel license**), **Set Up License** (the old inline form on its own tab) and **Outstanding Payment Links** (unchanged). `specialist_license_payments_load` gained an additive `plans[]`. `specialist_license_cancel` (Accounting-gated) ends the subscription now, writing `canceled` before the Stripe DELETE so the lifecycle webhook does not raise its "License CANCELED" bell, putting the row back if Stripe refuses, and sends the cancellation email. `SpecialistLicenseReconciliationPanel.jsx` and the year/month ledger table were removed.
+
+**Decided.** Cancel takes effect immediately (no later charge). The specialist gets a confirmation email, modelled on the membership End of Membership Confirmation (Jake approved the wording). The licence flow doc said its emails were Drafts; they all Send, fixed.
+
+**Tested.** By Jake on the dev server against `vfo-admin-api-jake` v111: the three pills, the Specialists card and history on a seeded licence (fake subscription id, two fake paid months), Cancel, the email, the Canceled card, search and filter, and Set Up License offering a restart. **Not exercised:** a REAL Stripe subscription DELETE (the seeded id took the "already gone" path), the failed-DELETE revert, the card and never-paid email wording, a licence awaiting bank verification (all in #651).
+
+---
+
 ## 2026-11-25 (f) — Inter-company transfer: members only, and everything says implementation fee split — by Jake
 
 Branch `claude/inter-company-implementation-fee` in all four repos. Action count **730**, **56** route pages (both unchanged). One migration, `20261125220000_specrev_inter_company_fee_split_emails.sql` (data only: three templates edited, three added), on the test site, **live at release BEFORE the backend** (a missing template would pay the share and send no email). Drift 0.

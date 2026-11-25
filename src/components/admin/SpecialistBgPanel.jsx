@@ -18,7 +18,7 @@ import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 //     with the "Send Background Check Payment Request" form above the list.
 // Both come from specialist_bg_payments_load ({ payments, requests }).
 
-// Same columns + widths as the License Fees ledger (SpecialistLicensePanel LEDGER_GRID).
+// Same columns + widths the License Fees ledger had before its 2026-11-25 redesign.
 const LEDGER_GRID = `1.4fr 118px 112px ${CARD_FEE_COL} 178px`
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 

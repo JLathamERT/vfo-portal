@@ -40,7 +40,7 @@ cd C:\vfo-react;          git fetch --tags -q; git tag -l 'live-*'         --sor
 cd C:\vfo-edge-functions; git fetch --tags -q; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
-#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-25 → 6 + 724 = **730**; past values in CHANGELOG)
+#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-25 → 6 + 725 = **731**; past values in CHANGELOG)
 cd C:\vfo-edge-functions   # or the worktree
 $logins   = (Select-String -Path supabase/functions/vfo-admin-api/index.ts          -Pattern '^\s*if \(action === '            -AllMatches).Matches.Count
 $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatch.ts -Pattern '^\s*"([a-zA-Z0-9_]+)":\s*\(c\)'  -AllMatches).Matches.Count
@@ -77,7 +77,7 @@ Nothing here can be produced by a command. Everything else was deleted from this
 gh issue list --repo JLathamERT/vfo-edge-functions --state open --search "<area>" --limit 30
 ```
 
-Labels: `owed` a job to do · `watch` waits on a real event · `parked` don't fix without fresh approval · `decision` needs a person's call · `needs-check` not proven either way · `money` · `security` · `website` · `backend` · `from-hub` moved from here. The list left this file on 2026-11-05 (hub at `7d3bed1b`); Issue #525 on that repo records where each job went.
+Labels: `owed` a job to do · `watch` waits on a real event · `parked` don't fix without fresh approval · `decision` needs a person's call · `needs-check` not proven either way · `money` · `security` · `website` · `backend` · `from-hub` moved from here.
 
 **Feature switches** (`portal_feature_flags`): every key, who it gates and where it stands → [flows/feature-switches.md](flows/feature-switches.md).
 
@@ -188,7 +188,7 @@ Money, auth/security, data-loss and cross-repo contracts only, **one lead rule p
 | MAP 1 / Holistic contract or payment | [flows/contract-and-payment.md](flows/contract-and-payment.md) · [flows/stripe-webhook.md](flows/stripe-webhook.md) |
 | Agreement signing, countersign | [flows/boldsign-webhook.md](flows/boldsign-webhook.md) · [integrations/boldsign.md](integrations/boldsign.md) |
 | Specialist **onboarding** (Stages 1-5, DDC, $99 licence) — **or SpecRev**, which is a DIFFERENT pipeline and is **NOT** in that flow doc | onboarding (incl. the vault's **Showroom Documents** + the showroom **Vault** dropdown, 2026-10-05) → [flows/specialist-onboarding.md](flows/specialist-onboarding.md); **SpecRev** (billing, the SIX New-Payment methods; **VFOS IAG Inter-Company Transfer** → [flows/inter-company-transfers.md](flows/inter-company-transfers.md); the TWO-LEG payout engine + ERT share) → [architecture/05-api-action-catalog.md](architecture/05-api-action-catalog.md) *VFO Specialist Revenue* + [architecture/07-server-chains.md](architecture/07-server-chains.md); **Background Check payment REQUESTS** (Accounting > Specialists, any amount, `specialist_bg_requests`) → [flows/specialist-bg-requests.md](flows/specialist-bg-requests.md) |
-| Moving an EXISTING specialist onto the portal's $99/mo licence | [flows/specialist-license-continuation.md](flows/specialist-license-continuation.md) |
+| Moving an EXISTING specialist onto the portal's $99/mo licence · its Accounting page + **Cancel license** *(v: 2026-11-25)* | [flows/specialist-license-continuation.md](flows/specialist-license-continuation.md) |
 | Advisor / accountant onboarding (incl. the step locks, `onboardingOrder.js` ↔ `utils/onboarding-order.ts`, #594) · **the Tier 1 path** — VFO Associate / Financial Collaborator, `tier1_onboarding`, month 1 paid on the onboarding (*v: 2026-11-19*) · Accounting *Implementation* (*v: 2026-11-19*) | [flows/advisor-accountant-onboarding.md](flows/advisor-accountant-onboarding.md) · PFT + **Tailored Route for Accountants** + the handoff + stop-status → [flows/partnership-fast-track.md](flows/partnership-fast-track.md) |
 | Membership fees, renewals, pauses · Set Up Membership's **Track billing on old system** (`tracking_only` — never charged or emailed, row statuses hand-set, *v: 2026-10-21*) · a **Corporate Member paid in Growth Credits** (`paid_with_gc`, *v: 2026-10-21*) · **Early termination** (90 days, `ending_on`, *v: 2026-11-20*) … | [flows/membership-fees.md](flows/membership-fees.md) · [flows/coaching-renewals.md](flows/coaching-renewals.md) |
 | **Money Mapping balances** — `money_mapping_ledger` (earned / adjustment / membership, `money_mapping_apply_to_row`), Accounting → Members → Money Mapping, a plan's *Pay from Money Mapping first* (`pay_with_mm`: sweep passes 3 + 3d, start on the create click … | [flows/money-mapping.md](flows/money-mapping.md) · [flows/membership-fees.md](flows/membership-fees.md) · [tables/membership-fees.md](tables/membership-fees.md) |
