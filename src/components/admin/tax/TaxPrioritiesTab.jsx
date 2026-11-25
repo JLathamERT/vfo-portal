@@ -9,6 +9,7 @@ import { MEMBER_PAYS_SPLIT_TYPE, memberPaysTaxShares } from '../../../lib/member
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import PricingSplitCard from './PricingSplitCard'
 import PersonalTaxFormLink from './PersonalTaxFormLink'
+import AgreementResend from './AgreementResend'
 import { CONFIRMATION_CARD_SKIP } from '../../../lib/confirmationStatus'
 import { formatDate as formatFullDate } from '../../../lib/dates'
 import { makeTaxPlanRules, KNOWN_FEE_PROCESS_VERSIONS, isNewFeeProcess, AMEND_FEE_CODE, AMEND_FEE_TAX5_CODE, isAmendStepTask, amendStage, DEPOSIT_NA_STATUS, DEPOSIT_PROCESSING_STATUS, DEPOSIT_FAILED_STATUS, phaseBadgeToken, phaseShortLabel, implRevShareDone, IMPL_REV_NO_SHARE } from './taxPlanRules'
@@ -4272,8 +4273,8 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         const decisionLabel = decisionRaw === 'Rapid' ? 'Rapid Route email sent' : decisionRaw
         const decisionColor = decisionRaw === 'Yes' || decisionRaw === 'Rapid' ? '#1b9254' : decisionRaw === 'No' ? '#e74c3c' : decisionRaw === 'Undecided' ? '#e06717' : 'var(--vfo-muted)'
         const decisionEmailTemplates = rapidPlan
-          ? [{ name: 'TAX_decision_rapid', when: 'The Rapid Route email — video, agreement PDF, Yes / I have questions / No' }, { name: 'TAX_rapid_question_reply', when: 'Your reply to the client\'s question — the buttons again' }, { name: 'TAX_decision_reminder|rapid', when: 'Automatic reminder if the client does not answer (2 business days, paused while a question is open)' }, { name: 'TAX_agreementsent|Yes|skipped', when: 'If the client clicks Yes — sent automatically' }]
-          : [{ name: 'TAX_agreementsent|Yes', when: 'If Yes — congratulations + agreement signing link' }, { name: 'TAX_decision_undecided', when: 'If Undecided — options email to the client (Continue / Stop / I have questions)' }, { name: 'TAX_decision_question_reply', when: 'Your reply to the client\'s question — the buttons again' }, { name: 'TAX_decision_decline', when: 'If Decline' }, { name: 'TAX_decision_reminder', when: 'Automatic reminder if the Undecided email gets no response (2 business days, paused while a question is open)' }]
+          ? [{ name: 'TAX_decision_rapid', when: 'The Rapid Route email — video, agreement PDF, Yes / I have questions / No' }, { name: 'TAX_rapid_question_reply', when: 'Your reply to the client\'s question — the buttons again' }, { name: 'TAX_decision_reminder|rapid', when: 'Automatic reminder if the client does not answer (2 business days, paused while a question is open)' }, { name: 'TAX_agreementsent|Yes|skipped', when: 'If the client clicks Yes — sent automatically' }, { name: 'TAX_agreement_resent', when: 'If the agreement is re-sent (expired, declined or withdrawn)' }]
+          : [{ name: 'TAX_agreementsent|Yes', when: 'If Yes — congratulations + agreement signing link' }, { name: 'TAX_agreement_resent', when: 'If the agreement is re-sent (expired, declined or withdrawn)' }, { name: 'TAX_decision_undecided', when: 'If Undecided — options email to the client (Continue / Stop / I have questions)' }, { name: 'TAX_decision_question_reply', when: 'Your reply to the client\'s question — the buttons again' }, { name: 'TAX_decision_decline', when: 'If Decline' }, { name: 'TAX_decision_reminder', when: 'Automatic reminder if the Undecided email gets no response (2 business days, paused while a question is open)' }]
         let formData = null
         if (isDone) { try { formData = JSON.parse(p.notes || '{}') } catch(e) { formData = {} } }
         const formExpandKey = `taxform_${task.id}`
@@ -4351,7 +4352,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         ? (livePlan?.retainer_bank_verification_pending_at ? 'Pending — bank verification' : true)
         : false
       const sharedSteps = [
-        { label: 'Engagement agreement created and sent for signing', done: !!livePlan?.boldsign_doc_id, at: livePlan?.agreement_sent_at, stall: 'signed' },
+        { label: 'Engagement agreement created and sent for signing', done: !!livePlan?.boldsign_doc_id, at: livePlan?.agreement_sent_at, stall: 'signed', resend: (readOnly || stepsLocked || (plannerMode && !directPlan)) ? null : <AgreementResend plan={livePlan} onSent={refreshLivePlan} /> },
         { label: 'Engagement agreement signed',                       done: livePlan?.client_signed === 'Yes' },
         { label: 'Engagement agreement signed by CEO',                done: livePlan?.ceo_signed === 'Yes', chip: (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Engagement agreement signed by CEO" templates={[{ name: 'TAX_ceocountersign|Yes', when: 'Automatic — asks the CEO to countersign' }, { name: 'TAX_signing_reminder', when: 'Automatic reminder if unsigned (2 business days)' }]} context={emailCtx} /> },
         { label: 'Payment link sent (ACH or Card choice)',            done: !!livePlan?.checkout_token, at: livePlan?.payment_email_sent_at, stall: 'payment', chip: (readOnly || plannerMode) ? null : <StepEmailsChip pipeline="TAX" title="Payment link sent (ACH or Card choice)" templates={[{ name: 'TAX_paymentemail|Yes', when: 'Automatic — retainer payment link' }, { name: 'TAX_payment_reminder', when: 'Automatic reminder if unpaid (2 business days)' }]} context={emailCtx} /> },
@@ -4511,7 +4512,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                         </div>
                       )}
                       {autoStep('Signing link and next steps email sent', signingEmailSent, null, livePlan?.agreement_sent_at)}
-                      {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at, s.pending)}{s.stall && stallRows(s.stall)}</div>)}
+                      {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at, s.pending)}{s.stall && stallRows(s.stall)}{s.resend}</div>)}
                     </>
                   )}
                   {finalDec === 'No' && (
@@ -4526,7 +4527,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             {decision === 'Yes' && (
               <>
                 {autoStep('Signing link and next steps email sent', signingEmailSent, null, livePlan?.agreement_sent_at)}
-                {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at, s.pending)}{s.stall && stallRows(s.stall)}</div>)}
+                {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at, s.pending)}{s.stall && stallRows(s.stall)}{s.resend}</div>)}
               </>
             )}
             {decision === 'Undecided' && (() => {
@@ -4559,7 +4560,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                       )}
                       {hasPricing && pricingStep(true)}
                       {autoStep('Signing link and next steps email sent', signingEmailSent, null, livePlan?.agreement_sent_at)}
-                      {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at, s.pending)}{s.stall && stallRows(s.stall)}</div>)}
+                      {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at, s.pending)}{s.stall && stallRows(s.stall)}{s.resend}</div>)}
                     </>
                   )}
 
@@ -4612,7 +4613,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                           {autoStep('PF confirmed — Yes with pricing', true)}
                           {pricingStep(true)}
                           {autoStep('Signing link and next steps email sent', signingEmailSent, null, livePlan?.agreement_sent_at)}
-                          {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at, s.pending)}{s.stall && stallRows(s.stall)}</div>)}
+                          {sharedSteps.map((s, i) => <div key={i}>{autoStep(s.label, s.done, s.chip, s.at, s.pending)}{s.stall && stallRows(s.stall)}{s.resend}</div>)}
                         </>
                       )}
                     </>
