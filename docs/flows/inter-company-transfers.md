@@ -34,6 +34,7 @@ IAG has no test site. The test site talks to IAG's live backend in sandbox mode:
 
 - **VFO Services must be a connected account of IAG** (Stripe OAuth, the recipe in [../integrations/stripe.md](../integrations/stripe.md) with IAG as the platform). **Linked live 2026-11-25**, `read_write`: Stripe offers a platform nothing smaller, so IAG's Stripe can read and act on the VFO Services account. Removing it (VFO Services' Stripe dashboard) stops every transfer. The id is IAG's secret `VFOS_CONNECT_ACCOUNT_ID`.
 - The transfer draws on IAG's **available Stripe balance**. Too low = Stripe refuses, the request goes back to waiting.
+- **Stripe memos** (Jake 2026-11-25): on VFO Services the arriving payment reads `IAG VFOS inter-company transfer - Specialist Revenue - <specialist> - For (<member#>) <name>` (stamped after booking, live only, a failure is logged and changes nothing); on IAG the transfer reads `IAG VFOS inter-company transfer - For <names>`.
 - A transfer reversed on IAG's Stripe is **not** seen here; IAG's bell says to tell VFO.
 - Request numbers are never shown to a person in this feature (Jake 2026-11-25): bells name the amount, the recipients and the day.
 - The screen's statuses: **Requested from IAG**, **Payment received**, **Denied by IAG** (`specialistRevenueShared.jsx`).

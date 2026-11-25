@@ -9,6 +9,12 @@
 
 ---
 
+## 2026-11-25 (d) — Inter-company transfer: the Stripe memo on both sides — by Jake
+
+Branches `polish/inter-company-memos` (edge, and IAG's backend) and `docs/inter-company-memos` (vfo-react, docs only). Action count **719** (unchanged). No migration, template or switch. Both memos now start *IAG VFOS inter-company transfer*, so the two companies' dashboards read as one movement; IAG's drops the specialist's name. Checked offline only (both memos printed, 40 money checks): VFO's memo is stamped on live alone, so its first showing is the first real transfer (JLathamERT/vfo-edge-functions#645).
+
+---
+
 ## 2026-11-25 (c) — VFOS IAG Inter-Company Transfer: a sixth New Payment method, answered in IAG's own portal — by Jake
 
 Branches `claude/inter-company-transfer-portal-b0432c` (vfo-react) and `claude/inter-company-transfer-portal-77e9db` (edge), with a branch in each of IAG's two repos. Action count **719** (717 + `specialist_revenue_intercompany_check`, `specialist_revenue_intercompany_result`), **54** route pages (unchanged). One migration, `20261125200000_specrev_inter_company.sql` (seven columns and two indexes on `specialist_revenue_requests`, three templates on Send, two rules), on the test site, **live at release BEFORE the backend**. Security advisor green on the test site; drift: live lacks exactly those columns and indexes. **Release order: live migration, backend, IAG's website, this website** (until IAG's page is published the emailed link is a 404). Owed and watched: Issue JLathamERT/vfo-edge-functions#645.
