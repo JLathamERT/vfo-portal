@@ -113,7 +113,7 @@ const PAYMENT_METHODS = [
   { key: 'pending', title: 'Bank transfer', tag: 'Email our details, or no email', desc: 'The specialist pushes the money to our bank transfer account. You mark it received once the money has cleared, and the invoice, receipt and shares go out.' },
   { key: 'external', title: 'Already paid', tag: 'Send revenue shares only', desc: 'We have the money somewhere else (an old account, a check). Nothing is requested and the specialist gets no email, invoice or receipt; the shares are paid out now from the VFO Services Stripe balance.' },
   { key: 'none', title: 'Record deals', tag: 'No payment', desc: 'Records deals where no money changed hands. All money columns are $0. Nothing is charged and no email is sent.' },
-  { key: 'inter_company', title: 'VFOS IAG Inter-Company Transfer', tag: 'Request in IAG portal', desc: 'IAG gets an email and a notification that open the request in their own portal. If they accept, the amount moves from their Stripe balance to ours, and the invoice, receipt and shares go out.' },
+  { key: 'inter_company', title: 'VFOS IAG Inter-Company Transfer', tag: 'Request in IAG portal', desc: 'For the Specialist’s implementation fee split, not the revenue share: the full amount goes to the members. IAG gets an email and a notification that open the request in their own portal. If they accept, the amount moves from their Stripe balance to ours, and the invoice, receipt and shares go out.' },
 ]
 
 // Every inter-company transfer is billed to the one IAG specialist. Mirrors INTER_COMPANY_EXPERT_ID
@@ -201,12 +201,13 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
   // typing a literal 0 in VFOS still completes a line; what is rejected is real money in
   // both boxes at once.
   const noMoney = paymentMethod === 'none'
+  // An inter-company transfer is the Specialist's implementation fee split: all of it goes to the members.
   const lineComplete = (l) => noMoney
     ? (!!l.recipientKey && (parseInt(String(l.deals).replace(/[^0-9]/g, '')) || 0) > 0)
     : !!l.recipientKey
     && String(l.member_share).trim() !== ''
     && String(l.deals).trim() !== ''
-    && (String(l.ert_share).trim() !== '' || String(l.vfos_share).trim() !== '')
+    && (interCompany || String(l.ert_share).trim() !== '' || String(l.vfos_share).trim() !== '')
     && !(amount(l.ert_share) > 0 && amount(l.vfos_share) > 0)
   const allLinesComplete = lines.length > 0 && lines.every(lineComplete)
   // Already-paid emails nobody, so it is the one method that does not need the specialist's email.
@@ -355,7 +356,7 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
           {PAYMENT_METHODS.map(opt => {
             const active = paymentMethod === opt.key
             return (
-              <button key={opt.key} type="button" title={opt.desc} onClick={() => { setPaymentMethod(opt.key); if (opt.key === 'none') setLines(ls => ls.map(l => ({ ...l, ert_share: '', vfos_share: '', member_share: '' }))) }}
+              <button key={opt.key} type="button" title={opt.desc} onClick={() => { setPaymentMethod(opt.key); if (opt.key === 'none') setLines(ls => ls.map(l => ({ ...l, ert_share: '', vfos_share: '', member_share: '' }))); if (opt.key === 'inter_company') setLines(ls => ls.map(l => ({ ...l, ert_share: '', vfos_share: '' }))) }}
                 style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '10px', border: active ? `2px solid ${BLUE}` : '1px solid var(--vfo-border-strong)', background: active ? 'var(--vfo-tint)' : 'var(--vfo-card)', cursor: 'pointer', fontFamily: 'Inter, sans-serif', display: 'flex', gap: '8px', alignItems: 'flex-start', minWidth: 0 }}>
                 <span style={{ marginTop: '2px', width: '14px', height: '14px', borderRadius: '50%', border: active ? `4px solid ${BLUE}` : '2px solid var(--vfo-border-strong)', boxSizing: 'border-box', flexShrink: 0 }} />
                 <span style={{ minWidth: 0 }}>
@@ -422,8 +423,8 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
           const r = l.recipientKey ? recipientByKey[l.recipientKey] : null
           // The house share lands on ERT or on VFOS. A real amount in one locks the other
           // box; a typed 0 locks nothing, so "0 in VFOS" still means "no house share here".
-          const ertLocked = noMoney || amount(l.vfos_share) > 0
-          const vfosLocked = noMoney || amount(l.ert_share) > 0
+          const ertLocked = noMoney || interCompany || amount(l.vfos_share) > 0
+          const vfosLocked = noMoney || interCompany || amount(l.ert_share) > 0
           const houseFilled = String(l.ert_share).trim() !== '' || String(l.vfos_share).trim() !== ''
           return (
             <div key={l.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '12px', alignItems: 'start', padding: '14px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
@@ -431,8 +432,8 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
                 <SearchSelect options={recipientOptions} value={l.recipientKey} onChange={k => updateLine(l.id, { recipientKey: k })} placeholder="Select a member…" />
                 {r && <RevenueBadge decision={r.revenue_decision} />}
               </div>
-              <input style={{ ...numInput, border: noMoney ? '1px solid var(--vfo-border-strong)' : reqBorder(houseFilled), ...(ertLocked ? offInput : null) }} disabled={ertLocked} inputMode="decimal" placeholder="0.00" value={l.ert_share} onChange={e => updateLine(l.id, { ert_share: e.target.value })} />
-              <input style={{ ...numInput, border: noMoney ? '1px solid var(--vfo-border-strong)' : reqBorder(houseFilled), ...(vfosLocked ? offInput : null) }} disabled={vfosLocked} inputMode="decimal" placeholder="0.00" value={l.vfos_share} onChange={e => updateLine(l.id, { vfos_share: e.target.value })} />
+              <input style={{ ...numInput, border: noMoney || interCompany ? '1px solid var(--vfo-border-strong)' : reqBorder(houseFilled), ...(ertLocked ? offInput : null) }} disabled={ertLocked} inputMode="decimal" placeholder="0.00" value={l.ert_share} onChange={e => updateLine(l.id, { ert_share: e.target.value })} />
+              <input style={{ ...numInput, border: noMoney || interCompany ? '1px solid var(--vfo-border-strong)' : reqBorder(houseFilled), ...(vfosLocked ? offInput : null) }} disabled={vfosLocked} inputMode="decimal" placeholder="0.00" value={l.vfos_share} onChange={e => updateLine(l.id, { vfos_share: e.target.value })} />
               <input style={{ ...numInput, border: noMoney ? '1px solid var(--vfo-border-strong)' : reqBorder(String(l.member_share).trim() !== ''), ...(noMoney ? offInput : null) }} disabled={noMoney} inputMode="decimal" placeholder="0.00" value={l.member_share} onChange={e => updateLine(l.id, { member_share: e.target.value })} />
               <input style={{ ...numInput, border: reqBorder(String(l.deals).trim() !== '') }} inputMode="numeric" placeholder="0" value={l.deals} onChange={e => updateLine(l.id, { deals: e.target.value })} />
               <input style={numInput} placeholder="Optional" value={l.transaction_details} onChange={e => updateLine(l.id, { transaction_details: e.target.value })} />
@@ -473,7 +474,7 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
             {sending ? 'Sending…' : noMoney ? `Record ${totals.deals} deal${totals.deals === 1 ? '' : 's'} — no payment` : (paymentMethod === 'pending' ? (bankChoice === 'direct' ? `Record bank transfer, no email — ${money(totals.gross)}` : `Email bank details — ${money(totals.gross)}`) : alreadyPaid ? `Send revenue shares — ${money(totals.gross)}` : interCompany ? `Send transfer request to IAG — ${money(totals.gross)}` : paymentMethod === 'recurring' ? `Send recurring payment link — ${money(totals.gross)}/mo` : `Send Payment Request — ${money(totals.gross)}`)}
           </button>
           {lines.length > 0 && !allLinesComplete && (
-            <div style={{ fontSize: '12px', color: '#b45309' }}>{noMoney ? 'Pick a recipient and enter at least 1 deal on every line before recording.' : 'Fill in a recipient, an ERT $ or VFOS $ (not both), Member $, and Deals for every line before sending.'}</div>
+            <div style={{ fontSize: '12px', color: '#b45309' }}>{noMoney ? 'Pick a recipient and enter at least 1 deal on every line before recording.' : interCompany ? 'Fill in a recipient, Member $, and Deals for every line before sending.' : 'Fill in a recipient, an ERT $ or VFOS $ (not both), Member $, and Deals for every line before sending.'}</div>
           )}
         </div>
       </div>
