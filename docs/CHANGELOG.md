@@ -9,6 +9,20 @@
 
 ---
 
+## 2026-11-25 (f) — Inter-company transfer: members only, and everything says implementation fee split — by Jake
+
+Branch `claude/inter-company-implementation-fee` in all four repos. Action count **730**, **56** route pages (both unchanged). One migration, `20261125220000_specrev_inter_company_fee_split_emails.sql` (data only: three templates edited, three added), on the test site, **live at release BEFORE the backend** (a missing template would pay the share and send no email). Drift 0.
+
+**What was asked.** IAG's feedback: these transfers are 100% the members', and it must be clear they are the Specialist's implementation fee split, not the revenue share, which is paid separately.
+
+**Built.** ERT and VFOS greyed out, cleared and refused by the server for this method. The three emails to IAG, the invoice and receipt Description, IAG's page, confirm step, bell and all three Stripe memos name it. Then, on Jake's "yes to all", the recipients' side: their own copies of the three recipient emails, the payout memo, the held-share label, the hold notice's revenue type, Tracy's payout-setup bell and the Money Mapping ledger line. Where the money goes is unchanged: a Money Mapping recipient's split is still held there.
+
+**Changed on Jake's look.** The emails' line was a blue-edged box, then blue text, then plain text; IAG's notice lost its blue edge; the PDFs dropped "(not part of the revenue share)".
+
+**Tested.** By Jake on the dev servers against `vfo-admin-api-jake` v108-v109 and IAG's dev site: the locked boxes, request, email, accept, received, PDFs, the member's confirmation email. v110 (the PDF wording and the plain email text) was type-checked and read back, not clicked. **Not exercised:** the Money Mapping and payout-setup emails, the reminder, a refused ERT or VFOS share sent past the form, and (live only) the two inter-company memos and IAG's new bell wording.
+
+---
+
 ## 2026-11-25 (e) — Events: tickets, free registration, attendees and the public page; admin tabs open to every admin; Feature Switches trimmed — by Jake
 
 Branches `claude/events-tab-admin-members-03914c` (vfo-react) and `claude/events-tab-admin-members-551266` (edge). Action count **730** (719 + the 11 in [05-api-action-catalog.md](architecture/05-api-action-catalog.md) *Events*), **56** route pages (54 + `/events`, `/event-pay`). Two migrations: `20261125210000_events.sql` (five tables, `document_numbers.event_order_id`, the `EVENTS` config row on ERT, the `events` switch Off) and `20261125211000_event_email_templates.sql` (four templates on Send), both on the test site. **Release order on live: the first migration, the backend, the second migration (its tokens need the code), the website.** The backend goes before the website either way: the opened admin tabs would be refused by the old one. Security advisor green on both projects; drift: live lacks exactly this change's objects. Owed and watched: Issue JLathamERT/vfo-edge-functions#648. New flow doc [flows/events.md](flows/events.md). Gotcha #795.

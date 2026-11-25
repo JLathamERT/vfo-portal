@@ -233,7 +233,7 @@ Live-proven on Test Member 59524: a contact added, edited, removed and toggled; 
 | MAP 1 | `actions/pipeline/contract-revshare.ts` | `CONTRACT_member_revshare\|first` / `\|subsequent` |
 | Tax | `actions/tax/revshare.ts` | `TAX_member_revshare\|retainer` / `\|implementation` |
 | PIP | `actions/msm/pip-revshare.ts` | `PIP_member_revshare` |
-| SpecRev | `utils/specialist-revenue-payout.ts` | `SPECREV_revenue_share_confirmation` **and** `SPECREV_money_mapping_notice` — **member lines only** (`recipient_type === 'member'`; a specialist line passes null) |
+| SpecRev | `utils/specialist-revenue-payout.ts` | `SPECREV_revenue_share_confirmation` **and** `SPECREV_money_mapping_notice`, and their inter-company copies `SPECREV_inter_company_share_confirmation` / `_money_mapping` (2026-11-25) — **member lines only** (`recipient_type === 'member'`; a specialist line passes null) |
 | Accounting manual Connect payment | `actions/payouts/manual-connect-payment.ts` | the confirmation email — member recipients only (`memberNumber` is null for a specialist / group) |
 
 Derive the set rather than trusting this table: `grep -rn "ccCorporateLeadOf" supabase/functions/vfo-admin-api`.
