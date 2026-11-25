@@ -5,6 +5,7 @@ import MemberWebsitePlugin from '../components/shared/MemberWebsitePlugin'
 import MemberVault from '../components/shared/MemberVault'
 import MemberCIQ from '../components/shared/MemberCIQ'
 import MemberGCMarketplace, { GCMarketplaceSkeleton } from '../components/member/MemberGCMarketplace'
+import MemberEvents, { MemberEventsSkeleton } from '../components/member/MemberEvents'
 import MemberMSMTracking, { MemberProgramLoading } from '../components/member/MemberMSMTracking'
 import MemberTaxDiagnostic from '../components/member/MemberTaxDiagnostic'
 import ClientOverviewPanel from '../components/admin/ClientOverviewPanel'
@@ -42,6 +43,8 @@ export default function MemberPortal() {
     const qs = new URLSearchParams(window.location.search)
     // Land returning Stripe buyers (/member?gc_success=1) on the GC Marketplace.
     if (qs.get('gc_success') === '1') return 'gc'
+    // Back from paying for event tickets, or the event link.
+    if (qs.get('event_paid') === '1' || qs.get('tab') === 'events') return 'events'
     // Tax intake (2026-09-17): the $500 deposit Checkout returns to
     // ?tab=msm_tax&intake=<id>&paid=1, which lands on the Tax Planning tab
     // regardless of the tab the member last used.
@@ -70,7 +73,8 @@ export default function MemberPortal() {
   const tier1 = features ? features.member_tier === 1 : null
   // A Tier 1 member is never drawn a hidden tab, not even for the paint before the
   // effect below moves them to Profile.
-  const activeTab = tier1 && pickedTab && !TIER1_TABS.includes(pickedTab) ? 'profile' : pickedTab
+  const eventsEnabled = features?.events === true
+  const activeTab = (tier1 && pickedTab && !TIER1_TABS.includes(pickedTab)) || (features && pickedTab === 'events' && !eventsEnabled) ? 'profile' : pickedTab
   const [allPrograms, setAllPrograms] = useState([])
 
   useLayoutEffect(() => {
@@ -155,7 +159,7 @@ export default function MemberPortal() {
       ]}>
         {/* The bell inside: the member's rows are scoped server-side to their own
             login email - never the 'admin'/'all' broadcasts (#259). */}
-        {!showSettings && <MemberNavBar activeTab={activeTab} onSelect={setActiveTab} programs={orderedEnabledPrograms} websiteEnabled={!!memberData?.website_enabled} tier1={tier1} />}
+        {!showSettings && <MemberNavBar activeTab={activeTab} onSelect={setActiveTab} programs={orderedEnabledPrograms} websiteEnabled={!!memberData?.website_enabled} tier1={tier1} eventsEnabled={eventsEnabled} />}
       </PortalHeader>
 
       {/* Black Friday (2026-11-20): above every tab, for the members who have the
@@ -179,7 +183,7 @@ export default function MemberPortal() {
           )}
 
           <div style={{ flex: 1, overflow: 'auto' }}>
-          {loading && activeTab && (activeTab === 'profile_edit' ? <MemberEditProfileSkeleton /> : activeTab === 'gc' ? <GCMarketplaceSkeleton /> : activeTab.startsWith('msm_') && activeTab !== 'msm_home' ? <MemberProgramLoading tab={activeTab} /> : <MemberTabSkeleton tab={activeTab} />)}
+          {loading && activeTab && (activeTab === 'profile_edit' ? <MemberEditProfileSkeleton /> : activeTab === 'gc' ? <GCMarketplaceSkeleton /> : activeTab === 'events' ? <MemberEventsSkeleton /> : activeTab.startsWith('msm_') && activeTab !== 'msm_home' ? <MemberProgramLoading tab={activeTab} /> : <MemberTabSkeleton tab={activeTab} />)}
 
           {!loading && activeTab === 'profile' && memberData && (
             <MemberProfile member={memberData} allMembers={allMembers} memberConnections={memberConnections} />
@@ -210,6 +214,11 @@ export default function MemberPortal() {
             (memberData?.member_category === 'advisor' || memberData?.member_category === 'accountant')
               ? <MemberGrowthPlan memberNumber={session.member_number} variant={memberData?.member_category === 'accountant' ? 'accountant' : 'advisor'} />
               : <ComingSoon title="Growth Plan" />
+          )}
+          {!loading && activeTab === 'events' && eventsEnabled && (
+            <div style={{ maxWidth: '980px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
+              <MemberEvents memberNumber={session.member_number} />
+            </div>
           )}
           {!loading && activeTab === 'gc' && (
             <div style={{ maxWidth: '980px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState, useRef } from 'react'
 import CollapsibleNavBar from '../shared/CollapsibleNavBar'
 import { IS_STAGING } from '../../lib/environment'
+import { canSeeAdminTab } from './adminTabs'
 
 // The admin nav bar (Advisors ▾ … More ▾), moved out of AdminPortal.jsx on
 // 2026-10-20 so the client page draws the very same bar. AdminPortal routes a
@@ -285,7 +286,7 @@ const accountingSubmenus = [
   },
 ]
 
-const MORE_TABS = ['member_overview', 'client_overview', 'growth_credits', 'faq_editor', 'tax_diagnostics', 'sdp_atsg', 'portal_backlog', 'feature_switches', 'automation', 'accounting']
+const MORE_TABS = ['member_overview', 'client_overview', 'growth_credits', 'events', 'faq_editor', 'tax_diagnostics', 'sdp_atsg', 'portal_backlog', 'feature_switches', 'automation', 'accounting']
 
 // The five key tabs, for the narrow-window menu and its current-tab label.
 const KEY_TABS = [
@@ -297,38 +298,22 @@ const KEY_TABS = [
 ]
 const ADMIN_TAB_LABELS = {
   ...Object.fromEntries(KEY_TABS.map(([key, label]) => [key, label])),
-  member_overview: 'Member Overview', client_overview: 'Client Overview', growth_credits: 'Growth Credits',
+  member_overview: 'Member Overview', client_overview: 'Client Overview', growth_credits: 'Growth Credits', events: 'Events',
   faq_editor: 'FAQ Editor', tax_diagnostics: 'Tax Diagnostics', sdp_atsg: 'SDP ATSG', portal_backlog: 'Portal Backlog', feature_switches: 'Feature Switches', staging: 'Staging',
   automation: 'Automation & Config', accounting: 'Accounting',
 }
 
-// The three superadmin-managed "other" tabs. A non-superadmin admin sees one only
-// if Jake granted it (session.allowed_tabs). Superadmin sees all.
-export const canSeeAdminTab = (session, key) => !!session?.is_superadmin || (session?.allowed_tabs || []).includes(key)
-
 export default function AdminNavBar({ session, activeTab, onSelect }) {
   const canSeeTab = (key) => canSeeAdminTab(session, key)
-  // The grantable "other" tabs always sit in one More ▾ menu (2026-09-26 — was a
-  // row of tabs on wide screens), whatever mix a given admin is granted.
+  // The "other" tabs always sit in one More ▾ menu (2026-09-26 — was a row of tabs
+  // on wide screens). Open to every admin, except the few in adminTabs.js.
   // Keys are prefixed so one onSelect can route back to the right section.
   const moreDropdownItems = [
-    ...(canSeeTab('member_overview') ? [{ key: 'more_mo', options: [{ key: '__member_overview', label: 'Member Overview' }] }] : []),
-    ...(canSeeTab('client_overview') ? [{ key: 'more_co', options: [{ key: '__client_overview', label: 'Client Overview' }] }] : []),
-    ...(canSeeTab('growth_credits') ? [{ key: 'more_gc', options: [{ key: '__growth_credits', label: 'Growth Credits' }] }] : []),
-    ...(canSeeTab('faq_editor') ? [{ key: 'more_faq', options: [{ key: '__faq_editor', label: 'FAQ Editor' }] }] : []),
-    ...(canSeeTab('tax_diagnostics') ? [{ key: 'more_diag', options: [{ key: '__tax_diagnostics', label: 'Tax Diagnostics' }] }] : []),
-    // SDP - Advanced Tax Strategy Governance (2026-11-17): grantable in the Admin Editor.
-    ...(canSeeTab('sdp_atsg') ? [{ key: 'more_sdp', options: [{ key: '__sdp_atsg', label: 'SDP ATSG' }] }] : []),
-    // Every admin, never gated: the backlog is open to the whole team (portal_backlog_*).
-    { key: 'more_backlog', options: [{ key: '__portal_backlog', label: 'Portal Backlog' }] },
-    // Superadmin only, never grantable (feature_switches_* are SUPERADMIN_ONLY_ACTIONS).
-    ...(session?.is_superadmin ? [{ key: 'more_switches', options: [{ key: '__feature_switches', label: 'Feature Switches' }] }] : []),
-    // The two tabs with their own sub-options open sideways on hover instead of
-    // listing every option inline.
-    ...(canSeeTab('automation') ? [{
-      key: 'more_auto', submenuLabel: 'Automation & Config',
-      submenu: automationOptions.map(o => ({ ...o, key: 'auto:' + o.key })),
-    }] : []),
+    // Order by Jake, 2026-11-25.
+    { key: 'more_mo', options: [{ key: '__member_overview', label: 'Member Overview' }] },
+    { key: 'more_co', options: [{ key: '__client_overview', label: 'Client Overview' }] },
+    // Accounting and Automation & Config open sideways on hover instead of listing
+    // every option inline.
     ...(canSeeTab('accounting') ? [{
       key: 'more_acct', submenuLabel: 'Accounting',
       submenu: [
@@ -338,6 +323,18 @@ export default function AdminNavBar({ session, activeTab, onSelect }) {
         { key: 'acct:sdp_atsg_revenue', label: 'SDP ATSG' },
       ],
     }] : []),
+    { key: 'more_gc', options: [{ key: '__growth_credits', label: 'Growth Credits' }] },
+    { key: 'more_events', options: [{ key: '__events', label: 'Events' }] },
+    { key: 'more_diag', options: [{ key: '__tax_diagnostics', label: 'Tax Diagnostics' }] },
+    { key: 'more_faq', options: [{ key: '__faq_editor', label: 'FAQ Editor' }] },
+    { key: 'more_backlog', options: [{ key: '__portal_backlog', label: 'Portal Backlog' }] },
+    ...(canSeeTab('feature_switches') ? [{ key: 'more_switches', options: [{ key: '__feature_switches', label: 'Feature Switches' }] }] : []),
+    ...(canSeeTab('automation') ? [{
+      key: 'more_auto', submenuLabel: 'Automation & Config',
+      submenu: automationOptions.map(o => ({ ...o, key: 'auto:' + o.key })),
+    }] : []),
+    // SDP - Advanced Tax Strategy Governance (2026-11-17).
+    ...(canSeeTab('sdp_atsg') ? [{ key: 'more_sdp', options: [{ key: '__sdp_atsg', label: 'SDP ATSG' }] }] : []),
   ]
   function selectMoreOption(key) {
     if (key.startsWith('auto:')) return onSelect('automation', key.slice(5))

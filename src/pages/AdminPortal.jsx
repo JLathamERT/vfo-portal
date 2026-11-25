@@ -27,6 +27,7 @@ import NotificationEditorPanel from '../components/admin/NotificationEditorPanel
 import TeamNotificationEmailsPanel from '../components/admin/TeamNotificationEmailsPanel'
 import PortalHeader from '../components/shared/PortalHeader'
 import AdminNavBar from '../components/admin/AdminNavBar'
+import { canSeeAdminTab } from '../components/admin/adminTabs'
 import AllPaymentsTab from '../components/payments/AllPaymentsTab'
 import SpecialistRevenuePanel from '../components/admin/SpecialistRevenuePanel'
 import SpecialistRecurringPanel from '../components/admin/SpecialistRecurringPanel'
@@ -57,6 +58,7 @@ import MoneyMappingAccountingPanel from '../components/admin/MoneyMappingAccount
 import ManualConnectPaymentPanel from '../components/admin/ManualConnectPaymentPanel'
 import NotificationsPage from '../components/admin/NotificationsPage'
 import GrowthCreditsRedemptionsPage from '../components/admin/GrowthCreditsRedemptionsPage'
+import EventsAdminPage from '../components/admin/EventsAdminPage'
 import { AccountingPageSkeleton, AccountingRowsSkeleton, AccountingTableSkeleton, DirectoryListSkeleton, KpiPageSkeleton, MemberEditFormSkeleton, MemberOverviewSkeleton, MemberPageSkeleton, OnboardingPageSkeleton, SearchFilterSkeleton, ShowroomSkeleton, Skeleton, SpecialistDirectorySkeleton, StrategicPartnersSkeleton } from '../components/shared/Skeleton'
 
 // A staging build only: a live build holds none of this tab's code.
@@ -89,21 +91,12 @@ export default function AdminPortal() {
   const location = useLocation()
   const session = getSession()
   usePortalTheme()
-  // The three superadmin-managed "other" tabs. A non-superadmin admin sees one
-  // only if Jake granted it (session.allowed_tabs). Superadmin sees all.
-  const canSeeTab = (key) => !!session?.is_superadmin || (session?.allowed_tabs || []).includes(key)
+  // The tabs turned on per admin (adminTabs.js); every other tab is open.
+  const canSeeTab = (key) => canSeeAdminTab(session, key)
   const [activeTab, setActiveTab] = useState(() => {
     const t = sessionStorage.getItem('adminActiveTab')
-    // The "other" tabs are access-gated — never restore an admin into one they lack.
-    if (t === 'automation' && !canSeeTab('automation')) return null
-    if ((t === 'accounting' || t === 'payments') && !canSeeTab('accounting')) return null
-    if (t === 'member_overview' && !canSeeTab('member_overview')) return null
-    if (t === 'client_overview' && !canSeeTab('client_overview')) return null
-    if (t === 'growth_credits' && !canSeeTab('growth_credits')) return null
-    if (t === 'faq_editor' && !canSeeTab('faq_editor')) return null
-    if (t === 'tax_diagnostics' && !canSeeTab('tax_diagnostics')) return null
-    if (t === 'sdp_atsg' && !canSeeTab('sdp_atsg')) return null
-    if (t === 'feature_switches' && !session?.is_superadmin) return null
+    // Never restore an admin into a tab they lack.
+    if (!canSeeTab(t === 'payments' ? 'accounting' : t)) return null
     if (t === 'staging' && !IS_STAGING) return null
     if (t === 'members') return 'advisors'
     // Legacy: the standalone Payments tab is now a sub-tab of Accounting.
@@ -191,17 +184,10 @@ export default function AdminPortal() {
     const tab = params.get('tab')
     const section = params.get('section')
     if (!tab) return
-    // The "other" tabs are access-gated — ignore a deep-link into one the admin lacks.
-    if (tab === 'automation' && !canSeeTab('automation')) return
-    if ((tab === 'accounting' || tab === 'payments') && !canSeeTab('accounting')) return
-    if (tab === 'member_overview' && !canSeeTab('member_overview')) return
-    if (tab === 'client_overview' && !canSeeTab('client_overview')) return
-    if (tab === 'growth_credits' && !canSeeTab('growth_credits')) return
-    if (tab === 'tax_diagnostics' && !canSeeTab('tax_diagnostics')) return
-    if (tab === 'sdp_atsg' && !canSeeTab('sdp_atsg')) return
+    // Ignore a deep-link into a tab the admin lacks.
+    if (!canSeeTab(tab === 'payments' ? 'accounting' : tab)) return
     // An SDP ATSG bell carries its case id so the tab opens that client.
     if (tab === 'sdp_atsg' && params.get('case')) setInitialAtsgCaseId(Number(params.get('case')))
-    if (tab === 'feature_switches' && !session?.is_superadmin) return
     if (tab === 'staging' && !IS_STAGING) return
     // The diagnostic bell carries its row id so the queue can open that card.
     if (tab === 'tax_diagnostics' && params.get('diag')) {
@@ -428,6 +414,14 @@ export default function AdminPortal() {
     setShowSettings(false)
   }
 
+  function selectEvents() {
+    setActiveTab('events')
+    sessionStorage.setItem('adminActiveTab', 'events')
+    setNavClickCount(c => c + 1)
+    setShowEditor(false)
+    setShowSettings(false)
+  }
+
   function selectFaqEditor() {
     setActiveTab('faq_editor')
     sessionStorage.setItem('adminActiveTab', 'faq_editor')
@@ -527,6 +521,7 @@ export default function AdminPortal() {
     if (tab === 'member_overview') return selectMemberOverview()
     if (tab === 'client_overview') return selectClientOverview()
     if (tab === 'growth_credits') return selectGrowthCredits()
+    if (tab === 'events') return selectEvents()
     if (tab === 'faq_editor') return selectFaqEditor()
     if (tab === 'tax_diagnostics') return selectTaxDiagnostics()
     if (tab === 'sdp_atsg') return selectSdpAtsg()
@@ -638,7 +633,7 @@ export default function AdminPortal() {
             <PortalBacklogPanel link={backlogLink} />
           )}
 
-          {activeTab === 'feature_switches' && session?.is_superadmin && (
+          {activeTab === 'feature_switches' && canSeeTab('feature_switches') && (
             <FeatureSwitchesPanel />
           )}
 
@@ -650,7 +645,7 @@ export default function AdminPortal() {
             <SdpAtsgPanel key={`sdp-${navClickCount}-${initialAtsgCaseId || ''}`} mode="admin" initialCaseId={initialAtsgCaseId} />
           )}
 
-          {activeTab === 'tax_diagnostics' && canSeeTab('tax_diagnostics') && (
+          {activeTab === 'tax_diagnostics' && (
             <TaxDiagnosticsPanel initialDiagnosticId={initialDiagnosticId} />
           )}
 
@@ -714,8 +709,11 @@ export default function AdminPortal() {
           {activeTab === 'notifications' && (
             <NotificationsPage />
           )}
-          {activeTab === 'growth_credits' && canSeeTab('growth_credits') && (
+          {activeTab === 'growth_credits' && (
             <GrowthCreditsRedemptionsPage />
+          )}
+          {activeTab === 'events' && (
+            <EventsAdminPage />
           )}
           {activeTab === 'automation' && automationSection === 'email_templates' && (
             <EmailTemplatesPanel />

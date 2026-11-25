@@ -3,7 +3,7 @@ import { callApi, getSession } from '../../lib/api'
 import { isWistiaLink, wistiaEmbedUrl } from '../shared/wistia'
 import { Skeleton } from '../shared/Skeleton'
 
-// The FAQ Editor tab — grantable per admin (allowed_tabs 'faq_editor'). Backs
+// The FAQ Editor tab — open to every admin (2026-11-25). Backs
 // the member portal's Help button: every row here is a question, with an
 // answer, a Wistia video, a PDF document, or any mix. Categories are optional
 // headings the Help panel groups questions under; they can be added and

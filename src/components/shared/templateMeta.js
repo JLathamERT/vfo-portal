@@ -319,6 +319,12 @@ export const TEMPLATE_META = {
     ['SDP_ATSG_revshare|member', 'The member’s 47.5% revenue share was sent - confirmation', 'To: Member'],
     ['SDP_ATSG_revshare|sdp', 'SDP’s 47.5% revenue share was sent - confirmation', 'To: SDP'],
   ],
+  'EVENTS': [
+    ['EVENT_ticket_ach_confirmation', 'Tickets bought by bank transfer (ACH) — confirmation while the payment clears', 'To: Buyer'],
+    ['EVENT_ticket_invoicereceipt', 'Tickets bought — confirmation with the invoice and receipt PDFs (card straight away, bank transfer once it clears)', 'To: Buyer'],
+    ['EVENT_registration_confirmation', 'Complimentary registration saved or changed', 'To: Member'],
+    ['EVENT_refund_confirmation', 'Tickets refunded', 'To: Buyer'],
+  ],
   'GROWTH_CREDITS': [
     ['GC_purchase_ach_confirmation', 'Credits bought by bank transfer (ACH) — confirmation while the payment clears', 'To: Member'],
     ['GC_purchase_invoicereceipt', 'Credits bought — invoice and receipt PDFs (card straight away, bank transfer once it clears)', 'To: Member'],

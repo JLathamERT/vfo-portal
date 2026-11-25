@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { StackedCardsSkeleton } from '../shared/Skeleton'
 
-// The Feature Switches tab (2026-09-28) — superadmin (Jake) only, under More ▾.
-// The backend (feature_switches_load / feature_switches_save,
-// SUPERADMIN_ONLY_ACTIONS) is the real gate; this panel only renders for
-// is_superadmin.
+// The Feature Switches tab (2026-09-28), under More ▾ — superadmins, and any admin
+// it was turned on for in the Admin Editor (2026-11-25). The backend
+// (feature_switches_load / feature_switches_save, TAB_ACTIONS.feature_switches) is
+// the real gate.
 //
 // Since 2026-10-19 the tab shows CARDS, not raw switches (Jake): a card can hold
 // several portal_feature_flags keys that only make sense together, and its
@@ -21,70 +21,6 @@ import { StackedCardsSkeleton } from '../shared/Skeleton'
 // short; the full behaviour goes under `details`.
 
 const CARDS = [
-  {
-    id: 'client_portal',
-    keys: ['portal_licensing', 'client_basic_portal', 'ciq_licence', 'tpom_additional_benefits'],
-    title: 'VFO Client Portal',
-    on: [
-      ['Tax agreement + TPOM presentation', 'both gain the "Additional Benefits" wording (12 months free portal membership, discounted future tax planning), and the agreement names the client\'s collaborating team.'],
-      ['Basic portal, $0 a month', 'members can send any client portal access. The client sees the Showroom and can ask for specialist introductions.'],
-      ['Premium portal, $25 a month', 'adds the Client Vault, the client\'s One Page Plan and, while its own switch is on, My Progress. Members turn it on per client and pay monthly by card or bank.'],
-      ['Tax clients', 'a paid tax retainer gives the client the Premium portal free for 12 months, with a login email. $300 of the retainer goes to VFO Portal before the revenue share; a refund takes the portal away.'],
-    ],
-    off: 'The old tax agreement and TPOM presentation. Members cannot send portal access, there are no licences and no $25 charges, and every client keeps Showroom + Vault as today.',
-    note: 'Keyed on the client\'s member. The tax part (agreement, TPOM slide, free 12 months, $300) reaches only tax plans created from 11/02/2026 on — every older plan keeps the old agreement and deck and gets no licence. Nothing already sent or paid changes.',
-    // Inside this card but flipped on their own (portal licensing L8, decision 73).
-    subSwitches: [
-      {
-        key: 'client_case_progress',
-        title: 'My Progress tab',
-        on: 'A Premium client gets a "My Progress" tab in their portal: the case progress their member sees on the client page — every program, step and status (MAP 1, Regular Priorities, Tax Priorities and PIP Meetings for a Holistic client; Tax Planning for a Tax Planning client), completed and stopped plans included. Read-only, every amount blanked, no notes.',
-        off: 'No My Progress tab. The client portal is exactly as the switch above leaves it.',
-        note: 'Its own switch, keyed on the client\'s member. Only Premium clients see the tab, so the switch above must be on too.',
-      },
-    ],
-    details: [
-      ['Tax agreement + TPOM presentation', [
-        'Tax agreement: the collaborating-team sentence at the end of the opening paragraph ("In this case your collaborating team are [Tax Planning Group] and [Member\'s company or name] and VFO Services.").',
-        'Tax agreement: the "Additional Benefits" section after the Double Guarantee — Free VFO Portal Membership for 12 months (VFO Showroom, Client Vault, 12 Months of Proactivity, Connectivity Feature), Discounted Future Tax Planning Fees (15%, or 25% when concluded before Q4) and the Q4 new-engagement sentence.',
-        'The sample agreement PDF on the Undecided quote email and the Rapid Route email uses the new wording.',
-        'Every newly generated TPOM presentation has the "Additional Benefits" slide straight after "Our Double-Guarantee" (32 slides two-year / 30 single-year; 31 / 29 without it). Decks already generated are not changed.',
-      ]],
-      ['Basic portal ($0 a month)', [
-        'A "Send portal access" button at the bottom of the Profile tab on the member\'s view of each client ("Resend portal access" once sent). It creates the client\'s login if they have none and emails the client "[Member] has set up your VFO client portal" (sent automatically since 11/02/2026). Access cannot be taken away again.',
-        'A $0 Basic licence is recorded the first time access is sent, so a price can be added later.',
-        'A client without the Premium portal sees the Showroom only — no Vault tab, and the Vault is refused if reached another way. When a Premium portal ends they drop back to Showroom only.',
-        'A "Request an introduction" button on each Showroom specialist (Basic and Premium): emails the member (Tracy Bcc\'d, sent automatically) and rings a bell for Tracy. Once per specialist.',
-      ]],
-      ['Premium portal ($25 a month)', [
-        'On the member\'s client Profile tab, in the Client Portal card: "Premium portal - $25/month" — Turn on (card or bank sign-in; the first time through a Stripe page that saves it, later clients reuse it), Turn off (stays on to the end of the paid month, then Basic again) and Keep it on. Needs portal access sent first. A client with an active tax licence reads "Included with ...\'s tax planning until ..." and is not charged.',
-        'A Premium client gets a "My One Page Plan" tab in their portal: their One Page Plan from the CIQ, read-only, with earlier versions under History — never the questionnaire answers.',
-        'Change / Update payment method: card or bank, with a warning that it moves ALL of the member\'s Premium portals; each is re-priced ($26.06 card / $25.00 bank).',
-        'Every paid month: an invoice + receipt PDF to the member (Cc Tracy, Bcc Paul and Anton), filed in their ERT/VFOS Documentation vault; a bank payment also gets a "payment started" email. Card adds 2.9% + $0.30. In Stripe a new subscription reads "VFO Portal - Premium portal - <client>", on VFO Services.',
-        'A failed payment: one email to the member at once (with an Update payment method button) and ONE reminder 2 business days later — no bells. The client is on Basic until it is paid.',
-        'When the client pays a tax retainer, a paid $25 month runs to its end and the $25 then stops (no further charge, nothing refunded); the tax year starts that day. A $25 with a failed or still-clearing payment stops at once and the tax year starts straight away. The member is emailed either way.',
-        'Starting a CIQ records a $0 Basic licence for the client. The admin CIQ setting for the member reads "Member drives CIQ (training complete)"; while this is On for all, new members start with it off.',
-        'All five Premium portal emails are To the member, Cc Tracy, Bcc Paul and Anton, and are sent automatically (since 11/02/2026). Invoices and receipts are numbered INV-PREM- / REC-PREM-.',
-      ]],
-      ['Tax clients', [
-        'A 12-month Premium portal licence for every tax client whose retainer is paid on a tax plan created from 11/02/2026 on (card at once, bank payment or check when it clears). Every paid retainer buys a full 12 months: a second one while a licence is running starts when the running one ends.',
-        'A client portal login is created on that payment, with a separate "Your VFO Premium portal is ready" email (sent automatically) — "Set up my portal login", or "Sign in to my portal" if they already have one.',
-        'The client portal gets a Home screen ("Welcome back") showing the licence expiry date.',
-        '$300 of every paid retainer goes to VFO Portal before the revenue share is split, shown on the revenue-share emails and split screens (it stays in the VFO Services balance until the VFO Portal Stripe account exists).',
-        'Any refund of the tax retainer, full or partial, revokes the licence.',
-      ]],
-    ],
-  },
-  {
-    id: 'tax_direct',
-    keys: ['tax_direct'],
-    title: 'Direct to Tax Planning',
-    on: [
-      [null, 'A member with 2 or more qualifying tax clients can choose to run a new tax case themselves — they are the PF, the split is 45/45/10, and the PF bells go to them.'],
-    ],
-    off: 'VFO Services runs every new tax case. Existing Direct cases carry on unchanged.',
-    note: 'Chosen on the tax client form ("Who runs this case?"), from the Tax Diagnostic tab or MSM.',
-  },
   {
     id: 'sdp_atsg_planners',
     keys: ['sdp_atsg_planners'],
@@ -108,6 +44,18 @@ const CARDS = [
     offConfirm: 'OFF: every client list and profile goes back to the hand-set status.',
   },
   {
+    id: 'events',
+    keys: ['events'],
+    title: 'Events',
+    on: [
+      [null, 'Every member sees the Events tab after Profile. Members buy tickets there; Tier 3 members and their corporate members register free, with up to 4 free guests each.'],
+      [null, 'The public page vfoportal.com/events sells tickets to anyone. Those orders appear in More > Events to be allocated.'],
+    ],
+    off: 'No Events tab, no public page and no ticket sales. More > Events still works, and tickets already bought are kept.',
+    onConfirm: 'ON for every member and the public page, starting immediately.',
+    offConfirm: 'OFF: the Events tab and the public page disappear.',
+  },
+  {
     id: 'gc_black_friday',
     keys: ['gc_black_friday'],
     title: 'Black Friday sale',
@@ -129,7 +77,13 @@ const CARDS = [
 // deposit links; tax_reminders (the tax reminder chases) and single_client_profile
 // (every program on one client page) since 2026-10-19; mirrored_clients (Client
 // Mirroring) and tax_intake (Members add clients) since 2026-11-02.
-const HIDDEN_SWITCHES = ['tax_diagnostic', 'tax_reminders', 'single_client_profile', 'mirrored_clients', 'tax_intake']
+// Since 2026-11-25: the VFO Client Portal card's four keys and its My Progress tab, and
+// tax_direct (Direct to Tax Planning).
+const HIDDEN_SWITCHES = [
+  'tax_diagnostic', 'tax_reminders', 'single_client_profile', 'mirrored_clients', 'tax_intake',
+  'portal_licensing', 'client_basic_portal', 'ciq_licence', 'tpom_additional_benefits', 'client_case_progress',
+  'tax_direct',
+]
 
 const POSITIONS = [
   { mode: 'off', label: 'Off for all' },

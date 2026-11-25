@@ -24,6 +24,7 @@ const SECTIONS = [
   { key: 'pft', label: 'Partnership Fast Track', pipeline: 'PARTNERSHIP_FAST_TRACK' },
   { key: 'training', label: '90 Day Plan', pipeline: 'TRAINING' },
   { key: 'growth_credits', label: 'Growth Credits', pipeline: 'GROWTH_CREDITS' },
+  { key: 'events', label: 'Events', pipeline: 'EVENTS' },
   { key: 'client_portal', label: 'Client Portal', pipeline: 'CLIENT_PORTAL' },
   // SDP - Advanced Tax Strategy Governance (2026-11-17): SDP's own emails, kept in
   // their own pipeline and section, apart from ours.

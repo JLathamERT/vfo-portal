@@ -2,20 +2,7 @@ import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import PasswordInput from '../shared/PasswordInput'
 import { Skeleton } from '../shared/Skeleton'
-
-// The superadmin-managed "other" tabs a superadmin can grant to another admin.
-// Keys must match the tab keys used by AdminPortal + the backend TAB_ACTIONS map.
-const TAB_OPTIONS = [
-  { key: 'member_overview', label: 'Member Overview' },
-  { key: 'client_overview', label: 'Client Overview' },
-  { key: 'client_overview_warnings', label: 'Client Overview Warnings' },
-  { key: 'accounting', label: 'Accounting' },
-  { key: 'automation', label: 'Automation & Config' },
-  { key: 'growth_credits', label: 'Growth Credits' },
-  { key: 'faq_editor', label: 'FAQ Editor' },
-  { key: 'tax_diagnostics', label: 'Tax Diagnostics' },
-  { key: 'sdp_atsg', label: 'SDP ATSG' },
-]
+import { GATED_ADMIN_TABS } from './adminTabs'
 
 export default function AdminEditor({ onBack }) {
   const [admins, setAdmins] = useState([])
@@ -107,7 +94,7 @@ export default function AdminEditor({ onBack }) {
       <div style={sectionStyle}>
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Current Admins</div>
         <p style={{ fontSize: '12px', color: 'var(--vfo-faint)', margin: '0 0 16px' }}>
-          The four key tabs (Advisors, Accountants, Strategic Members, Specialists) are open to every admin. Tick the boxes below to grant an admin access to any of the three managed tabs.
+          Every tab is open to every admin, except the four below. Tick a box to turn one on for an admin. They see it the next time they sign in.
         </p>
         {loading && [0, 1, 2].map(i => <div key={i} style={{ padding: '14px 0', borderTop: '1px solid var(--vfo-border-soft)' }}><Skeleton width={150} height={14} /><Skeleton width={210} height={11} style={{ margin: '7px 0 12px' }} /><Skeleton width="80%" height={22} /></div>)}
         {admins.map(admin => {
@@ -131,7 +118,7 @@ export default function AdminEditor({ onBack }) {
               </div>
               {!isSuper && (
                 <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  {TAB_OPTIONS.map(t => (
+                  {GATED_ADMIN_TABS.map(t => (
                     <label key={t.key} style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', color: 'var(--vfo-ink)', cursor: 'pointer' }}>
                       <input type="checkbox" checked={tabs.includes(t.key)} disabled={!!savingTabs[admin.email]} onChange={() => toggleTab(admin, t.key)} style={{ accentColor: '#125ecc', cursor: 'pointer' }} />
                       {t.label}

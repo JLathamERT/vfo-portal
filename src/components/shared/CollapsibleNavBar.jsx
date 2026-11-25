@@ -92,7 +92,8 @@ function NavDrawer({ open, onClose, items }) {
 // barStyle: the bar's own look (each portal keeps its border / shadow / z-index).
 // rowStyle: extra flex styles for the full row (e.g. alignItems).
 // currentLabel / currentBadge: what the collapsed bar shows on the left.
-export default function CollapsibleNavBar({ items, currentLabel, currentBadge, barStyle, rowStyle, children }) {
+// collapsedExtra: something the collapsed bar keeps beside its Menu button.
+export default function CollapsibleNavBar({ items, currentLabel, currentBadge, collapsedExtra = null, barStyle, rowStyle, children }) {
   const barRef = useRef(null)
   const rowRef = useRef(null)
   const [collapsed, setCollapsed] = useState(false)
@@ -120,9 +121,12 @@ export default function CollapsibleNavBar({ items, currentLabel, currentBadge, b
           {currentLabel
             ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '14px 0', borderBottom: '2px solid var(--vfo-accent-text)', color: 'var(--vfo-accent-text)', fontSize: '14px', fontWeight: 600, fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>{currentLabel}{currentBadge > 0 && <Badge n={currentBadge} />}</span>
             : <span />}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '22px' }}>
+          {collapsedExtra}
           <button onClick={() => setDrawerOpen(true)} aria-label="Open menu" aria-expanded={drawerOpen} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 4px', background: 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
             Menu <HamburgerIcon />
           </button>
+          </span>
         </div>
       )}
       {collapsed && <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} items={items} />}
