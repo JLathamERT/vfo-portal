@@ -1,63 +1,81 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell } from './cardFeeColumn'
-import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { ordinal } from '../../lib/ordinal'
-import { NAVY, money, StatusPill } from './specialistRevenueShared'
-import { tableStyle, headerRowStyle, totalsRowStyle, totalsLabelStyle, totalsSubStyle } from './SpecialistRevenuePanel'
-import { AccountingTableSkeleton } from '../shared/Skeleton'
-import { SpecialistNameLink, specialistProfilePath } from '../shared/personLinks'
-import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
-import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
+import { money, StatusPill } from './specialistRevenueShared'
+import { AccountingRowsSkeleton } from '../shared/Skeleton'
+import { SpecialistNameLink } from '../shared/personLinks'
+import { btnDanger, btnState } from '../shared/buttonStyles'
 
-// Accounting > Specialists > VFO Specialist License Fees. Pick year + month to see the
-// $99/mo specialist license payments that cleared that period (read from the
-// specialist_license_payments ledger — one row per paid monthly invoice). The
-// "Setup Monthly License Fees" button reveals the continuation form inline: pick an
-// existing specialist + a charge day and the portal drafts their setup email. The
-// specialist then picks card or bank transfer on the link (card added 2026-09-22).
+// Accounting > Specialists > VFO Specialist License Fees, laid out like Advisor
+// Membership Fees (2026-11-25). Specialists: one card per $99/mo licence — every
+// specialist_onboarding row sent a licence link or holding a subscription — which
+// opens to its payment history (the specialist_license_payments ledger, grouped here
+// by onboarding_id), the next scheduled payment and the Cancel license button.
+// Set Up License (LicenseSetupSection) moves an existing specialist onto the portal's
+// licence: pick the specialist + a charge day and the portal emails their setup link.
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const FEE = 99
 
-// Same column widths the SpecRev table uses for the columns the two share, so the
-// date / money / status columns line up when the panels sit side by side.
-// The Card fee column is always a dash: licence payments carry no card fee (fee-free
-// on card or bank since 2026-09-22; the ledger has no fee column).
-const LEDGER_GRID = `1.4fr 118px 112px ${CARD_FEE_COL} 178px`
+const PLAN_STATUS = {
+  active: { label: 'Active', color: '#16a34a' },
+  scheduled: { label: 'Awaiting first payment', color: '#0095ff' },
+  setup_pending: { label: 'Setup pending', color: '#0095ff' },
+  awaiting_verification: { label: 'Awaiting bank verification', color: '#e06717' },
+  processing: { label: 'Bank payment clearing', color: '#e06717' },
+  past_due: { label: 'Past due', color: '#ef4444' },
+  failed: { label: 'Payment failed', color: '#ef4444' },
+  canceled: { label: 'Canceled', color: '#8a94a6' },
+}
+const STATE_ORDER = ['active', 'processing', 'scheduled', 'awaiting_verification', 'past_due', 'failed', 'setup_pending', 'canceled']
+
+const label = { fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '5px' }
+const input = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', outline: 'none' }
+const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)' }
 
 function fmtDate(s) {
   if (!s) return '—'
-  try { return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return String(s) }
+  const str = String(s)
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(str) ? new Date(str + 'T12:00:00') : new Date(str)
+  if (Number.isNaN(d.getTime())) return str
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-// Status cell of a ledger row, laid out like the SpecRev table's: pill flush right.
-// No method chip: the ledger is about whether the month was paid, not how. (Until
-// 2026-09-22 every licence payment was ACH; card is now selectable too, and the
-// method is on the onboarding row as lic_payment_method_type if it is ever wanted here.)
-export function LicenseStatusTag({ status }) {
-  const paid = status === 'succeeded'
-  return (
-    <span style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
-      <StatusPill label={paid ? 'Payment received' : (paymentStatusLabel(status) || '—')} color={paid ? '#16a34a' : 'var(--vfo-muted)'} />
-    </span>
-  )
+function fmtMonth(d) {
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
-export default function SpecialistLicensePanel({ allExperts = [], embedded = false }) {
-  const [showSetup, setShowSetup] = useState(false)
-  const [payments, setPayments] = useState([])
+function methodWord(t) {
+  if (t === 'ach' || t === 'us_bank_account') return 'ACH'
+  if (t === 'card') return 'Card'
+  return t ? String(t) : ''
+}
+
+// The next charge: the charge day's next occurrence from today (today counts).
+// An onboarding licence has no charge day of its own; it bills on the day of the
+// month its last invoice was paid.
+function nextChargeDate(plan) {
+  const day = Number(plan.charge_day) || (plan.last_invoice_paid_at ? new Date(plan.last_invoice_paid_at).getDate() : 0)
+  if (!day) return null
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  let d = new Date(today.getFullYear(), today.getMonth(), day)
+  if (d < today) d = new Date(today.getFullYear(), today.getMonth() + 1, day)
+  return d
+}
+
+export default function SpecialistLicensePanel({ embedded = false }) {
+  const [data, setData] = useState({ plans: [], payments: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const now = new Date()
-  const [year, setYear] = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth()) // 0-11, or -1 for All
-  const navigate = useNavigate()
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
 
-  // Re-open draws the last payments at once, refreshes behind them.
+  // Re-open draws the last licences at once, refreshes behind them.
   useLayoutEffect(() => {
     const snap = getLastSeen('specialistlicense:')
-    if (snap) { setPayments(snap.payments || []); setLoading(false) }
-    load(!!snap)
+    if (snap?.plans) { setData(snap); setLoading(false) }
+    load(!!snap?.plans)
   }, [])
 
   async function load(quiet = false) {
@@ -65,7 +83,7 @@ export default function SpecialistLicensePanel({ allExperts = [], embedded = fal
     try {
       const res = await callApi('specialist_license_payments_load')
       if (res?.error) { if (quiet === true) console.error(res.error); else setError(res.error); return }
-      setPayments(res.payments || [])
+      setData({ plans: res.plans || [], payments: res.payments || [] })
       setLastSeen('specialistlicense:', res)
     } catch (e) {
       if (quiet === true) console.error(e)
@@ -75,87 +93,54 @@ export default function SpecialistLicensePanel({ allExperts = [], embedded = fal
     }
   }
 
-  const years = useMemo(() => {
-    const set = new Set([now.getFullYear()])
-    payments.forEach(p => { if (p.paid_at) set.add(new Date(p.paid_at).getFullYear()) })
-    return Array.from(set).sort((a, b) => b - a)
-  }, [payments])
+  const paymentsByPlan = useMemo(() => {
+    const map = {}
+    for (const p of data.payments) {
+      if (!p.paid_at) continue
+      const k = String(p.onboarding_id)
+      ;(map[k] || (map[k] = [])).push(p)
+    }
+    for (const k of Object.keys(map)) map[k].sort((a, b) => new Date(a.paid_at) - new Date(b.paid_at))
+    return map
+  }, [data.payments])
 
-  const filtered = useMemo(() => payments.filter(p => {
-    if (!p.paid_at) return false
-    const dt = new Date(p.paid_at)
-    if (dt.getFullYear() !== year) return false
-    if (month >= 0 && dt.getMonth() !== month) return false
-    return true
-  }), [payments, year, month])
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return data.plans
+      .filter(p => statusFilter === 'all' || p.state === statusFilter)
+      .filter(p => !q || (p.specialist_name || '').toLowerCase().includes(q))
+      .sort((a, b) => {
+        const r = (STATE_ORDER.indexOf(a.state) + 1 || 99) - (STATE_ORDER.indexOf(b.state) + 1 || 99)
+        return r || (a.specialist_name || '').localeCompare(b.specialist_name || '')
+      })
+  }, [data.plans, query, statusFilter])
 
-  const periodTotal = filtered.reduce((s, p) => s + (Number(p.amount) || 0), 0)
-  const periodLabel = month >= 0 ? `${MONTHS[month]} ${year}` : `${year}`
-
-  const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+  const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1050px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
 
   return (
     <div style={wrap}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {embedded ? <div /> : (
-          <div>
-            <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting</p>
-            <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>VFO Specialist License Fees</h2>
-          </div>
-        )}
-        <button onClick={() => setShowSetup(s => !s)}
-          style={{ padding: '10px 18px', borderRadius: '8px', border: showSetup ? '1px solid var(--vfo-border-strong)' : 'none', background: showSetup ? 'var(--vfo-card)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: showSetup ? 'var(--vfo-muted)' : '#fff', fontWeight: 600, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: showSetup ? 'none' : '0 2px 8px rgba(18,94,204,0.28)' }}>
-          {showSetup ? 'Close form' : 'Setup Monthly License Fees'}
-        </button>
-      </div>
-
-      {showSetup && (
-        <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', background: 'var(--vfo-input)', marginBottom: '22px', overflow: 'hidden' }}>
-          <LicenseSetupForm allExperts={allExperts} onSent={load} />
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap' }}>
-        <select style={sel} value={year} onChange={e => setYear(Number(e.target.value))}>
-          {years.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <select style={sel} value={month} onChange={e => setMonth(Number(e.target.value))}>
-          <option value={-1}>All months</option>
-          {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
-        </select>
-        <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
-      </div>
-
-      {loading && <AccountingTableSkeleton cols={LEDGER_GRID} />}
+      {loading && <AccountingRowsSkeleton search={260} boxes={[210]} blocks={[110, 110, 80]} pill={150} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
       {!loading && !error && (
-        <div style={tableStyle}>
-          <div style={{ ...headerRowStyle, gridTemplateColumns: LEDGER_GRID }}>
-            <span>Specialist</span><span>Date</span><span style={{ textAlign: 'right' }}>Amount</span><span style={{ textAlign: 'right' }}>{CARD_FEE_LABEL}</span><span style={{ textAlign: 'right' }}>Status</span>
+        <div>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input type="search" name="search" autoComplete="off" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search name…"
+              style={{ ...input, width: '260px' }} />
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ ...input, width: '210px' }}>
+              <option value="all">All statuses</option>
+              {STATE_ORDER.map(k => <option key={k} value={k}>{PLAN_STATUS[k].label}</option>)}
+            </select>
+            <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>{filtered.length} license{filtered.length === 1 ? '' : 's'}</span>
           </div>
-          <div style={{ ...totalsRowStyle, gridTemplateColumns: LEDGER_GRID }}>
-            <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>{periodLabel}</span></span>
-            <span />
-            <span style={{ textAlign: 'right' }}>{money(periodTotal)}</span>
-            <span style={{ textAlign: 'right' }}>—</span>
-            <span />
-          </div>
+
           {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No license payments for this period.</div>
+            <div style={{ ...card, textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>
+              No licenses match — set one up under Set Up License.
+            </div>
           )}
           {filtered.map(p => (
-            <div key={p.id} onClick={p.expert_id ? () => navigate(specialistProfilePath(p.expert_id)) : undefined} {...(p.expert_id ? rowHoverProps : {})} style={{ ...(p.expert_id ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: LEDGER_GRID, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
-              <span style={{ fontWeight: 600 }}>
-                <SpecialistNameLink expertId={p.expert_id}>{p.specialist_name || `Specialist #${p.expert_id || p.onboarding_id}`}</SpecialistNameLink>
-                {p.last4 && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · ••••{p.last4}</span>}
-              </span>
-              <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(p.paid_at)}</span>
-              <span style={{ textAlign: 'right', fontWeight: 700 }}>{money(p.amount)}</span>
-              <span style={{ textAlign: 'right' }}><CardFeeCell fee={0} /></span>
-              <LicenseStatusTag status={p.status} />
-            </div>
+            <LicenseCard key={p.onboarding_id} plan={p} payments={paymentsByPlan[String(p.onboarding_id)] || []} onChanged={() => load(true)} />
           ))}
         </div>
       )}
@@ -163,11 +148,162 @@ export default function SpecialistLicensePanel({ allExperts = [], embedded = fal
   )
 }
 
-// Moves an existing specialist onto the portal's $99/mo license subscription:
-// pick the specialist + the day of the month they should be charged, and the portal
-// drafts their setup email. Nothing is charged here — the link only saves the
-// payment method (card or bank transfer); the first collection happens on the charge day.
-function LicenseSetupForm({ allExperts = [], onSent }) {
+function LicenseCard({ plan, payments, onChanged }) {
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState(null)
+  const meta = PLAN_STATUS[plan.state] || { label: plan.state || '—', color: 'var(--vfo-muted)' }
+  const canceled = plan.state === 'canceled'
+  const billing = plan.has_subscription && !canceled
+  const next = billing ? nextChargeDate(plan) : null
+  const paidTotal = payments.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+  const day = Number(plan.charge_day) || 0
+  const method = methodWord(plan.payment_method_type)
+  const grid = `1.1fr 120px 110px ${CARD_FEE_COL} 160px 1.6fr`
+
+  async function cancelLicense() {
+    const nextLine = next ? ` (the next one was due ${fmtDate(next)})` : ''
+    if (!window.confirm(`Cancel ${plan.specialist_name}'s $99/month VFO Specialist License now?\n\nThe Stripe subscription is cancelled straight away, so no more payments are taken${nextLine}. The Cancellation Confirmation email goes to the specialist.\n\nTo restart it later, send a new setup link from Set Up License.`)) return
+    setBusy(true); setMsg(null)
+    try {
+      const res = await callApi('specialist_license_cancel', { onboarding_id: plan.onboarding_id })
+      if (!res?.ok) { setMsg({ tone: 'error', text: res?.error || 'Could not cancel the license.' }); return }
+      setMsg(res.already
+        ? { tone: 'success', text: 'This license was already canceled.' }
+        : res.emailed
+        ? { tone: 'success', text: 'License canceled — no more payments will be taken. Cancellation Confirmation email created.' }
+        : { tone: 'amber', text: `License canceled — no more payments will be taken. The confirmation email could not be created (${res.email_error || 'unknown'}) — send it by hand.` })
+      onChanged?.()
+    } catch (e) {
+      setMsg({ tone: 'error', text: e?.message || 'Could not cancel the license.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const sub = [
+    plan.license_continuation ? 'Moved from old system' : 'Onboarding',
+    `Monthly (${money(FEE)}/mo${day ? ` on the ${ordinal(day)}` : ''})`,
+    method ? `${method}${plan.acct_last4 ? ` ••${plan.acct_last4}` : ''}` : '',
+    plan.has_subscription && plan.setup_at ? `Set up ${fmtDate(plan.setup_at)}` : '',
+    !plan.has_subscription && plan.link_sent_at ? `Link sent ${fmtDate(plan.link_sent_at)}` : '',
+    canceled && plan.canceled_at ? `Canceled ${fmtDate(plan.canceled_at)}` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <div style={{ ...card, marginBottom: '10px', overflow: 'hidden', opacity: canceled ? 0.7 : 1 }}>
+      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', cursor: 'pointer' }}>
+        <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px' }}>{open ? '▾' : '▸'}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>
+            <SpecialistNameLink expertId={plan.expert_id}>{plan.specialist_name || `Specialist #${plan.expert_id || plan.onboarding_id}`}</SpecialistNameLink>
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{sub}</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)' }}>{money(FEE)}</div>
+          <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>per month</div>
+        </div>
+        <div style={{ textAlign: 'right', width: '110px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{canceled ? fmtDate(plan.canceled_at) : next ? fmtDate(next) : '—'}</div>
+          <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{canceled ? 'canceled' : 'next payment'}</div>
+        </div>
+        <div style={{ textAlign: 'right', width: '80px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: plan.state === 'past_due' || plan.state === 'failed' ? '#ef4444' : 'var(--vfo-ink-2)' }}>{payments.length}</div>
+          <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>paid</div>
+        </div>
+        <div style={{ width: '190px', textAlign: 'right' }}>
+          <StatusPill label={meta.label} color={meta.color} />
+        </div>
+      </div>
+
+      {open && (
+        <div style={{ background: 'var(--vfo-input)', borderTop: '1px solid var(--vfo-border-soft)', padding: '14px 18px' }}>
+          {!plan.has_subscription ? (
+            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', padding: '4px 0 6px' }}>
+              {canceled
+                ? 'Canceled before the payment was set up.'
+                : `Waiting for them to set up their payment at the link sent ${fmtDate(plan.link_sent_at)}. Nothing is charged at setup — the first payment collects on the ${day ? ordinal(day) : 'charge day'}. It also shows under Outstanding Payment Links.`}
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
+                <div>Month</div><div>Date</div><div>Amount</div><div>{CARD_FEE_LABEL}</div><div>Status</div><div style={{ textAlign: 'right' }}>Payment</div>
+              </div>
+              {payments.length === 0 && !next && (
+                <div style={{ padding: '9px 0', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-faint)' }}>No payments yet.</div>
+              )}
+              {payments.map(r => {
+                const paid = r.status === 'succeeded'
+                return (
+                  <div key={r.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: paid ? 'rgba(22,163,74,0.07)' : 'transparent', borderRadius: '6px' }}>
+                    <div style={{ fontWeight: 600 }}>{fmtMonth(new Date(r.paid_at))}</div>
+                    <div>{fmtDate(r.paid_at)}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{money(r.amount)}</div>
+                    <div><CardFeeCell fee={0} /></div>
+                    <div><StatusPill label={paid ? 'Paid' : (r.status || '—')} color={paid ? '#16a34a' : '#5b6b8c'} /></div>
+                    <div style={{ textAlign: 'right', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>
+                      {[
+                        r.method ? `${methodWord(r.method)}${r.last4 ? ` ••${r.last4}` : ''}` : '',
+                        r.invoice_number || '',
+                        r.receipt_number || '',
+                      ].filter(Boolean).join(' · ') || '—'}
+                    </div>
+                  </div>
+                )
+              })}
+              {next && (
+                <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
+                  <div style={{ fontWeight: 600 }}>{fmtMonth(next)}</div>
+                  <div>{fmtDate(next)}</div>
+                  <div style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{money(FEE)}</div>
+                  <div><CardFeeCell fee={null} /></div>
+                  <div><StatusPill label="Scheduled" color="#5b6b8c" /></div>
+                  <div style={{ textAlign: 'right', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{method ? `${method}${plan.acct_last4 ? ` ••${plan.acct_last4}` : ''}` : '—'}</div>
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '10px 6px 2px', borderTop: '2px solid var(--vfo-border)', marginTop: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
+                <div>Totals</div>
+                <div />
+                <div>{money(paidTotal)}</div>
+                <div>{money(0)}</div>
+                <div style={{ color: 'var(--vfo-success-text-2)' }}>{payments.length} paid</div>
+                <div />
+              </div>
+              <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
+                {canceled
+                  ? `Canceled ${fmtDate(plan.canceled_at)} — no more payments are taken.`
+                  : `Bills ${money(FEE)} monthly${day ? ` on the ${ordinal(day)}` : ''} until the license is canceled. No card fee on card or bank.`}
+              </div>
+            </>
+          )}
+
+          {billing && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--vfo-border-soft)' }}>
+              <button type="button" disabled={busy} onClick={cancelLicense} style={btnState(btnDanger, busy)}>
+                {busy ? 'Canceling…' : 'Cancel license'}
+              </button>
+            </div>
+          )}
+
+          {msg && (
+            <div style={{ marginTop: '10px', fontSize: '12.5px', padding: '8px 12px', borderRadius: '8px',
+              color: msg.tone === 'success' ? '#166534' : msg.tone === 'amber' ? '#b45309' : '#b91c1c',
+              border: `1px solid ${msg.tone === 'success' ? '#bbf7d0' : msg.tone === 'amber' ? '#fde68a' : '#fecaca'}`,
+              background: msg.tone === 'success' ? '#f0fdf4' : msg.tone === 'amber' ? '#fffbeb' : '#fef2f2' }}>{msg.text}</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Set Up License: moves an existing specialist onto the portal's $99/mo license
+// subscription. Pick the specialist + the day of the month they should be charged,
+// and the portal emails their setup link. Nothing is charged here — the link only
+// saves the payment method (card or bank transfer); the first collection happens on
+// the charge day.
+export function LicenseSetupSection({ allExperts = [] }) {
   const [expertId, setExpertId] = useState('')
   const [chargeDay, setChargeDay] = useState('')
   const [current, setCurrent] = useState(null)
@@ -183,7 +319,7 @@ function LicenseSetupForm({ allExperts = [], onSent }) {
   ), [allExperts])
 
   useEffect(() => {
-    setCurrent(null); setSent(''); setWarn(''); setError('')
+    setCurrent(null); setWarn(''); setError('')
     if (!expertId) return
     let stale = false
     callApi('specialist_license_continuation_load', { expert_id: Number(expertId) })
@@ -197,17 +333,16 @@ function LicenseSetupForm({ allExperts = [], onSent }) {
   const active = !!current?.already_active
   const note = active
     ? 'This specialist already has an active license subscription.'
-    : current?.link_sent_at
-      ? `A setup link was already sent on ${fmtDate(current.link_sent_at)}. Sending again drafts another copy of the same link and restarts the reminder clock — delete the earlier Gmail draft if it hasn't gone out.`
+    : current?.link_sent_at && current?.payment_status !== 'canceled'
+      ? `A setup link was already sent on ${fmtDate(current.link_sent_at)}. Sending again sends another copy of the same link and restarts the reminder clock.`
       : ''
 
   async function send() {
     setSending(true); setSent(''); setWarn(''); setError('')
     try {
       const d = await callApi('specialist_license_continuation_start', { expert_id: Number(expertId), charge_day: Number(chargeDay) })
-      setSent(`Setup email drafted to ${d.to_email}${d.sandbox ? ' (sandbox)' : ''}. It's in Gmail Drafts — review and send.`)
+      setSent(`Setup email created for ${d.to_email}${d.sandbox ? ' (sandbox)' : ''}. They appear on the Specialists tab and under Outstanding Payment Links until they set up their payment.`)
       setExpertId(''); setChargeDay('')
-      if (onSent) await onSent()
     } catch (e) {
       const m = e?.message || 'Could not send the setup link.'
       // The 409 "already has an active subscription" answer is a state note, not a
@@ -218,13 +353,12 @@ function LicenseSetupForm({ allExperts = [], onSent }) {
     }
   }
 
-  const label = { fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '6px' }
-  const field = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
-  const ready = !!expertId && !!chargeDay && !sending
+  const field = { ...input, cursor: 'pointer' }
+  const ready = !!expertId && !!chargeDay && !sending && !active
 
   return (
-    <div style={{ padding: '22px' }}>
-      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '16px' }}>Setup Monthly License Fees</div>
+    <div style={{ ...card, padding: '22px' }}>
+      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '16px' }}>Set Up Monthly License</div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr', gap: '14px', alignItems: 'start', marginBottom: '14px' }}>
         <div>
@@ -247,12 +381,12 @@ function LicenseSetupForm({ allExperts = [], onSent }) {
         </div>
         <div>
           <div style={label}>Monthly license fee</div>
-          <div style={{ ...field, cursor: 'default', fontWeight: 700, color: 'var(--vfo-heading)' }}>$99.00 · card or ACH, no fee</div>
+          <div style={{ ...input, cursor: 'default', fontWeight: 700, color: 'var(--vfo-heading)' }}>{money(FEE)} · card or ACH, no fee</div>
         </div>
       </div>
 
       <p style={{ fontSize: '12.5px', color: 'var(--vfo-ink-3)', margin: '0 0 16px', lineHeight: 1.6 }}>
-        The specialist gets an email with a secure link and chooses card or bank transfer — $99.00 either way, with no processing fee. Their details are saved once, nothing is charged at setup, and the first payment collects on the {chargeDay ? ordinal(Number(chargeDay)) : 'charge day'} — next month's if this month's has already passed.
+        The specialist gets an email with a secure link and chooses card or bank transfer — {money(FEE)} either way, with no processing fee. Their details are saved once, nothing is charged at setup, and the first payment collects on the {chargeDay ? ordinal(Number(chargeDay)) : 'charge day'} — next month's if this month's has already passed.
       </p>
 
       {note && (

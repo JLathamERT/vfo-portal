@@ -32,8 +32,7 @@ import AllPaymentsTab from '../components/payments/AllPaymentsTab'
 import SpecialistRevenuePanel from '../components/admin/SpecialistRevenuePanel'
 import SpecialistRecurringPanel from '../components/admin/SpecialistRecurringPanel'
 import SpecialistDepositsPanel from '../components/admin/SpecialistDepositsPanel'
-import SpecialistLicensePanel from '../components/admin/SpecialistLicensePanel'
-import SpecialistLicenseReconciliationPanel from '../components/admin/SpecialistLicenseReconciliationPanel'
+import SpecialistLicensePanel, { LicenseSetupSection } from '../components/admin/SpecialistLicensePanel'
 import SpecialistLicenseOutstandingPanel from '../components/admin/SpecialistLicenseOutstandingPanel'
 import SpecialistBgPanel from '../components/admin/SpecialistBgPanel'
 import SpecialistBgOutstandingPanel from '../components/admin/SpecialistBgOutstandingPanel'
@@ -748,10 +747,10 @@ export default function AdminPortal() {
           {activeTab === 'accounting' && !loading && canSeeTab('accounting') && accountingSection === 'specialist_license' && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · Specialists" title="VFO Specialist License Fees"
-              maxWidth="1200px"
+              maxWidth="1050px"
               tabs={[
-                { key: 'specialist_license', label: 'VFO Specialist License Fees', render: () => <SpecialistLicensePanel allExperts={allExperts} embedded /> },
-                { key: 'specialist_license_reconciliation', label: 'License Reconciliation', render: () => <SpecialistLicenseReconciliationPanel embedded /> },
+                { key: 'specialist_license', label: 'Specialists', render: () => <SpecialistLicensePanel embedded /> },
+                { key: 'specialist_license_setup', label: 'Set Up License', render: () => <LicenseSetupSection allExperts={allExperts} /> },
                 { key: 'specialist_license_outstanding', label: 'Outstanding Payment Links', render: () => <SpecialistLicenseOutstandingPanel embedded /> },
               ]}
             />
