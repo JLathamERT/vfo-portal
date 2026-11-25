@@ -30,6 +30,8 @@ const REQ_STATUS = {
   processing: { label: 'Bank payment clearing', color: '#e06717' },
   received: { label: 'Payment received', color: '#16a34a' },
   failed: { label: 'Payment failed', color: '#ef4444' },
+  // An inter-company transfer IAG refused in its own portal. Terminal; nothing was paid.
+  denied: { label: 'Denied by IAG', color: '#ef4444' },
   // A deal record with no money (+ New Payment → "Record deals — no payment"). Terminal;
   // no sweep, webhook or payout engine ever touches it.
   recorded: { label: 'Deals Recorded', color: '#16a34a' },
@@ -183,7 +185,14 @@ export function isUnpaidDirect(request) {
     && !request?.stripe_payment_intent_id
 }
 
+// An inter-company transfer IAG has not answered yet. Deleting it takes it out of IAG's
+// portal first, and is refused once they have started paying.
+export function isOpenInterCompany(request) {
+  return request?.payment_status === 'requested' && request?.payment_method_type === 'inter_company'
+}
+
 export function canDeleteSpecrevRequest(request) {
+  if (isOpenInterCompany(request)) return true
   if (isNoMoneyRecord(request)) return !request?.stripe_payment_intent_id
   if (isUnpaidDirect(request)) return true
   return request?.payment_status === 'requested'
@@ -203,6 +212,8 @@ export function DeleteRequestButton({ request, onDone }) {
       ? `Delete this deal record for ${request.specialist_name || 'this specialist'} (${request.total_deals || 0} deal(s), no payment)? This cannot be undone.`
       : isUnpaidDirect(request)
       ? `Delete the ${money(request.gross_amount)} bank transfer for ${request.specialist_name || 'this specialist'}? This removes it and its recipient lines completely. No email was sent and no money has been collected. This cannot be undone.`
+      : isOpenInterCompany(request)
+      ? `Delete the ${money(request.gross_amount)} inter-company transfer request? This cancels it in the IAG portal too, and removes it and its recipient lines completely. This cannot be undone.`
       : `Delete the ${money(request.gross_amount)} payment request for ${request.specialist_name || 'this specialist'}? This removes the request and its recipient lines completely, and the payment link already emailed will stop working. This cannot be undone.`
     if (!window.confirm(prompt)) return
     setBusy(true); setMsg(null)
@@ -225,7 +236,7 @@ export function DeleteRequestButton({ request, onDone }) {
           style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #fecaca', background: busy ? 'var(--vfo-tint)' : '#fef2f2', color: busy ? 'var(--vfo-faint)' : '#b91c1c', fontWeight: 700, fontSize: '13px', cursor: busy ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
           {busy ? 'Deleting…' : (isNoMoneyRecord(request) ? 'Delete record' : 'Delete request')}
         </button>
-        <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>{isNoMoneyRecord(request) ? 'Removes this deal record and its recipient lines.' : isUnpaidDirect(request) ? 'Removes this payment and its recipient lines. No email was sent.' : 'Removes the request completely and kills the payment link that was emailed.'}</span>
+        <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>{isNoMoneyRecord(request) ? 'Removes this deal record and its recipient lines.' : isUnpaidDirect(request) ? 'Removes this payment and its recipient lines. No email was sent.' : isOpenInterCompany(request) ? 'Removes the request and cancels it in the IAG portal.' : 'Removes the request completely and kills the payment link that was emailed.'}</span>
       </div>
       {msg && <div style={{ fontSize: '12.5px', padding: '8px 12px', borderRadius: '8px', color: tone.c, border: `1px solid ${tone.b}`, background: tone.bg }}>{msg.text}</div>}
     </div>
@@ -272,6 +283,7 @@ export function RequestRow({ request, actions, grid }) {
     received: { label: 'Payment received', color: '#16a34a' },
   }
   const req = (isRecurring && RECURRING_STATUS[request.payment_status])
+    || (isOpenInterCompany(request) && { label: 'Requested from IAG', color: '#0095ff' })
     || REQ_STATUS[request.payment_status]
     || { label: request.payment_status, color: '#6b7280' }
   const received = request.payment_status === 'received'
@@ -361,7 +373,7 @@ export function RecipientName({ line }) {
 // details and any caller-supplied actions. Shared by the card and table layouts above.
 function RequestDetail({ request, actions, received, heldMemberTotal }) {
   const lines = request.lines || []
-  const methodText = request.payment_method_type ? `${request.payment_method_type === 'bank_transfer' ? 'bank transfer' : request.payment_method_type === 'bank_transfer_direct' ? 'bank transfer, no email' : request.payment_method_type === 'none' ? 'no payment' : request.payment_method_type === 'external' ? 'already paid' : request.payment_method_type}${request.acct_last4 ? ` ••${request.acct_last4}` : ''}` : ''
+  const methodText = request.payment_method_type ? `${request.payment_method_type === 'bank_transfer' ? 'bank transfer' : request.payment_method_type === 'bank_transfer_direct' ? 'bank transfer, no email' : request.payment_method_type === 'none' ? 'no payment' : request.payment_method_type === 'external' ? 'already paid' : request.payment_method_type === 'inter_company' ? 'inter-company transfer' : request.payment_method_type}${request.acct_last4 ? ` ••${request.acct_last4}` : ''}` : ''
   // Status is sized to THIS request's widest pill (11px pill ≈ 6.6px a character +
   // padding) or its payment-method text, so a short "Pending" leaves no gap and
   // Transaction details takes the rest of the row.
@@ -420,6 +432,11 @@ function RequestDetail({ request, actions, received, heldMemberTotal }) {
                 <CopyField label="Account number" value={request.account.account_number} />
                 <CopyField label="Account holder" value={request.account.holder_name} />
               </div>
+            </div>
+          )}
+          {request.payment_status === 'denied' && (
+            <div style={{ marginTop: '14px', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
+              Denied{request.intercompany_answered_by ? ` by ${request.intercompany_answered_by}` : ''}{request.intercompany_answered_at ? ` on ${new Date(request.intercompany_answered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}. Reason: {request.intercompany_deny_reason || 'none given'}
             </div>
           )}
           {actions && <div style={{ marginTop: '14px' }}>{actions({ request })}</div>}

@@ -70,6 +70,7 @@ docs/
 │   ├── specialist-onboarding.md      (multi-stage vetting workflow)
 │   ├── specialist-license-continuation.md (existing specialist → portal $99/mo ACH licence)
 │   ├── specialist-bg-requests.md     (admin-sent one-time background-check payment links)
+│   ├── inter-company-transfers.md    (VFOS IAG Inter-Company Transfer, the signed link to IAG's portal)
 │   ├── msm-tracking.md               (32-action MSM subsystem map)
 │   ├── coaching-renewals.md          (coaching meeting + renewal log)
 │   ├── gift-credits.md               (GC marketplace buy/redeem)

@@ -21,6 +21,7 @@
 | Gmail (the account the portal drafts emails from: `aipc@vfo-services.com`) | email drafts and sends | to decide | to add |
 | Google Drive / Sheets | client folders, invoice + receipt PDFs | to decide | to add |
 | Sentry | frontend error reports | team invite | — |
+| IAG portal connection (`INTERCOMPANY_SECRET[_SANDBOX]`) | signs the calls between the two portals; the same value sits on both Supabase projects, so a change is made on both | — | VFO-IAG inter-company key (LIVE) / (TEST) |
 | html2pdf | PDF rendering | to decide | to add |
 | Test accounts (the test site's planner, team member, member and client logins) | testing, on the test site only | — | to add |
 | **STAGING** — GitHub `JLathamERT/vfo-portal-staging` (public) | the staging website, published by `npm run deploy:staging` to its `gh-pages`; GitHub Pages serves it at https://staging.vfoportal.com/ (GoDaddy CNAME `staging` → `jlathamert.github.io`) | collaborator invite | — |
