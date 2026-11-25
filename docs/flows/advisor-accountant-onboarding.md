@@ -99,7 +99,7 @@ $…"* hint under the Deposit row is hidden while that row is locked.
 | `accountant/save-cc-advisor.ts` | no advisor is picked yet and a `member_number` is being set → `stage1Lock(…, 'cc_advisor')`; changing or clearing an existing pick is allowed |
 | `<p>/deposit-email.ts` | `stage1Lock(…, 'deposit')` while `deposit_email_sent_at` is NULL |
 | `advisor/save-implementation-value.ts` | `stage1Lock(…, 'impl')`, unless both values are already set (a correction never re-locks) |
-| `<p>/decision.ts` | `stage1Lock(…, 'decision')`, only while no decision is on file |
+| `<p>/decision.ts` | `stage1Lock(…, 'decision')`, only while no decision is on file; a Yes or Undecided also needs `agreement_name_mode` (*Name on agreement* below, 2026-11-25) |
 | `<p>/create-member.ts` | `createMemberLock` — see *Stage 3* below |
 
 **Once the deposit link is out the partnership select is disabled** (tooltip *"A deposit link has already been
@@ -418,6 +418,27 @@ deposit covered everything. The Payment Plan label reads *"Deposit + Balance"* /
 **The no-deposit output is byte-identical to before**, which the `invoiceShellHtml` split was extracted to
 guarantee. One small unrequested behaviour change rode along: **accountant money formatting now matches
 advisor** — it used to drop cents.
+
+---
+
+## Name on agreement *(2026-11-25)*
+
+**Company Name** is an optional box on + New Onboarding (both pipelines), stored in `sale_company_name`, shown in the
+record's header line and pre-filled in the New Model Sale window; Create writes it to the member's `trading_name`
+(a blank there keeps the one on file). A row made by Partnership Fast Track starts without one. First and last name
+boxes refuse brackets, quotation marks and "and" / "&" (#792).
+
+The **Preliminary Meeting Decision** step carries **Name on agreement** (`OnboardingAgreementName.jsx`): *Personal
+name* or *Company name*. With a company on file it is a pick; with none, a box and Save appear and what is typed
+becomes the company name. **Yes and Undecided need it** (greyed on screen, 400 in `<p>/decision.ts`, *Choose "Name on
+agreement" first*); No does not. It stays changeable until the agreement is sent, so an Undecided prospect's choice can
+be corrected. Saved at once by `save_onboarding_agreement_name` into `agreement_name_mode`.
+
+`utils/onboarding-agreement-name.ts` is the one reader: the name goes into both `[ACCOUNTANT_NAME]` /
+`[ADVISOR_NAME]` spots on page 1 (the box and *made by and between …*, HTML-escaped) and into the BoldSign document
+title. **Everything else keeps the personal name:** the signer, every email, the invoice and receipt, the record's
+header and the member profile. A row with no choice (decided before 2026-11-25) prints the personal name.
+`members.contract_name_mode` (tax planning agreements) is a different setting and is not touched.
 
 ---
 

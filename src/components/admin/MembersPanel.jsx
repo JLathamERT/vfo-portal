@@ -1361,6 +1361,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
             <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name</label><input value={profile.first_name || ''} onChange={e => update('first_name', e.target.value)} style={inputStyle} /></div>
               <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name</label><input value={profile.last_name || ''} onChange={e => update('last_name', e.target.value)} style={inputStyle} /></div>
+              <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Preferred Name (optional)</label><input value={profile.preferred_name || ''} onChange={e => update('preferred_name', e.target.value)} maxLength={60} style={inputStyle} /></div>
               <div style={{ flex: 2, minWidth: '200px' }}><label style={labelStyle}>Work email (emails sent here)</label><input value={profile.email || ''} onChange={e => update('email', e.target.value)} type="email" style={inputStyle} /></div>
               <div style={{ flex: 2, minWidth: '200px' }}><label style={labelStyle}>Personal email (not emailed)</label><input value={profile.personal_email || ''} onChange={e => update('personal_email', e.target.value)} type="email" style={inputStyle} /></div>
             </div>

@@ -61,7 +61,7 @@ export default function NewModelSaleModal({ ob, kind, submitting, onClose, onCon
   // membership; the summary matches the team email the server drafts for it.
   const tier1 = isTier1Onboarding(ob, isAcct ? 'accountant' : 'advisor')
   const connected = tier1 && isAcct && isConnectedAssociate(ob)
-  const [companyName, setCompanyName] = useState('')
+  const [companyName, setCompanyName] = useState(ob.sale_company_name || '')
   const [website, setWebsite] = useState('')
   const [msm, setMsm] = useState('n/a')
   const [closer, setCloser] = useState('n/a')
@@ -147,8 +147,8 @@ export default function NewModelSaleModal({ ob, kind, submitting, onClose, onCon
         </div>
 
         <div style={{ marginBottom: '14px' }}>
-          <label style={labelStyle}>Company name <span style={{ color: '#9aa7bd', fontWeight: 400 }}>(optional)</span></label>
-          <input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Leave blank to omit" style={inputStyle} />
+          <label style={labelStyle}>Company name{!ob.sale_company_name && <span style={{ color: '#9aa7bd', fontWeight: 400 }}> (optional)</span>}</label>
+          <input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder={ob.sale_company_name || 'Leave blank to omit'} style={inputStyle} />
         </div>
         <div style={{ marginBottom: '14px' }}>
           <label style={labelStyle}>Website <span style={{ color: '#9aa7bd', fontWeight: 400 }}>(optional)</span></label>

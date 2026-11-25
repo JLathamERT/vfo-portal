@@ -5,6 +5,7 @@ import { BF, BF_KEYFRAMES, BfCountdown, BfExtended, BfTag, bfTagText } from '../
 import { BF_HERO_BG } from '../lib/bfHeroBg'
 import { promoStartsLine, useGcPromo } from '../lib/gcPromo'
 import { useIsPhone } from '../lib/useMediaQuery'
+import { nameHasBadChars, NAME_CHARS_CONTACT_MESSAGE } from '../lib/formatters'
 
 // The public Black Friday page (2026-11-20): /black-friday, no sign-in. A member
 // picks a deal and gives their name, email and phone; bank or card is chosen on
@@ -66,6 +67,7 @@ export default function BlackFridayPage() {
     setError('')
     if (!pick) { setError('Choose how many credits first.'); return }
     if (['first_name', 'last_name', 'email', 'phone'].some(k => !String(form[k] || '').trim())) { setError('Please fill in every field.'); return }
+    if (nameHasBadChars(form.first_name) || nameHasBadChars(form.last_name)) { setError(NAME_CHARS_CONTACT_MESSAGE); return }
     if (String(form.phone).replace(/\D/g, '').length < 10) { setError('Please enter a full phone number.'); return }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError('Please enter a valid email address.'); return }
     try { sessionStorage.setItem('gcPublicBuyer', JSON.stringify({ ...form, email: form.email.trim() })) } catch { /* private mode */ }

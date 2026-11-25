@@ -9,6 +9,24 @@
 
 ---
 
+## 2026-11-25 (b) — Name on agreement (personal or company) in both onboardings, preferred names, no brackets or quotes in name boxes, test-site signing emails — by Jake
+
+Branches `claude/name-handling-onboarding-94f442` (vfo-react) and `claude/name-handling-onboarding-79dc9c` (edge). Action count **717** (716 + `save_onboarding_agreement_name`), **54** route pages (unchanged). One migration, `20261125170000_onboarding_agreement_name_preferred_name.sql` (four nullable columns: `agreement_name_mode` on both onboarding tables, `preferred_name` on `clients` and `members`), on the test site, live at release BEFORE the backend. No template or switch. Backend and website go out back to back: the old page cannot give the choice the new decision step needs. Security advisor green; drift: live is missing those four columns until the release. Owed: Issue JLathamERT/vfo-edge-functions#643. Gotcha #792 (and #749 updated).
+
+**What Jake asked for.** An accountant was onboarded with a company typed as first and last name, because that is what they wanted on their agreement. So: take the company name too, and ask at the decision which name the agreement shows, with the personal name everywhere else. And a Tax Diagnostic came in with a nickname in brackets in the first name, which then has to be cleaned up by hand: block it, and give nicknames their own place.
+
+**Decided (Jake, 2026-11-25).** Advisor Onboarding too. Preferred name is shown, not used in greetings. Company Name was built as required on + New Onboarding and became optional after a look: with one on file it is a pick, with none it is typed in the Decision step. The choice changes the agreement's text and the document title only.
+
+**Built (edge).** `utils/onboarding-agreement-name.ts`, `actions/onboarding/save-agreement-name.ts`; the `create`, `decision`, `send-agreement` and `create-member` handlers of both pipelines. `person-format.ts`: `nameHasBadChars`, `nameProblem`, `contactNameProblem`, `formatPreferredName`, used by every client, contact, member, planner, onboarding, tax form and Growth Credit name writer. Q43 in the tax form and `fillClientPreferredName`. The people rule ("and", "&") now covers the tax form's client name, which it never had. `staging-email-guard.ts`: an onboarding started by hand belongs to whoever started it (a BoldSign signing has no clicker, so one typed with a real address left its countersign and payment emails in Drafts).
+
+**Built (website).** `OnboardingAgreementName.jsx`, the Company Name box, errors shown on + New Onboarding (it used to fail silently), the company on the record's header line, the pre-filled sale window; Preferred Name on the client's Edit Profile, the admin's and the member's own Edit Profile, the client header and the member profile; the name checks in `AddClientForm`, `ClientDetail`, `TaxIntakeForm` and the Black Friday page.
+
+**Found while testing.** `JJ` was saved as `Jj` (the all-caps tidier), fixed with `formatPreferredName` after the last test build was looked at, so that fix is proven by a direct check of the rule only, not by a click.
+
+**Tested on the dev server by Jake,** against `vfo-admin-api-jake` v95-v97 (this branch): the bracket refusal at create, Company picked from file and typed, switching back to Personal, Undecided, an accountant Yes with a company and with a personal name, an advisor Yes with a company. BoldSign's own record confirmed title and signer on the advisor and the personal-name accountant agreements. The diagnostic refusals, and a member's form paid by test card: the preferred name reached the new client. The shared test backend ran this branch (v158) for the signing and the payment only, and was put back to main (v159). **Not exercised:** JLathamERT/vfo-edge-functions#643.
+
+---
+
 ## 2026-11-25 — Action-required bells: Clear with a confirm, stuck ones fixed, Re-send agreement, Notifications page layout, button and tag rules — by Jake
 
 Branches `claude/evan-anderson-action-notis-bb6694` (vfo-react) and `claude/evan-anderson-action-notis-ae0675` (edge). Action count **716** (715 + `tax_agreement_status_load`), **54** route pages (unchanged). No table change. Two migrations, data only: `20261125150000_agreement_ended_bells_fyi.sql` (5 `notification_rules` rows) and `20261125160000_tax_agreement_resent_emails.sql` (2 email templates, Send), both on the test site, live at release (the emails BEFORE the backend). Security advisor green on both projects; drift check matches. Owed: Issues JLathamERT/vfo-edge-functions#639, #640, #641. Gotcha #791.

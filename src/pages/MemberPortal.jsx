@@ -233,7 +233,7 @@ export default function MemberPortal() {
 // and the rest stay admin-owned); Branding saves through member_branding_save.
 function MemberEditProfile({ member, onSaved }) {
   const [row, setRow] = useState(null)
-  const [form, setForm] = useState({ email: '', trading_name: '', website_url: '' })
+  const [form, setForm] = useState({ email: '', preferred_name: '', trading_name: '', website_url: '' })
   const [loadError, setLoadError] = useState('')
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -248,7 +248,7 @@ function MemberEditProfile({ member, onSaved }) {
       const d = await callApi('member_profile_load', { member_number: member.member_number })
       const p = d?.profile || {}
       setRow(p)
-      setForm({ email: p.email || '', trading_name: p.trading_name || '', website_url: p.website_url || '' })
+      setForm({ email: p.email || '', preferred_name: p.preferred_name || '', trading_name: p.trading_name || '', website_url: p.website_url || '' })
       setDirty(false)
     } catch (err) { setLoadError(err?.message || 'Your profile could not be loaded') }
   }
@@ -268,7 +268,7 @@ function MemberEditProfile({ member, onSaved }) {
   async function save() {
     setSaving(true); setStatus('')
     try {
-      const payload = { email: form.email, trading_name: form.trading_name, website_url: form.website_url }
+      const payload = { email: form.email, preferred_name: form.preferred_name, trading_name: form.trading_name, website_url: form.website_url }
       if (photoPreview) payload.headshot_base64 = photoPreview.split(',')[1]
       await callApi('member_self_profile_save', payload)
       setPhotoPreview(null)
@@ -325,6 +325,10 @@ function MemberEditProfile({ member, onSaved }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '240px' }}>
+            <label style={labelStyle}>Preferred Name (optional)</label>
+            <input value={form.preferred_name} onChange={e => update('preferred_name', e.target.value)} maxLength={60} placeholder="If different from your first name" style={inputStyle} />
+          </div>
           <div style={{ flex: 1, minWidth: '240px' }}>
             <label style={labelStyle}>Company Name</label>
             <input value={form.trading_name} onChange={e => update('trading_name', e.target.value)} style={inputStyle} />

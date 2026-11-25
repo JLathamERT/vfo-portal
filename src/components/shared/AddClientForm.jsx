@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import PhoneInput from './PhoneInput'
-import { cleanText, formatPersonName, phoneIncomplete, nameHasTwoPeople, TWO_PEOPLE_MESSAGE, TWO_PEOPLE_CONTACT_MESSAGE } from '../../lib/formatters'
+import { cleanText, contactNameProblem, formatPersonName, nameHasTwoPeople, nameProblem, phoneIncomplete } from '../../lib/formatters'
 
 // The "Add New Client" form - the admin MSM Clients tab's layout (First / Last /
 // Email / Phone, an optional additional contact, Save / Back), shared by the admin
@@ -36,11 +36,13 @@ export default function AddClientForm({
     setAddFirstName(af); setAddLastName(al); setAddEmail(ae)
     setDuplicate(null)
     if (!f || !l || !em) { setStatus('First name, last name, and email are required.'); return }
-    if (nameHasTwoPeople(f) || nameHasTwoPeople(l)) { setShowAdditional(true); setStatus(TWO_PEOPLE_MESSAGE); return }
+    const badName = nameProblem(f, l)
+    if (badName) { if (nameHasTwoPeople(f) || nameHasTwoPeople(l)) setShowAdditional(true); setStatus(badName); return }
     if (showPhone && phoneIncomplete(phone)) { setStatus('Enter the full 10-digit phone number, or leave it blank.'); return }
     const withContact = showAdditional && (af || al || ae)
     if (withContact && (!af || !al)) { setStatus('The additional contact needs a first and last name.'); return }
-    if (withContact && (nameHasTwoPeople(af) || nameHasTwoPeople(al))) { setStatus(TWO_PEOPLE_CONTACT_MESSAGE); return }
+    const badContact = withContact ? contactNameProblem(af, al) : null
+    if (badContact) { setStatus(badContact); return }
     setSaving(true)
     setStatus('')
     try {

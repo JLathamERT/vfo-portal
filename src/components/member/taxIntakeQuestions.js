@@ -4,7 +4,7 @@
 // server re-validates, and both produce every message from the SAME two
 // templates below so FE and BE can never disagree (#306/#314).
 
-import { formatPersonName, formatPhone, nameHasTwoPeople, TWO_PEOPLE_CONTACT_MESSAGE } from "../../lib/formatters";
+import { contactNameProblem, formatPersonName, formatPhone, formatPreferredName, nameProblem } from "../../lib/formatters";
 
 // US states + DC, then Canadian provinces/territories. Q6 is a plain select.
 export const TAX_INTAKE_STATES = [
@@ -66,6 +66,9 @@ export const TAX_INTAKE_INTERNATIONAL_DEPOSIT_NOTE =
 export const TAX_INTAKE_INTERNATIONAL_DEPOSIT_NOTE_PUBLIC =
   "International tax cases always take the $500 deposit, even if your deposit is usually waived.";
 
+// Q43 (2026-11-25): what the client goes by, when it is not their first name. Goes onto
+// the client's profile when the case is created.
+
 // Q42 (2026-11-18): the people Cc'd on every email to the client, built one Add
 // click at a time (type "contact_list": first name, last name and email each), stored
 // as a JSON array string.
@@ -75,6 +78,7 @@ export const TAX_INTAKE_QUESTIONS = [
   { id: "q1", label: "Who is completing this form?", type: "derived", required: false, options: [TAX_INTAKE_Q1_ADVISOR, TAX_INTAKE_Q1_ACCOUNTANT, TAX_INTAKE_Q1_CLIENT] },
   { id: "q2", label: "Client First Name", type: "text", required: true, format: "name" },
   { id: "q3", label: "Client Last Name", type: "text", required: true, format: "name" },
+  { id: "q43", label: "Client Preferred Name (optional)", type: "text", required: false, format: "preferred", note: "Only if it is different from the first name, such as a nickname." },
   { id: "q4", label: "Client Email", type: "text", required: true },
   { id: "q5", label: "Client Phone Number", type: "text", required: true, format: "phone" },
   { id: "q42", label: "Is there anyone your client would like copied on all emails, as well as the client?", selfLabel: "Is there anyone you would like copied on all emails, as well as you?", type: "contact_list", required: false, note: "Enter their first name, last name and email, then press Add. Add as many people as you like." },
@@ -178,7 +182,7 @@ export function numberTaxIntakeQuestions(questions, answers, offset = 0, keepAns
 // which refuses the same list.
 // q41 / q42 (2026-11-18) are locked too: q41 decided the deposit and where its
 // share goes, and q42's people are client contacts once the case exists.
-export const TAX_INTAKE_EDIT_LOCKED = ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q41", "q42"];
+export const TAX_INTAKE_EDIT_LOCKED = ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q41", "q42", "q43"];
 
 export function taxIntakeQuestionEditable(q) {
   return q.type !== "derived" && !q.hidden && !q.retired && !TAX_INTAKE_EDIT_LOCKED.includes(q.id);
@@ -245,7 +249,8 @@ export function parseTaxIntakeContactList(v) {
 // plus the email, which a Cc cannot do without.
 export function taxIntakeContactProblem(c) {
   if (!c.first_name || !c.last_name) return TAX_INTAKE_CONTACT_NAME_MESSAGE;
-  if (nameHasTwoPeople(c.first_name) || nameHasTwoPeople(c.last_name)) return TWO_PEOPLE_CONTACT_MESSAGE;
+  const badName = contactNameProblem(c.first_name, c.last_name);
+  if (badName) return badName;
   if (!c.email) return TAX_INTAKE_CONTACT_EMAIL_MESSAGE;
   if (!TAX_INTAKE_EMAIL_RE.test(c.email)) return taxIntakeContactBadEmailMessage(c.email);
   return null;
@@ -266,7 +271,10 @@ export function normalizeTaxIntakeMoney(v) {
 
 // Returns every validation message for these answers, in question order. Empty
 // array = valid. Hidden questions are never required (they are session-filled).
-export function validateTaxIntakeAnswers(answers) {
+// `lockedIds`: answers the form shows locked because they are the client record's own,
+// so their name is never judged (mirrored from the server file).
+export function validateTaxIntakeAnswers(answers, lockedIds = []) {
+  const locked = new Set(lockedIds);
   const errors = [];
   const a = answers && typeof answers === "object" ? answers : {};
   for (const q of TAX_INTAKE_QUESTIONS) {
@@ -280,6 +288,10 @@ export function validateTaxIntakeAnswers(answers) {
     }
     if (q.id === "q4" && val && !TAX_INTAKE_EMAIL_RE.test(val)) {
       errors.push(taxIntakeEmailMessage(q.label));
+    }
+    if ((q.format === "name" || q.format === "preferred") && val && !locked.has(q.id)) {
+      const badName = nameProblem(val);
+      if (badName) errors.push(`${q.label}: ${badName}`);
     }
     if (q.type === "contact_list") {
       const list = parseTaxIntakeContactList(raw);
@@ -314,6 +326,7 @@ export function normalizeTaxIntakeAnswers(answers) {
     // format: "name" / "phone" answers tidied as the server does (src/lib/formatters.js).
     out[q.id] = q.type === "money" ? normalizeTaxIntakeMoney(raw)
       : q.format === "name" ? formatPersonName(raw)
+      : q.format === "preferred" ? formatPreferredName(raw)
       : q.format === "phone" ? formatPhone(raw)
       : String(raw ?? "").trim();
   }

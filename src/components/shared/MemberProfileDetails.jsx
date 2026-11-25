@@ -166,6 +166,7 @@ export default function MemberProfileDetails({
               <Field label="Join Date">{profile.join_date ? formatDate(profile.join_date) : '—'}</Field>
               {lost && <Field label="Leave Date">{profile.leave_date ? formatDate(profile.leave_date) : '—'}</Field>}
               <Field label="Renewal Date">{profile.membership_renewal_date ? formatDate(profile.membership_renewal_date) : '—'}</Field>
+              {profile.preferred_name && <Field label="Preferred Name">{profile.preferred_name}</Field>}
               <Field label="Work email">{profile.email || '—'}</Field>
               <Field label="Personal email">{profile.personal_email || '—'}</Field>
               <Field label="Company Name">{profile.trading_name || '—'}</Field>

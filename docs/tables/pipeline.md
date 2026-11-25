@@ -219,6 +219,7 @@ three meeting-reminder tiers and the deposit stall ladder.
 - `tier1_flow_at` (timestamptz, both) — written ONCE at creation by `tier1FlowStamp`, on every new Associate / FC onboarding (the `tier1_onboarding` switch was removed 2026-10-30); never backfilled. With the type below it is what puts a row on the Tier 1 path (`isTier1Onboarding`).
 - `advisor_onboarding.advisor_type` (text, CHECK NULL or `'Financial Collaborator'`) — NULL = Catalyst, as before.
 - `accountant_onboarding.licence_paid_by` (text, CHECK NULL or `'accountant'` / `'advisor'`) — who pays a connected VFO Associate's $25; NULL = not chosen, no default (#469); written only by `save_accountant_licence_paid_by`.
+- `agreement_name_mode` (text, both, CHECK NULL / `'personal'` / `'company'`) — **added 2026-11-25** (`20261125170000`). The name the engagement agreement prints; NULL = never chosen = personal. Written only by `save_onboarding_agreement_name`; `'company'` prints `sale_company_name`.
 - `stripe_payment_method_id` (text, both) — the card / bank saved off-session at the month 1 payment; Membership Fees charges month 2 onwards on it.
 - On a Tier 1 row `payment_amount` is the MONTH ($145 / $25), written at the countersign — still never trust the column DEFAULT 4000 before it (#469).
 
