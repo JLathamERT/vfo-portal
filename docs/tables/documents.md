@@ -104,6 +104,7 @@ Append-only sequence ledger. Each row reserves a number-of-type for a client/adv
 | `accountant_onboarding_id` | bigint | nullable FK → `accountant_onboarding(id)` `ON DELETE SET NULL`. Used by accountant invoice/receipt rows. |
 | `specialist_onboarding_id` | bigint | nullable FK → `specialist_onboarding(id)` `ON DELETE SET NULL`. Used by specialist background-check (`INV/REC-SPEC`) + monthly-license (`INV/REC-SPECLIC`) rows. |
 | `gc_transaction_id` | bigint | **NEW 2026-11-10** (migration `20261110140000`), nullable, soft reference to `gc_transactions.id` (not a foreign key, like `ciq_licence_subscription_id`). A member's Growth Credits purchase pair `INV-GC-{member}-{seq:0004}` / `REC-GC-{member}-{seq:0004}`, numbered per member (`perOwner`), by `automation_GC_purchase_invoicereceipt`. |
+| `event_order_id` | bigint | **NEW 2026-11-25** (migration `20261125210000`), nullable, soft reference to `event_orders.id`. An event order's pair `INV-VFOC-{order}-{seq:0004}` / `REC-VFOC-{order}-{seq:0004}`, by `automation_EVENT_invoicereceipt`. |
 | `created_at` | timestamptz | default `now()` |
 
 **Constraints + allocation (collision-safe since 2026-06-09):**

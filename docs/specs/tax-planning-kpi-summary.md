@@ -1,7 +1,7 @@
 <!-- From VFO Workbench card "General Tax Planning KPis" (task byj9kd9j0ivdl570jilx), spec "Spec: Tax Planning KPI Summary (sub-tabs on Tax Planner KPIs)", exported 2026-11-23 -->
 
 > **Build notes (2026-11-23, Paxton; the build differs from this spec here).**
-> - **Access:** no `tax_planner_kpis` key exists; Tax Planners is a key tab every admin sees. `tax_plan_kpi_summary_load` uses the per-plan tracker's fence, `ADMIN_ONLY_ACTIONS` + `TAB_ACTIONS.client_overview`; without it the new sub-tabs say *Needs Client Overview access*.
+> - **Access:** no `tax_planner_kpis` key exists; Tax Planners is a key tab every admin sees. `tax_plan_kpi_summary_load` uses the per-plan tracker's fence, `ADMIN_ONLY_ACTIONS` (no tab key since 2026-11-25); without it the new sub-tabs say *Needs Client Overview access*.
 > - **VFO revenue (Behaviour 27):** `tax_planning_load` has no server-side split to reuse; Elite VFO Income is computed in the browser by `clearedTaxPayments` (`taxShared.jsx`). The card runs that over `tax_planning_load` (Accounting grant) for the filtered plans; without Accounting it says *Needs Accounting access*.
 > - **No Direct / VFOS split and no Program filter** (Behaviours 5, 29): the data's `program` is program 4 vs program 1, not the Direct route (gotcha #784). Success Formula is one table of teams and their people.
 > - **Success Formula rows** use the tax planner, else the team member.

@@ -9,6 +9,24 @@
 
 ---
 
+## 2026-11-25 (e) — Events: tickets, free registration, attendees and the public page; admin tabs open to every admin; Feature Switches trimmed — by Jake
+
+Branches `claude/events-tab-admin-members-03914c` (vfo-react) and `claude/events-tab-admin-members-551266` (edge). Action count **730** (719 + the 11 in [05-api-action-catalog.md](architecture/05-api-action-catalog.md) *Events*), **56** route pages (54 + `/events`, `/event-pay`). Two migrations: `20261125210000_events.sql` (five tables, `document_numbers.event_order_id`, the `EVENTS` config row on ERT, the `events` switch Off) and `20261125211000_event_email_templates.sql` (four templates on Send), both on the test site. **Release order on live: the first migration, the backend, the second migration (its tokens need the code), the website.** The backend goes before the website either way: the opened admin tabs would be refused by the old one. Security advisor green on both projects; drift: live lacks exactly this change's objects. Owed and watched: Issue JLathamERT/vfo-edge-functions#648. New flow doc [flows/events.md](flows/events.md). Gotcha #795.
+
+**What Jake asked for.** An Events tab for the Elite VFO Collective: in member profiles after Profile, with words that shimmer; a public page like Black Friday's, open to anyone; an admin page in the Growth Credits style with attendees, check-in and a preview of what members see. Then: the More menu re-ordered, every admin tab open to every admin except four, the permanent switches off Feature Switches.
+
+**Decided (Jake).** Portal Tier 3 members come free with their corporate members and up to 4 free guests each; a guest past those pays. Every member sees the tab. ERT's Stripe account, bank or card, money only. First name, last name, email and phone for everyone. No bells; every event email is Bcc one person. No seat limit. Refund button in admin. A member who leaves Tier 3 keeps their places, flagged.
+
+**Built, then changed on Jake's look.** The first Attendees page listed orders, so one person's name filled it and the count did not match the rows. It became two: Attendees (one row per person, in parties) and Purchases (one row per payment, with Refund in its own column). The member's phone moved beside their own ticket. My Tickets lists the free registration. The registration email lists the people the member bought tickets for. The switched-off public page copies Black Friday's no-sale page.
+
+**Admin tabs.** `TAB_ACTIONS` lost five keys and the empty `client_overview_warnings` (JLathamERT/vfo-edge-functions#434); Feature Switches became grantable (superadmin-only until then) and nobody holds it. Checked by running the real `authenticate()` with a stub database as ten kinds of caller over 29 actions, main against the branch: the opened actions went from no to yes for every admin, the four gated tabs and every member, client, specialist and planner answer unchanged.
+
+**Feature Switches.** VFO Client Portal, My Progress and Direct to Tax Planning left the tab (On for all, SQL only). Automatic client status was Off on live and would have been stuck; Jake turned it On on live and kept its card.
+
+**Tested.** By Jake on the dev server against `vfo-admin-api-jake` v104-v107, with the shared test backend on this branch (v164-v165) for Stripe and put back to main (v166): a member's card and bank purchases with their emails and documents, allocating all three ways, check-in, export, a partial and a full refund, the Payments ledger, the free registration with a corporate member and guests, its limits and emails, the free-member flags, the switch off and on, the admin tabs as a throwaway admin. By Claude: a public card purchase end to end, the refusals, the public page and the member tab at 390 wide, dark mode. **Not exercised:** JLathamERT/vfo-edge-functions#648.
+
+---
+
 ## 2026-11-25 (d) — Inter-company transfer: the Stripe memo on both sides — by Jake
 
 Branches `polish/inter-company-memos` (edge, and IAG's backend) and `docs/inter-company-memos` (vfo-react, docs only). Action count **719** (unchanged). No migration, template or switch. Both memos now start *IAG VFOS inter-company transfer*, so the two companies' dashboards read as one movement; IAG's drops the specialist's name. Checked offline only (both memos printed, 40 money checks): VFO's memo is stamped on live alone, so its first showing is the first real transfer (JLathamERT/vfo-edge-functions#645).

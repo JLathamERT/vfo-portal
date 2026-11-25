@@ -7,7 +7,7 @@ Since **2026-09-11** (`feature/second-stripe-account`, `vfo-admin-api` **v829**)
 | Key | Label (`stripeAccountLabel`) | Legal entity | Carries |
 |---|---|---|---|
 | `vfos` | **VFO Services** | VFO Services | The original account and still the **default for everything**. Tax, MAP 1, PIP, SpecRev, the specialist background check + the $99 licence subscription, **every Connect account / transfer / account_link** (ERT's own connected account included — see “ERT is ALSO a connected account” below), the `/update-card` (`mode=setup`) flow, and the whole migration / Payment Continuation family. |
-| `ert` | **ERT** | Elite Resource Team LLC | Member membership fees, Growth Credit purchases, and advisor / accountant onboarding money (deposit, balance, paid-in-full, refund). **Live since 2026-09-11 ~16:10Z** — see "Go-live posture" below. |
+| `ert` | **ERT** | Elite Resource Team LLC | Member membership fees, Growth Credit purchases, event tickets (2026-11-25), and advisor / accountant onboarding money (deposit, balance, paid-in-full, refund). **Live since 2026-09-11 ~16:10Z** — see "Go-live posture" below. |
 
 The vocabulary is one file: **`constants/stripe-accounts.ts`** — `type StripeAccount = "vfos" \| "ert"`, `STRIPE_ACCOUNT_PRIMARY` / `STRIPE_ACCOUNT_ERT`, `normalizeStripeAccount(v)` (only the exact string `"ert"` selects the second account; NULL / undefined / anything unrecognised falls back to the primary, and it never throws), `stripeKeyEnvName(account, isSandbox)`, `stripeWebhookSecretEnvName(account, isSandbox)`, and `stripeAccountLabel(account)`.
 
@@ -68,7 +68,7 @@ Destination only, for **VFOS IAG Inter-Company Transfer**: IAG is the platform, 
 
 | `stripe_account` | Pipelines |
 |---|---|
-| **`'ert'`** | `MEMBER_MEMBERSHIP`, `GROWTH_CREDITS`, `ADVISOR_ONBOARDING`, `ACCOUNTANT_ONBOARDING` |
+| **`'ert'`** | `MEMBER_MEMBERSHIP`, `GROWTH_CREDITS`, `EVENTS` (2026-11-25), `ADVISOR_ONBOARDING`, `ACCOUNTANT_ONBOARDING` |
 | **`'vfos'`** | `MAP 1`, `TAX`, `PARTNERSHIP_FAST_TRACK`, `SPECIALIST_ONBOARDING` |
 
 All eight rows are `sandbox_mode=false`. **Be precise about what the flip did: from that moment every NEW membership customer, GC checkout session and onboarding customer is minted on ERT — and every EXISTING row keeps its `'vfos'` stamp and keeps charging on VFO Services** until the copy + remap moves it. Four `UPDATE`s moved nothing that already existed, which is the entire payoff of keeping rule 1 and rule 2 apart.
