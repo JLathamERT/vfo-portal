@@ -55,6 +55,39 @@ export function nameHasTwoPeople(v) {
   return TWO_PEOPLE.test(cleanText(v))
 }
 
+// No brackets or quotation marks in a name box (2026-11-25): Robert (Bob),
+// Robert "Bob", Robert 'Bob'. The nickname has its own Preferred name box.
+// A lone apostrophe is part of a name (O'Neil, 't Hooft).
+const NAME_CHARS = /[()[\]{}"\u201c\u201d\u201e\u00ab\u00bb]|(^|\s)['\u2018\u2019`][^'\u2018\u2019`]+['\u2018\u2019`](?=\s|$)/
+export const NAME_CHARS_MESSAGE = 'Enter the name without brackets or quotation marks. A nickname goes in Preferred name.'
+export const NAME_CHARS_CONTACT_MESSAGE = 'Enter names without brackets or quotation marks.'
+export const ONE_MEMBER_NAME_MESSAGE = "Enter one person's name. The company goes in Company name."
+
+/** A preferred name: tidied like a name, but short initials stay capitals (JJ, AJ). */
+export function formatPreferredName(v) {
+  const s = cleanText(v)
+  return s.length <= 3 && s === s.toUpperCase() ? s : formatPersonName(s)
+}
+
+/** True when a name box holds brackets, quotation marks or a 'quoted' nickname. */
+export function nameHasBadChars(v) {
+  return NAME_CHARS.test(cleanText(v))
+}
+
+/** What is wrong with a client's name, or null. */
+export function nameProblem(...names) {
+  if (names.some(nameHasTwoPeople)) return TWO_PEOPLE_MESSAGE
+  if (names.some(nameHasBadChars)) return NAME_CHARS_MESSAGE
+  return null
+}
+
+/** What is wrong with an additional contact's name, or null. */
+export function contactNameProblem(...names) {
+  if (names.some(nameHasTwoPeople)) return TWO_PEOPLE_CONTACT_MESSAGE
+  if (names.some(nameHasBadChars)) return NAME_CHARS_CONTACT_MESSAGE
+  return null
+}
+
 // ---- Frontend only ----
 
 /**

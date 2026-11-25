@@ -18,6 +18,7 @@ export default function OnboardingHero({ ob, pipeline, feeNote, steps, action })
       <span key="num" title="Open member profile" onClick={() => navigate(`/admin?member=${encodeURIComponent(ob.member_number)}&_n=${Date.now()}`)}
         style={{ fontFamily: 'monospace', color: '#0095ff', cursor: 'pointer' }}>{ob.member_number}</span>
     ),
+    ob.sale_company_name && <span key="company">{ob.sale_company_name}</span>,
     <span key="email">{ob.email || 'No email'}</span>,
     <span key="started">Started {formatDate(ob.created_at) || '—'}</span>,
   ].filter(Boolean)

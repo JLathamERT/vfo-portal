@@ -18,7 +18,7 @@ import {
   TAX_INTAKE_INTERNATIONAL_DEPOSIT_NOTE_PUBLIC,
 } from './taxIntakeQuestions'
 import PhoneInput from '../shared/PhoneInput'
-import { cleanText, formatPersonName } from '../../lib/formatters'
+import { cleanText, formatPersonName, formatPreferredName, nameProblem } from '../../lib/formatters'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import TaxFormPlanPicker, { planPickBody, planPickProblem } from '../shared/TaxFormPlanPicker'
 
@@ -188,7 +188,7 @@ export default function TaxIntakeForm({
         else if (q.id === 'q5') next.q5 = '(555) 555-0100'
         else if (q.id === 'q18') next.q18 = q.options.find(o => o.startsWith('$100k')) || q.options[1]
         else if (q.id === 'q41') next.q41 = next.q41 || 'No'
-        else if (q.type === 'contact_list') continue
+        else if (q.type === 'contact_list' || q.id === 'q43') continue
         else if (q.poorFitOption) next[q.id] = q.options.find(o => o !== q.poorFitOption)
         else if (q.type === 'radio') next[q.id] = q.options[0]
         else if (q.type === 'select') next[q.id] = q.options.find(o => o && !/select/i.test(String(o))) || q.options[0]
@@ -255,7 +255,7 @@ export default function TaxIntakeForm({
         toCheck = next
       }
     }
-    const found = [...(validatePrelude ? validatePrelude() : []), ...validateTaxIntakeAnswers(toCheck)]
+    const found = [...(validatePrelude ? validatePrelude() : []), ...validateTaxIntakeAnswers(toCheck, lockedIds)]
     setErrors(found)
     setFailed('')
     if (found.length > 0) {
@@ -289,6 +289,8 @@ export default function TaxIntakeForm({
     if (!last) found.push('Client Last Name is required')
     if (!email) found.push('Client Email is required')
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) found.push('Client Email must be a valid email address')
+    const badName = existingClient ? null : nameProblem(first, last)
+    if (badName) found.push(badName)
     setErrors(found)
     if (found.length > 0) return
     setSubmitting(true)
@@ -401,7 +403,7 @@ export default function TaxIntakeForm({
         value={val}
         disabled={locked}
         onChange={e => set(q.id, e.target.value)}
-        onBlur={q.format === 'name' && !locked ? () => set(q.id, formatPersonName(val)) : undefined}
+        onBlur={locked ? undefined : q.format === 'name' ? () => set(q.id, formatPersonName(val)) : q.format === 'preferred' ? () => set(q.id, formatPreferredName(val)) : undefined}
         style={{ ...inputStyle, opacity: locked ? 0.65 : 1, cursor: locked ? 'not-allowed' : 'text' }}
       />
     )

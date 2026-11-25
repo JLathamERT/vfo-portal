@@ -26,7 +26,7 @@ import AdminNavBar, { openAdminSection } from '../components/admin/AdminNavBar'
 import MemberNavBar, { useMemberNavData } from '../components/member/MemberNavBar'
 import PlannerNavBar from '../components/tax-planner/PlannerNavBar'
 import { formatDate } from '../lib/dates'
-import { cleanText, formatPersonName, phoneIncomplete, nameHasTwoPeople, TWO_PEOPLE_MESSAGE, TWO_PEOPLE_CONTACT_MESSAGE } from '../lib/formatters'
+import { cleanText, contactNameProblem, formatPersonName, formatPreferredName, nameHasTwoPeople, nameHasBadChars, nameProblem, phoneIncomplete, NAME_CHARS_CONTACT_MESSAGE, TWO_PEOPLE_CONTACT_MESSAGE } from '../lib/formatters'
 import PhoneInput from '../components/shared/PhoneInput'
 import ClientTabDropdown from '../components/shared/ClientTabDropdown'
 import { useIsPhone } from '../lib/useMediaQuery'
@@ -397,6 +397,7 @@ export default function ClientDetail() {
                           </span>
                         </>}
                       </div>
+                      {client?.preferred_name && <div style={{ ...line, marginTop: '3px' }}>Preferred name: {client.preferred_name}</div>}
                       {programNames.length > 0 && <div style={{ ...line, marginTop: '3px' }}>{programNames.join(' · ')}</div>}
                       {client?.member_name && !isMember && <div style={{ ...line, marginTop: '3px' }}>Member: <MemberNameLink memberNumber={client.member_number}>{client.member_name}</MemberNameLink></div>}
                       {contacts?.length > 0 && <div style={{ ...line, marginTop: '3px', fontStyle: 'italic' }}>with {contacts.map(c => `${c.first_name} ${c.last_name}`).join(', ')}</div>}
@@ -414,6 +415,7 @@ export default function ClientDetail() {
             meta={
               <>
                 <span style={{ fontFamily: 'monospace' }}>{client?.client_ref}</span>
+                {client?.preferred_name && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Preferred name: {client.preferred_name}</span></>}
                 {programs
                   ? programs.map(p => <Fragment key={p.id}><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ color: '#0095ff', fontWeight: 500 }}>{p.name}</span></Fragment>)
                   : program && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ color: '#0095ff', fontWeight: 500 }}>{program.name}</span></>}
@@ -976,6 +978,7 @@ function DirectAddNote({ clientId, notes, onNotesChange, programName }) {
 function ClientDetails({ client, onUpdate, sectionStyle }) {
   const [firstName, setFirstName] = useState(client?.first_name || '')
   const [lastName, setLastName] = useState(client?.last_name || '')
+  const [preferredName, setPreferredName] = useState(client?.preferred_name || '')
   const [email, setEmail] = useState(client?.email || '')
   const [phone, setPhone] = useState(client?.phone || '')
   const [saving, setSaving] = useState(false)
@@ -989,15 +992,18 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
   // Tidied as the server does (src/lib/formatters.js); a 409 names the client
   // that already has this email.
   async function save() {
-    const f = formatPersonName(firstName), l = formatPersonName(lastName), em = cleanText(email)
-    setFirstName(f); setLastName(l); setEmail(em)
+    const f = formatPersonName(firstName), l = formatPersonName(lastName), pn = formatPreferredName(preferredName), em = cleanText(email)
+    setFirstName(f); setLastName(l); setPreferredName(pn); setEmail(em)
     if (!f || !l) { setErrorText('First and last name are required.'); setStatus('error'); return }
-    if ((f !== cleanText(client?.first_name) && nameHasTwoPeople(f)) || (l !== cleanText(client?.last_name) && nameHasTwoPeople(l))) { setErrorText(TWO_PEOPLE_MESSAGE); setStatus('error'); return }
+    const changed = [[f, client?.first_name], [l, client?.last_name], [pn, client?.preferred_name]].filter(([now, was]) => now !== cleanText(was)).map(([now]) => now)
+    const badName = nameProblem(...changed)
+    if (badName) { setErrorText(badName); setStatus('error'); return }
     if (phoneIncomplete(phone)) { setErrorText('Enter the full 10-digit phone number, or leave it blank.'); setStatus('error'); return }
     setSaving(true)
     try {
-      await callApi('msm_update_client', { client_id: client.id, status: client.status, first_name: f, last_name: l, email: em, phone: cleanText(phone) })
+      await callApi('msm_update_client', { client_id: client.id, status: client.status, first_name: f, last_name: l, preferred_name: pn, email: em, phone: cleanText(phone) })
       setStatus('saved')
+      onUpdate?.(true)
       setTimeout(() => setStatus(''), 4000)
     } catch (err) { setErrorText(err.status === 409 || err.status === 400 ? err.message : 'Something went wrong'); setStatus('error') }
     finally { setSaving(false) }
@@ -1010,6 +1016,7 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
         <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name</label><input value={firstName} onChange={e => setFirstName(e.target.value)} onBlur={() => setFirstName(formatPersonName(firstName))} style={inputStyle} /></div>
           <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name</label><input value={lastName} onChange={e => setLastName(e.target.value)} onBlur={() => setLastName(formatPersonName(lastName))} style={inputStyle} /></div>
+          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Preferred Name (optional)</label><input value={preferredName} onChange={e => setPreferredName(e.target.value)} onBlur={() => setPreferredName(formatPreferredName(preferredName))} maxLength={60} placeholder="If different from the first name" style={inputStyle} /></div>
         </div>
         <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Email</label><input value={email} onChange={e => setEmail(e.target.value)} onBlur={() => setEmail(cleanText(email))} type="email" style={inputStyle} /></div>
@@ -1061,7 +1068,8 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
 
   async function addContact() {
     if (!canAddContact) return
-    if (nameHasTwoPeople(contactFirst) || nameHasTwoPeople(contactLast)) { setContactStatus(TWO_PEOPLE_CONTACT_MESSAGE); return }
+    const badName = contactNameProblem(contactFirst, contactLast)
+    if (badName) { setContactStatus(badName); return }
     try {
       await callApi('msm_add_client_contact', { client_id: client.id, first_name: formatPersonName(contactFirst), last_name: formatPersonName(contactLast), email: cleanText(contactEmail) })
       setContactFirst(''); setContactLast(''); setContactEmail(''); setShowAddContact(false)
@@ -1103,6 +1111,8 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
     const next = editEmail.trim()
     if (!editFirst.trim() || !editLast.trim()) { setError(contactId, 'First and last name are required.'); return }
     if (nameHasTwoPeople(editFirst) || nameHasTwoPeople(editLast)) { setError(contactId, TWO_PEOPLE_CONTACT_MESSAGE); return }
+    const stored = contacts.find(c => c.id === contactId)
+    if ((nameHasBadChars(editFirst) && cleanText(editFirst) !== cleanText(stored?.first_name)) || (nameHasBadChars(editLast) && cleanText(editLast) !== cleanText(stored?.last_name))) { setError(contactId, NAME_CHARS_CONTACT_MESSAGE); return }
     if (next && !CONTACT_EMAIL_RE.test(next)) { setError(contactId, 'Enter a valid email address.'); return }
     const ok = await saveContact(contactId, { first_name: formatPersonName(editFirst), last_name: formatPersonName(editLast), email: next })
     if (ok) setEditId(null)

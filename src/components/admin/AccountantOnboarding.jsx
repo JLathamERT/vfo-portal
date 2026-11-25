@@ -13,6 +13,8 @@ import OnboardingExtraMeetingCard from './OnboardingExtraMeetingCard'
 import StepEmailsChip from '../shared/StepEmailsChip'
 import OnboardingListTable from './OnboardingListTable'
 import OnboardingHero from './OnboardingHero'
+import OnboardingAgreementName from './OnboardingAgreementName'
+import { cleanText, formatPersonName, nameHasBadChars, nameHasTwoPeople, NAME_CHARS_CONTACT_MESSAGE, ONE_MEMBER_NAME_MESSAGE } from '../../lib/formatters'
 import { stage1Lock, createMemberLock, isTier1Onboarding, isConnectedAssociate, tier1MonthlyFee, tier1AdvisorPays, paymentClearing } from './onboardingOrder'
 import { readable } from '../shared/readableColor'
 
@@ -101,6 +103,8 @@ export default function AccountantOnboarding() {
   const [showNew, setShowNew] = useState(false)
   const [newFirst, setNewFirst] = useState('')
   const [newLast, setNewLast] = useState('')
+  const [newCompany, setNewCompany] = useState('')
+  const [newError, setNewError] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newType, setNewType] = useState('')
   const [creating, setCreating] = useState(false)
@@ -137,19 +141,24 @@ export default function AccountantOnboarding() {
   }
 
   async function createNew() {
-    if (!newFirst.trim() || !newLast.trim()) return
+    const first = formatPersonName(newFirst), last = formatPersonName(newLast), company = cleanText(newCompany)
+    if (!first || !last) return
+    if (nameHasTwoPeople(first) || nameHasTwoPeople(last)) { setNewError(ONE_MEMBER_NAME_MESSAGE); return }
+    if (nameHasBadChars(first) || nameHasBadChars(last)) { setNewError(NAME_CHARS_CONTACT_MESSAGE); return }
+    setNewError('')
     setCreating(true)
     try {
       await callApi('create_accountant_onboarding', {
-        first_name: newFirst.trim(),
-        last_name: newLast.trim(),
+        first_name: first,
+        last_name: last,
+        company_name: company || null,
         email: newEmail.trim() || null,
         created_by: session?.name || 'Admin',
         accountant_type: newType || null,
       })
-      setNewFirst(''); setNewLast(''); setNewEmail(''); setNewType(''); setShowNew(false)
+      setNewFirst(''); setNewLast(''); setNewCompany(''); setNewEmail(''); setNewType(''); setShowNew(false)
       await loadList()
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error(err); setNewError(err.message) }
     finally { setCreating(false) }
   }
 
@@ -182,11 +191,15 @@ export default function AccountantOnboarding() {
           <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: '160px' }}>
               <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>First Name *</label>
-              <input value={newFirst} onChange={e => setNewFirst(e.target.value)} style={inputStyle} />
+              <input value={newFirst} onChange={e => setNewFirst(e.target.value)} onBlur={() => setNewFirst(formatPersonName(newFirst))} style={inputStyle} />
             </div>
             <div style={{ flex: 1, minWidth: '160px' }}>
               <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Last Name *</label>
-              <input value={newLast} onChange={e => setNewLast(e.target.value)} style={inputStyle} />
+              <input value={newLast} onChange={e => setNewLast(e.target.value)} onBlur={() => setNewLast(formatPersonName(newLast))} style={inputStyle} />
+            </div>
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Company Name (optional)</label>
+              <input value={newCompany} onChange={e => setNewCompany(e.target.value)} maxLength={120} style={inputStyle} />
             </div>
             <div style={{ flex: 1, minWidth: '200px' }}>
               <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Work Email *</label>
@@ -201,9 +214,10 @@ export default function AccountantOnboarding() {
               <option value="VFO Associate">VFO Associate Accountant</option>
             </select>
           </div>
+          {newError && <div style={{ fontSize: '12px', fontWeight: 500, color: '#e74c3c', marginBottom: '10px' }}>{newError}</div>}
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={createNew} disabled={creating || !newFirst.trim() || !newLast.trim() || !newEmail.trim() || !newType} style={{ padding: '8px 20px', borderRadius: '8px', background: creating ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '13px', cursor: creating ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>{creating ? 'Creating...' : 'Create'}</button>
-            <button onClick={() => { setShowNew(false); setNewFirst(''); setNewLast(''); setNewEmail('') }} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
+            <button onClick={() => { setShowNew(false); setNewFirst(''); setNewLast(''); setNewCompany(''); setNewEmail(''); setNewError('') }} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
           </div>
         </div>
       )}
@@ -229,6 +243,7 @@ function OnboardingDetail({ id, onBack }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [pendingDecision, setPendingDecision] = useState(null)
+  const [namePending, setNamePending] = useState(false)
   const [creatingMember, setCreatingMember] = useState(false)
   const [togglingStatus, setTogglingStatus] = useState(false)
   const [showSaleModal, setShowSaleModal] = useState(false)
@@ -419,6 +434,8 @@ function OnboardingDetail({ id, onBack }) {
   })()
 
   const decision = ob.prelim_meeting_decision
+  // No name on the agreement yet, or Company picked but its name not saved.
+  const nameMissing = !ob.agreement_name_mode || namePending
   // A VFO Associate on today's path pays nothing and signs nothing — skip Stage 1 & 2.
   const isAssociate = ob.accountant_type === 'VFO Associate' && !tier1
   const tier1Emails = tier1 ? accountantTier1MoneyEmails(tier1AdvisorPays(ob, 'accountant')) : null
@@ -706,12 +723,19 @@ function OnboardingDetail({ id, onBack }) {
         <Row label="Preliminary Meeting Decision" done={!!decision} date={ob.prelim_meeting_decision_at} emails={tier1 ? ACCOUNTANT_TIER1_DECISION_EMAILS : ACCOUNTANT_DECISION_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} onDateChange={d => saveStepDate('prelim_meeting_decision_at', d)} saving={saving}
           locked={!decision && !!lockFor('decision')} lockedHint={lockFor('decision')}>
           {decision ? (
-            <span style={pillStyle(decision === 'Yes' ? '#1b9254' : decision === 'No' ? '#e74c3c' : '#e06717')}>{decision}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+              <span style={pillStyle(decision === 'Yes' ? '#1b9254' : decision === 'No' ? '#e74c3c' : '#e06717')}>{decision}</span>
+              <OnboardingAgreementName ob={ob} pipeline="accountant" selectStyle={selectStyle} onSaved={setOb} onPending={setNamePending} />
+            </div>
           ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+            <OnboardingAgreementName ob={ob} pipeline="accountant" selectStyle={selectStyle} onSaved={setOb} onPending={setNamePending} />
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', opacity: (!ob.accountant_partnership || !ob.onboarding_team_member) ? 0.4 : 1 }}>
-              <button onClick={() => saveDecision('Yes')} disabled={!!pendingDecision || !ob.accountant_partnership || !ob.onboarding_team_member} style={{ ...pendingBtn('#1b9254', pendingDecision, 'Yes'), cursor: (!ob.accountant_partnership || !ob.onboarding_team_member) ? 'not-allowed' : 'pointer' }}>{pendingDecision === 'Yes' ? 'Sending…' : 'Yes'}</button>
-              <button onClick={() => saveDecision('Undecided')} disabled={!!pendingDecision || !ob.accountant_partnership || !ob.onboarding_team_member} style={{ ...pendingBtn('#e06717', pendingDecision, 'Undecided'), cursor: (!ob.accountant_partnership || !ob.onboarding_team_member) ? 'not-allowed' : 'pointer' }}>{pendingDecision === 'Undecided' ? 'Sending…' : 'Undecided'}</button>
+              <button onClick={() => saveDecision('Yes')} disabled={!!pendingDecision || !ob.accountant_partnership || !ob.onboarding_team_member || nameMissing} style={{ ...pendingBtn('#1b9254', pendingDecision, 'Yes'), ...(nameMissing ? { opacity: 0.4 } : {}), cursor: (!ob.accountant_partnership || !ob.onboarding_team_member || nameMissing) ? 'not-allowed' : 'pointer' }}>{pendingDecision === 'Yes' ? 'Sending…' : 'Yes'}</button>
+              <button onClick={() => saveDecision('Undecided')} disabled={!!pendingDecision || !ob.accountant_partnership || !ob.onboarding_team_member || nameMissing} style={{ ...pendingBtn('#e06717', pendingDecision, 'Undecided'), ...(nameMissing ? { opacity: 0.4 } : {}), cursor: (!ob.accountant_partnership || !ob.onboarding_team_member || nameMissing) ? 'not-allowed' : 'pointer' }}>{pendingDecision === 'Undecided' ? 'Sending…' : 'Undecided'}</button>
               <button onClick={() => saveDecision('No')} disabled={!!pendingDecision || !ob.accountant_partnership || !ob.onboarding_team_member} style={{ ...pendingBtn('#e74c3c', pendingDecision, 'No'), cursor: (!ob.accountant_partnership || !ob.onboarding_team_member) ? 'not-allowed' : 'pointer' }}>{pendingDecision === 'No' ? 'Sending…' : 'No'}</button>
+            </div>
+            {nameMissing && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', fontStyle: 'italic' }}>Choose the name on the agreement to enable Yes and Undecided.</div>}
             </div>
           )}
         </Row>
