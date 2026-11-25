@@ -61,6 +61,10 @@ const LONG_TIMEOUT_ACTIONS = {
   // ERT before answering (the receipt renders in the background). A WRITE — never
   // auto-retried (a second call finds the plan already started).
   membership_send_setup_link: 60000,
+  // An inter-company transfer asks the IAG portal, then makes the Gmail, before it answers;
+  // deleting one asks IAG to cancel it first. WRITES: never auto-retried.
+  specialist_revenue_send_request: 45000,
+  specialist_revenue_delete_request: 30000,
 }
 // tax_direct_* are the member-callable twins of automation_TAX_* (unit 2 phase
 // 5) and chain the same external services, so they share the slow-write tier.

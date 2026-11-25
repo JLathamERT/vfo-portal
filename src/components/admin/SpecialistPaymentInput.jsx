@@ -109,11 +109,16 @@ let lineSeq = 1
 
 const PAYMENT_METHODS = [
   { key: 'link', title: 'Payment link', tag: 'Card or ACH', desc: 'Specialist gets an email with a secure Stripe link and pays by ACH (no fee) or card (2.9% + $0.30).' },
-  { key: 'pending', title: 'Bank transfer', tag: 'Email our details, or no email', desc: 'The specialist pushes the money to our bank transfer account. You mark it received once the money has cleared, and the invoice, receipt and shares go out.' },
   { key: 'recurring', title: 'Recurring monthly', tag: 'Send setup link', desc: 'Emails the specialist a setup link to authorize an automatic monthly payment by ACH or card on a day you choose.' },
+  { key: 'pending', title: 'Bank transfer', tag: 'Email our details, or no email', desc: 'The specialist pushes the money to our bank transfer account. You mark it received once the money has cleared, and the invoice, receipt and shares go out.' },
   { key: 'external', title: 'Already paid', tag: 'Send revenue shares only', desc: 'We have the money somewhere else (an old account, a check). Nothing is requested and the specialist gets no email, invoice or receipt; the shares are paid out now from the VFO Services Stripe balance.' },
   { key: 'none', title: 'Record deals', tag: 'No payment', desc: 'Records deals where no money changed hands. All money columns are $0. Nothing is charged and no email is sent.' },
+  { key: 'inter_company', title: 'VFOS IAG Inter-Company Transfer', tag: 'Request in IAG portal', desc: 'IAG gets an email and a notification that open the request in their own portal. If they accept, the amount moves from their Stripe balance to ours, and the invoice, receipt and shares go out.' },
 ]
+
+// Every inter-company transfer is billed to the one IAG specialist. Mirrors INTER_COMPANY_EXPERT_ID
+// in the edge repo's constants/iag-portal.ts, which ignores whatever the form sends.
+const INTER_COMPANY_EXPERT_ID = 6146
 
 const BANK_CHOICES = [
   { key: 'email', title: 'Email our bank details', desc: 'The specialist is emailed the amount and our account and routing numbers.' },
@@ -188,7 +193,9 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
     return { member, ert, vfos, deals, gross: member + ert + vfos }
   }, [lines])
 
-  const selectedExpert = expertKey ? specialistOptions.find(o => o.key === expertKey)?.expert : null
+  const interCompany = paymentMethod === 'inter_company'
+  const interCompanyExpert = useMemo(() => allExperts.find(e => e && Number(e.id) === INTER_COMPANY_EXPERT_ID) || null, [allExperts])
+  const selectedExpert = interCompany ? interCompanyExpert : expertKey ? specialistOptions.find(o => o.key === expertKey)?.expert : null
   // Every line needs a recipient, a member share, deals, and exactly ONE of the two house
   // shares. "One" is counted on the text, not the number, so the long-standing habit of
   // typing a literal 0 in VFOS still completes a line; what is rejected is real money in
@@ -301,13 +308,22 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
           <div style={{ fontSize: '13px', color: '#166534' }}>{result.total_deals} deal{result.total_deals === 1 ? '' : 's'} recorded with no payment. Nothing was charged and no email was sent. It shows in Accounting → VFO Specialist Revenue as "Deals Recorded".</div>
         </div>
       )}
+      {result && result.inter_company && (
+        <div style={{ ...card, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#166534', marginBottom: '4px' }}>Inter-company transfer requested{result.sandbox ? ' (sandbox)' : ''}</div>
+          <div style={{ fontSize: '13px', color: '#166534' }}>The {money(result.gross_amount)} request is in the IAG portal{result.email_drafted ? <> and the email to <strong>{result.to_email}</strong> was made</> : ''}. Its status changes below when they accept or deny it.</div>
+          {!result.email_drafted && (
+            <div style={{ fontSize: '12.5px', color: '#b45309', marginTop: '10px', padding: '8px 12px', borderRadius: '8px', border: '1px solid #fde68a', background: '#fffbeb' }}>The email could not be made{result.email_error ? ` (${result.email_error})` : ''}. IAG still has the request and its notification.</div>
+          )}
+        </div>
+      )}
       {result && result.external && (
         <div style={{ ...card, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: '#166534', marginBottom: '4px' }}>Revenue shares sent{result.sandbox ? ' (sandbox)' : ''}</div>
           <div style={{ fontSize: '13px', color: '#166534' }}>The {money(result.gross_amount)} was recorded as already paid. Nothing was requested and the specialist was not emailed. The revenue share payouts are running now — check each recipient's status in Accounting → VFO Specialist Revenue (Automation) in a minute.</div>
         </div>
       )}
-      {result && !result.pending && !result.recurring && !result.recorded && !result.external && (
+      {result && !result.pending && !result.recurring && !result.recorded && !result.external && !result.inter_company && (
         <div style={{ ...card, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: '#166534', marginBottom: '4px' }}>Payment request created{result.sandbox ? ' (sandbox)' : ''}</div>
           <div style={{ fontSize: '13px', color: '#166534' }}>A {money(result.gross_amount)} payment request was drafted to <strong>{result.to_email}</strong>. Review &amp; send it from the Gmail drafts folder. Track its status in Accounting → VFO Specialist Revenue.</div>
@@ -321,7 +337,11 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
       <div style={card}>
         <div style={{ ...colLabel, marginBottom: '8px' }}>Specialist (who is paying)</div>
         <div style={{ maxWidth: '420px' }}>
-          <SearchSelect options={specialistOptions} value={expertKey} onChange={setExpertKey} placeholder="Select a specialist…" />
+          {interCompany ? (
+            <div style={{ ...numInput, ...offInput, color: 'var(--vfo-ink)' }}>{interCompanyExpert ? interCompanyExpert.name : 'The IAG specialist is not set up in this portal'}</div>
+          ) : (
+            <SearchSelect options={specialistOptions} value={expertKey} onChange={setExpertKey} placeholder="Select a specialist…" />
+          )}
         </div>
         {selectedExpert && !selectedExpert.email && !alreadyPaid && (
           <div style={{ marginTop: '10px', fontSize: '12px', color: '#b45309' }}>This specialist has no email on file — add one in their profile before sending a request.</div>
@@ -331,7 +351,7 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
       {/* Payment method */}
       <div style={card}>
         <div style={{ ...colLabel, marginBottom: '10px' }}>Payment method</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
           {PAYMENT_METHODS.map(opt => {
             const active = paymentMethod === opt.key
             return (
@@ -444,13 +464,13 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
       {/* Gross + send */}
       <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <div style={colLabel}>{noMoney ? 'Total gross (nothing is charged)' : alreadyPaid ? 'Total gross (already received — nothing is charged)' : 'Total gross (charged to specialist)'}</div>
+          <div style={colLabel}>{noMoney ? 'Total gross (nothing is charged)' : alreadyPaid ? 'Total gross (already received — nothing is charged)' : interCompany ? 'Total gross (requested from IAG)' : 'Total gross (charged to specialist)'}</div>
           <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--vfo-heading)', marginTop: '4px' }}>{money(totals.gross)}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
           <button type="button" disabled={!canSend} onClick={send}
             style={{ padding: '14px 28px', borderRadius: '10px', border: 'none', background: canSend ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : '#c7d2e4', color: '#fff', fontWeight: 700, fontSize: '15px', cursor: canSend ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif' }}>
-            {sending ? 'Sending…' : noMoney ? `Record ${totals.deals} deal${totals.deals === 1 ? '' : 's'} — no payment` : (paymentMethod === 'pending' ? (bankChoice === 'direct' ? `Record bank transfer, no email — ${money(totals.gross)}` : `Email bank details — ${money(totals.gross)}`) : alreadyPaid ? `Send revenue shares — ${money(totals.gross)}` : paymentMethod === 'recurring' ? `Send recurring payment link — ${money(totals.gross)}/mo` : `Send Payment Request — ${money(totals.gross)}`)}
+            {sending ? 'Sending…' : noMoney ? `Record ${totals.deals} deal${totals.deals === 1 ? '' : 's'} — no payment` : (paymentMethod === 'pending' ? (bankChoice === 'direct' ? `Record bank transfer, no email — ${money(totals.gross)}` : `Email bank details — ${money(totals.gross)}`) : alreadyPaid ? `Send revenue shares — ${money(totals.gross)}` : interCompany ? `Send transfer request to IAG — ${money(totals.gross)}` : paymentMethod === 'recurring' ? `Send recurring payment link — ${money(totals.gross)}/mo` : `Send Payment Request — ${money(totals.gross)}`)}
           </button>
           {lines.length > 0 && !allLinesComplete && (
             <div style={{ fontSize: '12px', color: '#b45309' }}>{noMoney ? 'Pick a recipient and enter at least 1 deal on every line before recording.' : 'Fill in a recipient, an ERT $ or VFOS $ (not both), Member $, and Deals for every line before sending.'}</div>

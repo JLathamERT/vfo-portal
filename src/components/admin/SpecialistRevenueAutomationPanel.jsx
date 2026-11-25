@@ -128,6 +128,9 @@ export default function SpecialistRevenueAutomationPanel() {
           if (request.payment_status === 'recorded') {
             return <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Deals recorded with no payment — there is nothing to pay out.</span>
           }
+          if (request.payment_status === 'denied') {
+            return <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>IAG denied this transfer — there is nothing to pay out.</span>
+          }
           const received = request.payment_status === 'received'
           const hasOpen = (request.lines || []).some(isLineOpen)
           return (

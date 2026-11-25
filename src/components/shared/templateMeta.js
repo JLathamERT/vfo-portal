@@ -330,6 +330,9 @@ export const TEMPLATE_META = {
   'VFO_SPECIALIST_REVENUE': [
     ['SPECREV_payment_request', 'The revenue bill — asks the specialist to pay their revenue amount by card or ACH', 'To: Specialist'],
     ['SPECREV_bank_transfer_instructions', 'The bank-transfer revenue bill — gives the specialist our VFO account and routing numbers to push the payment to', 'To: Specialist'],
+    ['SPECREV_inter_company_request', 'VFOS IAG Inter-Company Transfer — asks IAG to review the request in their own portal', 'To: IAG'],
+    ['SPECREV_inter_company_reminder', '2-business-day reminder — IAG hasn’t accepted or denied the inter-company transfer', 'To: IAG'],
+    ['SPECREV_inter_company_invoice_receipt', 'IAG accepted the inter-company transfer — invoice and receipt PDFs attached', 'To: IAG'],
     ['SPECREV_payment_reminder', '2-business-day reminder — the revenue bill hasn’t been paid', 'To: Specialist'],
     ['SPECREV_payment_confirmation', 'The specialist paid by bank transfer (ACH) — confirmation while it clears (not sent for card, which gets the invoice/receipt)', 'To: Specialist'],
     ['SPECREV_invoice_receipt_email', 'Funds cleared — invoice and receipt PDFs attached', 'To: Specialist'],
