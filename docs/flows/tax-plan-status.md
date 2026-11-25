@@ -28,7 +28,7 @@ The **Status bar** on the plan page ([`TaxPlanStatus.jsx`](../../src/components/
   2. Paused, Stopped and Next tax year need the email, or the reason there is none.
   3. **The change is claimed first** (an update guarded on the status, kind and check-back date it read), then the email is sent. A failed send puts the old status back, so a double click never emails twice and a status never changes without its email.
   4. Logged in `client_tax_plan_status_log`: from, to, who, the whole email or why not.
-  5. The check-back bell is cleared; Stopped, Next tax year and Completed also clear that plan's step bells (`utils/tax-plan-bells.ts`, an allowlist by title: failure, held-share and refund bells stay, and nothing comes back on a reopen).
+  5. The check-back bell is cleared; Stopped, Next tax year and Completed also clear that plan's step bells (`utils/tax-plan-bells.ts`, an allowlist by title: failure, held-share and refund bells stay, and nothing comes back on a reopen). Since 2026-11-25 every automatic stop and Lost clear them too, and none is raised on a closed plan (`notify.ts`, #791).
   6. Back to `live`: `resumed_at` is stamped, a plan moved to next tax year takes that year, and a held payment email goes (below). No email about the reopening.
 - **Warnings never block** (`planWarnings` / `completedWarnings`): an unused deposit, an undecided retainer (with the last day Stripe can refund a bank payment: 180 days), a payment clearing, an agreement out for signature, unpaid money on a Completed plan.
 - **Stop asks "Set them to Lost too?"** only when the stop leaves the client Inactive. Setting a client to Lost with an open tax plan offers the same email.

@@ -226,7 +226,7 @@ export default function AdminPortal() {
       }
       const entry = sectionSetters[tab]
       if (entry) { entry[0](section); sessionStorage.setItem(entry[1], section) }
-      if (tab === 'accounting') sessionStorage.removeItem(ACCOUNTING_PILL_KEY)
+      if (tab === 'accounting' || tab === 'notifications') sessionStorage.removeItem(ACCOUNTING_PILL_KEY)
     }
     // Membership-fees bell: the member number rides along so the panel can open
     // and scroll to that member's plan card. Held in state (not sessionStorage)

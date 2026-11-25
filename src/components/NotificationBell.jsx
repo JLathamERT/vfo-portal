@@ -4,6 +4,10 @@ import { callApi, getSession } from '../lib/api'
 import { formatDate } from '../lib/dates'
 import { IS_STAGING } from '../lib/environment'
 import { splitTestBell, TEST_BELL_TEAL, TEST_BELL_TINT } from './shared/testBell'
+import ClearActionButton from './shared/ClearActionButton'
+import { btnOutline, BTN_SMALL } from './shared/buttonStyles'
+import Tag from './shared/Tag'
+import { pipelineLabel } from './shared/notificationPipeline'
  
 // The "View all" link opens /admin?tab=notifications, a page only the admin
 // portal has. Portals that mount the bell without one hide the link.
@@ -13,7 +17,6 @@ const VIEW_ALL_HIDDEN_ROLES = ['tax_planner', 'member']
 // purple, which REMINDER already has).
 const SDP_BELL = '#c026d3'
 const SDP_BELL_TINT = 'rgba(192,38,211,0.06)'
-const SDP_BELL_TINT_STRONG = 'rgba(192,38,211,0.15)'
 
 // Test site only: every bell routes to the tester's admin account (stagingBellRoute,
 // Jake 2026-11-05: all or nothing). A member login shares the admin's email, so it
@@ -71,7 +74,8 @@ export default function NotificationBell() {
   async function handleClick(notif) {
     setOpen(false)
     // A click IS the action for FYI (dismissible) notifications — mark it read.
-    // Action-required (non-dismissible) ones only clear when the action completes.
+    // Action-required (non-dismissible) ones clear when the action completes, or by
+    // hand with the Clear button's second click.
     // The mark must COMPLETE before navigating: the destination page mounts its
     // own bell whose load otherwise races this write and resurrects the row.
     if (notif.dismissible !== false) {
@@ -93,8 +97,8 @@ export default function NotificationBell() {
   async function markAllRead() {
     setLoading(true)
     try {
-      // Action-required (non-dismissible) rows are excluded — they only clear
-      // when the underlying task completes (the backend refuses them too).
+      // Action-required (non-dismissible) rows are excluded: each one is cleared on
+      // its own, with a confirm (the backend refuses them without it).
       const dismissibles = notifications.filter(n => n.dismissible !== false)
       await Promise.all(dismissibles.map(n => callApi('mark_notification_read', { notification_id: n.id })))
       setNotifications(prev => prev.filter(n => n.dismissible === false))
@@ -202,6 +206,15 @@ export default function NotificationBell() {
                   setNotifications(prev => prev.filter(x => x.id !== n.id))
                 } catch (err) { console.error('mark read error:', err) }
               }
+              const handleClearAction = async () => {
+                try {
+                  await callApi('mark_notification_read', { notification_id: n.id, confirm_action: true })
+                  setNotifications(prev => prev.filter(x => x.id !== n.id))
+                } catch (err) {
+                  console.error('clear action error:', err)
+                  alert('Could not clear it: ' + (err?.message || 'unknown error'))
+                }
+              }
               return (
                 <div
                   key={n.id}
@@ -229,40 +242,16 @@ export default function NotificationBell() {
                       }}>{testBell ? testBell.rest : n.message}</div>
                     )}
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {testBell && (
-                        <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: TEST_BELL_TEAL, letterSpacing: '0.4px' }}>TEST</span>
-                      )}
-                      {!isDismissible && (
-                        <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: '#e06717', letterSpacing: '0.4px' }}>ACTION</span>
-                      )}
-                      {isReminder && (
-                        <span style={{ fontSize: '9px', color: '#fff', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', background: '#7c3aed', letterSpacing: '0.4px' }}>REMINDER</span>
-                      )}
-                      {n.pipeline && !isReminder && <span style={{ fontSize: '10px', color: isSdp ? SDP_BELL : '#0095ff', fontWeight: 600, padding: '1px 6px', borderRadius: '3px', background: isSdp ? SDP_BELL_TINT_STRONG : 'rgba(0,149,255,0.15)' }}>{isSdp ? 'SDP ATSG' : n.pipeline}</span>}
-                      <span style={{ fontSize: '10px', color: 'var(--vfo-faint)' }}>{formatDate(n.created_at)}</span>
+                      {testBell && <Tag color={TEST_BELL_TEAL}>Test</Tag>}
+                      {!isDismissible && <Tag color="#e06717">Action</Tag>}
+                      {pipelineLabel(n.pipeline) && <Tag color={isReminder ? '#7c3aed' : isSdp ? SDP_BELL : '#0a85e8'}>{pipelineLabel(n.pipeline)}</Tag>}
+                      <span style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{formatDate(n.created_at)}</span>
                     </div>
                   </div>
                   {isDismissible && (
-                    <button
-                      onClick={handleDone}
-                      style={{
-                        padding: '3px 9px', borderRadius: '4px', fontSize: '10.5px',
-                        border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)',
-                        color: 'var(--vfo-success-text)', fontWeight: 600, cursor: 'pointer', flexShrink: 0
-                      }}
-                    >Done</button>
+                    <button type="button" onClick={handleDone} style={{ ...btnOutline, ...BTN_SMALL, flexShrink: 0 }}>Done</button>
                   )}
-                  {!isDismissible && testBell && (
-                    <button
-                      onClick={handleDone}
-                      title="Staging only: on live this bell clears when its step is done."
-                      style={{
-                        padding: '3px 9px', borderRadius: '4px', fontSize: '10.5px', whiteSpace: 'nowrap',
-                        border: `1px solid ${TEST_BELL_TEAL}66`, background: TEST_BELL_TINT,
-                        color: TEST_BELL_TEAL, fontWeight: 600, cursor: 'pointer', flexShrink: 0
-                      }}
-                    >Clear (test)</button>
-                  )}
+                  {!isDismissible && <ClearActionButton small onClear={handleClearAction} />}
                 </div>
               )
             })

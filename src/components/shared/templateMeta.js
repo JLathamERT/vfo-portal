@@ -89,6 +89,8 @@ export const TEMPLATE_META = {
     ['TAX_tax3_assess_reminder|vault', 'Vault variant for groups set to deliver their own Tax Assessment PDF (Tax Planning Groups) — asks the planner to upload the Tax Assessment PDF into the Sensitive Documents vault section', 'To: Allocated Tax Planner + Team Member · Cc: PF'],
     ['TAX_agreementsent|Yes', 'Client said yes — tax agreement signing link', 'To: Client · Auto-Cc: Member + PF'],
     mv('TAX_agreementsent|Yes', 'Client said yes — tax agreement signing link', 'To: Member · Auto-Cc: PF'),
+    ['TAX_agreement_resent', 'Re-send agreement — the first one expired, was declined or was withdrawn', 'To: Client · Auto-Cc: Member + PF'],
+    mv('TAX_agreement_resent', 'Re-send agreement — the first one expired, was declined or was withdrawn', 'To: Member · Auto-Cc: PF'),
     ['TAX_signing_reminder', '2-business-day reminder — the tax agreement is still unsigned', 'To: Client'],
     mv('TAX_signing_reminder', '2-business-day reminder — the tax agreement is still unsigned', 'To: Member'),
     ['TAX_ceocountersign|Yes', 'Internal — asks Anton (CEO) to countersign once the client has signed', 'To: Anton (CEO)'],

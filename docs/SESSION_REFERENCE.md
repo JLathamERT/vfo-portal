@@ -40,7 +40,7 @@ cd C:\vfo-react;          git fetch --tags -q; git tag -l 'live-*'         --sor
 cd C:\vfo-edge-functions; git fetch --tags -q; git tag -l 'backend-good-*' --sort=v:refname | Select-Object -Last 1
 
 # 3. Action-count parity — the ANCHORED patterns are required; a raw unanchored
-#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-24 → 6 + 709 = **715**; past values in CHANGELOG)
+#    grep on index.ts returns 7 (the 7th is a comment on line 3). (v: 2026-11-25 → 6 + 710 = **716**; past values in CHANGELOG)
 cd C:\vfo-edge-functions   # or the worktree
 $logins   = (Select-String -Path supabase/functions/vfo-admin-api/index.ts          -Pattern '^\s*if \(action === '            -AllMatches).Matches.Count
 $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatch.ts -Pattern '^\s*"([a-zA-Z0-9_]+)":\s*\(c\)'  -AllMatches).Matches.Count
@@ -49,7 +49,7 @@ $dispatch = (Select-String -Path supabase/functions/vfo-admin-api/router/dispatc
 # 4. Type-check baseline — must be 0; --no-lock avoids the v5 deno.lock the bundler rejects (#112)
 & "$env:USERPROFILE\.deno\bin\deno.exe" check --no-lock supabase/functions/vfo-admin-api/index.ts   # or plain `deno` when it is on PATH
 
-# 5. Frontend build — expect exit 0. (v: 2026-11-24 → **54** route pages, the dev-only `/phone-preview` never among them; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
+# 5. Frontend build — expect exit 0. (v: 2026-11-25 → **54** route pages, the dev-only `/phone-preview` never among them; whether it is PUBLISHED is answered by the live-* tag in step 2, never by this line)
 cd C:\vfo-react; npm run build
 
 # 6. Pipeline smoke gate — hand it to the person running the chat in EXACTLY this form: THEIR portal email (TEAM table, TEAM_RULES.md), a literal <password>, never a token, never Read-Host
@@ -63,7 +63,7 @@ select jobname, schedule from cron.job order by jobid;
 select pipeline, sandbox_mode, stripe_account from pipeline_sandbox_config order by pipeline;
 ```
 
-**9. Security advisor** — MCP `get_advisors { project_id: "ejpsprsmhpufwogbmxjv", type: "security" }`. **GREEN baseline = deny-all `rls_enabled_no_policy` INFO ×5 + the `pg_net` `extension_in_public` WARN, and nothing else.** Any `rls_disabled_in_public` / `sensitive_columns_exposed` ERROR or `rls_policy_always_true` WARN = a table regressed to anon-reachable → STOP. *(v: 2026-11-24, GREEN at the exact baseline on the test site.)*
+**9. Security advisor** — MCP `get_advisors { project_id: "ejpsprsmhpufwogbmxjv", type: "security" }`. **GREEN baseline = deny-all `rls_enabled_no_policy` INFO ×5 + the `pg_net` `extension_in_public` WARN, and nothing else.** Any `rls_disabled_in_public` / `sensitive_columns_exposed` ERROR or `rls_policy_always_true` WARN = a table regressed to anon-reachable → STOP. *(v: 2026-11-25, GREEN at the exact baseline on both.)*
 
 ---
 
@@ -94,7 +94,7 @@ Labels: `owed` a job to do · `watch` waits on a real event · `parked` don't fi
 - **`boldsign-webhook`** — standalone. **Deploy with `--no-verify-jwt` (mandatory)** and **only with explicit approval** (#10, #180). **Helper functions** — `draft-agreement-pdfs` (on-demand Gmail drafts, no business logic) and `boldsign-template-fields` (a throwaway that reads a BoldSign template's field coordinates back for `agreement_templates.field_map`; `verify_jwt=true`, no business logic, safe to delete) — versions derived in step 1, never written here. *(v: 2026-09-14)*
 - **Key entry points** — `index.ts` (logins) · `router/dispatch.ts` (PUBLIC_HANDLERS + AUTH_HANDLERS) · `router/webhooks.ts` (Stripe + BoldSign by shape) · `middleware/auth.ts` (six login types, role precedence) · `constants/role-gates.ts` (every gate list) · `utils/notify.ts` (all bells + the business-day helpers).
 - **Storage buckets** — every bucket, public or private, and what reads it: [integrations/supabase.md](integrations/supabase.md) (derive: `select id, public from storage.buckets`); older per-bucket prose in [CHANGELOG.md](CHANGELOG.md) under the 2026-08-14 restructure heading. *(v: 2026-11-17)*
-- **NOT in the system:** no automated tests, no test runner, no CI beyond the deploy button and staging's self-update (`.github/workflows`, they run no tests), no frontend TypeScript, no Supabase Auth (custom session tokens over `admin_sessions`, six login types / five portals, salted PBKDF2-HMAC-SHA256), no React Context (just a promise cache + token-keyed last-seen snapshots in `src/lib/api.js`, #579), no structured logging (frontend errors go to Sentry only). **Email is Gmail DRAFTS by default** — but **277 of 383** `email_templates` rows on live have `send_mode=true` (#325; derive with `select count(*) from email_templates where send_mode`) *(v: 2026-11-24)*
+- **NOT in the system:** no automated tests, no test runner, no CI beyond the deploy button and staging's self-update (`.github/workflows`, they run no tests), no frontend TypeScript, no Supabase Auth (custom session tokens over `admin_sessions`, six login types / five portals, salted PBKDF2-HMAC-SHA256), no React Context (just a promise cache + token-keyed last-seen snapshots in `src/lib/api.js`, #579), no structured logging (frontend errors go to Sentry only). **Email is Gmail DRAFTS by default** — but **279 of 385** `email_templates` rows on live have `send_mode=true` (#325; derive with `select count(*) from email_templates where send_mode`) *(v: 2026-11-25)*
 
 ---
 
@@ -154,7 +154,7 @@ Money, auth/security, data-loss and cross-repo contracts only, **one lead rule p
 - **#414** — a plan MIGRATED from the legacy system never got its branch column backfilled, so a step machine that keys a whole branch on that one column points every … **#508 is the guard-side twin: a precondition keyed on a status only the PORTAL writes refuses every legacy-migrated row, 100% of the time, and the refusal reads like a …**
 - **#403** — a **terminal/negative** outcome can SATISFY a "cascade complete" predicate, so `locked:` **#620 / #621** — the reverse: when step B gates on step A, an answered B must make A FINAL (A's done-test true once B is answered, mirrored #339, AND a server refusal) …
 - **#404** — re-invoking a confirmation-email handler to RESEND re-arms every reminder ladder it stamps.
-- **#650** — one failure, one `FAILURE_*` bell, with the client's NAME in the title (`clientLabel`). **#645** — a failure that reaches only the function log (kept 24 h) is never seen: **#365 / #179** — an action-required bell (`dismissible:false`) is a CONTRACT: **#176** — every bell goes through `notifyByRule` + a `notification_rules` seed. **#313** — one event serving two audiences needs TWO rule keys. **#481** is the mirror: one audience getting TWO bells about one event — when an action-required bell is raised for the same recipient about the same thing, make the … **#507 is the same rule read from the silence:** **#509 is its client-facing twin: an EARLY RETURN in a client-click handler must still ANSWER the client.**
+- **#650** — one failure, one `FAILURE_*` bell, with the client's NAME in the title (`clientLabel`). **#645** — a failure that reaches only the function log (kept 24 h) is never seen: **#791** — an action bell clears on every CLOSE of its record, never rings on a closed one. **#365 / #179** — an action bell is a CONTRACT: **#176** — every bell goes through `notifyByRule` + a `notification_rules` seed. **#313** — one event serving two audiences needs TWO rule keys. **#481** is the mirror: one audience getting TWO bells about one event — when an action-required bell is raised for the same recipient about the same thing, make the … **#507 is the same rule read from the silence:** **#509 is its client-facing twin: an EARLY RETURN in a client-click handler must still ANSWER the client.**
 - **#438** — a JS `String.replace` **replacement STRING** treats `$1`, `$&`, `` $` `` as capture references, so any money-bearing substitution silently corrupts itself …`
 - **#324 / #413** — a recipient ROLE TOKEN does NOTHING unless the HANDLER passes it (in template ctx, or in `notifyByRule`'s `dynamic` map), and it is dropped SILENTLY. **#503 is the same rule when a token must address SEVERAL people:** **#505 is why you could not have caught it by testing:** **#512 — the footer is a DELIVERY-LAYER invariant** (`utils/email-signature.ts` inside `draftGmail` / `gmailDraftFetch` / `deliverRaw`, idempotent on the sign-off text):
 - **#411** — a bell's TITLE is the clear contract, so its RECIPIENT is FREE: **#521 — a bell asks for a STEP, so it is addressed to that step's OWNER on every route:**

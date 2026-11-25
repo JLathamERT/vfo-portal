@@ -9,6 +9,28 @@
 
 ---
 
+## 2026-11-25 — Action-required bells: Clear with a confirm, stuck ones fixed, Re-send agreement, Notifications page layout, button and tag rules — by Jake
+
+Branches `claude/evan-anderson-action-notis-bb6694` (vfo-react) and `claude/evan-anderson-action-notis-ae0675` (edge). Action count **716** (715 + `tax_agreement_status_load`), **54** route pages (unchanged). No table change. Two migrations, data only: `20261125150000_agreement_ended_bells_fyi.sql` (5 `notification_rules` rows) and `20261125160000_tax_agreement_resent_emails.sql` (2 email templates, Send), both on the test site, live at release (the emails BEFORE the backend). Security advisor green on both projects; drift check matches. Owed: Issues JLathamERT/vfo-edge-functions#639, #640, #641. Gotcha #791.
+
+**What Jake asked for.** A PF had action-required notifications that would not go away: some could not be acted on, some made no sense as action-required. Fix those, and let anyone clear one with a second confirming click. During testing: rebuild the Notifications page like VFO Specialist Revenue, set one look for buttons and one for tags, and put both in the house rules.
+
+**Why they stuck.** Seven open on that PF; two were genuine. Four sat on stopped plans: only the Status bar's close (2026-11-24) cleared step bells, while Lost and most automatic stops cleared none. Five could not be cleared at all, four of them *agreement expired*: no step completes it, the portal refused the re-send it asked for, and BoldSign expires a document 60 days after it was sent, whether or not the case is still open.
+
+**Built (edge).**
+- `notifications/mark-read.ts`: an action row clears with `confirm_action: true`; every caller is scoped to rows the loader shows them (before, any admin could mark any row by id). The staging-only *Clear (test)* exception is gone.
+- `agreements/declined.ts`: expired / declined / revoked is an FYI on all five pipelines (Jake: declined too), with wording that does not ask for an impossible re-send, and nothing on a closed case or a Lost client.
+- `utils/tax-plan-bells.ts` clears a plan's step bells on every close: the client's and the team's No, extra meeting No, deposit and retainer refunds, the Red Light stop, ROI meeting declined, Not Implementing, the client's Decline, and Lost (`client-lost.ts`, which also clears MAP 1's two step bells). `notify.ts` raises no tax step bell on a stopped or completed plan. `upload-notify.ts` asks for a team member only on an open plan (and links that plan); `assess-vault-stamp.ts` ignores a closed one.
+- **Re-send agreement** (Jake: do it in this change): `automation_TAX_sendagreement` with `resend: true`, `tax_agreement_status_load`, `utils/boldsign-status.ts` (moved out of `ert-agreement-copy.ts`). BoldSign is asked rather than a stored flag, so agreements that ended before today work. Email wording approved by Jake; it mentions no meeting, so there is no skipped variant.
+
+**Built (website).** `ClearActionButton.jsx` in the bell and on the page, for every portal with a bell. The Notifications page in the house Accounting layout (pills Current / Archive / Reminders, filter row, mini-tabs, table; *View all* opens on Current). `tax/AgreementResend.jsx`, a row under the agreement steps. One `Tag.jsx`; `buttonStyles.js` gained `btnOutline`, `btnStep` and `BTN_SMALL`.
+
+**Decided (Jake, 2026-11-25).** Clear for everyone with a bell; bulk clears still skip action rows. Buttons and tags never look alike, tags are rare (TEAM_RULES §9); the area tag (Tax, Vault) stays on every notification, in the order Test, Action, area. The sweep of every other screen is its own change, in three parts, with step owner tags kept (#640).
+
+**Tested on the dev server by Jake,** against `vfo-admin-api-jake` v93 (this branch; live and the shared test backend were not touched): Clear, Cancel and Yes clear in the bell and on the page; Archive; a reminder scheduled and cancelled; the phone bell; a sandbox agreement declined in BoldSign, the row and Re-send, the new email with a working link; both agreement bells clearing; Lost clearing the step bell; the re-send again with its own email. **By SQL and server calls on the same build:** an ended-agreement event on an open plan (FYI) and a stopped one (nothing), the client's own No clearing that plan's step bell and leaving a refund bell and another plan's bell, a file arriving on a closed plan raising no step bell. **Not exercised:** a real expiry, the member-pays re-send, the other automatic stops, member and planner Clear (#639).
+
+---
+
 ## 2026-11-24 (h) — Portal Backlog: the Done column reads Review; two late sheet requests imported — by Paxton
 
 Branch `claude/portal-backlog-updates-458d44` (both repos). No migration, template or switch; action count **715** and **54** route pages (both unchanged). Admin-only screen, so no phone check. Flow: [flows/portal-backlog.md](flows/portal-backlog.md).
