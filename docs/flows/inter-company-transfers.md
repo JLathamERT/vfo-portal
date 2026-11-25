@@ -2,6 +2,8 @@
 
 **The sixth + New Payment method of VFO Specialist Revenue** (Accounting → Specialists → VFO Specialist Revenue, Jake 2026-11-25). VFO bills the IAG specialist, but nothing is paid on a pay page: the request goes into **IAG's own portal**, where a superadmin accepts it (IAG's Stripe balance pays VFO Services) or denies it. Money that arrives is split exactly like any other SpecRev payment.
 
+**What it carries (Jake 2026-11-25): the Specialist's implementation fee split, never revenue share, and all of it for the members.** The form locks and clears the ERT and VFOS boxes and `specialist_revenue_send_request` answers 400 to either. Everything IAG or a recipient reads says *implementation fee split*; which wording and which templates apply is decided in one place, `specrevShareWording` (`constants/iag-portal.ts`).
+
 The IAG half lives in IAG's repos (`iag-edge-functions`, `iag-portal`, `docs/flows/intercompany-transfers.md` there). *(v: 2026-11-25)*
 
 ## The path
@@ -11,7 +13,8 @@ The IAG half lives in IAG's repos (`iag-edge-functions`, `iag-portal`, `docs/flo
 | Send | `specialist_revenue_send_request`, `payment_method: 'inter_company'` | The specialist is forced to `INTER_COMPANY_EXPERT_ID` (`constants/iag-portal.ts`, whatever the body says). Row `requested` + method `inter_company` + a fresh `intercompany_key`, lines, then IAG is told (`intercompany_receive`). IAG refusing or not answering = the row is deleted and nothing is sent. Then the email, fail-soft |
 | Email | `SPECREV_inter_company_request` | To IAG's two people, literal addresses on the template; the button opens `<IAG portal>/inter-company-transfers?request=<IAG id>`. Reminder `SPECREV_inter_company_reminder` at 2 business days, the Tracy bell at 4, both from the payout sweep's existing ladder |
 | Check | `specialist_revenue_intercompany_check` (PUBLIC, signed) | IAG asks, after claiming the request and before any money: still open, for this amount? |
-| Accept | `specialist_revenue_intercompany_result` (PUBLIC, signed) | **Live: the money is proved on OUR Stripe first** — the `py_` payment on VFO Services, its amount, its `source_transfer` = the transfer IAG named, not reversed. Then `received`, the memo is stamped on the payment, and the invoice and receipt (`SPECREV_inter_company_invoice_receipt`) and the payout engine run in the background |
+| Accept | `specialist_revenue_intercompany_result` (PUBLIC, signed) | **Live: the money is proved on OUR Stripe first** — the `py_` payment on VFO Services, its amount, its `source_transfer` = the transfer IAG named, not reversed. Then `received`, the memo is stamped on the payment, and the invoice and receipt (`SPECREV_inter_company_invoice_receipt`; Description *Specialist's Implementation Fee Split*) and the payout engine run in the background |
+| Recipients | `utils/specialist-revenue-payout.ts` | Their own copies of the SpecRev emails: `SPECREV_inter_company_share_confirmation`, `_money_mapping`, `_connect_setup` (specialists only; a member with no payout account is listed in the shared `member_share_waiting` email as *Implementation Fee Split - <specialist>*). **A Money Mapping recipient's split still goes to Money Mapping** (Jake 2026-11-25), its ledger line naming the specialist, not a request number |
 | Deny | same action | `payment_status = 'denied'` (terminal) + reason + bell `SPECREV_inter_company_denied`. No money, no shares |
 | Delete | `specialist_revenue_delete_request` on an unanswered one | IAG is asked to cancel first (`intercompany_withdraw`); refused once IAG has started paying, 502 when IAG cannot be reached |
 
@@ -34,7 +37,7 @@ IAG has no test site. The test site talks to IAG's live backend in sandbox mode:
 
 - **VFO Services must be a connected account of IAG** (Stripe OAuth, the recipe in [../integrations/stripe.md](../integrations/stripe.md) with IAG as the platform). **Linked live 2026-11-25**, `read_write`: Stripe offers a platform nothing smaller, so IAG's Stripe can read and act on the VFO Services account. Removing it (VFO Services' Stripe dashboard) stops every transfer. The id is IAG's secret `VFOS_CONNECT_ACCOUNT_ID`.
 - The transfer draws on IAG's **available Stripe balance**. Too low = Stripe refuses, the request goes back to waiting.
-- **Stripe memos** (Jake 2026-11-25): on VFO Services the arriving payment reads `IAG VFOS inter-company transfer - Specialist Revenue - <specialist> - For (<member#>) <name>` (stamped after booking, live only, a failure is logged and changes nothing); on IAG the transfer reads `IAG VFOS inter-company transfer - For <names>`.
+- **Stripe memos** (Jake 2026-11-25): on VFO Services the arriving payment reads `IAG VFOS inter-company transfer - Implementation Fee Split - <specialist> - For (<member#>) <name>` (stamped after booking, live only, a failure is logged and changes nothing); each share paid out reads `Specialist Implementation Fee Split - Specialist: … - Recipient: …`; on IAG the transfer reads `IAG VFOS inter-company transfer - Implementation Fee Split - For <names>`. A memo is part of what an idempotency key is checked against: change one only while no unpaid inter-company line exists.
 - A transfer reversed on IAG's Stripe is **not** seen here; IAG's bell says to tell VFO.
 - Request numbers are never shown to a person in this feature (Jake 2026-11-25): bells name the amount, the recipients and the day.
 - The screen's statuses: **Requested from IAG**, **Payment received**, **Denied by IAG** (`specialistRevenueShared.jsx`).
