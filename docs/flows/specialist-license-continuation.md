@@ -6,16 +6,17 @@ Moves an **existing, already-live specialist** — one paying the $99/mo license
 
 - **Pipeline label:** `SPECIALIST_LICENSE_CONTINUATION` — used by `email_templates.pipeline` for the three continuation templates ONLY. Stripe metadata, `notifications.pipeline` and `pipeline_sandbox_config` still read **`SPECIALIST_ONBOARDING`**, because the money and bell chains are the onboarding licence engine's. *(Two pipeline labels in one flow is deliberate; see "Traps" below.)*
 - **State table:** `specialist_onboarding` rows with **`license_continuation = true`** — a minimal row (no stage tracker, no votes, no meetings), `current_stage=4`, `status='active'`, plus the `lic_*` columns and the new **`lic_charge_day`** (integer 1–15, migration `20260824210000_specialist_license_continuation_charge_day.sql`). See [tables/specialists.md](../tables/specialists.md).
-- **Entry point:** AdminPortal → **Accounting → VFO Specialist License Fees** → the **"Setup Monthly License Fees"** button. *(Before 2026-08-24 this lived as a "License Fee Continuation" subtab on the specialist Profile; that subtab and `SpecialistLicenseContinuationTab.jsx` were DELETED — the Accounting button replaces it.)*
-- **Gate:** both actions are **AUTH + `TAB_ACTIONS.accounting`**, with the in-handler superadmin checks REMOVED — full parity with `specialist_revenue_recurring_create` (the 2026-08-07 / #338 decision). The accounting grant is the whole boundary.
-- **Emails are Gmail DRAFTS** — all three templates are `send_mode=false`.
+- **Entry point:** AdminPortal → **Accounting → VFO Specialist License Fees** → the **Set Up License** pill (a toggle button on the ledger page until 2026-11-25). *(Before 2026-08-24 this lived as a "License Fee Continuation" subtab on the specialist Profile; that subtab and `SpecialistLicenseContinuationTab.jsx` were DELETED — the Accounting button replaces it.)*
+- **Gate:** all three actions are **AUTH + `TAB_ACTIONS.accounting`**, with the in-handler superadmin checks REMOVED — full parity with `specialist_revenue_recurring_create` (the 2026-08-07 / #338 decision). The accounting grant is the whole boundary.
+- **Emails send** — every continuation template, the cancellation one included, is `send_mode=true` on live *(v: 2026-11-25; they were Drafts at launch)*.
 
-## The two actions
+## The three actions
 
 | Action | File | Auth | Does |
 |---|---|---|---|
 | `specialist_license_continuation_load` | `actions/specialist-license/continuation-load.ts` | AUTH + `TAB_ACTIONS.accounting` | Current license state for one expert: link/subscription stamps, `charge_day`, and a computed **`already_active`** — true when ANY non-canceled subscription exists on ANY of the expert's onboarding rows. That is the exact condition `_start` 409s on, so the form can warn before the click. |
 | `specialist_license_continuation_start` | `actions/specialist-license/continuation-start.ts` | AUTH + `TAB_ACTIONS.accounting` | Requires `expert_id` + **`charge_day` (integer 1–15, else 400)**. Find-or-create the continuation row, stamp `lic_charge_day` on **both** insert and reuse, ensure the Stripe customer + `lic_checkout_token`, draft `SPECIALIST_lic_continuation_request`. Re-runnable = Resend. |
+| `specialist_license_cancel` | `actions/specialist-license/license-cancel.ts` | AUTH + `TAB_ACTIONS.accounting` | **NEW 2026-11-25** — the Cancel license button. Ends the subscription NOW (no later charge), stamps `lic_canceled_at`, sends `SPECIALIST_lic_cancel_confirmation`. Writes `lic_payment_status='canceled'` **before** the Stripe DELETE so the lifecycle webhook's "License CANCELED" bell skips it (the same write-then-delete order as the bank-verification failure branch below); a failed DELETE restores the row. A canceled row leaves `_start`'s double-enroll guard, so Set Up License can restart the licence on the same row. |
 
 **Two guards inside `_start` that are easy to get wrong:**
 
@@ -99,14 +100,15 @@ Routing is unchanged — the licence chain is keyed on `lic_stripe_customer_id`.
 
 ## Emails
 
-All three are `pipeline = 'SPECIALIST_LICENSE_CONTINUATION'`, `send_mode = false` (draft), recipients `to` SPECIALIST / `cc` Tracy / `bcc` Anton + Paul.
+All are `pipeline = 'SPECIALIST_LICENSE_CONTINUATION'`, `send_mode = true` on live, recipients `to` SPECIALIST / `cc` Tracy / `bcc` Anton + Paul.
 
 | id | template | Sent by | Tokens |
 |---|---|---|---|
 | 171 | `SPECIALIST_lic_continuation_request` | `continuation-start.ts` (**REWRITTEN 2026-08-24** with user-approved copy; subject *"Set up your monthly VFO Specialist License payment — VFO Services"*) | `[First Name]`, `[Charge Day]`, `[PAYMENT_LINK]` |
 | 231 | `SPECIALIST_lic_continuation_confirmation` | `license-confirmation-email.ts`, continuation rows only | `[FIRST_PAYMENT_SENTENCE]` — always the deferred wording since 2026-09-14 |
 | 232 | `SPECIALIST_lic_continuation_reminder` | sweep tier 7b | `[FIRST_NAME]`, `[SPECIALIST_NAME]`, `[CHARGE_DAY]` (ordinal), `[BUTTONS]` |
-| new | `SPECIALIST_lic_continuation_verify_bank` | `license-confirmation-email.ts` on `bank_verify` | `[First Name]`, `[Charge Day]`, `[First Charge Date]`, `[AMOUNT]` |
+| 265 | `SPECIALIST_lic_continuation_verify_bank` | `license-confirmation-email.ts` on `bank_verify` | `[First Name]`, `[Charge Day]`, `[First Charge Date]`, `[AMOUNT]` |
+| new | `SPECIALIST_lic_cancel_confirmation` (2026-11-25, migration `20261125231000_specialist_license_cancel_email.sql`; subject *"Your VFO Specialist License - Cancellation Confirmation - [SPECIALIST_NAME]"*) | `license-cancel.ts` | `[First Name]`, `[Cancel Date]`, `[PAYMENT_METHOD]` ("bank account ending 1234" / "card ending …"), `[LAST_PAYMENT_LINE]` (the last cleared payment, or empty) |
 
 `license-confirmation-email.ts` **tolerates a missing template without stamping**, so a send skipped for a missing row fires once the row exists.
 
@@ -129,13 +131,15 @@ Same file, immediately after 7b. Rows with `status='active'`, `license_continuat
 
 ## Accounting UI
 
-The License area now renders through the **same `AccountingCombinedPanel` wrapper SpecRev uses**, with three pills:
+**Redesigned 2026-11-25** to copy Advisor Membership Fees exactly (Jake: the old ledger page could not cancel a licence). Still the `AccountingCombinedPanel` wrapper, `maxWidth` 1050px, three pills:
 
 | Pill | Component | Notes |
 |---|---|---|
-| **VFO Specialist License Fees** | `SpecialistLicensePanel.jsx` | The "Setup Monthly License Fees" gradient toggle + inline `LicenseSetupForm` (expert picker from AdminPortal's `allExperts`, 1st–15th ordinal charge-day select, fixed *$99.00 · ACH* display). Monthly table columns **SPECIALIST · DATE · AMOUNT · STATUS**, chip flush right, one money column, *"Payment received"* chip only. The amber already-enrolled note keys on the loader's `already_active`, with an `/already/i` message match as fallback (`callApi` discards the HTTP status, so the 409 is invisible to the FE). |
-| **License Reconciliation** | **NEW** `SpecialistLicenseReconciliationPanel.jsx` | Client-side all-time per-specialist aggregate: payment count, total collected, most recent. **No year filter by design** (a licence is a flat monthly fee, not an engagement) and **no member-# column** — `expert_id` is a raw DB id, not a member number. |
-| **Outstanding Payment Links** | **NEW** `SpecialistLicenseOutstandingPanel.jsx` | Reuses `OutstandingLinksPanel`'s exported internals. `LicenseLinkCard` reads *"Link sent &lt;date&gt; · charge day &lt;ordinal&gt;"*, $99.00 per month, expandable detail incl. payment method. **Read-only — no resend button.** |
+| **Specialists** | `SpecialistLicensePanel.jsx` (default export) | One card per licence from the loader's `plans[]`, the `MembershipFeesPanel` PlanCard shape: name · *Moved from old system* / *Onboarding* · *Monthly ($99.00/mo on the 10th)* · method ••last4 · Set up / Link sent / Canceled date; $99.00 per month; next payment (the charge day's next occurrence from today) or canceled date; paid count; one status tag. Search + status dropdown + count. Opened: Month · Date · Amount · Card fee (always —) · Status · Payment (method, invoice + receipt numbers) from the `payments` ledger grouped by `onboarding_id`, a muted **Scheduled** row for the next charge, Totals, and the **Cancel license** button (`btnDanger`, `window.confirm`, then `specialist_license_cancel`). |
+| **Set Up License** | `SpecialistLicensePanel.jsx` → `LicenseSetupSection` | The old inline setup form on its own pill, unchanged in behaviour: expert picker from AdminPortal's `allExperts`, 1st–15th charge day, *$99.00 · card or ACH, no fee*. The amber already-enrolled note keys on the loader's `already_active`, with an `/already/i` message match as fallback (`callApi` discards the HTTP status). |
+| **Outstanding Payment Links** | `SpecialistLicenseOutstandingPanel.jsx` | Unchanged. Reuses `OutstandingLinksPanel`'s exported internals; read-only, no resend button. |
+
+**License Reconciliation** (`SpecialistLicenseReconciliationPanel.jsx`) and the monthly year/month ledger table were REMOVED 2026-11-25: each Specialists card now carries its own history and totals, and Accounting → Payments lists every licence payment by date.
 
 Fed by **`specialist_license_payments_load`**, whose response gained a **`pending[]`** array: continuation rows with a link sent that are not succeeded/canceled, each with a `state` of `setup_pending` / `scheduled` / **`awaiting_verification`** / `processing` / `failed`, plus a raw `bank_verification_pending_at`. **`awaiting_verification` outranks the status column** — it is derived from the side stamp, which `lic_payment_status` deliberately never records. **Unknown values (e.g. `past_due`) pass through raw** rather than being coerced. The existing cleared-payments shape is unchanged. `specialist_license_continuation_load` returns the same stamp as `bank_verification_pending_at`.
 
