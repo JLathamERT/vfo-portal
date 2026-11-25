@@ -85,7 +85,7 @@
 > | Tax | **44** | **28** |
 > | **Tax Planners** | **16** | ✗ no section — see [flows/tax-planning.md](flows/tax-planning.md#thirteen-planner-notification-bells-six-new-2026-07-22-a-seventh-2026-07-23-an-eighth-2026-07-23-evening-a-ninth-and-tenth-2026-08-10-an-eleventh-and-twelfth-2026-08-11-a-thirteenth-later-the-same-day) |
 > | Uploads | 5 | ✗ no section |
-> | VFO Specialist Revenue | **14** *(test site 2026-11-24; live at release)* | **13** |
+> | VFO Specialist Revenue | **16** *(test site 2026-11-25; live at release)* | **15** |
 >
 > Each section heading's own count is likewise the snapshot number, kept so the tables and the
 > counts stay self-consistent. **Do not add a new total here** — it will be wrong within a week.
@@ -357,6 +357,8 @@
 |---|---|---|---|
 | **Payment reminder email** — Reminder email to the specialist to pay their VFO Specialist Revenue request. | Reminder email | The specialist (email) | Nightly payout sweep — after **2 business day(s)** (editable) |
 | **Bank transfer cleared in our account (Jake + Tracy)** (`SPECREV_deposit_cleared_bell`, NEW 2026-11-24, sort 15) — money has arrived in the shared SpecRev bank transfer account; says who sent it and whether a payment is waiting for exactly that amount. | FYI | Jake + Tracy | Stripe webhook `customer_cash_balance_transaction.created` (`funded`) — instant |
+| **IAG denied an inter-company transfer (Jake + Tracy)** (`SPECREV_inter_company_denied`, NEW 2026-11-25, sort 16) — IAG denied the request in its own portal; says who and why. | FYI | Jake + Tracy | IAG portal: Deny — instant |
+| **Inter-company transfer needs checking** (`SPECREV_inter_company_failed`, NEW 2026-11-25, sort 32) — IAG says it transferred the money but VFO's Stripe does not agree, or it could not be booked. Nobody is paid; clears itself when IAG's retry is booked. | **Action required** | Jake | IAG's answer, not confirmed — instant |
 | **Specialist still has not paid** — A specialist's revenue payment is still unpaid after the reminder window - asks Tracy to chase. | FYI | Tracy | Nightly payout sweep — after **4 business day(s)** (editable) |
 | **Revenue transfer failed (Jake)** — A revenue-share transfer to a member failed; the nightly sweep will retry; auto-clears on success. | **Action required** | Jake | Payout engine transfer failure — instant |
 | **Specialist revenue ERT transfer failed** (`SPECREV_ert_transfer_failed`, NEW 2026-09-11) — an **ERT-share** transfer to ERT's connected account failed, **or ERT's connected account is not configured** (`ERT_CONNECT_ACCOUNT_ID[_SANDBOX]` unset — a missing secret is treated as an ordinary failure, not an exception); the nightly sweep will retry; auto-clears on success. **Also fires when the destination's transfers capability is not yet active** — a distinct branch with its own message, raised without calling Stripe at all (gotcha #489). The twin of the row above on the **other leg** of the same line — same area, same recipient, same action-required, `sort` 31 next to its 30. ONE title per request (`Specialist revenue ERT transfer FAILED — request #N`), so it dedupes across that request's lines, and it clears only when a run sends at least one leg and fails none. **HAS FIRED (2026-09-11):** raised once for request 37 line 86 when ERT's account was still onboarding, and **auto-cleared on the successful retry** — so both the raise and the clear are proven. | **Action required** | Jake | Payout engine ERT transfer failure, or a destination that cannot yet receive transfers — instant |

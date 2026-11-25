@@ -56,6 +56,10 @@ The transfer is paid from ERT's balance with the ERT key of the PLAN's mode (`ER
 
 **Sandbox:** there is no sandbox copy of VFO Services, so an ERT-sandbox connected account stands in. A custom-type account was refused until the platform acknowledged requirement-collection responsibilities; it was made with `controller[requirement_collection]=stripe` and finished through an account link. **Not acted on:** ERT's Platform setup page shows a Stripe "destination charges" integration notice unrelated to this leg. **Refunds:** VFO Services' `transfer.reversed` listener never sees a reversal made on ERT, so refunding a Tier 1 month means reversing its $25 transfer by hand.
 
+### VFO Services is a connected account of IAG too (2026-11-25)
+
+Destination only, for **VFOS IAG Inter-Company Transfer**: IAG is the platform, its balance pays, and the id lives in IAG's secrets (`VFOS_CONNECT_ACCOUNT_ID[_SANDBOX]` on IAG's project, never here). The same OAuth handshake as above with IAG's live client id; linked live 2026-11-25. `read_write` is the only scope Stripe offers a platform (#794). VFO reads the arriving `py_` payment with its own key and checks `source_transfer` before booking (#793). A reversal made on IAG's account is not seen here. Flow: [../flows/inter-company-transfers.md](../flows/inter-company-transfers.md).
+
 ### Rule 1 — CONFIG MINTS
 
 **`pipeline_sandbox_config.stripe_account`** (`'vfos'` default, `CHECK IN ('vfos','ert')`) decides which account a **NEW customer or checkout session for that pipeline is minted on**. It is the only place the choice is ever made, so moving a pipeline to ERT is one row edit and affects nothing that already exists. `integrations/sandbox-config.ts` surfaces it as `SandboxConfig.stripeAccount` (already normalized).

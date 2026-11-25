@@ -9,6 +9,22 @@
 
 ---
 
+## 2026-11-25 (c) — VFOS IAG Inter-Company Transfer: a sixth New Payment method, answered in IAG's own portal — by Jake
+
+Branches `claude/inter-company-transfer-portal-b0432c` (vfo-react) and `claude/inter-company-transfer-portal-77e9db` (edge), with a branch in each of IAG's two repos. Action count **719** (717 + `specialist_revenue_intercompany_check`, `specialist_revenue_intercompany_result`), **54** route pages (unchanged). One migration, `20261125200000_specrev_inter_company.sql` (seven columns and two indexes on `specialist_revenue_requests`, three templates on Send, two rules), on the test site, **live at release BEFORE the backend**. Security advisor green on the test site; drift: live lacks exactly those columns and indexes. **Release order: live migration, backend, IAG's website, this website** (until IAG's page is published the emailed link is a 404). Owed and watched: Issue JLathamERT/vfo-edge-functions#645.
+
+**What Jake asked for.** Jake builds both portals and wanted them joined: bill the IAG specialist from + New Payment, have the request appear in IAG's portal with an email and a bell, and have Accept move the money from IAG's Stripe to VFO's. The five older methods were re-ordered at the same time (Payment link, Recurring monthly, Bank transfer, Already paid, Record deals, then the new one; six cards in two rows of three).
+
+**Built (edge).** `utils/intercompany.ts` (the signed calls, twin in IAG's backend), `constants/iag-portal.ts`, `utils/intercompany-email.ts`, `actions/specialist-revenue/inter-company.ts`; the `inter_company` branch of send-request, the withdraw branch of delete-request, its own reminder in the payout sweep, its own copy of the invoice and receipt email, the method's name on the PDFs and the Payments ledger. **Built (website).** The option with the specialist locked, the statuses, the deny reason, the delete wording.
+
+**Decided (Jake).** IAG sees each line's recipient, total, deals and details, never the split. Invoice and receipt as for a payment link. A reason is required to deny. The 2-day reminder and 4-day follow-up bell apply. All three emails go to and greet the same two people at IAG. Request numbers are shown to nobody. VFO Services' Stripe account was linked to IAG's by OAuth with the access it carries explained first (`read_write`, the only scope Stripe offers).
+
+**Why it is built the way it is.** A request and its money now live in two databases, so each side proves the other: IAG asks VFO the request is still open for that amount after it has claimed it, and VFO reads the arrival on its own Stripe before it pays anyone. #793, #794.
+
+**Tested.** Offline, 40 checks with both portals' real handlers joined to a fake Stripe (double press, low balance, lost answers before and after sending, expired attempt, withdrawn, wrong amount, VFO down, repeated results). On the dev servers by Jake against `vfo-admin-api-jake` v99-v102 and IAG's backend v134 (v135 changed wording only): the not-set-up refusal, accept end to end in sandbox (transfer, received, share sent, documents made), deny with reason and bell, delete. **Not exercised (JLathamERT/vfo-edge-functions#645):** the live proof on Stripe, the reminder and follow-up bell, and on screen a balance too low, Check transfer and a reversed transfer.
+
+---
+
 ## 2026-11-25 (b) — Name on agreement (personal or company) in both onboardings, preferred names, no brackets or quotes in name boxes, test-site signing emails — by Jake
 
 Branches `claude/name-handling-onboarding-94f442` (vfo-react) and `claude/name-handling-onboarding-79dc9c` (edge). Action count **717** (716 + `save_onboarding_agreement_name`), **54** route pages (unchanged). One migration, `20261125170000_onboarding_agreement_name_preferred_name.sql` (four nullable columns: `agreement_name_mode` on both onboarding tables, `preferred_name` on `clients` and `members`), on the test site, live at release BEFORE the backend. No template or switch. Backend and website go out back to back: the old page cannot give the choice the new decision step needs. Security advisor green; drift: live is missing those four columns until the release. Owed: Issue JLathamERT/vfo-edge-functions#643. Gotcha #792 (and #749 updated).
