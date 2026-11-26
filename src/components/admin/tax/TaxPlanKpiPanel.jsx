@@ -72,6 +72,7 @@ function MoneyLines({ money }) {
 function StepTile({ step, strategies, blockedReason }) {
   const isImpl = step.number === 6
   const subs = isImpl ? (strategies || []) : []
+  const hasAmount = (step.money || []).some(m => m.amount !== null && m.amount !== undefined)
   return (
     <div style={tileStyle(step.tone)}>
       {/* Step 0 is the plan page's Set Up phase (Deposit Paid). */}
@@ -81,8 +82,10 @@ function StepTile({ step, strategies, blockedReason }) {
       {step.day && step.day.state !== 'hidden' && <div style={{ marginTop: '2px' }}><DayLine day={step.day} /></div>}
       {step.reason && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{step.reason}</span>}
       {step.number === 0 && blockedReason && <span style={{ fontSize: '12px', fontWeight: 600, color: '#e06717' }}>{blockedReason}</span>}
-      {step.number === 0 && step.paid_date && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Paid {fmtShortDate(step.paid_date)}</span>}
+      {/* A paid or refunded date shows only when the tile has no $ amount (Jake 2026-11-25). */}
+      {step.number === 0 && step.paid_date && !hasAmount && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Paid {fmtShortDate(step.paid_date)}</span>}
       <MoneyLines money={step.money} />
+      {step.refunded_date && !hasAmount && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Refunded {fmtShortDate(step.refunded_date)}</span>}
       {subs.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
           {subs.map(s => (
@@ -176,8 +179,10 @@ function Meta({ label, children }) {
 const hasShare = (v) => Number.isFinite(Number(v)) && v !== null && v !== '' && Number(v) > 0
 
 // The agreed split of the whole fee, as stored on the plan (not what has been collected).
-function RevenueSplit({ split }) {
+// A refunded retainer or deposit pays no share out, so it shows none.
+function RevenueSplit({ split, refund }) {
   const sp = split || {}
+  const refundedWhat = refund?.retainer ? 'retainer' : refund?.deposit ? 'deposit' : null
   const parties = [
     { key: 'member', label: 'Member', amount: sp.member_share, who: sp.member_name },
     { key: 'planner', label: 'Tax planner', amount: sp.tax_planner_share, who: sp.team },
@@ -190,9 +195,11 @@ function RevenueSplit({ split }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
       <span style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
         <span style={heading}>REVENUE SPLIT</span>
-        {parties.length > 0 && sp.split_label && <span style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', fontWeight: 500, minWidth: 0, overflowWrap: 'anywhere' }}>{sp.split_label}</span>}
+        {!refundedWhat && parties.length > 0 && sp.split_label && <span style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', fontWeight: 500, minWidth: 0, overflowWrap: 'anywhere' }}>{sp.split_label}</span>}
       </span>
-      {parties.length === 0 ? (
+      {refundedWhat ? (
+        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)' }}>None — the {refundedWhat} was refunded</span>
+      ) : parties.length === 0 ? (
         <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-faint)' }}>Split not set</span>
       ) : (
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '4px 18px', minWidth: 0 }}>
@@ -239,13 +246,12 @@ export default function TaxPlanKpiPanel({ plan, loading = false, error = '', fit
             : <span style={{ fontSize: '20px', fontWeight: 600, color: 'var(--vfo-faint)' }}>—</span>}
         </Meta>
         <Meta label="Total days"><DayLine day={plan.total_days} /></Meta>
-        {plan.stopped && <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 10px', borderRadius: '999px', background: '#e74c3c', color: '#fff' }}>Stopped</span>}
       </div>
 
       <StepRow plan={plan} isPhone={isPhone} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed var(--vfo-border-strong)' }}>
-        <RevenueSplit split={plan.split} />
+        <RevenueSplit split={plan.split} refund={plan.refund} />
       </div>
     </div>
   )

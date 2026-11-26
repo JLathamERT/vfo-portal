@@ -9,6 +9,18 @@
 
 ---
 
+## 2026-11-25 (i) — Tax Plan KPI Tracker shows refunds; the Stopped tag is gone — by Jake
+
+Branch `claude/tax-plan-kpis-refund-*` (edge: one migration; vfo-react: `TaxPlanKpiPanel.jsx` + docs). No edge code, template or switch; action count unchanged (731).
+
+**Why.** A client refunded at Client decision 1, and the panel under their Client Overview row still read *Retainer paid* on Step 3, nothing on Step 4, and the full three-way revenue split, though nobody was paid a share. A red *Stopped* tag sat in the header while active plans have none (tags are rare, TEAM_RULES §9).
+
+**Built.** `tax_plan_kpis` replaced by `20261125200000_tax_plan_kpis_refunds.sql` (applied on the test site twice while the layout was settled; live at release): Step 4 gains *Retainer refunded* (`refund_amount`) when `refund_status='succeeded'`; Step 1 gains *Deposit refunded* (a deposit is only refundable before the review says Proceed); Set Up gains *Deposit paid* from the intake's `deposit_amount_cents`, else the amount refunded; each row carries `refund` {retainer, deposit, amounts, dates} and `refunded_date` on the step. The panel shows REVENUE SPLIT as *None — the retainer (or deposit) was refunded*, drops the header tag, and shows a paid or refunded date only on a tile with no $ amount (Jake: one or the other). The KPI Summary reads only statuses and fee columns, so it is unchanged.
+
+**Tested** on the test site against seeded end states (two new test clients under member 10001, and an existing no-amount plan), with `vfo-admin-api-jake` v112 running this branch. Not exercised: a real refund run end to end, a partial retainer refund, a $30k-and-over plan refunded at Step 4. Those, the release check and the first live look are JLathamERT/vfo-edge-functions#654.
+
+---
+
 ## 2026-11-25 (h) — Inter-company transfer: book the money without the transfer id our Stripe cannot see — by Jake
 
 Branch `claude/inter-company-source-transfer` (edge, and vfo-react for docs). No migration, template or switch; action count unchanged.
