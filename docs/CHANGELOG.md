@@ -9,6 +9,16 @@
 
 ---
 
+## 2026-11-25 (h) — Inter-company transfer: book the money without the transfer id our Stripe cannot see — by Jake
+
+Branch `claude/inter-company-source-transfer` (edge, and vfo-react for docs). No migration, template or switch; action count unchanged.
+
+**What broke.** The first live transfer ($9,100, two members, sent by Tracy): IAG accepted at 6:51 pm and the money reached VFO Services, but VFO refused to book it. It reads the arriving payment with its own key, and there the payment names no transfer, so the check "it came from the transfer IAG named" failed. Nothing was paid, the shares stayed Pending and the action-required bell rang. The test site never ran that check, because a stand-in account receives the money there.
+
+**Fixed.** A transfer the payment does name must still be IAG's; the payer the payment names must be IAG's account (`IAG_STRIPE_ACCOUNT_ID`); amount, status, refunds and the unique payment id are checked as before. A payment with no transfer named is logged. IAG's sweep (leg X) tells VFO again each morning until VFO answers, so the stuck request books itself after the release, with its shares, invoice, memo and the bell cleared. #797.
+
+---
+
 ## 2026-11-25 (g) — VFO Specialist License Fees laid out like Membership Fees, with a Cancel license button — by Jake
 
 Branch `claude/license-fee-page-redesign-*` in both repos. Action count **731** (730 + `specialist_license_cancel`), **56** route pages (unchanged). Two migrations, on the test site, **live at release BEFORE the backend**: `20261125230000_specialist_license_canceled_at.sql` (DDL, new nullable `specialist_onboarding.lic_canceled_at`) and `20261125231000_specialist_license_cancel_email.sql` (data, the new `SPECIALIST_lic_cancel_confirmation` template, Send). Follow-ups: Issue JLathamERT/vfo-edge-functions#651.
