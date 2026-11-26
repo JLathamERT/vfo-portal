@@ -58,7 +58,7 @@ The transfer is paid from ERT's balance with the ERT key of the PLAN's mode (`ER
 
 ### VFO Services is a connected account of IAG too (2026-11-25)
 
-Destination only, for **VFOS IAG Inter-Company Transfer**: IAG is the platform, its balance pays, and the id lives in IAG's secrets (`VFOS_CONNECT_ACCOUNT_ID[_SANDBOX]` on IAG's project, never here). The same OAuth handshake as above with IAG's live client id; linked live 2026-11-25. `read_write` is the only scope Stripe offers a platform (#794). VFO reads the arriving `py_` payment with its own key and checks `source_transfer` before booking (#793). A reversal made on IAG's account is not seen here. Flow: [../flows/inter-company-transfers.md](../flows/inter-company-transfers.md).
+Destination only, for **VFOS IAG Inter-Company Transfer**: IAG is the platform, its balance pays, and the id lives in IAG's secrets (`VFOS_CONNECT_ACCOUNT_ID[_SANDBOX]` on IAG's project, never here). The same OAuth handshake as above with IAG's live client id; linked live 2026-11-25. `read_write` is the only scope Stripe offers a platform (#794). VFO reads the arriving `py_` payment with its own key and checks the amount and that IAG's account paid it before booking (#793; its `source_transfer` is blank to our key, #797). A reversal made on IAG's account is not seen here. Flow: [../flows/inter-company-transfers.md](../flows/inter-company-transfers.md).
 
 ### Rule 1 — CONFIG MINTS
 
