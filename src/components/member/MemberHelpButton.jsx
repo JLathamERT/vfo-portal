@@ -5,9 +5,11 @@ import { wistiaEmbedUrl } from '../shared/wistia'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { Skeleton } from '../shared/Skeleton'
 
-// The member portal Help button: a fixed blue circle bottom-right on every
-// /member page (mounted once from App.jsx via MemberHelpMount, so it follows
-// the member across the portal, client detail, settings — everything). Opens
+// The portal Help button: a fixed blue circle bottom-right on every /member page
+// (mounted once from App.jsx via MemberHelpMount, so it follows the member across
+// the portal, client detail, settings — everything) and, since 2026-11-27, on the
+// client portal (ClientHelpMount, /client). Each portal sees only its own FAQs:
+// faq_load picks the member or client portal's rows from the session. Opens
 // a panel with a search box and ONE list of FAQs, grouped under the admin's
 // categories (a question may carry text, a Wistia video, a PDF or any mix),
 // fed by faq_load (active rows only, ordered by the FAQ Editor's sort_order).
@@ -22,6 +24,16 @@ export function MemberHelpMount() {
   const session = getSession()
   const onMemberPage = pathname.startsWith('/member') && pathname !== '/member/login'
   if (!onMemberPage || session?.role !== 'member') return null
+  return <MemberHelpButton />
+}
+
+// The client portal's own Help button (2026-11-27): the same panel, the client
+// portal's FAQs. The client portal is the one /client page (its login is
+// /client/login and its set-up page /client-setup).
+export function ClientHelpMount() {
+  const { pathname } = useLocation()
+  const session = getSession()
+  if (pathname !== '/client' || session?.role !== 'client') return null
   return <MemberHelpButton />
 }
 

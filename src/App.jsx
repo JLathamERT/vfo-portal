@@ -94,7 +94,7 @@ const MembershipPayPage = lazyPage(() => import('./pages/MembershipPayPage'))
 const PortalLicensePayPage = lazyPage(() => import('./pages/PortalLicensePayPage'))
 const MembershipMeetingPage = lazyPage(() => import('./pages/MembershipMeetingPage'))
 const OnboardingMeetingPage = lazyPage(() => import('./pages/OnboardingMeetingPage'))
-import { MemberHelpMount } from './components/member/MemberHelpButton'
+import { MemberHelpMount, ClientHelpMount } from './components/member/MemberHelpButton'
 import { PhoneNoticeMount } from './components/shared/PhoneNotReady'
 // Dev server only: the portal in phone-sized frames. A production build drops
 // this branch, so neither the route nor the file is ever published.
@@ -171,6 +171,7 @@ export default function App() {
     </Routes>
     </Suspense>
     <MemberHelpMount />
+    <ClientHelpMount />
     <PhoneNoticeMount />
     </>
   )

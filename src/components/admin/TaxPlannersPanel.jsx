@@ -7,7 +7,7 @@ import VaultSections from '../shared/VaultSections'
 import VaultDropLink from '../shared/VaultDropLink'
 import ImageCropModal from './ImageCropModal'
 import ListFilterButton, { matchesFilter, sortByJoin, SortSelect } from './ListFilterButton'
-import ListTable, { ListName, ListPill, ListText, listSearchStyle } from '../shared/ListTable'
+import ListTable, { ListName, ListPill, ListText, listSearchStyle, LIST_PAGE_MAX_WIDTH } from '../shared/ListTable'
 import TaxPlannerKpiPanel from './TaxPlannerKpiPanel'
 import { DirectoryListSkeleton, KpiPageSkeleton, StrategicPartnersSkeleton, TableSkeleton } from '../shared/Skeleton'
 import { HeroAvatar, ListHeader } from '../shared/TrackKit'
@@ -228,14 +228,19 @@ export default function TaxPlannersPanel({ section }) {
       }
       if (headshotFilename) planner.headshot_image = headshotFilename
       await callApi('save_tax_planner', { planner, editing_id: which === 'edit' ? editingId : null })
-      const list = await load()
       if (which === 'add') {
+        await load()
         clearAddForm()
         showStatus('add', 'success', 'Tax planner added!')
       } else {
+        // Saved: straight back to the profile itself, showing what was saved
+        // (2026-11-27); the quiet re-read then swaps in the stored row.
+        setSelectedPlanner(p => (p ? { ...p, ...planner } : p))
+        setPlannerTab('profile'); window.scrollTo(0, 0)
+        showStatus('edit', 'success', 'Changes saved!')
+        const list = await load(true)
         const updated = (list || []).find(p => p.id === editingId)
         if (updated) setSelectedPlanner(updated)
-        showStatus('edit', 'success', 'Changes saved!')
       }
     } catch (err) {
       showStatus(which, 'error', err.message)
@@ -407,7 +412,7 @@ export default function TaxPlannersPanel({ section }) {
 
   // ---- Section: Tax Planner Search (list + detail) ----
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: selectedPlanner ? '900px' : LIST_PAGE_MAX_WIDTH, margin: '0 auto', padding: '24px' }}>
       {cropState && <ImageCropModal src={cropState.src} onApply={applyCrop} onCancel={() => setCropState(null)} />}
 
       {loading && <DirectoryListSkeleton numbered={false} chip />}

@@ -299,21 +299,23 @@ export default function ClientDetail() {
   // Holistic. Written via history.replaceState so react-router never observes
   // it — the data-load effect keys off [clientId] only, so this cannot re-fire
   // it or push history entries. Also self-corrects a stale ?tab= carried over
-  // from a different program.
+  // from a different program. A client in no program keeps its ?tab= too (CIQ,
+  // Vault...), once the load has said there is no program.
   useEffect(() => {
-    if (!program?.id) return
-    if (activeTab !== 'home' && !validTabsForProgram(program).includes(activeTab)) {
+    if (!program?.id && (loading || !client)) return
+    if (program?.id && activeTab !== 'home' && !validTabsForProgram(program).includes(activeTab)) {
       setActiveTab('home')
       return
     }
     const params = new URLSearchParams(window.location.search)
-    params.set('program', String(program.id))
+    if (program?.id) params.set('program', String(program.id))
+    else params.delete('program')
     params.set('tab', activeTab)
     params.delete('_from')
     // Keep react-router's own state (its idx tells handleBack whether there is an
     // in-app page to go back to).
     window.history.replaceState(window.history.state, '', window.location.pathname + '?' + params.toString())
-  }, [program?.id, activeTab])
+  }, [program?.id, activeTab, loading, !!client])
 
   // A client in no program has no program tabs: a ?tab= carried in the URL
   // (e.g. tab=map1) falls back to Profile instead of an empty page.
@@ -497,7 +499,7 @@ export default function ClientDetail() {
               <MemberCIQ key={`ciq-${client.id}`} memberNumber={isMember && !isMirror ? session.member_number : client.member_number} memberName={client.member_name || client.member_number}
                 ciqEnabled={isMember ? session.ciq_enabled : true} ciqVfosManaged={isMember ? session.ciq_vfos_managed : true} isAdmin={isAdmin} client={client} readOnly={isMirror} />
             )}
-            {activeTab === 'details' && isAdmin && <ClientDetails client={client} onUpdate={loadData} sectionStyle={sectionStyle} />}
+            {activeTab === 'details' && isAdmin && <ClientDetails client={client} onUpdate={loadData} onSaved={() => { setActiveTab('home'); window.scrollTo(0, 0) }} sectionStyle={sectionStyle} />}
             {pfLocked && program && PROGRAM_TABS.includes(activeTab) && (
               <div style={{ ...sectionStyle, borderColor: 'rgba(231,76,60,0.3)', textAlign: 'center', padding: '40px' }}>
                 <div style={{ fontSize: '15px', color: 'var(--vfo-muted)' }}>Please Select a PF</div>
@@ -914,7 +916,7 @@ function DirectAddNote({ clientId, notes, onNotesChange, programName }) {
   )
 }
 
-function ClientDetails({ client, onUpdate, sectionStyle }) {
+function ClientDetails({ client, onUpdate, onSaved, sectionStyle }) {
   const [firstName, setFirstName] = useState(client?.first_name || '')
   const [lastName, setLastName] = useState(client?.last_name || '')
   const [preferredName, setPreferredName] = useState(client?.preferred_name || '')
@@ -934,6 +936,7 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
     const f = formatPersonName(firstName), l = formatPersonName(lastName), pn = formatPreferredName(preferredName), em = cleanText(email)
     setFirstName(f); setLastName(l); setPreferredName(pn); setEmail(em)
     if (!f || !l) { setErrorText('First and last name are required.'); setStatus('error'); return }
+    if (!em && cleanText(client?.email)) { setErrorText('Email is required.'); setStatus('error'); return }
     const changed = [[f, client?.first_name], [l, client?.last_name], [pn, client?.preferred_name]].filter(([now, was]) => now !== cleanText(was)).map(([now]) => now)
     const badName = nameProblem(...changed)
     if (badName) { setErrorText(badName); setStatus('error'); return }
@@ -943,7 +946,8 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
       await callApi('msm_update_client', { client_id: client.id, status: client.status, first_name: f, last_name: l, preferred_name: pn, email: em, phone: cleanText(phone) })
       setStatus('saved')
       onUpdate?.(true)
-      setTimeout(() => setStatus(''), 4000)
+      // Saved: back to the profile itself (2026-11-27).
+      onSaved?.()
     } catch (err) { setErrorText(err.status === 409 || err.status === 400 ? err.message : 'Something went wrong'); setStatus('error') }
     finally { setSaving(false) }
   }
@@ -952,12 +956,12 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
     <div>
       <ProfileCard icon="user" title="Primary Contact">
         <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name</label><input value={firstName} onChange={e => setFirstName(e.target.value)} onBlur={() => setFirstName(formatPersonName(firstName))} style={inputStyle} /></div>
-          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name</label><input value={lastName} onChange={e => setLastName(e.target.value)} onBlur={() => setLastName(formatPersonName(lastName))} style={inputStyle} /></div>
+          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={firstName} onChange={e => setFirstName(e.target.value)} onBlur={() => setFirstName(formatPersonName(firstName))} style={inputStyle} /></div>
+          <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={lastName} onChange={e => setLastName(e.target.value)} onBlur={() => setLastName(formatPersonName(lastName))} style={inputStyle} /></div>
           <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Preferred Name (optional)</label><input value={preferredName} onChange={e => setPreferredName(e.target.value)} onBlur={() => setPreferredName(formatPreferredName(preferredName))} maxLength={60} placeholder="If different from the first name" style={inputStyle} /></div>
         </div>
         <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Email</label><input value={email} onChange={e => setEmail(e.target.value)} onBlur={() => setEmail(cleanText(email))} type="email" style={inputStyle} /></div>
+          <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Email{cleanText(client?.email) ? ' *' : ''}</label><input value={email} onChange={e => setEmail(e.target.value)} onBlur={() => setEmail(cleanText(email))} type="email" style={inputStyle} /></div>
           <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Phone</label><PhoneInput value={phone} onChange={setPhone} style={inputStyle} /></div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

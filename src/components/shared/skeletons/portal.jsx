@@ -286,18 +286,61 @@ export function MemberTabSkeleton({ tab }) {
       </div>
     )
   }
-  if (tab === 'tax_diagnostic') {
-    return (
-      <div style={{ maxWidth: '1500px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
-        <PageHeadingSkeleton />
-        <PillTabsSkeleton widths={[130, 110]} style={{ marginBottom: '18px' }} />
-        <div style={{ maxWidth: '900px' }}>
-          <CardShell pad="var(--vfo-card-pad)"><Skeleton width={190} height={16} style={{ marginBottom: '18px' }} />{[0, 1, 2, 3].map(i => <div key={i} style={{ marginBottom: '16px' }}><Skeleton width={140} height={11} /><Skeleton height={40} style={{ borderRadius: '8px', marginTop: '7px' }} /></div>)}</CardShell>
-        </div>
-      </div>
-    )
-  }
+  if (tab === 'tax_diagnostic') return <MemberTaxDiagnosticSkeleton />
   return <MemberProfileSkeleton />
+}
+
+// The member's Tax Diagnostic tab (MemberTaxDiagnostic) as it opens: the heading,
+// the two view pills with Refresh on the right, then the Submitted Diagnostics cards.
+export function MemberTaxDiagnosticSkeleton() {
+  const isPhone = useIsPhone()
+  const pill = (w, extra) => <Skeleton width={w} height={32} style={{ borderRadius: '999px', flexShrink: 0, ...extra }} />
+  return (
+    <div style={{ padding: isPhone ? '16px var(--vfo-gutter)' : '24px', maxWidth: '1500px', margin: '0 auto' }}>
+      <div style={{ marginBottom: '18px' }}>
+        <Skeleton width={130} height={12} />
+        <Skeleton width={170} height={24} style={{ marginTop: '8px' }} />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+        {pill(isPhone ? 108 : 196)}
+        {pill(isPhone ? 84 : 166)}
+        {pill(isPhone ? 32 : 76, { marginLeft: 'auto', ...(isPhone ? { borderRadius: '50%' } : {}) })}
+      </div>
+      <TaxDiagnosticCardsSkeleton />
+    </div>
+  )
+}
+
+// The member's Submitted Diagnostics cards (DiagnosticCard, memberMode, closed):
+// name + the facts line, the status chip and the Open button. Phone: name and chip
+// over one fact per line, the round open button on the right.
+export function TaxDiagnosticCardsSkeleton({ cards = 3 }) {
+  const isPhone = useIsPhone()
+  return Array.from({ length: cards }).map((_, i) => (
+    <CardShell key={i} pad={isPhone ? 'var(--vfo-card-pad)' : '24px'} style={{ marginBottom: isPhone ? '12px' : '20px' }}>
+      {isPhone ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <Skeleton width={140} height={16} style={{ maxWidth: '100%' }} />
+              <Skeleton width={84} height={22} style={{ borderRadius: '999px', flexShrink: 0 }} />
+            </div>
+            {[160, 190].map((w, j) => <Skeleton key={j} width={w} height={12} style={{ marginTop: j ? '6px' : '8px', maxWidth: '100%' }} />)}
+          </div>
+          <Skeleton width={30} height={30} style={{ borderRadius: '50%', flexShrink: 0 }} />
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Skeleton width={180} height={16} style={{ maxWidth: '100%' }} />
+            <Skeleton width={420} height={12} style={{ marginTop: '8px', maxWidth: '100%' }} />
+          </div>
+          <Skeleton width={96} height={24} style={{ borderRadius: '999px', flexShrink: 0 }} />
+          <Skeleton width={72} height={30} style={{ borderRadius: '999px', flexShrink: 0 }} />
+        </div>
+      )}
+    </CardShell>
+  ))
 }
 
 // Set-up pages (/member-setup, /set-password): the 480px column with its centred

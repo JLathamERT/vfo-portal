@@ -223,6 +223,12 @@ export default function MemberProfileDetails({
         </div>}
       </div>
 
+      {profile.bio && (
+        <ProfileCard icon="text" title="Bio">
+          <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.75, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.bio}</div>
+        </ProfileCard>
+      )}
+
       {shows('logo') && <ProfileCard icon="image" title="Logo"
         sub={adminView
           ? "Shown on this member's clients' ROI presentations, beside the VFO Services logo and the tax planning team's logo."
@@ -246,12 +252,6 @@ export default function MemberProfileDetails({
           <PeopleGroup title="Connections" people={connections} onOpenMember={onOpenMember} first={!introducedBy.length && !introducerOf.length} />
           <PeopleGroup title="Corporate Members" people={corporate} onOpenMember={onOpenMember} first={!introducedBy.length && !introducerOf.length && !connections.length} />
           <PeopleGroup title="Lead Member" people={lead} onOpenMember={onOpenMember} first={!introducedBy.length && !introducerOf.length && !connections.length && !corporate.length} />
-        </ProfileCard>
-      )}
-
-      {profile.bio && (
-        <ProfileCard icon="text" title="Bio">
-          <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.75, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.bio}</div>
         </ProfileCard>
       )}
 

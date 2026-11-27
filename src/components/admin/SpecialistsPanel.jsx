@@ -9,7 +9,7 @@ import SpecialistPaymentsTab from '../payments/SpecialistPaymentsTab'
 import SendSetupEmailButton from './SendSetupEmailButton'
 import SpecialistKpiPanel from './SpecialistKpiPanel'
 import ListFilterButton, { matchesFilter, sortByJoin, SortSelect } from './ListFilterButton'
-import ListTable, { ListName, ListPill, ListText, listSearchStyle } from '../shared/ListTable'
+import ListTable, { ListName, ListPill, ListText, listSearchStyle, LIST_PAGE_MAX_WIDTH } from '../shared/ListTable'
 import ImageCropModal from './ImageCropModal'
 import { formatDate } from '../../lib/dates'
 import ExportButton from '../shared/ExportButton'
@@ -184,6 +184,12 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
   const [selectedExpert, setSelectedExpert] = useState(null)
   const [specialistTab, setSpecialistTab] = useState('profile')
   const [profileDropOpen, setProfileDropOpen] = useState(false)
+  // The open specialist follows a refreshed list, so the profile shows what was saved.
+  useEffect(() => {
+    if (!selectedExpert) return
+    const fresh = allExperts.find(e => e.id === selectedExpert.id)
+    if (fresh && fresh !== selectedExpert) setSelectedExpert(fresh)
+  }, [allExperts])
   const [searchParams] = useSearchParams()
   const [profileOrigin, setProfileOrigin] = useState(null)
 
@@ -357,6 +363,12 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
         expertData.id = maxId + 1
       }
       await callApi('save_specialist', { expert: expertData, ecosystems, editing_id: which === 'edit' ? editingId : null })
+      // Saved: straight back to the profile itself, showing what was saved
+      // (2026-11-27); the refreshed list then swaps in the stored row.
+      if (which === 'edit') {
+        setSelectedExpert(e => (e ? { ...e, ...expertData } : e))
+        setSpecialistTab('profile'); window.scrollTo(0, 0)
+      }
       await onDataChange()
       showStatus(which, 'success', which === 'add' ? 'Specialist added!' : 'Changes saved!')
       if (which === 'add') clearAddForm()
@@ -617,7 +629,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
   }
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: activeTab === 'edit' && !selectedExpert ? LIST_PAGE_MAX_WIDTH : '900px', margin: '0 auto', padding: '24px' }}>
       {cropState && <ImageCropModal src={cropState.src} onApply={applyCrop} onCancel={() => setCropState(null)} />}
       {/* Section title */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
