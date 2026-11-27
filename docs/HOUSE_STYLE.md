@@ -61,9 +61,10 @@
 
 ### Sub-tabs, mini-tabs and filters
 
-- **Sub-tabs (the top level): the pills of `AccountingCombinedPanel`.** Active is the navy-to-blue gradient, the rest are white with a grey border. Only the open tab is mounted, and the choice is remembered when the person leaves and comes back. Render through the component; never hand-roll the pill row. It is the only sub-tab pill (Jake, 2026-11-27): KPI pages' `SubTabButton` (solid blue), the filter pills and the profile tab bars change to it.
+- **Sub-tabs (the top level): `SubTabs`** (`shared/SubTabs.jsx`, the pill `AccountingCombinedPanel` draws). Active is the navy-to-blue gradient, the rest are white with a grey border. Only the open tab is mounted, and the choice is remembered when the person leaves and comes back. Never hand-roll the pill row. It is the only sub-tab pill (Jake, 2026-11-27): KPI pages' solid-blue pills and the filter pills changed to it.
+- **A profile's tab bar is not a sub-tab** (Jake, 2026-11-27). The bar along the top of a profile (a member, a client, a tax planner: Profile, Vault, Programs, Showroom ▾...) is that profile's main menu: solid blue active pill on a ruled line, some tabs opening a dropdown, matching the member's own portal bar. It keeps its own look. Today it is copied in `MembersPanel`, `MSMTracking`, `TaxPlannersPanel` and `pages/ClientDetail.jsx`; it becomes one shared piece when next touched.
 - **Pill labels are short** and never repeat the page title: "Revenue", not "Holistic Planning Revenue" on the Holistic Planning page.
-- **Mini-tabs (a second level inside a sub-tab):** the rectangular 8px-corner tabs, as "By specialist / By member" on VFO Specialist Revenue.
+- **Mini-tabs (a second level inside a sub-tab, or a status filter with counts):** `MiniTabs` (`shared/SubTabs.jsx`), the rectangular 8px-corner tabs, as "By specialist / By member" on VFO Specialist Revenue.
 - **Filters:** on a list, `ListFilterButton` + `SortSelect`; on a money page, period `<select>`s (Year, Month) and a Refresh button. Counts can sit in a pill label ("Open (4)").
 
 ### Cards
@@ -244,7 +245,7 @@ A square checkbox for a step, a step without `vfo-stepname`, a date in a differe
 
 The full list, with file and line, is Issue JLathamERT/vfo-edge-functions#661 (from the 2026-11-27 scan). The biggest groups:
 
-- **Sub-tab pills drawn five ways.** The Accounting gradient (and copies in Growth Credits, Events, FAQ Editor, Membership Fees, Implementation), the KPI solid blue (and Portal Backlog), Tax Diagnostics' filter pills, Client Overview's program pills, and the profile tab bar with a glow (Members, MSM, Tax Planners, the client page).
+- **Sub-tab pills drawn four ways** (Part 1 of the Issue). The Accounting gradient (and copies in Growth Credits, Events, FAQ Editor, Membership Fees, Implementation), the KPI solid blue (and Portal Backlog), Tax Diagnostics' filter pills and Client Overview's program pills.
 - **Page headers drawn six ways,** and eleven page widths.
 - **Accounting:** Outstanding Payment Links in three implementations; five Reconciliation tabs and four Revenue tabs that re-type the table styles; no `tabular-nums` anywhere; a dozen raw statuses shown without `paymentStatusLabel`; Held Payouts dates in MM/DD/YYYY beside "Nov 15, 2026" everywhere else; a License fee total that prints "$0.00".
 - **Trackers:** no shared step row (every program copies it); tinted step buttons (Issue #640); Tax overrides `StepDate` with a read-only copy, so its dates cannot be edited; Advisor / Accountant onboarding rows pass a date-change handler that is never used; Specialist onboarding rows have no date.
