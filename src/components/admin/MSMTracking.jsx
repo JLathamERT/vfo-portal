@@ -1020,8 +1020,12 @@ function MemberAllClients({ member, enrollments, allowedProgramKeys }) {
   const memberNumber = member.plugin_member_number
   const programs = PROGRAMS.filter(p => !['coaching', 'standard'].includes(p.key) && (!allowedProgramKeys || allowedProgramKeys.includes(p.key)))
   const hasAccountantTab = programs.some(p => isAccountantProgram(p.name))
-  const subTabKey = 'adminMemberClientsSubTab'
-  const [sub, setSub] = useState(() => (hasAccountantTab && sessionStorage.getItem(subTabKey) === 'accountants') ? 'accountants' : 'clients')
+  // The sub-tab is remembered per member (Back from a client page returns to it);
+  // another member opens on Clients unless Accountants was picked for them.
+  const subTabKey = `adminMemberClientsSubTab:${memberNumber}`
+  const savedSub = () => (hasAccountantTab && sessionStorage.getItem(subTabKey) === 'accountants') ? 'accountants' : 'clients'
+  const [sub, setSub] = useState(savedSub)
+  useEffect(() => { setSub(savedSub()) }, [memberNumber])
   const [rows, setRows] = useState([])
   const [contactsMap, setContactsMap] = useState({})
   const [loading, setLoading] = useState(true)
