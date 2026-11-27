@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { TrackHero } from '../shared/TrackKit'
-import { cardStyle, accentStrip, miniLabel, NumBadge, Radios, GrowthNeed, StepNav, NameCombo, buildNamePool } from './ui'
+import { cardStyle, miniLabel, NumBadge, Radios, GrowthNeed, StepNav, NameCombo, buildNamePool } from './ui'
 import { displayNumbers } from './grouping'
 
 const LEVELS = [{ value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }]
-const fieldGroup = { background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px', padding: '11px 16px' }
+// ProfileKit's Field tile.
+const fieldGroup = { background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '10px 14px' }
 
 export default function GrowthBuildPlan({ memberNumber, bundle, reload, onNavigate }) {
   const onePage = (bundle.actions || [])
@@ -66,8 +67,7 @@ export default function GrowthBuildPlan({ memberNumber, bundle, reload, onNaviga
       />
       {rows.map((r, i) => (
         <div key={r.id} style={cardStyle}>
-          <div style={accentStrip} />
-          <div style={{ padding: '16px 20px' }}>
+          <div style={{ padding: 'var(--vfo-card-pad)' }}>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '14px' }}>
               <NumBadge n={labels.get(r.id) || (i + 1)} />
               <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--vfo-heading)', lineHeight: 1.5, paddingTop: '3px' }}>{r.action_text}</div>

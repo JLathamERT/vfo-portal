@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { useIsPhone } from '../../lib/useMediaQuery'
+import { TrackHero } from './TrackKit'
+import { BackLink, DotText, ProfileCard, formInput } from './ProfileKit'
 
 // Portal licensing L4 (2026-10-16, decision 41): the READ-ONLY One Page Plan —
 // what a Premium client sees on their portal's My Plan tab. (The member client
@@ -9,9 +12,12 @@ import { useState } from 'react'
 // item = { key, label, section, detail, decision, notes, progress }.
 // Same sections and wording as the member's own One Page Plan in MemberCIQ.jsx,
 // which this deliberately does NOT replace — no Update Progress, no Park / Drop.
+// The look matches it too (2026-11-27 house style): a hero, the round sub-tab
+// pills, the three ProfileKit boxes, history rows as soft tiles.
 
-const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-const subTabStyle = active => ({ padding: '8px 20px', borderRadius: '6px', border: active ? '1px solid #0095ff' : '1px solid var(--vfo-border)', background: active ? 'rgba(0,149,255,0.15)' : 'transparent', color: active ? 'var(--vfo-ink)' : 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' })
+const pillTab = (on) => ({ padding: '8px 16px', borderRadius: '99px', border: '1px solid ' + (on ? 'transparent' : 'var(--vfo-border-strong)'), background: on ? 'linear-gradient(90deg, #002973 0%, #125ecc 100%)' : 'var(--vfo-card)', color: on ? '#fff' : 'var(--vfo-ink-2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' })
+const rowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '11px 14px', marginBottom: '6px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', cursor: 'pointer' }
+const PhoneChevron = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--vfo-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><polyline points="9 6 15 12 9 18" /></svg>
 
 function fmtDate(iso) {
   if (!iso) return ''
@@ -30,14 +36,14 @@ function itemText(item) {
 }
 
 function Items({ items }) {
-  if (items.length === 0) return <div style={{ color: 'var(--vfo-muted)', fontSize: '14px', padding: '12px 0' }}>None</div>
-  return items.map(item => {
+  if (items.length === 0) return <div style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>None</div>
+  return items.map((item, i) => {
     const { label, section } = itemText(item)
     return (
-      <div key={item.key} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+      <div key={item.key} style={{ paddingTop: i > 0 ? '11px' : 0, paddingBottom: i < items.length - 1 ? '11px' : 0, borderTop: i > 0 ? '1px solid var(--vfo-border-soft)' : 'none' }}>
         <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{label}{item.notes ? ` — ${item.notes}` : ''}</div>
         <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{section}</div>
-        {item.progress === 'in_progress' && <div style={{ fontSize: '11px', color: '#e06717', fontWeight: 600, marginTop: '4px' }}>In Progress</div>}
+        {item.progress === 'in_progress' && <DotText color="#e06717" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-ink)', marginTop: '6px' }}><span>In Progress</span></DotText>}
       </div>
     )
   })
@@ -49,22 +55,10 @@ function PlanSections({ items, showCompleted }) {
   const completed = items.filter(p => p.decision === 'prioritize' && p.progress === 'completed')
   return (
     <>
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--vfo-heading)', marginBottom: '2px' }}>Immediate Priorities</div>
-        <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontStyle: 'italic', marginBottom: '12px' }}>We will begin to address these priorities with immediate effect</div>
-        <div style={sectionStyle}><Items items={immediate} /></div>
-      </div>
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--vfo-heading)', marginBottom: '2px' }}>Parked Priorities</div>
-        <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontStyle: 'italic', marginBottom: '12px' }}>We will reconsider these parked priorities at our next Partners In Planning Meeting</div>
-        <div style={sectionStyle}><Items items={parked} /></div>
-      </div>
+      <ProfileCard icon="flag" title="Immediate Priorities" sub="We will begin to address these priorities with immediate effect"><Items items={immediate} /></ProfileCard>
+      <ProfileCard icon="lock" title="Parked Priorities" sub="We will reconsider these parked priorities at our next Partners In Planning Meeting"><Items items={parked} /></ProfileCard>
       {showCompleted && completed.length > 0 && (
-        <div style={{ marginBottom: '24px' }}>
-          <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--vfo-success-text)', marginBottom: '2px' }}>Completed</div>
-          <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontStyle: 'italic', marginBottom: '12px' }}>Priorities that have been addressed and completed</div>
-          <div style={sectionStyle}><Items items={completed} /></div>
-        </div>
+        <ProfileCard icon="award" tone="green" title="Completed" sub="Priorities that have been addressed and completed"><Items items={completed} /></ProfileCard>
       )}
     </>
   )
@@ -74,6 +68,7 @@ export default function OnePagePlanView({ plans, title, subtitle, emptyText }) {
   const [planIdx, setPlanIdx] = useState(0)
   const [subTab, setSubTab] = useState('latest')
   const [snapshot, setSnapshot] = useState(null)
+  const isPhone = useIsPhone()
 
   if (!plans || plans.length === 0) {
     return <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)', fontSize: '14px' }}>{emptyText || 'No One Page Plan yet.'}</div>
@@ -82,25 +77,31 @@ export default function OnePagePlanView({ plans, title, subtitle, emptyText }) {
 
   return (
     <div>
-      <div style={{ marginBottom: '20px' }}>
-        {title !== '' && <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{title || 'One Page Plan'}{subtitle && <span style={{ fontSize: '14px', fontWeight: '400', color: 'var(--vfo-muted)' }}> {subtitle}</span>}</div>}
-        {plans.length > 1 && (
-          <select value={planIdx} onChange={e => { setPlanIdx(Number(e.target.value)); setSubTab('latest'); setSnapshot(null) }}
-            style={{ marginTop: '10px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
-            {plans.map((p, i) => <option key={p.ciq_id} value={i}>Plan completed {fmtDate(p.priorities_completed_at)}</option>)}
-          </select>
-        )}
-      </div>
+      {/* The title: the hero on a computer; on a phone a plain heading (a card
+          holding only a title is a card for one value). */}
+      {title !== '' && (isPhone ? (
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--vfo-heading)', lineHeight: 1.2, marginBottom: '14px' }}>
+          {title || 'One Page Plan'}{subtitle && <span style={{ fontSize: '14px', fontWeight: 500, letterSpacing: 0, color: 'var(--vfo-muted)' }}> {subtitle}</span>}
+        </div>
+      ) : (
+        <TrackHero title={<>{title || 'One Page Plan'}{subtitle && <span style={{ fontSize: '14px', fontWeight: 500, letterSpacing: 0, color: 'var(--vfo-muted)' }}> {subtitle}</span>}</>} />
+      ))}
+      {plans.length > 1 && (
+        <select value={planIdx} onChange={e => { setPlanIdx(Number(e.target.value)); setSubTab('latest'); setSnapshot(null) }}
+          style={{ ...formInput, width: 'auto', maxWidth: '100%', marginBottom: '14px' }}>
+          {plans.map((p, i) => <option key={p.ciq_id} value={i}>Plan completed {fmtDate(p.priorities_completed_at)}</option>)}
+        </select>
+      )}
 
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '24px' }}>
-        <button onClick={() => { setSubTab('latest'); setSnapshot(null) }} style={subTabStyle(subTab === 'latest')}>Latest Version</button>
-        <button onClick={() => setSubTab('history')} style={subTabStyle(subTab === 'history')}>History</button>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
+        <button onClick={() => { setSubTab('latest'); setSnapshot(null) }} style={pillTab(subTab === 'latest')}>Latest Version</button>
+        <button onClick={() => setSubTab('history')} style={pillTab(subTab === 'history')}>History</button>
       </div>
 
       {subTab === 'latest' && (
         <div>
-          <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '12px' }}>Plan Completed on {fmtDate(plan.priorities_completed_at)}</div>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: '1.8', marginBottom: '24px', paddingLeft: '4px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '14px' }}>Plan Completed on {fmtDate(plan.priorities_completed_at)}</div>
+          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: '1.8', marginBottom: '18px' }}>
             Having completed: Client Information Questionnaire to identify areas of interest, and Prioritization Process to determine immediate / later areas of focus.
           </div>
           <PlanSections items={plan.items} showCompleted />
@@ -110,20 +111,17 @@ export default function OnePagePlanView({ plans, title, subtitle, emptyText }) {
       {subTab === 'history' && (
         snapshot ? (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>Version from {fmtDate(snapshot.saved_at)}</div>
-              <button onClick={() => setSnapshot(null)} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }}>← Back to list</button>
-            </div>
+            <BackLink onClick={() => setSnapshot(null)}>Back to list</BackLink>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', marginBottom: '16px' }}>Version from {fmtDate(snapshot.saved_at)}</div>
             <PlanSections items={snapshot.items} showCompleted={false} />
           </div>
         ) : (
           plan.history.length === 0
             ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No earlier versions yet.</div>
             : plan.history.map((snap, i) => (
-              <div key={`${snap.saved_at}-${i}`} onClick={() => setSnapshot(snap)}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', cursor: 'pointer' }}>
+              <div key={`${snap.saved_at}-${i}`} onClick={() => setSnapshot(snap)} style={rowStyle}>
                 <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{fmtDate(snap.saved_at)} at {String(snap.saved_at || '').split('T')[1]?.substring(0, 5)}</div>
-                <span style={{ color: '#0095ff', fontWeight: 600, fontSize: '12px' }}>View →</span>
+                {isPhone ? <PhoneChevron /> : <span style={{ color: 'var(--vfo-link)', fontWeight: 600, fontSize: '12px' }}>View →</span>}
               </div>
             ))
         )

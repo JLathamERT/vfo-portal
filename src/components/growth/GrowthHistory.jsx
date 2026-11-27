@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { TrackHero } from '../shared/TrackKit'
-import { NAVY, INK, MUTED, BLUE, cardStyle, accentStrip } from './ui'
-import { SkeletonText, StackedCardsSkeleton } from '../shared/Skeleton'
+import { INK, MUTED, BLUE, rowRule } from './ui'
+import { ProfileCard } from '../shared/ProfileKit'
+import { Skeleton, SkeletonText, HeroSkeleton, ProfileCardSkeleton } from '../shared/Skeleton'
 
 const EVENT_LABEL = {
   scored: 'Plan scored',
@@ -55,56 +56,58 @@ export default function GrowthHistory({ memberNumber, onNavigate }) {
     return () => { alive = false }
   }, [memberNumber])
 
-  if (loading) return <StackedCardsSkeleton cards={3} gap="14px" />
+  if (loading) return (
+    <div>
+      <HeroSkeleton />
+      {[0, 1].map(c => (
+        <ProfileCardSkeleton key={c} titleWidth={c ? 110 : 120}>
+          {[0, 1, 2].map(i => <div key={i} style={{ padding: '11px 0', borderTop: i ? '1px solid var(--vfo-border-soft)' : 'none' }}><Skeleton width={i % 2 ? '40%' : '55%'} height={13} /><Skeleton width={200} height={10} style={{ marginTop: '6px' }} /></div>)}
+        </ProfileCardSkeleton>
+      ))}
+    </div>
+  )
   if (error) return <GpMsg text={error} />
 
   return (
     <div>
       <TrackHero eyebrow="Growth Plan" title="Growth History" meta={<>Every change to this growth plan, newest first.</>} />
 
-      <div style={cardStyle}>
-        <div style={accentStrip} />
-        <div style={{ padding: '18px 20px' }}>
-          <div style={sectionTitle}>Activity Log</div>
-          {history.length === 0
-            ? <div style={emptyText}>No activity recorded yet.</div>
-            : history.map(h => <HistoryRow key={h.id} h={h} />)}
-        </div>
-      </div>
+      <ProfileCard icon="history" title="Activity Log" bodyStyle={history.length ? { paddingTop: '4px', paddingBottom: '4px' } : undefined}>
+        {history.length === 0
+          ? <div style={emptyText}>No activity recorded yet.</div>
+          : history.map((h, i) => <HistoryRow key={h.id} h={h} i={i} />)}
+      </ProfileCard>
 
-      <div style={cardStyle}>
-        <div style={accentStrip} />
-        <div style={{ padding: '18px 20px' }}>
-          <div style={sectionTitle}>Past Plans</div>
-          {archived.length === 0
-            ? <div style={emptyText}>No archived plans yet — re-scoring archives the previous plan here.</div>
-            : archived.map(s => <ArchivedRow key={s.id} s={s} memberNumber={memberNumber} />)}
-        </div>
-      </div>
+      <ProfileCard icon="layers" title="Past Plans" bodyStyle={archived.length ? { paddingTop: '2px', paddingBottom: '2px' } : undefined}>
+        {archived.length === 0
+          ? <div style={emptyText}>No archived plans yet — re-scoring archives the previous plan here.</div>
+          : archived.map((s, i) => <ArchivedRow key={s.id} s={s} i={i} memberNumber={memberNumber} />)}
+      </ProfileCard>
     </div>
   )
 }
 
-function HistoryRow({ h }) {
+function HistoryRow({ h, i }) {
   return (
-    <div style={{ display: 'flex', gap: '12px', padding: '11px 0', borderTop: '1px solid var(--vfo-tint)' }}>
+    <div style={{ display: 'flex', gap: '12px', padding: '11px 0', ...rowRule(i) }}>
       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: BLUE, flexShrink: 0, marginTop: '6px' }} />
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: '13px', fontWeight: 600, color: INK }}>{EVENT_LABEL[h.event] || h.event}{detailSummary(h)}</div>
         <div style={{ fontSize: '11.5px', color: MUTED, marginTop: '3px' }}>
-          {fmtDateTime(h.created_at)} · {h.actor_name || 'Unknown'}<RoleChip role={h.actor_role} />
+          {fmtDateTime(h.created_at)} · {h.actor_name || 'Unknown'}<RoleText role={h.actor_role} />
         </div>
       </div>
     </div>
   )
 }
 
-function RoleChip({ role }) {
-  const isMember = role === 'member'
-  return <span style={{ display: 'inline-block', fontSize: '9px', fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase', padding: '1px 7px', borderRadius: '999px', marginLeft: '7px', color: isMember ? '#0a7d46' : '#1d4ed8', background: isMember ? '#e3f6ec' : '#e7efff' }}>{isMember ? 'Member' : 'Admin'}</span>
+// Who made the change, as plain text: every row has one, so it is not a tag
+// (TEAM_RULES section 9, tags are rare).
+function RoleText({ role }) {
+  return <span> · {role === 'member' ? 'Member' : 'Admin'}</span>
 }
 
-function ArchivedRow({ s, memberNumber }) {
+function ArchivedRow({ s, i, memberNumber }) {
   const [open, setOpen] = useState(false)
   const [snap, setSnap] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -123,7 +126,7 @@ function ArchivedRow({ s, memberNumber }) {
   const onePage = (snap?.actions || []).filter(a => a.g3_status === 'one_page_plan').sort((a, b) => a.action_number - b.action_number)
 
   return (
-    <div style={{ borderTop: '1px solid var(--vfo-tint)' }}>
+    <div style={rowRule(i)}>
       <button onClick={toggle} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}>
         <span style={{ fontSize: '13px', fontWeight: 600, color: INK }}>{fmtDate(s.completed_at || s.created_at)}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -137,7 +140,7 @@ function ArchivedRow({ s, memberNumber }) {
             onePage.length === 0
               ? <div style={emptyText}>No one-page items in this plan.</div>
               : (
-                <div style={{ overflowX: 'auto' }}>
+                <div style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '440px' }}>
                     <thead><tr><th style={th(34)}>#</th><th style={th()}>Action</th><th style={th(120)}>Owned By</th><th style={th(80)}>Value</th><th style={th(80)}>Effort</th></tr></thead>
                     <tbody>
@@ -165,7 +168,7 @@ function GpMsg({ text }) {
   return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--vfo-muted)', fontSize: '14px' }}>{text}</div>
 }
 
-const sectionTitle = { fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)', marginBottom: '4px' }
-const emptyText = { fontSize: '12.5px', color: MUTED, paddingTop: '10px' }
-const th = (w) => ({ textAlign: 'left', fontSize: '9.5px', fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'var(--vfo-faint)', padding: '6px 10px', borderBottom: '2px solid var(--vfo-tint)', width: w ? `${w}px` : 'auto' })
-const td = { fontSize: '12.5px', color: INK, padding: '8px 10px', borderBottom: '1px solid var(--vfo-tint)', verticalAlign: 'top', lineHeight: 1.4 }
+const emptyText = { fontSize: '12.5px', color: MUTED }
+// ListTable's header row and rows.
+const th = (w) => ({ textAlign: 'left', fontSize: '10px', fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'var(--vfo-muted)', padding: '10px 12px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', width: w ? `${w}px` : 'auto' })
+const td = { fontSize: '12.5px', color: INK, padding: '9px 12px', borderBottom: '1px solid var(--vfo-border-soft)', verticalAlign: 'top', lineHeight: 1.4 }

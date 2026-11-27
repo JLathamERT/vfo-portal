@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { TrackHero } from '../shared/TrackKit'
-import { StepNav, cardStyle, inputStyle, INK, MUTED } from './ui'
+import { StepNav, MUTED } from './ui'
+import { ProfileCard, formInput } from '../shared/ProfileKit'
 
 // "Get Started" — the first Growth Plan step. Assigns the MSM (accountability
 // owner) BEFORE any scoring. Persisted per member via growth_plan_save_four_ways
@@ -45,22 +46,14 @@ export default function GrowthGetStarted({ memberNumber, memberName, bundle, rel
     <div>
       <TrackHero eyebrow="Growth Plan" title="Get Started" meta={memberName ? <>Setting up the Growth Plan for <strong style={{ color: 'var(--vfo-ink-2)' }}>{memberName}</strong></> : undefined} />
 
-      <div style={cardStyle}>
-        <div style={{ height: '3px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)' }} />
-        <div style={{ padding: '18px 22px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)', letterSpacing: '-0.01em' }}>Assigned MSM</div>
-            <span style={{ color: '#e74c3c', fontWeight: 700 }}>*</span>
-          </div>
-          <div style={{ fontSize: '12.5px', color: MUTED, margin: '6px 0 12px', lineHeight: 1.45, maxWidth: '560px' }}>
-            Who is accountable for coaching this Growth Plan? This person receives the accountability updates, and their assignment is required before the plan can be scored.
-          </div>
-          <select value={assignedEmail} onChange={e => setAssignedEmail(e.target.value)} style={{ ...inputStyle, minWidth: '280px' }}>
-            <option value="">Select an MSM</option>
-            {admins.map(a => <option key={a.email} value={a.email}>{a.name}</option>)}
-          </select>
-        </div>
-      </div>
+      <ProfileCard icon="user"
+        title={<>Assigned MSM <span style={{ color: '#e74c3c', fontWeight: 700 }}>*</span></>}
+        sub="Who is accountable for coaching this Growth Plan? This person receives the accountability updates, and their assignment is required before the plan can be scored.">
+        <select value={assignedEmail} onChange={e => setAssignedEmail(e.target.value)} style={{ ...formInput, maxWidth: '360px' }}>
+          <option value="">Select an MSM</option>
+          {admins.map(a => <option key={a.email} value={a.email}>{a.name}</option>)}
+        </select>
+      </ProfileCard>
 
       <StepNav
         onNext={continueNext}

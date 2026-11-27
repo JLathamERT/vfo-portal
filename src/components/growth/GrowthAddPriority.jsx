@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { callApi } from '../../lib/api'
 import { TrackHero } from '../shared/TrackKit'
-import { NAVY, INK, MUTED, GREEN, AMBER, cardStyle, accentStrip, pillSolid, pillOutline, miniLabel, Radios, NameCombo } from './ui'
+import { INK, MUTED, rowRule, miniLabel, Radios, NameCombo, buildNamePool, formTileStyle, phoneFormStyle } from './ui'
+import { useIsPhone } from '../../lib/useMediaQuery'
 import { getGrowthConfig } from './constants'
 import AddActionForm from './AddActionForm'
+import { ProfileCard } from '../shared/ProfileKit'
+import { btnPrimary, btnSecondary, btnOutline, btnDanger, btnState } from '../shared/buttonStyles'
 
 const LEVELS = [{ value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }]
-const DROP = '#c2502f'
 
 // Shared "off-plan priorities" surface, used two ways:
 //   • member portal — as its own top-level tab (Dropped Priorities / Parking Garage)
@@ -31,6 +33,14 @@ export default function GrowthAddPriority({ memberNumber, bundle, reload, role =
     })
     .sort((a, b) => a.action_number - b.action_number)
 
+  // The name dropdown's list. The admin One Page Plan passes its own (plan names +
+  // every admin); the member portal passes none, so the names already on the plan.
+  const planNames = []
+  for (const a of (bundle.actions || [])) if (a.g3_status === 'one_page_plan') for (const v of [a.owned_by, a.assisted_by]) if (v && v.trim()) planNames.push(v.trim())
+  const own = buildNamePool(planNames, [])
+  const poolNames = namePool.length ? namePool : own.pool
+  const poolAdmins = namePool.length ? adminSet : own.adminSet
+
   const title = isParking ? 'Parking Garage' : 'Dropped Priorities'
   const heroMeta = isParking
     ? <>Priorities parked for later — add one to your plan, or drop it.</>
@@ -41,7 +51,7 @@ export default function GrowthAddPriority({ memberNumber, bundle, reload, role =
     return (
       <div>
         {!embedded && <TrackHero eyebrow="Growth Plan" title={title} meta={heroMeta} />}
-        <div style={cardStyle}><div style={accentStrip} /><div style={{ padding: '20px', fontSize: '13px', color: MUTED }}>You can add priorities once your coach turns on Accountability Mode.</div></div>
+        <ProfileCard><div style={{ fontSize: '13px', color: MUTED }}>You can add priorities once your coach turns on Accountability Mode.</div></ProfileCard>
       </div>
     )
   }
@@ -55,35 +65,29 @@ export default function GrowthAddPriority({ memberNumber, bundle, reload, role =
     <div>
       {!embedded && <TrackHero eyebrow="Growth Plan" title={title} meta={heroMeta} />}
       {!isParking && (
-        <div style={cardStyle}>
-          <div style={accentStrip} />
-          <div style={{ padding: '16px 20px' }}>
-            {!showCreate
-              ? <button onClick={() => setShowCreate(true)} style={{ ...pillOutline, borderColor: GREEN, color: GREEN }}>+ Create your own priority (not in the list)</button>
-              : <AddActionForm idKey="custom" submitLabel="Add to Plan" onCancel={() => setShowCreate(false)} onSubmit={async (f) => { await addCustom(f); setShowCreate(false) }} />}
-          </div>
-        </div>
+        <ProfileCard>
+          {!showCreate
+            ? <button onClick={() => setShowCreate(true)} style={btnOutline}>+ Create your own priority (not in the list)</button>
+            : <AddActionForm idKey="custom" submitLabel="Add to Plan" namePool={poolNames} adminSet={poolAdmins} onCancel={() => setShowCreate(false)} onSubmit={async (f) => { await addCustom(f); setShowCreate(false) }} />}
+        </ProfileCard>
       )}
       {pool.length === 0
-        ? <div style={cardStyle}><div style={accentStrip} /><div style={{ padding: '20px', fontSize: '13px', color: MUTED }}>{isParking ? 'Nothing parked.' : 'Every priority is already on the plan or parked.'}</div></div>
+        ? <ProfileCard><div style={{ fontSize: '13px', color: MUTED }}>{isParking ? 'Nothing parked.' : 'Every priority is already on the plan or parked.'}</div></ProfileCard>
         : CATEGORY_ORDER.map(cat => {
           const rows = pool.filter(a => a.category === cat)
           if (!rows.length) return null
           return (
-            <div key={cat} style={cardStyle}>
-              <div style={accentStrip} />
-              <div style={{ padding: '16px 20px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)', marginBottom: '4px' }}>{CATEGORY_LABELS_LONG[cat]}</div>
-                {rows.map(a => <AddRow key={a.id} a={a} memberNumber={memberNumber} reload={reload} isParking={isParking} namePool={namePool} adminSet={adminSet} />)}
-              </div>
-            </div>
+            <ProfileCard key={cat} icon={isParking ? 'lock' : 'layers'} title={CATEGORY_LABELS_LONG[cat]} bodyStyle={{ paddingTop: '4px', paddingBottom: '4px' }}>
+              {rows.map((a, i) => <AddRow key={a.id} a={a} i={i} memberNumber={memberNumber} reload={reload} isParking={isParking} namePool={poolNames} adminSet={poolAdmins} />)}
+            </ProfileCard>
           )
         })}
     </div>
   )
 }
 
-function AddRow({ a, memberNumber, reload, isParking, namePool = [], adminSet }) {
+function AddRow({ a, i, memberNumber, reload, isParking, namePool = [], adminSet }) {
+  const isPhone = useIsPhone()
   const [open, setOpen] = useState(false)
   const [owned, setOwned] = useState('')
   const [assisted, setAssisted] = useState('')
@@ -103,20 +107,20 @@ function AddRow({ a, memberNumber, reload, isParking, namePool = [], adminSet })
   const drop = () => write('parking_moved', { g2_status: 'drop', g3_status: '' })
 
   return (
-    <div style={{ padding: '12px 0', borderTop: '1px solid var(--vfo-tint)' }}>
+    <div style={{ padding: '12px 0', ...rowRule(i) }}>
       <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 300px', fontSize: '13.5px', color: INK, lineHeight: 1.5 }}>{a.action_text}</div>
         {!open && (
           <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
-            <button disabled={busy} onClick={() => setOpen(true)} style={{ ...pillOutline, borderColor: GREEN, color: GREEN, opacity: busy ? 0.6 : 1 }}>+ Add to Plan</button>
+            <button disabled={busy} onClick={() => setOpen(true)} style={btnState(btnOutline, busy)}>+ Add to Plan</button>
             {isParking
-              ? <button disabled={busy} onClick={drop} style={{ ...pillOutline, borderColor: DROP, color: DROP, opacity: busy ? 0.6 : 1 }}>Drop</button>
-              : <button disabled={busy} onClick={park} style={{ ...pillOutline, borderColor: AMBER, color: AMBER, opacity: busy ? 0.6 : 1 }}>Park</button>}
+              ? <button disabled={busy} onClick={drop} style={btnState(btnDanger, busy)}>Drop</button>
+              : <button disabled={busy} onClick={park} style={btnState(btnSecondary, busy)}>Park</button>}
           </div>
         )}
       </div>
       {open && (
-        <div style={{ marginTop: '12px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px', padding: '14px 16px' }}>
+        <div style={{ marginTop: '12px', ...(isPhone ? phoneFormStyle : formTileStyle) }}>
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '12px' }}>
             <div style={{ flex: '1 1 200px' }}>
               <div style={miniLabel}>Owned By</div>
@@ -132,8 +136,8 @@ function AddRow({ a, memberNumber, reload, isParking, namePool = [], adminSet })
             <div><div style={miniLabel}>Effort</div><div style={{ display: 'flex', gap: '14px' }}><Radios name={`e_${a.id}`} value={effort} onChange={setEffort} options={LEVELS} /></div></div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={addToPlan} disabled={busy} style={{ ...pillSolid, opacity: busy ? 0.7 : 1 }}>{busy ? 'Adding…' : 'Add to Plan'}</button>
-            <button onClick={() => setOpen(false)} disabled={busy} style={pillOutline}>Cancel</button>
+            <button onClick={addToPlan} disabled={busy} style={btnState(btnPrimary, busy)}>{busy ? 'Adding…' : 'Add to Plan'}</button>
+            <button onClick={() => setOpen(false)} disabled={busy} style={btnSecondary}>Cancel</button>
           </div>
         </div>
       )}

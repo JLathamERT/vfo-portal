@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { TrackHero } from '../shared/TrackKit'
-import { NAVY, INK, MUTED, BLUE, inputStyle, cardStyle, accentStrip, GrowthNeed, StepNav, GrowthTabs, NameCombo, buildNamePool } from './ui'
+import { NAVY, INK, MUTED, BLUE, inputStyle, cardStyle, GrowthNeed, StepNav, GrowthTabs, NameCombo, buildNamePool } from './ui'
+import { ProfileCard, Switch } from '../shared/ProfileKit'
+import { btnDanger, btnOutline, btnSecondary, BTN_SMALL } from '../shared/buttonStyles'
 import { orderOnePage, displayNumbers } from './grouping'
 import AddActionForm from './AddActionForm'
 import GrowthAddPriority from './GrowthAddPriority'
@@ -142,23 +144,12 @@ export default function GrowthOnePage({ memberNumber, bundle, reload, onNavigate
 
       {/* Accountability Mode toggle (admin only) */}
       {isAdmin && (
-        <div style={cardStyle}>
-          <div style={accentStrip} />
-          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 320px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)' }}>Accountability Mode</div>
-              <div style={{ fontSize: '12.5px', color: MUTED, marginTop: '4px', lineHeight: 1.45 }}>
-                Turn on to set an update-by date and track progress on each priority.
-              </div>
-            </div>
-            <Toggle on={acctMode} onClick={toggleAcct} />
-          </div>
-        </div>
+        <ProfileCard icon="shield" title="Accountability Mode" sub="Turn on to set an update-by date and track progress on each priority."
+          action={<Switch on={acctMode} onClick={toggleAcct} label="Accountability Mode" />} />
       )}
 
       {/* Value / Effort matrix */}
       <div style={cardStyle}>
-        <div style={accentStrip} />
         {/* Phone: the matrix fits the screen (narrow label column, tighter cells)
             instead of a 540px box scrolling sideways. */}
         <div style={{ padding: isPhone ? '14px' : '20px' }}>
@@ -168,7 +159,7 @@ export default function GrowthOnePage({ memberNumber, bundle, reload, onNavigate
             </div>
           </div>
           {acctMode && (
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--vfo-tint)' }}>
+            <div style={{ ...(isPhone ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px 12px' } : { display: 'flex', gap: '16px', flexWrap: 'wrap' }), marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--vfo-border-soft)' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                 <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--vfo-card)', border: '2px solid rgba(0,41,115,0.18)' }} />
                 <span style={{ fontSize: '11.5px', color: MUTED }}>Not set</span>
@@ -201,24 +192,12 @@ function AdminAddPriorities({ memberNumber, bundle, reload, variant, namePool, a
   const [tab, setTab] = useState('parking')
   return (
     <div style={{ marginTop: '26px', marginBottom: '6px' }}>
-      <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--vfo-heading)', marginBottom: '12px' }}>Add Priorities</div>
+      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '18px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--vfo-heading)', marginBottom: '12px' }}>Add Priorities</div>
       <GrowthTabs tabs={ADD_TABS} active={tab} onChange={setTab} />
-      <div style={{ marginTop: '14px' }}>
+      <div style={{ marginTop: '16px' }}>
         <GrowthAddPriority role="admin" tab={tab} embedded memberNumber={memberNumber} bundle={bundle} reload={reload} variant={variant} namePool={namePool} adminSet={adminSet} />
       </div>
     </div>
-  )
-}
-
-function Toggle({ on, onClick }) {
-  return (
-    <button onClick={onClick} role="switch" aria-checked={on} style={{
-      width: '54px', height: '30px', borderRadius: '999px', border: 'none', cursor: 'pointer', flexShrink: 0,
-      background: on ? 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)' : '#cdd8ea',
-      padding: '3px', display: 'flex', justifyContent: on ? 'flex-end' : 'flex-start', transition: 'background .15s',
-    }}>
-      <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--vfo-card)', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />
-    </button>
   )
 }
 
@@ -280,11 +259,16 @@ function MatrixDot({ num, color, dark, small = false }) {
 function ActionTable({ title, rows, acct, isAdmin, canEdit, dues, statuses, onDue, onStatus, onDelete, onAddSubtask, onSaveField, namePool, adminSet }) {
   const colCount = 4 + (acct ? 2 : 0)
   const isPhone = useIsPhone()
+  // A table fills the box edge to edge in the ListTable look; the empty line and
+  // the phone blocks keep the box's own padding.
+  const flush = rows.length > 0 && !isPhone
+  // Phone, nothing in it: one row, the title with "None." at its right (no box
+  // for one value).
+  if (isPhone && rows.length === 0) {
+    return <ProfileCard icon="clipboard" title={title} action={<span style={{ fontSize: '12.5px', color: MUTED }}>None.</span>} />
+  }
   return (
-    <div style={cardStyle}>
-      <div style={accentStrip} />
-      <div style={{ padding: isPhone ? '14px' : '16px 20px' }}>
-        <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)', marginBottom: rows.length ? '10px' : 0 }}>{title}</div>
+    <ProfileCard icon="clipboard" title={title} flush={flush}>
         {rows.length === 0
           ? <div style={{ fontSize: '12.5px', color: MUTED }}>None.</div>
           : isPhone ? (
@@ -297,15 +281,17 @@ function ActionTable({ title, rows, acct, isAdmin, canEdit, dues, statuses, onDu
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: acct ? '760px' : '480px' }}>
+              {/* Fixed columns (Jake 2026-11-27): the name columns hold a full name,
+                  Action takes what is left and wraps onto more lines. */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: acct ? '860px' : '480px' }}>
                 <thead>
                   <tr>
-                    <th style={th(40)}>#</th>
+                    <th style={{ ...th(52), paddingLeft: '22px' }}>#</th>
                     <th style={th()}>Action</th>
-                    <th style={th(140)}>Owned By</th>
-                    <th style={th(140)}>Assisted By</th>
-                    {acct && <th style={th(140)}>Update By</th>}
-                    {acct && <th style={th(190)}>Progress</th>}
+                    <th style={th(acct ? 178 : 215)}>Owned By</th>
+                    <th style={th(acct ? 178 : 215)}>Assisted By</th>
+                    {acct && <th style={th(148)}>Update By</th>}
+                    {acct && <th style={th(186)}>Progress</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -316,8 +302,7 @@ function ActionTable({ title, rows, acct, isAdmin, canEdit, dues, statuses, onDu
               </table>
             </div>
           )}
-      </div>
-    </div>
+    </ProfileCard>
   )
 }
 
@@ -328,14 +313,14 @@ function ActionRow({ a, acct, isAdmin, canEdit, dues, statuses, onDue, onStatus,
   return (
     <>
       <tr>
-        <td style={{ ...td, fontWeight: 700, color: 'var(--vfo-heading)' }}>{a.num}</td>
+        <td style={{ ...td, paddingLeft: '22px', fontWeight: 700, color: 'var(--vfo-heading)' }}>{a.num}</td>
         <td style={td}>
           {a.isSub && <span style={{ color: 'var(--vfo-faint)', marginRight: '5px' }}>↳</span>}{a.action_text}
-          {a.is_custom && canEdit && onDelete && <button onClick={() => onDelete(a.id)} title="Remove custom priority" style={{ marginLeft: '8px', background: 'none', border: 'none', color: '#c2502f', cursor: 'pointer', fontSize: '13px', fontWeight: 700, padding: 0, lineHeight: 1 }}>×</button>}
+          {a.is_custom && canEdit && onDelete && <button onClick={() => onDelete(a.id)} title="Remove custom priority" aria-label="Remove custom priority" style={removeBtn}>×</button>}
           {a.isSub && a.parentText && <div style={{ fontSize: '11px', color: 'var(--vfo-faint)', marginTop: '2px' }}>sub-task of: {a.parentText}</div>}
           {!a.isSub && canEdit && onAddSubtask && (
-            <div style={{ marginTop: '5px' }}>
-              <button onClick={() => setAdding(v => !v)} style={{ background: 'none', border: 'none', color: BLUE, cursor: 'pointer', fontSize: '11.5px', fontWeight: 600, padding: 0 }}>{adding ? '× Cancel sub-task' : '+ Add sub-task'}</button>
+            <div style={{ marginTop: '7px' }}>
+              <button onClick={() => setAdding(v => !v)} style={subBtn(adding)}>{adding ? '× Cancel sub-task' : '+ Add sub-task'}</button>
             </div>
           )}
         </td>
@@ -370,8 +355,8 @@ function ActionRow({ a, acct, isAdmin, canEdit, dues, statuses, onDue, onStatus,
       </tr>
       {adding && (
         <tr>
-          <td colSpan={colCount} style={{ padding: '0 10px 14px' }}>
-            <AddActionForm idKey={'sub' + a.id} submitLabel="Add sub-task" placeholder="Describe the sub-task…" onCancel={() => setAdding(false)} onSubmit={async (f) => { await onAddSubtask(a.id, f); setAdding(false) }} />
+          <td colSpan={colCount} style={{ padding: '12px 22px 14px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+            <AddActionForm idKey={'sub' + a.id} submitLabel="Add sub-task" placeholder="Describe the sub-task…" namePool={namePool} adminSet={adminSet} onCancel={() => setAdding(false)} onSubmit={async (f) => { await onAddSubtask(a.id, f); setAdding(false) }} />
           </td>
         </tr>
       )}
@@ -390,12 +375,13 @@ function PhoneActionItem({ a, acct, isAdmin, canEdit, dues, statuses, onDue, onS
     </div>
   )
   return (
-    <div style={{ display: 'flex', gap: '10px', padding: '10px 0', borderBottom: last ? 'none' : '1px solid var(--vfo-tint)' }}>
+    <div style={{ padding: '10px 0', borderBottom: last ? 'none' : '1px solid var(--vfo-border-soft)' }}>
+      <div style={{ display: 'flex', gap: '10px' }}>
       <span style={{ fontWeight: 700, color: 'var(--vfo-heading)', fontSize: '13px', minWidth: '22px', lineHeight: 1.45 }}>{a.num}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '13.5px', color: INK, lineHeight: 1.45 }}>
           {a.isSub && <span style={{ color: 'var(--vfo-faint)', marginRight: '5px' }}>↳</span>}{a.action_text}
-          {a.is_custom && canEdit && onDelete && <button onClick={() => onDelete(a.id)} title="Remove custom priority" aria-label="Remove custom priority" style={{ marginLeft: '8px', background: 'none', border: 'none', color: '#c2502f', cursor: 'pointer', fontSize: '14px', fontWeight: 700, padding: 0, lineHeight: 1 }}>×</button>}
+          {a.is_custom && canEdit && onDelete && <button onClick={() => onDelete(a.id)} title="Remove custom priority" aria-label="Remove custom priority" style={removeBtn}>×</button>}
         </div>
         {a.isSub && a.parentText && <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '2px' }}>sub-task of: {a.parentText}</div>}
         {field('Owned by', canEdit
@@ -418,15 +404,18 @@ function PhoneActionItem({ a, acct, isAdmin, canEdit, dues, statuses, onDue, onS
         ), true)}
         {!a.isSub && canEdit && onAddSubtask && (
           <div style={{ marginTop: '8px' }}>
-            <button onClick={() => setAdding(v => !v)} style={{ background: 'none', border: 'none', color: BLUE, cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>{adding ? '× Cancel sub-task' : '+ Add sub-task'}</button>
-          </div>
-        )}
-        {adding && (
-          <div style={{ marginTop: '8px' }}>
-            <AddActionForm idKey={'sub' + a.id} submitLabel="Add sub-task" placeholder="Describe the sub-task…" onCancel={() => setAdding(false)} onSubmit={async (f) => { await onAddSubtask(a.id, f); setAdding(false) }} />
+            <button onClick={() => setAdding(v => !v)} style={subBtn(adding)}>{adding ? '× Cancel sub-task' : '+ Add sub-task'}</button>
           </div>
         )}
       </div>
+      </div>
+      {/* The sub-task form takes the box's full width, not the indented column
+          beside the number (no double padding). */}
+      {adding && (
+        <div style={{ marginTop: '10px' }}>
+          <AddActionForm idKey={'sub' + a.id} submitLabel="Add sub-task" placeholder="Describe the sub-task…" namePool={namePool} adminSet={adminSet} onCancel={() => setAdding(false)} onSubmit={async (f) => { await onAddSubtask(a.id, f); setAdding(false) }} />
+        </div>
+      )}
     </div>
   )
 }
@@ -434,5 +423,10 @@ function PhoneActionItem({ a, acct, isAdmin, canEdit, dues, statuses, onDue, onS
 const colHeader = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: '#002973', textAlign: 'center', padding: '11px 8px' }
 const rowHeader = { fontSize: '11px', fontWeight: 700, color: '#002973', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', textAlign: 'right', padding: '0 12px' }
 const matrixCell = { minHeight: '80px', padding: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center', alignItems: 'center', alignContent: 'center' }
-const th = (w) => ({ textAlign: 'left', fontSize: '9.5px', fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'var(--vfo-faint)', padding: '6px 10px', borderBottom: '2px solid var(--vfo-tint)', width: w ? `${w}px` : 'auto' })
-const td = { fontSize: '13px', color: INK, padding: '9px 10px', borderBottom: '1px solid var(--vfo-tint)', verticalAlign: 'top', lineHeight: 1.45 }
+// ListTable's header row and rows.
+const th = (w) => ({ textAlign: 'left', fontSize: '10px', fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'var(--vfo-muted)', padding: '12px 8px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', boxSizing: 'border-box', width: w ? `${w}px` : 'auto' })
+const td = { fontSize: '13px', color: INK, padding: '11px 8px', borderBottom: '1px solid var(--vfo-border-soft)', verticalAlign: 'top', lineHeight: 1.45, overflowWrap: 'anywhere' }
+// The small row actions (+ Add sub-task / × Cancel sub-task).
+const subBtn = (cancel) => ({ ...(cancel ? btnSecondary : btnOutline), ...BTN_SMALL })
+// The × beside a custom priority: a small red-outline square (btnDanger).
+const removeBtn = { ...btnDanger, ...BTN_SMALL, padding: '0 6px', fontSize: '13px', lineHeight: '18px', marginLeft: '8px', verticalAlign: 'middle' }

@@ -81,21 +81,29 @@ export function ProfileCard({ icon, title, sub, action, tone = 'blue', children,
   const hasBody = children !== undefined && children !== null && children !== false
   return (
     <section id={id} style={{ ...profileCardStyle, ...style }}>
-      {title && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: isPhone ? '13px 16px' : '15px 22px', borderBottom: hasBody ? '1px solid var(--vfo-border-soft)' : 'none', flexWrap: 'wrap' }}>
-          {icon && <IconBadge icon={icon} tone={tone} />}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '15.5px', fontWeight: 800, letterSpacing: '-0.01em', color: tone === 'red' ? '#d93025' : 'var(--vfo-heading)', lineHeight: 1.25 }}>{title}</div>
-            {sub && !isPhone && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '2px', lineHeight: 1.45 }}>{sub}</div>}
-          </div>
-          {action && <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>{action}</div>}
-          {/* On a phone a long intro under the title leaves the icon floating beside a
-              paragraph, so the intro takes its own full-width line under the row. */}
-          {sub && isPhone && <div style={{ flexBasis: '100%', fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '-4px', lineHeight: 1.45 }}>{sub}</div>}
-        </div>
-      )}
+      {title && <ProfileCardHead icon={icon} title={title} sub={sub} action={action} tone={tone} rule={hasBody} />}
       {hasBody && <div style={{ padding: flush ? 0 : (isPhone ? '12px' : 'var(--vfo-card-pad)'), ...bodyStyle }}>{children}</div>}
     </section>
+  )
+}
+
+// A box's header on its own (icon badge + title + muted line + action, the hairline
+// under it when `rule`), for a card that draws its own body. `style` reaches the row
+// (a card with its own padding pulls the header to its edges with a negative margin).
+export function ProfileCardHead({ icon, title, sub, action, tone = 'blue', rule = true, style }) {
+  const isPhone = useIsPhone()
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: isPhone ? '13px 16px' : '15px 22px', borderBottom: rule ? '1px solid var(--vfo-border-soft)' : 'none', flexWrap: 'wrap', ...style }}>
+      {icon && <IconBadge icon={icon} tone={tone} />}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '15.5px', fontWeight: 800, letterSpacing: '-0.01em', color: tone === 'red' ? '#d93025' : 'var(--vfo-heading)', lineHeight: 1.25 }}>{title}</div>
+        {sub && !isPhone && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '2px', lineHeight: 1.45 }}>{sub}</div>}
+      </div>
+      {action && <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>{action}</div>}
+      {/* On a phone a long intro under the title leaves the icon floating beside a
+          paragraph, so the intro takes its own full-width line under the row. */}
+      {sub && isPhone && <div style={{ flexBasis: '100%', fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '-4px', lineHeight: 1.45 }}>{sub}</div>}
+    </div>
   )
 }
 
@@ -327,10 +335,10 @@ export function useSettingsReturn(navigate) {
   }
 }
 
-export function BackLink({ onClick, children = 'Back' }) {
+export function BackLink({ onClick, children = 'Back', style }) {
   return (
     <button type="button" onClick={onClick}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', padding: '4px 0', marginBottom: '12px', color: 'var(--vfo-accent-text)', fontSize: '13.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', padding: '4px 0', marginBottom: '12px', color: 'var(--vfo-accent-text)', fontSize: '13.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer', ...style }}>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
       {children}
     </button>
