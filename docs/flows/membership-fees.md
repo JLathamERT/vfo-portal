@@ -372,8 +372,8 @@ A **collapsed, superadmin-only "Move plans to ERT Stripe"** section at the botto
    with a per-row "Send reminder email" button (`membership_send_reminder`, added Phase 4
    2026-07-15) that re-sends the failed-payment email on demand for the member's full arrears.
    **A 4th pill, "Outstanding Payment Links" (added 2026-07-31),** lists every `setup_pending`
-   plan whose setup link has actually been emailed — expandable cards with Setup link /
-   Transferred / Sandbox badges, the amount due at the link (or "Save-only"), the plan details,
+   plan whose setup link has actually been emailed — expandable cards (the shared
+   `OutstandingCard`, 2026-11-27) with Setup pending / Transferred / Sandbox badges, the amount due at the link (or "Save-only"), the plan details,
    and **Resend payment setup link** + **Edit plan** buttons. **Deliberately unlike the tax and
    holistic Outstanding tabs, sandbox rows are SHOWN here** (orange Sandbox badge) rather than
    hidden — this panel is where sandbox test runs are watched. Keep that exception if the
