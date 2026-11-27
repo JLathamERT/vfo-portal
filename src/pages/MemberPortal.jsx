@@ -194,7 +194,7 @@ export default function MemberPortal() {
             <MemberProfile member={memberData} allMembers={allMembers} memberConnections={memberConnections} />
           )}
           {!loading && activeTab === 'profile_edit' && memberData && (
-            <MemberEditProfile member={memberData} onSaved={() => { clearCachedData(); loadData() }} />
+            <MemberEditProfile member={memberData} onSaved={() => { clearCachedData(); setActiveTab('profile'); loadData() }} />
           )}
           {!loading && (activeTab === 'msm_home' || activeTab?.startsWith('msm_')) && memberData && (
             <MemberMSMTracking member={memberData} activeTab={activeTab} onNavigate={setActiveTab} />

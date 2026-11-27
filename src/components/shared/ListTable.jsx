@@ -48,13 +48,15 @@ export default function ListTable({ columns, rows, rowKey, onRowClick, empty = '
 // The name cell: the name in link blue, an optional grey line under it.
 // `onClick` (with stopPropagation by the caller) when the name opens something
 // different from the row, as the client name does on Client Overview.
-export function ListName({ children, sub, onClick, title }) {
+// `oneLine` keeps a long name on one line, cut with "..." (hover shows `title`),
+// so the row never grows taller.
+export function ListName({ children, sub, onClick, title, oneLine = false }) {
   return (
     <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
       <span onClick={onClick} title={title}
         onMouseEnter={onClick ? e => { e.currentTarget.style.textDecoration = 'underline' } : undefined}
         onMouseLeave={onClick ? e => { e.currentTarget.style.textDecoration = 'none' } : undefined}
-        style={{ fontWeight: 600, color: 'var(--vfo-link)', alignSelf: 'flex-start', cursor: onClick ? 'pointer' : undefined, overflowWrap: 'anywhere' }}>{children || '—'}</span>
+        style={{ fontWeight: 600, color: 'var(--vfo-link)', alignSelf: oneLine ? 'stretch' : 'flex-start', cursor: onClick ? 'pointer' : undefined, ...(oneLine ? ONE_LINE : { overflowWrap: 'anywhere' }) }}>{children || '—'}</span>
       {sub && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{sub}</span>}
     </span>
   )
@@ -74,6 +76,13 @@ export function ListText({ children, mono = false, style }) {
     </span>
   )
 }
+
+// A cell kept to one line, cut with "...".
+export const ONE_LINE = { display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+
+// How wide a directory LIST page may grow (Advisors, Accountants, Strategic
+// Members, Specialists, Tax Planners). An opened profile stays at 900px.
+export const LIST_PAGE_MAX_WIDTH = '1200px'
 
 // The search box above a list (Client Overview's).
 export const listSearchStyle = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', flex: 1, minWidth: '240px', boxSizing: 'border-box' }

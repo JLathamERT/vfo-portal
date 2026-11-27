@@ -5,6 +5,7 @@ import MemberVault from '../shared/MemberVault'
 import MemberCIQ from '../shared/MemberCIQ'
 import MemberShowroom from '../member/MemberShowroom'
 import MemberPaymentsTab from '../payments/MemberPaymentsTab'
+import MemberActivityTab from './MemberActivityTab'
 import MSMTracking from './MSMTracking'
 import AdvisorOnboarding from './AdvisorOnboarding'
 import AccountantOnboarding from './AccountantOnboarding'
@@ -13,7 +14,7 @@ import StrategicPartnersPanel from './StrategicPartnersPanel'
 import AdminGrowthPlan from '../growth/AdminGrowthPlan'
 import SendSetupEmailButton from './SendSetupEmailButton'
 import ListFilterButton, { matchesFilter, sortMembers, SortSelect, MEMBER_SORT_OPTIONS } from './ListFilterButton'
-import ListTable, { ListName, ListPill, ListText, listSearchStyle } from '../shared/ListTable'
+import ListTable, { ListName, ListPill, ListText, listSearchStyle, ONE_LINE, LIST_PAGE_MAX_WIDTH } from '../shared/ListTable'
 import SpecialistPicker from '../shared/SpecialistPicker'
 import { MemberEditFormSkeleton, MemberProfileDetailsSkeleton, ProgramNotesSkeleton, Skeleton, SkeletonText } from '../shared/Skeleton'
 import { HeroAvatar, ListHeader } from '../shared/TrackKit'
@@ -63,6 +64,16 @@ const DEFAULT_MSM_OPTIONS = [
   { key: 'msm_program_coaching', label: 'Advanced Coaching' },
   { key: 'msm_program_standard', label: 'Standard Coaching' },
 ]
+// The list's Standing column: the flags that sit on top of an Active member.
+const STANDING_COLORS = { Paused: '#e06717', Suspended: '#e74c3c', 'In Arrears': '#b45309' }
+function standingOf(m) {
+  const f = []
+  if (m.paused) f.push('Paused')
+  if (m.suspended) f.push('Suspended')
+  if (m.membership_arrears) f.push('In Arrears')
+  return f
+}
+
 const DEFAULT_EXTRA_TABS = [['specialists', 'Specialists'], ['showroom', 'Showroom'], ['website', 'Website Plugin'], ['ciq', 'CIQ'], ['gc', 'Growth Credit Marketplace']]
 const STRATEGIC_MSM_OPTIONS = [
   { key: 'msm_meetings', label: 'Programs' },
@@ -99,21 +110,21 @@ export default function MembersPanel({ allMembers, allExperts, allExclusionMap, 
   }
   if (section === 'strategic_member_search' || section === 'add_strategic_member') {
     return (
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
+      <div style={{ margin: '0 auto', padding: '24px' }}>
         <StrategicMembersPanel allMembers={allMembers} allExperts={allExperts} allExclusionMap={allExclusionMap} ecoMap={ecoMap} onDataChange={onDataChange} initialTab={section === 'add_strategic_member' ? 'add' : 'search'} section={section} navClickCount={navClickCount} onOpenMember={onOpenMember} onBackToOrigin={onBackToOrigin} memberConnections={memberConnections} />
       </div>
     )
   }
   if (section === 'accountant_search' || section === 'add_accountant') {
     return (
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
+      <div style={{ margin: '0 auto', padding: '24px' }}>
         <AccountantsPanel allMembers={allMembers} allExperts={allExperts} allExclusionMap={allExclusionMap} ecoMap={ecoMap} onDataChange={onDataChange} initialTab={section === 'add_accountant' ? 'add' : 'search'} section={section} navClickCount={navClickCount} onOpenMember={onOpenMember} onBackToOrigin={onBackToOrigin} memberConnections={memberConnections} />
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ margin: '0 auto', padding: '24px' }}>
       <AdvisorsPanel allMembers={allMembers} allExperts={allExperts} allExclusionMap={allExclusionMap} ecoMap={ecoMap} onDataChange={onDataChange} initialTab={section === 'add_advisor' ? 'add' : 'search'} section={section} navClickCount={navClickCount} onOpenMember={onOpenMember} onBackToOrigin={onBackToOrigin} memberConnections={memberConnections} />
     </div>
   )
@@ -431,7 +442,7 @@ function MemberDirectoryView({
     ...(typeOptions.length ? [{ key: 'type', label: 'Member Type', options: typeOptions, get: m => m.member_type || '' }] : []),
     // Suspended / Paused are boolean flags that sit on top of an Active member.
     // `get` returns the set of flags so a member matches when EITHER is selected.
-    { key: 'standing', label: 'Standing', options: ['Suspended', 'Paused', 'In Arrears'], get: m => { const f = []; if (m.suspended) f.push('Suspended'); if (m.paused) f.push('Paused'); if (m.membership_arrears) f.push('In Arrears'); return f } },
+    { key: 'standing', label: 'Standing', options: ['Suspended', 'Paused', 'In Arrears'], get: standingOf },
     // VFO Certified / Accredited are date columns; presence = the credential is held.
     // Hidden for strategic members (they don't carry these credentials).
     ...(showCredential ? [{ key: 'credential', label: 'VFO Credential', options: ['VFO Certified', 'VFO Accredited'], get: m => { const f = []; if (m.vfo_certified_date) f.push('VFO Certified'); if (m.vfo_accredited_date) f.push('VFO Accredited'); return f } }] : []),
@@ -451,7 +462,7 @@ function MemberDirectoryView({
   const heroLeadName = selectedMember ? findLeadMember(allMembers, selectedMember)?.name : null
 
   return (
-    <div>
+    <div style={{ maxWidth: activeTab === 'search' && !selectedMember ? LIST_PAGE_MAX_WIDTH : '900px', margin: '0 auto' }}>
 
       {deny && (
         <div style={{ position: 'fixed', left: deny.x, top: deny.y, transform: 'translate(-50%, calc(-100% - 12px))', zIndex: 9999, pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 12px', borderRadius: '10px', background: 'rgba(24,24,28,0.93)', color: '#fff', fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', boxShadow: '0 10px 28px rgba(0,0,0,0.3)' }}>
@@ -474,22 +485,24 @@ function MemberDirectoryView({
             rows={sortMembers(filteredMembers, listSort)}
             rowKey={m => m.plugin_member_number}
             resetSortOn={listSort}
-            minWidth="760px"
+            minWidth="960px"
             empty={memberSearch ? 'No members match your search.' : 'No members match the current filters.'}
             onRowClick={(m, e) => { if (reconciliationLocked(m)) { flashDeny(e); return } setSelectedMember(m); setMemberFeatureTab('profile_details'); sessionStorage.setItem(selectedKey, m.plugin_member_number); sessionStorage.setItem(featureTabKey, 'profile_details'); sessionStorage.removeItem(MEMBER_PROFILE_ORIGIN_KEY); window.scrollTo(0, 0) }}
             columns={[
-              { key: 'number', label: 'Number', width: '100px', get: m => m.plugin_member_number, render: m => <ListText mono>{m.plugin_member_number}</ListText> },
-              { key: 'name', label: 'Name', width: '1.6fr', get: m => m.name, render: m => <ListName>{m.name}</ListName> },
-              { key: 'status', label: 'Status', width: '110px', get: m => m.elite_status, render: m => m.elite_status ? <ListPill color={statusColor(m.elite_status, '#8a94a6')}>{m.elite_status}</ListPill> : <ListText /> },
-              { key: 'type', label: 'Type', width: '1.3fr', get: m => m.member_type, render: m => <ListText>{m.member_type}</ListText> },
-              ...(showModel ? [{ key: 'model', label: 'Model', width: '120px', get: m => m.advisor_model, render: m => <ListText style={m.advisor_model === 'New Model' ? { color: 'var(--vfo-accent-text)', fontWeight: 600 } : undefined}>{m.advisor_model}</ListText> }] : []),
-              { key: 'flags', label: '', width: '1fr', render: m => (
-                <span style={{ display: 'inline-flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', width: '100%' }}>
-                  {m.paused && <ListPill color="#e06717">Paused</ListPill>}
-                  {m.suspended && <ListPill color="#e74c3c">Suspended</ListPill>}
-                  {m.membership_arrears && <ListPill color="#b45309">In Arrears</ListPill>}
-                </span>
-              ) },
+              { key: 'number', label: 'Number', width: '120px', get: m => m.plugin_member_number, render: m => <ListText mono style={ONE_LINE}>{m.plugin_member_number}</ListText> },
+              { key: 'name', label: 'Name', width: '1.5fr', get: m => m.name, render: m => <ListName oneLine title={m.name}>{m.name}</ListName> },
+              { key: 'status', label: 'Status', width: '100px', get: m => m.elite_status, render: m => m.elite_status ? <ListPill color={statusColor(m.elite_status, '#8a94a6')}>{m.elite_status}</ListPill> : <ListText /> },
+              { key: 'type', label: 'Type', width: '1.5fr', get: m => m.member_type, render: m => <ListText style={ONE_LINE}><span title={m.member_type}>{m.member_type}</span></ListText> },
+              ...(showModel ? [{ key: 'model', label: 'Model', width: '120px', get: m => m.advisor_model, render: m => <ListText style={{ ...ONE_LINE, ...(m.advisor_model === 'New Model' ? { color: 'var(--vfo-accent-text)', fontWeight: 600 } : {}) }}>{m.advisor_model}</ListText> }] : []),
+              { key: 'standing', label: 'Standing', width: '200px', get: m => standingOf(m).join(', '), render: m => {
+                const flags = standingOf(m)
+                if (!flags.length) return <ListText />
+                return (
+                  <span style={{ display: 'inline-flex', gap: '6px', flexWrap: 'nowrap' }}>
+                    {flags.map(f => <ListPill key={f} color={STANDING_COLORS[f]} style={{ whiteSpace: 'nowrap' }}>{f}</ListPill>)}
+                  </span>
+                )
+              } },
             ]}
           />
         </>
@@ -535,7 +548,7 @@ function MemberDirectoryView({
             const showroomOpts = ['showroom', 'specialists', 'website'].filter(k => labelOf[k]).map(key => ({ key, label: labelOf[key] }))
             return (
               <>
-                <FeatureTabDropdown label="Profile" isActive={['profile_details','profile_edit','profile_history','profile_payments','settings'].includes(memberFeatureTab)} options={[{key:'profile_details',label:'Profile'},{key:'profile_edit',label:'Edit Profile'},{key:'profile_history',label:'Type History'},{key:'profile_payments',label:'Payments'},{key:'settings',label:'Settings'}]} onSelect={setMemberFeatureTab} onLabelClick={() => setMemberFeatureTab('profile_details')} />
+                <FeatureTabDropdown label="Profile" isActive={['profile_details','profile_edit','profile_history','profile_payments','profile_activity','settings'].includes(memberFeatureTab)} options={[{key:'profile_details',label:'Profile'},{key:'profile_edit',label:'Edit Profile'},{key:'profile_history',label:'Type History'},{key:'profile_payments',label:'Payments'},{key:'profile_activity',label:'Activity'},{key:'settings',label:'Settings'}]} onSelect={go} onLabelClick={() => go('profile_details')} />
                 <button style={pill(memberFeatureTab === 'vault')} onClick={() => go('vault')}>Vault</button>
                 <FeatureTabDropdown label="Programs" isActive={msmOptions.map(o => o.key).includes(memberFeatureTab)} options={msmOptions} onSelect={go} onLabelClick={() => go('msm_meetings')} />
                 {showroomOpts.length > 1
@@ -547,8 +560,9 @@ function MemberDirectoryView({
             )
           })()}
           </div>
-          {['profile_details','profile_edit','profile_history'].includes(memberFeatureTab) && <MemberProfile member={selectedMember} allMembers={allMembers} onDataChange={onDataChange} activeSection={memberFeatureTab} hiddenFields={hiddenFields} typeOptionsOverride={showModel ? null : typeOptions} onOpenMember={onOpenMember} memberConnections={memberConnections} />}
+          {['profile_details','profile_edit','profile_history'].includes(memberFeatureTab) && <MemberProfile member={selectedMember} allMembers={allMembers} onDataChange={onDataChange} activeSection={memberFeatureTab} hiddenFields={hiddenFields} typeOptionsOverride={showModel ? null : typeOptions} onOpenMember={onOpenMember} memberConnections={memberConnections} onSaved={() => { setMemberFeatureTab('profile_details'); sessionStorage.setItem(featureTabKey, 'profile_details'); window.scrollTo(0, 0) }} />}
           {memberFeatureTab === 'profile_payments' && <MemberPaymentsTab member={selectedMember} />}
+          {memberFeatureTab === 'profile_activity' && <MemberActivityTab member={selectedMember} />}
           {['msm_meetings','msm_program_holistic','msm_program_partnership','msm_program_tailored','msm_program_tax','msm_program_coaching','msm_program_standard'].includes(memberFeatureTab) && <MSMTracking member={selectedMember} activeSection={memberFeatureTab} onDataChange={onDataChange} bypassEnableGate={msmBypassEnableGate} allowedProgramKeys={msmAllowedPrograms} />}          {memberFeatureTab === 'specialists' && <MemberSpecialists member={selectedMember} allExperts={allExperts} allExclusionMap={allExclusionMap} ecoMap={ecoMap} onDataChange={onDataChange} />}
           {memberFeatureTab === 'showroom' && <MemberShowroom experts={allExperts} exclusions={allExclusionMap[selectedMember.plugin_member_number] || []} ecoMap={ecoMap} showMemberServices showRevenueShare showVault showAccredited />}
           {memberFeatureTab === 'website' && <MemberWebsitePlugin member={selectedMember} onDataChange={onDataChange} readOnly={false} isAdmin={true} />}
@@ -865,7 +879,7 @@ They will no longer be able to start new Direct cases. Direct cases already runn
   )
 }
 
-function MemberProfile({ member, allMembers, onDataChange, activeSection, hiddenFields = [], typeOptionsOverride = null, onOpenMember, memberConnections = [] }) {
+function MemberProfile({ member, allMembers, onDataChange, activeSection, hiddenFields = [], typeOptionsOverride = null, onOpenMember, memberConnections = [], onSaved }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -1001,10 +1015,16 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
     } catch (err) { console.error(err) }
   }
 
-  async function loadProfile() {
-    setLoading(true)
+  // The work email as loaded: it can't be removed, but a record that never had one
+  // (the free reconciliation rows) still saves (member_profile_save checks the same).
+  const loadedEmail = useRef('')
+
+  // silent: refresh in place, without the loading placeholder (after a save).
+  async function loadProfile(silent = false) {
+    if (!silent) setLoading(true)
     try {
       const data = await callApi('member_profile_load', { member_number: member.plugin_member_number })
+      loadedEmail.current = data.profile?.email || ''
       setProfile(data.profile || { member_number: member.plugin_member_number, first_name: member.name?.split(' ')[0] || '', last_name: member.name?.split(' ').slice(1).join(' ') || '', elite_status: 'Active', member_type: '', email: '', suspended: false, paused: false, revenue_decision: 'Revenue Share', credit_note_eligible: true, stripe_account_id: '', connected_member_number: null, introduced_by_member_number: null, connection_type: '', notes: '' })
       setTypeHistory(data.type_history || [])
       setContacts(data.contacts || [])
@@ -1017,6 +1037,11 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
   function update(key, val) { setProfile(p => ({ ...p, [key]: val })); setDirty(true) }
 
   async function save() {
+    // Required, as on the Add forms (2026-11-27).
+    const missing = [['first_name', 'First name'], ['last_name', 'Last name'], ['member_type', 'Member type']]
+      .filter(([k]) => !String(profile[k] || '').trim()).map(([, label]) => label)
+    if (!String(profile.email || '').trim() && loadedEmail.current.trim()) missing.push('Work email')
+    if (missing.length) { setStatusType('error'); setStatus(`${missing.join(', ')} ${missing.length > 1 ? 'are' : 'is'} required.`); return }
     setSaving(true)
     try {
       let toSave = profile
@@ -1040,7 +1065,10 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
       setStatusType('success'); setStatus('Saved!')
       setTimeout(() => setStatus(''), 4000)
       setBrandingKey(k => k + 1)
-      await loadProfile()
+      // Saved: straight back to the profile itself (2026-11-27); it already holds
+      // the saved values, and the re-reads below refresh it in place.
+      if (onSaved) onSaved()
+      await loadProfile(true)
       await onDataChange() // refresh the list so the header headshot updates
     } catch (err) { setStatusType('error'); setStatus(err.message) }
     finally { setSaving(false) }
@@ -1237,10 +1265,10 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
           </ProfileCard>
           <ProfileCard icon="id" title="Basic Info">
             <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name</label><input value={profile.first_name || ''} onChange={e => update('first_name', e.target.value)} style={inputStyle} /></div>
-              <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name</label><input value={profile.last_name || ''} onChange={e => update('last_name', e.target.value)} style={inputStyle} /></div>
+              <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={profile.first_name || ''} onChange={e => update('first_name', e.target.value)} style={inputStyle} /></div>
+              <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={profile.last_name || ''} onChange={e => update('last_name', e.target.value)} style={inputStyle} /></div>
               <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Preferred Name (optional)</label><input value={profile.preferred_name || ''} onChange={e => update('preferred_name', e.target.value)} maxLength={60} style={inputStyle} /></div>
-              <div style={{ flex: 2, minWidth: '200px' }}><label style={labelStyle}>Work email (emails sent here)</label><input value={profile.email || ''} onChange={e => update('email', e.target.value)} type="email" style={inputStyle} /></div>
+              <div style={{ flex: 2, minWidth: '200px' }}><label style={labelStyle}>Work email (emails sent here){loadedEmail.current ? ' *' : ''}</label><input value={profile.email || ''} onChange={e => update('email', e.target.value)} type="email" style={inputStyle} /></div>
               <div style={{ flex: 2, minWidth: '200px' }}><label style={labelStyle}>Personal email (not emailed)</label><input value={profile.personal_email || ''} onChange={e => update('personal_email', e.target.value)} type="email" style={inputStyle} /></div>
             </div>
             {(isAccountant || isAdvisor) && (
@@ -1250,7 +1278,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
             )}
             <div style={{ display: 'flex', gap: '12px', marginBottom: '0', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '180px' }}>
-                <label style={labelStyle}>Member Type</label>
+                <label style={labelStyle}>Member Type *</label>
                 <select value={profile.member_type || ''} onChange={e => update('member_type', e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
                   <option value="">-- Select --</option>
                   {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}

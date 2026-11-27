@@ -67,7 +67,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
   const [saving, setSaving] = useState({})                // member_number -> bool
   const [search, setSearch] = useState('')
   const [listFilter, setListFilter] = useState({ status: ['Active'] })
-  const [listSort, setListSort] = useState('number_asc')
+  const [listSort, setListSort] = useState('az')
   const { sort: colSort, onSort, reset: resetColSort } = useHeaderSort()
 
   useEffect(() => {

@@ -10,6 +10,7 @@ import ChangePasswordCard from '../components/shared/ChangePasswordCard'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { SettingsHeader, SETTINGS_WIDTH, useSettingsReturn } from '../components/shared/ProfileKit'
 import { usePortalTheme } from '../lib/theme'
+import { useIsPhone } from '../lib/useMediaQuery'
 import { lazyPage } from '../lib/lazyPage'
 import { ClientProgressSkeleton, OnePagePlanSkeleton, ShowroomSkeleton, VaultSectionsSkeleton } from '../components/shared/Skeleton'
 import OnePagePlanView from '../components/shared/OnePagePlanView'
@@ -29,6 +30,7 @@ export default function ClientPortal() {
   const tabBeforeSettings = useRef('showroom')
   const session = getSession()
   usePortalTheme()
+  const isPhone = useIsPhone()
   const [tab, setTab] = useState(sessionStorage.getItem('clientActiveTab') || 'showroom')
   // A tab the client picked (this visit or earlier in the session) always wins
   // over the Home landing — a ref, so the load below sees a click made while it ran.
@@ -155,7 +157,9 @@ export default function ClientPortal() {
   const navTabs = [['showroom', 'Showroom'], ...(planAllowed ? [['plan', 'My One Page Plan']] : []), ...(progressAllowed ? [['progress', 'My Progress']] : []), ...(vaultAllowed ? [['vault', 'Vault']] : [])]
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
+    // Phone: room under the page for the floating Help (?) button, as on the
+    // member portal (HelpButton, bottom-right).
+    <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', ...(isPhone ? { paddingBottom: '64px' } : {}) }}>
       <PortalHeader name={session.name || session.email} showBell={false} onTitleClick={() => chooseTab(licensingOn ? 'home' : 'showroom')} actions={[
         { key: 'settings', label: 'Settings', active: tab === 'settings', onClick: openSettings },
         { key: 'signout', label: 'Sign Out', onClick: signOut },

@@ -54,6 +54,10 @@ Switch **`client_case_progress`**, keyed on the client's OWNER, seeded Test memb
 - **Known difference from the mirrored member:** the staff planner list (`tax_planners_load`) is not opened to clients, so the allocated Tax Planner shows by the name stored on the plan, without the certification suffix.
 - **Probe:** `scripts/probe-l8-case-progress.ps1` (writes nothing).
 
+## 5. Help (?) button (2026-11-27)
+
+The client portal (`/client`) has the member portal's floating Help button, showing only the CLIENT portal's FAQs ticked for the client's tier (Basic or Premium; Premium too while the member's `client_basic_portal` switch is off). Admins write them in FAQ Editor → Client Portal. `faq_load` is in `CLIENT_ALLOWED_ACTIONS` and picks the portal and tier from the session. Flow → [member-help-faq.md](member-help-faq.md).
+
 ## Emails and rollout
 
 Both templates **SEND** since 2026-11-02 (migration `20261102130000`, edge repo; decision 10's flip-before-switch-on, done the same day the switch went On for all) and live in the Email Editor's **Client Portal** section. The training / customer-experience video line is to be added to template 311 in the Email Editor once the URL exists (no code).
