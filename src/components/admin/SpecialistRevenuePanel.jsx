@@ -6,6 +6,7 @@ import { PENDING_COLOR } from './shareLegState'
 import SpecialistPaymentInput from './SpecialistPaymentInput'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink, SpecialistNameLink } from '../shared/personLinks'
+import { MiniTabs } from '../shared/SubTabs'
 
 // Accounting → VFO Specialist Revenue. Pick year + month to see the specialist
 // payment requests for that period, expand each to see recipients and statuses.
@@ -137,14 +138,7 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
         <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
       </div>
 
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-        {[['specialist', 'By specialist'], ['member', 'By member']].map(([k, l]) => (
-          <button key={k} onClick={() => setViewMode(k)}
-            style={{ padding: '7px 14px', borderRadius: '8px', border: `1px solid ${viewMode === k ? 'var(--vfo-accent-text)' : 'var(--vfo-border-strong)'}`, background: viewMode === k ? 'rgba(18,94,204,0.08)' : 'var(--vfo-card)', color: viewMode === k ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontWeight: 600, fontSize: '12.5px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            {l}
-          </button>
-        ))}
-      </div>
+      <MiniTabs tabs={[{ key: 'specialist', label: 'By specialist' }, { key: 'member', label: 'By member' }]} active={viewMode} onChange={setViewMode} />
 
       {loading && <AccountingTableSkeleton cols={SPECIALIST_GRID} />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}

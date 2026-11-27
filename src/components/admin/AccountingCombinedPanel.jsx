@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NAVY, BLUE } from './specialistRevenueShared'
+import SubTabs from '../shared/SubTabs'
 
 // Accounting: a single tab that condenses several previously-separate panels
 // (e.g. Revenue / Reconciliation / Recurring) behind a pill row, mirroring the
@@ -41,15 +41,7 @@ export default function AccountingCombinedPanel({ breadcrumb, title, initialKey,
         <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>{title}</h2>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {tabs.map(t => (
-          <button key={t.key} type="button"
-            onClick={() => setActive(t.key)}
-            style={{ padding: '8px 16px', borderRadius: '99px', border: '1px solid ' + (active === t.key ? 'transparent' : 'var(--vfo-border-strong)'), background: active === t.key ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : 'var(--vfo-card)', color: active === t.key ? '#fff' : 'var(--vfo-ink-2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <SubTabs tabs={tabs} active={current.key} onChange={setActive} />
 
       {current.render()}
     </div>

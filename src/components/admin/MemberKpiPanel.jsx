@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { KpiHero, SplitDonut, BreakdownRows, BreakdownCard, SubTabButton } from './KpiKit'
+import { KpiHero, SplitDonut, BreakdownRows, BreakdownCard } from './KpiKit'
+import SubTabs from '../shared/SubTabs'
 import { MemberNameLink } from '../shared/personLinks'
 
 // ── Member-type families ──────────────────────────────────────────────
@@ -196,12 +197,7 @@ export default function MemberKpiPanel({ allMembers, category }) {
   return (
     <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '24px' }}>
       {showStandingTab && (
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-          <SubTabButton active={subTab === 'kpis'} onClick={() => setSubTab('kpis')}>KPIs</SubTabButton>
-          <SubTabButton active={subTab === 'standing'} onClick={() => setSubTab('standing')}>
-            Suspended, Paused &amp; Arrears {nounTitle}
-          </SubTabButton>
-        </div>
+        <SubTabs tabs={[{ key: 'kpis', label: 'KPIs' }, { key: 'standing', label: `Suspended, Paused & Arrears ${nounTitle}` }]} active={subTab} onChange={setSubTab} style={{ marginBottom: '20px' }} />
       )}
 
       {showStandingTab && subTab === 'standing' ? (

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { KpiHero, BreakdownRows, BreakdownCard, SubTabButton } from './KpiKit'
+import { KpiHero, BreakdownRows, BreakdownCard } from './KpiKit'
+import SubTabs from '../shared/SubTabs'
 import TaxPlanningKpiSummary from './tax/TaxPlanningKpiSummary'
 
 // Tax planner analytics. Same instrument-panel language as the specialist KPI
@@ -66,11 +67,7 @@ export default function TaxPlannerKpiPanel({ planners = [] }) {
 
   return (
     <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '24px' }}>
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        {SUB_TABS.map((t) => (
-          <SubTabButton key={t.key} active={subTab === t.key} onClick={() => pick(t.key)}>{t.label}</SubTabButton>
-        ))}
-      </div>
+      <SubTabs tabs={SUB_TABS} active={subTab} onChange={pick} style={{ marginBottom: '20px' }} />
 
       {subTab === 'kpis' && (
         <>

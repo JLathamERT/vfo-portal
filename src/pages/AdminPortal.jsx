@@ -867,8 +867,15 @@ function loadDataSkeleton(tab, section) {
       return <AccountingPageSkeleton maxWidth="1050px" pills={5}><AccountingRowsSkeleton search={260} boxes={[210]} blocks={[110, 110, 80]} pill={150} /></AccountingPageSkeleton>
     }
     const ledger = section === 'specialist_license' || section === 'specialist_bg'
+    // As many pills as the page has (VFO Specialist Revenue 6, Holistic / Tax 4, PIP / Payments / Implementation 3, SDP ATSG 2).
+    const pills = ledger ? 3
+      : /^specialist_/.test(section) ? 6
+      : /^(holistic|tax)_/.test(section) ? 4
+      : /^pip_/.test(section) || section === 'payments' || /_onboarding_fees$/.test(section) ? 3
+      : /^sdp_atsg_/.test(section) ? 2
+      : 5
     return (
-      <AccountingPageSkeleton maxWidth={section === 'specialist_bg' ? '900px' : '1200px'} pills={ledger ? 3 : 5}>
+      <AccountingPageSkeleton maxWidth={section === 'specialist_bg' ? '900px' : '1200px'} pills={pills}>
         <SearchFilterSkeleton search={110} boxes={[120, 90]} />
         <AccountingTableSkeleton cols={ledger ? '1.4fr 118px 112px 96px 178px' : '1.4fr 104px 72px 56px 100px 100px 100px 100px 96px 185px'} />
       </AccountingPageSkeleton>

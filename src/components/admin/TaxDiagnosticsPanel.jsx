@@ -10,6 +10,9 @@ import { statusPillStyle } from '../shared/statusColors'
 import { PORTAL_URL } from '../../lib/environment'
 import { StackedCardsSkeleton } from '../shared/Skeleton'
 import TaxFormPlanPicker, { planPickBody, planPickProblem } from '../shared/TaxFormPlanPicker'
+import SubTabs from '../shared/SubTabs'
+import { ChoiceButtons } from '../shared/ProfileKit'
+import { btnOutline } from '../shared/buttonStyles'
 
 // Tax Diagnostics — the queue of public /tax-diagnostic submissions (grantable
 // tab `tax_diagnostics`, backend TAB_ACTIONS.tax_diagnostics).
@@ -203,19 +206,9 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-        {FILTERS.map(f => (
-          <button key={f.key} type="button" onClick={() => setFilter(f.key)}
-            style={{ padding: '7px 14px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-              border: filter === f.key ? 'none' : '1px solid var(--vfo-border-strong)',
-              background: filter === f.key ? '#125ecc' : 'transparent', color: filter === f.key ? '#fff' : 'var(--vfo-ink)' }}>
-            {f.label} ({counts[f.key] || 0})
-          </button>
-        ))}
-        <button type="button" onClick={load}
-          style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid var(--vfo-accent-text)', background: 'rgba(18,94,204,0.08)', color: 'var(--vfo-accent-text)', fontFamily: 'Inter, sans-serif' }}>
-          Refresh
-        </button>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: '16px' }}>
+        <SubTabs tabs={FILTERS.map(f => ({ key: f.key, label: `${f.label} (${counts[f.key] || 0})` }))} active={filter} onChange={setFilter} style={{ marginBottom: 0 }} />
+        <button type="button" onClick={load} style={{ ...btnOutline, marginLeft: 'auto' }}>Refresh</button>
       </div>
 
       {error && <div style={{ ...card, color: '#d93025', fontSize: '13px' }}>{error}</div>}
@@ -425,7 +418,6 @@ function ConfirmBox({ d, members, onChanged }) {
 
   const btn = (primary, disabled) => ({ padding: '9px 20px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif',
     border: primary ? 'none' : '1px solid var(--vfo-border-strong)', background: primary ? (disabled ? 'var(--vfo-faint)' : '#1b9254') : 'transparent', color: primary ? '#fff' : 'var(--vfo-muted)' })
-  const pill = on => ({ padding: '7px 16px', borderRadius: '999px', border: 'none', cursor: 'pointer', fontSize: '12.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif', background: on ? '#125ecc' : 'transparent', color: on ? '#fff' : 'var(--vfo-ink)' })
   const inputStyle = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', width: '100%', maxWidth: '420px', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
 
   return (
@@ -472,10 +464,7 @@ function ConfirmBox({ d, members, onChanged }) {
       )}
 
       <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '16px 0 8px' }}>2. Who pays the $500 deposit?</div>
-      <div role="radiogroup" style={{ display: 'inline-flex', border: '1px solid var(--vfo-border-strong)', borderRadius: '999px', padding: '3px', background: 'var(--vfo-card)' }}>
-        <button type="button" role="radio" aria-checked={payer === 'client'} onClick={() => setPayer('client')} style={pill(payer === 'client')}>The client</button>
-        <button type="button" role="radio" aria-checked={payer === 'member'} onClick={() => setPayer('member')} style={pill(payer === 'member')}>The member</button>
-      </div>
+      <ChoiceButtons options={[['client', 'The client'], ['member', 'The member']]} value={payer} onChange={setPayer} />
       <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '6px', lineHeight: 1.55 }}>
         Pre-set from the form ({d.completed_by === 'member' ? 'a VFO member completed it' : 'the client completed it'}). If the member&apos;s deposit is waived nobody pays and the case is created straight away.
       </div>

@@ -16,6 +16,7 @@ import DenyDialog from './backlog/DenyDialog'
 import AnnounceDialog from './backlog/AnnounceDialog'
 import AnnounceTab from './backlog/AnnounceTab'
 import { PortalBacklogSkeleton } from '../shared/skeletons'
+import SubTabs from '../shared/SubTabs'
 
 // More > Portal Backlog (2026-11-17): portal update requests, replacing the
 // "VFO Portal Update Requests" sheet. Every admin sees everything and can file a
@@ -355,23 +356,14 @@ export default function PortalBacklogPanel({ link }) {
   // The inner tabs sit above the hero, the way the Advisor KPIs page does it.
   // They are chrome, so they show while the backlog loads too.
   const viewTabs = (
-    <div role="tablist" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
-      {[['tasks', 'Tasks'], ['requests', 'Requests'], ['announce', "What's new"]].map(([k, label]) => {
-        const active = view === k && !showArchive
-        return (
-          <button key={k} role="tab" aria-selected={active} onClick={() => { setView(k); if (showArchive) closeArchive() }}
-            style={{
-              padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-              fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap',
-              background: active ? 'var(--vfo-primary)' : 'var(--vfo-card)',
-              color: active ? '#ffffff' : 'var(--vfo-muted)',
-              border: `1px solid ${active ? 'var(--vfo-primary)' : 'var(--vfo-border-soft)'}`,
-            }}>
-            {label}{k === 'requests' && counts.pending > 0 ? ` (${counts.pending})` : ''}{k === 'announce' && data && whatsNewCount > 0 ? ` (${whatsNewCount})` : ''}
-          </button>
-        )
-      })}
-    </div>
+    <SubTabs tablist style={{ marginBottom: '20px' }}
+      tabs={[
+        { key: 'tasks', label: 'Tasks' },
+        { key: 'requests', label: `Requests${counts.pending > 0 ? ` (${counts.pending})` : ''}` },
+        { key: 'announce', label: `What's new${data && whatsNewCount > 0 ? ` (${whatsNewCount})` : ''}` },
+      ]}
+      active={showArchive ? null : view}
+      onChange={k => { setView(k); if (showArchive) closeArchive() }} />
   )
 
   if (!data) {

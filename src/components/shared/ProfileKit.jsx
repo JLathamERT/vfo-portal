@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { useIsPhone } from '../../lib/useMediaQuery'
-import { btnPrimary, btnSecondary, btnState } from './buttonStyles'
+import { btnPrimary, btnSecondary, btnState, BTN_SMALL } from './buttonStyles'
 
 // The profile look (2026-11-26): every person's profile - member, client,
 // specialist, tax planner - and every Settings page builds its boxes from here,
@@ -227,7 +227,8 @@ export function FormGrid({ children, min = 220, style }) {
 // One choice from a few (Revenue Share / Money Mapping, On / Off): the chosen one
 // is the primary button, the rest secondary. `blocked(value)` greys one out.
 // On a phone the choices share one row, each as wide as its words, so three never wrap 2 / 1.
-export function ChoiceButtons({ options, value, onChange, disabled = false, blocked }) {
+// `small` = BTN_SMALL on a computer, for a tight strip (the Tax route card).
+export function ChoiceButtons({ options, value, onChange, disabled = false, blocked, small = false }) {
   const isPhone = useIsPhone()
   return (
     <div style={isPhone ? { display: 'flex', gap: '6px' } : { display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -237,7 +238,7 @@ export function ChoiceButtons({ options, value, onChange, disabled = false, bloc
         return (
           <button key={String(v)} type="button" disabled={off} title={title}
             onClick={() => { if (!active) onChange(v) }}
-            style={btnState({ ...(active ? btnPrimary : btnSecondary), ...(isPhone ? { flex: '1 1 auto', padding: '8px 8px', fontSize: '12.5px', whiteSpace: 'nowrap' } : { padding: '8px 18px', fontSize: '13px' }) }, off && !active)}>
+            style={btnState({ ...(active ? btnPrimary : btnSecondary), ...(isPhone ? { flex: '1 1 auto', padding: '8px 8px', fontSize: '12.5px', whiteSpace: 'nowrap' } : small ? BTN_SMALL : { padding: '8px 18px', fontSize: '13px' }) }, off && !active)}>
             {label}
           </button>
         )

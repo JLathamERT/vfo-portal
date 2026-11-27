@@ -8,6 +8,7 @@ import MemberEvents from '../member/MemberEvents'
 import EventAttendeesTable, { EVENT_GRID, EVENT_MIN_WIDTH } from './EventAttendeesTable'
 import EventPurchasesTable from './EventPurchasesTable'
 import EventCheckIn from './EventCheckIn'
+import SubTabs, { MiniTabs } from '../shared/SubTabs'
 
 // More > Events (2026-11-25), open to every admin. The page and its sub-tab pills are
 // format-identical to the Growth Credits page (GrowthCreditsRedemptionsPage.jsx).
@@ -16,8 +17,6 @@ import EventCheckIn from './EventCheckIn'
 // (what a paying or a complimentary member sees on their Events tab).
 
 const PUBLIC_PAGE = `${PORTAL_URL}/events`
-const NAVY = '#002973'
-const BLUE = '#125ecc'
 const SUBTABS = [
   { key: 'attendees', label: 'Attendees' },
   { key: 'purchases', label: 'Purchases' },
@@ -52,8 +51,6 @@ export default function EventsAdminPage() {
   }
 
   const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '22px', marginBottom: '18px' }
-  const pill = (on) => ({ padding: '8px 16px', borderRadius: '99px', border: '1px solid ' + (on ? 'transparent' : 'var(--vfo-border-strong)'), background: on ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : 'var(--vfo-card)', color: on ? '#fff' : 'var(--vfo-ink-2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' })
-  const miniTab = (on) => ({ padding: '7px 14px', borderRadius: '8px', border: '1px solid ' + (on ? BLUE : 'var(--vfo-border-strong)'), background: on ? 'rgba(18,94,204,0.1)' : 'var(--vfo-card)', color: on ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontWeight: 600, fontSize: '12.5px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' })
   const event = data?.event
 
   return (
@@ -71,9 +68,7 @@ export default function EventsAdminPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {SUBTABS.map(t => <button key={t.key} type="button" onClick={() => setSection(t.key)} style={pill(section === t.key)}>{t.label}</button>)}
-      </div>
+      <SubTabs tabs={SUBTABS} active={section} onChange={setSection} />
 
       {flash && <div role="status" style={{ background: 'var(--vfo-accent-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-accent-text)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{flash}</div>}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px', marginBottom: '14px' }}>{error}</div>}
@@ -86,11 +81,9 @@ export default function EventsAdminPage() {
       {event && section === 'checkin' && <EventCheckIn rows={data.rows} onDone={done} />}
       {event && section === 'preview' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '18px' }}>
-            <button type="button" onClick={() => setPreviewAs('paying')} style={miniTab(previewAs === 'paying')}>Member who pays</button>
-            <button type="button" onClick={() => setPreviewAs('complimentary')} style={miniTab(previewAs === 'complimentary')}>Member who comes free</button>
+          <MiniTabs tabs={[{ key: 'paying', label: 'Member who pays' }, { key: 'complimentary', label: 'Member who comes free' }]} active={previewAs} onChange={setPreviewAs} style={{ gap: '8px', marginBottom: '18px' }}>
             <span style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginLeft: '6px' }}>What a member sees, on made-up details. Nothing here can be saved or bought.</span>
-          </div>
+          </MiniTabs>
           <div style={{ maxWidth: '980px', margin: '0 auto' }}>
             <MemberEvents key={previewAs} preview={previewAs} previewEvent={event} />
           </div>

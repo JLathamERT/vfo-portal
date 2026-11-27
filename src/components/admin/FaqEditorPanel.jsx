@@ -5,6 +5,7 @@ import { Skeleton } from '../shared/Skeleton'
 import { btnPrimary, btnSecondary, btnDanger, btnOutline, btnStep, BTN_SMALL, btnState } from '../shared/buttonStyles'
 import { formLabel, formInput } from '../shared/ProfileKit'
 import { listSearchStyle } from '../shared/ListTable'
+import SubTabs from '../shared/SubTabs'
 
 // The FAQ Editor tab — open to every admin (2026-11-25). Laid out like Growth
 // Credits and Events (2026-11-27): a header card, then one sub-tab per portal.
@@ -48,7 +49,6 @@ async function uploadPdf(file) {
 export default function FaqEditorPanel() {
   const [portal, setPortal] = useState(() => (sessionStorage.getItem(PORTAL_KEY) === 'client' ? 'client' : 'member'))
   function pick(key) { setPortal(key); sessionStorage.setItem(PORTAL_KEY, key) }
-  const pill = (on) => ({ padding: '8px 16px', borderRadius: '99px', border: '1px solid ' + (on ? 'transparent' : 'var(--vfo-border-strong)'), background: on ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : 'var(--vfo-card)', color: on ? '#fff' : 'var(--vfo-ink-2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' })
   const current = PORTALS.find(p => p.key === portal)
 
   return (
@@ -61,9 +61,7 @@ export default function FaqEditorPanel() {
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {PORTALS.map(p => <button key={p.key} type="button" onClick={() => pick(p.key)} style={pill(portal === p.key)}>{p.label}</button>)}
-      </div>
+      <SubTabs tabs={PORTALS} active={portal} onChange={pick} />
 
       <FaqPortalEditor key={portal} audience={portal} people={current.people} portalLabel={current.label} tiers={current.tiers} />
     </div>

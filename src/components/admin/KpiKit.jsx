@@ -155,25 +155,6 @@ export function BreakdownRows({ rows, denom }) {
   )
 }
 
-// Sub-tab pill for a KPI page (Advisor KPIs, Tax Planner KPIs).
-export function SubTabButton({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      style={{
-        padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-        fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap',
-        background: active ? 'var(--vfo-primary)' : 'var(--vfo-card)',
-        color: active ? '#ffffff' : 'var(--vfo-muted)',
-        border: `1px solid ${active ? 'var(--vfo-primary)' : 'var(--vfo-border-soft)'}`,
-      }}
-    >
-      {children}
-    </button>
-  )
-}
-
 // Card wrapper + header for the breakdown section (title, count chip, and the
 // "Filtered: X ×" clear button when a lens is focused).
 export function BreakdownCard({ title, count, activeLens, onClearLens, note, children }) {
