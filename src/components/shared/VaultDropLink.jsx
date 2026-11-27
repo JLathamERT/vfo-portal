@@ -21,7 +21,8 @@ export default function VaultDropLink({ entityType, entityKey }) {
 
   const short = url ? `${url.split('?')[0].replace(/^https?:\/\//, '')}?token=${url.split('token=')[1]?.slice(0, 8) || ''}…` : ''
   return (
-    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '16px', fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.5 }}>
+    // A tile above the vault's boxes (2026-11-26).
+    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '16px', padding: '12px 16px', borderRadius: '14px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', boxShadow: 'var(--vfo-shadow-card)', fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.5 }}>
       <span style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>Upload link:</span>
       {url
         ? <CopyLink url={url} label={short} />

@@ -21,9 +21,11 @@ import { ClientOverviewSkeleton } from '../shared/Skeleton'
 // the next action.
 
 const SECTIONS = [
+  // Programs in the one program order (Tax first, 2026-11-26): Tax, then Holistic's
+  // two (MAP 1, Regular Priorities), then Partnership and Tailored.
+  { key: 'tax_planning', label: 'Tax Planning' },
   { key: 'map1', label: 'MAP 1' },
   { key: 'regular', label: 'Regular Priorities' },
-  { key: 'tax_planning', label: 'Tax Planning' },
   { key: 'pft', label: 'Partnership Fast Track' },
   { key: 'tailored', label: 'Tailored Route for Accountants' },
   // Clients in NO program (a CIQ-created client starts here). One row per client,

@@ -319,3 +319,63 @@ export function TokenFormSkeleton() {
     </div>
   )
 }
+
+// The profile box (shared/ProfileKit ProfileCard): icon badge + title over a
+// hairline, then the body. `style` reaches the card.
+export function ProfileCardSkeleton({ titleWidth = 150, sub = false, children, style = {} }) {
+  const isPhone = useIsPhone()
+  return (
+    <CardShell pad={0} style={{ overflow: 'hidden', ...style }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: isPhone ? '13px 16px' : '15px 22px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+        <Skeleton width={34} height={34} style={{ borderRadius: '10px', flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Skeleton width={titleWidth} height={15} style={{ maxWidth: '100%' }} />
+          {sub && <Skeleton width="70%" height={11} style={{ marginTop: '6px' }} />}
+        </div>
+      </div>
+      <div style={{ padding: 'var(--vfo-card-pad)' }}>{children}</div>
+    </CardShell>
+  )
+}
+
+// The profile's facts in tiles (ProfileKit FieldGrid + Field).
+export function TileGridSkeleton({ fields = 6, min = 180, phoneCols = 2 }) {
+  const isPhone = useIsPhone()
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: isPhone ? `repeat(${phoneCols}, minmax(0, 1fr))` : `repeat(auto-fill, minmax(${min}px, 1fr))`, gap: isPhone ? '8px' : '10px' }}>
+      {Array.from({ length: fields }).map((_, i) => (
+        <div key={i} style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '10px 14px', background: 'var(--vfo-input)' }}>
+          <Skeleton width={72} height={10} style={{ maxWidth: '100%' }} />
+          <Skeleton width={i % 2 ? 100 : 130} height={14} style={{ marginTop: '7px', maxWidth: '100%' }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// The profile header (ProfileKit ProfileHero): avatar + name, then the fact strip.
+export function ProfileHeroSkeleton({ facts = 3 }) {
+  const isPhone = useIsPhone()
+  return (
+    <CardShell pad={0} style={{ overflow: 'hidden', marginBottom: isPhone ? '14px' : '20px' }}>
+      <div style={{ height: '4px', background: ACCENT_STRIP }} />
+      <div style={{ padding: isPhone ? '16px' : '22px 24px', display: 'flex', alignItems: 'center', gap: isPhone ? '14px' : '18px' }}>
+        <Skeleton width={isPhone ? 62 : 78} height={isPhone ? 62 : 78} style={{ borderRadius: '50%', flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Skeleton width={96} height={10} />
+          <Skeleton width={230} height={24} style={{ marginTop: '8px', maxWidth: '100%' }} />
+        </div>
+      </div>
+      {facts > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: isPhone ? 'repeat(2, minmax(0, 1fr))' : `repeat(${facts}, minmax(0, 1fr))`, borderTop: '1px solid var(--vfo-border-soft)' }}>
+          {Array.from({ length: facts }).map((_, i) => (
+            <div key={i} style={{ padding: isPhone ? '11px 16px' : '13px 24px', borderLeft: (isPhone ? i % 2 : i) ? '1px solid var(--vfo-border-soft)' : 'none', borderTop: isPhone && i >= 2 ? '1px solid var(--vfo-border-soft)' : 'none' }}>
+              <Skeleton width={70} height={10} />
+              <Skeleton width={i % 2 ? 90 : 110} height={13} style={{ marginTop: '7px' }} />
+            </div>
+          ))}
+        </div>
+      )}
+    </CardShell>
+  )
+}

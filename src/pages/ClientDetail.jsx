@@ -19,7 +19,8 @@ import { PhaseNotesButton, PhaseNotesPanel, useScrollToLinkedNote } from '../com
 import { NoteText, MentionTextarea, mentionEmails, pickedFromNote } from '../components/shared/MentionTextarea'
 import { VisibilityBadge, noteTint, SaveVisibilityButtons, MemberBadge, isMemberNote } from '../components/shared/NoteVisibility'
 import { CiqListSkeleton, ClientHeaderSkeleton, ClientProfileTabSkeleton, Map1TrackSkeleton, PFTTrackSkeleton, PaymentsTabSkeleton, PipMeetingsListSkeleton, Skeleton, TaxPlanListSkeleton, TaxPlanTrackSkeleton, VaultSectionsSkeleton } from '../components/shared/Skeleton'
-import { TrackHero, HeroAvatar } from '../components/shared/TrackKit'
+import { HeroAvatar } from '../components/shared/TrackKit'
+import { DotText, Field, FieldGrid, formInput, formLabel, Initials, PersonName, ProfileCard, ProfileHero, rememberSettingsReturn, subLabel } from '../components/shared/ProfileKit'
 import { MemberNameLink } from '../components/shared/personLinks'
 import PortalHeader from '../components/shared/PortalHeader'
 import AdminNavBar, { openAdminSection } from '../components/admin/AdminNavBar'
@@ -31,11 +32,12 @@ import PhoneInput from '../components/shared/PhoneInput'
 import ClientTabDropdown from '../components/shared/ClientTabDropdown'
 import { useIsPhone } from '../lib/useMediaQuery'
 import EmailText from '../components/shared/EmailText'
-import { btnPrimary, btnSecondary, btnDanger, btnState } from '../components/shared/buttonStyles'
+import { btnPrimary, btnSecondary, btnDanger, btnState, BTN_SMALL } from '../components/shared/buttonStyles'
 import { TAILORED_PROGRAM, ACCOUNTANT_FEATURE_TAB } from '../components/shared/accountantPrograms'
 import TailoredRouteTrack from '../components/admin/pft/TailoredRouteTrack'
 import { ChangeStatusModal } from '../components/admin/tax/TaxPlanStatus'
 import { clientStatusHex, clientStatusKey, clientStatusLabel } from '../components/shared/clientStatus'
+import { sortPrograms } from '../components/shared/programOrder'
 
 // Program names as programs.name holds them (single client profile tab strip).
 const HOLISTIC = 'VFO Holistic Planning'
@@ -210,7 +212,8 @@ export default function ClientDetail() {
   function applyLoaded(data, expertsData, notesData) {
     setClient(data.client)
     setProgram(data.program)
-    setPrograms(Array.isArray(data.programs) ? data.programs : null)
+    // In the one program order (Tax first, 2026-11-26).
+    setPrograms(Array.isArray(data.programs) ? sortPrograms(data.programs) : null)
     setContacts(data.contacts || [])
     // Present only while client_basic_portal is on for the client's member.
     setPortalAccess(Object.prototype.hasOwnProperty.call(data, 'portal_access') ? data.portal_access : undefined)
@@ -354,6 +357,7 @@ export default function ClientDetail() {
         actions={[
           ...(isAdmin && session.is_superadmin ? [{ key: 'editor', label: 'Admin Editor', tone: 'gold', onClick: () => { sessionStorage.setItem('adminOpenView', 'editor'); navigate('/admin') } }] : []),
           { key: 'settings', label: 'Settings', onClick: () => {
+            rememberSettingsReturn()
             if (isPlanner) { sessionStorage.setItem('taxPlannerActiveTab', 'settings'); navigate('/tax-planner') }
             else if (isMember) { sessionStorage.setItem('memberOpenView', 'settings'); navigate('/member') }
             else { sessionStorage.setItem('adminOpenView', 'settings'); navigate('/admin') }
@@ -371,60 +375,21 @@ export default function ClientDetail() {
         {/* Client header */}
         {loading ? (
           <ClientHeaderSkeleton />
-        ) : isPhone ? (
-          // Phone: the member Profile header exactly (MemberPortal, 2026-10-28) -
-          // number + status on one line, then the programs, then the member and
-          // any contacts, each its own muted line. No initials circle: clients
-          // have no photo (Jake).
-          <div style={{ ...sectionStyle, padding: 0, overflow: 'hidden' }}>
-            <div style={{ height: '4px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 55%, #0a85e8 100%)' }} />
-            <div style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>{isMirror ? 'Mirrored client' : 'Clients'}</div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '21px', color: 'var(--vfo-heading)', lineHeight: 1.15 }}>{client ? `${client.first_name} ${client.last_name}` : 'Client'}</div>
-                {(() => {
-                  const line = { fontSize: '12.5px', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }
-                  const programNames = (programs || (program ? [program] : [])).map(p => p.name)
-                  return (
-                    <>
-                      <div style={{ ...line, marginTop: '6px' }}>
-                        <span style={{ fontFamily: 'monospace' }}>{client?.client_ref}</span>
-                        {client?.status && <>
-                          <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: clientStatusHex(clientStatusKey(client)) || 'var(--vfo-faint)', flexShrink: 0 }} />
-                            {clientStatusLabel(clientStatusKey(client))}
-                          </span>
-                        </>}
-                      </div>
-                      {client?.preferred_name && <div style={{ ...line, marginTop: '3px' }}>Preferred name: {client.preferred_name}</div>}
-                      {programNames.length > 0 && <div style={{ ...line, marginTop: '3px' }}>{programNames.join(' · ')}</div>}
-                      {client?.member_name && !isMember && <div style={{ ...line, marginTop: '3px' }}>Member: <MemberNameLink memberNumber={client.member_number}>{client.member_name}</MemberNameLink></div>}
-                      {contacts?.length > 0 && <div style={{ ...line, marginTop: '3px', fontStyle: 'italic' }}>with {contacts.map(c => `${c.first_name} ${c.last_name}`).join(', ')}</div>}
-                    </>
-                  )
-                })()}
-              </div>
-            </div>
-          </div>
         ) : (
-          <TrackHero
+          // The shared profile header (shared/ProfileKit). No initials circle on a
+          // phone: clients have no photo (Jake, 2026-10-28). A member never needs
+          // their own name here (Jake, 2026-10-28); admins and planners keep it.
+          <ProfileHero
             eyebrow={isMirror ? 'Mirrored client' : 'Clients'}
-            title={client ? `${client.first_name} ${client.last_name}` : 'Client'}
-            avatar={<HeroAvatar src={null} name={`${client?.first_name || ''} ${client?.last_name || ''}`} />}
-            meta={
-              <>
-                <span style={{ fontFamily: 'monospace' }}>{client?.client_ref}</span>
-                {client?.preferred_name && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Preferred name: {client.preferred_name}</span></>}
-                {programs
-                  ? programs.map(p => <Fragment key={p.id}><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ color: '#0095ff', fontWeight: 500 }}>{p.name}</span></Fragment>)
-                  : program && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ color: '#0095ff', fontWeight: 500 }}>{program.name}</span></>}
-                {/* A member never needs their own name here (Jake, 2026-10-28); admins keep it. */}
-                {client?.member_name && !isMember && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Member:<MemberNameLink memberNumber={client.member_number}>{client.member_name}</MemberNameLink></span></>}
-                {contacts?.length > 0 && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ fontStyle: 'italic' }}>with {contacts.map(c => `${c.first_name} ${c.last_name}`).join(', ')}</span></>}
-                {client?.status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: clientStatusHex(clientStatusKey(client)) || 'var(--vfo-faint)', flexShrink: 0 }} />{clientStatusLabel(clientStatusKey(client))}</span></>}
-              </>
-            }
+            name={client ? <PersonName first={client.first_name} last={client.last_name} preferred={client.preferred_name} fallback="Client" /> : 'Client'}
+            avatar={isPhone ? null : <HeroAvatar src={null} name={`${client?.first_name || ''} ${client?.last_name || ''}`} size={72} />}
+            meta={contacts?.length > 0 ? <span style={{ fontStyle: 'italic' }}>with {contacts.map(c => `${c.first_name} ${c.last_name}`).join(', ')}</span> : null}
+            // No Program fact: the program tabs under the header already show them (Jake, 2026-11-26).
+            facts={[
+              { label: 'Client ref', value: client?.client_ref ? <span style={{ fontFamily: 'monospace' }}>{client.client_ref}</span> : null },
+              { label: 'Status', value: client?.status ? <DotText color={clientStatusHex(clientStatusKey(client)) || 'var(--vfo-faint)'}>{clientStatusLabel(clientStatusKey(client))}</DotText> : null },
+              { label: 'Member', value: client?.member_name && !isMember ? <MemberNameLink memberNumber={client.member_number}>{client.member_name}</MemberNameLink> : null },
+            ]}
           />
         )}
 
@@ -551,11 +516,9 @@ export default function ClientDetail() {
             {activeTab === 'vault' && (isAdmin || isPlanner || isMember) && <ClientVaultTab clientId={parseInt(clientId)} sectionStyle={sectionStyle} specialists={specialists} readOnly={isPlanner || isMirror || tier1Own} allowUpload={isPlanner} memberMode={isMember} recipientName={`${client?.first_name || ''} ${client?.last_name || ''}`.trim() || undefined} recipientFirst={client?.first_name || undefined} />}
             {activeTab === 'payments' && isAdmin && <ClientPaymentsTab clientId={parseInt(clientId)} sectionStyle={sectionStyle} />}
             {activeTab === 'settings' && isAdmin && (
-              <div style={sectionStyle}>
-                <div style={cardTitle}>Client Login</div>
-                <p style={{ fontSize: '14px', color: 'var(--vfo-muted)', marginBottom: '16px' }}>Send a setup email so this client can create their own portal passcode.</p>
+              <ProfileCard icon="lock" title="Client Login" sub="Send a setup email so this client can create their own portal passcode.">
                 <SendSetupEmailButton loginType="client" subjectId={parseInt(clientId)} hint="Drafts a Gmail with a secure link. The client sets their own passcode." />
-              </div>
+              </ProfileCard>
             )}
             {activeTab === 'continuation' && isAdmin && session?.is_superadmin && (
               <PaymentContinuationTab clientId={parseInt(clientId)} client={client} />
@@ -641,8 +604,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
     finally { setSavingPf(false) }
   }
   // The two one-line cards (status, PF): shorter than a full card (Jake, 2026-11-23).
-  const shortCard = { ...sectionStyle, flex: 1, padding: '14px var(--vfo-card-pad)' }
-  const shortTitle = { ...cardTitle, marginBottom: '10px', paddingBottom: '7px' }
+  const noteRow = note => ({ padding: '11px 14px', marginBottom: '8px', borderRadius: '12px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) })
 
   // One automatic status (2026-11-23): only Lost is set by hand. shown_status is sent
   // while the switch is On; without it the three-way dropdown stays.
@@ -709,49 +671,39 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
 
   return (
     <div>
-      {/* Contact info — full width across the top. */}
-      <div style={sectionStyle}>
-        <div style={cardTitle}>Contact Info</div>
-        {phoneRows ? (
-          <div>
-            {[['Email', client?.email ? <EmailText email={client.email} /> : '—'], ['Phone', client?.phone || '—'], ['Proactive Facilitator', pfText]].map(([label, value], i) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', padding: '9px 0', borderTop: i ? '1px solid var(--vfo-tint)' : 'none' }}>
-                <span style={{ ...fieldLabel, flexShrink: 0 }}>{label}</span>
-                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--vfo-ink)', textAlign: 'right', minWidth: 0 }}>{value}</span>
+      {/* Contact info — full width across the top. On a phone the status + PF
+          boxes fold into this one (one tile each). */}
+      <ProfileCard icon="contacts" title="Contact Info">
+        <FieldGrid min={360} phoneCols={1}>
+          <Field label="Email" nowrap>{client?.email}</Field>
+          <Field label="Phone">{client?.phone}</Field>
+          {phoneRows && <Field label="Proactive Facilitator">{pfText}</Field>}
+        </FieldGrid>
+        {readOnly && !contactsEditable && contacts?.length > 0 && <div style={{ marginTop: '18px' }}>
+          <div style={{ ...subLabel, marginBottom: '9px' }}>Additional Contacts</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(360px, 100%), 1fr))', gap: '8px' }}>
+            {contacts.map(c => (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '10px 13px', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', background: 'var(--vfo-input)', minWidth: 0 }}>
+                {!isPhone && <Initials name={`${c.first_name || ''} ${c.last_name || ''}`} size={32} />}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span>{c.first_name} {c.last_name}</span>
+                    {c.cc_on_emails && <span style={ccBadgeStyle}>Cc'd on client emails</span>}
+                    {c.use_in_greeting && <span style={ccBadgeStyle}>Included in greeting</span>}
+                  </div>
+                  {c.email && <div title={c.email} style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.email}</div>}
+                </div>
               </div>
             ))}
           </div>
-        ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '18px 24px' }}>
-          <div><div style={fieldLabel}>Email</div><div style={fieldValue}>{client?.email || '—'}</div></div>
-          <div><div style={fieldLabel}>Phone</div><div style={fieldValue}>{client?.phone || '—'}</div></div>
-        </div>
-        )}
-        {readOnly && !contactsEditable && contacts?.length > 0 && <div style={{ marginTop: phoneRows ? '10px' : '18px', paddingTop: phoneRows ? '12px' : '16px', borderTop: '1px solid var(--vfo-tint)' }}>
-          <div style={{ ...fieldLabel, marginBottom: '10px' }}>Additional Contacts</div>
-          {contacts.map((c, i) => (
-            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: i < contacts.length - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
-              {!isPhone && <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '11px', flexShrink: 0 }}>{initials(c.first_name, c.last_name)}</div>}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <span>{c.first_name} {c.last_name}</span>
-                  {c.cc_on_emails && <span style={ccBadgeStyle}>Cc'd on client emails</span>}
-                  {c.use_in_greeting && <span style={ccBadgeStyle}>Included in greeting</span>}
-                </div>
-                {c.email && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '1px' }}>{isPhone ? <EmailText email={c.email} /> : c.email}</div>}
-              </div>
-            </div>
-          ))}
         </div>}
-        {/* On a phone the status + PF cards fold into this one, so their line joins it. */}
         {memberOwnView && <div style={vfoNote}>Please contact us to edit this client's details.{phoneRows ? ' Status and Proactive Facilitator are managed by VFO Services.' : ''}</div>}
-      </div>
+      </ProfileCard>
 
       {/* Status + assigned PF — side by side. */}
       {!phoneRows && <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 300px', minWidth: '260px', display: 'flex' }}>
-          <div style={shortCard}>
-            <div style={shortTitle}>Client Status</div>
+          <ProfileCard icon="flag" title="Client Status" style={{ flex: 1, minWidth: 0 }}>
             {readOnly
               ? <div style={{ display: 'flex', alignItems: 'center', minHeight: '32px' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--vfo-ink)' }}>{statusDot}{clientStatusLabel(shown)}</span></div>
               : auto ? <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', minHeight: '32px' }}>
@@ -762,7 +714,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                 </div>
               : <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   {statusDot}
-                  <select value={status} onChange={e => updateStatus(e.target.value)} disabled={saving} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'Inter, sans-serif', minWidth: '160px', flex: 1 }}>
+                  <select value={status} onChange={e => updateStatus(e.target.value)} disabled={saving} style={{ ...formInput, padding: '8px 12px', minWidth: '160px', flex: 1, width: 'auto' }}>
                     <option value="active">Active</option>
                     <option value="pending">Pending</option>
                     <option value="lost">Lost</option>
@@ -774,11 +726,10 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
             {!readOnly && statusNote && <div style={{ marginTop: '8px', fontSize: '13px', color: statusNote.tone === 'error' ? '#e74c3c' : 'var(--vfo-success-text)' }}>{statusNote.text}</div>}
             {!readOnly && !statusNote && status === 'lost' && <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--vfo-muted)' }}>Lost — automatic payments are stopped for this client.</div>}
             {memberOwnView && <div style={vfoNote}>Managed by VFO Services.</div>}
-          </div>
+          </ProfileCard>
         </div>
         <div style={{ flex: '1 1 300px', minWidth: '260px', display: 'flex' }}>
-          <div style={shortCard}>
-            <div style={shortTitle}>Proactive Facilitator</div>
+          <ProfileCard icon="user" title="Proactive Facilitator" style={{ flex: 1, minWidth: 0 }}>
             {/* A DIRECT case's PF is the member themselves (clients.pf_member_number),
                 a name that is not in the dropdown — a select whose value has no
                 option silently reads "-- Select --", and an admin must not
@@ -786,7 +737,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
             {readOnly || client?.pf_member_number
               ? <div style={{ display: 'flex', alignItems: 'center', minHeight: '32px', fontSize: '14px', color: 'var(--vfo-ink)' }}>{client?.pf_member_number ? `${client?.assigned_pf || '—'} (Member — Direct)` : (client?.assigned_pf || '—')}</div>
               : <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <select value={assignedPf} onChange={e => setAssignedPf(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'Inter, sans-serif', minWidth: '160px', flex: 1 }}>
+                  <select value={assignedPf} onChange={e => setAssignedPf(e.target.value)} style={{ ...formInput, padding: '8px 12px', minWidth: '160px', flex: 1, width: 'auto' }}>
                     <option value="">-- Select --</option>
                     <option value="Evan Anderson">Evan Anderson</option>
                     <option value="Bridger Silvester">Bridger Silvester</option>
@@ -797,7 +748,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
                 </div>
             }
             {memberOwnView && <div style={vfoNote}>Assigned by VFO Services.</div>}
-          </div>
+          </ProfileCard>
         </div>
       </div>}
 
@@ -816,16 +767,12 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
 
       {/* Notes — full width so long threads use the whole row. */}
       {!readOnly && (
-        <div style={sectionStyle}>
-          <div style={{ ...cardTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: isPhone ? 'wrap' : 'nowrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>All Notes</span>
-              <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{notes.length}</span>
-            </div>
-            <AddGeneralNote stacked={isPhone} clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />
+        <ProfileCard icon="note" title="All Notes" sub={`${notes.length} ${notes.length === 1 ? 'note' : 'notes'}`}>
+          <div style={{ display: 'flex', marginBottom: notes.length ? '14px' : 0 }}>
+            <AddGeneralNote stacked clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />
           </div>
           {notes.map(note => (
-            <div key={note.id} data-note-id={note.id} style={{ padding: '10px 12px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
+            <div key={note.id} data-note-id={note.id} style={noteRow(note)}>
               {editingNoteId === note.id ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <MentionTextarea value={editNoteText} onChange={e => setEditNoteText(e.target.value)} tabName={note.tab_name} picked={editPicked} onPickedChange={setEditPicked} rows={2} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(0,149,255,0.4)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
@@ -852,22 +799,16 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
               )}
             </div>
           ))}
-        </div>
+        </ProfileCard>
       )}
 
       {/* Planner view — the FULL All Notes list (internal + shared), read-only:
           same rows as the admin block but with no composer / edit / delete. */}
       {readOnly && plannerMode && (
-        <div style={sectionStyle}>
-          <div style={{ ...cardTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>All Notes</span>
-              <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{notes.length}</span>
-            </div>
-          </div>
+        <ProfileCard icon="note" title="All Notes" sub={`${notes.length} ${notes.length === 1 ? 'note' : 'notes'}`}>
           {notes.length === 0 && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>No notes yet.</div>}
           {notes.map(note => (
-            <div key={note.id} data-note-id={note.id} style={{ padding: '10px 12px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
+            <div key={note.id} data-note-id={note.id} style={noteRow(note)}>
               <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}><NoteText note={note} /></div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
@@ -880,7 +821,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
               </div>
             </div>
           ))}
-        </div>
+        </ProfileCard>
       )}
 
       {/* Member view — "All Notes": the team's shared notes plus the member's own. A
@@ -890,20 +831,18 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
           "+ Add Note" box here too (Jake, 2026-11-12); their note always goes to
           the team, and they edit / delete only notes they wrote. */}
       {readOnly && !plannerMode && (directMode || memberCanAdd || profileNotes.length > 0) && (
-        <div style={sectionStyle}>
-          <div style={{ ...cardTitle, marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: isPhone && !directMode ? 'wrap' : 'nowrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>All Notes</span>
-              <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{profileNotes.length}</span>
+        <ProfileCard icon="note" title="All Notes" sub={`${profileNotes.length} ${profileNotes.length === 1 ? 'note' : 'notes'}`}>
+          {(directMode || memberCanAdd) && (
+            <div style={{ display: 'flex', marginBottom: profileNotes.length ? '14px' : 0 }}>
+              {directMode
+                ? <DirectAddNote clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />
+                : <AddGeneralNote memberMode stacked clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />}
             </div>
-            {directMode
-              ? <DirectAddNote clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />
-              : memberCanAdd && <AddGeneralNote memberMode stacked={isPhone} clientId={client.id} notes={notes} onNotesChange={onNotesChange} programName={program?.name || null} />}
-          </div>
+          )}
           {memberNoteError && <div style={{ fontSize: '12px', color: '#e74c3c', margin: '8px 0' }}>{memberNoteError}</div>}
           {(directMode || memberCanAdd) && profileNotes.length === 0 && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '10px' }}>No notes yet.</div>}
           {profileNotes.map(note => (
-            <div key={note.id} style={{ padding: '10px 12px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
+            <div key={note.id} style={noteRow(note)}>
               {editingNoteId === note.id ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <textarea value={editNoteText} onChange={e => setEditNoteText(e.target.value)} rows={2} maxLength={5000} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(0,149,255,0.4)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
@@ -930,7 +869,7 @@ function ClientHome({ client, contacts = [], onUpdate, onReloadContacts, section
               )}
             </div>
           ))}
-        </div>
+        </ProfileCard>
       )}
     </div>
   )
@@ -960,11 +899,11 @@ function DirectAddNote({ clientId, notes, onNotesChange, programName }) {
   }
 
   if (!open) {
-    return <button onClick={() => setOpen(true)} style={{ padding: '4px 12px', borderRadius: '6px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', textTransform: 'none', letterSpacing: 0 }}>+ Add Note</button>
+    return <button onClick={() => setOpen(true)} style={{ ...btnPrimary, ...BTN_SMALL }}>+ Add Note</button>
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, marginLeft: '16px', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
         <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Add a note for the Tax Planning Team..." rows={2} maxLength={5000} style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
         <button onClick={save} disabled={saving || !text.trim()} style={{ padding: '8px 14px', borderRadius: '8px', background: (saving || !text.trim()) ? 'var(--vfo-tint)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: (saving || !text.trim()) ? '1px solid var(--vfo-border-mid)' : 'none', color: (saving || !text.trim()) ? 'var(--vfo-muted)' : '#fff', fontSize: '12px', cursor: (saving || !text.trim()) ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>{saving ? 'Saving...' : 'Save'}</button>
@@ -984,8 +923,8 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
+  const inputStyle = formInput
+  const labelStyle = formLabel
 
   const [errorText, setErrorText] = useState('')
 
@@ -1011,8 +950,7 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
 
   return (
     <div>
-      <div style={sectionStyle}>
-        <div style={cardTitle}>Primary Contact</div>
+      <ProfileCard icon="user" title="Primary Contact">
         <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name</label><input value={firstName} onChange={e => setFirstName(e.target.value)} onBlur={() => setFirstName(formatPersonName(firstName))} style={inputStyle} /></div>
           <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name</label><input value={lastName} onChange={e => setLastName(e.target.value)} onBlur={() => setLastName(formatPersonName(lastName))} style={inputStyle} /></div>
@@ -1023,11 +961,11 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
           <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Phone</label><PhoneInput value={phone} onChange={setPhone} style={inputStyle} /></div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={save} disabled={saving} style={{ padding: '10px 24px', borderRadius: '8px', background: saving ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '14px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save Changes'}</button>
-          {status === 'saved' && <span style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600' }}>✓ Changes saved</span>}
+          <button onClick={save} disabled={saving} style={btnState(btnPrimary, saving)}>{saving ? 'Saving...' : 'Save Changes'}</button>
+          {status === 'saved' && <span style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600' }}>Changes saved</span>}
           {status === 'error' && <span style={{ color: '#e74c3c', fontWeight: 500, fontSize: '14px' }}>{errorText || 'Something went wrong'}</span>}
         </div>
-      </div>
+      </ProfileCard>
 
     </div>
   )
@@ -1041,6 +979,7 @@ function ClientDetails({ client, onUpdate, sectionStyle }) {
 // name/email add/edit/remove, no Cc switches) — the three msm_*_client_contact
 // handlers re-prove ownership server-side.
 function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sectionStyle, isAdmin = false }) {
+  const isPhone = useIsPhone()
   const [contactStatus, setContactStatus] = useState('')
   const [showAddContact, setShowAddContact] = useState(false)
   const [contactFirst, setContactFirst] = useState('')
@@ -1063,8 +1002,8 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
   const contactEmailValid = CONTACT_EMAIL_RE.test(contactEmail.trim())
   const canAddContact = !!contactFirst.trim() && !!contactLast.trim() && contactEmailValid
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
+  const inputStyle = formInput
+  const labelStyle = formLabel
 
   async function addContact() {
     if (!canAddContact) return
@@ -1166,17 +1105,12 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
   }
 
   return (
-      <div style={sectionStyle}>
-        <div style={{ ...cardTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Additional Contacts</span>
-          <button onClick={() => setShowAddContact(!showAddContact)} style={{ ...btnPrimary, textTransform: 'none', letterSpacing: 0 }}>+ Add</button>
-        </div>
-        {isAdmin && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '14px', lineHeight: 1.5 }}>
-          People on this client's side. With <strong>Cc on all client emails</strong> switched on, a contact is Cc'd on every portal email addressed to this client; <strong>Include in the greeting</strong> also names them in the salutation.
-        </div>}
+      <ProfileCard icon="contacts" title="Additional Contacts"
+        sub={isAdmin ? <>People on this client's side. With <strong>Cc on all client emails</strong> switched on, a contact is Cc'd on every portal email addressed to this client; <strong>Include in the greeting</strong> also names them in the salutation.</> : null}
+        action={<button onClick={() => setShowAddContact(!showAddContact)} style={{ ...btnPrimary, ...BTN_SMALL }}>+ Add</button>}>
 
         {showAddContact && (
-          <div style={{ padding: '16px', background: 'var(--vfo-tint)', borderRadius: '8px', marginBottom: '16px' }}>
+          <div style={{ padding: '16px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', marginBottom: '14px' }}>
             <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={contactFirst} onChange={e => setContactFirst(e.target.value)} onBlur={() => setContactFirst(formatPersonName(contactFirst))} style={inputStyle} /></div>
               <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={contactLast} onChange={e => setContactLast(e.target.value)} onBlur={() => setContactLast(formatPersonName(contactLast))} style={inputStyle} /></div>
@@ -1193,11 +1127,11 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
           </div>
         )}
 
-        {contactStatus === 'saved' && <div style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>✓ Contact added</div>}
+        {contactStatus === 'saved' && <div style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>Contact added</div>}
         {contactStatus && contactStatus !== 'saved' && <div style={{ color: '#e74c3c', fontSize: '13px', fontWeight: 500, marginBottom: '12px' }}>{contactStatus}</div>}
-        {contacts.length === 0 && !showAddContact && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No additional contacts yet.</p>}
+        {contacts.length === 0 && !showAddContact && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', margin: 0 }}>No additional contacts yet.</p>}
         {contacts.map(c => (
-          <div key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
+          <div key={c.id} style={{ padding: '11px 14px', marginBottom: '8px', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', background: 'var(--vfo-input)' }}>
             {editId === c.id ? (
               <div>
                 <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
@@ -1212,11 +1146,14 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
               </div>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{ minWidth: '160px' }}>
-                  <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{c.first_name} {c.last_name}</div>
-                  {c.email
-                    ? <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{c.email}</div>
-                    : <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '2px', fontStyle: 'italic' }}>No email on file</div>}
+                <div style={{ minWidth: '160px', display: 'flex', alignItems: 'center', gap: '11px' }}>
+                  {!isPhone && <Initials name={`${c.first_name || ''} ${c.last_name || ''}`} size={32} />}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{c.first_name} {c.last_name}</div>
+                    {c.email
+                      ? <div title={c.email} style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.email}</div>
+                      : <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '2px', fontStyle: 'italic' }}>No email on file</div>}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                   {!isAdmin && c.cc_on_emails && <span style={ccBadgeStyle}>Cc'd on client emails</span>}
@@ -1241,15 +1178,15 @@ function ClientAdditionalContacts({ client, contacts = [], onReloadContacts, sec
                       </>
                     )
                   })()}
-                  <button onClick={() => startEdit(c)} style={btnSecondary}>Edit</button>
-                  <button onClick={() => deleteContact(c.id)} style={btnDanger}>Remove</button>
+                  <button onClick={() => startEdit(c)} style={{ ...btnSecondary, ...BTN_SMALL }}>Edit</button>
+                  <button onClick={() => deleteContact(c.id)} style={{ ...btnDanger, ...BTN_SMALL }}>Remove</button>
                 </div>
               </div>
             )}
             {rowError[c.id] && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '12px', marginTop: '6px' }}>{rowError[c.id]}</div>}
           </div>
         ))}
-      </div>
+      </ProfileCard>
   )
 }
 

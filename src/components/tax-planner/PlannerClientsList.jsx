@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession } from '../../lib/api'
 import { ListHeader } from '../shared/TrackKit'
+import ListTable, { ListName, ListText, listSearchStyle } from '../shared/ListTable'
 import { PlannerClientsSkeleton } from '../shared/Skeleton'
 
 const STORAGE_KEY = 'taxPlannerListIncluded'
@@ -179,7 +180,7 @@ export default function PlannerClientsList() {
       <ListHeader title="Tax Planning" count={filtered.length} />
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-        <input type="search" name="search" autoComplete="off" placeholder="Search by client, ref, or name..." style={inputStyle} onChange={e => setSearch(e.target.value)} value={search} />
+        <input type="search" name="search" autoComplete="off" placeholder="Search by client, ref, or name..." style={listSearchStyle} onChange={e => setSearch(e.target.value)} value={search} />
         {others.length > 0 && (
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button
@@ -214,34 +215,26 @@ export default function PlannerClientsList() {
             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 4px' }}>
               {section.label} ({section.rows.length})
             </div>
-            {section.rows.map(row => (
-              <div key={row.tax_plan_id}
-                onClick={() => navigate(`/tax-planner/client/${row.client_id}?program=${row.program_id || 1}&tab=tax&plan=${row.tax_plan_id}`)}
-                style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px 16px', marginBottom: '6px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', boxShadow: '0 2px 8px rgba(20,45,95,0.04)', cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,149,255,0.4)'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border-soft)'}>
-                <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '12.5px', color: 'var(--vfo-muted)', width: '90px', flexShrink: 0 }}>{row.client_ref}</span>
-                <span style={{ display: 'flex', flexDirection: 'column', minWidth: '160px', flexShrink: 0 }}>
-                  {/* The name opens the profile (Client Overview's rule); the row opens the plan. */}
-                  <span title="Open client profile" onClick={e => { e.stopPropagation(); navigate(`/tax-planner/client/${row.client_id}?program=${row.program_id || 1}&tab=home`) }}
-                    onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }} onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}
-                    style={{ fontSize: '14px', color: 'var(--vfo-link)', fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start' }}>{row.client_name || '—'}</span>
-                  <span style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{row.member_name || '—'}</span>
-                </span>
-                {/* Next step is an Active-only column: on a finished or stopped
-                    plan there is nothing owed, so the slot collapses rather than
-                    printing a stale instruction. */}
-                {section.showNextStep && (
-                  <span title={row.next_step || ''} style={{ flex: 1, minWidth: 0, fontSize: '12px', color: row.next_step ? 'var(--vfo-muted)' : 'var(--vfo-faint)', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.next_step || '—'}</span>
-                )}
-                <span style={{ marginLeft: section.showNextStep ? 0 : 'auto', flexShrink: 0, fontSize: '12px', color: 'var(--vfo-faint)', whiteSpace: 'nowrap' }}>{row.planner_name || '—'}</span>
-                {/* When the VFO team sent the client over — the team-member
-                    allocation date, shown to team member and planner alike. */}
-                <span title="Date this client was assigned" style={{ flexShrink: 0, width: '78px', textAlign: 'right', fontSize: '12px', color: row.assigned_at ? 'var(--vfo-muted)' : 'var(--vfo-faint)', whiteSpace: 'nowrap' }}>
-                  {row.assigned_at ? new Date(row.assigned_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-                </span>
-              </div>
-            ))}
+            <ListTable
+              rows={section.rows}
+              rowKey={r => r.tax_plan_id}
+              minWidth={section.showNextStep ? '760px' : '620px'}
+              onRowClick={r => navigate(`/tax-planner/client/${r.client_id}?program=${r.program_id || 1}&tab=tax&plan=${r.tax_plan_id}`)}
+              columns={[
+                { key: 'ref', label: 'Ref', width: '100px', get: r => r.client_ref, render: r => <ListText mono>{r.client_ref}</ListText> },
+                // The name opens the profile (Client Overview's rule); the row opens the plan.
+                { key: 'client', label: 'Client', width: '1.4fr', get: r => r.client_name, render: r => (
+                  <ListName sub={r.member_name || '—'} title="Open client profile"
+                    onClick={e => { e.stopPropagation(); navigate(`/tax-planner/client/${r.client_id}?program=${r.program_id || 1}&tab=home`) }}>{r.client_name}</ListName>
+                ) },
+                // Next step is an Active-only column: on a finished or stopped plan
+                // nothing is owed, so the column is left out.
+                ...(section.showNextStep ? [{ key: 'next', label: 'Next step', width: '2fr', render: r => <ListText style={{ color: r.next_step ? 'var(--vfo-muted)' : undefined }}>{r.next_step}</ListText> }] : []),
+                { key: 'planner', label: 'Planner', width: '1fr', get: r => r.planner_name, render: r => <ListText style={{ color: r.planner_name ? 'var(--vfo-muted)' : undefined }}>{r.planner_name}</ListText> },
+                // When the VFO team sent the client over (the team-member allocation date).
+                { key: 'assigned', label: 'Assigned', width: '110px', type: 'date', get: r => r.assigned_at, render: r => <ListText style={{ color: r.assigned_at ? 'var(--vfo-muted)' : undefined }}>{r.assigned_at ? new Date(r.assigned_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null}</ListText> },
+              ]}
+            />
           </div>
         ))}
         {filtered.length === 0 && !loadError && (

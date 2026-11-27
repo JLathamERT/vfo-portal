@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Fragment, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { callApi, getSession, getLastSeen, setLastSeen } from '../../lib/api'
 import MemberWebsitePlugin from '../shared/MemberWebsitePlugin'
 import MemberVault from '../shared/MemberVault'
@@ -13,11 +13,14 @@ import StrategicPartnersPanel from './StrategicPartnersPanel'
 import AdminGrowthPlan from '../growth/AdminGrowthPlan'
 import SendSetupEmailButton from './SendSetupEmailButton'
 import ListFilterButton, { matchesFilter, sortMembers, SortSelect, MEMBER_SORT_OPTIONS } from './ListFilterButton'
+import ListTable, { ListName, ListPill, ListText, listSearchStyle } from '../shared/ListTable'
+import SpecialistPicker from '../shared/SpecialistPicker'
 import { MemberEditFormSkeleton, MemberProfileDetailsSkeleton, ProgramNotesSkeleton, Skeleton, SkeletonText } from '../shared/Skeleton'
-import { TrackHero, HeroAvatar, ListHeader } from '../shared/TrackKit'
+import { HeroAvatar, ListHeader } from '../shared/TrackKit'
+import { ChoiceButtons, DotText, Field, FormGrid, PersonName, formInput, formLabel, formReadOnly, Initials, PageHeading, ProfileCard, ProfileHero, SaveBar, SettingRow, Switch } from '../shared/ProfileKit'
+import { btnDanger, btnOutline, btnPrimary, btnSecondary, btnState, BTN_SMALL } from '../shared/buttonStyles'
 import ExportButton from '../shared/ExportButton'
 import { splitName, exportDate } from '../../lib/exportXlsx'
-import { VisibilityBadge, noteTint } from '../shared/NoteVisibility'
 import { IS_STAGING } from '../../lib/environment'
 import ImageCropModal from './ImageCropModal'
 import { MemberNameLink } from '../shared/personLinks'
@@ -44,6 +47,7 @@ import { cleanText, formatPersonName } from '../../lib/formatters'
 import PhoneInput from '../shared/PhoneInput'
 import MemberBrandingCard from '../shared/MemberBrandingCard'
 import MemberProfileDetails from '../shared/MemberProfileDetails'
+import StripeAccountField from '../shared/StripeAccountField'
 import { STATUS_COLORS, statusColor } from '../shared/statusColors'
 
 // Detail-view tab sets. Advisors/accountants get the full set; Strategic Members
@@ -51,19 +55,19 @@ import { STATUS_COLORS, statusColor } from '../shared/statusColors'
 // Holistic + Tax Planning, plus Specialists + Showroom + CIQ (no Website Plugin /
 // GC Marketplace / Growth Plan).
 const DEFAULT_MSM_OPTIONS = [
-  { key: 'msm_meetings', label: 'MSM' },
+  { key: 'msm_meetings', label: 'Programs' },
+  { key: 'msm_program_tax', label: 'VFO Tax Planning' },
   { key: 'msm_program_holistic', label: 'VFO Holistic Planning' },
   { key: 'msm_program_partnership', label: 'Partnership Fast Track' },
   { key: 'msm_program_tailored', label: 'Tailored Route for Accountants' },
-  { key: 'msm_program_tax', label: 'VFO Tax Planning' },
   { key: 'msm_program_coaching', label: 'Advanced Coaching' },
   { key: 'msm_program_standard', label: 'Standard Coaching' },
 ]
-const DEFAULT_EXTRA_TABS = [['specialists', 'Specialists'], ['showroom', 'Showroom'], ['website', 'Website Plugin'], ['ciq', 'CIQ'], ['gc', 'GC Marketplace']]
+const DEFAULT_EXTRA_TABS = [['specialists', 'Specialists'], ['showroom', 'Showroom'], ['website', 'Website Plugin'], ['ciq', 'CIQ'], ['gc', 'Growth Credit Marketplace']]
 const STRATEGIC_MSM_OPTIONS = [
-  { key: 'msm_meetings', label: 'MSM' },
-  { key: 'msm_program_holistic', label: 'VFO Holistic Planning' },
+  { key: 'msm_meetings', label: 'Programs' },
   { key: 'msm_program_tax', label: 'VFO Tax Planning' },
+  { key: 'msm_program_holistic', label: 'VFO Holistic Planning' },
 ]
 // Strategic members only run Holistic + Tax, so their MSM Home shows just those
 // two program toggles and drops the Advanced (coaching) + PFT (partnership)
@@ -128,7 +132,7 @@ function AccountantsPanel({ allMembers, allExperts, allExclusionMap, ecoMap, onD
       allExclusionMap={allExclusionMap}
       ecoMap={ecoMap}
       onDataChange={onDataChange}
-      addForm={IS_STAGING ? <StagingAddMemberNote /> : <AddAccountantForm allMembers={allMembers} onDataChange={onDataChange} />}
+      addForm={<AddAccountantForm allMembers={allMembers} onDataChange={onDataChange} />}
       selectedKey="adminSelectedAccountant"
       featureTabKey="adminAccountantFeatureTab"
       initialTab={initialTab}
@@ -147,11 +151,60 @@ function AccountantsPanel({ allMembers, allExperts, allExclusionMap, ecoMap, onD
 // add_member / add_member_full on staging too).
 function StagingAddMemberNote() {
   return (
-    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }}>
-      <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Test site</div>
-      <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.5 }}>
-        Members are not added by hand on the test site. Each person's own test member is made automatically when their admin login is added in the Admin Editor, and they sign in to the member portal with the same email and password. Members made by running an onboarding test are fine.
+    <ProfileCard icon="alert" tone="gold" title="Test site" sub="Members are not added by hand on the test site, so Create is switched off here.">
+      <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink-2)', lineHeight: 1.55 }}>
+        Each person's own test member is made automatically when their admin login is added in the Admin Editor, and they sign in to the member portal with the same email and password. Members made by running an onboarding test are fine.
       </div>
+    </ProfileCard>
+  )
+}
+
+// The Add Advisor / Accountant / Strategic Member page (2026-11-26, Jake): the Edit
+// Profile look, the fields in titled boxes and the pinned Create bar. Each form
+// keeps its own state, checks and save, and hands them in here. On the test site
+// the boxes show (so the page can be looked at) with Create switched off, because
+// the server refuses add_member_full there.
+const ADD_STATUS_CHOICES = [['Active', 'Active'], ['Lost', 'Lost'], ['Removed', 'Removed']]
+const ADD_REVENUE_CHOICES = [['Revenue Share', 'Revenue Share'], ['Money Mapping', 'Money Mapping']]
+const ADD_MODEL_CHOICES = [['Legacy Model', 'Legacy Model'], ['New Model', 'New Model']]
+
+function AddMemberCards({ heading, v, set, typeOptions, typePlaceholder = '-- Select --', typeDisabled = false, notice, connectedField, showCompany = false, showModel = true, numberPlaceholder, loading, onCreate, createLabel, status, statusType }) {
+  const field = (label, node, wide) => (
+    <div style={wide ? { gridColumn: '1 / -1' } : undefined}><label style={formLabel}>{label}</label>{node}</div>
+  )
+  return (
+    <div>
+      {heading}
+      {IS_STAGING && <StagingAddMemberNote />}
+      {notice}
+      <ProfileCard icon="user" title="Name & Member Type" style={{ overflow: 'visible' }}>
+        <FormGrid min={200}>
+          {field('First Name *', <input value={v.firstName} onChange={e => set.firstName(e.target.value)} style={formInput} />)}
+          {field('Last Name *', <input value={v.lastName} onChange={e => set.lastName(e.target.value)} style={formInput} />)}
+          {field('Member Type *', (
+            <select value={v.memberType} onChange={e => set.memberType(e.target.value)} style={formInput} disabled={typeDisabled}>
+              <option value="">{typePlaceholder}</option>
+              {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          ))}
+          {connectedField && <div style={{ gridColumn: '1 / -1', position: 'relative' }}>{connectedField}</div>}
+        </FormGrid>
+      </ProfileCard>
+      <ProfileCard icon="contacts" title="Contact">
+        <FormGrid min={240}>
+          {field('Work Email *', <input value={v.email} onChange={e => set.email(e.target.value)} type="email" style={formInput} />)}
+          {showCompany && field('Company Name', <input value={v.tradingName} onChange={e => set.tradingName(e.target.value)} placeholder="Company name (optional)" style={formInput} />)}
+        </FormGrid>
+      </ProfileCard>
+      <ProfileCard icon="id" title="Membership" sub="The member number is made automatically unless you type one.">
+        <div style={{ display: 'grid', gap: '16px' }}>
+          {field('Status *', <ChoiceButtons options={ADD_STATUS_CHOICES} value={v.eliteStatus} onChange={set.eliteStatus} />)}
+          {field('Revenue Decision *', <ChoiceButtons options={ADD_REVENUE_CHOICES} value={v.revenueDecision} onChange={set.revenueDecision} />)}
+          {showModel && field('Advisor Model *', <ChoiceButtons options={ADD_MODEL_CHOICES} value={v.advisorModel} onChange={set.advisorModel} />)}
+          {field('Member Number', <input value={v.customMemberNumber} onChange={e => set.customMemberNumber(e.target.value)} placeholder={numberPlaceholder} style={{ ...formInput, maxWidth: '220px' }} />)}
+        </div>
+      </ProfileCard>
+      <SaveBar saving={loading} onSave={onCreate} disabled={IS_STAGING} label={createLabel} savingLabel="Creating…" status={status} statusType={statusType} />
     </div>
   )
 }
@@ -170,9 +223,6 @@ function AddAccountantForm({ allMembers, onDataChange }) {
   const [loading, setLoading] = useState(false)
   const [customMemberNumber, setCustomMemberNumber] = useState('')
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
   async function submit() {
     if (!canAddMembers()) { setStatusType('error'); setStatus('Access Denied'); return }
@@ -212,64 +262,17 @@ function AddAccountantForm({ allMembers, onDataChange }) {
   }
 
   return (
-    <div style={sectionStyle}>
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '160px' }}><label style={labelStyle}>First Name *</label><input value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} /></div>
-        <div style={{ flex: 1, minWidth: '160px' }}><label style={labelStyle}>Last Name *</label><input value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} /></div>
-        <div style={{ flex: 1, minWidth: '200px' }}>
-          <label style={labelStyle}>Member Type *</label>
-          <select value={memberType} onChange={e => setMemberType(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
-            <option value="">-- Select --</option>
-            {ACCOUNTANT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-      </div>
-      <div style={{ marginBottom: '16px' }}>
-        <label style={labelStyle}>Company Name</label>
-        <input value={tradingName} onChange={e => setTradingName(e.target.value)} placeholder="Company name (optional)" style={inputStyle} />
-      </div>
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Work Email *</label><input value={email} onChange={e => setEmail(e.target.value)} type="email" style={inputStyle} /></div>
-        <div style={{ flex: 1, minWidth: '160px' }}>
-          <label style={labelStyle}>Status *</label>
-          <select value={eliteStatus} onChange={e => setEliteStatus(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
-            <option value="">-- Select --</option>
-            {['Active', 'Lost', 'Removed'].map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-        <div style={{ flex: 1, minWidth: '180px' }}>
-          <label style={labelStyle}>Revenue Decision *</label>
-          <select value={revenueDecision} onChange={e => setRevenueDecision(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
-            <option value="">-- Select --</option>
-            <option value="Revenue Share">Revenue Share</option>
-            <option value="Money Mapping">Money Mapping</option>
-          </select>
-        </div>
-      </div>
-      <div style={{ marginBottom: '16px' }}>
-        <label style={labelStyle}>Advisor Model *</label>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          {['Legacy Model', 'New Model'].map(m => (
-            <label key={m} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: `1px solid ${advisorModel === m ? 'rgba(0,149,255,0.5)' : 'var(--vfo-border-strong)'}`, background: advisorModel === m ? 'rgba(0,149,255,0.08)' : 'var(--vfo-tint)', cursor: 'pointer', fontSize: '13px', color: advisorModel === m ? 'var(--vfo-ink)' : 'var(--vfo-muted)' }}>
-              <input type="radio" name="add_acct_advisor_model" value={m} checked={advisorModel === m} onChange={() => setAdvisorModel(m)} style={{ accentColor: '#0095ff' }} />
-              {m}
-            </label>
-          ))}
-        </div>
-      </div>
-      <div style={{ marginBottom: '16px' }}>
-        <label style={labelStyle}>Member Number <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', fontStyle: 'italic', textTransform: 'none', letterSpacing: 0 }}>— leave blank to auto-generate</span></label>
-        <input value={customMemberNumber} onChange={e => setCustomMemberNumber(e.target.value)} placeholder="e.g. 59452" style={{ ...inputStyle, maxWidth: '200px' }} />
-      </div>
-      <button onClick={submit} disabled={loading} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
-        {loading ? 'Creating...' : 'Create Accountant'}
-      </button>
-      {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
-    </div>
+    <AddMemberCards
+      heading={<PageHeading eyebrow="Accountants" title="Add Accountant" />}
+      v={{ firstName, lastName, memberType, tradingName, email, eliteStatus, revenueDecision, advisorModel, customMemberNumber }}
+      set={{ firstName: setFirstName, lastName: setLastName, memberType: setMemberType, tradingName: setTradingName, email: setEmail, eliteStatus: setEliteStatus, revenueDecision: setRevenueDecision, advisorModel: setAdvisorModel, customMemberNumber: setCustomMemberNumber }}
+      typeOptions={ACCOUNTANT_TYPES} showCompany numberPlaceholder="e.g. 59452"
+      loading={loading} onCreate={submit} createLabel="Create Accountant" status={status} statusType={statusType}
+    />
   )
 }
 
-export function FeatureTabDropdown({ label, isActive, options, onSelect }) {
+export function FeatureTabDropdown({ label, isActive, options, onSelect, onLabelClick }) {
   const [open, setOpen] = useState(false)
   const closeTimer = useRef(null)
 
@@ -278,7 +281,7 @@ export function FeatureTabDropdown({ label, isActive, options, onSelect }) {
 
   return (
     <div style={{ position: 'relative' }} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <button style={{ padding: '7px 16px', background: isActive ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: isActive ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: isActive ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+      <button onClick={onLabelClick ? () => { onLabelClick(); setOpen(false) } : undefined} style={{ padding: '7px 16px', background: isActive ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: isActive ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: isActive ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
         {label}<span style={{ fontSize: '9px', opacity: 0.6 }}>▾</span>
       </button>
       {open && (
@@ -463,35 +466,32 @@ function MemberDirectoryView({
         <>
           <ListHeader title={listTitle} count={filteredMembers.length} action={<ExportButton title={listTitle} columns={MEMBER_EXPORT_COLUMNS} rows={sortMembers(searched, listSort)} filterGroups={filterGroups} filterValue={listFilter} />} />
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-            <input type="search" name="search" autoComplete="off" placeholder="Search by name or number..." style={inputStyle} onChange={e => setMemberSearch(e.target.value.toLowerCase())} value={memberSearch} />
+            <input type="search" name="search" autoComplete="off" placeholder="Search by name or number..." style={listSearchStyle} onChange={e => setMemberSearch(e.target.value.toLowerCase())} value={memberSearch} />
             <ListFilterButton groups={filterGroups} value={listFilter} onChange={setListFilter} />
             <SortSelect value={listSort} onChange={setListSort} options={MEMBER_SORT_OPTIONS} />
           </div>
-          <div>
-            {sortMembers(filteredMembers, listSort).map(m => (
-              <div key={m.plugin_member_number}
-                onClick={(e) => { if (reconciliationLocked(m)) { flashDeny(e); return } setSelectedMember(m); setMemberFeatureTab('profile_details'); sessionStorage.setItem(selectedKey, m.plugin_member_number); sessionStorage.setItem(featureTabKey, 'profile_details'); sessionStorage.removeItem(MEMBER_PROFILE_ORIGIN_KEY); window.scrollTo(0, 0) }}
-                style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px 16px', marginBottom: '6px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', boxShadow: '0 2px 8px rgba(20,45,95,0.04)', cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,149,255,0.4)'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border-soft)'}>
-                <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', width: '70px', flexShrink: 0, fontFamily: 'monospace' }}>{m.plugin_member_number}</span>
-                <span style={{ fontSize: '14px', color: 'var(--vfo-ink)', fontWeight: 600, width: '200px', flexShrink: 0 }}>{m.name}</span>
-                <span style={{ width: '80px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-ink)' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: statusColor(m.elite_status) }} />
-                  {m.elite_status || '—'}
+          <ListTable
+            rows={sortMembers(filteredMembers, listSort)}
+            rowKey={m => m.plugin_member_number}
+            resetSortOn={listSort}
+            minWidth="760px"
+            empty={memberSearch ? 'No members match your search.' : 'No members match the current filters.'}
+            onRowClick={(m, e) => { if (reconciliationLocked(m)) { flashDeny(e); return } setSelectedMember(m); setMemberFeatureTab('profile_details'); sessionStorage.setItem(selectedKey, m.plugin_member_number); sessionStorage.setItem(featureTabKey, 'profile_details'); sessionStorage.removeItem(MEMBER_PROFILE_ORIGIN_KEY); window.scrollTo(0, 0) }}
+            columns={[
+              { key: 'number', label: 'Number', width: '100px', get: m => m.plugin_member_number, render: m => <ListText mono>{m.plugin_member_number}</ListText> },
+              { key: 'name', label: 'Name', width: '1.6fr', get: m => m.name, render: m => <ListName>{m.name}</ListName> },
+              { key: 'status', label: 'Status', width: '110px', get: m => m.elite_status, render: m => m.elite_status ? <ListPill color={statusColor(m.elite_status, '#8a94a6')}>{m.elite_status}</ListPill> : <ListText /> },
+              { key: 'type', label: 'Type', width: '1.3fr', get: m => m.member_type, render: m => <ListText>{m.member_type}</ListText> },
+              ...(showModel ? [{ key: 'model', label: 'Model', width: '120px', get: m => m.advisor_model, render: m => <ListText style={m.advisor_model === 'New Model' ? { color: 'var(--vfo-accent-text)', fontWeight: 600 } : undefined}>{m.advisor_model}</ListText> }] : []),
+              { key: 'flags', label: '', width: '1fr', render: m => (
+                <span style={{ display: 'inline-flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', width: '100%' }}>
+                  {m.paused && <ListPill color="#e06717">Paused</ListPill>}
+                  {m.suspended && <ListPill color="#e74c3c">Suspended</ListPill>}
+                  {m.membership_arrears && <ListPill color="#b45309">In Arrears</ListPill>}
                 </span>
-                <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', width: '160px', flexShrink: 0 }}>{m.member_type || '—'}</span>
-                {showModel && <span style={{ fontSize: '12px', color: m.advisor_model === 'New Model' ? '#0095ff' : 'var(--vfo-muted)' }}>{m.advisor_model || '—'}</span>}
-                {(m.paused || m.suspended || m.membership_arrears) && (
-                  <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '12px', flexShrink: 0 }}>
-                    {m.paused && <span style={{ fontSize: '12px', fontWeight: 700, color: '#e06717' }}>Paused</span>}
-                    {m.suspended && <span style={{ fontSize: '12px', fontWeight: 700, color: '#e74c3c' }}>Suspended</span>}
-                    {m.membership_arrears && <span style={{ fontSize: '12px', fontWeight: 700, color: '#b45309' }}>In Arrears</span>}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+              ) },
+            ]}
+          />
         </>
       )}
 
@@ -508,31 +508,44 @@ function MemberDirectoryView({
             setSelectedMember(null); sessionStorage.removeItem(selectedKey); sessionStorage.removeItem(featureTabKey)
             if (origin && onBackToOrigin) onBackToOrigin(origin)
           }} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to list</button>
-          <TrackHero
+          <ProfileHero
             eyebrow={listTitle}
-            title={selectedMember.name}
-            avatar={<HeroAvatar src={selectedMember.headshot_image ? HEADSHOT_SUPABASE + encodeURIComponent(selectedMember.headshot_image) : null} name={selectedMember.name} />}
-            meta={
-              <>
-                <span style={{ fontFamily: 'monospace' }}>{selectedMember.plugin_member_number}</span>
-                {selectedMember.member_type && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>{selectedMember.member_type}{heroLeadNumber && <> - <MemberNameLink memberNumber={heroLeadNumber}>{heroLeadName || heroLeadNumber}</MemberNameLink></>}</span></>}
-                {selectedMember.elite_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor(selectedMember.elite_status), flexShrink: 0 }} />{selectedMember.elite_status}</span></>}
-                {engagementMeta(selectedMember.engagement_level) && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: engagementMeta(selectedMember.engagement_level).color, flexShrink: 0 }} />{engagementMeta(selectedMember.engagement_level).label}</span></>}
-                {selectedMember.paused && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e06717', flexShrink: 0 }} />Paused</span></>}
-                {selectedMember.suspended && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e74c3c', flexShrink: 0 }} />Suspended</span></>}
-                {selectedMember.membership_arrears && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#b45309', flexShrink: 0 }} />In Arrears</span></>}
-              </>
-            }
+            name={<PersonName first={selectedMember.first_name} last={selectedMember.last_name} preferred={selectedMember.preferred_name} fallback={selectedMember.name} />}
+            avatar={<HeroAvatar src={selectedMember.headshot_image ? HEADSHOT_SUPABASE + encodeURIComponent(selectedMember.headshot_image) : null} name={selectedMember.name} size={72} />}
+            facts={[
+              { label: 'Member number', value: <span style={{ fontFamily: 'monospace' }}>{selectedMember.plugin_member_number}</span> },
+              { label: 'Type', value: selectedMember.member_type ? <>{selectedMember.member_type}{heroLeadNumber && <> - <MemberNameLink memberNumber={heroLeadNumber}>{heroLeadName || heroLeadNumber}</MemberNameLink></>}</> : null },
+              { label: 'Status', value: selectedMember.elite_status ? <DotText color={statusColor(selectedMember.elite_status)}>{selectedMember.elite_status}</DotText> : null },
+              { label: 'Engagement', value: engagementMeta(selectedMember.engagement_level) ? <DotText color={engagementMeta(selectedMember.engagement_level).color}>{engagementMeta(selectedMember.engagement_level).label}</DotText> : null },
+            ]}
+            alerts={(selectedMember.paused || selectedMember.suspended || selectedMember.membership_arrears) ? <>
+              {selectedMember.paused && <DotText color="#e06717">Paused</DotText>}
+              {selectedMember.suspended && <DotText color="#e74c3c">Suspended</DotText>}
+              {selectedMember.membership_arrears && <DotText color="#b45309">In Arrears</DotText>}
+            </> : null}
           />
           <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px', flexWrap: 'wrap', position: 'relative', zIndex: 50 }}>
-          <FeatureTabDropdown label="Profile" isActive={['profile_details','profile_edit','profile_history','vault','profile_payments','settings'].includes(memberFeatureTab)} options={[{key:'profile_details',label:'Profile'},{key:'profile_edit',label:'Edit Profile'},{key:'profile_history',label:'Type History'},{key:'vault',label:'Vault'},{key:'profile_payments',label:'Payments'},{key:'settings',label:'Settings'}]} onSelect={setMemberFeatureTab} />
-          <FeatureTabDropdown label="MSM" isActive={msmOptions.map(o => o.key).includes(memberFeatureTab)} options={msmOptions} onSelect={k => { setMemberFeatureTab(k); sessionStorage.setItem(featureTabKey, k) }} />
-            {extraTabs.map(([key, label]) => (
-            <Fragment key={key}>
-              {growthPlan && key === 'ciq' && <button style={{ padding: '7px 16px', background: memberFeatureTab.startsWith('gp_') ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: memberFeatureTab.startsWith('gp_') ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: memberFeatureTab.startsWith('gp_') ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' }} onClick={() => { setMemberFeatureTab('gp_hub'); sessionStorage.setItem(featureTabKey, 'gp_hub') }}>Growth Plan</button>}
-              <button style={{ padding: '7px 16px', background: memberFeatureTab === key ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: memberFeatureTab === key ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: memberFeatureTab === key ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' }} onClick={() => { setMemberFeatureTab(key); sessionStorage.setItem(featureTabKey, key) }}>{label}</button>
-            </Fragment>
-          ))}
+          {/* The order (Jake, 2026-11-26) matches the member's own bar: Profile, Vault,
+              Programs (was MSM), Showroom (with Specialists and Website Plugin under
+              it), Growth Plan, CIQ, Growth Credit Marketplace. */}
+          {(() => {
+            const go = k => { setMemberFeatureTab(k); sessionStorage.setItem(featureTabKey, k) }
+            const pill = active => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' })
+            const labelOf = Object.fromEntries(extraTabs)
+            const showroomOpts = ['showroom', 'specialists', 'website'].filter(k => labelOf[k]).map(key => ({ key, label: labelOf[key] }))
+            return (
+              <>
+                <FeatureTabDropdown label="Profile" isActive={['profile_details','profile_edit','profile_history','profile_payments','settings'].includes(memberFeatureTab)} options={[{key:'profile_details',label:'Profile'},{key:'profile_edit',label:'Edit Profile'},{key:'profile_history',label:'Type History'},{key:'profile_payments',label:'Payments'},{key:'settings',label:'Settings'}]} onSelect={setMemberFeatureTab} onLabelClick={() => setMemberFeatureTab('profile_details')} />
+                <button style={pill(memberFeatureTab === 'vault')} onClick={() => go('vault')}>Vault</button>
+                <FeatureTabDropdown label="Programs" isActive={msmOptions.map(o => o.key).includes(memberFeatureTab)} options={msmOptions} onSelect={go} onLabelClick={() => go('msm_meetings')} />
+                {showroomOpts.length > 1
+                  ? <FeatureTabDropdown label="Showroom" isActive={showroomOpts.some(o => o.key === memberFeatureTab)} options={showroomOpts} onSelect={go} onLabelClick={() => go('showroom')} />
+                  : showroomOpts.map(o => <button key={o.key} style={pill(memberFeatureTab === o.key)} onClick={() => go(o.key)}>{o.label}</button>)}
+                {growthPlan && <button style={pill(memberFeatureTab.startsWith('gp_'))} onClick={() => go('gp_hub')}>Growth Plan</button>}
+                {['ciq', 'gc'].filter(k => labelOf[k]).map(k => <button key={k} style={pill(memberFeatureTab === k)} onClick={() => go(k)}>{labelOf[k]}</button>)}
+              </>
+            )
+          })()}
           </div>
           {['profile_details','profile_edit','profile_history'].includes(memberFeatureTab) && <MemberProfile member={selectedMember} allMembers={allMembers} onDataChange={onDataChange} activeSection={memberFeatureTab} hiddenFields={hiddenFields} typeOptionsOverride={showModel ? null : typeOptions} onOpenMember={onOpenMember} memberConnections={memberConnections} />}
           {memberFeatureTab === 'profile_payments' && <MemberPaymentsTab member={selectedMember} />}
@@ -560,7 +573,7 @@ function AdvisorsPanel({ allMembers, allExperts, allExclusionMap, ecoMap, onData
       allExclusionMap={allExclusionMap}
       ecoMap={ecoMap}
       onDataChange={onDataChange}
-      addForm={IS_STAGING ? <StagingAddMemberNote /> : <AddAdvisorForm allMembers={allMembers} onDataChange={onDataChange} />}
+      addForm={<AddAdvisorForm allMembers={allMembers} onDataChange={onDataChange} />}
       selectedKey="adminSelectedMember"
       featureTabKey="adminMemberFeatureTab"
       initialTab={initialTab}
@@ -591,9 +604,6 @@ function AddAdvisorForm({ allMembers, onDataChange }) {
   const [customMemberNumber, setCustomMemberNumber] = useState('')
 
   const isCorporate = CORPORATE_TYPES.includes(memberType)
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
   // Corporate members keep their parent-linked "<parent>-C<n>" numbering and
   // stay uncategorized (member_category=null), so they never enter the integer
@@ -629,75 +639,33 @@ function AddAdvisorForm({ allMembers, onDataChange }) {
     finally { setLoading(false) }
   }
 
-  return (
-    <div style={sectionStyle}>
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '160px' }}><label style={labelStyle}>First Name *</label><input value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} /></div>
-        <div style={{ flex: 1, minWidth: '160px' }}><label style={labelStyle}>Last Name *</label><input value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} /></div>
-        <div style={{ flex: 1, minWidth: '200px' }}>
-          <label style={labelStyle}>Member Type *</label>
-          <select value={memberType} onChange={e => setMemberType(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
-            <option value="">-- Select --</option>
-            {MEMBER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-      </div>
-      {isCorporate && (
-        <div style={{ marginBottom: '16px', position: 'relative' }}>
-          <label style={labelStyle}>Connected Member *</label>
-          <input type="search" name="search" autoComplete="off" value={connectedSearch} onChange={e => { setConnectedSearch(e.target.value); setConnectedMember(null) }} placeholder="Search by name or number..." style={inputStyle} />
-          {connectedSearch && !connectedMember && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-mid)', borderRadius: '8px', zIndex: 10, maxHeight: '200px', overflowY: 'auto' }}>
-              {allMembers.filter(m => m.name?.toLowerCase().includes(connectedSearch.toLowerCase()) || m.plugin_member_number?.toLowerCase().includes(connectedSearch.toLowerCase())).map(m => (
-                <div key={m.plugin_member_number} onClick={() => { setConnectedMember(m); setConnectedSearch(m.name + ' (' + m.plugin_member_number + ')') }}
-                  style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--vfo-tint-deep)', color: 'var(--vfo-ink)', fontSize: '14px' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'none'}>
-                  {m.name} <span style={{ color: 'var(--vfo-muted)' }}>({m.plugin_member_number})</span>
-                </div>
-              ))}
+  const connectedField = isCorporate && (
+    <>
+      <label style={formLabel}>Connected Member *</label>
+      <input type="search" name="search" autoComplete="off" value={connectedSearch} onChange={e => { setConnectedSearch(e.target.value); setConnectedMember(null) }} placeholder="Search by name or number..." style={formInput} />
+      {connectedSearch && !connectedMember && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', zIndex: 10, maxHeight: '220px', overflowY: 'auto', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
+          {allMembers.filter(m => m.name?.toLowerCase().includes(connectedSearch.toLowerCase()) || m.plugin_member_number?.toLowerCase().includes(connectedSearch.toLowerCase())).map(m => (
+            <div key={m.plugin_member_number} onClick={() => { setConnectedMember(m); setConnectedSearch(m.name + ' (' + m.plugin_member_number + ')') }}
+              style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--vfo-border-soft)', color: 'var(--vfo-ink)', fontSize: '14px' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+              {m.name} <span style={{ color: 'var(--vfo-muted)' }}>({m.plugin_member_number})</span>
             </div>
-          )}
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Work Email *</label><input value={email} onChange={e => setEmail(e.target.value)} type="email" style={inputStyle} /></div>
-        <div style={{ flex: 1, minWidth: '160px' }}>
-          <label style={labelStyle}>Status *</label>
-          <select value={eliteStatus} onChange={e => setEliteStatus(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
-            <option value="">-- Select --</option>
-            {['Active', 'Lost', 'Removed'].map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-        <div style={{ flex: 1, minWidth: '180px' }}>
-          <label style={labelStyle}>Revenue Decision *</label>
-          <select value={revenueDecision} onChange={e => setRevenueDecision(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
-            <option value="">-- Select --</option>
-            <option value="Revenue Share">Revenue Share</option>
-            <option value="Money Mapping">Money Mapping</option>
-          </select>
-        </div>
-      </div>
-      <div style={{ marginBottom: '16px' }}>
-        <label style={labelStyle}>Advisor Model *</label>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          {['Legacy Model', 'New Model'].map(m => (
-            <label key={m} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: `1px solid ${advisorModel === m ? 'rgba(0,149,255,0.5)' : 'var(--vfo-border-strong)'}`, background: advisorModel === m ? 'rgba(0,149,255,0.08)' : 'var(--vfo-tint)', cursor: 'pointer', fontSize: '13px', color: advisorModel === m ? 'var(--vfo-ink)' : 'var(--vfo-muted)' }}>
-              <input type="radio" name="advisor_model" value={m} checked={advisorModel === m} onChange={() => setAdvisorModel(m)} style={{ accentColor: '#0095ff' }} />
-              {m}
-            </label>
           ))}
         </div>
-      </div>
-      <div style={{ marginBottom: '16px' }}>
-        <label style={labelStyle}>Member Number <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', fontStyle: 'italic', textTransform: 'none', letterSpacing: 0 }}>— leave blank to auto-generate</span></label>
-        <input value={customMemberNumber} onChange={e => setCustomMemberNumber(e.target.value)} placeholder="e.g. 59452" style={{ ...inputStyle, maxWidth: '200px' }} />
-      </div>
-      <button onClick={submit} disabled={loading} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
-        {loading ? 'Creating...' : 'Create Advisor'}
-      </button>
-      {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
-    </div>
+      )}
+    </>
+  )
+
+  return (
+    <AddMemberCards
+      heading={<PageHeading eyebrow="Advisors" title="Add Advisor" />}
+      v={{ firstName, lastName, memberType, email, eliteStatus, revenueDecision, advisorModel, customMemberNumber }}
+      set={{ firstName: setFirstName, lastName: setLastName, memberType: setMemberType, email: setEmail, eliteStatus: setEliteStatus, revenueDecision: setRevenueDecision, advisorModel: setAdvisorModel, customMemberNumber: setCustomMemberNumber }}
+      typeOptions={MEMBER_TYPES} connectedField={connectedField} numberPlaceholder="e.g. 59452"
+      loading={loading} onCreate={submit} createLabel="Create Advisor" status={status} statusType={statusType}
+    />
   )
 }
 
@@ -754,11 +722,12 @@ function AddStrategicSection({ groupNames, allMembers, onDataChange, onGroupsCha
   const pill = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '6px' })
   return (
     <div>
+      <PageHeading eyebrow="Strategic Members" title="Add Strategic Member" />
       <div style={{ display: 'flex', marginBottom: '18px' }}>
         <button style={pill(tab === 'member')} onClick={() => setTab('member')}>Add Strategic Member</button>
         <button style={pill(tab === 'group')} onClick={() => setTab('group')}>Add Strategic Member Group</button>
       </div>
-      {tab === 'member' && (IS_STAGING ? <StagingAddMemberNote /> : <AddStrategicMemberForm groupNames={groupNames} allMembers={allMembers} onDataChange={onDataChange} />)}
+      {tab === 'member' && <AddStrategicMemberForm groupNames={groupNames} allMembers={allMembers} onDataChange={onDataChange} />}
       {tab === 'group' && <AddStrategicGroupForm onGroupsChange={onGroupsChange} />}
     </div>
   )
@@ -776,9 +745,6 @@ function AddStrategicMemberForm({ groupNames, allMembers, onDataChange }) {
   const [loading, setLoading] = useState(false)
   const [customMemberNumber, setCustomMemberNumber] = useState('')
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
   async function submit() {
     if (!canAddMembers()) { setStatusType('error'); setStatus('Access Denied'); return }
@@ -815,50 +781,18 @@ function AddStrategicMemberForm({ groupNames, allMembers, onDataChange }) {
   }
 
   return (
-    <div style={sectionStyle}>
-      {groupNames.length === 0 && (
-        <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '10px', background: 'rgba(0,149,255,0.07)', border: '1px solid rgba(0,149,255,0.22)', color: 'var(--vfo-ink)', fontSize: '13px' }}>
+    <AddMemberCards
+      v={{ firstName, lastName, memberType, email, eliteStatus, revenueDecision, customMemberNumber }}
+      set={{ firstName: setFirstName, lastName: setLastName, memberType: setMemberType, email: setEmail, eliteStatus: setEliteStatus, revenueDecision: setRevenueDecision, customMemberNumber: setCustomMemberNumber }}
+      notice={groupNames.length === 0 && (
+        <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '12px', background: 'rgba(0,149,255,0.07)', border: '1px solid rgba(0,149,255,0.22)', color: 'var(--vfo-ink)', fontSize: '13px' }}>
           No Strategic Member Groups yet. Add one under the <strong>Add Strategic Member Group</strong> tab — each group becomes a Member Type option here.
         </div>
       )}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '160px' }}><label style={labelStyle}>First Name *</label><input value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} /></div>
-        <div style={{ flex: 1, minWidth: '160px' }}><label style={labelStyle}>Last Name *</label><input value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} /></div>
-        <div style={{ flex: 1, minWidth: '200px' }}>
-          <label style={labelStyle}>Member Type *</label>
-          <select value={memberType} onChange={e => setMemberType(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }} disabled={groupNames.length === 0}>
-            <option value="">-- Select group --</option>
-            {groupNames.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '180px' }}><label style={labelStyle}>Work Email *</label><input value={email} onChange={e => setEmail(e.target.value)} type="email" style={inputStyle} /></div>
-        <div style={{ flex: 1, minWidth: '160px' }}>
-          <label style={labelStyle}>Status *</label>
-          <select value={eliteStatus} onChange={e => setEliteStatus(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
-            <option value="">-- Select --</option>
-            {['Active', 'Lost', 'Removed'].map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-        <div style={{ flex: 1, minWidth: '180px' }}>
-          <label style={labelStyle}>Revenue Decision *</label>
-          <select value={revenueDecision} onChange={e => setRevenueDecision(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
-            <option value="">-- Select --</option>
-            <option value="Revenue Share">Revenue Share</option>
-            <option value="Money Mapping">Money Mapping</option>
-          </select>
-        </div>
-      </div>
-      <div style={{ marginBottom: '16px' }}>
-        <label style={labelStyle}>Member Number <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', fontStyle: 'italic', textTransform: 'none', letterSpacing: 0 }}>— leave blank to auto-generate</span></label>
-        <input value={customMemberNumber} onChange={e => setCustomMemberNumber(e.target.value)} placeholder="e.g. 20000" style={{ ...inputStyle, maxWidth: '200px' }} />
-      </div>
-      <button onClick={submit} disabled={loading} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
-        {loading ? 'Creating...' : 'Create Strategic Member'}
-      </button>
-      {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
-    </div>
+      typeOptions={groupNames} typePlaceholder="-- Select group --" typeDisabled={groupNames.length === 0}
+      showModel={false} numberPlaceholder="e.g. 20000"
+      loading={loading} onCreate={submit} createLabel="Create Strategic Member" status={status} statusType={statusType}
+    />
   )
 }
 
@@ -868,9 +802,6 @@ function AddStrategicGroupForm({ onGroupsChange }) {
   const [statusType, setStatusType] = useState('success')
   const [loading, setLoading] = useState(false)
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
   async function submit() {
     const name = groupName.trim()
@@ -886,16 +817,16 @@ function AddStrategicGroupForm({ onGroupsChange }) {
   }
 
   return (
-    <div style={sectionStyle}>
-      <div style={{ marginBottom: '16px', maxWidth: '420px' }}>
-        <label style={labelStyle}>Strategic Group Name *</label>
-        <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="e.g. Action Coach" style={inputStyle} onKeyDown={e => { if (e.key === 'Enter') submit() }} />
+    <ProfileCard icon="users" title="New Strategic Member Group" sub="Each group becomes a Member Type option when adding a strategic member.">
+      <div style={{ maxWidth: '420px', marginBottom: '14px' }}>
+        <label style={formLabel}>Strategic Group Name *</label>
+        <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="e.g. Action Coach" style={formInput} onKeyDown={e => { if (e.key === 'Enter') submit() }} />
       </div>
-      <button onClick={submit} disabled={loading} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
-        {loading ? 'Creating...' : 'Create Group'}
-      </button>
-      {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
-    </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+        <button type="button" onClick={submit} disabled={loading} style={{ ...btnState(btnPrimary, loading), cursor: loading ? 'wait' : 'pointer' }}>{loading ? 'Creating…' : 'Create Group'}</button>
+        {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', fontWeight: 500 }}>{status}</span>}
+      </div>
+    </ProfileCard>
   )
 }
 
@@ -955,7 +886,6 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
   // with its own typeahead state — never share it with the Connection picker.
   const [introducedSearch, setIntroducedSearch] = useState('')
   const [showIntroducedSearch, setShowIntroducedSearch] = useState(false)
-  const [programNotes, setProgramNotes] = useState([])
   const [stripeRequesting, setStripeRequesting] = useState(false)
   const [stripeLinking, setStripeLinking] = useState(false)
   const [stripeMsg, setStripeMsg] = useState('')
@@ -1032,7 +962,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
     finally { setStripeLinking(false) }
   }
 
-  useEffect(() => { loadProfile(); loadProgramNotes() }, [member.plugin_member_number])
+  useEffect(() => { loadProfile() }, [member.plugin_member_number])
 
   // Branding is saved from the Edit Profile tab straight through
   // member_branding_save, bypassing this form's state. On returning to Details,
@@ -1061,13 +991,6 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
       .finally(() => { if (alive) setConnectLoading(false) })
     return () => { alive = false }
   }, [connectAcctId, member.plugin_member_number, connectRefresh])
-
-  async function loadProgramNotes() {
-    try {
-      const data = await callApi('load_member_program_notes', { member_number: member.plugin_member_number })
-      setProgramNotes(data.notes || [])
-    } catch (err) { console.error(err) }
-  }
 
   // Additional Contacts ride on member_profile_load; a silent re-read after
   // every contact write keeps the list in step without flashing the skeleton.
@@ -1134,8 +1057,8 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
     finally { setConnSaving(false) }
   }
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const labelStyle = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }
+  const inputStyle = formInput
+  const labelStyle = formLabel
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
   const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
   const rowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)' }
@@ -1203,14 +1126,6 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
         // Chips reuse styles already in this file: the blue introducer pill and
         // the neutral count chip.
         const introChip = { fontSize: '11px', padding: '2px 9px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.25)' }
-        const connectState = (connectLoading || !connectStatus) ? 'loading' : (connectStatus.status || 'unavailable')
-        const connectPill =
-          connectState === 'complete' ? { dot: '#16a34a', label: 'Account Set up' }
-          : connectState === 'eligible_capped' ? { dot: '#f59e0b', label: 'Account setup — payouts eligible to $3,000' }
-          : connectState === 'pending' ? { dot: '#dc2626', label: 'Setup pending' }
-          : connectState === 'mode_mismatch' ? { dot: 'var(--vfo-faint)', label: `Status unavailable (account created in ${connectStatus.found_in_sandbox ? 'sandbox' : 'live'} mode)` }
-          : connectState === 'loading' ? { dot: 'var(--vfo-faint)', label: 'Checking status…' }
-          : { dot: 'var(--vfo-faint)', label: 'Status unavailable' }
         return (
           <div>
             {/* The read-only body is SHARED with the member's own Profile tab
@@ -1230,7 +1145,6 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               ) : null}
               hideRevenueDecision={hiddenFields.includes('revenue_decision')}
               onOpenMember={onOpenMember}
-              styles={{ sectionStyle, cardTitle }}
               people={{
                 introducedBy: introducedByObj && !CORPORATE_TYPES.includes(member.member_type) ? { ...introducedByObj, number: introducedByObj.plugin_member_number, chip: profile.connection_type || null } : null,
                 introducerOf: introducedByMe.map(m => ({ ...m, number: m.plugin_member_number, chip: m.connection_type || null })),
@@ -1240,50 +1154,36 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               }}
               adminView
               payoutSlot={profile.stripe_account_id ? (
-                    <div>
-                      <div style={fieldLabel}>{linkedFrom ? 'Borrowed Stripe Account' : 'Stripe Account'}</div>
+                    <StripeAccountField label={linkedFrom ? 'Borrowed Stripe Account' : 'Stripe Account'}
+                      acctId={profile.stripe_account_id} loading={connectLoading} connectStatus={connectStatus}
+                      onRefresh={() => setConnectRefresh(n => n + 1)}
+                      note={linkedFrom ? <>Payouts go to <strong>{linkedLeadName} ({linkedFrom})</strong>'s Stripe account. This member has no Stripe Connect account of their own.</> : null}
+                      labelSuffix={linkedFrom ? ` — ${linkedLeadName}'s account` : ''}
+                      msg={stripeMsg} msgType={stripeMsgType}>
                       {linkedFrom && (
-                        <div style={{ fontSize: '13px', color: 'var(--vfo-ink-2)', lineHeight: 1.5, marginTop: '7px' }}>
-                          Payouts go to <strong>{linkedLeadName} ({linkedFrom})</strong>'s Stripe account. This member has no Stripe Connect account of their own.
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '7px' }}>
-                        <span style={{ fontSize: '13px', color: 'var(--vfo-ink-2)', fontFamily: 'monospace', padding: '6px 12px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', borderRadius: '8px' }}>{profile.stripe_account_id}</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-ink)', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', borderRadius: '999px', padding: '4px 12px' }}>
-                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: connectPill.dot, flexShrink: 0 }} />
-                          {linkedFrom ? `${connectPill.label} — ${linkedLeadName}'s account` : connectPill.label}
-                        </span>
-                        <button type="button" onClick={() => setConnectRefresh(n => n + 1)} disabled={connectLoading}
-                          style={{ background: 'none', border: 'none', padding: 0, color: '#0095ff', fontSize: '12px', fontWeight: 600, cursor: connectLoading ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                          Refresh
+                        <button type="button" onClick={() => unlinkStripeFromLead(linkedLeadName)} disabled={stripeLinking}
+                          style={{ ...btnState({ ...btnSecondary, ...BTN_SMALL }, stripeLinking), cursor: stripeLinking ? 'wait' : 'pointer' }}>
+                          {stripeLinking ? 'Working…' : 'Unlink'}
                         </button>
-                        {linkedFrom && (
-                          <button type="button" onClick={() => unlinkStripeFromLead(linkedLeadName)} disabled={stripeLinking}
-                            style={{ padding: '5px 14px', borderRadius: '999px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', fontWeight: 600, cursor: stripeLinking ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                            {stripeLinking ? 'Working…' : 'Unlink'}
-                          </button>
-                        )}
-                      </div>
-                      {stripeMsg && <p style={{ fontSize: '12px', marginTop: '8px', color: stripeMsgType === 'success' ? 'var(--vfo-success-text)' : '#d93025' }}>{stripeMsg}</p>}
-                    </div>
+                      )}
+                    </StripeAccountField>
                   ) : (
-                    <div>
-                      <div style={fieldLabel}>Stripe Connect</div>
-                      <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <Field label="Stripe Connect">
+                      <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                         <button type="button" onClick={sendStripeRequest} disabled={stripeRequesting}
-                          style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid var(--vfo-accent-text)', background: 'var(--vfo-card)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600, cursor: stripeRequesting ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                          style={{ ...btnState(btnOutline, stripeRequesting), cursor: stripeRequesting ? 'wait' : 'pointer' }}>
                           {stripeRequesting ? 'Working…' : 'Send Stripe Connect setup email'}
                         </button>
                         {canLinkToLead && (
                           <button type="button" onClick={linkStripeToLead} disabled={stripeLinking || leadLacksAccount}
                             title={leadLacksAccount ? `${leadRowName} has no Stripe Connect account yet` : undefined}
-                            style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid var(--vfo-accent-text)', background: 'var(--vfo-card)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600, cursor: leadLacksAccount ? 'not-allowed' : stripeLinking ? 'wait' : 'pointer', opacity: leadLacksAccount ? 0.5 : 1, fontFamily: 'Inter, sans-serif' }}>
+                            style={{ ...btnState(btnOutline, stripeLinking || leadLacksAccount), cursor: leadLacksAccount ? 'not-allowed' : stripeLinking ? 'wait' : 'pointer' }}>
                             {stripeLinking ? 'Working…' : "Link to Lead Member's Stripe Connect"}
                           </button>
                         )}
                       </div>
-                      {stripeMsg && <p style={{ fontSize: '12px', marginTop: '8px', color: stripeMsgType === 'success' ? 'var(--vfo-success-text)' : '#d93025' }}>{stripeMsg}</p>}
-                    </div>
+                      {stripeMsg && <p style={{ fontSize: '12px', fontWeight: 500, margin: '8px 0 0', color: stripeMsgType === 'success' ? 'var(--vfo-success-text)' : '#d93025' }}>{stripeMsg}</p>}
+                    </Field>
                   )
               }
             />
@@ -1293,32 +1193,12 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               styles={{ sectionStyle, cardTitle, inputStyle, labelStyle }} />
 
             {profile.notes && (
-              <div style={sectionStyle}>
-                <div style={cardTitle}>Notes</div>
-                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.notes}</div>
-              </div>
+              <ProfileCard icon="note" title="Notes">
+                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.75, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.notes}</div>
+              </ProfileCard>
             )}
 
-            {programNotes.length > 0 && (
-              <div style={sectionStyle}>
-                <div style={{ ...cardTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>All Program Notes</span>
-                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{programNotes.length}</span>
-                </div>
-                {programNotes.map(note => (
-                  <div key={note.id} style={{ padding: '10px 12px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
-                    <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
-                      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
-                      <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.program_name}</span>
-                      <VisibilityBadge visibility={note.visibility} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Program notes live on the MSM Home now (2026-11-26); the profile keeps the general Notes. */}
           </div>
         )
       })()}
@@ -1328,21 +1208,20 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
         const currentPhoto = photoPreview || (profile.headshot_image ? HEADSHOT_SUPABASE + encodeURIComponent(profile.headshot_image) : null)
         return (
         <>
-          <div style={sectionStyle}>
-            <div style={cardTitle}>Photo, Bio &amp; Website</div>
+          <ProfileCard icon="camera" title={'Photo, Bio & Website'}>
             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
               <div style={{ textAlign: 'center', flexShrink: 0 }}>
                 <div onClick={() => { if (currentPhoto) setCropState({ src: currentPhoto }) }}
-                  style={{ width: '110px', height: '110px', borderRadius: '50%', overflow: 'hidden', background: currentPhoto ? 'var(--vfo-tint)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: '1px solid var(--vfo-border-chip)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: currentPhoto ? 'pointer' : 'default', margin: '0 auto' }}>
+                  style={{ width: '104px', height: '104px', borderRadius: '50%', overflow: 'hidden', background: currentPhoto ? 'var(--vfo-tint)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: '3px solid var(--vfo-card)', boxShadow: '0 6px 18px rgba(18,94,204,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: currentPhoto ? 'pointer' : 'default', margin: '0 auto' }}>
                   {currentPhoto
                     ? <img src={currentPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <span style={{ color: '#fff', fontSize: '30px', fontWeight: 700 }}>{editInitials || '?'}</span>}
                 </div>
-                <label style={{ display: 'inline-block', marginTop: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-card)', color: 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                <label style={{ ...btnPrimary, display: 'inline-block', marginTop: '12px' }}>
                   {currentPhoto ? 'Change photo' : 'Upload photo'}
                   <input type="file" accept="image/*" onChange={handlePhotoPick} style={{ display: 'none' }} />
                 </label>
-                {currentPhoto && <button type="button" onClick={() => setCropState({ src: currentPhoto })} style={{ display: 'block', margin: '8px auto 0', padding: '6px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Adjust / Zoom</button>}
+                {currentPhoto && <button type="button" onClick={() => setCropState({ src: currentPhoto })} style={{ ...btnSecondary, display: 'block', margin: '8px auto 0' }}>Adjust / Zoom</button>}
               </div>
               <div style={{ flex: 1, minWidth: '260px' }}>
                 <div style={{ marginBottom: '16px' }}>
@@ -1355,9 +1234,8 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
                 </div>
               </div>
             </div>
-          </div>
-          <div style={sectionStyle}>
-            <div style={cardTitle}>Basic Info</div>
+          </ProfileCard>
+          <ProfileCard icon="id" title="Basic Info">
             <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name</label><input value={profile.first_name || ''} onChange={e => update('first_name', e.target.value)} style={inputStyle} /></div>
               <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name</label><input value={profile.last_name || ''} onChange={e => update('last_name', e.target.value)} style={inputStyle} /></div>
@@ -1387,61 +1265,43 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Join Date</label><input type="date" value={profile.join_date || ''} onChange={e => update('join_date', e.target.value)} style={inputStyle} /></div>
               {(profile.elite_status === 'Lost' || profile.elite_status === 'Removed') && <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Leave Date</label><input type="date" value={profile.leave_date || ''} onChange={e => update('leave_date', e.target.value)} style={inputStyle} /></div>}
               {/* Derived from the member's membership fee plan (Accounting → Membership Fees) — display only. */}
-              <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Renewal Date</label><input type="text" readOnly value={profile.membership_renewal_date ? String(profile.membership_renewal_date).split('T')[0] : '—'} title="Set by the membership fee plan under Accounting" style={{ ...inputStyle, background: 'var(--vfo-tint)', color: 'var(--vfo-muted)', cursor: 'not-allowed' }} /></div>
+              <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Renewal Date</label><input type="text" readOnly value={profile.membership_renewal_date ? String(profile.membership_renewal_date).split('T')[0] : '—'} title="Set by the membership fee plan under Accounting" style={formReadOnly} /></div>
             </div>
-          </div>
-          <div style={sectionStyle}>
-            <div style={cardTitle}>Settings</div>
-            <div style={rowStyle}>
-              <div><div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>Suspended</div><div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Stops all active processing and holds revenue share payouts — they release automatically when unsuspended</div></div>
-              <div onClick={() => update('suspended', !profile.suspended)} style={{ width: '44px', height: '24px', borderRadius: '12px', background: profile.suspended ? '#e74c3c' : 'var(--vfo-border-strong)', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
-                <div style={{ position: 'absolute', top: '2px', left: profile.suspended ? '22px' : '2px', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--vfo-card)', transition: 'left 0.2s' }} />
-              </div>
+          </ProfileCard>
+          <ProfileCard icon="settings" title="Settings">
+            <div style={{ display: 'grid', gap: '10px' }}>
+              <SettingRow title="Suspended" hint="Stops all active processing and holds revenue share payouts — they release automatically when unsuspended">
+                <Switch on={!!profile.suspended} color="#e74c3c" label="Suspended" onClick={() => update('suspended', !profile.suspended)} />
+              </SettingRow>
+              {profile.membership_arrears && (
+                <div style={{ fontSize: '12px', color: '#b45309', padding: '0 4px', lineHeight: 1.45, fontWeight: 600 }}>
+                  In arrears on membership fees — revenue shares are held; clears automatically when the arrears are paid.
+                </div>
+              )}
+              <SettingRow title="Paused" hint="Temporarily pauses activity and holds revenue share payouts — they release automatically when unpaused">
+                <Switch on={!!profile.paused} color="#e06717" label="Paused" onClick={() => update('paused', !profile.paused)} />
+              </SettingRow>
             </div>
-            {profile.membership_arrears && (
-              <div style={{ fontSize: '12px', color: '#b45309', padding: '0 0 8px', lineHeight: 1.45, fontWeight: 600 }}>
-                In arrears on membership fees — revenue shares are held; clears automatically when the arrears are paid.
-              </div>
-            )}
-            <div style={{ ...rowStyle, borderBottom: 'none' }}>
-              <div><div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>Paused</div><div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Temporarily pauses activity and holds revenue share payouts — they release automatically when unpaused</div></div>
-              <div onClick={() => update('paused', !profile.paused)} style={{ width: '44px', height: '24px', borderRadius: '12px', background: profile.paused ? '#e06717' : 'var(--vfo-border-strong)', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
-                <div style={{ position: 'absolute', top: '2px', left: profile.paused ? '22px' : '2px', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--vfo-card)', transition: 'left 0.2s' }} />
-              </div>
-            </div>
-          </div>
-          <div style={sectionStyle}>
-            <div style={cardTitle}>Revenue</div>
+          </ProfileCard>
+          <ProfileCard icon="dollar" tone="green" title="Revenue">
             {!hiddenFields.includes('revenue_decision') && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>Revenue Decision</label>
-                <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                  {['Revenue Share', 'Money Mapping'].map(v => (
-                    <button key={v} onClick={() => update('revenue_decision', v)} style={{ padding: '8px 18px', borderRadius: '6px', border: `1px solid ${profile.revenue_decision === v ? '#0095ff' : 'var(--vfo-border-mid)'}`, background: profile.revenue_decision === v ? 'rgba(0,149,255,0.15)' : 'transparent', color: profile.revenue_decision === v ? '#0095ff' : 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>{v}</button>
-                  ))}
-                </div>
+                <ChoiceButtons options={[['Revenue Share', 'Revenue Share'], ['Money Mapping', 'Money Mapping']]} value={profile.revenue_decision} onChange={v => update('revenue_decision', v)} />
               </div>
             )}
             <div>
               <label style={labelStyle}>Eligible for Credit Note</label>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                {[['On', true], ['Off', false]].map(([lbl, v]) => {
-                  const active = (profile.credit_note_eligible !== false) === v
-                  return (
-                    <button key={lbl} onClick={() => update('credit_note_eligible', v)} style={{ padding: '8px 18px', borderRadius: '6px', border: `1px solid ${active ? '#0095ff' : 'var(--vfo-border-mid)'}`, background: active ? 'rgba(0,149,255,0.15)' : 'transparent', color: active ? '#0095ff' : 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>{lbl}</button>
-                  )
-                })}
-              </div>
+              <ChoiceButtons options={[[true, 'On'], [false, 'Off']]} value={profile.credit_note_eligible !== false} onChange={v => update('credit_note_eligible', v)} />
             </div>
-          </div>
+          </ProfileCard>
           {/* Branding saves on its own (member_branding_save), not through the
               Save Changes button below — member_profile_save ignores it. */}
-          <MemberBrandingCard memberNumber={member.plugin_member_number} mode="admin" styles={{ sectionStyle, cardTitle }} reloadKey={brandingKey} />
+          <MemberBrandingCard memberNumber={member.plugin_member_number} mode="admin" reloadKey={brandingKey} />
           {/* Introduction slot — who introduced this member. The tier
               (connection_type) is what THAT introducer earns, so it lives here.
               Shown for every member category, accountants included. */}
-          <div style={sectionStyle}>
-            <div style={cardTitle}>Introductions</div>
+          <ProfileCard icon="link" title="Introductions">
             <div style={{ marginBottom: '16px', position: 'relative' }}>
               <label style={labelStyle}>Introduced By (search member)</label>
               <input
@@ -1475,28 +1335,24 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               </select>
             </div>
             {profile.introduced_by_member_number && (
-              <button onClick={() => { update('introduced_by_member_number', null); update('connection_type', ''); setIntroducedSearch('') }} style={{ marginTop: '12px', padding: '8px 16px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600, fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Remove Introduction</button>
+              <button onClick={() => { update('introduced_by_member_number', null); update('connection_type', ''); setIntroducedSearch('') }} style={{ ...btnDanger, marginTop: '12px' }}>Remove Introduction</button>
             )}
-          </div>
+          </ProfileCard>
           {/* Connections are mutual pairs with no tier and no limit. Every row here
               writes immediately — the Save button below does NOT cover this card. */}
-          <div style={sectionStyle}>
-            <div style={{ ...cardTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>Connections</span>
-              <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{connectionPartners.length}</span>
-            </div>
+          <ProfileCard icon="users" title="Connections" sub={`${connectionPartners.length} ${connectionPartners.length === 1 ? 'connection' : 'connections'}. Each change here saves at once.`}>
             {connectionPartners.length === 0
-              ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No connections yet.</p>
-              : connectionPartners.map((cp, i) => (
-                <div key={cp.plugin_member_number} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: i < connectionPartners.length - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
-                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '11px', flexShrink: 0 }}>{initials(cp.name)}</div>
+              ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', margin: 0 }}>No connections yet.</p>
+              : <div style={{ display: 'grid', gap: '8px' }}>{connectionPartners.map(cp => (
+                <div key={cp.plugin_member_number} style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '10px 13px', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', background: 'var(--vfo-input)' }}>
+                  <Initials name={cp.name} size={32} />
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink)' }}>{cp.name}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '1px' }}><span style={{ fontFamily: 'monospace' }}>{cp.plugin_member_number}</span>{cp.member_type ? <> · {cp.member_type}</> : null}</div>
+                    <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{cp.name}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '1px' }}><span style={{ fontFamily: 'monospace' }}>{cp.plugin_member_number}</span>{cp.member_type ? <> · {cp.member_type}</> : null}</div>
                   </div>
-                  <button onClick={() => writeConnection('member_connection_remove', cp.plugin_member_number)} disabled={connSaving} style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600, fontSize: '12px', cursor: connSaving ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif', opacity: connSaving ? 0.6 : 1, flexShrink: 0 }}>Remove</button>
+                  <button onClick={() => writeConnection('member_connection_remove', cp.plugin_member_number)} disabled={connSaving} style={{ ...btnState({ ...btnDanger, ...BTN_SMALL }, connSaving), marginLeft: 'auto', flexShrink: 0 }}>Remove</button>
                 </div>
-              ))
+              ))}</div>
             }
             <div style={{ position: 'relative', marginTop: '16px' }}>
               <label style={labelStyle}>Add Connection (search member)</label>
@@ -1524,30 +1380,23 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
                 </div>
               )}
             </div>
-          </div>
-          <div style={sectionStyle}>
-            <div style={cardTitle}>VFO Certification</div>
+          </ProfileCard>
+          <ProfileCard icon="award" tone="gold" title="VFO Certification">
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '200px' }}><label style={labelStyle}>VFO Certified Date</label><input type="date" value={profile.vfo_certified_date || ''} onChange={e => update('vfo_certified_date', e.target.value || null)} style={inputStyle} /></div>
               <div style={{ flex: 1, minWidth: '200px' }}><label style={labelStyle}>VFO Accredited Date</label><input type="date" value={profile.vfo_accredited_date || ''} onChange={e => update('vfo_accredited_date', e.target.value || null)} style={inputStyle} /></div>
             </div>
-          </div>
-          <div style={sectionStyle}>
-            <div style={cardTitle}>Notes</div>
+          </ProfileCard>
+          <ProfileCard icon="note" title="Notes">
             <textarea value={profile.notes || ''} onChange={e => update('notes', e.target.value)} rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
-          </div>
-          <div style={{ position: 'sticky', bottom: 0, background: 'var(--vfo-page)', borderTop: '1px solid var(--vfo-border)', padding: '16px 0', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {dirty && <span style={{ fontSize: '13px', color: '#b08d26', fontWeight: 500 }}>You have unsaved changes</span>}
-            <button onClick={save} disabled={saving} style={{ padding: '10px 28px', borderRadius: '8px', background: saving ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '14px', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save Changes'}</button>
-            {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px' }}>{status}</span>}
-          </div>
+          </ProfileCard>
+          <SaveBar dirty={dirty} saving={saving} onSave={save} status={status} statusType={statusType} />
         </>
         )
       })()}
 
       {activeTab === 'history' && (
-        <div style={sectionStyle}>
-          <div style={cardTitle}>Member Type History</div>
+        <ProfileCard icon="history" title="Member Type History">
           {typeHistory.length === 0
             ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No type changes recorded yet.</p>
             : typeHistory.map(h => (
@@ -1557,7 +1406,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               </div>
             ))
           }
-        </div>
+        </ProfileCard>
       )}
 
       {cropState && <ImageCropModal src={cropState.src} onApply={applyCrop} onCancel={() => setCropState(null)} />}
@@ -1570,97 +1419,11 @@ function ComingSoon({ title }) {
 }
 
 function MemberSpecialists({ member, allExperts, allExclusionMap, ecoMap = {}, onDataChange }) {
-  const excluded = allExclusionMap[member.plugin_member_number] || []
-  // Member Services specialists are internal-only (never shown to clients or in the
-  // website plugin), so they aren't enable/disable-able — listed separately below.
-  const isMemberService = (id) => (ecoMap[id] || []).includes('Member Services')
-  const regularExperts = allExperts.filter(e => !isMemberService(e.id))
-  const memberServiceExperts = allExperts.filter(e => isMemberService(e.id))
-  const [enabled, setEnabled] = useState(() => { const set = {}; regularExperts.forEach(e => { set[e.id] = !excluded.includes(e.id) }); return set })
-  const [search, setSearch] = useState('')
-  const [dirty, setDirty] = useState(false)
-  const [status, setStatus] = useState('')
-  const [statusType, setStatusType] = useState('success')
-
-  const enabledCount = regularExperts.filter(e => enabled[e.id]).length
-  const filtered = search ? regularExperts.filter(e => e.name.toLowerCase().includes(search.toLowerCase())) : regularExperts
-
-  function toggle(id) { setEnabled(p => ({ ...p, [id]: !p[id] })); setDirty(true) }
-  function enableAll() { const s = {}; regularExperts.forEach(e => s[e.id] = true); setEnabled(s); setDirty(true) }
-  function disableAll() { const s = {}; regularExperts.forEach(e => s[e.id] = false); setEnabled(s); setDirty(true) }
-
-  async function save() {
-    // Only the public five drive exclusions; preserve any pre-existing Member Services exclusions untouched.
-    const newExcluded = regularExperts.filter(e => !enabled[e.id]).map(e => e.id)
-      .concat(excluded.filter(id => isMemberService(id)))
-    try {
-      await callApi('save_member', { member_number: member.plugin_member_number, exclusions: newExcluded })
-      await onDataChange()
-      setDirty(false)
-      setStatusType('success'); setStatus('Changes saved!')
-      setTimeout(() => setStatus(''), 4000)
-    } catch (err) { setStatusType('error'); setStatus(err.message) }
-  }
-
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-
+  // The shared Specialists tab (2026-11-26); the admin saves through save_member.
   return (
-    <div>
-      <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginBottom: '20px', fontStyle: 'italic' }}>Changes here affect which specialists appear in this member's VFO Showroom and Website Plugin.</p>
-      <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
-        <div><div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--vfo-ink)' }}>{enabledCount}</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', letterSpacing: '1px' }}>ENABLED</div></div>
-        <div><div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--vfo-ink)' }}>{regularExperts.length}</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', letterSpacing: '1px' }}>TOTAL</div></div>
-      </div>
-      <input type="search" name="search" autoComplete="off" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search specialists..." style={{ ...inputStyle, marginBottom: '12px' }} />
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-        <button onClick={enableAll} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Enable All</button>
-        <button onClick={disableAll} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Disable All</button>
-      </div>
-      <div style={{ marginBottom: '8px' }}>
-        {filtered.map(expert => (
-          <div key={expert.id} onClick={() => toggle(expert.id)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', cursor: 'pointer' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', background: 'var(--vfo-border)', flexShrink: 0 }}>
-                {expert.headshot_image && <img src={HEADSHOT_SUPABASE + encodeURIComponent(expert.headshot_image)} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-              </div>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{expert.name}</div>
-                <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{expert.short_bio}</div>
-              </div>
-            </div>
-            <div style={{ width: '20px', height: '20px', borderRadius: '4px', border: `2px solid ${enabled[expert.id] ? '#0095ff' : 'var(--vfo-border-mid)'}`, background: enabled[expert.id] ? '#0095ff' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {enabled[expert.id] && <span style={{ color: 'var(--vfo-ink)', fontSize: '12px' }}>✓</span>}
-            </div>
-          </div>
-        ))}
-      </div>
-      {memberServiceExperts.length > 0 && (
-        <div style={{ marginTop: '20px', marginBottom: '8px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--vfo-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '4px' }}>Member Services</div>
-          <p style={{ color: 'var(--vfo-muted)', fontSize: '12px', fontStyle: 'italic', marginBottom: '10px' }}>Internal only — these specialists never appear in clients' showrooms or website plugins, so there is nothing to enable or disable.</p>
-          {memberServiceExperts.map(expert => (
-            <div key={expert.id}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px dashed var(--vfo-border-strong)', borderRadius: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', background: 'var(--vfo-border)', flexShrink: 0 }}>
-                  {expert.headshot_image && <img src={HEADSHOT_SUPABASE + encodeURIComponent(expert.headshot_image)} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                </div>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{expert.name}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{expert.short_bio}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      <div style={{ position: 'sticky', bottom: 0, background: 'var(--vfo-page)', borderTop: '1px solid var(--vfo-border)', padding: '16px 0', display: 'flex', alignItems: 'center', gap: '16px' }}>
-        {dirty && <span style={{ fontSize: '13px', color: '#b08d26', fontWeight: 500 }}>You have unsaved changes</span>}
-        <button onClick={save} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Save Changes</button>
-        {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px' }}>{status}</span>}
-      </div>
-    </div>
+    <SpecialistPicker allExperts={allExperts} excluded={allExclusionMap[member.plugin_member_number] || []} ecoMap={ecoMap}
+      intro="Which specialists appear in this member's VFO Showroom and Website Plugin."
+      onSave={async list => { await callApi('save_member', { member_number: member.plugin_member_number, exclusions: list }); await onDataChange() }} />
   )
 }
 
@@ -1917,8 +1680,7 @@ function MemberSettings({ member, allMembers = [], onDataChange }) {
 
   return (
     <div>
-      <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Member Login</div>
+      <ProfileCard icon="lock" title="Member Login">
         {loginLoading
           ? <SkeletonText lines={2} />
           : !portalAccess ? (
@@ -1928,7 +1690,7 @@ function MemberSettings({ member, allMembers = [], onDataChange }) {
             </p>
           ) : (
             <>
-              <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', marginBottom: '16px' }}>
+              <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', margin: '0 0 16px' }}>
                 {existingLogin
                   ? <>This member can sign in as <strong>{existingLogin.email}</strong>. Send a setup email to let them set a new passcode.</>
                   : <>No login yet. Send a setup email so this member can create their own passcode.</>}
@@ -1937,9 +1699,8 @@ function MemberSettings({ member, allMembers = [], onDataChange }) {
             </>
           )}
         {loginStatus && <p style={{ color: loginStatusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{loginStatus}</p>}
-      </div>
-      <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Stripe Connect</div>
+      </ProfileCard>
+      <ProfileCard icon="dollar" tone="green" title="Stripe Connect">
         {connectLoading ? (
           <SkeletonText lines={2} />
         ) : linkedFrom ? (
@@ -1950,43 +1711,43 @@ function MemberSettings({ member, allMembers = [], onDataChange }) {
               Payouts go to <strong style={{ color: 'var(--vfo-ink)' }}>{linkedLeadName} ({linkedFrom})</strong>'s Stripe account. This member has no Stripe Connect account of their own — manage the link on the Profile tab.
             </p>
             {connectStatus?.stripe_account_id && (
-              <span style={{ display: 'inline-block', marginTop: '12px', fontSize: '13px', color: 'var(--vfo-ink-2)', fontFamily: 'monospace', padding: '8px 12px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', borderRadius: '8px' }}>{connectStatus.stripe_account_id}</span>
+              <span style={{ display: 'inline-block', marginTop: '12px', fontSize: '13px', color: 'var(--vfo-ink-2)', fontFamily: 'monospace', padding: '8px 12px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px' }}>{connectStatus.stripe_account_id}</span>
             )}
           </div>
         ) : (connectStatus && connectStatus.status !== 'none') ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '13px', color: 'var(--vfo-ink-2)', fontFamily: 'monospace', padding: '8px 12px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', borderRadius: '8px' }}>{connectStatus.stripe_account_id}</span>
-            <button onClick={sendStripeRequest} disabled={stripeRequesting} style={{ padding: '9px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: stripeRequesting ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: stripeRequesting ? 0.6 : 1 }}>
+            <span style={{ fontSize: '13px', color: 'var(--vfo-ink-2)', fontFamily: 'monospace', padding: '8px 12px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px' }}>{connectStatus.stripe_account_id}</span>
+            <button onClick={sendStripeRequest} disabled={stripeRequesting} style={btnState(btnSecondary, stripeRequesting)}>
               {stripeRequesting ? 'Sending...' : 'Resend setup email'}
             </button>
           </div>
         ) : (
           <div>
-            <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', marginBottom: '16px' }}>No payment account yet. Send the member a secure Stripe setup link.</p>
-            <button onClick={sendStripeRequest} disabled={stripeRequesting} style={{ padding: '10px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: stripeRequesting ? 'not-allowed' : 'pointer', opacity: stripeRequesting ? 0.6 : 1 }}>
+            <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', margin: '0 0 16px' }}>No payment account yet. Send the member a secure Stripe setup link.</p>
+            <button onClick={sendStripeRequest} disabled={stripeRequesting} style={btnState(btnPrimary, stripeRequesting)}>
               {stripeRequesting ? 'Sending...' : 'Set Up Payment Details'}
             </button>
           </div>
         )}
         {stripeMsg && <p style={{ fontSize: '12.5px', marginTop: '12px', color: stripeMsgType === 'success' ? 'var(--vfo-success-text)' : '#d93025' }}>{stripeMsg}</p>}
-      </div>
-      <div style={{ ...sectionStyle, border: '1px solid rgba(231,76,60,0.3)' }}>
-        <div style={{ fontSize: '13px', color: '#e74c3c', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Danger Zone</div>
+      </ProfileCard>
+      <ProfileCard icon="alert" tone="red" title="Danger Zone" style={{ border: '1px solid rgba(231,76,60,0.3)' }}>
         {!deleteConfirm
-          ? <button onClick={() => setDeleteConfirm(true)} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid rgba(231,76,60,0.4)', background: 'transparent', color: '#e74c3c', fontWeight: 500, fontSize: '14px', cursor: 'pointer' }}>Delete Member</button>
+          ? <button onClick={() => setDeleteConfirm(true)} style={btnDanger}>Delete Member</button>
           : <div>
-              <p style={{ color: '#e74c3c', fontWeight: 500, fontSize: '14px', marginBottom: '12px' }}>Are you sure? This will remove all settings and exclusions. This cannot be undone.</p>
+              <p style={{ color: '#e74c3c', fontWeight: 500, fontSize: '14px', margin: '0 0 12px' }}>Are you sure? This will remove all settings and exclusions. This cannot be undone.</p>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={deleteMember} style={{ padding: '10px 24px', borderRadius: '8px', background: '#e74c3c', border: 'none', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Yes, Delete</button>
-                <button onClick={() => setDeleteConfirm(false)} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
+                <button onClick={deleteMember} style={btnPrimary}>Yes, Delete</button>
+                <button onClick={() => setDeleteConfirm(false)} style={btnSecondary}>Cancel</button>
               </div>
               {deleteStatus && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '12px' }}>{deleteStatus}</p>}
             </div>
         }
-      </div>
+      </ProfileCard>
     </div>
   )
 }
+
 // Member Additional Contacts — the member-side twin of the client Profile
 // tab's Additional Contacts (ClientDetail.jsx). Admin-only by decision: one
 // switch, "Cc on all emails", no greeting toggle. A flagged contact is Cc'd by
@@ -2080,17 +1841,12 @@ function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) 
   const ghostBtn = { padding: '6px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }
 
   return (
-    <div style={sectionStyle}>
-      <div style={{ ...cardTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>Additional Contacts</span>
-        <button type="button" onClick={() => { setShowAdd(!showAdd); setAddError('') }} style={{ ...primaryBtn, padding: '6px 14px' }}>+ Add</button>
-      </div>
-      <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginBottom: '14px', lineHeight: 1.5 }}>
-        People on this member's team. With <strong>Cc on all emails</strong> switched on, a contact is Cc'd on every portal email this member receives or is Cc'd on.
-      </div>
+    <ProfileCard icon="contacts" title="Additional Contacts"
+      sub={<>People on this member's team. With <strong>Cc on all emails</strong> switched on, a contact is Cc'd on every portal email this member receives or is Cc'd on.</>}
+      action={<button type="button" onClick={() => { setShowAdd(!showAdd); setAddError('') }} style={{ ...btnPrimary, ...BTN_SMALL }}>+ Add</button>}>
 
       {showAdd && (
-        <div style={{ padding: '16px', background: 'var(--vfo-tint)', borderRadius: '8px', marginBottom: '16px' }}>
+        <div style={{ padding: '16px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', marginBottom: '14px' }}>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={addFirst} onChange={e => setAddFirst(e.target.value)} onBlur={() => setAddFirst(formatPersonName(addFirst))} style={inputStyle} /></div>
             <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={addLast} onChange={e => setAddLast(e.target.value)} onBlur={() => setAddLast(formatPersonName(addLast))} style={inputStyle} /></div>
@@ -2112,7 +1868,7 @@ function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) 
       {addedFlash && <div style={{ color: 'var(--vfo-success-text)', fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>Contact added</div>}
       {contacts.length === 0 && !showAdd && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px', margin: 0 }}>No additional contacts yet.</p>}
       {contacts.map(c => (
-        <div key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
+        <div key={c.id} style={{ padding: '11px 14px', marginBottom: '8px', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', background: 'var(--vfo-input)' }}>
           {editId === c.id ? (
             <div>
               <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
@@ -2128,11 +1884,14 @@ function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) 
             </div>
           ) : (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <div style={{ minWidth: '160px' }}>
-                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{c.first_name} {c.last_name}</div>
-                {c.email
-                  ? <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{c.email}{c.phone ? ` · ${c.phone}` : ''}</div>
-                  : <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '2px', fontStyle: 'italic' }}>No email on file{c.phone ? ` · ${c.phone}` : ''}</div>}
+              <div style={{ minWidth: '160px', display: 'flex', alignItems: 'center', gap: '11px' }}>
+                <Initials name={`${c.first_name || ''} ${c.last_name || ''}`} size={34} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{c.first_name} {c.last_name}</div>
+                  {c.email
+                    ? <div title={c.email} style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.email}{c.phone ? ` · ${c.phone}` : ''}</div>
+                    : <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '2px', fontStyle: 'italic' }}>No email on file{c.phone ? ` · ${c.phone}` : ''}</div>}
+                </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: 'var(--vfo-muted)', cursor: busyId === c.id ? 'not-allowed' : 'pointer' }}>
@@ -2142,14 +1901,14 @@ function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) 
                 </label>
                 {busyId === c.id && <span style={{ color: 'var(--vfo-muted)', fontSize: '12px' }}>Saving...</span>}
                 {busyId !== c.id && rowSaved[c.id] && <span style={{ color: 'var(--vfo-success-text)', fontWeight: 600, fontSize: '12px' }}>Saved</span>}
-                <button type="button" onClick={() => startEdit(c)} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>
-                <button type="button" onClick={() => removeContact(c)} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.3)', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Remove</button>
+                <button type="button" onClick={() => startEdit(c)} style={{ ...btnSecondary, ...BTN_SMALL }}>Edit</button>
+                <button type="button" onClick={() => removeContact(c)} style={{ ...btnDanger, ...BTN_SMALL }}>Remove</button>
               </div>
             </div>
           )}
           {rowError[c.id] && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '12px', marginTop: '6px' }}>{rowError[c.id]}</div>}
         </div>
       ))}
-    </div>
+    </ProfileCard>
   )
 }

@@ -1,57 +1,42 @@
 // Admin member detail and KPI page skeletons. The member profile body is shared with
 // the member and tax planner portals, so it carries their phone layout too.
 import { useIsPhone } from '../../../lib/useMediaQuery'
-import { Skeleton, SkeletonText, CardShell, HeroSkeleton, PillTabsSkeleton, RuledTitleSkeleton, FieldGridSkeleton } from './primitives'
+import { Skeleton, SkeletonText, CardShell, HeroSkeleton, PillTabsSkeleton, RuledTitleSkeleton, FieldGridSkeleton, ProfileCardSkeleton, ProfileHeroSkeleton, TileGridSkeleton } from './primitives'
 import { KpiHeroSkeleton, ProgramNotesSkeleton } from './admin'
 
-// The member profile's read-only body (shared/MemberProfileDetails): paired cards
-// with ruled titles, then the full-width ones. `hero` adds the page's header card
-// where the caller does not draw its own.
+// The member profile's read-only body (shared/MemberProfileDetails): paired
+// profile boxes with tile grids, then the full-width ones. `hero` adds the page's
+// header card where the caller does not draw its own.
 export function MemberProfileDetailsSkeleton({ hero = false }) {
   const isPhone = useIsPhone()
-  const columns = isPhone ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(150px, 1fr))'
-  const seal = isPhone ? 44 : 76
-  const pad = 'var(--vfo-card-pad)'
+  const seal = isPhone ? 44 : 64
   const row = { display: 'flex', gap: isPhone ? 0 : '16px', alignItems: 'stretch', flexWrap: 'wrap' }
   const col = (basis, min) => ({ flex: `1 1 ${basis}`, minWidth: isPhone ? '100%' : min, display: 'flex' })
-  const card = { flex: 1, marginBottom: '20px', minWidth: 0 }
+  const card = { flex: 1, minWidth: 0 }
   return (
     <div>
-      {hero && <HeroSkeleton avatar />}
+      {hero && <ProfileHeroSkeleton facts={3} />}
       <div style={row}>
-        <div style={col('420px', '300px')}>
-          <CardShell pad={pad} style={card}><RuledTitleSkeleton /><FieldGridSkeleton fields={6} columns={columns} gap={isPhone ? '16px' : undefined} /></CardShell>
-        </div>
-        <div style={col('260px', '240px')}>
-          <CardShell pad={pad} style={card}>
-            <RuledTitleSkeleton width={130} />
-            {[0, 1].map(i => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: isPhone ? '12px' : '18px', marginTop: i ? '16px' : 0 }}>
-                <Skeleton width={seal} height={seal} style={{ borderRadius: '50%', flexShrink: 0 }} />
-                <div><Skeleton width={110} height={15} /><Skeleton width={84} height={11} style={{ marginTop: '7px' }} /></div>
-              </div>
-            ))}
-          </CardShell>
+        <div style={col('100%', '0px')}>
+          <ProfileCardSkeleton titleWidth={130} style={card}>
+            <TileGridSkeleton fields={5} min={360} phoneCols={1} />
+            <Skeleton width={80} height={10} style={{ margin: '20px 0 10px' }} />
+            <TileGridSkeleton fields={2} min={360} />
+          </ProfileCardSkeleton>
         </div>
       </div>
       <div style={row}>
         <div style={col('420px', '300px')}>
-          <CardShell pad={pad} style={card}>
-            <RuledTitleSkeleton width={170} />
-            <FieldGridSkeleton fields={2} columns={columns} />
-            <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--vfo-tint)' }}><FieldGridSkeleton fields={1} columns="1fr" /></div>
-          </CardShell>
+          <ProfileCardSkeleton titleWidth={140} style={card}><TileGridSkeleton fields={3} /></ProfileCardSkeleton>
         </div>
         <div style={col('300px', '260px')}>
-          <CardShell pad={pad} style={card}><RuledTitleSkeleton width={130} /><FieldGridSkeleton fields={3} columns="1fr" gap="18px" /></CardShell>
+          <ProfileCardSkeleton titleWidth={110} style={card}><TileGridSkeleton fields={3} min={240} phoneCols={1} /></ProfileCardSkeleton>
         </div>
       </div>
-      <CardShell pad={pad} style={{ marginBottom: '20px' }}>
-        <RuledTitleSkeleton width={70} />
-        <Skeleton width="60%" height={12} style={{ marginBottom: '14px' }} />
-        <Skeleton width={240} height={80} style={{ borderRadius: '10px', maxWidth: '100%' }} />
-      </CardShell>
-      <CardShell pad={pad} style={{ marginBottom: '20px' }}><RuledTitleSkeleton width={60} /><SkeletonText lines={3} /></CardShell>
+      <ProfileCardSkeleton titleWidth={60} sub>
+        <Skeleton width={240} height={80} style={{ borderRadius: '12px', maxWidth: '100%' }} />
+      </ProfileCardSkeleton>
+      <ProfileCardSkeleton titleWidth={50}><SkeletonText lines={3} /></ProfileCardSkeleton>
     </div>
   )
 }
@@ -63,8 +48,7 @@ export function MemberEditFormSkeleton() {
   )
   return (
     <div>
-      <CardShell style={{ marginBottom: '20px' }}>
-        <RuledTitleSkeleton width={190} />
+      <ProfileCardSkeleton titleWidth={190} style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
             <Skeleton width={110} height={110} style={{ borderRadius: '50%' }} />
@@ -75,13 +59,12 @@ export function MemberEditFormSkeleton() {
             <Skeleton width={90} height={11} /><Skeleton height={40} style={{ borderRadius: '8px', marginTop: '7px' }} />
           </div>
         </div>
-      </CardShell>
+      </ProfileCardSkeleton>
       {[0, 1].map(i => (
-        <CardShell key={i} style={{ marginBottom: '20px' }}>
-          <RuledTitleSkeleton width={i ? 110 : 120} />
+        <ProfileCardSkeleton key={i} titleWidth={i ? 110 : 120} style={{ marginBottom: '16px' }}>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>{field(0)}{field(1)}{field(2, 2)}{field(3, 2)}</div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>{field(4)}{field(5)}{field(6)}</div>
-        </CardShell>
+        </ProfileCardSkeleton>
       ))}
     </div>
   )
@@ -103,42 +86,41 @@ export function MemberPageSkeleton({ maxWidth = '900px' }) {
 // Admin member > MSM Home: meeting tiles + history on the left, MSM + programs on
 // the right.
 export function AdminMsmHomeSkeleton() {
+  // One column (2026-11-26): MSM & Programs, Meeting Summary, Meeting History, Program Notes.
+  const tile = { background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '11px 14px' }
   return (
-    <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-      <div style={{ flex: '2 1 400px', minWidth: '300px' }}>
-        <CardShell style={{ marginBottom: '20px' }}>
-          <Skeleton width={140} height={12} style={{ marginBottom: '16px' }} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
-            {Array.from({ length: 5 }).map((_, i) => <SummaryTileSkeleton key={i} />)}
-          </div>
-          <Skeleton width={160} height={34} style={{ borderRadius: '8px' }} />
-        </CardShell>
-        <CardShell style={{ marginBottom: '20px' }}>
-          <Skeleton width={130} height={12} style={{ marginBottom: '16px' }} />
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-              <div><Skeleton width={150} height={14} /><Skeleton width={190} height={11} style={{ marginTop: '6px' }} /></div>
-              <Skeleton width={56} height={24} style={{ borderRadius: '6px' }} />
-            </div>
-          ))}
-        </CardShell>
-      </div>
-      <div style={{ flex: '1 1 250px', minWidth: '250px' }}>
-        <CardShell style={{ marginBottom: '20px' }}>
-          <Skeleton width={110} height={12} style={{ marginBottom: '14px' }} />
-          <Skeleton height={40} style={{ borderRadius: '8px' }} />
-          <Skeleton width={70} height={34} style={{ borderRadius: '8px', marginTop: '12px' }} />
-        </CardShell>
-        <CardShell style={{ marginBottom: '20px' }}>
-          <Skeleton width={90} height={12} style={{ marginBottom: '14px' }} />
+    <div>
+      <ProfileCardSkeleton titleWidth={140} sub>
+        <Skeleton width={90} height={11} style={{ marginBottom: '8px' }} />
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <Skeleton width={240} height={40} style={{ borderRadius: '10px' }} />
+          <Skeleton width={64} height={36} style={{ borderRadius: '8px' }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px' }}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '11px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-              <Skeleton width={i % 2 ? 110 : 140} height={14} />
+            <div key={i} style={{ ...tile, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '10px 12px' }}>
+              <div><Skeleton width={i % 2 ? 110 : 140} height={14} /><Skeleton width={56} height={11} style={{ marginTop: '5px' }} /></div>
               <Skeleton width={44} height={24} style={{ borderRadius: '12px', flexShrink: 0 }} />
             </div>
           ))}
-        </CardShell>
-      </div>
+        </div>
+      </ProfileCardSkeleton>
+      <ProfileCardSkeleton titleWidth={150}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+            <div style={{ gridColumn: 'span 2' }}><SummaryTileSkeleton /></div>
+            {Array.from({ length: 4 }).map((_, i) => <SummaryTileSkeleton key={i} />)}
+          </div>
+      </ProfileCardSkeleton>
+      <ProfileCardSkeleton titleWidth={140}>
+          <div style={{ display: 'grid', gap: '8px' }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} style={{ ...tile, display: 'flex', justifyContent: 'space-between' }}>
+                <div><Skeleton width={150} height={14} /><Skeleton width={190} height={11} style={{ marginTop: '6px', maxWidth: '100%' }} /></div>
+                <Skeleton width={52} height={22} style={{ borderRadius: '7px' }} />
+              </div>
+            ))}
+          </div>
+      </ProfileCardSkeleton>
     </div>
   )
 }
@@ -158,22 +140,23 @@ export function SummaryTileSkeleton() {
 export function AdminProgramViewSkeleton({ tabs = 3, edit = true }) {
   return (
     <div>
-      <ProgramHeadingSkeleton edit={edit} />
+      <ProgramCardHeadSkeleton edit={edit} />
       <ProgramTabsSkeleton tabs={tabs} />
       <ProgramNotesSkeleton />
     </div>
   )
 }
 
-export function ProgramHeadingSkeleton({ edit = false }) {
+// The admin program box's title bar (2026-11-26): icon, name over the joined line, Edit.
+export function ProgramCardHeadSkeleton({ edit = false }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '20px' }}>
-      <div>
-        <Skeleton width={64} height={10} />
-        <Skeleton width={230} height={22} style={{ margin: '8px 0' }} />
-        <Skeleton width={180} height={12} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '15px 22px', marginBottom: '16px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)' }}>
+      <Skeleton width={34} height={34} style={{ borderRadius: '10px', flexShrink: 0 }} />
+      <div style={{ flex: 1 }}>
+        <Skeleton width={200} height={16} />
+        <Skeleton width={220} height={11} style={{ marginTop: '6px' }} />
       </div>
-      {edit && <Skeleton width={54} height={30} style={{ borderRadius: '6px' }} />}
+      {edit && <Skeleton width={44} height={24} style={{ borderRadius: '7px' }} />}
     </div>
   )
 }

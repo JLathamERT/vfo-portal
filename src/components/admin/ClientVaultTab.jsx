@@ -6,6 +6,9 @@ import { VaultRowsSkeleton } from '../shared/Skeleton'
 import RequestDocsButton from '../shared/RequestDocsButton'
 import VaultDropLink from '../shared/VaultDropLink'
 import { EyeIcon, TrashIcon, IconButton } from '../shared/VaultSections'
+import { FileBadge, FileName, fileTileStyle, UploadZone, VaultEmpty, VaultSectionCard, vaultRemoveBtn, vaultShareBtn, vaultViewBtn } from '../shared/VaultKit'
+import { formInput, ProfileCard } from '../shared/ProfileKit'
+import { btnSecondary } from '../shared/buttonStyles'
 import { useIsPhone } from '../../lib/useMediaQuery'
 
 // Deliberately duplicated from TaxPrioritiesTab's LockedIcon rather than shared:
@@ -397,8 +400,7 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
       {/* Admin view only: the planner (readOnly) and member views never see the drop link. */}
       {!readOnly && !memberMode && <VaultDropLink entityType="client" entityKey={clientId} />}
       {showStorageNotice && hasTaxCase !== null && (
-        <div style={{ ...sectionStyle, borderColor: 'rgba(18,94,204,0.35)' }}>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '6px' }}>The Vault is for storage</div>
+        <ProfileCard icon="alert" title="The Vault is for storage">
           <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>
             {hasTaxCase
               ? `Documents dropped here are kept with ${clientLabel}'s file.`
@@ -407,7 +409,7 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
           {!hasTaxCase && (
             <button type="button" onClick={startDiagnostic} style={{ ...storageButton, marginTop: '14px' }}>Start the Tax Diagnostic</button>
           )}
-        </div>
+        </ProfileCard>
       )}
       {storagePopup && (
         <div onClick={() => setStoragePopup(false)}
@@ -419,8 +421,7 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
               Your document is saved in {clientLabel}'s Vault. Dropping documents here does not start tax planning. If you wish to start VFO Tax Planning for {clientLabel}, fill in the Tax Diagnostic.
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => setStoragePopup(false)}
-                style={{ padding: '9px 20px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Close</button>
+              <button type="button" onClick={() => setStoragePopup(false)} style={btnSecondary}>Close</button>
               <button type="button" onClick={startDiagnostic} style={storageButton}>Start the Tax Diagnostic</button>
             </div>
           </div>
@@ -433,29 +434,25 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
           Drag a document by its <span style={{ userSelect: 'none' }}>⠿</span> handle onto another section to move it there.
         </div>
       )}
-      {SECTIONS.map(sec => (
-        <div
-          key={sec.key}
-          style={dragOverKey === sec.key && dragItem?.section !== sec.key
-            ? { ...sectionStyle, outline: '2px dashed #0095ff', outlineOffset: '-4px', background: 'rgba(0,149,255,0.05)' }
-            : sectionStyle}
-          onDragOver={canMove && dragItem && dragItem.section !== sec.key ? (e => { e.preventDefault(); setDragOverKey(sec.key) }) : undefined}
-          onDragLeave={canMove ? (() => setDragOverKey(k => k === sec.key ? null : k)) : undefined}
-          onDrop={canMove && dragItem ? (e => {
-            e.preventDefault()
-            const item = dragItem
-            setDragOverKey(null); setDragItem(null)
-            if (item && item.section !== sec.key) moveDoc(item.section, sec.key, item.file)
-          }) : undefined}
-        >
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>{sec.title} {sec.sub && <span style={{ textTransform: 'none', fontSize: '12px' }}>{sec.sub}</span>}</div>
-          <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '16px' }}>{sec.blurb}</p>
-
+      {SECTIONS.map(sec => {
+        const dropping = dragOverKey === sec.key && dragItem?.section !== sec.key
+        return (
+        <VaultSectionCard key={sec.key} sectionKey={sec.key} title={sec.sub ? `${sec.title} ${sec.sub}` : sec.title} hint={sec.blurb} dropping={dropping}
+          dropProps={{
+            onDragOver: canMove && dragItem && dragItem.section !== sec.key ? (e => { e.preventDefault(); setDragOverKey(sec.key) }) : undefined,
+            onDragLeave: canMove ? (() => setDragOverKey(k => k === sec.key ? null : k)) : undefined,
+            onDrop: canMove && dragItem ? (e => {
+              e.preventDefault()
+              const item = dragItem
+              setDragOverKey(null); setDragItem(null)
+              if (item && item.section !== sec.key) moveDoc(item.section, sec.key, item.file)
+            }) : undefined,
+          }}>
           {sec.canRequestDocs && sec.canManage && !readOnly && !memberMode && (
             sec.key === 'sensitive' && returnsPending ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
                 <LockedIcon />
-                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', fontWeight: 500 }}>Please request tax returns from the Request Tax Returns step</span>
+                <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 500 }}>Please request tax returns from the Request Tax Returns step</span>
               </div>
             ) : (
               <RequestDocsButton entityType="client" entityKey={clientId} section={sec.key} recipientName={recipientName} recipientFirst={recipientFirst} />
@@ -464,56 +461,57 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
 
           {loading ? <VaultRowsSkeleton rows={2} /> : (
             <>
-              {sec.files.length === 0 && <div style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginBottom: '14px' }}>No documents uploaded yet.</div>}
+              {sec.files.length === 0 && <VaultEmpty>No documents uploaded yet.</VaultEmpty>}
+              <div style={{ display: 'grid', gap: '8px' }}>
               {sec.files.map(f => {
                 const key = `${sec.bucket}|${f.path}`
                 const open = shareKey === key
                 const sharedIds = new Set(shares.map(s => String(s.expert_id)))
+                const canDrag = canMove && sec.canWrite !== false
                 return (
-                  <div key={f.path} style={{ marginBottom: '8px' }}>
+                  <div key={f.path}>
                     <div
-                      draggable={canMove && sec.canWrite !== false}
-                      onDragStart={canMove && sec.canWrite !== false ? (e => { e.dataTransfer.effectAllowed = 'move'; setDragItem({ section: sec.key, file: f }) }) : undefined}
+                      draggable={canDrag}
+                      onDragStart={canDrag ? (e => { e.dataTransfer.effectAllowed = 'move'; setDragItem({ section: sec.key, file: f }) }) : undefined}
                       onDragEnd={canMove ? (() => { setDragItem(null); setDragOverKey(null) }) : undefined}
-                      style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: isPhone ? '10px 10px 10px 12px' : '10px 14px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: open ? '8px 8px 0 0' : '8px', opacity: dragItem?.file?.path === f.path ? 0.45 : 1 }}
+                      style={fileTileStyle({ dragging: dragItem?.file?.path === f.path, open, phone: isPhone })}
                     >
-                      {canMove && sec.canWrite !== false && (
+                      {canDrag && (
                         <span title="Drag to move this document to another section" style={{ fontSize: '14px', color: 'var(--vfo-muted)', cursor: 'grab', flexShrink: 0, lineHeight: 1, userSelect: 'none' }}>⠿</span>
                       )}
                       {/* Phone: the member Vault's row (VaultSections) - the name over its
-                          size, never cut short, round icon buttons, no file icon (2026-10-28). */}
+                          size, never cut short, round icon buttons, no file badge (2026-10-28). */}
                       {isPhone ? (
                         <>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div title={f.name} style={{ fontSize: '13.5px', fontWeight: 500, color: 'var(--vfo-ink)', lineHeight: 1.35, overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{f.name}</div>
+                            <div title={f.name} style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--vfo-ink)', lineHeight: 1.35, overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{f.name}</div>
                             <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{fmtSize(f.size)}{!sec.canManage && ' · Locked'}</div>
                           </div>
                           {sec.canManage && <IconButton label={`View ${f.name}`} tone="view" onClick={() => view(sec, f.path)}><EyeIcon /></IconButton>}
-                          {sec.canManage && !readOnly && !memberMode && !sec.noShare && sec.canWrite !== false && <button onClick={() => toggleShare(sec.bucket, f.path)} style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(18,94,204,0.4)', background: open ? 'rgba(18,94,204,0.22)' : 'rgba(18,94,204,0.1)', color: 'var(--vfo-accent-text)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Share</button>}
+                          {sec.canManage && !readOnly && !memberMode && !sec.noShare && sec.canWrite !== false && <button type="button" onClick={() => toggleShare(sec.bucket, f.path)} style={vaultShareBtn(open)}>Share</button>}
                           {sec.canManage && !readOnly && !memberMode && sec.canWrite !== false && <IconButton label={`Delete ${f.name}`} tone="remove" onClick={() => remove(sec, f.path)}><TrashIcon /></IconButton>}
                         </>
-                      ) : (<>
-                      <span style={{ fontSize: '14px', flexShrink: 0 }}>{sec.canManage ? '📄' : '🔒'}</span>
-                      <span title={f.name} style={{ fontSize: '13px', color: 'var(--vfo-ink-2)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>{fmtSize(f.size)}</span>
-                      {sec.canManage ? (
-                        <>
-                          <button onClick={() => view(sec, f.path)} style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>View</button>
-                          {!readOnly && !memberMode && !sec.noShare && sec.canWrite !== false && <button onClick={() => toggleShare(sec.bucket, f.path)} style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(18,94,204,0.4)', background: open ? 'rgba(18,94,204,0.22)' : 'rgba(18,94,204,0.1)', color: 'var(--vfo-accent-text)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Share</button>}
-                          {!readOnly && !memberMode && sec.canWrite !== false && <button onClick={() => remove(sec, f.path)} style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.1)', color: '#e74c3c', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Delete</button>}
-                        </>
                       ) : (
-                        <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', fontStyle: 'italic', flexShrink: 0 }}>locked</span>
+                        <>
+                          <FileBadge name={f.name} locked={!sec.canManage} />
+                          <FileName name={f.name} size={fmtSize(f.size)} note={sec.canManage ? null : 'Locked'} />
+                          {sec.canManage && (
+                            <>
+                              <button type="button" onClick={() => view(sec, f.path)} style={vaultViewBtn}>View</button>
+                              {!readOnly && !memberMode && !sec.noShare && sec.canWrite !== false && <button type="button" onClick={() => toggleShare(sec.bucket, f.path)} style={vaultShareBtn(open)}>Share</button>}
+                              {!readOnly && !memberMode && sec.canWrite !== false && <button type="button" onClick={() => remove(sec, f.path)} style={vaultRemoveBtn}>Delete</button>}
+                            </>
+                          )}
+                        </>
                       )}
-                      </>)}
                     </div>
                     {open && (
-                      <div style={{ padding: '12px 14px', background: '#f7faff', border: '1px solid var(--vfo-tint-deep)', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
-                        <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontWeight: 600, marginBottom: '8px' }}>Shared with specialists</div>
+                      <div style={{ padding: '12px 14px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderTop: 'none', borderRadius: '0 0 12px 12px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: '8px' }}>Shared with specialists</div>
                         {sharesLoading ? <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Loading…</div> : (
                           <>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-                              {shares.length === 0 && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontStyle: 'italic' }}>Not shared with anyone yet.</span>}
+                              {shares.length === 0 && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Not shared with anyone yet.</span>}
                               {shares.map(s => (
                                 <span key={s.share_id} style={chipStyle}>
                                   {s.expert_name || `Specialist #${s.expert_id}`}
@@ -522,7 +520,7 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
                                 </span>
                               ))}
                             </div>
-                            <select value="" disabled={shareBusy} onChange={e => grant(sec.bucket, f.path, e.target.value)} style={{ fontSize: '12px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-card)', color: 'var(--vfo-ink-2)', minWidth: '230px', cursor: 'pointer' }}>
+                            <select value="" disabled={shareBusy} onChange={e => grant(sec.bucket, f.path, e.target.value)} style={{ ...formInput, width: 'auto', minWidth: '240px', padding: '7px 10px', fontSize: '13px', cursor: 'pointer' }}>
                               <option value="">+ Share with a specialist…</option>
                               {specialists.filter(e => !sharedIds.has(String(e.id))).map(e => (
                                 <option key={e.id} value={e.id}>{e.name}</option>
@@ -535,16 +533,15 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
                   </div>
                 )
               })}
+              </div>
               {sec.canManage && sec.canWrite !== false && (!readOnly || (allowUpload && !sec.adminOnlyUpload)) && (
-                <label style={{ display: 'block', textAlign: 'center', cursor: 'pointer', marginTop: '14px', padding: '18px', borderRadius: '8px', border: '1px dashed var(--vfo-border-mid)', background: 'var(--vfo-tint)' }}>
-                  <input type="file" multiple accept={ACCEPT} style={{ display: 'none' }} onChange={e => { handleFiles(sec, e.target.files); e.target.value = '' }} />
-                  <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>{busy === sec.key ? 'Uploading…' : '+ Add document'}</span>
-                </label>
+                <UploadZone busy={busy === sec.key} accept={ACCEPT} onFiles={files => handleFiles(sec, files)} />
               )}
             </>
           )}
-        </div>
-      ))}
+        </VaultSectionCard>
+        )
+      })}
     </>
   )
 }

@@ -16,10 +16,13 @@ import { BlackFridayStrip } from '../components/shared/BlackFridayPromo'
 import MemberNavBar, { orderMemberPrograms, TIER1_TABS } from '../components/member/MemberNavBar'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { HeroAvatar } from '../components/shared/TrackKit'
+import { DotText, Field, FormGrid, PersonName, formInput, formLabel, formReadOnly, ProfileCard, ProfileHero, SaveBar, SettingsHeader, SETTINGS_WIDTH, useSettingsReturn } from '../components/shared/ProfileKit'
+import { btnPrimary, btnSecondary } from '../components/shared/buttonStyles'
 import { usePortalTheme } from '../lib/theme'
 import { useIsPhone } from '../lib/useMediaQuery'
 import { statusColor } from '../components/shared/statusColors'
 import { HEADSHOTS_URL } from '../lib/environment'
+import SpecialistPicker from '../components/shared/SpecialistPicker'
 
 const HEADSHOT_SUPABASE = HEADSHOTS_URL
 // Prepend https:// to a bare domain so member website links resolve as absolute.
@@ -143,6 +146,9 @@ export default function MemberPortal() {
 
   function signOut() { clearSession(); navigate('/') }
   function handleTitleClick() { setShowSettings(false); setActiveTab('profile') }
+  // Settings keeps the tab you were on (drawn hidden underneath) so Back returns to it.
+  const settingsReturn = useSettingsReturn(navigate)
+  function closeSettings() { settingsReturn.back(() => { setShowSettings(false); if (!activeTab) setActiveTab('profile') }) }
 
   if (!session) return null
 
@@ -154,7 +160,7 @@ export default function MemberPortal() {
     // over a page's last button (MemberHelpButton, bottom-right).
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', ...(isPhone ? { paddingBottom: '64px' } : {}) }}>
       <PortalHeader name={session.name} onTitleClick={handleTitleClick} actions={[
-        { key: 'settings', label: 'Settings', onClick: () => { setShowSettings(true); setActiveTab(null) } },
+        { key: 'settings', label: 'Settings', onClick: () => { if (!showSettings) settingsReturn.open(); setShowSettings(true) } },
         { key: 'signout', label: 'Sign Out', onClick: signOut },
       ]}>
         {/* The bell inside: the member's rows are scoped server-side to their own
@@ -168,10 +174,9 @@ export default function MemberPortal() {
         <BlackFridayStrip onShop={() => { setShowSettings(false); setActiveTab('gc'); setGcBuyKey(k => k + 1) }} />
       )}
 
-      {showSettings && <MemberSettings session={session} />}
+      {showSettings && <MemberSettings session={session} onBack={closeSettings} />}
 
-      {!showSettings && (
-        <>
+      <div style={{ display: showSettings ? 'none' : 'contents' }}>
           {loadError && (
             <div style={{ maxWidth: '980px', margin: '20px auto 0', padding: '0 var(--vfo-gutter)' }}>
               <div style={{ background: 'rgba(217,48,37,0.10)', border: '1px solid rgba(217,48,37,0.32)', borderRadius: '12px', padding: '14px 16px' }}>
@@ -231,8 +236,7 @@ export default function MemberPortal() {
             </div>
           )}
           </div>
-        </>
-      )}
+      </div>
     </div>
   )
 }
@@ -290,9 +294,8 @@ function MemberEditProfile({ member, onSaved }) {
   }
 
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
-  const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
-  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const labelStyle = formLabel
+  const inputStyle = formInput
 
   if (loadError) return <div style={{ maxWidth: '980px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}><div style={sectionStyle}><div style={{ color: '#d93025', fontSize: '13px' }}>{loadError}</div></div></div>
   if (!row) return <MemberEditProfileSkeleton />
@@ -302,60 +305,39 @@ function MemberEditProfile({ member, onSaved }) {
 
   return (
     <div style={{ maxWidth: '980px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
-      <div style={sectionStyle}>
-        <div style={cardTitle}>Profile Picture</div>
+      <ProfileCard icon="camera" title="Profile Picture">
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-          <div style={{ width: '110px', height: '110px', borderRadius: '50%', overflow: 'hidden', background: currentPhoto ? 'var(--vfo-tint)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: '1px solid var(--vfo-border-chip)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            {currentPhoto
-              ? <img src={currentPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <span style={{ color: '#fff', fontSize: '30px', fontWeight: 700 }}>{initials || '?'}</span>}
+          <div style={{ borderRadius: '50%', padding: '3px', background: 'var(--vfo-card)', boxShadow: '0 6px 18px rgba(18,94,204,0.22)', flexShrink: 0, display: 'flex' }}>
+            <div style={{ width: '104px', height: '104px', borderRadius: '50%', overflow: 'hidden', background: currentPhoto ? 'var(--vfo-tint)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {currentPhoto
+                ? <img src={currentPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span style={{ color: '#fff', fontSize: '30px', fontWeight: 700 }}>{initials || '?'}</span>}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <label style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            <label style={{ ...btnPrimary, display: 'inline-block' }}>
               {currentPhoto ? 'Change photo' : 'Upload photo'}
               <input type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }} />
             </label>
-            {currentPhoto && <button type="button" onClick={() => setCropState({ src: currentPhoto })} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Adjust / Zoom</button>}
+            {currentPhoto && <button type="button" onClick={() => setCropState({ src: currentPhoto })} style={btnSecondary}>Adjust / Zoom</button>}
           </div>
         </div>
-        {photoPreview && <div style={{ fontSize: '12.5px', color: '#b08d26', fontWeight: 500, marginTop: '10px' }}>New photo selected. Click Save Changes to use it.</div>}
-      </div>
+        {photoPreview && <div style={{ fontSize: '12.5px', color: 'var(--vfo-gold-text)', fontWeight: 600, marginTop: '12px' }}>New photo selected. Click Save Changes to use it.</div>}
+      </ProfileCard>
 
-      <div style={sectionStyle}>
-        <div style={cardTitle}>Contact &amp; Company</div>
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '240px' }}>
-            <label style={labelStyle}>Work email (emails sent here)</label>
-            <input value={form.email} onChange={e => update('email', e.target.value)} type="email" style={inputStyle} />
-          </div>
-          <div style={{ flex: 1, minWidth: '240px' }}>
-            <label style={labelStyle}>Personal email (not emailed)</label>
-            <input value={row.personal_email || ''} readOnly title="Ask the VFO team to change this" style={{ ...inputStyle, background: 'var(--vfo-tint)', color: 'var(--vfo-muted)', cursor: 'not-allowed' }} />
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '240px' }}>
-            <label style={labelStyle}>Preferred Name (optional)</label>
-            <input value={form.preferred_name} onChange={e => update('preferred_name', e.target.value)} maxLength={60} placeholder="If different from your first name" style={inputStyle} />
-          </div>
-          <div style={{ flex: 1, minWidth: '240px' }}>
-            <label style={labelStyle}>Company Name</label>
-            <input value={form.trading_name} onChange={e => update('trading_name', e.target.value)} style={inputStyle} />
-          </div>
-          <div style={{ flex: 1, minWidth: '240px' }}>
-            <label style={labelStyle}>Website</label>
-            <input value={form.website_url} onChange={e => update('website_url', e.target.value)} placeholder="https://example.com" style={inputStyle} />
-          </div>
-        </div>
-      </div>
+      <ProfileCard icon="building" title={'Contact & Company'}>
+        <FormGrid min={240}>
+          <div><label style={labelStyle}>Company Name</label><input value={form.trading_name} onChange={e => update('trading_name', e.target.value)} style={inputStyle} /></div>
+          <div><label style={labelStyle}>Preferred Name (optional)</label><input value={form.preferred_name} onChange={e => update('preferred_name', e.target.value)} maxLength={60} placeholder="If different from your first name" style={inputStyle} /></div>
+          <div><label style={labelStyle}>Work email (emails sent here)</label><input value={form.email} onChange={e => update('email', e.target.value)} type="email" style={inputStyle} /></div>
+          <div><label style={labelStyle}>Personal email (not emailed)</label><input value={row.personal_email || ''} readOnly title="Ask the VFO team to change this" style={formReadOnly} /></div>
+          <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Website</label><input value={form.website_url} onChange={e => update('website_url', e.target.value)} placeholder="https://example.com" style={inputStyle} /></div>
+        </FormGrid>
+      </ProfileCard>
 
-      <div style={{ position: 'sticky', bottom: 0, background: 'var(--vfo-page)', borderTop: '1px solid var(--vfo-border)', padding: '16px 0', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '16px', zIndex: 5 }}>
-        {(dirty || photoPreview) && <span style={{ fontSize: '13px', color: '#b08d26', fontWeight: 500 }}>You have unsaved changes</span>}
-        <button onClick={save} disabled={saving || !(dirty || photoPreview)} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: saving ? 'wait' : 'pointer', opacity: (dirty || photoPreview) ? 1 : 0.55 }}>{saving ? 'Saving…' : 'Save Changes'}</button>
-        {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px' }}>{status}</span>}
-      </div>
+      <SaveBar dirty={!!(dirty || photoPreview)} saving={saving} disabled={!(dirty || photoPreview)} onSave={save} status={status} statusType={statusType} />
 
-      <MemberBrandingCard memberNumber={member.member_number} mode="member" styles={{ sectionStyle, cardTitle }} reloadKey={brandingKey} />
+      <MemberBrandingCard memberNumber={member.member_number} mode="member" reloadKey={brandingKey} />
 
       {cropState && <ImageCropModal src={cropState.src} onApply={dataUrl => { setPhotoPreview(dataUrl); setCropState(null) }} onCancel={() => setCropState(null)} />}
     </div>
@@ -372,103 +354,12 @@ function ComingSoon({ title }) {
 }
 
 function MemberSpecialists({ member, allExperts, exclusions, ecoMap = {}, onDataChange }) {
-  // Member Services specialists are internal-only (never shown to clients or in the
-  // website plugin), so they aren't enable/disable-able — listed separately below.
-  const isMemberService = (id) => (ecoMap[id] || []).includes('Member Services')
-  const regularExperts = allExperts.filter(e => !isMemberService(e.id))
-  const memberServiceExperts = allExperts.filter(e => isMemberService(e.id))
-  const [enabled, setEnabled] = useState(() => {
-    const set = {}
-    regularExperts.forEach(e => { set[e.id] = !exclusions.includes(e.id) })
-    return set
-  })
-  const [search, setSearch] = useState('')
-  const [dirty, setDirty] = useState(false)
-  const [status, setStatus] = useState('')
-  const [statusType, setStatusType] = useState('success')
-  const isPhone = useIsPhone()
-
-  const enabledCount = regularExperts.filter(e => enabled[e.id]).length
-  const filtered = search ? regularExperts.filter(e => e.name.toLowerCase().includes(search.toLowerCase())) : regularExperts
-
-  function toggle(id) { setEnabled(p => ({ ...p, [id]: !p[id] })); setDirty(true) }
-  function enableAll() { const s = {}; regularExperts.forEach(e => s[e.id] = true); setEnabled(s); setDirty(true) }
-  function disableAll() { const s = {}; regularExperts.forEach(e => s[e.id] = false); setEnabled(s); setDirty(true) }
-
-  async function save() {
-    // Only the public five drive exclusions; preserve any pre-existing Member Services exclusions untouched.
-    const newExcluded = regularExperts.filter(e => !enabled[e.id]).map(e => e.id)
-      .concat(exclusions.filter(id => isMemberService(id)))
-    try {
-      await callApi('member_save_exclusions', { member_number: member.member_number, exclusions: newExcluded })
-      await onDataChange()
-      setDirty(false)
-      setStatusType('success'); setStatus('Changes saved!')
-      setTimeout(() => setStatus(''), 4000)
-    } catch (err) { setStatusType('error'); setStatus(err.message) }
-  }
-
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-
+  // The shared Specialists tab (2026-11-26); the member saves through member_save_exclusions.
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'var(--vfo-gutter) var(--vfo-gutter) 0' }}>
-      <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginBottom: '20px', fontStyle: 'italic' }}>Changes here affect which specialists appear in your VFO Showroom and, if enabled, your Website Plugin.</p>
-      {/* Phone: the two big counters become one line beside the Enable / Disable
-          buttons, under the search - one balanced row, not a block of numbers. */}
-      {!isPhone && <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
-        <div><div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--vfo-ink)' }}>{enabledCount}</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', letterSpacing: '1px' }}>ENABLED</div></div>
-        <div><div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--vfo-ink)' }}>{regularExperts.length}</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', letterSpacing: '1px' }}>TOTAL</div></div>
-      </div>}
-      <input type="search" name="search" autoComplete="off" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search specialists..." style={{ ...inputStyle, marginBottom: '12px' }} />
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
-        {isPhone && <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginRight: 'auto' }}><strong style={{ color: 'var(--vfo-ink)', fontWeight: 600 }}>{enabledCount}</strong> of {regularExperts.length} enabled</span>}
-        <button onClick={enableAll} style={{ padding: isPhone ? '5px 12px' : '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer' }}>Enable All</button>
-        <button onClick={disableAll} style={{ padding: isPhone ? '5px 12px' : '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer' }}>Disable All</button>
-      </div>
-      <div style={{ marginBottom: '8px' }}>
-        {filtered.map(expert => (
-          <div key={expert.id} onClick={() => toggle(expert.id)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', cursor: 'pointer' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', background: 'var(--vfo-border)', flexShrink: 0 }}>
-                {expert.headshot_image && <img src={HEADSHOT_SUPABASE + encodeURIComponent(expert.headshot_image)} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-              </div>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{expert.name}</div>
-                <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{expert.short_bio}</div>
-              </div>
-            </div>
-            <div style={{ width: '20px', height: '20px', borderRadius: '4px', border: `2px solid ${enabled[expert.id] ? '#0095ff' : 'var(--vfo-border-mid)'}`, background: enabled[expert.id] ? '#0095ff' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {enabled[expert.id] && <span style={{ color: 'var(--vfo-ink)', fontSize: '12px' }}>✓</span>}
-            </div>
-          </div>
-        ))}
-      </div>
-      {memberServiceExperts.length > 0 && (
-        <div style={{ marginTop: '20px', marginBottom: '8px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--vfo-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '4px' }}>Member Services</div>
-          <p style={{ color: 'var(--vfo-muted)', fontSize: '12px', fontStyle: 'italic', marginBottom: '10px' }}>Visible only to you — these specialists never appear in your clients' showrooms or your website plugin, so there is nothing to enable or disable.</p>
-          {memberServiceExperts.map(expert => (
-            <div key={expert.id}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px dashed var(--vfo-border-strong)', borderRadius: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', background: 'var(--vfo-border)', flexShrink: 0 }}>
-                  {expert.headshot_image && <img src={HEADSHOT_SUPABASE + encodeURIComponent(expert.headshot_image)} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                </div>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{expert.name}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{expert.short_bio}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      <div style={{ position: 'sticky', bottom: 0, background: 'var(--vfo-page)', borderTop: '1px solid var(--vfo-border)', padding: '16px 0', display: 'flex', alignItems: 'center', gap: '16px' }}>
-        {dirty && <span style={{ fontSize: '13px', color: '#b08d26', fontWeight: 500 }}>You have unsaved changes</span>}
-        <button onClick={save} style={{ padding: isPhone ? '8px 20px' : '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer' }}>Save Changes</button>
-        {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px' }}>{status}</span>}
-      </div>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: 'var(--vfo-gutter) var(--vfo-gutter) 0' }}>
+      <SpecialistPicker allExperts={allExperts} excluded={exclusions} ecoMap={ecoMap}
+        intro="Which specialists appear in your VFO Showroom and, if enabled, your Website Plugin."
+        onSave={async list => { await callApi('member_save_exclusions', { member_number: member.member_number, exclusions: list }); await onDataChange() }} />
     </div>
   )
 }
@@ -528,9 +419,6 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
   // hero header with headshot + status meta, short facts side by side, then
   // full-width long-form (bio).
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
-  const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
-  const fieldLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-faint)', textTransform: 'uppercase' }
-  const fieldValue = { fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: 600, marginTop: '5px' }
   // Accountants have no revenue decision — hide the field for them. Advisors
   // and uncategorized members keep it. Mirrors the admin-side hiddenFields.
   const isAccountant = member.member_category === 'accountant'
@@ -544,41 +432,18 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
 
   return (
     <div style={{ maxWidth: '980px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
-      {/* Profile header */}
-      <div style={{ ...sectionStyle, padding: 0, overflow: 'hidden' }}>
-        <div style={{ height: '4px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 55%, #0a85e8 100%)' }} />
-        {/* The status reads like the number and type beside it (same size and
-            colour, its dot carries the colour). Phone: two set lines - number +
-            status, then the type - instead of one line that wraps wherever the
-            width runs out (2026-10-28). */}
-        <div style={{ padding: isPhone ? '16px' : '22px 24px', display: 'flex', alignItems: 'center', gap: isPhone ? '14px' : '18px', flexWrap: isPhone ? 'nowrap' : 'wrap' }}>
-          <HeroAvatar src={headshotSrc} name={member.name} size={isPhone ? 48 : 64} />
-          <div style={{ minWidth: isPhone ? 0 : '200px', flex: 1 }}>
-            <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>Member Profile</div>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: isPhone ? '21px' : '24px', color: 'var(--vfo-heading)', lineHeight: 1.15 }}>{member.name}</div>
-            {(() => {
-              const sep = <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>
-              const number = <span style={{ fontFamily: 'monospace' }}>{member.member_number}</span>
-              const type = member.member_type && <span>{member.member_type}{leadNumber && ` - ${leadName || leadNumber}`}</span>
-              const status = member.elite_status && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor(member.elite_status), flexShrink: 0 }} />
-                  {member.elite_status}
-                </span>
-              )
-              const line = { fontSize: '12.5px', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }
-              return isPhone ? (
-                <>
-                  <div style={{ ...line, marginTop: '6px' }}>{number}{status && <>{sep}{status}</>}</div>
-                  {type && <div style={{ ...line, marginTop: '3px' }}>{type}</div>}
-                </>
-              ) : (
-                <div style={{ ...line, marginTop: '6px' }}>{number}{type && <>{sep}{type}</>}{status && <>{sep}{status}</>}</div>
-              )
-            })()}
-          </div>
-        </div>
-      </div>
+      {/* Profile header: the shared profile hero (shared/ProfileKit) - name, then
+          number, type and status in its fact strip. */}
+      <ProfileHero
+        eyebrow="Member Profile"
+        name={<PersonName first={member.first_name} last={member.last_name} preferred={member.preferred_name || profileRow?.preferred_name} fallback={member.name} />}
+        avatar={<HeroAvatar src={headshotSrc} name={member.name} size={isPhone ? 56 : 72} />}
+        facts={[
+          { label: 'Member number', value: <span style={{ fontFamily: 'monospace' }}>{member.member_number}</span> },
+          { label: 'Type', value: member.member_type ? `${member.member_type}${leadNumber ? ` - ${leadName || leadNumber}` : ''}` : null },
+          { label: 'Status', value: member.elite_status ? <DotText color={statusColor(member.elite_status)}>{member.elite_status}</DotText> : null },
+        ]}
+      />
 
       {/* The read-only body is SHARED with the admin member profile's Details
           tab (shared/MemberProfileDetails) so the two always mirror. */}
@@ -590,16 +455,15 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
           memberNumber={member.member_number}
           directEligibility={directEligibility}
           hideRevenueDecision={isAccountant}
-          styles={{ sectionStyle, cardTitle }}
           people={people}
-          payoutSlot={<div><div style={fieldLabel}>Revenue Share Payout Account</div><div style={fieldValue}><PayoutStatusLine status={connectStatus} /></div></div>}
+          payoutSlot={<Field label="Revenue Share Payout Account"><PayoutStatusLine status={connectStatus} /></Field>}
         />
       )}
     </div>
   )
 }
 
-function MemberSettings({ session }) {
+function MemberSettings({ session, onBack }) {
   const isPhone = useIsPhone()
   const [email, setEmail] = useState(session.email || '')
   const [newPasscode, setNewPasscode] = useState('')
@@ -618,32 +482,32 @@ function MemberSettings({ session }) {
     } catch (err) { showStatus('error', err.message) }
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
-
   return (
-    <div style={{ maxWidth: '500px', margin: '0 auto', padding: '32px var(--vfo-gutter)' }}>
-      <form onSubmit={e => { e.preventDefault(); update() }} style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Account Settings</div>
-        <div style={{ marginBottom: '12px' }}>
-          <label style={labelStyle}>Email</label>
-          <input id="username" name="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
-        </div>
-        {/* Phone: the two passcode boxes stack (side by side, their hints were cut off). */}
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexDirection: isPhone ? 'column' : 'row' }}>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>New Passcode</label>
-            <PasswordInput id="new-password" name="new-password" value={newPasscode} autoComplete="new-password" onChange={e => setNewPasscode(e.target.value)} placeholder="Leave blank to keep current" style={inputStyle} />
+    <div style={{ maxWidth: SETTINGS_WIDTH, margin: '0 auto', padding: '32px var(--vfo-gutter)' }}>
+      <SettingsHeader name={session.name} email={session.email} onBack={onBack} />
+      <ProfileCard icon="lock" title="Account Settings" sub="The email you sign in with, and your passcode.">
+        <form onSubmit={e => { e.preventDefault(); update() }}>
+          <div style={{ marginBottom: '14px' }}>
+            <label style={formLabel} htmlFor="username">Email</label>
+            <input id="username" name="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} style={formInput} />
           </div>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Confirm Passcode</label>
-            <PasswordInput id="confirm-password" name="confirm-password" value={confirmPasscode} autoComplete="new-password" onChange={e => setConfirmPasscode(e.target.value)} placeholder="Confirm new passcode" style={inputStyle} />
+          {/* Phone: the two passcode boxes stack (FormGrid wraps them). */}
+          <FormGrid min={220}>
+            <div>
+              <label style={formLabel} htmlFor="new-password">New Passcode</label>
+              <PasswordInput id="new-password" name="new-password" value={newPasscode} autoComplete="new-password" onChange={e => setNewPasscode(e.target.value)} placeholder="Leave blank to keep current" style={formInput} />
+            </div>
+            <div>
+              <label style={formLabel} htmlFor="confirm-password">Confirm Passcode</label>
+              <PasswordInput id="confirm-password" name="confirm-password" value={confirmPasscode} autoComplete="new-password" onChange={e => setConfirmPasscode(e.target.value)} placeholder="Confirm new passcode" style={formInput} />
+            </div>
+          </FormGrid>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', marginTop: '18px' }}>
+            <button type="submit" style={btnPrimary}>Update</button>
+            {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', fontWeight: 500 }}>{status}</span>}
           </div>
-        </div>
-        <button type="submit" style={{ padding: isPhone ? '8px 20px' : '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '13px' : '14px', cursor: 'pointer' }}>Update</button>
-        {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
-      </form>
+        </form>
+      </ProfileCard>
       <AppearanceCard />
     </div>
   )

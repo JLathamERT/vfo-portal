@@ -2,22 +2,22 @@ import { useEffect, useState, useRef } from 'react'
 import CollapsibleNavBar from '../shared/CollapsibleNavBar'
 import EventsNavLabel from '../events/EventsNavLabel'
 import { callApi, loadCachedData, loadCachedAction, getLastSeen } from '../../lib/api'
+import { PROGRAM_ORDER } from '../shared/programOrder'
 
 // The member portal's tab bar, moved out of MemberPortal.jsx on 2026-10-20 so the
 // member's client page draws the very same bar. MemberPortal switches its own tab;
 // the client page stores the pick in memberActiveTab and navigates to /member.
 
 export const PROGRAM_KEYS = { 'VFO Holistic Planning': 'msm_holistic', 'Partnership Fast Track': 'msm_partnership', 'Tailored Route for Accountants': 'msm_tailored', 'VFO Tax Planning': 'msm_tax', 'Advanced Coaching': 'msm_coaching', 'Standard Coaching': 'msm_standard' }
-// Canonical program order — matches the admin MSM Home program-toggle list.
-const PROGRAM_ORDER = ['VFO Holistic Planning', 'Partnership Fast Track', 'Tailored Route for Accountants', 'VFO Tax Planning', 'Advanced Coaching', 'Standard Coaching']
+// Canonical program order: shared/programOrder.js (Tax first, 2026-11-26).
 const TAX_PROGRAM_NAME = 'VFO Tax Planning'
 
 export const MEMBER_TAB_LABELS = {
-  profile: 'Profile', msm_home: 'MSM Home',
+  profile: 'Profile', msm_home: 'Programs',
   msm_holistic: 'Holistic Planning', msm_partnership: 'Partnership Fast Track', msm_tailored: 'Tailored Route for Accountants',
   msm_tax: 'Tax Planning', msm_coaching: 'Advanced Coaching', msm_standard: 'Standard Coaching',
   specialists: 'Specialists', showroom: 'Showroom', website: 'Website Plugin',
-  events: 'Events', ciq: 'CIQ', growthplan: 'Growth Plan', gc: 'GC Marketplace', vault: 'Vault'
+  events: 'Events', ciq: 'CIQ', growthplan: 'Growth Plan', gc: 'Growth Credit Marketplace', vault: 'Vault'
 }
 
 // ANY member may start a tax client once Jake flips portal_feature_flags.tax_intake;
@@ -84,9 +84,10 @@ function NavDropdown({ label, isActive, options, activeTab, onSelect, onLabelCli
         <div style={{ position: 'absolute', top: '100%', left: 0, background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '200px', zIndex: 200, padding: '4px 0', boxShadow: '0 14px 36px rgba(20,45,95,0.16)' }}>
           {options.map(opt => (
             <button key={opt.key} onClick={() => { onSelect(opt.key); setOpen(false) }}
-              style={{ display: 'block', width: '100%', padding: '8px 16px', background: activeTab === opt.key ? 'rgba(0,149,255,0.15)' : 'transparent', border: 'none', color: activeTab === opt.key ? '#0095ff' : 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
+              // No highlight for the page you are on, as in the admin's dropdowns (2026-11-26).
+              style={{ display: 'block', width: '100%', padding: '8px 16px', background: 'transparent', border: 'none', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
-              onMouseLeave={e => e.currentTarget.style.background = activeTab === opt.key ? 'rgba(0,149,255,0.15)' : 'transparent'}>
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               {opt.label}
             </button>
           ))}
@@ -111,23 +112,36 @@ export default function MemberNavBar({ activeTab, onSelect, programs = [], websi
     </button>
   )
 
-  const flatTabs = ['client_overview', 'tax_diagnostic', 'specialists', 'showroom', 'website', 'growthplan', 'ciq', 'gc', 'vault']
-    .filter(tab => tab !== 'website' || websiteEnabled)
-    .filter(tab => tierKnown && (!tier1 || TIER1_TABS.includes(tab)))
+  // The order (Jake, 2026-11-26): Profile, Vault, Events, Programs (was MSM),
+  // Client Overview, Tax Diagnostic, Showroom (with Specialists and Website Plugin
+  // under it), Growth Plan, CIQ, Growth Credit Marketplace - the admin's view of a
+  // member draws the same order.
+  const allowed = tab => tierKnown && (!tier1 || TIER1_TABS.includes(tab))
   const tabLabel = key => ({ client_overview: 'Client Overview', tax_diagnostic: 'Tax Diagnostic', profile_edit: 'Edit Profile' })[key] || MEMBER_TAB_LABELS[key] || ''
   const profileOptions = [{ key: 'profile', label: 'Profile' }, { key: 'profile_edit', label: 'Edit Profile' }]
   const msmOptions = [
-    { key: 'msm_home', label: 'MSM Home' },
+    { key: 'msm_home', label: 'Programs' },
     ...programs.map(p => ({ key: PROGRAM_KEYS[p.name], label: p.name })).filter(o => o.key)
   ]
+  const showroomOptions = ['showroom', 'specialists', 'website']
+    .filter(tab => tab !== 'website' || websiteEnabled)
+    .filter(allowed)
+    .map(key => ({ key, label: tabLabel(key) }))
+  const midTabs = ['client_overview', 'tax_diagnostic'].filter(allowed)
+  const endTabs = ['growthplan', 'ciq', 'gc'].filter(allowed)
   const pick = o => ({ key: o.key, label: o.label, active: activeTab === o.key, onSelect: () => onSelect(o.key) })
-  // Events sits right after Profile and shimmers (Jake, 2026-11-25), for every member.
+  // Events shimmers, for every member (Jake, 2026-11-25).
   const showEvents = eventsEnabled && tierKnown
+  const showVault = allowed('vault')
+  const showroomGroup = showroomOptions.length > 1
   const menuItems = [
     { key: 'profile_group', label: 'Profile', options: profileOptions.map(pick) },
+    ...(showVault ? [pick({ key: 'vault', label: tabLabel('vault') })] : []),
     ...(showEvents ? [pick({ key: 'events', label: <EventsNavLabel /> })] : []),
-    ...(!tierKnown || tier1 ? [] : [{ key: 'msm_group', label: 'MSM', options: msmOptions.map(pick) }]),
-    ...flatTabs.map(key => pick({ key, label: tabLabel(key) })),
+    ...(!tierKnown || tier1 ? [] : [{ key: 'msm_group', label: 'Programs', options: msmOptions.map(pick) }]),
+    ...midTabs.map(key => pick({ key, label: tabLabel(key) })),
+    ...(showroomGroup ? [{ key: 'showroom_group', label: 'Showroom', options: showroomOptions.map(pick) }] : showroomOptions.map(pick)),
+    ...endTabs.map(key => pick({ key, label: tabLabel(key) })),
   ]
 
   return (
@@ -141,10 +155,11 @@ export default function MemberNavBar({ activeTab, onSelect, programs = [], websi
         onSelect={onSelect}
         onLabelClick={() => onSelect('profile')}
       />
+      {showVault && tabBtn('vault', tabLabel('vault'))}
       {showEvents && tabBtn('events', <EventsNavLabel />)}
       {tierKnown && !tier1 && (
         <NavDropdown
-          label="MSM"
+          label="Programs"
           isActive={activeTab === 'msm_home' || !!activeTab?.startsWith('msm_')}
           activeTab={activeTab}
           options={msmOptions}
@@ -152,7 +167,18 @@ export default function MemberNavBar({ activeTab, onSelect, programs = [], websi
         />
       )}
       {/* Tax Diagnostic: every member, no switch (2026-10-14) — see MemberTaxDiagnostic. */}
-      {flatTabs.map(tab => tabBtn(tab, tabLabel(tab)))}
+      {midTabs.map(tab => tabBtn(tab, tabLabel(tab)))}
+      {showroomGroup ? (
+        <NavDropdown
+          label="Showroom"
+          isActive={showroomOptions.some(o => o.key === activeTab)}
+          activeTab={activeTab}
+          options={showroomOptions}
+          onSelect={onSelect}
+          onLabelClick={() => onSelect('showroom')}
+        />
+      ) : showroomOptions.map(o => tabBtn(o.key, o.label))}
+      {endTabs.map(tab => tabBtn(tab, tabLabel(tab)))}
     </CollapsibleNavBar>
   )
 }

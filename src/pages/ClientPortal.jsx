@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useLayoutEffect, Suspense } from 'react'
+import { timeGreeting } from '../lib/greeting'
 import { useNavigate } from 'react-router-dom'
 import { getSession, clearSession, callApi, getLastSeen, setLastSeen } from '../lib/api'
 import ClientVault from '../components/client/ClientVault'
@@ -7,6 +8,7 @@ import CollapsibleNavBar from '../components/shared/CollapsibleNavBar'
 import PortalHeader from '../components/shared/PortalHeader'
 import ChangePasswordCard from '../components/shared/ChangePasswordCard'
 import AppearanceCard from '../components/shared/AppearanceCard'
+import { SettingsHeader, SETTINGS_WIDTH, useSettingsReturn } from '../components/shared/ProfileKit'
 import { usePortalTheme } from '../lib/theme'
 import { lazyPage } from '../lib/lazyPage'
 import { ClientProgressSkeleton, OnePagePlanSkeleton, ShowroomSkeleton, VaultSectionsSkeleton } from '../components/shared/Skeleton'
@@ -22,6 +24,9 @@ function fmtLicenceDate(iso) {
 
 export default function ClientPortal() {
   const navigate = useNavigate()
+  // Settings' Back returns to the tab it was opened from (or the page that sent you).
+  const settingsReturn = useSettingsReturn(navigate)
+  const tabBeforeSettings = useRef('showroom')
   const session = getSession()
   usePortalTheme()
   const [tab, setTab] = useState(sessionStorage.getItem('clientActiveTab') || 'showroom')
@@ -59,7 +64,9 @@ export default function ClientPortal() {
   useEffect(() => {
     if (!session || session.role !== 'client') navigate('/client/login')
   }, [])
-  useEffect(() => { if (tabChosen.current) sessionStorage.setItem('clientActiveTab', tab) }, [tab])
+  // Settings is never the remembered tab: the tab under it is, so a reload or a
+  // later return to the portal lands there, not on Settings.
+  useEffect(() => { if (tabChosen.current) sessionStorage.setItem('clientActiveTab', tab === 'settings' ? tabBeforeSettings.current : tab) }, [tab])
   function chooseTab(t) { tabChosen.current = true; setTab(t) }
 
   // Showroom of the member this client is connected to (their enabled specialists).
@@ -129,6 +136,9 @@ export default function ClientPortal() {
 
   function signOut() { clearSession(); navigate('/client/login') }
 
+  function openSettings() { if (tab !== 'settings') { settingsReturn.open(); tabBeforeSettings.current = tab } chooseTab('settings') }
+  function closeSettings() { settingsReturn.back(() => chooseTab(tabBeforeSettings.current)) }
+
   // Returns an error message for the button to show, or null on success.
   async function requestIntroduction(expertId) {
     try {
@@ -147,7 +157,7 @@ export default function ClientPortal() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
       <PortalHeader name={session.name || session.email} showBell={false} onTitleClick={() => chooseTab(licensingOn ? 'home' : 'showroom')} actions={[
-        { key: 'settings', label: 'Settings', active: tab === 'settings', onClick: () => chooseTab('settings') },
+        { key: 'settings', label: 'Settings', active: tab === 'settings', onClick: openSettings },
         { key: 'signout', label: 'Sign Out', onClick: signOut },
       ]}>
         {tab !== 'settings' && (
@@ -162,7 +172,7 @@ export default function ClientPortal() {
 
       {tab === 'home' && (
         <div style={{ textAlign: 'center', padding: '60px var(--vfo-gutter) 0' }}>
-          <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2.5px', marginBottom: '10px' }}>Welcome back</p>
+          <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2.5px', marginBottom: '10px' }}>{timeGreeting()}</p>
           <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.02em', fontSize: '38px', color: 'var(--vfo-heading)', margin: 0 }}>{session.name || session.email}</p>
           <div style={{ width: '46px', height: '4px', borderRadius: '99px', background: '#fb895a', margin: '18px auto 0' }} />
           {licence && (
@@ -220,11 +230,10 @@ export default function ClientPortal() {
         </div>
       )}
       {tab === 'settings' && (
-        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
+        <div style={{ maxWidth: SETTINGS_WIDTH, margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
+          <SettingsHeader name={getSession()?.name} email={getSession()?.email} onBack={closeSettings} />
           <ChangePasswordCard action="client_update_login" />
-          <div style={{ maxWidth: '460px', margin: '20px auto 0' }}>
-            <AppearanceCard />
-          </div>
+          <AppearanceCard />
         </div>
       )}
     </div>

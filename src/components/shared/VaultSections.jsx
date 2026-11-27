@@ -4,11 +4,12 @@ import { fileSizeError } from '../../lib/fileUpload'
 import { VaultRowsSkeleton } from './Skeleton'
 import RequestDocsButton from './RequestDocsButton'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { FileBadge, FileName, fileTileStyle, UploadZone, VaultEmpty, VaultSectionCard, vaultRemoveBtn, vaultViewBtn } from './VaultKit'
 
 const ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,image/*,application/pdf'
 
 // Phone rows: one line per file - name over size, then two round icon buttons.
-// No file icon: on a phone, room goes to the name, not to decoration.
+// No file badge: on a phone, room goes to the name, not to decoration.
 const SVG = { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
 export function EyeIcon() {
   return <svg {...SVG}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
@@ -175,23 +176,22 @@ Add ${files.length === 1 ? `"${files[0].name}"` : `these ${files.length} files`}
           Drag a document by its <span style={{ userSelect: 'none' }}>⠿</span> handle onto another section to move it there.
         </div>
       )}
-      {sections.map(sec => (
-        <div
-          key={sec.key}
-          style={{ background: dragOverKey === sec.key && dragItem?.section !== sec.key ? 'rgba(0,149,255,0.06)' : 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '12px', padding: isPhone ? '16px' : '22px', marginBottom: '20px', outline: dragOverKey === sec.key && dragItem?.section !== sec.key ? '2px dashed #0095ff' : 'none', outlineOffset: '-4px' }}
-          onDragOver={canMove && dragItem && dragItem.section !== sec.key ? (e => { e.preventDefault(); setDragOverKey(sec.key) }) : undefined}
-          onDragLeave={canMove ? (() => setDragOverKey(k => k === sec.key ? null : k)) : undefined}
-          onDrop={canMove && dragItem ? (e => {
-            e.preventDefault()
-            const item = dragItem
-            setDragOverKey(null); setDragItem(null)
-            if (item && item.section !== sec.key) moveDoc(item.section, sec.key, item.file)
-          }) : undefined}
-        >
-          <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '4px' }}>{sec.title}</div>
-          <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '16px' }}>{sec.hint}</p>
+      {sections.map(sec => {
+        const dropping = dragOverKey === sec.key && dragItem?.section !== sec.key
+        return (
+        <VaultSectionCard key={sec.key} sectionKey={sec.key} title={sec.title} hint={sec.hint} dropping={dropping}
+          dropProps={{
+            onDragOver: canMove && dragItem && dragItem.section !== sec.key ? (e => { e.preventDefault(); setDragOverKey(sec.key) }) : undefined,
+            onDragLeave: canMove ? (() => setDragOverKey(k => k === sec.key ? null : k)) : undefined,
+            onDrop: canMove && dragItem ? (e => {
+              e.preventDefault()
+              const item = dragItem
+              setDragOverKey(null); setDragItem(null)
+              if (item && item.section !== sec.key) moveDoc(item.section, sec.key, item.file)
+            }) : undefined,
+          }}>
           {sec.publicNotice && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '8px', padding: '10px 12px', fontSize: '12.5px', fontWeight: 600, marginBottom: '16px' }}>
+            <div style={{ background: 'rgba(217,48,37,0.08)', border: '1px solid rgba(217,48,37,0.3)', color: '#d93025', borderRadius: '10px', padding: '10px 12px', fontSize: '12.5px', fontWeight: 600, marginBottom: '14px' }}>
               {sec.publicNotice}
             </div>
           )}
@@ -210,52 +210,45 @@ Add ${files.length === 1 ? `"${files[0].name}"` : `these ${files.length} files`}
             <VaultRowsSkeleton rows={2} />
           ) : (
             <>
-              {(data[sec.key] || []).length === 0 && <div style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginBottom: '12px' }}>No documents yet.</div>}
-              {(data[sec.key] || []).map(f => (
-                <div
-                  key={f.path}
-                  draggable={canMove}
-                  onDragStart={canMove ? (e => { e.dataTransfer.effectAllowed = 'move'; setDragItem({ section: sec.key, file: f }) }) : undefined}
-                  onDragEnd={canMove ? (() => { setDragItem(null); setDragOverKey(null) }) : undefined}
-                  style={isPhone
-                    ? { display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 10px 10px 12px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px', marginBottom: '8px', opacity: dragItem?.file?.path === f.path ? 0.45 : 1 }
-                    : { display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', marginBottom: '8px', opacity: dragItem?.file?.path === f.path ? 0.45 : 1 }}
-                >
-                  {canMove && (
-                    <span title="Drag to move this document to another section" style={{ fontSize: '14px', color: 'var(--vfo-muted)', cursor: 'grab', flexShrink: 0, lineHeight: 1, userSelect: 'none' }}>⠿</span>
-                  )}
-                  {isPhone ? (
-                    <>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div title={f.name} style={{ fontSize: '13.5px', fontWeight: 500, color: 'var(--vfo-ink)', lineHeight: 1.35, overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{f.name}</div>
-                        <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{fmtSize(f.size)}</div>
-                      </div>
-                      <IconButton label={`View ${f.name}`} tone="view" onClick={() => view(sec, f.path)}><EyeIcon /></IconButton>
-                      {!sec.readOnly && <IconButton label={`Remove ${f.name}`} tone="remove" onClick={() => remove(sec, f.path)}><TrashIcon /></IconButton>}
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ flexShrink: 0 }}>📄</span>
-                      <span title={f.name} style={{ fontSize: '13px', color: 'var(--vfo-ink-2)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--vfo-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>{fmtSize(f.size)}</span>
-                      <button onClick={() => view(sec, f.path)} style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>View</button>
-                      {!sec.readOnly && (
-                        <button onClick={() => remove(sec, f.path)} style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.1)', color: '#e74c3c', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Remove</button>
-                      )}
-                    </>
-                  )}
-                </div>
-              ))}
-              {!sec.readOnly && (
-                <label style={{ display: 'block', textAlign: 'center', cursor: busy === sec.key ? 'wait' : 'pointer', marginTop: '10px', padding: '16px', borderRadius: '8px', border: '1px dashed var(--vfo-border-mid)', background: 'var(--vfo-tint)' }}>
-                  <input type="file" multiple accept={ACCEPT} disabled={busy === sec.key} style={{ display: 'none' }} onChange={e => { handleFiles(sec, e.target.files); e.target.value = '' }} />
-                  <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>{busy === sec.key ? 'Uploading…' : '+ Add document'}</span>
-                </label>
-              )}
+              {(data[sec.key] || []).length === 0 && <VaultEmpty />}
+              <div style={{ display: 'grid', gap: '8px' }}>
+                {(data[sec.key] || []).map(f => (
+                  <div
+                    key={f.path}
+                    draggable={canMove}
+                    onDragStart={canMove ? (e => { e.dataTransfer.effectAllowed = 'move'; setDragItem({ section: sec.key, file: f }) }) : undefined}
+                    onDragEnd={canMove ? (() => { setDragItem(null); setDragOverKey(null) }) : undefined}
+                    style={fileTileStyle({ dragging: dragItem?.file?.path === f.path, phone: isPhone })}
+                  >
+                    {canMove && (
+                      <span title="Drag to move this document to another section" style={{ fontSize: '14px', color: 'var(--vfo-muted)', cursor: 'grab', flexShrink: 0, lineHeight: 1, userSelect: 'none' }}>⠿</span>
+                    )}
+                    {isPhone ? (
+                      <>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div title={f.name} style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--vfo-ink)', lineHeight: 1.35, overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{f.name}</div>
+                          <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{fmtSize(f.size)}</div>
+                        </div>
+                        <IconButton label={`View ${f.name}`} tone="view" onClick={() => view(sec, f.path)}><EyeIcon /></IconButton>
+                        {!sec.readOnly && <IconButton label={`Remove ${f.name}`} tone="remove" onClick={() => remove(sec, f.path)}><TrashIcon /></IconButton>}
+                      </>
+                    ) : (
+                      <>
+                        <FileBadge name={f.name} />
+                        <FileName name={f.name} size={fmtSize(f.size)} />
+                        <button type="button" onClick={() => view(sec, f.path)} style={vaultViewBtn}>View</button>
+                        {!sec.readOnly && <button type="button" onClick={() => remove(sec, f.path)} style={vaultRemoveBtn}>Remove</button>}
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {!sec.readOnly && <UploadZone busy={busy === sec.key} accept={ACCEPT} onFiles={files => handleFiles(sec, files)} />}
             </>
           )}
-        </div>
-      ))}
+        </VaultSectionCard>
+        )
+      })}
     </div>
   )
 }

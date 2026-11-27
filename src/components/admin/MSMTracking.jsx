@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { clientStatusHex, clientStatusKey, clientStatusLabel } from '../shared/clientStatus'
 import DirectPill from '../shared/DirectPill'
+import { DotText, FormGrid, formInput, formLabel, ProfileCard, SettingRow, Switch } from '../shared/ProfileKit'
+import { btnPrimary, btnSecondary, btnState, BTN_SMALL } from '../shared/buttonStyles'
+import { MeetingHistoryList, ProgramNotesList } from '../shared/MsmKit'
+import ListTable, { ListName, ListPill, ListText, listSearchStyle } from '../shared/ListTable'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession, loadCachedAction, getLastSeen, setLastSeen, getWriteCount } from '../../lib/api'
 import { AdminMsmHomeSkeleton, AdminProgramViewSkeleton, ClientsListSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, PhaseCardsSkeleton, ProgramNotesSkeleton, SkeletonText, TrainingTrackSkeleton } from '../shared/Skeleton'
@@ -17,11 +21,12 @@ import { MSM_MEETING_TYPES } from '../shared/msmMeetingTypes'
 import MsmMeetingsCounter from '../shared/MsmMeetingsCounter'
 import { isAccountantProgram, isAccountantRef, ACCOUNTANT_FEATURE_TAB, TAILORED_PROGRAM } from '../shared/accountantPrograms'
 
+// In the one program order (shared/programOrder.js, 2026-11-26).
 const PROGRAMS = [
+  { key: 'tax', name: 'VFO Tax Planning' },
   { key: 'holistic', name: 'VFO Holistic Planning' },
   { key: 'partnership', name: 'Partnership Fast Track' },
   { key: 'tailored', name: 'Tailored Route for Accountants' },
-  { key: 'tax', name: 'VFO Tax Planning' },
   { key: 'coaching', name: 'Advanced Coaching' },
   { key: 'standard', name: 'Standard Coaching' },
 ]
@@ -81,6 +86,16 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
   const [meetingConductedBy, setMeetingConductedBy] = useState('')
   const [meetingNotes, setMeetingNotes] = useState('')
   const [meetingStatus, setMeetingStatus] = useState('')
+  // Every program's notes for the MSM Home's Program Notes box (moved off the profile, 2026-11-26).
+  const [programNotes, setProgramNotes] = useState([])
+  useEffect(() => {
+    if (activeTab !== 'home') return
+    let live = true
+    callApi('load_member_program_notes', { member_number: member.plugin_member_number })
+      .then(d => { if (live) setProgramNotes(d.notes || []) })
+      .catch(err => console.error(err))
+    return () => { live = false }
+  }, [member.plugin_member_number, activeTab])
 
   // Re-opening a member seen earlier this session (e.g. Back from a client page)
   // draws the last snapshot at once and refreshes it in the background.
@@ -205,8 +220,6 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
     return enrollments.find(e => e.programs?.name === programName) || null
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
   const tabStyle = (active) => ({
     padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px'
   })
@@ -247,7 +260,7 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
               return (
                 <div key={p.key} style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--vfo-muted)' }}>
                   <div style={{ fontSize: '18px', color: 'var(--vfo-ink)', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em' }}>{p.name}</div>
-                  <div style={{ fontSize: '14px', color: 'var(--vfo-muted)' }}>This program is not enabled for this member. Enable it from MSM Home.</div>
+                  <div style={{ fontSize: '14px', color: 'var(--vfo-muted)' }}>This program is not enabled for this member. Enable it from Programs.</div>
                 </div>
               )
             }
@@ -260,24 +273,20 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
         </div>
       )}
 
-      {/* MSM HOME TAB */}
+      {/* MSM HOME TAB (2026-11-26): one column. The MSM + programs box on top, the
+          meeting summary, the history with its own Log button, then every program's
+          notes (program notes live here; the profile keeps the general notes). */}
       {activeTab === 'home' && (
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-
-          {/* Side column — assignment + program toggles */}
-          <div style={{ flex: '1 1 250px', minWidth: '250px', order: 2 }}>
+        <div>
+          <ProfileCard icon="layers" title="MSM & Programs" sub="Programs can be switched on once an MSM is saved.">
             <MsmAssignment member={member} value={assignedMsm} onChange={setAssignedMsm} onSaved={setSavedMsm} />
             <ProgramToggles member={member} programs={programs} enabledPrograms={enabledPrograms} onToggle={handleProgramToggled} allowedProgramKeys={allowedProgramKeys} hasMsm={!!(savedMsm && savedMsm.trim())} />
-          </div>
+          </ProfileCard>
 
-          {/* Main column — meetings */}
-          <div style={{ flex: '2 1 400px', minWidth: '300px', order: 1 }}>
-
-          {/* Meeting counts */}
-          <div style={sectionStyle}>
-            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Meeting Summary</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
-              <div style={summaryTile}>
+          {/* The tiles are as they were; the MSM counter takes two of three slots so the rows come out even. */}
+          <ProfileCard icon="calendar" title="Meeting Summary">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+              <div style={{ ...summaryTile, gridColumn: 'span 2' }}>
                 <MsmMeetingsCounter meetings={meetings} numberStyle={summaryNumber} labelStyle={summaryLabel} ruleInset={16} />
               </div>
               {[
@@ -296,69 +305,50 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
               ))}
             </div>
 
-            <button onClick={() => setShowLogMeeting(!showLogMeeting)}
-              style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', marginBottom: showLogMeeting ? '16px' : '0' }}>
-              + Log MSM Meeting
-            </button>
 
+          </ProfileCard>
+
+          <ProfileCard icon="history" title="Meeting History" sub={meetings.length ? `${meetings.length} logged` : null}
+            action={!showLogMeeting && <button type="button" onClick={() => setShowLogMeeting(true)} style={{ ...btnPrimary, ...BTN_SMALL, padding: '6px 14px', fontSize: '12.5px' }}>+ Log MSM Meeting</button>}>
             {showLogMeeting && (
-              <div style={{ marginTop: '16px', padding: '16px', background: 'var(--vfo-tint)', borderRadius: '8px' }}>
-                <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: '160px' }}>
-                    <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Meeting Type *</label>
-                    <select value={meetingType} onChange={e => setMeetingType(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
+              <div style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+                <FormGrid min={180}>
+                  <div>
+                    <label style={formLabel}>Meeting Type *</label>
+                    <select value={meetingType} onChange={e => setMeetingType(e.target.value)} style={formInput}>
                       <option value="">-- Select --</option>
                       {MSM_MEETING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
-                  <div style={{ flex: 1, minWidth: '160px' }}>
-                    <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Date *</label>
-                    <input type="date" value={meetingDate} onChange={e => setMeetingDate(e.target.value)} style={inputStyle} />
+                  <div>
+                    <label style={formLabel}>Date *</label>
+                    <input type="date" value={meetingDate} onChange={e => setMeetingDate(e.target.value)} style={formInput} />
                   </div>
-                  <div style={{ flex: 1, minWidth: '160px' }}>
-                    <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Conducted By</label>
-                    <select value={meetingConductedBy} onChange={e => setMeetingConductedBy(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
+                  <div>
+                    <label style={formLabel}>Conducted By</label>
+                    <select value={meetingConductedBy} onChange={e => setMeetingConductedBy(e.target.value)} style={formInput}>
                       <option value="">-- Select --</option>
                       {TEAM_MEMBERS.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
-                </div>
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Notes</label>
-                  <textarea value={meetingNotes} onChange={e => setMeetingNotes(e.target.value)} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
-                </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={formLabel}>Notes</label>
+                    <textarea value={meetingNotes} onChange={e => setMeetingNotes(e.target.value)} rows={2} style={{ ...formInput, resize: 'vertical' }} />
+                  </div>
+                </FormGrid>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap', marginTop: '14px' }}>
                   <SaveVisibilityButtons onSave={logMeeting} internalLabel="Log (internal note)" sharedLabel="Log & share note with member" hint="The meeting is always visible to the member — only the note text is internal or shared." />
-                  <button onClick={() => { setShowLogMeeting(false); setMeetingType(''); setMeetingStatus('') }} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
+                  <button type="button" onClick={() => { setShowLogMeeting(false); setMeetingType(''); setMeetingStatus('') }} style={btnSecondary}>Cancel</button>
                 </div>
-                {meetingStatus &&<p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '8px' }}>{meetingStatus}</p>}
+                {meetingStatus && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', margin: '8px 0 0' }}>{meetingStatus}</p>}
               </div>
             )}
-          </div>
+            <MeetingHistoryList meetings={meetings} onDelete={deleteMeeting} showVisibility />
+          </ProfileCard>
 
-          {/* Meeting history */}
-          <div style={sectionStyle}>
-            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Meeting History</div>
-            {meetings.length === 0
-              ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No meetings logged yet.</p>
-              : meetings.map(m => (
-                <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px' }}>{m.meeting_type}{m.notes && <VisibilityBadge visibility={m.visibility} />}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
-                      {new Date(m.meeting_date + 'T12:00:00').toLocaleDateString()}{m.conducted_by ? ` · ${m.conducted_by}` : ''}
-                    </div>
-                    {m.notes && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{m.notes}</div>}
-                  </div>
-                  <button onClick={() => deleteMeeting(m.id)}
-                    style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.3)', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer', flexShrink: 0 }}>
-                    Delete
-                  </button>
-                </div>
-              ))
-            }
-          </div>
-          </div>
+          <ProfileCard icon="note" title="Program Notes" sub={programNotes.length ? `${programNotes.length} across every program` : null}>
+            <ProgramNotesList notes={programNotes} showVisibility emptyText="No program notes yet. Add them on a program's Home tab." />
+          </ProfileCard>
         </div>
       )}
     </div>
@@ -535,8 +525,6 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
   const [programStatus, setProgramStatus] = useState(enrollment.program_status || 'On Fast Track')
   const [saveStatus, setSaveStatus] = useState('')
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
   const tabStyle = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' })
 
   async function saveEnrollment() {
@@ -549,40 +537,36 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
 
   const statusColors = { 'On Fast Track': '#1b9254', 'Paused Fast Track': '#e06717', 'Lost/Removed': '#e74c3c', 'Revert to Legacy': 'var(--vfo-muted)', 'Active': '#1b9254', 'Paused': '#e06717', 'Not Renewing': '#e74c3c' }
 
+  // The program's own box (2026-11-26): name, joined date and status in the title
+  // bar, Edit opens the status picker inside it.
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        <div>
-          <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>Program</div>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>{program.name}</div>
-          <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+      <ProfileCard icon="layers" title={program.name}
+        sub={(
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span>Joined {enrollment.date_enrolled ? formatFullDate(enrollment.date_enrolled) : '—'}</span>
-            {!isCoachingLike && enrollment.program_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[enrollment.program_status] || 'var(--vfo-faint)', flexShrink: 0 }} />{enrollment.program_status}</span></>}
+            {!isCoachingLike && enrollment.program_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><DotText color={statusColors[enrollment.program_status] || 'var(--vfo-faint)'} style={{ fontSize: '12.5px' }}>{enrollment.program_status}</DotText></>}
             {!isCoachingLike && !isTaxPlanning && !isTailored && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><PlanStatusBadge enrollmentId={enrollment.id} programId={program.id} liveStatus={livePlanStatus} /></>}
-          </div>
-        </div>
-        {!isCoachingLike && (
-          <button onClick={() => setEditingEnrollment(!editingEnrollment)} style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }}>
+          </span>
+        )}
+        action={!isCoachingLike && (
+          <button type="button" onClick={() => setEditingEnrollment(!editingEnrollment)} style={{ ...btnSecondary, ...BTN_SMALL }}>
             {editingEnrollment ? 'Cancel' : 'Edit'}
           </button>
-        )}
-      </div>
-      <div style={{ display: editingEnrollment ? 'block' : 'none' }}>
+        )}>
         {editingEnrollment && (
-          <div style={{ ...sectionStyle, padding: '16px' }}>
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: '160px' }}>
-                <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Program Status</label>
-                <select value={programStatus} onChange={e => setProgramStatus(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
-                  {(isCoaching ? ['Active', 'Paused', 'Not Renewing', 'Lost/Removed'] : ['On Fast Track', 'Paused Fast Track', 'Revert to Legacy', 'Lost/Removed']).map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ minWidth: '240px' }}>
+              <label style={formLabel}>Program Status</label>
+              <select value={programStatus} onChange={e => setProgramStatus(e.target.value)} style={formInput}>
+                {(isCoaching ? ['Active', 'Paused', 'Not Renewing', 'Lost/Removed'] : ['On Fast Track', 'Paused Fast Track', 'Revert to Legacy', 'Lost/Removed']).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
-            <button onClick={saveEnrollment} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Save</button>
-            {saveStatus && <span style={{ color: saveStatus === 'Saved!' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginLeft: '12px' }}>{saveStatus}</span>}
+            <button type="button" onClick={saveEnrollment} style={btnPrimary}>Save</button>
+            {saveStatus && <span style={{ color: saveStatus === 'Saved!' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', fontWeight: 500, alignSelf: 'center' }}>{saveStatus}</span>}
           </div>
         )}
-      </div>
+      </ProfileCard>
 
       <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px' }}>
         <button style={tabStyle(activeTab === 'home')} onClick={() => setActiveTab('home')}>Home</button>
@@ -1078,98 +1062,92 @@ function ClientsPanel({ enrollment, member, program }) {
     if (mode === 'existing') loadExistingClients()
   }
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
 
-  if (loading) return <ClientsListSkeleton />
+  if (loading) return <ClientsListSkeleton table />
 
 
   const filteredExisting = existingSearch
     ? allMemberClients.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(existingSearch.toLowerCase()) || c.client_ref.toLowerCase().includes(existingSearch.toLowerCase()))
     : allMemberClients
 
+  const noun = isPFT ? 'Accountant' : 'Client'
+  const openClient = client => navigate(`/admin/client/${client.id}`, { state: { enrollment_id: enrollment.id, from: '/admin', backTo: isPFT ? 'pft_accountants' : undefined, backFeature: ACCOUNTANT_FEATURE_TAB[program.name], memberNumber: member.plugin_member_number } })
+  const stat = (n, label) => (
+    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '12px 18px', minWidth: '110px' }}>
+      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '24px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{n}</div>
+      <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '6px', textTransform: 'uppercase' }}>{label}</div>
+    </div>
+  )
+
+  // The program's client list (2026-11-26): count tiles, then the shared list table.
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '20px', width: '100%' }}>
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', paddingLeft: '24px' }}>
-          <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>TOTAL</div></div>
-          <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.filter(c => clientStatusKey(c) === 'active').length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>ACTIVE</div></div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {stat(clients.length, 'Total')}
+          {stat(clients.filter(c => clientStatusKey(c) === 'active').length, 'Active')}
         </div>
-        <button onClick={handleShowAdd} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>+ Add {isPFT ? 'Accountant' : 'Client'}</button>
+        <button type="button" onClick={handleShowAdd} style={btnPrimary}>+ Add {noun}</button>
       </div>
 
       {showAdd && !isPFT && !addMode && (
-        <div style={{ ...sectionStyle, marginBottom: '20px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Add Client</div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={() => selectAddMode('existing')} style={{ flex: 1, padding: '20px', borderRadius: '8px', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.08)', color: '#0095ff', fontWeight: 500, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Add Existing Client</button>
-            <button onClick={() => selectAddMode('new')} style={{ flex: 1, padding: '20px', borderRadius: '8px', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.08)', color: 'var(--vfo-success-text)', fontWeight: 500, fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Add New Client</button>
+        <ProfileCard icon="users" title="Add Client" sub="Link a client this member already has, or make a new one."
+          action={<button type="button" onClick={() => { setShowAdd(false); setAddMode(null) }} style={{ ...btnSecondary, ...BTN_SMALL }}>Cancel</button>}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => selectAddMode('existing')} style={{ ...btnSecondary, flex: '1 1 220px', padding: '16px', fontSize: '14px' }}>Add Existing Client</button>
+            <button type="button" onClick={() => selectAddMode('new')} style={{ ...btnSecondary, flex: '1 1 220px', padding: '16px', fontSize: '14px' }}>Add New Client</button>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-            <button onClick={() => { setShowAdd(false); setAddMode(null) }} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
-          </div>
-        </div>
+        </ProfileCard>
       )}
 
       {showAdd && addMode === 'existing' && (
-        <div style={{ ...sectionStyle, marginBottom: '20px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Add Existing Client</div>
+        <ProfileCard icon="link" title="Add Existing Client" sub="Pick one of this member's other clients to add to this program."
+          action={<button type="button" onClick={() => setAddMode(null)} style={{ ...btnSecondary, ...BTN_SMALL }}>Back</button>}>
           {loadingExisting
             ? <SkeletonText lines={3} />
             : allMemberClients.length === 0
-              ? <div style={{ padding: '20px', color: 'var(--vfo-muted)', textAlign: 'center' }}>No other clients found for this member.</div>
+              ? <div style={{ padding: '12px 0', color: 'var(--vfo-muted)', fontSize: '13px' }}>No other clients found for this member.</div>
               : <>
-                  <input type="search" name="search" autoComplete="off" value={existingSearch} onChange={e => setExistingSearch(e.target.value)} placeholder="Search by name or ref..." style={{ ...inputStyle, marginBottom: '12px' }} />
-                  {filteredExisting.map(c => (
-                    <div key={c.id} onClick={() => linkExistingClient(c.id)}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', cursor: 'pointer' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-tint)'}>
-                      <div>
-                        <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{c.first_name} {c.last_name}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{c.client_ref}{c.email ? ` · ${c.email}` : ''}</div>
-                      </div>
-                      <span style={{ color: '#0095ff', fontWeight: 600, fontSize: '12px' }}>Select →</span>
-                    </div>
-                  ))}
+                  <input type="search" name="search" autoComplete="off" value={existingSearch} onChange={e => setExistingSearch(e.target.value)} placeholder="Search by name or ref..." style={{ ...listSearchStyle, width: '100%', marginBottom: '12px' }} />
+                  <ListTable
+                    rows={filteredExisting}
+                    rowKey={c => c.id}
+                    onRowClick={c => linkExistingClient(c.id)}
+                    empty="No clients match your search."
+                    columns={[
+                      { key: 'name', label: 'Client', width: '1.6fr', get: c => `${c.first_name} ${c.last_name}`, render: c => <ListName sub={c.email}>{`${c.first_name} ${c.last_name}`}</ListName> },
+                      { key: 'ref', label: 'Ref', width: '120px', get: c => c.client_ref, render: c => <ListText mono>{c.client_ref}</ListText> },
+                      { key: 'pick', label: '', width: '90px', render: () => <span style={{ color: 'var(--vfo-accent-text)', fontWeight: 600, fontSize: '12.5px' }}>Select →</span> },
+                    ]}
+                  />
                 </>
           }
-          {addStatus && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '8px' }}>{addStatus}</p>}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-            <button onClick={() => setAddMode(null)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Back</button>
-          </div>
-        </div>
+          {addStatus && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', margin: '10px 0 0' }}>{addStatus}</p>}
+        </ProfileCard>
       )}
 
       {showAdd && addMode === 'new' && (
-        <AddClientForm title={`Add New ${isPFT ? 'Accountant' : 'Client'}`} profileBase="/admin/client"
+        <AddClientForm title={`Add New ${noun}`} profileBase="/admin/client"
           cancelLabel={isPFT ? 'Cancel' : 'Back'} onSave={addClient}
           onCancel={() => { isPFT ? setShowAdd(false) : setAddMode(null) }} />
       )}
 
-      {clients.length === 0 && !showAdd
-        ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No {isPFT ? 'accountants' : 'clients'} added yet.</div>
-        : clients.map(client => (
-          <div key={client.id} style={{ ...sectionStyle, cursor: 'pointer' }}
-            onClick={() => navigate(`/admin/client/${client.id}`, { state: { enrollment_id: enrollment.id, from: '/admin', backTo: isPFT ? 'pft_accountants' : undefined, backFeature: ACCOUNTANT_FEATURE_TAB[program.name], memberNumber: member.plugin_member_number } })}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{client.first_name} {client.last_name}</span>
-                  <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{client.client_ref}</span>
-                  {client.status && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: clientStatusHex(clientStatusKey(client)) || 'var(--vfo-faint)', flexShrink: 0 }} />{clientStatusLabel(clientStatusKey(client))}</span>}
-                  {client.pf_member_number && <DirectPill />}
-                </div>
-                {(client.email || client.phone) && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client.email}{client.email && client.phone ? ' · ' : ''}{client.phone}</div>}
-                {contactsMap[client.id]?.length > 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px', fontStyle: 'italic' }}>with {contactsMap[client.id].map(c => `${c.first_name} ${c.last_name}`).join(', ')}</div>}
-              </div>
-              <span style={{ color: '#0095ff', fontWeight: 500, fontSize: '13px' }}>View →</span>
-            </div>
-          </div>
-        ))
-      }
+      <ListTable
+        rows={clients}
+        rowKey={c => c.id}
+        onRowClick={openClient}
+        minWidth="640px"
+        empty={`No ${isPFT ? 'accountants' : 'clients'} added yet.`}
+        columns={[
+          { key: 'name', label: noun, width: '2fr', get: c => `${c.first_name} ${c.last_name}`, render: c => (
+            // No email or phone on this list (Jake, 2026-11-26): name, then any "with" contacts.
+            <ListName sub={contactsMap[c.id]?.length > 0 ? <span style={{ fontStyle: 'italic' }}>with {contactsMap[c.id].map(x => `${x.first_name} ${x.last_name}`).join(', ')}</span> : null}>{`${c.first_name} ${c.last_name}`}</ListName>
+          ) },
+          { key: 'ref', label: 'Ref', width: '120px', get: c => c.client_ref, render: c => <ListText mono>{c.client_ref}</ListText> },
+          { key: 'status', label: 'Status', width: '120px', get: c => (c.status ? clientStatusLabel(clientStatusKey(c)) : ''), render: c => c.status ? <ListPill color={clientStatusHex(clientStatusKey(c)) || '#8a94a6'}>{clientStatusLabel(clientStatusKey(c))}</ListPill> : <ListText /> },
+          { key: 'route', label: '', width: '90px', render: c => c.pf_member_number ? <DirectPill /> : null },
+        ]}
+      />
     </div>
   )
 }
@@ -1245,8 +1223,6 @@ function MsmAssignment({ member, value, onChange, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
   async function save() {
     setSaving(true)
@@ -1260,17 +1236,15 @@ function MsmAssignment({ member, value, onChange, onSaved }) {
   }
 
   return (
-    <div style={sectionStyle}>
-      <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Assigned MSM</div>
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <select value={value} onChange={e => onChange(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)', flex: 1, minWidth: '150px' }}>
+    <div style={{ marginBottom: '16px' }}>
+      <label style={formLabel}>Assigned MSM</label>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <select value={value} onChange={e => onChange(e.target.value)} style={{ ...formInput, width: 'auto', minWidth: '240px' }}>
           <option value="">-- Select MSM --</option>
           {TEAM_MEMBERS.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <button onClick={save} disabled={saving} style={{ padding: '10px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>
-          {saving ? 'Saving...' : 'Save'}
-        </button>
-        {status && <span style={{ color: 'var(--vfo-success-text)', fontWeight: 500, fontSize: '13px' }}>{status}</span>}
+        <button type="button" onClick={save} disabled={saving} style={{ ...btnState(btnPrimary, saving), cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Saving…' : 'Save'}</button>
+        {status && <span style={{ color: status === 'Saved!' ? 'var(--vfo-success-text)' : '#d93025', fontWeight: 500, fontSize: '13px' }}>{status}</span>}
       </div>
     </div>
   )
@@ -1313,7 +1287,6 @@ function ProgramToggles({ member, programs, enabledPrograms, onToggle, allowedPr
   // (the Assigned MSM save above). Disabling is always allowed. `hasMsm` reflects
   // the last SAVED assignment, so enabling unlocks the instant the save lands.
   const [msmWarning, setMsmWarning] = useState(false)
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
   async function toggle(programId, currentlyEnabled) {
     if (!currentlyEnabled && !hasMsm) { setMsmWarning(true); return }
@@ -1327,30 +1300,26 @@ function ProgramToggles({ member, programs, enabledPrograms, onToggle, allowedPr
   }
 
   return (
-    <div style={sectionStyle}>
-      <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Programs</div>
+    <div>
+      <label style={formLabel}>Programs</label>
       {msmWarning && !hasMsm && (
-        <div style={{ marginBottom: '14px', padding: '10px 14px', borderRadius: '10px', background: 'rgba(231,76,60,0.1)', border: '1px solid rgba(231,76,60,0.35)', color: '#e74c3c', fontSize: '13px', fontWeight: 600 }}>
+        <div style={{ marginBottom: '10px', padding: '10px 14px', borderRadius: '10px', background: 'rgba(231,76,60,0.1)', border: '1px solid rgba(231,76,60,0.35)', color: '#e74c3c', fontSize: '13px', fontWeight: 600 }}>
           Please Select an MSM
         </div>
       )}
-      {visiblePrograms.map(p => {
-        const dbProgram = programs.find(prog => prog.name === p.name)
-        if (!dbProgram) return null
-        const isEnabled = enabledPrograms.some(e => e.program_id === dbProgram.id)
-        return (
-          <div key={p.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-            <span style={{ fontSize: '14px', color: isEnabled ? 'var(--vfo-ink)' : 'var(--vfo-muted)' }}>{p.name}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{isEnabled ? 'Enabled' : 'Disabled'}</span>
-              <div onClick={() => !toggling[dbProgram.id] && toggle(dbProgram.id, isEnabled)}
-                style={{ width: '44px', height: '24px', borderRadius: '12px', background: isEnabled ? '#1b9254' : 'var(--vfo-border-strong)', cursor: 'pointer', position: 'relative', opacity: toggling[dbProgram.id] ? 0.5 : 1 }}>
-                <div style={{ position: 'absolute', top: '2px', left: isEnabled ? '22px' : '2px', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--vfo-card)', transition: 'left 0.2s' }} />
-              </div>
-            </div>
-          </div>
-        )
-      })}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px' }}>
+        {visiblePrograms.map(p => {
+          const dbProgram = programs.find(prog => prog.name === p.name)
+          if (!dbProgram) return null
+          const isEnabled = enabledPrograms.some(e => e.program_id === dbProgram.id)
+          return (
+            <SettingRow key={p.key} title={p.name} hint={isEnabled ? 'Enabled' : 'Disabled'} style={{ padding: '10px 12px' }}>
+              <Switch on={isEnabled} color="#1b9254" disabled={!!toggling[dbProgram.id]} label={`${p.name} ${isEnabled ? 'on' : 'off'}`}
+                onClick={() => !toggling[dbProgram.id] && toggle(dbProgram.id, isEnabled)} />
+            </SettingRow>
+          )
+        })}
+      </div>
     </div>
   )
 }
