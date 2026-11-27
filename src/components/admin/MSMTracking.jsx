@@ -52,7 +52,7 @@ const groupTasks = (list) => {
 }
 
 export default function MSMTracking({ member, activeSection, onDataChange, bypassEnableGate = false, allowedProgramKeys = null }) {
-  const activeTab = activeSection === 'msm_meetings' ? 'home' : 'programs'
+  const activeTab = activeSection === 'msm_meetings' ? 'home' : activeSection === 'msm_clients' ? 'clients' : 'programs'
   const activeProgramKey = activeSection === 'msm_program_holistic' ? 'holistic'
     : activeSection === 'msm_program_partnership' ? 'partnership'
     : activeSection === 'msm_program_tailored' ? 'tailored'
@@ -226,6 +226,7 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
 
   if (loading) {
     if (activeTab === 'home') return <AdminMsmHomeSkeleton />
+    if (activeTab === 'clients') return <ClientsListSkeleton table />
     return <AdminProgramViewSkeleton edit={!['coaching', 'standard'].includes(activeProgramKey)} tabs={['tax', 'tailored', 'standard'].includes(activeProgramKey) ? 2 : 3} />
   }
 
@@ -272,6 +273,8 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
           })}
         </div>
       )}
+
+      {activeTab === 'clients' && <MemberAllClients member={member} enrollments={enrollments} allowedProgramKeys={allowedProgramKeys} />}
 
       {/* MSM HOME TAB (2026-11-26): one column. The MSM + programs box on top, the
           meeting summary, the history with its own Log button, then every program's
@@ -347,7 +350,7 @@ export default function MSMTracking({ member, activeSection, onDataChange, bypas
           </ProfileCard>
 
           <ProfileCard icon="note" title="Program Notes" sub={programNotes.length ? `${programNotes.length} across every program` : null}>
-            <ProgramNotesList notes={programNotes} showVisibility emptyText="No program notes yet. Add them on a program's Home tab." />
+            <ProgramNotesList notes={programNotes} showVisibility emptyText="No program notes yet. Add them on a program's Notes tab." />
           </ProfileCard>
         </div>
       )}
@@ -390,9 +393,10 @@ function EnrollPanel({ member, program, onEnrolled }) {
   )
 }
 
-function ProgramNotes({ memberNumber, programName }) {
+function ProgramNotes({ memberNumber, programName, onCount }) {
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
+  useEffect(() => { if (!loading && onCount) onCount(notes.length) }, [notes, loading])
   const [showAdd, setShowAdd] = useState(false)
   const [newText, setNewText] = useState('')
   const [saving, setSaving] = useState(false)
@@ -401,7 +405,7 @@ function ProgramNotes({ memberNumber, programName }) {
   const session = getSession()
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
-  // Re-opening Home draws the last notes before the first paint when nothing has
+  // Re-opening Notes draws the last notes before the first paint when nothing has
   // been saved since (notes are added / edited here), then refreshes them.
   const notesSnapKey = `adminprogramnotes:${memberNumber}:${programName}`
   useLayoutEffect(() => {
@@ -509,18 +513,32 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
   const isTaxPlanning = program.name === 'VFO Tax Planning'
   // Tailored Route for Accountants: Home + Accountants, no 90 Day Plan (2026-11-12).
   const isTailored = program.name === TAILORED_PROGRAM
+  // A program opens on the tab the team works in, and its Notes sit last (Jake,
+  // 2026-11-27): Home held only the notes, and most programs have none.
+  const defaultTab = isCoachingLike ? 'meetings' : (isTaxPlanning || isTailored) ? 'clients' : 'training'
   const [activeTab, setActiveTab] = useState(() => {
     // Deep link from a notification (?sub=training) — consume once, then fall back to
-    // the pft-return tab and finally Home.
+    // the pft-return tab and finally the program's own first tab.
     const deep = sessionStorage.getItem('msmInitialSubTab')
-    if (deep) { sessionStorage.removeItem('msmInitialSubTab'); return deep }
+    if (deep) { sessionStorage.removeItem('msmInitialSubTab'); return deep === 'home' ? 'notes' : deep }
     const ret = sessionStorage.getItem('pftReturnEnrolledTab')
     if (ret) { sessionStorage.removeItem('pftReturnEnrolledTab'); return ret }
-    return 'home'
+    return defaultTab
   })
   const didMountRef = useRef(false)
   const [livePlanStatus, setLivePlanStatus] = useState(null)
-  useEffect(() => { if (didMountRef.current) { setActiveTab('home'); setLivePlanStatus(null) } else didMountRef.current = true }, [program.id])
+  useEffect(() => { if (didMountRef.current) { setActiveTab(defaultTab); setLivePlanStatus(null) } else didMountRef.current = true }, [program.id])
+  // The Notes tab shows its count, so an empty one is clear without opening it.
+  const notesSnapKey = `adminprogramnotes:${member.plugin_member_number}:${program.name}`
+  const [noteCount, setNoteCount] = useState(() => getLastSeen(notesSnapKey)?.notes?.length ?? null)
+  useEffect(() => {
+    let live = true
+    setNoteCount(getLastSeen(notesSnapKey)?.notes?.length ?? null)
+    callApi('load_member_program_notes', { member_number: member.plugin_member_number, program_name: program.name })
+      .then(d => { if (live) setNoteCount((d.notes || []).length) })
+      .catch(err => console.error(err))
+    return () => { live = false }
+  }, [member.plugin_member_number, program.name])
   const [editingEnrollment, setEditingEnrollment] = useState(false)
   const [programStatus, setProgramStatus] = useState(enrollment.program_status || 'On Fast Track')
   const [saveStatus, setSaveStatus] = useState('')
@@ -569,7 +587,6 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
       </ProfileCard>
 
       <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px' }}>
-        <button style={tabStyle(activeTab === 'home')} onClick={() => setActiveTab('home')}>Home</button>
         {isStandard ? (
           <button style={tabStyle(activeTab === 'meetings')} onClick={() => setActiveTab('meetings')}>Meetings</button>
         ) : isCoaching ? (
@@ -589,9 +606,10 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
             <button style={tabStyle(activeTab === 'clients')} onClick={() => setActiveTab('clients')}>{program.name === 'Partnership Fast Track' ? 'Accountants' : 'Clients'}</button>
           </>
         )}
+        <button style={tabStyle(activeTab === 'notes')} onClick={() => setActiveTab('notes')}>Notes{noteCount != null ? ` (${noteCount})` : ''}</button>
       </div>
 
-      {activeTab === 'home' && <ProgramNotes memberNumber={member.plugin_member_number} programName={program.name} />}
+      {activeTab === 'notes' && <ProgramNotes memberNumber={member.plugin_member_number} programName={program.name} onCount={setNoteCount} />}
 
       {activeTab === 'training' && <TrainingTrack enrollment={enrollment} program={program} onPlanStatusChange={setLivePlanStatus} />}
       {activeTab === 'clients' && <ClientsPanel enrollment={enrollment} member={member} program={program} />}
@@ -979,6 +997,115 @@ function AdminTrackerEntryCard({ entry, onRemove }) {
   )
 }
 
+// Both client lists open sorted by the name as shown, A to Z (Jake, 2026-11-27).
+const byClientName = (a, b) => `${a.first_name || ''} ${a.last_name || ''}`.trim()
+  .localeCompare(`${b.first_name || ''} ${b.last_name || ''}`.trim(), undefined, { sensitivity: 'base' })
+
+// The count tiles above a client list (Total, Active).
+function countTile(n, label) {
+  return (
+    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '12px 18px', minWidth: '110px' }}>
+      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '24px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{n}</div>
+      <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '6px', textTransform: 'uppercase' }}>{label}</div>
+    </div>
+  )
+}
+
+// Programs ▾ Clients (Jake, 2026-11-27): every program's clients in one list, with the
+// accountants of Partnership Fast Track and Tailored Route on their own sub tab. It is
+// built from each program's own list (msm_load_clients), so a status reads the same as
+// on that program's tab. No add button here: a client is added on a program's tab.
+function MemberAllClients({ member, enrollments, allowedProgramKeys }) {
+  const navigate = useNavigate()
+  const memberNumber = member.plugin_member_number
+  const programs = PROGRAMS.filter(p => !['coaching', 'standard'].includes(p.key) && (!allowedProgramKeys || allowedProgramKeys.includes(p.key)))
+  const hasAccountantTab = programs.some(p => isAccountantProgram(p.name))
+  const subTabKey = 'adminMemberClientsSubTab'
+  const [sub, setSub] = useState(() => (hasAccountantTab && sessionStorage.getItem(subTabKey) === 'accountants') ? 'accountants' : 'clients')
+  const [rows, setRows] = useState([])
+  const [contactsMap, setContactsMap] = useState({})
+  const [loading, setLoading] = useState(true)
+  const snapKey = `msmallclients:${memberNumber}`
+  const enrollKey = enrollments.map(e => e.id).join(',')
+
+  useLayoutEffect(() => {
+    const snap = getLastSeen(snapKey)
+    if (snap) { setRows(snap.rows); setContactsMap(snap.contacts); setLoading(false) }
+    load(!!snap)
+  }, [memberNumber, enrollKey])
+
+  async function load(quiet = false) {
+    if (!quiet) setLoading(true)
+    try {
+      const lists = programs
+        .map(p => ({ p, enr: enrollments.find(e => e.programs?.name === p.name) }))
+        .filter(x => x.enr)
+      const [results, contactData] = await Promise.all([
+        Promise.all(lists.map(({ p, enr }) => callApi('msm_load_clients', { enrollment_id: enr.id }).then(d => ({ p, enr, clients: d.clients || [] })))),
+        callApi('load_member_contacts', { member_number: memberNumber }),
+      ])
+      // One row per client; a client in two programs lists both.
+      const byId = new Map()
+      for (const { p, enr, clients } of results) {
+        for (const c of clients) {
+          const row = byId.get(c.id) || { ...c, programs: [] }
+          row.programs.push({ name: p.name, programId: enr.program_id })
+          byId.set(c.id, row)
+        }
+      }
+      const merged = [...byId.values()].sort(byClientName)
+      setRows(merged)
+      setContactsMap(contactData.contacts || {})
+      setLastSeen(snapKey, { rows: merged, contacts: contactData.contacts || {} })
+    } catch (err) { console.error(err) }
+    finally { setLoading(false) }
+  }
+
+  if (loading) return <ClientsListSkeleton table />
+
+  const isAccountantRow = c => isAccountantRef(c.client_ref) || c.programs.every(p => isAccountantProgram(p.name))
+  const shown = rows.filter(c => (sub === 'accountants') === isAccountantRow(c))
+  const noun = sub === 'accountants' ? 'Accountant' : 'Client'
+  const pickSub = k => { setSub(k); try { sessionStorage.setItem(subTabKey, k) } catch { /* private mode */ } }
+  // program_id (not enrollment_id) picks the program on the client page, so Back
+  // returns here instead of re-opening a program's own Clients tab.
+  const openClient = c => navigate(`/admin/client/${c.id}`, { state: { program_id: c.programs[0]?.programId, from: '/admin', memberNumber } })
+  const tabStyle = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' })
+
+  return (
+    <div>
+      {hasAccountantTab && (
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px' }}>
+          <button style={tabStyle(sub === 'clients')} onClick={() => pickSub('clients')}>Clients</button>
+          <button style={tabStyle(sub === 'accountants')} onClick={() => pickSub('accountants')}>Accountants</button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+        {countTile(shown.length, 'Total')}
+        {countTile(shown.filter(c => clientStatusKey(c) === 'active').length, 'Active')}
+      </div>
+
+      <ListTable
+        rows={shown}
+        rowKey={c => c.id}
+        onRowClick={openClient}
+        minWidth="720px"
+        empty={sub === 'accountants' ? 'No accountants in any program yet.' : 'No clients in any program yet.'}
+        columns={[
+          { key: 'name', label: noun, width: '2fr', get: c => `${c.first_name} ${c.last_name}`, render: c => (
+            <ListName sub={contactsMap[c.id]?.length > 0 ? <span style={{ fontStyle: 'italic' }}>with {contactsMap[c.id].map(x => `${x.first_name} ${x.last_name}`).join(', ')}</span> : null}>{`${c.first_name} ${c.last_name}`}</ListName>
+          ) },
+          { key: 'ref', label: 'Ref', width: '120px', get: c => c.client_ref, render: c => <ListText mono>{c.client_ref}</ListText> },
+          { key: 'program', label: 'Program', width: '1.4fr', get: c => c.programs.map(p => p.name).join(', '), render: c => <ListText>{c.programs.map(p => p.name).join(', ')}</ListText> },
+          { key: 'status', label: 'Status', width: '120px', get: c => (c.status ? clientStatusLabel(clientStatusKey(c)) : ''), render: c => c.status ? <ListPill color={clientStatusHex(clientStatusKey(c)) || '#8a94a6'}>{clientStatusLabel(clientStatusKey(c))}</ListPill> : <ListText /> },
+          { key: 'route', label: '', width: '90px', render: c => c.pf_member_number ? <DirectPill /> : null },
+        ]}
+      />
+    </div>
+  )
+}
+
 function ClientsPanel({ enrollment, member, program }) {
   const navigate = useNavigate()
   const [clients, setClients] = useState([])
@@ -1012,9 +1139,10 @@ function ClientsPanel({ enrollment, member, program }) {
         callApi('msm_load_clients', { enrollment_id: enrollment.id }),
         callApi('load_member_contacts', { member_number: member.plugin_member_number }),
       ])
-      setClients(data.clients || [])
+      const sorted = [...(data.clients || [])].sort(byClientName)
+      setClients(sorted)
       setContactsMap(contactData.contacts || {})
-      setLastSeen(`msmclients:${enrollment.id}`, { clients: data.clients || [], contacts: contactData.contacts || {} })
+      setLastSeen(`msmclients:${enrollment.id}`, { clients: sorted, contacts: contactData.contacts || {} })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -1072,12 +1200,7 @@ function ClientsPanel({ enrollment, member, program }) {
 
   const noun = isPFT ? 'Accountant' : 'Client'
   const openClient = client => navigate(`/admin/client/${client.id}`, { state: { enrollment_id: enrollment.id, from: '/admin', backTo: isPFT ? 'pft_accountants' : undefined, backFeature: ACCOUNTANT_FEATURE_TAB[program.name], memberNumber: member.plugin_member_number } })
-  const stat = (n, label) => (
-    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '12px 18px', minWidth: '110px' }}>
-      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '24px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{n}</div>
-      <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '6px', textTransform: 'uppercase' }}>{label}</div>
-    </div>
-  )
+  const stat = countTile
 
   // The program's client list (2026-11-26): count tiles, then the shared list table.
   return (

@@ -57,6 +57,7 @@ import { STATUS_COLORS, statusColor } from '../shared/statusColors'
 // GC Marketplace / Growth Plan).
 const DEFAULT_MSM_OPTIONS = [
   { key: 'msm_meetings', label: 'Programs' },
+  { key: 'msm_clients', label: 'Clients' },
   { key: 'msm_program_tax', label: 'VFO Tax Planning' },
   { key: 'msm_program_holistic', label: 'VFO Holistic Planning' },
   { key: 'msm_program_partnership', label: 'Partnership Fast Track' },
@@ -77,6 +78,7 @@ function standingOf(m) {
 const DEFAULT_EXTRA_TABS = [['specialists', 'Specialists'], ['showroom', 'Showroom'], ['website', 'Website Plugin'], ['ciq', 'CIQ'], ['gc', 'Growth Credit Marketplace']]
 const STRATEGIC_MSM_OPTIONS = [
   { key: 'msm_meetings', label: 'Programs' },
+  { key: 'msm_clients', label: 'Clients' },
   { key: 'msm_program_tax', label: 'VFO Tax Planning' },
   { key: 'msm_program_holistic', label: 'VFO Holistic Planning' },
 ]
@@ -563,7 +565,7 @@ function MemberDirectoryView({
           {['profile_details','profile_edit','profile_history'].includes(memberFeatureTab) && <MemberProfile member={selectedMember} allMembers={allMembers} onDataChange={onDataChange} activeSection={memberFeatureTab} hiddenFields={hiddenFields} typeOptionsOverride={showModel ? null : typeOptions} onOpenMember={onOpenMember} memberConnections={memberConnections} onSaved={() => { setMemberFeatureTab('profile_details'); sessionStorage.setItem(featureTabKey, 'profile_details'); window.scrollTo(0, 0) }} />}
           {memberFeatureTab === 'profile_payments' && <MemberPaymentsTab member={selectedMember} />}
           {memberFeatureTab === 'profile_activity' && <MemberActivityTab member={selectedMember} />}
-          {['msm_meetings','msm_program_holistic','msm_program_partnership','msm_program_tailored','msm_program_tax','msm_program_coaching','msm_program_standard'].includes(memberFeatureTab) && <MSMTracking member={selectedMember} activeSection={memberFeatureTab} onDataChange={onDataChange} bypassEnableGate={msmBypassEnableGate} allowedProgramKeys={msmAllowedPrograms} />}          {memberFeatureTab === 'specialists' && <MemberSpecialists member={selectedMember} allExperts={allExperts} allExclusionMap={allExclusionMap} ecoMap={ecoMap} onDataChange={onDataChange} />}
+          {['msm_meetings','msm_clients','msm_program_holistic','msm_program_partnership','msm_program_tailored','msm_program_tax','msm_program_coaching','msm_program_standard'].includes(memberFeatureTab) && <MSMTracking member={selectedMember} activeSection={memberFeatureTab} onDataChange={onDataChange} bypassEnableGate={msmBypassEnableGate} allowedProgramKeys={msmAllowedPrograms} />}          {memberFeatureTab === 'specialists' && <MemberSpecialists member={selectedMember} allExperts={allExperts} allExclusionMap={allExclusionMap} ecoMap={ecoMap} onDataChange={onDataChange} />}
           {memberFeatureTab === 'showroom' && <MemberShowroom experts={allExperts} exclusions={allExclusionMap[selectedMember.plugin_member_number] || []} ecoMap={ecoMap} showMemberServices showRevenueShare showVault showAccredited />}
           {memberFeatureTab === 'website' && <MemberWebsitePlugin member={selectedMember} onDataChange={onDataChange} readOnly={false} isAdmin={true} />}
           {memberFeatureTab === 'ciq' && <MemberCIQ memberNumber={selectedMember.plugin_member_number} memberName={selectedMember.name} ciqEnabled={selectedMember.ciq_enabled} ciqVfosManaged={selectedMember.ciq_vfos_managed} isAdmin={true} />}

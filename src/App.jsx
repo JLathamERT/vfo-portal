@@ -1,12 +1,14 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
-import { CardShell, SkeletonText } from './components/shared/Skeleton'
 // Each portal and each emailed-link page is its own chunk (src/lib/lazyPage.js).
 import { lazyPage } from './lib/lazyPage'
 import { BF_HERO_BG } from './lib/bfHeroBg'
 import { EVENT_HERO_BG } from './lib/eventBg'
 
-// Shown only if a page's chunk takes longer than a moment to arrive.
+// Shown only if a page's chunk takes longer than a moment to arrive (the first
+// load after hours away). No placeholder card: it matched no page, and each portal
+// draws its own skeleton for the tab it opens the moment its chunk lands (Jake,
+// 2026-11-27). Just the page colour, and a portal's navy top bar.
 function RouteFallback() {
   const [show, setShow] = useState(false)
   useEffect(() => { const t = setTimeout(() => setShow(true), 300); return () => clearTimeout(t) }, [])
@@ -20,9 +22,6 @@ function RouteFallback() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)' }}>
       {portal && <div style={{ background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)', height: '58px' }} />}
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px var(--vfo-gutter)' }}>
-        <CardShell><SkeletonText lines={4} /></CardShell>
-      </div>
     </div>
   )
 }
