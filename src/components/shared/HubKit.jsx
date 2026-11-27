@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { BackLink } from './ProfileKit'
 
 // Shared "hub" UI — the completed banner, the uniform box grid, and the
 // back-to-menu bar used by both the Growth Plan hub and the CIQ chooser. Keeps
@@ -43,8 +44,10 @@ export function HubCard({ title, sub, accent, status, onClick, disabled }) {
           {!disabled && <span style={{ fontSize: '18px', color: accent, opacity: hover ? 1 : 0.4, transform: hover ? 'translateX(2px)' : 'none', transition: 'opacity 0.15s ease, transform 0.15s ease', flexShrink: 0 }}>→</span>}
         </div>
         <div style={{ fontSize: '12.5px', color: MUTED, marginTop: '6px', lineHeight: 1.4 }}>{sub}</div>
-        <div style={isPhone ? { paddingTop: status ? '8px' : 0 } : { marginTop: 'auto', paddingTop: '12px', minHeight: '25px' }}>
-          {status && <span style={{ display: 'inline-block', fontSize: '11px', fontWeight: 600, color: 'var(--vfo-ink-2)', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-soft)', borderRadius: '999px', padding: '3px 10px' }}>{status}</span>}
+        {/* The box's state as plain text: every box has one, so it is not a tag
+            (TEAM_RULES section 9, tags are rare). */}
+        <div style={isPhone ? { paddingTop: status ? '8px' : 0 } : { marginTop: 'auto', paddingTop: '12px', minHeight: '25px', display: 'flex', alignItems: 'flex-end' }}>
+          {status && <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--vfo-ink-2)' }}>{status}</span>}
         </div>
       </div>
     </button>
@@ -68,15 +71,13 @@ export function HubBanner({ complete, title, meta }) {
   )
 }
 
-// "← {label}" pill + optional "/ {breadcrumb}" — the always-visible way back to
-// the hub from a sub-view.
+// The house Back link ("← {label}") + optional "/ {breadcrumb}" — the
+// always-visible way back to the hub from a sub-view.
 export function HubMenuBar({ label, breadcrumb, onBack }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
-      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '8px 16px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: 'var(--vfo-shadow-card)' }}>
-        <span style={{ fontSize: '14px' }}>←</span> {label}
-      </button>
-      {breadcrumb && <span style={{ fontSize: '12.5px', color: 'var(--vfo-faint)' }}>/ {breadcrumb}</span>}
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
+      <BackLink onClick={onBack} style={{ marginBottom: 0 }}>{label}</BackLink>
+      {breadcrumb && <span style={{ fontSize: '13px', color: 'var(--vfo-faint)' }}>/ {breadcrumb}</span>}
     </div>
   )
 }

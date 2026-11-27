@@ -1,23 +1,29 @@
-// Shared style tokens + tiny atoms for the Growth Plan views (portal vibe).
+// Shared style tokens + tiny atoms for the Growth Plan views. The look is the
+// house one (2026-11-27 refresh): ProfileKit boxes and form fields, buttonStyles
+// buttons, the one Tag, and the Accounting sub-tab pills.
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { btnPrimary, btnSecondary, btnOutline, btnState } from '../shared/buttonStyles'
+import { formInput, profileCardStyle, subLabel } from '../shared/ProfileKit'
+import Tag from '../shared/Tag'
 
 export const NAVY = '#002973', BLUE = '#125ecc', INK = 'var(--vfo-ink)', MUTED = 'var(--vfo-muted)'
 export const GREEN = '#1b9254', AMBER = '#e06717', GREY = 'var(--vfo-muted)'
 
-export const inputStyle = { padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: INK, fontSize: '13px', fontFamily: 'Inter, sans-serif' }
-export const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', marginBottom: '18px', overflow: 'hidden' }
-export const accentStrip = { height: '3px', background: 'linear-gradient(90deg, #125ecc 0%, #0a85e8 100%)' }
+// ProfileKit's form field, without its full width (callers size it), a size
+// smaller so the dense step rows and table cells keep their room.
+const { width: _w, ...formField } = formInput
+export const inputStyle = { ...formField, padding: '8px 11px', fontSize: '13px' }
+export const cardStyle = profileCardStyle
 export const eyebrowLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase' }
-export const miniLabel = { fontSize: '9.5px', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--vfo-faint)', marginBottom: '6px' }
-export const pillSolid = { padding: '9px 20px', borderRadius: '999px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 14px rgba(18,94,204,0.32)', whiteSpace: 'nowrap' }
-export const pillOutline = { padding: '8px 16px', borderRadius: '999px', border: `1px solid ${BLUE}`, background: 'transparent', color: BLUE, fontWeight: 600, fontSize: '12.5px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }
-export const pillGhost = { padding: '11px 20px', borderRadius: '999px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: MUTED, fontWeight: 600, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }
+export const miniLabel = { ...subLabel, marginBottom: '6px' }
+// A list row's hairline: none on the first row (the box header already draws one).
+export const rowRule = (i) => ({ borderTop: i > 0 ? '1px solid var(--vfo-border-soft)' : 'none' })
 
-// Rounded pill tab switcher used by the member Growth Plan tabs and the admin
-// One Page Plan "Add Priorities" switcher. `tabs` = [{ key, label }].
-// Phone: smaller pills, so the three member tabs sit on one row.
+// The page's sub-tabs: the round pills of AccountingCombinedPanel. `tabs` =
+// [{ key, label, phoneLabel? }]. Phone: smaller pills, so the three member tabs
+// sit on one row.
 export function GrowthTabs({ tabs, active, onChange }) {
   const isPhone = useIsPhone()
   return (
@@ -26,11 +32,11 @@ export function GrowthTabs({ tabs, active, onChange }) {
         const on = active === t.key
         return (
           <button key={t.key} onClick={() => onChange(t.key)} style={{
-            padding: isPhone ? '6px 12px' : '8px 18px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-            fontSize: isPhone ? '12px' : '13px', fontWeight: on ? 700 : 600, whiteSpace: 'nowrap',
-            border: on ? 'none' : '1px solid var(--vfo-border-strong)',
-            background: on ? 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)' : '#fff',
-            color: on ? '#fff' : MUTED,
+            padding: isPhone ? '6px 12px' : '8px 16px', borderRadius: '99px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+            fontSize: isPhone ? '12px' : '13px', fontWeight: 700, whiteSpace: 'nowrap',
+            border: '1px solid ' + (on ? 'transparent' : 'var(--vfo-border-strong)'),
+            background: on ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : 'var(--vfo-card)',
+            color: on ? '#fff' : 'var(--vfo-ink-2)',
           }}>{isPhone && t.phoneLabel ? t.phoneLabel : t.label}</button>
         )
       })}
@@ -64,10 +70,14 @@ export function GrowthNeed({ text, cta, onClick }) {
   return (
     <div style={{ padding: '44px', textAlign: 'center', color: MUTED }}>
       <div style={{ fontSize: '14px', marginBottom: cta ? '14px' : 0, lineHeight: 1.5 }}>{text}</div>
-      {cta && <button onClick={onClick} style={pillOutline}>{cta}</button>}
+      {cta && <button onClick={onClick} style={btnOutline}>{cta}</button>}
     </div>
   )
 }
+
+// The step's big buttons (Continue, Generate Score): the primary button at the
+// size of ProfileKit's SaveBar.
+export const BTN_LARGE = { padding: '10px 26px', fontSize: '14px' }
 
 // Bottom step navigation: ← Back (left, optional) + a primary forward action
 // (right, optional). `secondary` renders next to Back (e.g. a counts line).
@@ -75,10 +85,10 @@ export function StepNav({ onBack, onNext, nextLabel = 'Continue →', busy, seco
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', marginTop: '10px', flexWrap: 'wrap' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        {onBack && <button onClick={onBack} disabled={busy} style={pillGhost}>← Back</button>}
+        {onBack && <button onClick={onBack} disabled={busy} style={btnState({ ...btnSecondary, ...BTN_LARGE }, busy)}>← Back</button>}
         {secondary}
       </div>
-      {onNext && <button onClick={onNext} disabled={busy} style={{ ...pillSolid, padding: '12px 28px', fontSize: '14px', opacity: busy ? 0.7 : 1 }}>{busy ? 'Saving…' : nextLabel}</button>}
+      {onNext && <button onClick={onNext} disabled={busy} style={btnState({ ...btnPrimary, ...BTN_LARGE }, busy)}>{busy ? 'Saving…' : nextLabel}</button>}
     </div>
   )
 }
@@ -107,11 +117,15 @@ export function buildNamePool(planNames = [], adminNames = []) {
 export function NameCombo({ value, onChange, onCommit, people = [], adminSet, placeholder }) {
   const [open, setOpen] = useState(false)
   const [rect, setRect] = useState(null)
+  // The list narrows only to what was typed since it opened: opening it on a
+  // picked name shows every name again, so another can be chosen (Jake 2026-11-27).
+  const [typed, setTyped] = useState(false)
   const inputRef = useRef(null)
   const menuRef = useRef(null)
 
   function openMenu() {
     if (inputRef.current) setRect(inputRef.current.getBoundingClientRect())
+    if (!open) setTyped(false)
     setOpen(true)
   }
 
@@ -130,7 +144,7 @@ export function NameCombo({ value, onChange, onCommit, people = [], adminSet, pl
   }, [open])
 
   const q = (value || '').trim().toLowerCase()
-  const filtered = people.filter(n => n.toLowerCase().includes(q))
+  const filtered = typed ? people.filter(n => n.toLowerCase().includes(q)) : people
   const exact = people.some(n => n.toLowerCase() === q)
 
   function pick(name) { onChange(name); if (onCommit) onCommit(name); setOpen(false) }
@@ -140,11 +154,12 @@ export function NameCombo({ value, onChange, onCommit, people = [], adminSet, pl
       <input
         ref={inputRef}
         value={value}
-        onChange={e => { onChange(e.target.value); if (!open) openMenu() }}
+        onChange={e => { onChange(e.target.value); if (!open) openMenu(); setTyped(true) }}
         onFocus={openMenu}
         onClick={openMenu}
         onBlur={() => { if (onCommit) onCommit(value); setOpen(false) }}
         placeholder={placeholder}
+        title={value || undefined}
         style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', paddingRight: '30px' }}
       />
       <span onMouseDown={e => { e.preventDefault(); open ? setOpen(false) : openMenu() }}
@@ -152,7 +167,7 @@ export function NameCombo({ value, onChange, onCommit, people = [], adminSet, pl
       {open && rect && createPortal(
         <div ref={menuRef} style={{ position: 'fixed', top: rect.bottom + 4, left: rect.left, width: rect.width, maxHeight: '224px', overflowY: 'auto', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-strong)', borderRadius: '10px', boxShadow: '0 12px 30px rgba(20,45,95,0.18)', zIndex: 1000, fontFamily: 'Inter, sans-serif' }}>
           {filtered.map(n => <ComboOpt key={n} label={n} isAdmin={adminSet?.has(n.toLowerCase())} active={n.toLowerCase() === q} onPick={() => pick(n)} />)}
-          {q && !exact && <ComboOpt label={`+ Add "${value.trim()}"`} accent topBorder={filtered.length > 0} onPick={() => pick(value.trim())} />}
+          {typed && q && !exact && <ComboOpt label={`+ Add "${value.trim()}"`} accent topBorder={filtered.length > 0} onPick={() => pick(value.trim())} />}
           {!filtered.length && !q && <div style={{ padding: '11px 14px', fontSize: '12px', color: 'var(--vfo-faint)' }}>No names yet — type to add one.</div>}
         </div>, document.body)}
     </div>
@@ -166,7 +181,7 @@ function ComboOpt({ label, onPick, active, accent, topBorder, isAdmin }) {
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', color: accent ? BLUE : INK, fontWeight: (accent || active) ? 700 : 500, background: hover ? 'var(--vfo-tint)' : (active ? 'var(--vfo-page)' : 'var(--vfo-card)'), borderTop: topBorder ? '1px solid var(--vfo-tint)' : 'none' }}>
       <span>{label}</span>
-      {isAdmin && <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: '#fff', background: BLUE, borderRadius: '5px', padding: '2px 6px', flexShrink: 0 }}>Admin</span>}
+      {isAdmin && <Tag color={BLUE} style={{ flexShrink: 0 }}>Admin</Tag>}
     </div>
   )
 }

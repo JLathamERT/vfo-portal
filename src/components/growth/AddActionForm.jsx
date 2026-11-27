@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { inputStyle, miniLabel, pillSolid, pillOutline, Radios } from './ui'
+import { inputStyle, miniLabel, Radios, NameCombo } from './ui'
+import { btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 
 const LEVELS = [{ value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }]
 
@@ -7,8 +8,10 @@ const LEVELS = [{ value: 'high', label: 'High' }, { value: 'medium', label: 'Med
 // Value / Effort. There is NO parent picker — whether this is a top-level priority
 // or a sub-task is decided by WHERE the form is opened (the caller adds the
 // parent_action_id in onSubmit). onSubmit receives { action_text, owned_by,
-// assisted_by, value_level, effort_level }.
-export default function AddActionForm({ onSubmit, onCancel, submitLabel = 'Add to Plan', idKey = 'add', placeholder = 'Describe the priority…' }) {
+// assisted_by, value_level, effort_level }. Owned By / Assisted By are the same
+// name dropdown as the plan's rows (`namePool` + `adminSet` from buildNamePool;
+// Jake 2026-11-27), and whatever name is in the box is what gets saved.
+export default function AddActionForm({ onSubmit, onCancel, submitLabel = 'Add to Plan', idKey = 'add', placeholder = 'Describe the priority…', namePool = [], adminSet }) {
   const [text, setText] = useState('')
   const [owned, setOwned] = useState('')
   const [assisted, setAssisted] = useState('')
@@ -25,22 +28,22 @@ export default function AddActionForm({ onSubmit, onCancel, submitLabel = 'Add t
   }
 
   return (
-    <div style={{ background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px', padding: '14px 16px' }}>
+    <div style={{ background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '14px 16px' }}>
       <div style={{ marginBottom: '12px' }}>
         <div style={miniLabel}>Description</div>
         <textarea value={text} onChange={e => setText(e.target.value)} placeholder={placeholder} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', minHeight: '48px', resize: 'vertical' }} />
       </div>
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '12px' }}>
-        <div style={{ flex: '1 1 180px' }}><div style={miniLabel}>Owned By</div><input value={owned} onChange={e => setOwned(e.target.value)} placeholder="Name" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
-        <div style={{ flex: '1 1 180px' }}><div style={miniLabel}>Assisted By</div><input value={assisted} onChange={e => setAssisted(e.target.value)} placeholder="Name" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
+        <div style={{ flex: '1 1 180px' }}><div style={miniLabel}>Owned By</div><NameCombo value={owned} onChange={setOwned} people={namePool} adminSet={adminSet} placeholder="Type or pick a name" /></div>
+        <div style={{ flex: '1 1 180px' }}><div style={miniLabel}>Assisted By</div><NameCombo value={assisted} onChange={setAssisted} people={namePool} adminSet={adminSet} placeholder="Type or pick a name" /></div>
       </div>
       <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div><div style={miniLabel}>Value</div><div style={{ display: 'flex', gap: '14px' }}><Radios name={`v_${idKey}`} value={value} onChange={setValue} options={LEVELS} /></div></div>
         <div><div style={miniLabel}>Effort</div><div style={{ display: 'flex', gap: '14px' }}><Radios name={`e_${idKey}`} value={effort} onChange={setEffort} options={LEVELS} /></div></div>
       </div>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={submit} disabled={busy} style={{ ...pillSolid, opacity: busy ? 0.7 : 1 }}>{busy ? 'Adding…' : submitLabel}</button>
-        {onCancel && <button onClick={onCancel} disabled={busy} style={pillOutline}>Cancel</button>}
+        <button onClick={submit} disabled={busy} style={btnState(btnPrimary, busy)}>{busy ? 'Adding…' : submitLabel}</button>
+        {onCancel && <button onClick={onCancel} disabled={busy} style={btnSecondary}>Cancel</button>}
       </div>
     </div>
   )

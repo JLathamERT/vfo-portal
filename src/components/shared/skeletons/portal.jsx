@@ -208,31 +208,62 @@ export function TeamNotesSkeleton() {
   )
 }
 
-// Growth Plan: three tab pills, the One Page Plan hero, the 3x3 matrix card and the
-// New / Ongoing action tables (each card with the gradient strip). `tabs={false}` =
-// the caller has its own menu (the admin view).
-export function GrowthPlanSkeleton({ tabs = true }) {
+// Growth Plan. The member portal (`tabs`): three tab pills, the One Page Plan hero,
+// the 3x3 matrix card and the New / Ongoing action boxes (ProfileCard, the table's
+// header row). The admin view (`tabs={false}`) passes the `step` it is opening: the
+// hub (hero, banner, six boxes), the One Page Plan as above under the Back link,
+// or any other step's hero and boxes under the Back link.
+export function GrowthPlanSkeleton({ tabs = true, step = 'gp_onepage' }) {
   const isPhone = useIsPhone()
-  const strip = <div style={{ height: '4px', background: ACCENT_STRIP }} />
-  const card = { overflow: 'hidden', marginBottom: '18px' }
+  const wrap = { maxWidth: '1000px', margin: '0 auto', padding: isPhone ? '16px var(--vfo-gutter)' : '24px' }
+  const back = <Skeleton width={170} height={16} style={{ margin: '4px 0 16px' }} />
+  if (!tabs && step === 'gp_hub') {
+    return (
+      <div>
+        <HeroSkeleton meta={false} />
+        <Skeleton height={68} style={{ borderRadius: '14px', marginBottom: isPhone ? '14px' : '22px' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: isPhone ? '10px' : '16px' }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <CardShell key={i} pad={0} style={{ overflow: 'hidden', marginBottom: 0, height: isPhone ? 'auto' : '184px' }}>
+              <div style={{ height: '4px', background: 'var(--vfo-border-strong)' }} />
+              <div style={{ padding: isPhone ? '12px 14px' : '18px 20px' }}>
+                <Skeleton width={i % 2 ? 150 : 190} height={16} style={{ maxWidth: '100%' }} />
+                <Skeleton width="80%" height={12} style={{ marginTop: '10px' }} />
+                <Skeleton width={90} height={12} style={{ marginTop: isPhone ? '12px' : '60px' }} />
+              </div>
+            </CardShell>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  if (!tabs && step !== 'gp_onepage' && step !== 'gp_parking') {
+    return (
+      <div>
+        {back}
+        <HeroSkeleton meta={false} />
+        {[0, 1].map(c => (
+          <ProfileCardSkeleton key={c} titleWidth={c ? 150 : 200} sub={!c}>
+            {[0, 1].map(i => <div key={i} style={{ padding: '12px 0', borderTop: i ? '1px solid var(--vfo-border-soft)' : 'none' }}><Skeleton width={i ? '45%' : '65%'} height={14} /><Skeleton width={220} height={36} style={{ marginTop: '10px', borderRadius: '10px', maxWidth: '100%' }} /></div>)}
+          </ProfileCardSkeleton>
+        ))}
+      </div>
+    )
+  }
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: isPhone ? '16px var(--vfo-gutter)' : '24px' }}>
+    <div style={tabs ? wrap : undefined}>
       {tabs && <PillTabsSkeleton widths={isPhone ? [110, 96, 96] : [140, 150, 130]} style={{ marginBottom: isPhone ? '14px' : '18px' }} />}
+      {!tabs && back}
       <HeroSkeleton />
-      <CardShell pad={0} style={card}>
-        {strip}
+      <CardShell pad={0} style={{ overflow: 'hidden' }}>
         <div style={{ padding: isPhone ? '14px' : '20px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
           {Array.from({ length: 9 }).map((_, i) => <Skeleton key={i} height={isPhone ? 64 : 96} style={{ borderRadius: '10px' }} />)}
         </div>
       </CardShell>
       {[0, 1].map(t => (
-        <CardShell key={t} pad={0} style={card}>
-          {strip}
-          <div style={{ padding: isPhone ? '14px' : '20px' }}>
-            <Skeleton width={170} height={15} style={{ marginBottom: '14px' }} />
-            {[0, 1].map(i => <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}><Skeleton width={24} height={24} style={{ borderRadius: '50%', flexShrink: 0 }} /><div style={{ flex: 1 }}><Skeleton width="55%" height={14} /></div><Skeleton width={70} height={13} /></div>)}
-          </div>
-        </CardShell>
+        <ProfileCardSkeleton key={t} titleWidth={t ? 160 : 140}>
+          {[0, 1].map(i => <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 0', borderTop: i ? '1px solid var(--vfo-border-soft)' : 'none' }}><Skeleton width={22} height={14} style={{ flexShrink: 0 }} /><div style={{ flex: 1 }}><Skeleton width="55%" height={14} /></div><Skeleton width={isPhone ? 70 : 120} height={13} /></div>)}
+        </ProfileCardSkeleton>
       ))}
     </div>
   )

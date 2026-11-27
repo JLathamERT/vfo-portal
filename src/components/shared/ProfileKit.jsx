@@ -327,10 +327,10 @@ export function useSettingsReturn(navigate) {
   }
 }
 
-export function BackLink({ onClick, children = 'Back' }) {
+export function BackLink({ onClick, children = 'Back', style }) {
   return (
     <button type="button" onClick={onClick}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', padding: '4px 0', marginBottom: '12px', color: 'var(--vfo-accent-text)', fontSize: '13.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', padding: '4px 0', marginBottom: '12px', color: 'var(--vfo-accent-text)', fontSize: '13.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer', ...style }}>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
       {children}
     </button>

@@ -1,14 +1,10 @@
 import { useState } from 'react'
 import { callApi } from '../../lib/api'
 import { TrackHero } from '../shared/TrackKit'
-import { StepNav } from './ui'
+import { StepNav, NumBadge, inputStyle, rowRule, MUTED } from './ui'
 import { getGrowthConfig } from './constants'
-
-const NAVY = '#002973', BLUE = '#125ecc', INK = 'var(--vfo-ink)', MUTED = 'var(--vfo-muted)'
-const inputStyle = { padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: INK, fontSize: '13px', fontFamily: 'Inter, sans-serif' }
-const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', marginBottom: '18px', overflow: 'hidden' }
-const pillSolid = { padding: '9px 20px', borderRadius: '999px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 14px rgba(18,94,204,0.32)', whiteSpace: 'nowrap' }
-const pillOutline = { padding: '8px 16px', borderRadius: '999px', border: `1px solid ${BLUE}`, background: 'transparent', color: BLUE, fontWeight: 600, fontSize: '12.5px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }
+import { ProfileCard } from '../shared/ProfileKit'
+import { btnOutline } from '../shared/buttonStyles'
 
 // drop = default; only "potential" carries to G3; "park" → Parking Garage.
 const G2_OPTIONS = [
@@ -57,13 +53,9 @@ export default function GrowthActions({ memberNumber, bundle, reload, onNavigate
         const catRows = rows.filter(r => r.category === cat).sort((a, b) => a.action_number - b.action_number)
         if (!catRows.length) return null
         return (
-          <div key={cat} style={cardStyle}>
-            <div style={{ height: '3px', background: 'linear-gradient(90deg, #125ecc 0%, #0a85e8 100%)' }} />
-            <div style={{ padding: '16px 20px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)', letterSpacing: '-0.01em' }}>{CATEGORY_LABELS_LONG[cat]}</div>
-              {catRows.map(r => <ActionRow key={r.id} r={r} update={update} />)}
-            </div>
-          </div>
+          <ProfileCard key={cat} icon="clipboard" title={CATEGORY_LABELS_LONG[cat]} bodyStyle={{ paddingTop: '4px', paddingBottom: '4px' }}>
+            {catRows.map((r, i) => <ActionRow key={r.id} r={r} i={i} update={update} />)}
+          </ProfileCard>
         )
       })}
       <StepNav
@@ -77,11 +69,11 @@ export default function GrowthActions({ memberNumber, bundle, reload, onNavigate
   )
 }
 
-function ActionRow({ r, update }) {
+function ActionRow({ r, i, update }) {
   return (
-    <div style={{ padding: '14px 0', borderTop: '1px solid var(--vfo-tint)', display: 'flex', gap: '18px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+    <div style={{ padding: '14px 0', ...rowRule(i), display: 'flex', gap: '18px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
       <div style={{ flex: '1 1 340px', minWidth: '240px', display: 'flex', gap: '10px' }}>
-        <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: MUTED, fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '4px' }}>{r.action_number}</span>
+        <span style={{ marginTop: '6px' }}><NumBadge n={r.action_number} /></span>
         <textarea value={r.action_text} onChange={e => update(r.id, { action_text: e.target.value })} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', minHeight: '54px', resize: 'vertical' }} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', flex: '0 0 auto' }}>
@@ -103,7 +95,7 @@ function NeedScore({ onNavigate }) {
   return (
     <div style={{ padding: '44px', textAlign: 'center', color: MUTED }}>
       <div style={{ fontSize: '14px', marginBottom: '14px' }}>Complete <strong>Scoring Growth</strong> first to generate the action list.</div>
-      <button onClick={() => onNavigate('gp_score')} style={pillOutline}>Go to Scoring Growth</button>
+      <button onClick={() => onNavigate('gp_score')} style={btnOutline}>Go to Scoring Growth</button>
     </div>
   )
 }

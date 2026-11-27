@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { TrackHero } from '../shared/TrackKit'
-import { StepNav } from './ui'
+import { StepNav, BTN_LARGE, inputStyle, eyebrowLabel, rowRule, BLUE, INK, MUTED } from './ui'
 import { getGrowthConfig } from './constants'
 import { computeScores, blankAnswers } from './scoring'
-
-const NAVY = '#002973', BLUE = '#125ecc', INK = 'var(--vfo-ink)', MUTED = 'var(--vfo-muted)'
-const inputStyle = { padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: INK, fontSize: '13px', fontFamily: 'Inter, sans-serif' }
-const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', marginBottom: '18px', overflow: 'hidden' }
+import { ProfileCard, Switch } from '../shared/ProfileKit'
+import { btnPrimary, btnOutline, btnState, BTN_SMALL } from '../shared/buttonStyles'
 
 function fmtCompleted(iso) {
   if (!iso) return ''
@@ -132,34 +130,27 @@ export default function GrowthScoring({ memberNumber, bundle, reload, onNavigate
           title="Growth Summary Score"
           meta={<>Score completed on <strong style={{ color: 'var(--vfo-ink-2)' }}>{fmtCompleted(score.completed_at || score.created_at)}</strong>{(score.assigned_admin_name || score.assigned_admin_email) && <> · Assigned MSM <strong style={{ color: 'var(--vfo-ink-2)' }}>{score.assigned_admin_name || score.assigned_admin_email}</strong></>}</>}
         />
-        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          {/* Scoring-on toggles — sized to content so the page background shows below */}
-          <div style={{ ...cardStyle, marginBottom: 0, flex: '0 0 300px', maxWidth: '100%' }}>
-            <div style={{ padding: '18px 20px' }}>
-              <div style={eyebrowLabel}>Scoring on</div>
-              <div style={{ marginTop: '12px' }}>
-                {sections.map((s, i) => (
-                  <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 0', borderTop: i > 0 ? '1px solid var(--vfo-tint)' : 'none', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={enabled[s.key]} onChange={() => toggleSection(s.key)} style={{ width: '18px', height: '18px', accentColor: BLUE, flexShrink: 0 }} />
-                    <span style={{ fontSize: '13.5px', fontWeight: 600, color: INK, lineHeight: 1.35 }}>{s.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: '16px' }}>
+          {/* Scoring-on switches — sized to content so the page background shows below */}
+          <ProfileCard icon="settings" title="Scoring on" style={{ marginBottom: 0, flex: '0 0 300px', maxWidth: '100%' }} bodyStyle={{ paddingTop: '4px', paddingBottom: '4px' }}>
+            {sections.map((s, i) => (
+              <label key={s.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 0', ...rowRule(i), cursor: 'pointer' }}>
+                <span style={{ fontSize: '13.5px', fontWeight: 600, color: INK, lineHeight: 1.35 }}>{s.label}</span>
+                <Switch on={enabled[s.key]} onClick={() => toggleSection(s.key)} label={s.label} />
+              </label>
+            ))}
+          </ProfileCard>
 
           {/* Growth Score card */}
-          <div style={{ ...cardStyle, marginBottom: 0, flex: '1 1 400px', minWidth: '320px' }}>
-            <div style={{ height: '4px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 55%, #0a85e8 100%)' }} />
-            <div style={{ padding: '32px 24px', textAlign: 'center' }}>
-              <div style={{ ...eyebrowLabel, marginBottom: '18px' }}>Overall Growth Score</div>
+          <ProfileCard icon="award" title="Overall Growth Score" style={{ marginBottom: 0, flex: '1 1 400px', minWidth: '320px' }}>
+            <div style={{ padding: '14px 0 8px', textAlign: 'center' }}>
               <ScoreRing value={composite} size={144} primary />
               {anyOn ? (
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '34px auto 26px', maxWidth: '480px' }}>
-                    <div style={{ flex: 1, height: '1px', background: 'var(--vfo-tint)' }} />
+                    <div style={{ flex: 1, height: '1px', background: 'var(--vfo-border-soft)' }} />
                     <span style={eyebrowLabel}>By section</span>
-                    <div style={{ flex: 1, height: '1px', background: 'var(--vfo-tint)' }} />
+                    <div style={{ flex: 1, height: '1px', background: 'var(--vfo-border-soft)' }} />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '40px' }}>
                     {sections.filter(s => enabled[s.key]).map(s => (
@@ -171,12 +162,12 @@ export default function GrowthScoring({ memberNumber, bundle, reload, onNavigate
                 <div style={{ fontSize: '12.5px', color: MUTED, marginTop: '22px' }}>Select a section to include it in the score.</div>
               )}
             </div>
-          </div>
+          </ProfileCard>
         </div>
         <StepNav
           onNext={() => onNavigate('gp_actions')}
           nextLabel="Continue →"
-          secondary={<button onClick={() => { setTriedGenerate(false); setView('form') }} style={pillOutline}>Edit answers / Re-score</button>}
+          secondary={<button onClick={() => { setTriedGenerate(false); setView('form') }} style={{ ...btnOutline, ...BTN_LARGE }}>Edit answers / Re-score</button>}
         />
       </div>
     )
@@ -191,36 +182,23 @@ export default function GrowthScoring({ memberNumber, bundle, reload, onNavigate
         eyebrow="Growth Plan"
         title="Scoring Growth"
       />
-      <div style={cardStyle}>
-        <div style={{ height: '3px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)' }} />
-        <div style={{ padding: '14px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.6px', color: 'var(--vfo-faint)', textTransform: 'uppercase' }}>Assigned MSM</div>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: assignedEmail ? INK : '#e74c3c', marginTop: '3px' }}>
-              {assignedName || assignedEmail || 'Not set — assign on Get Started'}
-            </div>
-          </div>
-          <button onClick={() => onNavigate('gp_start')} style={pillOutline}>{assignedEmail ? 'Change on Get Started' : 'Assign on Get Started'} →</button>
+      <ProfileCard icon="user" title="Assigned MSM"
+        action={<button onClick={() => onNavigate('gp_start')} style={btnOutline}>{assignedEmail ? 'Change on Get Started' : 'Assign on Get Started'} →</button>}>
+        <div style={{ fontSize: '14px', fontWeight: 700, color: assignedEmail ? INK : '#e74c3c' }}>
+          {assignedName || assignedEmail || 'Not set — assign on Get Started'}
         </div>
-      </div>
+      </ProfileCard>
       {sections.map((s, idx) => (
-        <div key={s.key} style={cardStyle}>
-          <div style={{ height: '3px', background: 'linear-gradient(90deg, #125ecc 0%, #0a85e8 100%)' }} />
-          <div style={{ padding: '18px 22px' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)', letterSpacing: '-0.01em' }}>{s.label}</div>
-              <div style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--vfo-faint)', letterSpacing: '0.4px' }}>SECTION {idx + 1}</div>
-            </div>
-            {s.questions.map(q => (
-              <QuestionRow key={q.id} q={q} ans={answers[q.id]} setAns={setAns}
-                partners={partners} setPartners={setPartners}
-                q10pref={q10pref} setQ10pref={setQ10pref} prefOptions={cfg.q10PreferenceOptions || []}
-                invalid={triedGenerate && !isAnswered(q, answers[q.id], q10pref)} />
-            ))}
-          </div>
-        </div>
+        <ProfileCard key={s.key} icon="clipboard" title={s.label} sub={`SECTION ${idx + 1}`} bodyStyle={{ paddingTop: '4px' }}>
+          {s.questions.map((q, qi) => (
+            <QuestionRow key={q.id} q={q} first={qi === 0} ans={answers[q.id]} setAns={setAns}
+              partners={partners} setPartners={setPartners}
+              q10pref={q10pref} setQ10pref={setQ10pref} prefOptions={cfg.q10PreferenceOptions || []}
+              invalid={triedGenerate && !isAnswered(q, answers[q.id], q10pref)} />
+          ))}
+        </ProfileCard>
       ))}
-      <button onClick={generate} disabled={saving || !canGenerate} style={{ padding: '12px 28px', borderRadius: '999px', border: 'none', background: (saving || !canGenerate) ? '#9bb4e3' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontWeight: 700, fontSize: '14px', cursor: (saving || !canGenerate) ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 14px rgba(18,94,204,0.32)' }}>
+      <button onClick={generate} disabled={saving || !canGenerate} style={btnState({ ...btnPrimary, ...BTN_LARGE }, saving || !canGenerate)}>
         {saving ? 'Generating…' : 'Generate Score'}
       </button>
       {!canGenerate && <div style={{ marginTop: '10px', fontSize: '12px', color: MUTED }}>Assign an <strong style={{ color: INK }}>MSM</strong> on the <button onClick={() => onNavigate('gp_start')} style={{ background: 'none', border: 'none', padding: 0, color: BLUE, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>Get Started</button> page to enable scoring.</div>}
@@ -230,8 +208,8 @@ export default function GrowthScoring({ memberNumber, bundle, reload, onNavigate
   )
 }
 
-const eyebrowLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase' }
-const pillOutline = { padding: '8px 16px', borderRadius: '999px', border: `1px solid ${BLUE}`, background: 'transparent', color: BLUE, fontWeight: 600, fontSize: '12.5px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }
+// "+ Add Other Area" / "+ Create Partnership": a small row action.
+const addBtn = { ...btnOutline, ...BTN_SMALL }
 
 function ScoreRing({ value, label, size = 78, primary }) {
   // Fixed white circle with VFO-navy number in BOTH themes (Jake's call,
@@ -247,13 +225,13 @@ function ScoreRing({ value, label, size = 78, primary }) {
   )
 }
 
-function QuestionRow({ q, ans, setAns, partners, setPartners, q10pref, setQ10pref, prefOptions, invalid }) {
+function QuestionRow({ q, first, ans, setAns, partners, setPartners, q10pref, setQ10pref, prefOptions, invalid }) {
   const a = ans || { value: '', na: false, notes: '' }
   const required = q.type !== 'partnerships' && q.type !== 'areas'
   const scoreMissing = !a.na && (a.value === '' || a.value === null || a.value === undefined)
   const prefMissing = !!q.preference && !a.na && !q10pref
   return (
-    <div id={'gpq-' + q.id} style={{ padding: '14px 0', borderTop: '1px solid var(--vfo-tint)' }}>
+    <div id={'gpq-' + q.id} style={{ padding: '14px 0', ...rowRule(first ? 0 : 1) }}>
       <div style={{ fontSize: '13.5px', color: INK, marginBottom: '10px', lineHeight: 1.5 }}>{q.text}{required && <span style={{ color: '#e74c3c', marginLeft: '4px' }}>*</span>}</div>
       {q.type === 'partnerships' ? (
         <PartnershipEditor partners={partners} setPartners={setPartners} />
@@ -324,7 +302,7 @@ function AreasEditor({ q, ans, setAns }) {
       {fixed.map(ar => {
         const entry = areas[ar.key] || { value: '', na: false, manager: '' }
         return (
-          <div key={ar.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', padding: '9px 0', borderTop: '1px solid var(--vfo-tint)' }}>
+          <div key={ar.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', padding: '9px 0', borderTop: '1px solid var(--vfo-border-soft)' }}>
             <div style={{ flex: '1 1 200px', fontSize: '13px', fontWeight: 600, color: INK }}>{ar.label}</div>
             {q.hasManager && <input placeholder="Name" value={entry.manager || ''} onChange={e => setArea(ar.key, { manager: e.target.value })} style={{ ...inputStyle, flex: '0 0 160px' }} />}
             <ScoreCell entry={entry} onChange={p => setArea(ar.key, p)} />
@@ -333,7 +311,7 @@ function AreasEditor({ q, ans, setAns }) {
         )
       })}
       {others.map((r, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', padding: '9px 0', borderTop: '1px solid var(--vfo-tint)' }}>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', padding: '9px 0', borderTop: '1px solid var(--vfo-border-soft)' }}>
           <input placeholder="Other compliance area" value={r.label || ''} onChange={e => setOther(i, { label: e.target.value })} style={{ ...inputStyle, flex: '1 1 200px', minWidth: '160px' }} />
           {q.hasManager && <input placeholder="Name" value={r.manager || ''} onChange={e => setOther(i, { manager: e.target.value })} style={{ ...inputStyle, flex: '0 0 160px' }} />}
           <ScoreCell entry={r} onChange={p => setOther(i, p)} />
@@ -341,7 +319,7 @@ function AreasEditor({ q, ans, setAns }) {
           <button onClick={() => removeOther(i)} title="Remove" style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '0 4px' }}>×</button>
         </div>
       ))}
-      <button onClick={addOther} style={{ marginTop: '10px', padding: '6px 14px', borderRadius: '999px', border: '1px dashed #9bb4e3', background: 'var(--vfo-page)', color: BLUE, fontWeight: 600, fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>+ Add Other Area</button>
+      <button onClick={addOther} style={{ ...addBtn, marginTop: '10px' }}>+ Add Other Area</button>
     </div>
   )
 }
@@ -366,7 +344,7 @@ function PartnershipEditor({ partners, setPartners }) {
           <button onClick={() => remove(i)} title="Remove" style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '0 4px' }}>×</button>
         </div>
       ))}
-      <button onClick={add} style={{ marginTop: '4px', padding: '6px 14px', borderRadius: '999px', border: '1px dashed #9bb4e3', background: 'var(--vfo-page)', color: BLUE, fontWeight: 600, fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>+ Create Partnership</button>
+      <button onClick={add} style={{ ...addBtn, marginTop: '4px' }}>+ Create Partnership</button>
     </div>
   )
 }

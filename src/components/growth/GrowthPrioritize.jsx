@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { callApi } from '../../lib/api'
 import { TrackHero } from '../shared/TrackKit'
 import { getGrowthConfig } from './constants'
-import { NAVY, MUTED, GREEN, AMBER, GREY, BLUE, inputStyle, cardStyle, accentStrip, miniLabel, NumBadge, Radios, GrowthNeed, StepNav } from './ui'
+import { MUTED, GREEN, AMBER, GREY, BLUE, inputStyle, rowRule, miniLabel, NumBadge, Radios, GrowthNeed, StepNav } from './ui'
+import { ProfileCard } from '../shared/ProfileKit'
 
 // Left column = destination (default One Page Plan); only "one_page_plan" carries to G4.
 const G3_STATUS = [
@@ -58,12 +59,9 @@ export default function GrowthPrioritize({ memberNumber, bundle, reload, onNavig
         const catRows = rows.filter(r => r.category === cat).sort((a, b) => a.action_number - b.action_number)
         if (!catRows.length) return null
         return (
-          <div key={cat} style={cardStyle}>
-            <div style={accentStrip} />
-            <div style={{ padding: '16px 20px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)' }}>{CATEGORY_LABELS[cat]}</div>
-              {catRows.map(r => (
-                <div key={r.id} style={{ padding: '14px 0', borderTop: '1px solid var(--vfo-tint)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <ProfileCard key={cat} icon="flag" title={CATEGORY_LABELS[cat]} bodyStyle={{ paddingTop: '4px', paddingBottom: '4px' }}>
+              {catRows.map((r, i) => (
+                <div key={r.id} style={{ padding: '14px 0', ...rowRule(i), display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                   <NumBadge n={r.action_number} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.5, marginBottom: '12px', paddingTop: '3px' }}>{r.action_text}</div>
@@ -75,8 +73,7 @@ export default function GrowthPrioritize({ memberNumber, bundle, reload, onNavig
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
+          </ProfileCard>
         )
       })}
       <StepNav

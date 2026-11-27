@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { callApi } from '../../lib/api'
 import { TrackHero } from '../shared/TrackKit'
-import { StepNav, cardStyle, inputStyle, eyebrowLabel, INK, MUTED } from './ui'
+import { StepNav, cardStyle, eyebrowLabel, rowRule, INK, MUTED } from './ui'
+import { ProfileCard, formInput } from '../shared/ProfileKit'
+import { btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 import { getGrowthConfig, FOUR_WAYS_PRINCIPLES } from './constants'
 
 // "4 Ways to Grow a Business" — the big-picture-focus questionnaire that precedes
@@ -65,53 +67,37 @@ export default function Growth4Ways({ memberNumber, bundle, reload, onNavigate, 
       <TrackHero eyebrow="Growth Plan" title="4 Ways to Grow a Business" />
 
       {/* Principles */}
-      <div style={cardStyle}>
-        <div style={{ height: '3px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 100%)' }} />
-        <div style={{ padding: '18px 22px' }}>
-          <div style={{ fontSize: '13.5px', color: INK, fontWeight: 700, lineHeight: 1.5 }}>
-            The Growth Plan is built around the principles of 4 Ways to Grow Business Profits
-          </div>
-          <ol style={{ margin: '14px 0 0', paddingLeft: '22px', color: INK }}>
-            {FOUR_WAYS_PRINCIPLES.map((p, i) => (
-              <li key={i} style={{ fontSize: '13.5px', lineHeight: 1.9 }}>{p}</li>
-            ))}
-          </ol>
-        </div>
-      </div>
+      <ProfileCard icon="layers" title="The Growth Plan is built around the principles of 4 Ways to Grow Business Profits">
+        <ol style={{ margin: 0, paddingLeft: '22px', color: INK }}>
+          {FOUR_WAYS_PRINCIPLES.map((p, i) => (
+            <li key={i} style={{ fontSize: '13.5px', lineHeight: 1.9 }}>{p}</li>
+          ))}
+        </ol>
+      </ProfileCard>
 
       {/* Member type */}
-      <div style={cardStyle}>
-        <div style={{ height: '3px', background: 'linear-gradient(90deg, #125ecc 0%, #0a85e8 100%)' }} />
-        <div style={{ padding: '18px 22px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)', letterSpacing: '-0.01em' }}>{cfg.typeLabel}</div>
-          <div style={{ fontSize: '12.5px', color: MUTED, margin: '6px 0 12px' }}>{cfg.typeHelper}</div>
-          <select value={memberType} onChange={e => pickType(e.target.value)} style={{ ...inputStyle, minWidth: '240px' }}>
-            <option value="">{cfg.typePlaceholder}</option>
-            {cfg.memberTypeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
-      </div>
+      <ProfileCard icon="user" title={cfg.typeLabel} sub={cfg.typeHelper}>
+        <select value={memberType} onChange={e => pickType(e.target.value)} style={{ ...formInput, maxWidth: '360px' }}>
+          <option value="">{cfg.typePlaceholder}</option>
+          {cfg.memberTypeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </ProfileCard>
 
       {/* Priority order */}
       {memberType ? (
-        <div style={cardStyle}>
-          <div style={{ height: '3px', background: 'linear-gradient(90deg, #125ecc 0%, #0a85e8 100%)' }} />
-          <div style={{ padding: '18px 22px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)', letterSpacing: '-0.01em' }}>Your Priority Order</div>
-            <div style={{ fontSize: '12.5px', color: MUTED, margin: '6px 0 6px' }}>Rank each focus 1–4 (or mark N/A). Each number can be used only once.</div>
-            {focuses.map(f => {
-              const locked = memberType === 'type3' && f.lockedForType3
-              // A true ranking — numbers already used on OTHER focuses are disabled here.
-              const taken = new Set(focuses.filter(o => o.key !== f.key).map(o => eff[o.key]).filter(v => typeof v === 'number'))
-              return (
-                <div key={f.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', padding: '13px 0', borderTop: '1px solid var(--vfo-tint)' }}>
-                  <div style={{ fontSize: '13.5px', color: INK, lineHeight: 1.4, flex: '1 1 260px' }}>{f.row}</div>
-                  <PriorityPicker value={eff[f.key]} onChange={v => setPriority(f.key, v)} disabled={locked} takenNumbers={taken} />
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        <ProfileCard icon="flag" title="Your Priority Order" sub="Rank each focus 1–4 (or mark N/A). Each number can be used only once." bodyStyle={{ paddingTop: '6px', paddingBottom: '6px' }}>
+          {focuses.map((f, i) => {
+            const locked = memberType === 'type3' && f.lockedForType3
+            // A true ranking — numbers already used on OTHER focuses are disabled here.
+            const taken = new Set(focuses.filter(o => o.key !== f.key).map(o => eff[o.key]).filter(v => typeof v === 'number'))
+            return (
+              <div key={f.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', padding: '13px 0', ...rowRule(i) }}>
+                <div style={{ fontSize: '13.5px', color: INK, lineHeight: 1.4, flex: '1 1 260px' }}>{f.row}</div>
+                <PriorityPicker value={eff[f.key]} onChange={v => setPriority(f.key, v)} disabled={locked} takenNumbers={taken} />
+              </div>
+            )
+          })}
+        </ProfileCard>
       ) : (
         <div style={{ ...cardStyle, padding: '30px', textAlign: 'center', color: MUTED, fontSize: '13px' }}>
           Select a type above to set the priority order.
@@ -120,47 +106,34 @@ export default function Growth4Ways({ memberNumber, bundle, reload, onNavigate, 
 
       {/* Conditional question */}
       {memberType && showConditional && (
-        <div style={{ ...cardStyle, border: '1px solid #cfe0ff' }}>
-          <div style={{ height: '3px', background: 'linear-gradient(90deg, #0a85e8 0%, #002973 100%)' }} />
-          <div style={{ padding: '18px 22px' }}>
-            <div style={{ fontSize: '13.5px', color: INK, marginBottom: '12px', lineHeight: 1.5 }}>
-              {conditional.question}
-            </div>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {conditionalOptions.map(o => {
-                const on = conditionalAnswer === o.value
-                return (
-                  <button key={o.value} onClick={() => setConditionalAnswer(o.value)} style={segBtnStyle(on, false)}>{o.label}</button>
-                )
-              })}
-            </div>
+        <ProfileCard>
+          <div style={{ fontSize: '13.5px', color: INK, marginBottom: '12px', lineHeight: 1.5 }}>
+            {conditional.question}
           </div>
-        </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {conditionalOptions.map(o => (
+              <button key={o.value} onClick={() => setConditionalAnswer(o.value)} style={segBtnStyle(conditionalAnswer === o.value, false)}>{o.label}</button>
+            ))}
+          </div>
+        </ProfileCard>
       )}
 
       {/* Summary */}
-      <div style={cardStyle}>
-        <div style={{ height: '4px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 55%, #0a85e8 100%)' }} />
-        <div style={{ padding: '22px 24px' }}>
-          <div style={eyebrowLabel}>Growth Plan Big Picture Focus in Summary</div>
-          <div style={{ fontSize: '12.5px', color: MUTED, margin: '6px 0 4px' }}>This produces a summary of the above answers.</div>
-          {ranked.length === 0 ? (
-            <div style={{ fontSize: '13px', color: MUTED, marginTop: '14px' }}>Rank at least one focus above to see the summary.</div>
-          ) : (
-            <div style={{ marginTop: '16px' }}>
-              {ranked.map(({ f, rank }, idx) => (
-                <div key={f.key} style={{ display: 'flex', gap: '14px', alignItems: 'baseline', padding: '14px 0', borderTop: idx > 0 ? '1px solid var(--vfo-tint)' : 'none' }}>
-                  <div style={{ ...eyebrowLabel, whiteSpace: 'nowrap', minWidth: '150px', color: '#0095ff' }}>GROWTH FOCUS - Priority {rank}</div>
-                  <div>
-                    <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--vfo-heading)', letterSpacing: '-0.01em', lineHeight: 1.25 }}>{f.title}</div>
-                    {f.sub && <div style={{ fontSize: '12.5px', color: MUTED, marginTop: '3px', lineHeight: 1.4 }}>{f.sub}</div>}
-                  </div>
-                </div>
-              ))}
+      <ProfileCard icon="award" title="Growth Plan Big Picture Focus in Summary" sub="This produces a summary of the above answers." bodyStyle={ranked.length ? { paddingTop: '4px', paddingBottom: '4px' } : undefined}>
+        {ranked.length === 0 ? (
+          <div style={{ fontSize: '13px', color: MUTED }}>Rank at least one focus above to see the summary.</div>
+        ) : (
+          ranked.map(({ f, rank }, idx) => (
+            <div key={f.key} style={{ display: 'flex', gap: '14px', alignItems: 'baseline', padding: '14px 0', ...rowRule(idx) }}>
+              <div style={{ ...eyebrowLabel, whiteSpace: 'nowrap', minWidth: '150px', color: '#0095ff' }}>GROWTH FOCUS - Priority {rank}</div>
+              <div>
+                <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--vfo-heading)', letterSpacing: '-0.01em', lineHeight: 1.25 }}>{f.title}</div>
+                {f.sub && <div style={{ fontSize: '12.5px', color: MUTED, marginTop: '3px', lineHeight: 1.4 }}>{f.sub}</div>}
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+          ))
+        )}
+      </ProfileCard>
 
       <StepNav
         onNext={saveAndContinue}
@@ -172,15 +145,9 @@ export default function Growth4Ways({ memberNumber, bundle, reload, onNavigate, 
   )
 }
 
+// ProfileKit's ChoiceButtons look: the chosen one primary, the rest secondary.
 function segBtnStyle(on, disabled) {
-  return {
-    minWidth: '40px', padding: '8px 14px', borderRadius: '8px',
-    border: on ? 'none' : '1px solid var(--vfo-border-strong)',
-    background: on ? 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)' : 'var(--vfo-card)',
-    color: on ? '#fff' : (disabled ? 'var(--vfo-faint)' : 'var(--vfo-muted)'),
-    fontWeight: on ? 700 : 600, fontSize: '13px', fontFamily: 'Inter, sans-serif',
-    cursor: disabled ? 'default' : 'pointer', opacity: disabled && !on ? 0.5 : 1,
-  }
+  return btnState({ ...(on ? btnPrimary : btnSecondary), minWidth: '40px', padding: '8px 14px', fontSize: '13px' }, disabled && !on)
 }
 
 function PriorityPicker({ value, onChange, disabled, takenNumbers }) {
