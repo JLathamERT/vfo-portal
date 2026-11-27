@@ -276,32 +276,52 @@ export function MsmHomeSkeleton({ programRows = 3, historyRows = 2 }) {
 
 // CIQ client list: the count line, then one card of tinted client rows (a phone
 // draws list cards). `single` = the client page's CIQ tab, already on one client.
+// The member-wide CIQ list's columns (MemberCIQ's ListTable): Client, Ref, Email,
+// CIQs. The whole row opens, so there is no link column.
+export const CIQ_LIST_GRID = '1.3fr 110px 1.4fr 1fr'
+// One client's CIQs (computer): Status, Started, Completed.
+export const CIQ_ROWS_GRID = '150px 1fr 1fr'
+
+// CIQ tab: the count + Start New CIQ row, then the client list (ListTable on a
+// computer, list cards on a phone) or, for one client (`single`, the client
+// page's tab), the client's box with its CIQ rows.
 export function CiqListSkeleton({ rows = 3, single = false }) {
   const isPhone = useIsPhone()
   return (
     <div>
-      <Skeleton width={110} height={13} style={{ margin: '10px 0 24px' }} />
-      {!single && isPhone ? <ListCardsSkeleton rows={rows} /> : (
-        <CardShell pad="var(--vfo-card-pad)">
-          {single && <><Skeleton width={150} height={16} /><Skeleton width={110} height={11} style={{ margin: '7px 0 18px' }} /></>}
-          {Array.from({ length: single ? 2 : rows }).map((_, i) => <CiqRow key={i} />)}
-        </CardShell>
-      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <Skeleton width={110} height={13} />
+        <Skeleton width={isPhone ? 118 : 132} height={isPhone ? 28 : 33} style={{ borderRadius: '8px' }} />
+      </div>
+      {single ? (isPhone ? (
+        <ProfileCardSkeleton titleWidth={150} sub>
+          {[0, 1].map(i => <CiqRow key={i} />)}
+        </ProfileCardSkeleton>
+      ) : (
+        // Computer: the client's title-bar box, then their CIQs as the house list.
+        <>
+          <CardShell pad={0} style={{ overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '15px 22px' }}>
+              <Skeleton width={34} height={34} style={{ borderRadius: '10px', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}><Skeleton width={150} height={15} /><Skeleton width={110} height={11} style={{ marginTop: '6px' }} /></div>
+            </div>
+          </CardShell>
+          <TableSkeleton cols={CIQ_ROWS_GRID} rows={2} />
+        </>
+      )) : isPhone ? <ListCardsSkeleton rows={rows} /> : <TableSkeleton cols={CIQ_LIST_GRID} rows={rows} />}
     </div>
   )
 }
 
 function CiqRow() {
   return (
-    <div className="vfo-skel-on-tint" style={{ background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', padding: '12px 14px', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-      <div style={{ minWidth: 0 }}>
-        <Skeleton width={150} height={15} style={{ maxWidth: '100%' }} />
-        <Skeleton width={210} height={11} style={{ marginTop: '6px', maxWidth: '100%' }} />
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
-        <Skeleton width={104} height={12} />
+    <div style={{ background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '12px 14px', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+      {/* Status dot + its word, the Started / Completed dates | the open link. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
         <Skeleton width={78} height={13} />
+        <Skeleton width={190} height={12} style={{ maxWidth: '100%' }} />
       </div>
+      <Skeleton width={84} height={12} style={{ flexShrink: 0 }} />
     </div>
   )
 }
