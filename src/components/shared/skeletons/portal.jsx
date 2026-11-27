@@ -262,7 +262,16 @@ export function GrowthPlanSkeleton({ tabs = true, step = 'gp_onepage' }) {
       </CardShell>
       {[0, 1].map(t => (
         <ProfileCardSkeleton key={t} titleWidth={t ? 160 : 140}>
-          {[0, 1].map(i => <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 0', borderTop: i ? '1px solid var(--vfo-border-soft)' : 'none' }}><Skeleton width={22} height={14} style={{ flexShrink: 0 }} /><div style={{ flex: 1 }}><Skeleton width="55%" height={14} /></div><Skeleton width={isPhone ? 70 : 120} height={13} /></div>)}
+          {[0, 1].map(i => isPhone ? (
+            // Phone: the action's text, then its label / value lines (Owned by, Assisted by).
+            <div key={i} style={{ display: 'flex', gap: '10px', padding: '10px 0', borderTop: i ? '1px solid var(--vfo-border-soft)' : 'none' }}>
+              <Skeleton width={14} height={14} style={{ flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Skeleton width="90%" height={14} /><Skeleton width="60%" height={14} style={{ marginTop: '6px' }} />
+                {[0, 1].map(f => <div key={f} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}><Skeleton width={70} height={11} /><Skeleton width="58%" height={30} style={{ borderRadius: '10px' }} /></div>)}
+              </div>
+            </div>
+          ) : <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 0', borderTop: i ? '1px solid var(--vfo-border-soft)' : 'none' }}><Skeleton width={22} height={14} style={{ flexShrink: 0 }} /><div style={{ flex: 1 }}><Skeleton width="55%" height={14} /></div><Skeleton width={120} height={13} /></div>)}
         </ProfileCardSkeleton>
       ))}
     </div>

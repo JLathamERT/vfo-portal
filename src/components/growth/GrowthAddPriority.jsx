@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { callApi } from '../../lib/api'
 import { TrackHero } from '../shared/TrackKit'
-import { INK, MUTED, rowRule, miniLabel, Radios, NameCombo, buildNamePool } from './ui'
+import { INK, MUTED, rowRule, miniLabel, Radios, NameCombo, buildNamePool, formTileStyle, phoneFormStyle } from './ui'
+import { useIsPhone } from '../../lib/useMediaQuery'
 import { getGrowthConfig } from './constants'
 import AddActionForm from './AddActionForm'
 import { ProfileCard } from '../shared/ProfileKit'
@@ -86,6 +87,7 @@ export default function GrowthAddPriority({ memberNumber, bundle, reload, role =
 }
 
 function AddRow({ a, i, memberNumber, reload, isParking, namePool = [], adminSet }) {
+  const isPhone = useIsPhone()
   const [open, setOpen] = useState(false)
   const [owned, setOwned] = useState('')
   const [assisted, setAssisted] = useState('')
@@ -118,7 +120,7 @@ function AddRow({ a, i, memberNumber, reload, isParking, namePool = [], adminSet
         )}
       </div>
       {open && (
-        <div style={{ marginTop: '12px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '14px 16px' }}>
+        <div style={{ marginTop: '12px', ...(isPhone ? phoneFormStyle : formTileStyle) }}>
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '12px' }}>
             <div style={{ flex: '1 1 200px' }}>
               <div style={miniLabel}>Owned By</div>

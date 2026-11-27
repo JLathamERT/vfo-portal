@@ -18,6 +18,11 @@ export const inputStyle = { ...formField, padding: '8px 11px', fontSize: '13px' 
 export const cardStyle = profileCardStyle
 export const eyebrowLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase' }
 export const miniLabel = { ...subLabel, marginBottom: '6px' }
+// An inline form inside a box (add a priority, add a sub-task): a soft tile on a
+// computer; on a phone just a hairline above it, so its fields do not sit behind
+// the page gutter + box padding + tile padding (TEAM_RULES section 9, no double padding).
+export const formTileStyle = { background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '14px 16px' }
+export const phoneFormStyle = { borderTop: '1px solid var(--vfo-border-soft)', paddingTop: '12px' }
 // A list row's hairline: none on the first row (the box header already draws one).
 export const rowRule = (i) => ({ borderTop: i > 0 ? '1px solid var(--vfo-border-soft)' : 'none' })
 
@@ -165,13 +170,28 @@ export function NameCombo({ value, onChange, onCommit, people = [], adminSet, pl
       <span onMouseDown={e => { e.preventDefault(); open ? setOpen(false) : openMenu() }}
         style={{ position: 'absolute', right: '11px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--vfo-faint)', cursor: 'pointer' }}>▼</span>
       {open && rect && createPortal(
-        <div ref={menuRef} style={{ position: 'fixed', top: rect.bottom + 4, left: rect.left, width: rect.width, maxHeight: '224px', overflowY: 'auto', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-strong)', borderRadius: '10px', boxShadow: '0 12px 30px rgba(20,45,95,0.18)', zIndex: 1000, fontFamily: 'Inter, sans-serif' }}>
+        // Sized to the room on screen (2026-11-27): under the box, or above it when
+        // there is more room there, and never past the window's edge, so the list
+        // always scrolls inside itself (scrolling the page closes it). Its own
+        // scroll does not carry on into the page, and pressing its scrollbar does
+        // not take the focus from the box (which would close it).
+        <div ref={menuRef} onMouseDown={e => e.preventDefault()} style={{ position: 'fixed', ...menuPlace(rect), left: rect.left, width: rect.width, overflowY: 'auto', overscrollBehavior: 'contain', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-strong)', borderRadius: '10px', boxShadow: '0 12px 30px rgba(20,45,95,0.18)', zIndex: 1000, fontFamily: 'Inter, sans-serif' }}>
           {filtered.map(n => <ComboOpt key={n} label={n} isAdmin={adminSet?.has(n.toLowerCase())} active={n.toLowerCase() === q} onPick={() => pick(n)} />)}
           {typed && q && !exact && <ComboOpt label={`+ Add "${value.trim()}"`} accent topBorder={filtered.length > 0} onPick={() => pick(value.trim())} />}
           {!filtered.length && !q && <div style={{ padding: '11px 14px', fontSize: '12px', color: 'var(--vfo-faint)' }}>No names yet — type to add one.</div>}
         </div>, document.body)}
     </div>
   )
+}
+
+// Where the name list opens: below the box with up to 224px, or above it when
+// below has under 160px and above has more.
+function menuPlace(rect) {
+  const gap = 4, edge = 8, full = 224
+  const below = window.innerHeight - rect.bottom - gap - edge
+  const above = rect.top - gap - edge
+  if (below >= Math.min(full, 160) || below >= above) return { top: rect.bottom + gap, maxHeight: Math.max(96, Math.min(full, below)) }
+  return { bottom: window.innerHeight - rect.top + gap, maxHeight: Math.min(full, above) }
 }
 
 function ComboOpt({ label, onPick, active, accent, topBorder, isAdmin }) {

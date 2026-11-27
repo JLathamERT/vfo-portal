@@ -159,7 +159,7 @@ export default function GrowthOnePage({ memberNumber, bundle, reload, onNavigate
             </div>
           </div>
           {acctMode && (
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--vfo-border-soft)' }}>
+            <div style={{ ...(isPhone ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px 12px' } : { display: 'flex', gap: '16px', flexWrap: 'wrap' }), marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--vfo-border-soft)' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                 <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--vfo-card)', border: '2px solid rgba(0,41,115,0.18)' }} />
                 <span style={{ fontSize: '11.5px', color: MUTED }}>Not set</span>
@@ -262,6 +262,11 @@ function ActionTable({ title, rows, acct, isAdmin, canEdit, dues, statuses, onDu
   // A table fills the box edge to edge in the ListTable look; the empty line and
   // the phone blocks keep the box's own padding.
   const flush = rows.length > 0 && !isPhone
+  // Phone, nothing in it: one row, the title with "None." at its right (no box
+  // for one value).
+  if (isPhone && rows.length === 0) {
+    return <ProfileCard icon="clipboard" title={title} action={<span style={{ fontSize: '12.5px', color: MUTED }}>None.</span>} />
+  }
   return (
     <ProfileCard icon="clipboard" title={title} flush={flush}>
         {rows.length === 0
@@ -370,7 +375,8 @@ function PhoneActionItem({ a, acct, isAdmin, canEdit, dues, statuses, onDue, onS
     </div>
   )
   return (
-    <div style={{ display: 'flex', gap: '10px', padding: '10px 0', borderBottom: last ? 'none' : '1px solid var(--vfo-border-soft)' }}>
+    <div style={{ padding: '10px 0', borderBottom: last ? 'none' : '1px solid var(--vfo-border-soft)' }}>
+      <div style={{ display: 'flex', gap: '10px' }}>
       <span style={{ fontWeight: 700, color: 'var(--vfo-heading)', fontSize: '13px', minWidth: '22px', lineHeight: 1.45 }}>{a.num}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '13.5px', color: INK, lineHeight: 1.45 }}>
@@ -401,12 +407,15 @@ function PhoneActionItem({ a, acct, isAdmin, canEdit, dues, statuses, onDue, onS
             <button onClick={() => setAdding(v => !v)} style={subBtn(adding)}>{adding ? '× Cancel sub-task' : '+ Add sub-task'}</button>
           </div>
         )}
-        {adding && (
-          <div style={{ marginTop: '8px' }}>
-            <AddActionForm idKey={'sub' + a.id} submitLabel="Add sub-task" placeholder="Describe the sub-task…" namePool={namePool} adminSet={adminSet} onCancel={() => setAdding(false)} onSubmit={async (f) => { await onAddSubtask(a.id, f); setAdding(false) }} />
-          </div>
-        )}
       </div>
+      </div>
+      {/* The sub-task form takes the box's full width, not the indented column
+          beside the number (no double padding). */}
+      {adding && (
+        <div style={{ marginTop: '10px' }}>
+          <AddActionForm idKey={'sub' + a.id} submitLabel="Add sub-task" placeholder="Describe the sub-task…" namePool={namePool} adminSet={adminSet} onCancel={() => setAdding(false)} onSubmit={async (f) => { await onAddSubtask(a.id, f); setAdding(false) }} />
+        </div>
+      )}
     </div>
   )
 }

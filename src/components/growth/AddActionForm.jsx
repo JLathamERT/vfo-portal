@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { inputStyle, miniLabel, Radios, NameCombo } from './ui'
+import { inputStyle, miniLabel, Radios, NameCombo, formTileStyle, phoneFormStyle } from './ui'
+import { useIsPhone } from '../../lib/useMediaQuery'
 import { btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 
 const LEVELS = [{ value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }]
@@ -18,6 +19,7 @@ export default function AddActionForm({ onSubmit, onCancel, submitLabel = 'Add t
   const [value, setValue] = useState('medium')
   const [effort, setEffort] = useState('medium')
   const [busy, setBusy] = useState(false)
+  const isPhone = useIsPhone()
 
   async function submit() {
     if (!text.trim()) { alert('Enter the text first.'); return }
@@ -28,7 +30,7 @@ export default function AddActionForm({ onSubmit, onCancel, submitLabel = 'Add t
   }
 
   return (
-    <div style={{ background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '14px 16px' }}>
+    <div style={isPhone ? phoneFormStyle : formTileStyle}>
       <div style={{ marginBottom: '12px' }}>
         <div style={miniLabel}>Description</div>
         <textarea value={text} onChange={e => setText(e.target.value)} placeholder={placeholder} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', minHeight: '48px', resize: 'vertical' }} />
