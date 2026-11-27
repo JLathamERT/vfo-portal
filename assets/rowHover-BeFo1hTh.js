@@ -1,1 +1,0 @@
-const r={cursor:"pointer",position:"relative",transition:"box-shadow 120ms ease, background 120ms ease"},o={onMouseEnter:e=>{e.currentTarget.style.boxShadow="0 4px 16px rgba(20,45,95,0.13)",e.currentTarget.style.zIndex="1"},onMouseLeave:e=>{e.currentTarget.style.boxShadow="none",e.currentTarget.style.zIndex=""}};export{r as c,o as r};
