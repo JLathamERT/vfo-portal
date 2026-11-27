@@ -260,5 +260,8 @@ Free-text per-program notes attached to a member.
 | `note_text` | text | not null |
 | `created_by` | text | not null |
 | `created_at` / `updated_at` | timestamptz | default `now()` |
+| `visibility` | text | not null, default `'internal'`; `'internal'` or `'shared'` (shared rows are shown to the member, #214) |
+
+Written on a program's **Notes** tab in the admin member profile (the last sub-tab since 2026-11-27, with its count; it was the program's first tab, *Home*). Read back on the admin and member MSM Home (*Program Notes*, every program) and on a coaching program's member *Home* (*Notes from your team*, shared only).
 
 **Touched by:** `load_member_program_notes`, `add_member_program_note`, `update_member_program_note`, `delete_member_program_note`.
