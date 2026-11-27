@@ -44,7 +44,10 @@
 | 720px (`SETTINGS_WIDTH`, ProfileKit) | Settings pages |
 | 900px | One opened record: a profile, a form |
 | 1200px (`LIST_PAGE_MAX_WIDTH`, ListTable) | Lists, Section pages, KPI pages, Accounting |
-| 1500px | Only a table too wide for 1200: Client Overview, Events |
+| 1500px | Only a table too wide for 1200: Client Overview, Member Overview, Events, the onboarding lists, the Automation & Config pipeline tables |
+| 1800px | The one exception: the Portal Backlog board, whose lanes need the room (Jake, 2026-11-27) |
+
+The member, client and specialist portals keep their own one width, 980px, with `var(--vfo-gutter)` padding.
 
 ### Page header
 
@@ -129,6 +132,7 @@ Model: Events. Also Growth Credits, FAQ Editor, Tax Diagnostics, Notifications, 
 2. The sub-tab pills, straight under the header, through `AccountingCombinedPanel`.
 3. The open tab's content: cards, or a `ListTable`, with mini-tabs inside a tab if it needs a second level.
 4. A banner that applies to the whole area (a switch that is Off) sits between the header and the pills.
+5. A summary strip (`KpiHero`) for one sub-tab goes under the pills and is titled for that tab, as Portal Backlog's Requests.
 
 ## 4. KPI pages: two kinds
 
