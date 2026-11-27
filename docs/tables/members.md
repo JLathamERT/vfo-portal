@@ -163,6 +163,27 @@ Audit trail of `member_type` changes.
 
 ---
 
+## `member_activity_log`
+
+**2026-11-27** (`20261127180000_member_activity_log.sql`). The admin's Profile > Activity tab: one row per member sign-in and per key portal action the member made themselves. Flow → [flows/member-activity.md](../flows/member-activity.md).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigserial | pk |
+| `member_number` | text | not null. No FK. The session's own `callerMemberNumber`, never a body value. |
+| `event` | text | not null. A key of `ACTIVITY_LABELS` (`utils/member-activity.ts`): `login`, `client_added`, `portal_access`, `premium_access`, `tax_diagnostic_completed`, `tax_diagnostic_sent`, `growth_plan_edited`, `ciq_started`, `ciq_edited`, `ciq_completed`, `ciq_priorities_completed`, `note_added`, `profile_edited`, `member_vault_upload`, `client_vault_upload`. No CHECK (#431). |
+| `detail` | text | nullable. The client's name first, then a file name or program / phase. |
+| `client_id` | bigint | nullable. The client the action was about, when there is one. No FK. |
+| `group_key` | text | nullable. Set on edits that group (`ciq:<id>`, `growth`, `profile`): a save within 30 minutes of the row's `updated_at` updates that row instead of adding one. |
+| `save_count` | integer | not null, default 1. Saves folded into a grouped row. |
+| `created_at` / `updated_at` | timestamptz | default `now()`. A grouped row's first and last save; the tab shows `updated_at`. |
+
+Index `member_activity_log_member_idx (member_number, updated_at desc)`. **RLS:** enabled, deny-all in the same migration; anon probe `Content-Range: */0` verified on the test site 2026-11-27.
+
+**Touched by:** `utils/member-activity.ts` (insert / grouped update, from `member_login` and from `index.ts` after a member's successful authed action), `member_activity_load` (read). Nothing else. Growth Credit purchases and Marketplace picks are NOT stored here; the loader reads them from `gc_transactions`.
+
+---
+
 ## `member_contacts`
 
 **Additional Contacts for a MEMBER** — people on an advisor's / accountant's / strategic member's own team who ride along in Cc on the member's portal email. The member-side twin of `client_contacts` ([clients.md](clients.md)). Created 2026-09-16, migration `20260916120000_member_contacts.sql`.
