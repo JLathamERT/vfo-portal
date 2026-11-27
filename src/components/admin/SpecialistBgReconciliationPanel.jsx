@@ -6,6 +6,7 @@ import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink, specialistProfilePath } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { bgRowsFrom } from './SpecialistBgPanel'
+import { emptyRowStyle, errorStyle, footnoteStyle, headerRowStyle, refreshBtnStyle, rowStyle, selectStyle, tableStyle, totalsLabelStyle, totalsRowStyle, totalsSubStyle } from './accountingTable'
 
 // Accounting > Specialists > VFO Specialist Background Checks > Background Check
 // Reconciliation. The License Reconciliation shape: one row per specialist who has
@@ -67,7 +68,7 @@ export default function SpecialistBgReconciliationPanel({ embedded = false }) {
   const lastOverall = rows.reduce((d, r) => (!d || (r.last && new Date(r.last) > new Date(d)) ? (r.last || d) : d), null)
 
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+  const sel = selectStyle
   const grid = '1.4fr 120px 150px 150px'
   const muted = { color: 'var(--vfo-faint)' }
 
@@ -81,37 +82,37 @@ export default function SpecialistBgReconciliationPanel({ embedded = false }) {
       )}
 
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap' }}>
-        <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
+        <button onClick={load} style={refreshBtnStyle}>Refresh</button>
       </div>
 
       {loading && <AccountingTableSkeleton cols={grid} />}
-      {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
+      {error && <div style={errorStyle}>{error}</div>}
 
       {!loading && !error && (
-        <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
+        <div style={tableStyle}>
+          <div style={{ ...headerRowStyle, gridTemplateColumns: grid }}>
             <span>Specialist</span><span style={{ textAlign: 'right' }}>Payments</span><span style={{ textAlign: 'right' }}>Total Collected</span><span style={{ textAlign: 'right' }}>Most Recent</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '2px solid var(--vfo-border)', background: 'var(--vfo-input)', alignItems: 'center', fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>Totals</span>
+          <div style={{ ...totalsRowStyle, gridTemplateColumns: grid }}>
+            <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>all time · paid checks</span></span>
             <span style={{ textAlign: 'right' }}>{tot.count}</span>
             <span style={{ textAlign: 'right' }}>{money(tot.total)}</span>
             <span style={{ textAlign: 'right' }}>{fmtDate(lastOverall)}</span>
           </div>
           <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
             {rows.map(r => (
-              <div key={r.key} onClick={r.expertId ? () => navigate(specialistProfilePath(r.expertId)) : undefined} {...(r.expertId ? rowHoverProps : {})} style={{ ...(r.expertId ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+              <div key={r.key} onClick={r.expertId ? () => navigate(specialistProfilePath(r.expertId)) : undefined} {...(r.expertId ? rowHoverProps : {})} style={{ ...(r.expertId ? clickableRowStyle : null), ...rowStyle, gridTemplateColumns: grid }}>
                 <span style={{ fontWeight: 600 }}><SpecialistNameLink expertId={r.expertId}>{r.name}</SpecialistNameLink></span>
                 <span style={{ textAlign: 'right', color: 'var(--vfo-muted)' }}>{r.count}</span>
                 <span style={{ textAlign: 'right', fontWeight: r.total ? 700 : 400, color: r.total ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{r.total ? money(r.total) : '—'}</span>
                 <span style={{ textAlign: 'right', ...(r.last ? { color: 'var(--vfo-muted)' } : muted) }}>{fmtDate(r.last)}</span>
               </div>
             ))}
-            {rows.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No background check payments recorded yet.</div>}
+            {rows.length === 0 && <div style={emptyRowStyle}>No background check payments recorded yet.</div>}
           </div>
         </div>
       )}
-      <p style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', marginTop: '12px' }}>All-time totals across every paid background check — onboarding Core/Max payments and payment requests sent from this tab. Specialists who have been sent a link but have not paid yet appear under Outstanding Payment Links.</p>
+      <p style={footnoteStyle}>All-time totals across every paid background check — onboarding Core/Max payments and payment requests sent from this tab. Specialists who have been sent a link but have not paid yet appear under Outstanding Payment Links.</p>
     </div>
   )
 }

@@ -8,6 +8,7 @@ import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { ClientNameLink, MemberNameLink, clientPagePath } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { useNavigate } from 'react-router-dom'
+import { emptyRowStyle, errorStyle, footnoteStyle, headerRowStyle, refreshBtnStyle, rowStyle, selectStyle, tableStyle, totalsLabelStyle, totalsRowStyle, totalsSubStyle } from './accountingTable'
 
 // Accounting > VFO Services > Additional PIP Reconciliation. Pick a year → grouped BY
 // CLIENT: each client with additional-PIP activity that year and the revenue split from
@@ -94,6 +95,7 @@ export default function PipReconciliationPanel({ embedded = false }) {
     return Object.values(map).sort((a, b) => String(a.clientName).localeCompare(String(b.clientName)))
   }, [payments, year])
 
+  const muted = { color: 'var(--vfo-faint)' }
   const tot = clients.reduce((s, c) => ({
     member: s.member + c.member, mm: s.mm + c.mm, vfos: s.vfos + c.vfos,
     memberPending: s.memberPending + c.memberPending, mmPending: s.mmPending + c.mmPending, vfosPending: s.vfosPending + c.vfosPending,
@@ -101,7 +103,7 @@ export default function PipReconciliationPanel({ embedded = false }) {
   }), { member: 0, mm: 0, vfos: 0, memberPending: 0, mmPending: 0, vfosPending: 0, memberHeld: 0, mmHeld: 0 })
 
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1150px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+  const sel = selectStyle
   const grid = '1.4fr 1.2fr 140px 150px 150px'
 
   return (
@@ -117,27 +119,27 @@ export default function PipReconciliationPanel({ embedded = false }) {
         <select style={sel} value={year} onChange={e => setYear(Number(e.target.value))}>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
-        <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
+        <button onClick={load} style={refreshBtnStyle}>Refresh</button>
       </div>
 
       {loading && <AccountingTableSkeleton cols={grid} />}
-      {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
+      {error && <div style={errorStyle}>{error}</div>}
 
       {!loading && !error && (
-        <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
+        <div style={tableStyle}>
+          <div style={{ ...headerRowStyle, gridTemplateColumns: grid }}>
             <span>Client</span><span>Connected Member</span><span style={{ textAlign: 'right' }}>Member Revenue Share</span><span style={{ textAlign: 'right' }}>Member Money Mapping</span><span style={{ textAlign: 'right' }}>Elite VFO Income</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '2px solid var(--vfo-border)', background: 'var(--vfo-input)', alignItems: 'center', fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>Totals</span>
+          <div style={{ ...totalsRowStyle, gridTemplateColumns: grid }}>
+            <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>{year} · cleared payments</span></span>
             <span />
-            <span style={{ textAlign: 'right' }}>{tot.member ? money(tot.member) : '—'}<PendingNote amount={tot.memberPending} money={money} /><HeldNote total={tot.memberHeld} money={money} /></span>
-            <span style={{ textAlign: 'right' }}>{tot.mm ? money(tot.mm) : '—'}<PendingNote amount={tot.mmPending} money={money} /><HeldNote total={tot.mmHeld} money={money} /></span>
+            <span style={{ textAlign: 'right', ...(tot.member ? {} : muted) }}>{tot.member ? money(tot.member) : '—'}<PendingNote amount={tot.memberPending} money={money} /><HeldNote total={tot.memberHeld} money={money} /></span>
+            <span style={{ textAlign: 'right', ...(tot.mm ? {} : muted) }}>{tot.mm ? money(tot.mm) : '—'}<PendingNote amount={tot.mmPending} money={money} /><HeldNote total={tot.mmHeld} money={money} /></span>
             <span style={{ textAlign: 'right' }}>{money(tot.vfos)}<PendingNote amount={tot.vfosPending} money={money} /></span>
           </div>
           {clients.map(c => (
             <div key={c.clientId} onClick={c.clientId ? () => navigate(clientPagePath(c.clientId, { program: 1, tab: 'pip' })) : undefined} {...(c.clientId ? rowHoverProps : {})}
-              style={{ ...(c.clientId ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
+              style={{ ...(c.clientId ? clickableRowStyle : null), ...rowStyle, gridTemplateColumns: grid, background: 'var(--vfo-card)' }}>
               <span><ClientNameLink clientId={c.clientId} program={1} style={{ fontWeight: 600 }}>{c.clientName}</ClientNameLink></span>
               <span style={{ color: 'var(--vfo-muted)' }}><MemberNameLink memberNumber={c.memberNumber}>{c.memberName}</MemberNameLink></span>
               <span style={{ textAlign: 'right', fontWeight: c.member ? 700 : 400, color: c.member ? 'var(--vfo-success-text-2)' : 'var(--vfo-faint)' }}>{c.member ? money(c.member) : '—'}{c.member ? <><PendingNote amount={c.memberPending} money={money} /><HeldNote suspended={c.memberHeldSus} paused={c.memberHeldPau} arrears={c.memberHeldArr} money={money} /></> : null}</span>
@@ -145,9 +147,10 @@ export default function PipReconciliationPanel({ embedded = false }) {
               <span style={{ textAlign: 'right', fontWeight: c.vfos ? 700 : 400, color: c.vfos ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{money(c.vfos)}{c.vfos ? <PendingNote amount={c.vfosPending} money={money} /> : null}</span>
             </div>
           ))}
-          {clients.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No additional-PIP client activity for this year.</div>}
+          {clients.length === 0 && <div style={emptyRowStyle}>No additional-PIP client activity for this year.</div>}
         </div>
       )}
+      <p style={footnoteStyle}>Shares are from additional-PIP purchases that cleared in the selected year. Member Money Mapping is the member share on a Money Mapping member's purchase; blank for revenue-share members.</p>
     </div>
   )
 }

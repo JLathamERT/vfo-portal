@@ -9,6 +9,7 @@ import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 // split of "purchased" (by Stripe session id, #465) lives in one place.
 import { gcTypeChip, gcActorLabel } from '../shared/GCMarketplaceViews'
 import { PageHeading } from '../shared/ProfileKit'
+import { emptyRowStyle, errorStyle, headerRowStyle, refreshBtnStyle, tableStyle, toolbarStyle } from './accountingTable'
 
 // Accounting > Members > Growth Credits. Program-wide totals plus the full
 // transaction ledger and every member's current balance. Read-only.
@@ -62,7 +63,7 @@ export default function GrowthCreditsAccountingPanel() {
     { label: 'Outstanding Balance', value: totals.outstanding_credits ?? 0 },
   ]
 
-  const tableWrap = { border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)', marginBottom: '22px' }
+  const tableWrap = { ...tableStyle, marginBottom: '22px' }
   const txCols = `120px 1.1fr 110px 80px 90px ${CARD_FEE_COL} 1fr 1.4fr`
   // amount_usd is what Stripe took, the card fee included; the fee has its own column.
   const gcFee = t => Number(t.card_fee) || 0
@@ -89,8 +90,13 @@ export default function GrowthCreditsAccountingPanel() {
           <TableSkeleton cols={balCols} rows={3} />
         </>
       )}
-      {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
+      {error && <div style={errorStyle}>{error}</div>}
 
+      {!loading && !error && data && (
+        <div style={toolbarStyle}>
+          <button type="button" onClick={() => load()} style={refreshBtnStyle}>Refresh</button>
+        </div>
+      )}
       {!loading && !error && data && (
         <>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '22px' }}>
@@ -103,11 +109,11 @@ export default function GrowthCreditsAccountingPanel() {
           </div>
 
           <div style={tableWrap}>
-            <div style={{ display: 'grid', gridTemplateColumns: txCols, gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
+            <div style={{ ...headerRowStyle, gridTemplateColumns: txCols }}>
               <span>Date</span><span>Member</span><span>Type</span><span style={{ textAlign: 'right' }}>Credits</span><span style={{ textAlign: 'right' }}>Amount</span><span style={{ textAlign: 'right' }}>{CARD_FEE_LABEL}</span><span>By</span><span>Description</span>
             </div>
             {(data.transactions || []).length === 0 && (
-              <div style={{ textAlign: 'center', padding: '36px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No transactions yet.</div>
+              <div style={emptyRowStyle}>No transactions yet.</div>
             )}
             {(data.transactions || []).map(t => (
               <div key={t.id} {...memberRow(t.member_number)} style={{ ...memberRowStyle(t.member_number), display: 'grid', gridTemplateColumns: txCols, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
@@ -125,11 +131,11 @@ export default function GrowthCreditsAccountingPanel() {
 
           <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '4px 2px 10px' }}>Member Balances</div>
           <div style={tableWrap}>
-            <div style={{ display: 'grid', gridTemplateColumns: balCols, gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
+            <div style={{ ...headerRowStyle, gridTemplateColumns: balCols }}>
               <span>Member</span><span style={{ textAlign: 'right' }}>Balance</span>
             </div>
             {(data.balances || []).length === 0 && (
-              <div style={{ textAlign: 'center', padding: '36px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No balances yet.</div>
+              <div style={emptyRowStyle}>No balances yet.</div>
             )}
             {(data.balances || []).map(b => (
               <div key={b.member_number} {...memberRow(b.member_number)} style={{ ...memberRowStyle(b.member_number), display: 'grid', gridTemplateColumns: balCols, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>

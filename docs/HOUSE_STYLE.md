@@ -72,6 +72,8 @@ The member, client and specialist portals keep their own one width, 980px, with 
 
 ### Cards
 
+- **Open / close chevron: `ExpandChevron`** (`shared/ExpandChevron.jsx`, Jake 2026-11-27): the trackers' 10px muted ▼, turned over while open, in a 28px square. On a card it sits at the right end of the header; in a table row it stays in the name cell so the columns hold. A header whose click opens something else (a plan) gives the chevron its own `onToggle`, so the dropdown is never a tiny target. Not the 11px ▸ / ▾.
+
 - White card: `var(--vfo-card)`, 1px `var(--vfo-border-soft)`, 16px corners (14px for a card holding a table), `var(--vfo-shadow-card)`, padding `var(--vfo-card-pad)`.
 - **A new card is `ProfileCard`** (`ProfileKit.jsx`: icon badge, title, optional sub-line and action). Today there are 38 local `sectionStyle`s and four card-title looks; don't add a fifth.
 - A trim changes only the named thing (TEAM_RULES §9).
@@ -163,13 +165,17 @@ Model: Accounting → Specialists → VFO Specialist Revenue.
 
 - **Every Accounting page is an `AccountingCombinedPanel`:** the eyebrow "Accounting · <group>", the title, the pills. A page with one view has no pills but the same header.
 - **Pill order:** the main view (Revenue, Members, Specialists) first, then Reconciliation, Recurring, any account or setup view, **Outstanding Payment Links**, then **Held Payouts** last (with its count badge).
-- **A repeated sub-tab is one shared component, never a copy.** Outstanding Payment Links is `OutstandingLinksPanel` (with its `kind`), Held Payouts is `HeldPayoutsPanel` (with its `engine`). A new program gets these by passing its kind, not by writing its own. Implementation and Membership Fees still have their own Outstanding Payment Links copies (the Issue).
+- **A repeated sub-tab is one shared component, never a copy.** Outstanding Payment Links is `OutstandingLinksPanel` (with its `kind`: `map1`, `tax`, `pip`, `sdp_atsg`, `specrev`), Held Payouts is `HeldPayoutsPanel` (with its `engine`). A new program gets these by passing its kind, not by writing its own. A page whose links come from its own data (Implementation, Membership Fees, License, Background Checks) builds its list from the same pieces, `OutstandingCard`, `SectionHeader`, `EmptyLine` and `OutstandingEmpty`, never a look of its own. Every Outstanding tab's empty line is "No outstanding payment links." **Late money lives there too** (Jake, 2026-11-27): a failed charge or a payment past its date is a section of the program's Outstanding Payment Links tab (Failed Installments - Retry Links, Past Due - Not Charged, Implementation - Charge Failed, Final Retainer - Charge Failed, Failed Payments). A section is called "Links" only when its cards carry a button that sends one; otherwise its name says what happened and the card says the link went by email, not a separate tab. Membership Fees keeps its own Overdue Payments tab because its fix is a reminder email, not a link.
 - **The money table:**
-  1. Above it, left: the period `<select>`s (Year, Month) and Refresh. Right: the page's main action ("+ New Payment", `btnPrimary`). Mini-tabs under them if the table has two views.
-  2. The card (`tableStyle`), the header row (`headerRowStyle`), then **the totals row straight under the header** (`totalsRowStyle`, with the period as a sub-line), then the rows.
-  3. Columns in the model's order: who, date, the amounts, **Card fee** (`CardFeeCell`, `CARD_FEE_COL`), status last and right-aligned.
-  4. Import the styles from `SpecialistRevenuePanel.jsx` (or a shared `accountingTable` module once one exists); today six panels re-type them.
-- **Statuses** go through `paymentStatusLabel`, never raw, and use the §8 words in TEAM_RULES: "Bank payment clearing" in a chip, "Clearing" as a status label, and "Paid" never stands in for cleared.
+  1. Above it, left: the period `<select>`s (Year, Month) and Refresh. Right: the page's main action ("+ New Payment", `btnPrimary`). Mini-tabs under them if the table has two views. Every Accounting view has a Refresh button.
+  2. The card (`tableStyle`), the header row (`headerRowStyle`), then **the totals row straight under the header** (`totalsRowStyle`, the label "Totals" in the first column with the period as a sub-line, `totalsSubStyle`), then the rows (`rowStyle`, 12px 18px).
+  3. Columns in the model's order: who, date, the amounts, **Card fee** (`CardFeeCell`, `CARD_FEE_COL`), status last and right-aligned. No divider line beside any column.
+  4. Import every style from **`src/components/admin/accountingTable.js`** (Jake, 2026-11-27): the table, header, totals, row, empty line, footnote, toolbar, period select, Refresh button and error banner. `tableStyle` carries `tabular-nums`, so every figure in the table lines up.
+  5. **An inner table** (the rows under an opened line or a card: a request's recipients, a plan's payments) uses `innerHeaderStyle` / `innerRowStyle` / `innerTotalsStyle`: money right-aligned, its totals line straight under its header, as in the outer table.
+  6. **Reconciliation has no Card fee column** (Jake, 2026-11-27): it splits shares by member or client, not by charge. Each Reconciliation tab shares one look: Totals in the first column, a share that is zero shows a muted "—", member share green, strategic partner and credit notes purple, a footnote saying what is counted.
+- **Statuses** go through `paymentStatusLabel`, never raw, and use the §8 words in TEAM_RULES: "Bank payment clearing" in a chip, "Clearing" as a status label, and "Cleared" for money that arrived ("Paid", "Payment received" and "Collected" never stand in for it; a payout keeps "Paid" or "Sent"). "Canceled", one L. A plan whose setup link is not finished is "Setup pending" everywhere; "Awaiting first payment" is a plan set up and waiting for its first charge (License's `scheduled`).
+- **Payout-leg notes, one wording each** (Jake, 2026-11-27): "no payout account" ("No payout account" in a chip), "transfer failed - retried daily" ("Transfer failed" in a chip). The sweeps run once a day, in the morning, never "nightly".
+- **Status chips are the one `Tag`** (Jake, 2026-11-27): `StatusPill` (`specialistRevenueShared.jsx`) draws `Tag`, and so do the Payments ledger, Manual Connect and Held Payouts chips. Which rows get one is Issue #640's job.
 - Empty line: "No <thing> for this period."
 
 ## 6. Program trackers
@@ -251,7 +257,7 @@ The full list, with file and line, is Issue JLathamERT/vfo-edge-functions#661 (f
 
 - **Sub-tab pills drawn four ways** (Part 1 of the Issue). The Accounting gradient (and copies in Growth Credits, Events, FAQ Editor, Membership Fees, Implementation), the KPI solid blue (and Portal Backlog), Tax Diagnostics' filter pills and Client Overview's program pills.
 - **Page headers drawn six ways,** and eleven page widths.
-- **Accounting:** Outstanding Payment Links in three implementations; five Reconciliation tabs and four Revenue tabs that re-type the table styles; no `tabular-nums` anywhere; a dozen raw statuses shown without `paymentStatusLabel`; Held Payouts dates in MM/DD/YYYY beside "Nov 15, 2026" everywhere else; a License fee total that prints "$0.00".
+- **Accounting:** swept to §5 on 2026-11-27 (Issue part 3). Left over: Held Payouts dates in MM/DD/YYYY beside "Nov 15, 2026" everywhere else (part 4, dates); the plan pricing cards outside Accounting (`map1/Map1PricingSplitCard.jsx`, `tax/PricingSplitCard.jsx`, `sdp-atsg/SdpAtsgPanel.jsx`) still say "awaiting payout setup" and "failed — retrying".
 - **Trackers:** no shared step row (every program copies it); tinted step buttons (Issue #640); Tax overrides `StepDate` with a read-only copy, so its dates cannot be edited; Advisor / Accountant onboarding rows pass a date-change handler that is never used; Specialist onboarding rows have no date.
 - **Lists:** Member Overview, Onboarding lists, Next Tax Year and the SDP ATSG list copy `ListTable` by hand (SDP ATSG's client name is not a link); the Specialists list has its own 22px header.
 - **Two pill looks for status:** `ListPill` and `Tag` differ (size, weight, border); a local `Tag` in `PaymentsTable.jsx` has 5px corners.

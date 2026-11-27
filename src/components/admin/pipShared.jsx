@@ -10,6 +10,7 @@
 // actions/msm/pip-revshare.ts.
 import { parseNum } from './holisticShared'
 import { paymentNoteFor, HELD_SUSPENDED_NOTE, HELD_PAUSED_NOTE, HELD_ARREARS_NOTE } from './shareLegState'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 const PAID = new Set(['succeeded', 'processing'])
 
@@ -30,9 +31,9 @@ function pipMemberState(r) {
   if (s === 'Held - Member Suspended') return { note: HELD_SUSPENDED_NOTE, tone: 'pending' }
   if (s === 'Held - Member Paused') return { note: HELD_PAUSED_NOTE, tone: 'pending' }
   if (s === 'Held - Member In Arrears') return { note: HELD_ARREARS_NOTE, tone: 'pending' }
-  if (s === 'Awaiting Connect Setup') return { note: 'awaiting payout setup', tone: 'pending' }
-  if (s === 'Failed') return { note: 'transfer failed - retried nightly', tone: 'pending' }
-  if (s) return { note: String(s).toLowerCase(), tone: 'pending' }
+  if (s === 'Awaiting Connect Setup') return { note: 'no payout account', tone: 'pending' }
+  if (s === 'Failed') return { note: 'transfer failed - retried daily', tone: 'pending' }
+  if (s) return { note: String(paymentStatusLabel(s)).toLowerCase(), tone: 'pending' }
   return { note: r.pip_payment_status === 'processing' ? 'payment clearing' : 'not yet paid', tone: 'pending' }
 }
 

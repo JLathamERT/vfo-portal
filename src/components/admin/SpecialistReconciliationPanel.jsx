@@ -5,6 +5,7 @@ import { PendingNote, HeldNote } from './shareLegState'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink, useOpenMember } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import { emptyRowStyle, errorStyle, footnoteStyle, headerRowStyle, refreshBtnStyle, rowStyle, selectStyle, tableStyle, totalsLabelStyle, totalsRowStyle, totalsSubStyle } from './accountingTable'
 
 // Accounting > Specialists > VFO Specialist Member Reconciliation. Pick a year → every
 // member with their yearly totals from specialist revenue: member share (revenue share
@@ -156,7 +157,7 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
   }), { member: 0, vfos: 0, ert: 0, mm: 0, cn: 0, memberPending: 0, mmPending: 0, memberHeld: 0, mmHeld: 0 })
 
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+  const sel = selectStyle
   const grid = '86px 1.3fr 118px 118px 124px 124px 118px 140px'
   const muted = { color: 'var(--vfo-faint)' }
 
@@ -173,20 +174,20 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
         <select style={sel} value={year} onChange={e => setYear(Number(e.target.value))}>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
-        <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
+        <button onClick={load} style={refreshBtnStyle}>Refresh</button>
       </div>
 
       {loading && <AccountingTableSkeleton cols={grid} />}
-      {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
+      {error && <div style={errorStyle}>{error}</div>}
 
       {!loading && !error && (
-        <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
+        <div style={tableStyle}>
+          <div style={{ ...headerRowStyle, gridTemplateColumns: grid }}>
             <span>Member #</span><span>Member Name</span><span style={{ textAlign: 'right' }}>Member Revenue Share</span><span style={{ textAlign: 'right' }}>Member Money Mapping</span><span style={{ textAlign: 'right' }}>VFOS Income</span><span style={{ textAlign: 'right' }}>ERT Income</span><span style={{ textAlign: 'right' }}>Accred. Rebate</span><span style={{ textAlign: 'right' }}>Accred. Credit Note</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '2px solid var(--vfo-border)', background: 'var(--vfo-input)', alignItems: 'center', fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)' }}>
+          <div style={{ ...totalsRowStyle, gridTemplateColumns: grid }}>
+            <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>{year} · cleared payments</span></span>
             <span />
-            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>Totals</span>
             <span style={{ textAlign: 'right', ...(tot.member ? {} : muted) }}>{tot.member ? money(tot.member) : '—'}<PendingNote amount={tot.memberPending} money={money} /><HeldNote total={tot.memberHeld} money={money} /></span>
             <span style={{ textAlign: 'right', ...(tot.mm ? {} : muted) }}>{tot.mm ? money(tot.mm) : '—'}<PendingNote amount={tot.mmPending} money={money} /><HeldNote total={tot.mmHeld} money={money} /></span>
             <span style={{ textAlign: 'right' }}>{money(tot.vfos)}</span>
@@ -196,22 +197,22 @@ export default function SpecialistReconciliationPanel({ allMembers = [], embedde
           </div>
           <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
             {rows.map(({ mn, m, t, cn }) => (
-              <div key={mn} onClick={mn ? () => openMember(mn) : undefined} {...(mn ? rowHoverProps : {})} style={{ ...(mn ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+              <div key={mn} onClick={mn ? () => openMember(mn) : undefined} {...(mn ? rowHoverProps : {})} style={{ ...(mn ? clickableRowStyle : null), ...rowStyle, gridTemplateColumns: grid }}>
                 <span style={{ color: 'var(--vfo-muted)' }}>{mn || '—'}</span>
                 <span style={{ fontWeight: 600 }}>{m ? <MemberNameLink memberNumber={mn}>{memberName(m)}</MemberNameLink> : '—'}</span>
-                <span style={{ textAlign: 'right', fontWeight: t.member ? 700 : 400, color: t.member ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.member ? money(t.member) : '—'}{t.member ? <><PendingNote amount={t.memberPending} money={money} /><HeldNote suspended={t.memberHeldSus} paused={t.memberHeldPau} arrears={t.memberHeldArr} money={money} /></> : null}</span>
+                <span style={{ textAlign: 'right', fontWeight: t.member ? 700 : 400, color: t.member ? 'var(--vfo-success-text-2)' : 'var(--vfo-faint)' }}>{t.member ? money(t.member) : '—'}{t.member ? <><PendingNote amount={t.memberPending} money={money} /><HeldNote suspended={t.memberHeldSus} paused={t.memberHeldPau} arrears={t.memberHeldArr} money={money} /></> : null}</span>
                 <span style={{ textAlign: 'right', fontWeight: t.mm ? 700 : 400, color: t.mm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.mm ? money(t.mm) : '—'}{t.mm ? <><PendingNote amount={t.mmPending} money={money} /><HeldNote suspended={t.mmHeldSus} paused={t.mmHeldPau} arrears={t.mmHeldArr} money={money} /></> : null}</span>
                 <span style={{ textAlign: 'right', fontWeight: t.vfos ? 700 : 400, color: t.vfos ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{money(t.vfos)}</span>
                 <span style={{ textAlign: 'right', fontWeight: t.ert ? 700 : 400, color: t.ert ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{t.ert ? money(t.ert) : '—'}</span>
                 <span style={{ textAlign: 'right', ...muted }}>—</span>
-                <span style={{ textAlign: 'right', fontWeight: cn ? 700 : 400, color: cn ? '#7c3aed' : 'var(--vfo-faint)' }}>{cn ? money(cn) : '—'}</span>
+                <span style={{ textAlign: 'right', fontWeight: cn ? 700 : 400, color: cn ? '#8b5cf6' : 'var(--vfo-faint)' }}>{cn ? money(cn) : '—'}</span>
               </div>
             ))}
-            {rows.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No member activity for this year.</div>}
+            {rows.length === 0 && <div style={emptyRowStyle}>No member activity for this year.</div>}
           </div>
         </div>
       )}
-      <p style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', marginTop: '12px' }}>Credit note is based on the member's VFOS Income and their "Eligible for Credit Note" setting (&gt;$100k → $18,000; $75k–$100k → $9,000; &gt;$50k–&lt;$75k → $6,000); ERT Income is not counted towards it. Accreditation rebate is not tracked yet — shown blank.</p>
+      <p style={footnoteStyle}>Credit note is based on the member's VFOS Income and their "Eligible for Credit Note" setting (&gt;$100k → $18,000; $75k–$100k → $9,000; &gt;$50k–&lt;$75k → $6,000); ERT Income is not counted towards it. Accreditation rebate is not tracked yet — shown blank.</p>
     </div>
   )
 }

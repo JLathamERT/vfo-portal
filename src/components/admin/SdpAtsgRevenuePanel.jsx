@@ -6,6 +6,9 @@ import { money } from './specialistRevenueShared'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import { emptyRowStyle, errorStyle, headerRowStyle, periodLabelOf, refreshBtnStyle, rowStyle, selectStyle, tableStyle, totalsLabelStyle, totalsRowStyle, totalsSubStyle } from './accountingTable'
+import Tag from '../shared/Tag'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 // Accounting > SDP ATSG > SDP ATSG Revenue (2026-11-19). Each SDP - Advanced Tax
 // Strategy Governance payment that cleared in the chosen month/year and how it
@@ -24,10 +27,10 @@ function fmtDate(s) {
 // Where a payout leg stands, as a small note under its amount.
 function legNote(status) {
   if (!status || status === 'paid' || status === 'none_due') return null
-  if (status === 'awaiting_connect') return 'held - no payout account'
+  if (status === 'awaiting_connect') return 'no payout account'
   if (String(status).startsWith('held_')) return `held - member ${String(status).slice(5)}`
-  if (status === 'failed') return 'failed - retried daily'
-  return String(status)
+  if (status === 'failed') return 'transfer failed - retried daily'
+  return paymentStatusLabel(String(status))
 }
 
 function Share({ value, status, color }) {
@@ -85,8 +88,9 @@ export default function SdpAtsgRevenuePanel({ embedded = false }) {
 
   const sum = k => filtered.reduce((s, p) => s + (Number(p[k]) || 0), 0)
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1150px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
-  const grid = `104px 1.3fr 1.1fr 1fr 104px ${CARD_FEE_COL} 104px 104px 104px`
+  const sel = selectStyle
+  const periodLabel = periodLabelOf(year, month)
+  const grid = `1.3fr 104px 1.1fr 1fr 104px ${CARD_FEE_COL} 104px 104px 104px`
 
   return (
     <div style={wrap}>
@@ -98,48 +102,48 @@ export default function SdpAtsgRevenuePanel({ embedded = false }) {
           <option value={-1}>All months</option>
           {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
         </select>
-        <button onClick={() => load()} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
+        <button onClick={() => load()} style={refreshBtnStyle}>Refresh</button>
       </div>
 
       {loading && <AccountingTableSkeleton cols={grid} />}
-      {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
+      {error && <div style={errorStyle}>{error}</div>}
 
       {!loading && !error && (
-        <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'auto', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
+        <div style={{ ...tableStyle, overflow: 'auto' }}>
           <div style={{ minWidth: '980px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
-              <span>Cleared</span><span>Client</span><span>Connected Member</span><span>Payment</span>
+            <div style={{ ...headerRowStyle, gridTemplateColumns: grid }}>
+              <span>Client</span><span>Cleared</span><span>Connected Member</span><span>Payment</span>
               <span style={{ textAlign: 'right' }}>Received</span>
-              <span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-border-strong)', paddingRight: '12px' }}>{CARD_FEE_LABEL}</span>
+              <span style={{ textAlign: 'right' }}>{CARD_FEE_LABEL}</span>
               <span style={{ textAlign: 'right' }}>SDP Share</span><span style={{ textAlign: 'right' }}>Member Share</span><span style={{ textAlign: 'right' }}>VFO Services</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '11px 18px', borderBottom: '2px solid var(--vfo-border)', background: 'var(--vfo-input)', alignItems: 'center', fontSize: '13px', fontWeight: 800, color: 'var(--vfo-heading)' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>Totals</span>
+            <div style={{ ...totalsRowStyle, gridTemplateColumns: grid }}>
+              <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>{periodLabel} · cleared payments</span></span>
               <span /><span /><span />
               <span style={{ textAlign: 'right' }}>{money(sum('amount'))}</span>
-              <span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-border-strong)', paddingRight: '12px' }}>{sum('card_fee') ? money(sum('card_fee')) : '—'}</span>
+              <span style={{ textAlign: 'right' }}>{sum('card_fee') ? money(sum('card_fee')) : '—'}</span>
               <span style={{ textAlign: 'right' }}>{money(sum('sdp_share'))}</span>
               <span style={{ textAlign: 'right' }}>{money(sum('member_share'))}</span>
               <span style={{ textAlign: 'right' }}>{money(sum('vfos_share'))}</span>
             </div>
             {filtered.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No SDP ATSG payments cleared in this period.</div>
+              <div style={emptyRowStyle}>No SDP ATSG payments cleared in this period.</div>
             )}
             {filtered.map(p => (
               <div key={p.id} onClick={() => navigate(`/admin?tab=sdp_atsg&case=${p.case_id}`)} {...rowHoverProps}
-                style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
-                <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(p.paid_at)}</span>
+                style={{ ...clickableRowStyle, ...rowStyle, gridTemplateColumns: grid, background: 'var(--vfo-card)' }}>
                 <span style={{ fontWeight: 600 }}>
                   {p.client_name || '—'}{p.client_ref && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · {p.client_ref}</span>}
-                  {p.sandbox && <span style={{ marginLeft: '6px', fontSize: '10px', fontWeight: 700, padding: '1px 7px', borderRadius: '999px', background: 'rgba(224,103,23,0.14)', color: '#e06717' }}>Sandbox</span>}
+                  {p.sandbox && <Tag color="#e06717" style={{ marginLeft: '6px' }}>Sandbox</Tag>}
                 </span>
+                <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(p.paid_at)}</span>
                 <span>{p.member_name ? <MemberNameLink memberNumber={p.member_number}>{p.member_name}</MemberNameLink> : (p.member_number || '—')}{p.member_name && <span style={{ color: 'var(--vfo-faint)' }}> · {p.member_number}</span>}</span>
                 <span style={{ color: 'var(--vfo-ink-2)' }}>
                   {p.period_label || (p.kind === 'retainer' ? 'Retainer' : 'Impact fee')}
                   {p.strategy_name && <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{p.strategy_name}</div>}
                 </span>
                 <span style={{ textAlign: 'right', fontWeight: 700 }}>{money(p.amount)}</span>
-                <span style={{ textAlign: 'right', borderRight: '1px solid var(--vfo-tint)', paddingRight: '12px' }}><CardFeeCell fee={p.card_fee} /></span>
+                <span style={{ textAlign: 'right' }}><CardFeeCell fee={p.card_fee} /></span>
                 <Share value={p.sdp_share} status={p.sdp_payout_status} color="#e06717" />
                 <Share value={p.member_share} status={p.member_payout_status} color="#16a34a" />
                 <Share value={p.vfos_share} status="paid" color="var(--vfo-ink)" />

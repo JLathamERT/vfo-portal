@@ -9,6 +9,10 @@ import { callApi } from '../../lib/api'
 import { HELD_SUSPENDED_NOTE, HELD_PAUSED_NOTE, HELD_ARREARS_NOTE, PENDING_COLOR } from './shareLegState'
 import { MemberNameLink, SpecialistNameLink } from '../shared/personLinks'
 import { readable } from '../shared/readableColor'
+import Tag from '../shared/Tag'
+import ExpandChevron from '../shared/ExpandChevron'
+import { innerTotalsStyle } from './accountingTable'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 export const NAVY = '#002973'
 export const BLUE = '#125ecc'
@@ -28,7 +32,7 @@ const REQ_STATUS = {
   // specialist verifies a microdeposit. No money has moved — distinct from processing.
   awaiting_verification: { label: 'Awaiting bank verification', color: '#e06717' },
   processing: { label: 'Bank payment clearing', color: '#e06717' },
-  received: { label: 'Payment received', color: '#16a34a' },
+  received: { label: 'Cleared', color: '#16a34a' },
   failed: { label: 'Payment failed', color: '#ef4444' },
   // An inter-company transfer IAG refused in its own portal. Terminal; nothing was paid.
   denied: { label: 'Denied by IAG', color: '#ef4444' },
@@ -53,7 +57,7 @@ function lineStatusMeta(line, requestReceived) {
     // nothing to pay (member share entered as $0). Grey = settled, no money. Colours
     // here are hex, never a CSS var: StatusPill appends alpha for its fill + border.
     case 'no_payout_due': return { label: 'No payout due', color: '#6b7280' }
-    case 'awaiting_connect': return { label: 'Awaiting Stripe Connect setup', color: '#b45309' }
+    case 'awaiting_connect': return { label: 'No payout account', color: '#b45309' }
     case 'held_member_suspended': return { label: HELD_SUSPENDED_NOTE, color: '#b45309' }
     case 'held_member_paused': return { label: HELD_PAUSED_NOTE, color: '#b45309' }
     case 'held_member_arrears': return { label: HELD_ARREARS_NOTE, color: '#b45309' }
@@ -110,10 +114,10 @@ export function isHeldLine(line) {
   return line.payout_status === 'held_member_suspended' || line.payout_status === 'held_member_paused' || line.payout_status === 'held_member_arrears'
 }
 
+// Every Accounting status chip is the one tag look (HOUSE_STYLE §1). `color` must be a
+// hex; anything else (a CSS variable) falls back to grey, since the tint is built on it.
 export function StatusPill({ label, color }) {
-  return (
-    <span style={{ display: 'inline-block', padding: '3px 11px', borderRadius: '99px', fontSize: '11px', fontWeight: 600, background: `${color}18`, color: readable(color), border: `1px solid ${color}33`, whiteSpace: 'nowrap' }}>{label}</span>
-  )
+  return <Tag color={/^#[0-9a-f]{6}$/i.test(String(color || '')) ? color : '#6b7280'}>{label}</Tag>
 }
 
 // "Mark payment received" for a pending house-account request: trusts the click,
@@ -279,13 +283,13 @@ export function RequestRow({ request, actions, grid }) {
   // Recurring rows relabel the two states they use; everything else (incl. the
   // house-account 'pending' = Awaiting bank transfer) keeps its non-recurring meta.
   const RECURRING_STATUS = {
-    processing: { label: 'Clearing', color: '#e06717' },
-    received: { label: 'Payment received', color: '#16a34a' },
+    processing: { label: 'Bank payment clearing', color: '#e06717' },
+    received: { label: 'Cleared', color: '#16a34a' },
   }
   const req = (isRecurring && RECURRING_STATUS[request.payment_status])
     || (isOpenInterCompany(request) && { label: 'Requested from IAG', color: '#0095ff' })
     || REQ_STATUS[request.payment_status]
-    || { label: request.payment_status, color: '#6b7280' }
+    || { label: paymentStatusLabel(request.payment_status), color: '#6b7280' }
   const received = request.payment_status === 'received'
   // A no-money record's lines are born 'no_payout_due'; read them as settled so they
   // show "No payout due" rather than "Pending".
@@ -303,7 +307,7 @@ export function RequestRow({ request, actions, grid }) {
       <div>
         <div onClick={() => setOpen(o => !o)} style={{ display: 'grid', gridTemplateColumns: grid, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', cursor: 'pointer' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, fontWeight: 600 }}>
-            <span style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{open ? '▾' : '▸'}</span>
+            <ExpandChevron open={open} style={{ margin: '-6px -4px -6px -8px' }} />
             <SpecialistNameLink expertId={request.expert_id} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{request.specialist_name || '—'}</SpecialistNameLink>
           </span>
           <span style={{ color: 'var(--vfo-muted)' }}>{dateStr}</span>
@@ -327,7 +331,6 @@ export function RequestRow({ request, actions, grid }) {
   return (
     <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', marginBottom: '10px', overflow: 'hidden' }}>
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', cursor: 'pointer' }}>
-        <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px' }}>{open ? '▾' : '▸'}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}><SpecialistNameLink expertId={request.expert_id}>{request.specialist_name || '—'}</SpecialistNameLink></div>
           <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{dateStr} · {lines.length} recipient{lines.length === 1 ? '' : 's'} · {request.total_deals || 0} deals</div>
@@ -354,6 +357,7 @@ export function RequestRow({ request, actions, grid }) {
           {isRecurring && <StatusPill label="Recurring" color="#6b7280" />}
           <StatusPill label={req.label} color={req.color} />
         </div>
+        <ExpandChevron open={open} />
       </div>
 
       {open && detail}
@@ -384,7 +388,19 @@ function RequestDetail({ request, actions, received, heldMemberTotal }) {
   return (
         <div style={{ background: 'var(--vfo-input)', borderTop: '1px solid var(--vfo-border-soft)', padding: '14px 18px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: detailGrid, gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
-            <div>Recipient</div><div>ERT $</div><div>VFOS $</div><div>Member $</div><div>Deals</div><div>Transaction details</div><div style={{ textAlign: 'right' }}>Status</div>
+            <div>Recipient</div><div style={{ textAlign: 'right' }}>ERT $</div><div style={{ textAlign: 'right' }}>VFOS $</div><div style={{ textAlign: 'right' }}>Member $</div><div style={{ textAlign: 'right' }}>Deals</div><div>Transaction details</div><div style={{ textAlign: 'right' }}>Status</div>
+          </div>
+          <div style={{ ...innerTotalsStyle, gridTemplateColumns: detailGrid }}>
+            <div>Totals</div>
+            <div style={{ textAlign: 'right' }}>{money(request.total_ert_share)}</div>
+            <div style={{ textAlign: 'right' }}>{money(request.total_vfos_share)}</div>
+            <div style={{ textAlign: 'right' }}>
+              {money(request.total_member_share)}
+              {heldMemberTotal > 0 && <span style={{ ...shareNoteStyle, color: PENDING_COLOR }}>{money(heldMemberTotal)} held</span>}
+            </div>
+            <div style={{ textAlign: 'right' }}>{request.total_deals || 0}</div>
+            <div />
+            <div style={{ textAlign: 'right', color: 'var(--vfo-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{methodText}</div>
           </div>
           {lines.map(line => {
             const m = lineStatusMeta(line, received)
@@ -396,33 +412,21 @@ function RequestDetail({ request, actions, received, heldMemberTotal }) {
                   <div style={{ fontWeight: 600 }}><RecipientName line={line} /></div>
                   <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{line.recipient_type === 'specialist' ? 'Specialist' : (line.member_number || 'Member')} · {line.revenue_decision || 'Revenue Share'}</div>
                 </div>
-                <div>
+                <div style={{ textAlign: 'right' }}>
                   <span style={{ opacity: ertNote && ertNote.color === PENDING_COLOR ? 0.55 : 1 }}>{money(line.ert_share)}</span>
                   {ertNote && <span style={{ ...shareNoteStyle, color: ertNote.color }}>{ertNote.text}</span>}
                 </div>
-                <div>{money(line.vfos_share)}</div>
-                <div>
+                <div style={{ textAlign: 'right' }}>{money(line.vfos_share)}</div>
+                <div style={{ textAlign: 'right' }}>
                   <span style={{ opacity: note && note.color === PENDING_COLOR ? 0.55 : 1 }}>{money(line.member_share)}</span>
                   {note && <span style={{ ...shareNoteStyle, color: note.color }}>{note.text}</span>}
                 </div>
-                <div>{line.deals || 0}</div>
+                <div style={{ textAlign: 'right' }}>{line.deals || 0}</div>
                 <div style={{ fontSize: '12px', color: line.transaction_details ? 'var(--vfo-ink-2)' : 'var(--vfo-faint)', lineHeight: 1.45, overflowWrap: 'anywhere' }}>{line.transaction_details || '—'}</div>
                 <div style={{ textAlign: 'right' }}><StatusPill label={m.label} color={m.color} /></div>
               </div>
             )
           })}
-          <div style={{ display: 'grid', gridTemplateColumns: detailGrid, gap: '10px', alignItems: 'center', padding: '10px 0 2px', borderTop: '2px solid var(--vfo-border)', marginTop: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
-            <div>Totals</div>
-            <div>{money(request.total_ert_share)}</div>
-            <div>{money(request.total_vfos_share)}</div>
-            <div>
-              {money(request.total_member_share)}
-              {heldMemberTotal > 0 && <span style={{ ...shareNoteStyle, color: PENDING_COLOR }}>{money(heldMemberTotal)} held</span>}
-            </div>
-            <div>{request.total_deals || 0}</div>
-            <div />
-            <div style={{ textAlign: 'right', color: 'var(--vfo-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{methodText}</div>
-          </div>
           {request.payment_status === 'pending' && request.account && (
             <div style={{ marginTop: '14px', padding: '14px 16px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px' }}>
               <div style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '12px' }}>{isUnpaidDirect(request) ? 'Bank transfer account — no email was sent' : 'House account — give these to the specialist'}</div>

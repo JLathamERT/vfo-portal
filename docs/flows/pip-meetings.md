@@ -176,6 +176,7 @@ Writes `pip_rev_share_amount` always; `pip_rev_share_completed_at` on every non-
 | Purchase decision form | [PipPurchaseDecisionForm.jsx](src/components/admin/pip/PipPurchaseDecisionForm.jsx) — decision dropdown + per-branch pricing form |
 | Payment landing page | [PipPayPage.jsx](src/pages/PipPayPage.jsx) — `/pip-pay?token=` — clone of MAP1 PayPage |
 | Automation panel | [PipAutomationPanel.jsx](src/components/admin/PipAutomationPanel.jsx) — admin pipeline view; one row per PIP track with purchase data |
+| Accounting > VFO Services > Additional PIP > Outstanding Payment Links (2026-11-27) | [OutstandingLinksPanel.jsx](src/components/admin/OutstandingLinksPanel.jsx) `kind="pip"` — every purchase whose `/pip-pay` link was emailed (`pip_payment_email_sent_at`) and not yet paid or clearing (`accounting_outstanding_links_load` → `pip.purchases`); read-only, a card opens the client's PIP tab |
 | Skeletons | [Skeleton.jsx](src/components/shared/Skeleton.jsx) — `PipMeetingsListSkeleton`, `PipMeetingDetailSkeleton` |
 
 ## Backend handlers

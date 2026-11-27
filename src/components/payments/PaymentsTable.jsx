@@ -2,6 +2,7 @@ import { useState, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { clientPagePath, useOpenMember, specialistProfilePath } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import SharedTag from '../shared/Tag'
 
 // Global admin page only (rows carry person/clientId): where a client row's payment
 // lives on the client page, read off the row key the loader builds (normalize.ts).
@@ -25,19 +26,19 @@ export function clientPlanPath(r) {
 // the rows' category. No edit/upload/delete affordances — view only.
 
 const STATUS = {
-  paid:       { label: 'Paid',              fg: '#1a7f5a', bg: '#e7f5ee' },
-  processing: { label: 'Clearing',          fg: '#9a6700', bg: '#fdf3d8' },
-  failed:     { label: 'Failed',            fg: '#b42318', bg: '#fdecea' },
-  refunded:   { label: 'Refunded',          fg: 'var(--vfo-ink-soft)', bg: 'var(--vfo-tint)' },
-  scheduled:  { label: 'Scheduled',         fg: '#1570ef', bg: '#e3effd' },
-  awaiting:   { label: 'Awaiting decision', fg: '#7839ee', bg: '#f0e9fe' },
+  paid:       { label: 'Cleared',           color: '#1b9254' },
+  processing: { label: 'Clearing',          color: '#e06717' },
+  failed:     { label: 'Failed',            color: '#ef4444' },
+  refunded:   { label: 'Refunded',          color: '#6b7280' },
+  scheduled:  { label: 'Scheduled',         color: '#125ecc' },
+  awaiting:   { label: 'Awaiting decision', color: '#7839ee' },
   // Closed by VFO ("Cancel all remaining payments"). Same red family as `failed` —
   // both mean "no money came in" — but a distinct label, because a cancellation is a
   // decision we made, not something that went wrong.
-  cancelled:  { label: 'Cancelled',         fg: '#b42318', bg: '#fdecea' },
+  cancelled:  { label: 'Canceled',          color: '#ef4444' },
   // A payout owed but parked — no payout account yet, the member held, no planner.
-  held:       { label: 'Held', fg: '#b45309', bg: '#fef3c7' },
-  unpaid:     { label: 'Not paid',          fg: 'var(--vfo-faint)', bg: '#f2f4f7' },
+  held:       { label: 'Held',              color: '#b45309' },
+  unpaid:     { label: 'Not paid',          color: '#6b7280' },
 }
 
 // Person-type tag colours for the global (admin) Payments page — shown in the Person
@@ -94,13 +95,8 @@ export function chargeSavedLabel(cs) {
 }
 
 export function StatusPill({ status, count }) {
-  const s = STATUS[status] || STATUS.unpaid
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '999px', background: s.bg, color: s.fg, fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap' }}>
-      <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: s.fg, flexShrink: 0 }} />
-      {s.label}{count > 1 ? ` ×${count}` : ''}
-    </span>
-  )
+  const st = STATUS[status] || STATUS.unpaid
+  return <SharedTag color={st.color}>{st.label}{count > 1 ? ` ×${count}` : ''}</SharedTag>
 }
 
 // Rows that fold into one expandable parent: MAP 1 quarterly installments

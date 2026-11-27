@@ -22,6 +22,7 @@
 // Annotation only: no amount, filter or total is derived from any of this.
 
 import { money as defaultMoney } from './specialistRevenueShared'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 export const PENDING_COLOR = '#b9451d'
 const PAID_COLOR = '#1b9254'
@@ -47,14 +48,14 @@ export function legState(status, { revShare, paymentStatus, context } = {}) {
   if (status === 'Money Mapping') return { note: 'money mapping', tone: 'done' }
   // Nothing will ever pay on this leg, so it is neither done nor pending.
   if (status === 'N/A — No Share Due' || status === 'N/A') return { note: 'no share due', tone: null }
-  if (status === 'Awaiting Connect Setup') return { note: 'awaiting payout setup', tone: 'pending' }
+  if (status === 'Awaiting Connect Setup') return { note: 'no payout account', tone: 'pending' }
   // A suspended / paused / in-arrears member still earns the share — the payout is
   // parked and the reinstatement pass sends it, so the leg is owed money, never settled money.
   if (status === 'Held - Member Suspended') return { note: HELD_SUSPENDED_NOTE, tone: 'pending' }
   if (status === 'Held - Member Paused') return { note: HELD_PAUSED_NOTE, tone: 'pending' }
   if (status === 'Held - Member In Arrears') return { note: HELD_ARREARS_NOTE, tone: 'pending' }
   if (status === 'Awaiting Planner Allocation') return { note: 'awaiting planner', tone: 'pending' }
-  if (status === 'Failed') return { note: 'failed — retrying', tone: 'pending' }
+  if (status === 'Failed') return { note: 'transfer failed - retried daily', tone: 'pending' }
   if (status == null || status === '') {
     if (revShare === 'Pending') return { note: 'in progress', tone: 'pending' }
     if (paymentStatus === 'processing' || paymentStatus === 'check_pending') return { note: 'payment clearing', tone: 'pending' }
@@ -64,7 +65,7 @@ export function legState(status, { revShare, paymentStatus, context } = {}) {
     return { note: 'not yet paid', tone: 'pending' }
   }
   if (String(status).toLowerCase() === 'processing') return { note: 'clearing', tone: 'pending' }
-  return { note: String(status).toLowerCase(), tone: 'pending' }
+  return { note: String(paymentStatusLabel(status)).toLowerCase(), tone: 'pending' }
 }
 
 export function noteColor(state) {

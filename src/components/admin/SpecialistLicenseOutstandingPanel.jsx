@@ -4,6 +4,9 @@ import { ordinal } from '../../lib/ordinal'
 import { money } from './specialistRevenueShared'
 import { cardStyle, Detail, SectionHeader, EmptyLine, OutstandingCard, fmtDate, shortDate } from './OutstandingLinksPanel'
 import { OutstandingLinksSkeleton } from '../shared/Skeleton'
+import { OutstandingEmpty } from './OutstandingLinksPanel'
+import { errorStyle, refreshBtnStyle } from './accountingTable'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 
 // Accounting > Specialists > VFO Specialist License Fees > Outstanding Payment Links.
 // The same surface the SpecRev pill row carries, for license setup links: every
@@ -23,7 +26,7 @@ const PENDING_STATUS = {
 }
 
 function LicenseLinkCard({ item }) {
-  const badge = PENDING_STATUS[item.state] || { label: item.state || '—', color: 'var(--vfo-muted)' }
+  const badge = PENDING_STATUS[item.state] || { label: paymentStatusLabel(item.state) || '—', color: '#6b7280' }
   const parts = []
   parts.push(item.link_sent_at ? `Link sent ${shortDate(item.link_sent_at)}` : 'Link not sent yet')
   if (item.charge_day) parts.push(`charge day ${ordinal(item.charge_day)}`)
@@ -86,21 +89,16 @@ export default function SpecialistLicenseOutstandingPanel({ embedded = false }) 
       )}
 
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => load()}
-          style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-accent-text)', fontWeight: 600, cursor: 'pointer' }}>
-          Refresh
-        </button>
+        <button type="button" onClick={() => load()} style={refreshBtnStyle}>Refresh</button>
       </div>
 
       {loading && <OutstandingLinksSkeleton groups={1} rows={3} />}
       {!loading && error && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>
+        <div style={errorStyle}>{error}</div>
       )}
 
       {!loading && !error && pending.length === 0 && (
-        <div style={{ ...cardStyle, textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>
-          No outstanding license links - everyone who was sent a link has completed it.
-        </div>
+        <OutstandingEmpty />
       )}
 
       {!loading && !error && pending.length > 0 && (

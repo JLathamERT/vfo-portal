@@ -3,6 +3,8 @@ import { callApi } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { Skeleton, TableSkeleton } from '../shared/Skeleton'
 import { PageHeading } from '../shared/ProfileKit'
+import Tag from '../shared/Tag'
+import { emptyRowStyle, headerRowStyle, refreshBtnStyle, rowStyle, tableStyle } from './accountingTable'
 
 // Accounting > Manually sent Stripe Connect Payment. Pick anyone with a Stripe
 // Connect account, type an amount + memo, Send: the transfer happens at once from the
@@ -72,15 +74,15 @@ function SearchSelect({ options, value, onChange, placeholder }) {
 
 function StatusChip({ status, sandbox }) {
   const map = {
-    sent: { bg: '#dcfce7', fg: '#166534', text: 'Sent' },
-    failed: { bg: '#fee2e2', fg: '#b91c1c', text: 'Failed' },
-    pending: { bg: '#fef3c7', fg: '#92400e', text: 'Unconfirmed' },
+    sent: { color: '#1b9254', text: 'Sent' },
+    failed: { color: '#ef4444', text: 'Failed' },
+    pending: { color: '#b45309', text: 'Unconfirmed' },
   }
   const s = map[status] || map.pending
   return (
     <span style={{ display: 'inline-flex', gap: '4px', alignItems: 'center' }}>
-      <span style={{ background: s.bg, color: s.fg, borderRadius: '999px', padding: '2px 9px', fontSize: '11px', fontWeight: 700 }}>{s.text}</span>
-      {sandbox && <span style={{ background: '#e0e7ff', color: '#3730a3', borderRadius: '999px', padding: '2px 8px', fontSize: '10.5px', fontWeight: 700 }}>Sandbox</span>}
+      <Tag color={s.color}>{s.text}</Tag>
+      {sandbox && <Tag color="#e06717">Sandbox</Tag>}
     </span>
   )
 }
@@ -233,15 +235,18 @@ export default function ManualConnectPaymentPanel() {
         )}
       </div>
 
-      <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '0 2px 10px' }}>History</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', margin: '0 2px 10px' }}>
+        <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--vfo-heading)' }}>History</div>
+        <button type="button" onClick={() => loadHistory()} style={refreshBtnStyle}>Refresh</button>
+      </div>
       {loading ? <TableSkeleton cols={histCols} rows={3} /> : (
-        <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)', overflowX: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: histCols, gap: '10px', padding: '10px 16px', background: 'var(--vfo-tint)', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', minWidth: '760px' }}>
+        <div style={{ ...tableStyle, overflowX: 'auto' }}>
+          <div style={{ ...headerRowStyle, gridTemplateColumns: histCols, minWidth: '760px' }}>
             <div>Date</div><div>Paid to</div><div style={{ textAlign: 'right' }}>Amount</div><div>Memo</div><div>Sent by</div><div>Status</div>
           </div>
-          {history.length === 0 && <div style={{ padding: '24px', textAlign: 'center', fontSize: '13px', color: 'var(--vfo-faint)' }}>No manual payments yet.</div>}
+          {history.length === 0 && <div style={emptyRowStyle}>No manual payments yet.</div>}
           {history.map(p => (
-            <div key={p.id} style={{ display: 'grid', gridTemplateColumns: histCols, gap: '10px', padding: '10px 16px', borderTop: '1px solid var(--vfo-border-soft)', fontSize: '12.5px', color: 'var(--vfo-ink)', alignItems: 'center', minWidth: '760px' }}>
+            <div key={p.id} style={{ ...rowStyle, gridTemplateColumns: histCols, minWidth: '760px' }}>
               <div>{fmtDateTime(p.created_at)}</div>
               <div>
                 <div style={{ fontWeight: 600 }}>{p.recipient_name || p.entity_key}</div>
