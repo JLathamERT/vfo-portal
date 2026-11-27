@@ -18,7 +18,7 @@ import ListTable, { ListName, ListPill, ListText, listSearchStyle, ONE_LINE, LIS
 import SpecialistPicker from '../shared/SpecialistPicker'
 import { MemberEditFormSkeleton, MemberProfileDetailsSkeleton, ProgramNotesSkeleton, Skeleton, SkeletonText } from '../shared/Skeleton'
 import { HeroAvatar, ListHeader } from '../shared/TrackKit'
-import { ChoiceButtons, DotText, Field, FormGrid, PersonName, formInput, formLabel, formReadOnly, Initials, PageHeading, ProfileCard, ProfileHero, SaveBar, SettingRow, Switch } from '../shared/ProfileKit'
+import { BackLink, ChoiceButtons, DotText, Field, FormGrid, PersonName, formInput, formLabel, formReadOnly, Initials, PageHeading, ProfileCard, ProfileHero, SaveBar, SettingRow, Switch } from '../shared/ProfileKit'
 import { btnDanger, btnOutline, btnPrimary, btnSecondary, btnState, BTN_SMALL } from '../shared/buttonStyles'
 import ExportButton from '../shared/ExportButton'
 import { splitName, exportDate } from '../../lib/exportXlsx'
@@ -105,7 +105,7 @@ export default function MembersPanel({ allMembers, allExperts, allExclusionMap, 
   if (section === 'strategic_member_kpis') return <MemberKpiPanel allMembers={allMembers} category="strategic_member" />
   if (section === 'strategic_partners') {
     return (
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
         <StrategicPartnersPanel />
       </div>
     )
@@ -512,7 +512,7 @@ function MemberDirectoryView({
 
       {activeTab === 'search' && selectedMember && (
         <>
-          <button onClick={() => {
+          <BackLink onClick={() => {
             // "The list" is wherever you came from. Reaching this profile off the
             // Member Overview tab and landing back in the Advisors directory is a
             // different list than the one you left, so honour the origin stamp
@@ -522,7 +522,7 @@ function MemberDirectoryView({
             sessionStorage.removeItem(MEMBER_PROFILE_ORIGIN_KEY)
             setSelectedMember(null); sessionStorage.removeItem(selectedKey); sessionStorage.removeItem(featureTabKey)
             if (origin && onBackToOrigin) onBackToOrigin(origin)
-          }} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to list</button>
+          }}>Back to list</BackLink>
           <ProfileHero
             eyebrow={listTitle}
             name={<PersonName first={selectedMember.first_name} last={selectedMember.last_name} preferred={selectedMember.preferred_name} fallback={selectedMember.name} />}

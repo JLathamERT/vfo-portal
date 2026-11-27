@@ -350,7 +350,7 @@ export default function TaxAutomationPanel({ programScope = 'holistic' }) {
   if (loading) return <AutomationTrackerSkeleton cols="30px 1.4fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr" />
 
   return (
-    <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding: 24, maxWidth: 1500, margin: '0 auto' }}>
       <PanelHero
         eyebrow="Automation Pipeline"
         title={programScope === 'standalone' ? 'Tax Planning Automation' : 'Holistic Tax Priorities Automation'}

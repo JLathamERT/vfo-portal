@@ -57,7 +57,7 @@ export default function SpecialistKpiPanel({ experts = [], ecoMap = {} }) {
   const activeLens = LENSES.find((l) => l.key === lens)
 
   return (
-    <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
       <KpiHero
         title="Specialist KPIs"
         subtitle={`${statusCounts.all} specialists total · ${scoped.length} in view`}

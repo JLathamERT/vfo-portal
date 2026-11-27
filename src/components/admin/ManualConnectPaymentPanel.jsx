@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { callApi } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { Skeleton, TableSkeleton } from '../shared/Skeleton'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Accounting > Manually sent Stripe Connect Payment. Pick anyone with a Stripe
 // Connect account, type an amount + memo, Send: the transfer happens at once from the
@@ -162,7 +163,7 @@ export default function ManualConnectPaymentPanel() {
     }
   }
 
-  const wrap = { padding: '24px', maxWidth: '1050px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
+  const wrap = { padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
   const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '20px', marginBottom: '22px' }
   const label = { fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '6px' }
   const input = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--vfo-card)', color: 'var(--vfo-ink)' }
@@ -170,13 +171,8 @@ export default function ManualConnectPaymentPanel() {
 
   return (
     <div style={wrap}>
-      <div style={{ marginBottom: '18px' }}>
-        <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting</p>
-        <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>Manually sent Stripe Connect Payment</h2>
-        <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '8px 0 0', lineHeight: 1.6 }}>
-          Sends money straight from the VFO Services Stripe balance to the person's Stripe Connect account, then emails them a short confirmation.
-        </p>
-      </div>
+      <PageHeading eyebrow="Accounting" title="Manually sent Stripe Connect Payment"
+        sub="Sends money straight from the VFO Services Stripe balance to the person's Stripe Connect account, then emails them a short confirmation." />
 
       {loadError && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px', marginBottom: '16px' }}>{loadError}</div>}
 

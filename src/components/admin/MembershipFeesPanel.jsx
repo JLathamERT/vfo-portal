@@ -8,6 +8,8 @@ import StepEmailsChip from '../shared/StepEmailsChip'
 import { MemberNameLink } from '../shared/personLinks'
 import { MEMBER_TYPES, ACCOUNTANT_TYPES } from '../shared/memberTypes'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import SubTabs from '../shared/SubTabs'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Accounting > Members > Advisor/Accountant Membership Fees.
 //
@@ -361,23 +363,10 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
   ]
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1050px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ marginBottom: '18px' }}>
-        <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting · Members</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>{title}</h2>
-          <StripeAccountPill sandboxConfig={sandboxConfig} />
-        </div>
-      </div>
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+      <PageHeading eyebrow="Accounting · Members" title={title} action={<StripeAccountPill sandboxConfig={sandboxConfig} />} />
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {pills.map(p => (
-          <button key={p.key} type="button" onClick={() => { setSection(p.key); setNotice(null); if (p.key !== 'setup') setEditPlan(null) }}
-            style={{ padding: '8px 16px', borderRadius: '99px', border: '1px solid ' + (section === p.key ? 'transparent' : 'var(--vfo-border-strong)'), background: section === p.key ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : 'var(--vfo-card)', color: section === p.key ? '#fff' : 'var(--vfo-ink-2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            {p.label}
-          </button>
-        ))}
-      </div>
+      <SubTabs tabs={pills} active={section} onChange={k => { setSection(k); setNotice(null); if (k !== 'setup') setEditPlan(null) }} />
 
       {notice && (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '12.5px', padding: '8px 12px', borderRadius: '8px', marginBottom: '14px', wordBreak: 'break-all',

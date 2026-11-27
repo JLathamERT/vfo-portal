@@ -3,6 +3,8 @@ import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { TableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
 import GCPurchasesTable from './GCPurchasesTable'
+import SubTabs from '../shared/SubTabs'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Growth Credits page (top-level admin tab, open to every admin since 2026-11-25).
 // Sub-tabs: Redemptions (the fulfillment queue), Purchases and Menu (read-only view
@@ -115,20 +117,10 @@ export default function GrowthCreditsRedemptionsPage() {
   })()
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1320px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ ...card, marginBottom: '18px' }}>
-        <p style={{ fontSize: '10.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 4px' }}>Admin</p>
-        <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>Growth Credits</h2>
-      </div>
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+      <PageHeading eyebrow="More" title="Growth Credits" />
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {SUBTABS.map(t => (
-          <button key={t.key} type="button" onClick={() => setSection(t.key)}
-            style={{ padding: '8px 16px', borderRadius: '99px', border: '1px solid ' + (section === t.key ? 'transparent' : 'var(--vfo-border-strong)'), background: section === t.key ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : 'var(--vfo-card)', color: section === t.key ? '#fff' : 'var(--vfo-ink-2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <SubTabs tabs={SUBTABS} active={section} onChange={setSection} />
 
       {status && <div style={{ background: 'var(--vfo-accent-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-accent-text)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{status}</div>}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px', marginBottom: '14px' }}>{error}</div>}

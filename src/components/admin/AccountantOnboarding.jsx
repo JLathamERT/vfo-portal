@@ -17,6 +17,7 @@ import OnboardingAgreementName from './OnboardingAgreementName'
 import { cleanText, formatPersonName, nameHasBadChars, nameHasTwoPeople, NAME_CHARS_CONTACT_MESSAGE, ONE_MEMBER_NAME_MESSAGE } from '../../lib/formatters'
 import { stage1Lock, createMemberLock, isTier1Onboarding, isConnectedAssociate, tier1MonthlyFee, tier1AdvisorPays, paymentClearing } from './onboardingOrder'
 import { readable } from '../shared/readableColor'
+import { BackLink } from '../shared/ProfileKit'
 
 const STAGE_NAMES = ['', 'Preliminary Meeting', 'Automated steps', 'Add New Accountant']
 
@@ -640,7 +641,7 @@ function OnboardingDetail({ id, onBack }) {
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to list</button>
+      <BackLink onClick={onBack}>Back to list</BackLink>
       <OnboardingHero
         ob={ob}
         pipeline="accountant"

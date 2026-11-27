@@ -6,6 +6,7 @@ import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { useOpenMember, specialistProfilePath } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import AccountingCombinedPanel from '../admin/AccountingCombinedPanel'
+import { miniTabStyle as miniTab } from '../shared/SubTabs'
 import { tableStyle, headerRowStyle, totalsRowStyle, totalsLabelStyle, totalsSubStyle } from '../admin/SpecialistRevenuePanel'
 import { clientPlanPath, fmtMoney, fmtDate, fmtMethod, StatusPill } from './PaymentsTable'
 
@@ -135,7 +136,6 @@ function PaymentsLedger({ direction }) {
   }
   const sub = { display: 'block', fontSize: '11px', color: 'var(--vfo-faint)', marginTop: '3px', fontWeight: 400 }
   const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
-  const miniTab = (active) => ({ padding: '7px 14px', borderRadius: '8px', border: `1px solid ${active ? 'var(--vfo-accent-text)' : 'var(--vfo-border-strong)'}`, background: active ? 'rgba(18,94,204,0.08)' : 'var(--vfo-card)', color: active ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontWeight: 600, fontSize: '12.5px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' })
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif' }}>

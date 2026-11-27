@@ -9,6 +9,7 @@ import ClearActionButton from '../shared/ClearActionButton'
 import Tag from '../shared/Tag'
 import { pipelineLabel } from '../shared/notificationPipeline'
 import AccountingCombinedPanel from './AccountingCombinedPanel'
+import { miniTabStyle as miniTab } from '../shared/SubTabs'
 import { tableStyle, headerRowStyle } from './SpecialistRevenuePanel'
 
 // Admin Notifications page (bell "View all"), in the house Accounting layout:
@@ -52,7 +53,6 @@ const FIRED_GRID = 'minmax(0, 1fr) 190px'
 
 const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
 const ghost = { ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }
-const miniTab = (active) => ({ padding: '7px 14px', borderRadius: '8px', border: `1px solid ${active ? 'var(--vfo-accent-text)' : 'var(--vfo-border-strong)'}`, background: active ? 'rgba(18,94,204,0.08)' : 'var(--vfo-card)', color: active ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontWeight: 600, fontSize: '12.5px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' })
 const bigPrimary = { ...btnPrimary, padding: '10px 18px', fontSize: '13px' }
 const bigSecondary = { ...btnSecondary, padding: '10px 18px', fontSize: '13px' }
 const errorBox = { background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px', marginBottom: '14px' }

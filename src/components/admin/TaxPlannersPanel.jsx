@@ -11,7 +11,7 @@ import ListTable, { ListName, ListPill, ListText, listSearchStyle, LIST_PAGE_MAX
 import TaxPlannerKpiPanel from './TaxPlannerKpiPanel'
 import { DirectoryListSkeleton, KpiPageSkeleton, StrategicPartnersSkeleton, TableSkeleton } from '../shared/Skeleton'
 import { HeroAvatar, ListHeader } from '../shared/TrackKit'
-import { DotText, Field, FieldGrid, FormGrid, formInput, formLabel, PageHeading, ProfileCard, ProfileHero, SaveBar } from '../shared/ProfileKit'
+import { BackLink, DotText, Field, FieldGrid, FormGrid, formInput, formLabel, PageHeading, ProfileCard, ProfileHero, SaveBar } from '../shared/ProfileKit'
 import { btnDanger, btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 import { FeatureTabDropdown } from './MembersPanel'
 import SendSetupEmailButton from './SendSetupEmailButton'
@@ -384,7 +384,7 @@ export default function TaxPlannersPanel({ section }) {
 
   // ---- Section: Tax Planning Partners (group list + connect) ----
   if (section === 'tax_planning_partners') {
-    if (loading) return <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}><StrategicPartnersSkeleton /></div>
+    if (loading) return <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}><StrategicPartnersSkeleton /></div>
     return <TaxPlanningPartnersPanel groups={groups} loadError={loadError} onSaved={load} />
   }
 
@@ -460,7 +460,7 @@ export default function TaxPlannersPanel({ section }) {
 
       {!loading && selectedPlanner && (
         <div>
-          <button onClick={backToList} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to list</button>
+          <BackLink onClick={backToList}>Back to list</BackLink>
 
           <ProfileHero
             eyebrow="Tax Planner"
@@ -917,11 +917,11 @@ function TaxPlanningPartnersPanel({ groups, loadError, onSaved }) {
       .then(d => setExperts((d?.experts || []).filter(e => e?.id && e?.name).map(e => ({ id: e.id, name: e.name })).sort((a, b) => a.name.localeCompare(b.name))))
       .catch(err => console.error(err))
   }, [])
-  if (loadError) return <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}><p style={{ color: '#d93025', fontSize: '13px' }}>{loadError}</p></div>
+  if (loadError) return <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}><p style={{ color: '#d93025', fontSize: '13px' }}>{loadError}</p></div>
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
       <div style={{ marginBottom: '18px' }}>
-        <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>Tax Planning Partners</div>
+        <PageHeading eyebrow="Tax Planners" title="Tax Planning Partners" style={{ marginBottom: 0 }} />
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '4px' }}>
           Each partner group is a Partnership option for tax planners. Set up the group's payout account here — the tax planner revenue share transfers to it automatically.
         </div>

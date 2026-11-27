@@ -8,6 +8,7 @@ import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { statusPillStyle } from '../../shared/statusColors'
+import { BackLink } from '../../shared/ProfileKit'
 
 const REGULAR_PRIORITIES = [
   "Business Growth", "Business Exit", "Business Advisory",
@@ -432,7 +433,7 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
 
   return (
     <div className="vfo-track">
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Priorities</button>
+      <BackLink onClick={onBack}>Back to Priorities</BackLink>
       <TrackHero
         eyebrow="Regular Priority"
         title={track.priority_name}
@@ -831,7 +832,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
   if (pendingOpenId != null) {
     return (
       <div>
-        <button onClick={() => setPendingOpenId(null)} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Priorities</button>
+        <BackLink onClick={() => setPendingOpenId(null)}>Back to Priorities</BackLink>
         <RegularPriorityTrackSkeleton readOnly={readOnly} />
       </div>
     )

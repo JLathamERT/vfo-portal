@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { callApi, loadCachedData } from '../../lib/api'
+import { PageHeading } from '../shared/ProfileKit'
 
 // The Staging tab: test site only, loaded only in a staging build. Any admin can see
 // what is running and reset their OWN test member; only a superadmin sees Reset
@@ -214,8 +215,8 @@ export default function StagingPanel({ session }) {
 
   const lastReset = status?.last_reset
   return (
-    <div style={{ maxWidth: '980px', margin: '0 auto', padding: '32px 24px' }}>
-      <h2 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '0 0 6px' }}>Staging</h2>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
+      <PageHeading eyebrow="Test site" title="Staging" style={{ marginBottom: '8px' }} />
       <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 24px' }}>
         Tools for the test site. Nothing on this page can reach the live portal.
       </p>

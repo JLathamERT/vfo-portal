@@ -13,6 +13,8 @@ import NextTaxYearList from './tax/NextTaxYearList'
 import { NEXT_YEAR_HEX } from './tax/TaxPlanStatus'
 import { CLIENT_STATUS_LABELS, clientStatusColors, clientStatusHex, clientStatusLabel } from '../shared/clientStatus'
 import { ClientOverviewSkeleton } from '../shared/Skeleton'
+import SubTabs, { MiniTabs } from '../shared/SubTabs'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Client Overview — a mirror of Member Overview, but oriented around clients and
 // their program tracks. Four sub-tabs, each lazily loaded from the backend
@@ -444,18 +446,12 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
 
   return (
     <div style={wrap}>
-      <div style={{ marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
-        <div>
-          <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Clients</p>
-          <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '4px 0 0' }}>Client Overview</h2>
-        </div>
-        {memberMode && canAddClient && activeSection === 'clients' && !showAddClient && (
-          <button type="button" onClick={() => { setAddedMessage(''); setShowAddClient(true) }}
-            style={{ padding: isPhone ? '6px 14px' : '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            + Add Client
-          </button>
-        )}
-      </div>
+      <PageHeading eyebrow="Clients" title="Client Overview" action={memberMode && canAddClient && activeSection === 'clients' && !showAddClient && (
+        <button type="button" onClick={() => { setAddedMessage(''); setShowAddClient(true) }}
+          style={{ padding: isPhone ? '6px 14px' : '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          + Add Client
+        </button>
+      )} />
 
       {memberMode && canAddClient && activeSection === 'clients' && showAddClient && (
         <AddClientForm onSave={addClient} onCancel={() => setShowAddClient(false)} profileBase={clientBase} />
@@ -464,14 +460,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
         <div style={{ padding: '10px 14px', marginBottom: '16px', background: 'rgba(27,146,84,0.10)', border: '1px solid rgba(27,146,84,0.3)', borderRadius: '8px', color: 'var(--vfo-success-text)', fontSize: '13px' }}>{addedMessage}</div>
       )}
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        {sections.map(s => (
-          <button key={s.key} onClick={() => { setShowAddClient(false); setActiveSection(s.key) }}
-            style={{ padding: '7px 16px', borderRadius: '999px', border: '1px solid ' + (activeSection === s.key ? '#125ecc' : 'var(--vfo-border-strong)'), background: activeSection === s.key ? '#125ecc' : 'var(--vfo-input)', color: activeSection === s.key ? '#fff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <SubTabs tabs={sections} active={activeSection} onChange={k => { setShowAddClient(false); setActiveSection(k) }} style={{ marginBottom: '16px' }} />
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
         {/* Phone: the search takes its own row (its hint read in full), Filters + sort share the next. */}
@@ -481,18 +470,8 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
       </div>
 
       {isTax && !isLoading && (
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-          {TAX_PILLS.map(p => {
-            const on = taxPill === p.key
-            const count = p.key === 'all' ? flatRows.length : taxCounts[p.key] || 0
-            return (
-              <button key={p.key} onClick={() => setTaxPill(p.key)} aria-pressed={on}
-                style={{ padding: '5px 12px', borderRadius: '999px', border: `1px solid ${on ? 'var(--vfo-primary)' : 'var(--vfo-border-strong)'}`, background: on ? 'var(--vfo-accent-tint)' : 'var(--vfo-card)', color: on ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-                {p.label} ({count})
-              </button>
-            )
-          })}
-        </div>
+        <MiniTabs style={{ marginBottom: '16px' }} active={taxPill} onChange={setTaxPill}
+          tabs={TAX_PILLS.map(p => ({ key: p.key, label: `${p.label} (${p.key === 'all' ? flatRows.length : taxCounts[p.key] || 0})` }))} />
       )}
 
       {error && <div style={{ padding: '10px 14px', marginBottom: '12px', background: 'rgba(231,76,60,0.1)', border: '1px solid rgba(231,76,60,0.3)', borderRadius: '8px', color: '#c0392b', fontSize: '13px' }}>Could not load this section: {error}</div>}

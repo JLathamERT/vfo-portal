@@ -1,6 +1,7 @@
 // Admin / tax planner list-page skeletons: directories, automation trackers,
 // accounting grids, config panels, onboarding lists.
 import { Skeleton, SkeletonText, CardShell, HeroSkeleton, PanelHeroSkeleton, PhaseCardsSkeleton, PillTabsSkeleton, ListHeaderSkeleton, SearchFilterSkeleton, TableSkeleton, RowCardsSkeleton } from './primitives'
+import { BackLink } from '../ProfileKit'
 
 // Advisor / Accountant / Strategic / Tax Planner search lists: title + count chip
 // + Export, search + filter + sort, then the ListTable card (2026-11-26).
@@ -10,7 +11,7 @@ export function DirectoryListSkeleton({ rows = 6, numbered = true, chip = false 
     <div>
       <ListHeaderSkeleton action width={120} />
       <SearchFilterSkeleton boxes={[84, 130]} height={40} />
-      <TableSkeleton cols={numbered ? '100px 1.6fr 110px 1.3fr 1fr' : chip ? '1.6fr 110px 1.3fr 1fr' : '1.6fr 110px 1.3fr'} rows={rows} pillCol={numbered ? 2 : 1} minWidth={numbered ? '760px' : '700px'} pad="11px 18px" />
+      <TableSkeleton cols={numbered ? '120px 1.5fr 100px 1.5fr 120px 200px' : chip ? '1.6fr 110px 1.3fr 1fr' : '1.6fr 110px 1.3fr'} rows={rows} pillCol={numbered ? 2 : 1} minWidth={numbered ? '760px' : '700px'} pad="11px 18px" />
     </div>
   )
 }
@@ -28,8 +29,8 @@ export function DotText({ width = 44 }) {
 // Search Specialists: toolbar, then the ListTable card.
 export function SpecialistDirectorySkeleton({ rows = 6 }) {
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
-      <ListHeaderSkeleton action chip={false} width={200} marginBottom="24px" />
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
+      <ListHeaderSkeleton action width={120} />
       <SearchFilterSkeleton boxes={[84, 130]} height={40} />
       <TableSkeleton cols="2fr 2fr 120px 110px" rows={rows} pillCol={3} minWidth="760px" pad="11px 18px" />
     </div>
@@ -53,7 +54,7 @@ export function PlannerClientsSkeleton({ rows = 5 }) {
 // draw stacked expandable row cards.
 export function AutomationTrackerSkeleton({ cols = null, rows = 4, stats = 5 }) {
   return (
-    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
       <PanelHeroSkeleton stats={stats} />
       {cols ? <TableSkeleton cols={cols} rows={rows} /> : <RowCardsSkeleton rows={rows} pill={120} caretEnd shadow />}
     </div>
@@ -277,7 +278,7 @@ export function SpecialistOnboardingDetailSkeleton({ onBack }) {
 
 function BackToList({ onBack }) {
   if (!onBack) return <Skeleton width={90} height={13} style={{ marginBottom: '18px' }} />
-  return <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0, fontFamily: 'Inter, sans-serif' }}>← Back to list</button>
+  return <BackLink onClick={onBack}>Back to list</BackLink>
 }
 
 // Back-compat aliases (existing imports keep working).

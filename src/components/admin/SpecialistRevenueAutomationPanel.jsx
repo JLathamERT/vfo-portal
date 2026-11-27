@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
-import { NAVY, BLUE, money, RequestRow, MarkReceivedButton, isErtLegOpen } from './specialistRevenueShared'
+import { BLUE, money, RequestRow, MarkReceivedButton, isErtLegOpen } from './specialistRevenueShared'
 import { RowCardsSkeleton } from '../shared/Skeleton'
+import { PanelHero } from './automation/StepKit'
 
 // Automation → VFO Specialist Revenue. One row per specialist payment request, with
 // where-everything-is-at status and a Retry-payout action.
@@ -85,31 +86,16 @@ export default function SpecialistRevenueAutomationPanel() {
     return { total, received, awaiting, pendingLines }
   }, [requests])
 
-  const wrap = { padding: '24px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
-  const statBox = (label, value, color) => (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '22px', fontWeight: 800, color }}>{value}</div>
-      <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>{label}</div>
-    </div>
-  )
+  const wrap = { padding: '24px', maxWidth: '1500px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
 
   return (
     <div style={wrap}>
-      <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', padding: '20px 22px', marginBottom: '20px', boxShadow: 'var(--vfo-shadow-card)' }}>
-        <div style={{ height: '4px', borderRadius: '99px', background: `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 55%, #0a85e8 100%)`, marginBottom: '16px' }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
-          <div>
-            <p style={{ fontSize: '10.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 4px' }}>Automation Pipeline</p>
-            <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>VFO Specialist Revenue</h2>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '36px', marginTop: '18px' }}>
-          {statBox('Total', stats.total, 'var(--vfo-heading)')}
-          {statBox('Received', stats.received, '#16a34a')}
-          {statBox('Awaiting payment', stats.awaiting, '#e06717')}
-          {statBox('Payouts pending', stats.pendingLines, '#b45309')}
-        </div>
-      </div>
+      <PanelHero title="VFO Specialist Revenue" stats={[
+        { label: 'Total', value: stats.total },
+        { label: 'Received', value: stats.received, color: '#16a34a' },
+        { label: 'Awaiting payment', value: stats.awaiting, color: '#e06717' },
+        { label: 'Payouts pending', value: stats.pendingLines, color: '#b45309' },
+      ]} />
 
       {retryMsg && (
         <div style={{ background: 'var(--vfo-accent-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-accent-text)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{retryMsg}</div>

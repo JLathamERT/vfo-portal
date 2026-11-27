@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { TeamNotificationEmailsSkeleton } from '../shared/Skeleton'
 import { TEMPLATE_META } from '../shared/templateMeta'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Team Notification Emails (2026-11-02) — the people the "Team" recipient on an
 // email template reaches (team_notification_recipients; the TEAM token in
@@ -129,8 +130,8 @@ export default function TeamNotificationEmailsPanel() {
   const addable = admins.filter(a => a.email && !onList.has(a.email.toLowerCase()))
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
-      <h2 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em', fontSize: '24px', color: 'var(--vfo-ink)', margin: '0 0 8px 0' }}>Team Notification Emails</h2>
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      <PageHeading eyebrow="Automation & Config" title="Team Notification Emails" style={{ marginBottom: '8px' }} />
       <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 24px' }}>
         The people who receive the internal team emails. Any email template whose recipients include "Team" goes to everyone on
         this list. Changing the list does not change anyone's admin login.

@@ -8,6 +8,7 @@ import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 // The member History tab's own chip + By label: one look, and the sale-vs-grant
 // split of "purchased" (by Stripe session id, #465) lives in one place.
 import { gcTypeChip, gcActorLabel } from '../shared/GCMarketplaceViews'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Accounting > Members > Growth Credits. Program-wide totals plus the full
 // transaction ledger and every member's current balance. Read-only.
@@ -49,7 +50,7 @@ export default function GrowthCreditsAccountingPanel() {
     }
   }
 
-  const wrap = { padding: '24px', maxWidth: '1050px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
+  const wrap = { padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
   const totals = data?.totals || {}
   // The headline figures only (2026-10-22). Granted / refunded / deducted /
   // membership credits stay in the totals payload and are told apart by the
@@ -69,10 +70,7 @@ export default function GrowthCreditsAccountingPanel() {
 
   return (
     <div style={wrap}>
-      <div style={{ marginBottom: '18px' }}>
-        <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting · Members</p>
-        <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>Growth Credits</h2>
-      </div>
+      <PageHeading eyebrow="Accounting · Members" title="Growth Credits" />
 
       {loading && (
         <>

@@ -8,7 +8,7 @@ import { formatDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
 import ListFilterButton, { matchesFilter, SortSelect } from './ListFilterButton'
 import ListTable, { ListName, ListText, listSearchStyle } from '../shared/ListTable'
-import { DotText } from '../shared/ProfileKit'
+import { BackLink, DotText } from '../shared/ProfileKit'
  
 const STAGE_NAMES = ['', 'Preliminary Meeting', 'Detail Meetings', 'Due Diligence', 'Contract & Details', 'Going Live']
 
@@ -1851,7 +1851,7 @@ function OnboardingDetail({ id, onBack }) {
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0, fontFamily: 'Inter, sans-serif' }}>← Back to list</button>
+      <BackLink onClick={onBack}>Back to list</BackLink>
  
       <TrackHero
         eyebrow="Specialist Onboarding"

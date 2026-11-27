@@ -627,7 +627,7 @@ Some clients go **straight to the detailed tax plan meeting**: there is no ROI m
 
 **How a plan becomes Rapid.**
 - **The Tax Planning Form's q38 "Client would prefer"** — *Traditional 6-Step Process* (first, pre-selected) / *Rapid Route - Step 3: Orientation Meeting replaced with customized video* (option note *"Appropriate for more sophisticated or time-limited clients"*). Not required; blank = Traditional. `utils/tax-intake-finalize.ts` stamps `client_tax_plans.rapid_route` from `answers.q38` on the plan insert (see [tax-intake.md](tax-intake.md)).
-- **The TAX PLANNING ROUTE bar** (`TaxRouteCard`, above the phases, between the Tax Planning Form card and the Pricing & revenue split card): a Traditional 6-Step / Rapid Route switch → `tax_set_rapid_route` (admin) or `tax_direct_set_rapid_route` (the Direct member). **409 once the booking step is answered (`ready_for_tax3_decision` set), the TPOM is skipped, or the plan is stopped**; after that the bar is a read-only chip. Hidden for the planner.
+- **The TAX PLANNING ROUTE bar** (`TaxRouteCard`, above the phases, between the Tax Planning Form card and the Pricing & revenue split card): a Traditional 6-Step / Rapid Route choice (`ChoiceButtons small`, 2026-11-27) → `tax_set_rapid_route` (admin) or `tax_direct_set_rapid_route` (the Direct member). **409 once the booking step is answered (`ready_for_tax3_decision` set), the TPOM is skipped, or the plan is stopped**; after that the bar is a read-only chip. Hidden for the planner.
 
 **What changes on the plan (display + counts; FE `isRapidHidden` / `isStepExcluded` in `taxPlanRules.js` + `getPlanState` in `TaxPrioritiesTab.jsx`, BE `utils/tax-plan-steps.ts` with a `rapid` flag — #339):**
 

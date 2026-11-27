@@ -8,6 +8,7 @@ import { readable } from '../shared/readableColor'
 import { STATUS_COLORS } from '../shared/statusColors'
 import { clientStatusColors, clientStatusLabel } from '../shared/clientStatus'
 import { TableSkeleton } from '../shared/Skeleton'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Member Overview — one unified list of every member (advisor / accountant /
 // strategic) with at-a-glance columns, an expandable client drill-down, a
@@ -160,18 +161,15 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
 
   return (
     <div style={wrap}>
-      <div style={{ marginBottom: '18px' }}>
-        <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Members</p>
-        {/* The count is of the list as RENDERED, so it moves with the search box
-            and every filter. `of N` appears only once something is narrowing it,
-            which is what makes the bare number unambiguous the rest of the time. */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '4px 0 0' }}>Member Overview</h2>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-mid)', borderRadius: '999px', padding: '3px 12px', whiteSpace: 'nowrap' }}>
-            {rows.length}{rows.length === basePool.length ? '' : ` of ${basePool.length}`} member{rows.length === 1 ? '' : 's'}
-          </span>
-        </div>
-      </div>
+      {/* The count is of the list as RENDERED, so it moves with the search box
+          and every filter. `of N` appears only once something is narrowing it,
+          which is what makes the bare number unambiguous the rest of the time. */}
+      <PageHeading eyebrow="Members" title={<>
+        Member Overview
+        <span style={{ fontSize: '13px', fontWeight: 600, letterSpacing: 0, color: 'var(--vfo-ink-2)', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-mid)', borderRadius: '999px', padding: '3px 12px', whiteSpace: 'nowrap', marginLeft: '12px', verticalAlign: 'middle' }}>
+          {rows.length}{rows.length === basePool.length ? '' : ` of ${basePool.length}`} member{rows.length === 1 ? '' : 's'}
+        </span>
+      </>} />
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
         <input type="search" name="search" autoComplete="off" placeholder="Search by name or number..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...sel, flex: 1, minWidth: '240px', background: 'var(--vfo-input)' }} />

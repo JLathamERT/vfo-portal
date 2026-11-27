@@ -9,6 +9,24 @@
 
 ---
 
+## 2026-11-27 (f) — The house style written down (HOUSE_STYLE.md), one sub-tab pill, one page header, four page widths — by Jake
+
+**What it is.** Jake asked for the house style to be written into the rules so every chat, Paxton's included, builds new screens the same way: lists, Section pages (sub-tabs along the top, content below), the two kinds of KPI page, Accounting, and program steps. He also asked for a scan of the portal for screens that do not follow it. Four read-only scans of the code (Section and KPI pages, Accounting, program trackers, lists and forms) found the drift, and it is filed as Issue JLathamERT/vfo-edge-functions#661 in six parts. Parts 1 and 2 ship here.
+
+**Built.**
+- **[HOUSE_STYLE.md](HOUSE_STYLE.md):** the page types (List, Section, KPI simple and detailed, Accounting, Program tracker, Profile, Hub, Form, Automation, emailed link pages), the page to copy for each, the shared pieces, and the rules for frames, headers, sub-tabs, cards, which button or control for which job, dates, money, and empty / loading states. Every rule was confirmed by Jake. TEAM_RULES §9 sends every chat there before it builds a screen, and the hub's DOC MAP has a row for it.
+- **Decided (Jake, 2026-11-27).** One sub-tab pill, the Accounting one. Every page header is plain, never in a card. Step buttons: `btnOutline` choices, `btnDanger` stop / decline / refund, `btnPrimary` Send, `btnStep` Edit / Cancel / Reschedule (the sweep itself is Issue #640). One date format, `lib/dates.js`. Four widths (720 settings, 900 one record, 1200 lists / Section / KPI / Accounting, 1500 wide tables), plus the Portal Backlog board at 1800; the member, client and specialist portals keep 980. A profile's tab bar is that profile's main menu, not a sub-tab, so it keeps its own look.
+- **Part 1, one sub-tab pill.** New `shared/SubTabs.jsx` (`SubTabs`, `MiniTabs`, `subTabStyle`, `miniTabStyle`). Every sub-tab row draws through it: the KPI pages and Portal Backlog (were solid blue), Tax Diagnostics' filters and Client Overview's program row; Membership Fees, Implementation, Growth Credits, Events, FAQ Editor and the Growth Plan already had the look. The second-level tabs use `MiniTabs`, as do Client Overview's tax status row and the Backlog lane picker. The deposit-payer and Tax route toggles are `ChoiceButtons`, which gains `small`. `KpiKit`'s `SubTabButton` is gone, and the Accounting loading skeleton draws each page's own pill count.
+- **Part 2, one page header and four widths.** `PageHeading` gains `sub`, and every admin page now opens with it. The header cards on Events, Growth Credits and FAQ Editor are gone. Tax Diagnostics, Staging, Feature Switches, the Automation & Config editors, Strategic Partners, Tax Planning Partners, Client and Member Overview, every Accounting page and Portal Backlog all use `PageHeading`; Backlog's summary strip is now titled *Requests*. Specialist Search uses the Advisors list's header and Specialist Revenue Automation uses `PanelHero`. About 15 hand-built Back buttons are now `BackLink`. The skeletons match their pages' widths and columns, and the unused `planner` KPI skeleton layout is gone.
+
+**What broke.** The replace scripts wrote Windows line endings back into files that main stores with Unix ones, so Git saw whole files as changed (13,000 lines). One commit puts them back to LF; the real diff is about 950 lines.
+
+**Docs.** HOUSE_STYLE.md (new), TEAM_RULES §9, the hub's DOC MAP (+102 bytes), `architecture/02-frontend-shell.md`, `flows/member-help-faq.md`, `flows/portal-backlog.md`, `flows/tax-planning.md`.
+
+**Tested** by Jake on the dev server (test site, his own backend copy, identical to main): Part 1's and Part 2's click-throughs passed at desktop width, plus the member Growth Plan and the member's client page trackers in the phone preview at 390 and 360. No backend, data, money or email change. **Not exercised:** switching a plan's Tax route with the new buttons (the step was optional), and dark mode.
+
+---
+
 ## 2026-11-27 (e) — Growth Plan, CIQ and the client's My One Page Plan in the house style; client sign-in lands on Home — by Jake
 
 **What it is.** Jake asked for every Growth Plan and CIQ screen to get the house look from the profile and portal refresh (ProfileKit, buttonStyles, Tag, ListTable, round sub-tab pills), look only: no change to actions, data, steps, order or wording, in every portal they appear in. Four phases, each tested by Jake before the next. Website only; no backend, migration, template or switch. Action count stays **733**.

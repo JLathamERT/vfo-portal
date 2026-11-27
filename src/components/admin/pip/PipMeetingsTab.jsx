@@ -8,6 +8,7 @@ import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
+import { BackLink } from '../../shared/ProfileKit'
 
 function fmtDate(d) {
   if (!d) return ''
@@ -220,7 +221,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
 
   return (
     <div className="vfo-track">
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '20px', padding: 0 }}>← Back to PIP Meetings</button>
+      <BackLink onClick={onBack}>Back to PIP Meetings</BackLink>
       <TrackHero
         eyebrow={`PIP Meeting${track.pip_engagement_year ? ` · Year ${track.pip_engagement_year}` : ''}`}
         title="PIP Meeting"
@@ -575,7 +576,7 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
   if (pendingOpenId != null) {
     return (
       <div>
-        <button onClick={() => setPendingOpenId(null)} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to PIP Meetings</button>
+        <BackLink onClick={() => setPendingOpenId(null)}>Back to PIP Meetings</BackLink>
         <PipMeetingDetailSkeleton readOnly={readOnly} />
       </div>
     )

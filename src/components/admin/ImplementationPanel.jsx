@@ -5,6 +5,8 @@ import { NAVY, BLUE, money, StatusPill } from './specialistRevenueShared'
 import { AccountingRowsSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import SubTabs from '../shared/SubTabs'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Accounting > Members > Advisor / Accountant Implementation (2026-11-19, the
 // "Advisor / Accountant Onboarding" pages before). Every advisor or accountant
@@ -125,20 +127,10 @@ export default function ImplementationPanel({ kind = 'advisor', title }) {
   ]
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1050px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ marginBottom: '18px' }}>
-        <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting · Members</p>
-        <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>{title || (kind === 'accountant' ? 'Accountant Implementation' : 'Advisor Implementation')}</h2>
-      </div>
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+      <PageHeading eyebrow="Accounting · Members" title={title || (kind === 'accountant' ? 'Accountant Implementation' : 'Advisor Implementation')} />
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {pills.map(p => (
-          <button key={p.key} type="button" onClick={() => setSection(p.key)}
-            style={{ padding: '8px 16px', borderRadius: '99px', border: '1px solid ' + (section === p.key ? 'transparent' : 'var(--vfo-border-strong)'), background: section === p.key ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : 'var(--vfo-card)', color: section === p.key ? '#fff' : 'var(--vfo-ink-2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            {p.label}
-          </button>
-        ))}
-      </div>
+      <SubTabs tabs={pills} active={section} onChange={setSection} />
 
       {loading && <AccountingRowsSkeleton />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}

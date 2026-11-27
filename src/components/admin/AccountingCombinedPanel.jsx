@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { NAVY, BLUE } from './specialistRevenueShared'
+import SubTabs from '../shared/SubTabs'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Accounting: a single tab that condenses several previously-separate panels
 // (e.g. Revenue / Reconciliation / Recurring) behind a pill row, mirroring the
@@ -18,7 +19,7 @@ import { NAVY, BLUE } from './specialistRevenueShared'
 // still open on initialKey.
 export const PILL_KEY = 'adminAccountingPill'
 
-export default function AccountingCombinedPanel({ breadcrumb, title, initialKey, tabs, maxWidth = '1100px' }) {
+export default function AccountingCombinedPanel({ breadcrumb, title, initialKey, tabs, maxWidth = '1200px' }) {
   const [active, setActiveState] = useState(() => {
     let stored = null
     try {
@@ -36,20 +37,9 @@ export default function AccountingCombinedPanel({ breadcrumb, title, initialKey,
 
   return (
     <div style={{ padding: '24px', maxWidth, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ marginBottom: '18px' }}>
-        <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>{breadcrumb}</p>
-        <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>{title}</h2>
-      </div>
+      <PageHeading eyebrow={breadcrumb} title={title} />
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {tabs.map(t => (
-          <button key={t.key} type="button"
-            onClick={() => setActive(t.key)}
-            style={{ padding: '8px 16px', borderRadius: '99px', border: '1px solid ' + (active === t.key ? 'transparent' : 'var(--vfo-border-strong)'), background: active === t.key ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : 'var(--vfo-card)', color: active === t.key ? '#fff' : 'var(--vfo-ink-2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <SubTabs tabs={tabs} active={current.key} onChange={setActive} />
 
       {current.render()}
     </div>

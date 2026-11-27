@@ -3,7 +3,7 @@
 // buttons, the one Tag, and the Accounting sub-tab pills.
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useIsPhone } from '../../lib/useMediaQuery'
+import SubTabs from '../shared/SubTabs'
 import { btnPrimary, btnSecondary, btnOutline, btnState } from '../shared/buttonStyles'
 import { formInput, profileCardStyle, subLabel } from '../shared/ProfileKit'
 import Tag from '../shared/Tag'
@@ -30,23 +30,7 @@ export const rowRule = (i) => ({ borderTop: i > 0 ? '1px solid var(--vfo-border-
 // [{ key, label, phoneLabel? }]. Phone: smaller pills, so the three member tabs
 // sit on one row.
 export function GrowthTabs({ tabs, active, onChange }) {
-  const isPhone = useIsPhone()
-  return (
-    <div style={{ display: 'flex', gap: isPhone ? '6px' : '8px', flexWrap: 'wrap' }}>
-      {tabs.map(t => {
-        const on = active === t.key
-        return (
-          <button key={t.key} onClick={() => onChange(t.key)} style={{
-            padding: isPhone ? '6px 12px' : '8px 16px', borderRadius: '99px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-            fontSize: isPhone ? '12px' : '13px', fontWeight: 700, whiteSpace: 'nowrap',
-            border: '1px solid ' + (on ? 'transparent' : 'var(--vfo-border-strong)'),
-            background: on ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : 'var(--vfo-card)',
-            color: on ? '#fff' : 'var(--vfo-ink-2)',
-          }}>{isPhone && t.phoneLabel ? t.phoneLabel : t.label}</button>
-        )
-      })}
-    </div>
-  )
+  return <SubTabs tabs={tabs} active={active} onChange={onChange} style={{ marginBottom: 0 }} />
 }
 
 export function NumBadge({ n }) {

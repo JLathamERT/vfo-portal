@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useMediaQuery } from '../../../lib/useMediaQuery'
 import { btnSecondary } from '../../shared/buttonStyles'
 import BacklogCard from './BacklogCard'
+import { miniTabStyle } from '../../shared/SubTabs'
 import { LANE_COLUMNS, PROGRESS_LABELS, bySortKey, isPool } from './backlogModel'
 
 // The Tasks tab, per Paxton's sketch: Approved but unassigned on the left, the
@@ -102,9 +103,7 @@ export default function BacklogBoard({ requests, assignees, people, canManage, l
       {assignees.map((a) => {
         const sel = activeLane?.admin_id === a.admin_id
         return (
-          <button key={a.admin_id} onClick={() => setLaneId(a.admin_id)}
-            style={{ padding: '7px 14px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 700, fontFamily: 'Inter, sans-serif', cursor: 'pointer',
-              background: sel ? 'var(--vfo-primary)' : 'var(--vfo-card)', color: sel ? '#ffffff' : 'var(--vfo-muted)', border: `1px solid ${sel ? 'var(--vfo-primary)' : 'var(--vfo-border-soft)'}` }}>
+          <button key={a.admin_id} type="button" onClick={() => setLaneId(a.admin_id)} aria-pressed={sel} style={miniTabStyle(sel)}>
             {a.name}
           </button>
         )

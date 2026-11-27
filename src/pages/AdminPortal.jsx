@@ -758,7 +758,7 @@ export default function AdminPortal() {
           {activeTab === 'accounting' && !loading && canSeeTab('accounting') && accountingSection === 'specialist_license' && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · Specialists" title="VFO Specialist License Fees"
-              maxWidth="1050px"
+              maxWidth="1200px"
               tabs={[
                 { key: 'specialist_license', label: 'Specialists', render: () => <SpecialistLicensePanel embedded /> },
                 { key: 'specialist_license_setup', label: 'Set Up License', render: () => <LicenseSetupSection allExperts={allExperts} /> },
@@ -769,7 +769,7 @@ export default function AdminPortal() {
           {activeTab === 'accounting' && !loading && canSeeTab('accounting') && accountingSection === 'specialist_bg' && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · Specialists" title="VFO Specialist Background Checks"
-              maxWidth="900px"
+              maxWidth="1200px"
               tabs={[
                 { key: 'specialist_bg', label: 'VFO Specialist Background Checks', render: () => <SpecialistBgPanel allExperts={allExperts} embedded /> },
                 { key: 'specialist_bg_reconciliation', label: 'Background Check Reconciliation', render: () => <SpecialistBgReconciliationPanel embedded /> },
@@ -780,7 +780,7 @@ export default function AdminPortal() {
           {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'holistic_revenue' || accountingSection === 'holistic_reconciliation' || accountingSection === 'holistic_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · VFO Services" title="Holistic Planning"
-              maxWidth="1150px" initialKey={accountingSection}
+              maxWidth="1200px" initialKey={accountingSection}
               tabs={[
                 { key: 'holistic_revenue', label: 'Holistic Planning Revenue', render: () => <HolisticRevenuePanel embedded /> },
                 { key: 'holistic_reconciliation', label: 'Holistic Planning Reconciliation', render: () => <HolisticReconciliationPanel embedded /> },
@@ -792,7 +792,7 @@ export default function AdminPortal() {
           {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'tax_revenue' || accountingSection === 'tax_reconciliation' || accountingSection === 'tax_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · VFO Services" title="Tax Planning"
-              maxWidth="1150px" initialKey={accountingSection}
+              maxWidth="1200px" initialKey={accountingSection}
               tabs={[
                 { key: 'tax_revenue', label: 'Tax Planning Revenue', render: () => <TaxRevenuePanel embedded /> },
                 { key: 'tax_reconciliation', label: 'Tax Planning Reconciliation', render: () => <TaxReconciliationPanel embedded /> },
@@ -804,7 +804,7 @@ export default function AdminPortal() {
           {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'pip_revenue' || accountingSection === 'pip_reconciliation' || accountingSection === 'pip_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · VFO Services" title="Additional PIP"
-              maxWidth="1150px" initialKey={accountingSection}
+              maxWidth="1200px" initialKey={accountingSection}
               tabs={[
                 { key: 'pip_revenue', label: 'Additional PIP Revenue', render: () => <PipRevenuePanel embedded /> },
                 { key: 'pip_reconciliation', label: 'Additional PIP Reconciliation', render: () => <PipReconciliationPanel embedded /> },
@@ -815,7 +815,7 @@ export default function AdminPortal() {
           {activeTab === 'accounting' && canSeeTab('accounting') && (accountingSection === 'sdp_atsg_revenue' || accountingSection === 'sdp_atsg_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · SDP ATSG" title="SDP ATSG"
-              maxWidth="1150px" initialKey={accountingSection}
+              maxWidth="1200px" initialKey={accountingSection}
               tabs={[
                 { key: 'sdp_atsg_revenue', label: 'SDP ATSG Revenue', render: () => <SdpAtsgRevenuePanel embedded /> },
                 { key: 'sdp_atsg_held_payouts', label: <HeldPayoutsLabel engine="sdp_atsg" />, render: () => <HeldPayoutsPanel engine="sdp_atsg" embedded /> },
@@ -864,11 +864,18 @@ function loadDataSkeleton(tab, section) {
   if (tab === 'member_overview') return <MemberOverviewSkeleton />
   if (tab === 'accounting') {
     if (section === 'advisor_membership_fees' || section === 'accountant_membership_fees') {
-      return <AccountingPageSkeleton maxWidth="1050px" pills={5}><AccountingRowsSkeleton search={260} boxes={[210]} blocks={[110, 110, 80]} pill={150} /></AccountingPageSkeleton>
+      return <AccountingPageSkeleton maxWidth="1200px" pills={5}><AccountingRowsSkeleton search={260} boxes={[210]} blocks={[110, 110, 80]} pill={150} /></AccountingPageSkeleton>
     }
     const ledger = section === 'specialist_license' || section === 'specialist_bg'
+    // As many pills as the page has (VFO Specialist Revenue 6, Holistic / Tax 4, PIP / Payments / Implementation 3, SDP ATSG 2).
+    const pills = ledger ? 3
+      : /^specialist_/.test(section) ? 6
+      : /^(holistic|tax)_/.test(section) ? 4
+      : /^pip_/.test(section) || section === 'payments' || /_onboarding_fees$/.test(section) ? 3
+      : /^sdp_atsg_/.test(section) ? 2
+      : 5
     return (
-      <AccountingPageSkeleton maxWidth={section === 'specialist_bg' ? '900px' : '1200px'} pills={ledger ? 3 : 5}>
+      <AccountingPageSkeleton maxWidth="1200px" pills={pills}>
         <SearchFilterSkeleton search={110} boxes={[120, 90]} />
         <AccountingTableSkeleton cols={ledger ? '1.4fr 118px 112px 96px 178px' : '1.4fr 104px 72px 56px 100px 100px 100px 100px 96px 185px'} />
       </AccountingPageSkeleton>
@@ -880,11 +887,11 @@ function loadDataSkeleton(tab, section) {
   if (section === 'specialist_kpis') return <KpiPageSkeleton title="Specialist KPIs" layout="specialist" chips={4} />
   if (section === 'advisor_onboarding' || section === 'accountant_onboarding') return <OnboardingPageSkeleton />
   if (section === 'specialist_onboarding') return <OnboardingPageSkeleton specialist />
-  if (section === 'strategic_partners') return wrap('900px', <StrategicPartnersSkeleton />)
+  if (section === 'strategic_partners') return wrap('1200px', <StrategicPartnersSkeleton />)
   if (section === 'specialist_showroom') return <ShowroomSkeleton />
   if (String(section || '').startsWith('add_')) return wrap(tab === 'specialists' ? '800px' : '900px', <MemberEditFormSkeleton />)
   if (tab === 'specialists') return <SpecialistDirectorySkeleton />
   const openKey = { advisors: 'adminSelectedMember', accountants: 'adminSelectedAccountant', strategic: 'adminSelectedStrategicMember' }[tab]
   if (openKey && sessionStorage.getItem(openKey)) return <MemberPageSkeleton />
-  return wrap('900px', <DirectoryListSkeleton />)
+  return wrap('1200px', <DirectoryListSkeleton />)
 }

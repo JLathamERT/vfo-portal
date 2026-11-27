@@ -21,6 +21,7 @@ import { btnPrimary, btnState } from '../../shared/buttonStyles'
 import { ChangeStatusModal, PlanStatusBanner, PlanStatusTag, planIsLive } from './TaxPlanStatus'
 import { PlanYearModal, StartPlanModal, TaxPlanCard, planTitle } from './TaxPlanCards'
 import { retainerShareGrossFor } from '../taxShared'
+import { BackLink, ChoiceButtons } from '../../shared/ProfileKit'
 
 // The automated cascade card. The STORED program_client_tasks.name is a lookup
 // key on both sides of the wire — the two cards below switch on it, MAP 1 keys
@@ -2521,8 +2522,6 @@ function ClientQuestionsCard({ planId, act }) {
 // `international` (q41 Yes, 2026-11-18): the case begins with the international
 // tax specialist, shown as a chip beside the heading on every surface.
 function TaxRouteCard({ rapid, international = false, canSwitch, busy, onChange }) {
-  const pill = (on) => ({ padding: '4px 12px', borderRadius: '999px', border: 'none', fontSize: '11.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
-    cursor: busy ? 'not-allowed' : 'pointer', background: on ? '#125ecc' : 'transparent', color: on ? '#fff' : 'var(--vfo-ink)' })
   return (
     <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '5px 18px', minHeight: '45px', boxSizing: 'border-box', flexWrap: 'wrap' }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -2533,10 +2532,7 @@ function TaxRouteCard({ rapid, international = false, canSwitch, busy, onChange 
         <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{rapid ? 'The TPOM is replaced by a customized video' : 'The client attends the TPOM'}</span>
         {canSwitch
           ? (
-            <div role="radiogroup" style={{ display: 'inline-flex', border: '1px solid var(--vfo-border-strong)', borderRadius: '999px', padding: '2px', background: 'var(--vfo-card)' }}>
-              <button type="button" role="radio" aria-checked={!rapid} disabled={busy} onClick={() => onChange(false)} style={pill(!rapid)}>Traditional 6-Step</button>
-              <button type="button" role="radio" aria-checked={rapid} disabled={busy} onClick={() => onChange(true)} style={pill(rapid)}>Rapid Route</button>
-            </div>
+            <ChoiceButtons small options={[[false, 'Traditional 6-Step'], [true, 'Rapid Route']]} value={!!rapid} onChange={onChange} disabled={busy} />
           )
           : <span style={chipStyle(rapid ? '#125ecc' : 'var(--vfo-muted)')}>{rapid ? 'Rapid Route' : 'Traditional 6-Step'}</span>}
       </div>
@@ -6021,7 +6017,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   return (
     // vfo-track: the phone-only text floor in index.css (its 10px chips read 11px).
     <div className="vfo-track">
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Tax Plans</button>
+      <BackLink onClick={onBack}>Back to Tax Plans</BackLink>
       <TrackHero
         eyebrow={programName}
         title={planTitle(planNow)}
@@ -6763,7 +6759,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
   if (pendingOpenId != null) {
     return (
       <div>
-        <button onClick={() => setPendingOpenId(null)} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Tax Plans</button>
+        <BackLink onClick={() => setPendingOpenId(null)}>Back to Tax Plans</BackLink>
         <TaxPlanTrackSkeleton readOnly={readOnly || plannerMode} />
       </div>
     )
