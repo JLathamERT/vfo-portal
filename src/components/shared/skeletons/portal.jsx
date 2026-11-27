@@ -278,23 +278,20 @@ export function GrowthPlanSkeleton({ tabs = true, step = 'gp_onepage' }) {
   )
 }
 
-// My One Page Plan (client portal): title, Latest / History toggles, the intro, then
-// the Immediate and Parked cards.
+// My One Page Plan (client portal): the title hero, Latest / History pills, the
+// completed date and intro, then the Immediate and Parked boxes (ProfileKit).
 export function OnePagePlanSkeleton() {
+  const isPhone = useIsPhone()
   return (
     <div>
-      <Skeleton width={230} height={20} style={{ marginBottom: '20px' }} />
-      <PillTabsSkeleton widths={[116, 80]} height={32} style={{ marginBottom: '24px' }} />
+      {isPhone ? <Skeleton width={230} height={20} style={{ marginBottom: '14px', maxWidth: '100%' }} /> : <HeroSkeleton eyebrow={false} meta={false} />}
+      <PillTabsSkeleton widths={[124, 84]} height={35} style={{ marginBottom: '18px' }} />
       <Skeleton width={180} height={12} style={{ marginBottom: '14px' }} />
-      <SkeletonText lines={2} style={{ marginBottom: '26px' }} />
+      <SkeletonText lines={2} style={{ marginBottom: '20px' }} />
       {[0, 1].map(s => (
-        <div key={s} style={{ marginBottom: '24px' }}>
-          <Skeleton width={180} height={16} style={{ marginBottom: '7px' }} />
-          <Skeleton width={320} height={11} style={{ marginBottom: '13px', maxWidth: '100%' }} />
-          <CardShell pad="var(--vfo-card-pad)" style={{ marginBottom: 0 }}>
-            {[0, 1, 2].map(i => <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}><Skeleton width={i % 2 ? '40%' : '55%'} height={14} /><Skeleton width={120} height={10} style={{ marginTop: '6px' }} /></div>)}
-          </CardShell>
-        </div>
+        <ProfileCardSkeleton key={s} titleWidth={s ? 150 : 170} sub>
+          {[0, 1, 2].map(i => <div key={i} style={{ paddingTop: i ? '11px' : 0, paddingBottom: i < 2 ? '11px' : 0, borderTop: i ? '1px solid var(--vfo-border-soft)' : 'none' }}><Skeleton width={i % 2 ? '40%' : '55%'} height={14} /><Skeleton width={120} height={10} style={{ marginTop: '6px' }} /></div>)}
+        </ProfileCardSkeleton>
       ))}
     </div>
   )
