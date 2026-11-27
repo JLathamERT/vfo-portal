@@ -1,4 +1,4 @@
-# VFO Session-Learned Gotchas — full registry (#1–#784)
+# VFO Session-Learned Gotchas — full registry (#1–#799)
 
 > Split out of `SESSION_REFERENCE.md` on 2026-06-19 to keep the live hub lean. This is the **complete** numbered list; the hub keeps only a curated ALWAYS-APPLIES subset.
 >
@@ -2904,3 +2904,7 @@ A planner in a vault-assess group dropping a PDF into a client's vault while the
 **796. A worktree folder that was removed but not deleted is the MAIN checkout to git (2026-11-25).** Windows kept a removed worktree's empty folder because the chat was still running from it. Git, finding no `.git` there, walks up to the main folder: `git status` said `main`, clean, and a commit or an edit by relative path would have landed on main. Before any work in a reopened chat, check `git rev-parse --show-toplevel` in each worktree, and recreate it (`git worktree add -b <new branch> <same path> origin/main`, then `git branch --unset-upstream` so a bare push cannot aim at main). Use a new branch name when the old one is still on GitHub: its history was squashed, so a push would be refused.
 
 **797. A payment a transfer makes does not name that transfer when you read it with your own key (2026-11-25).** IAG's live transfer arrived on VFO Services as a `py_` payment whose `source_transfer` was blank when VFO read it with its own key: the transfer is IAG's, not ours. So "the payment came from the transfer IAG named" can never pass from our side, and the first live transfer was refused. **Fix:** prove what our key can see: the payment on our account, its amount and status, and the payer account it names; check `source_transfer` only when Stripe shows one. **A proof that sandbox skips is untested:** test it with a real cent before the first real transfer.
+
+**798. A `ProfileCard` clips anything that pops out of it (2026-11-27).** The shared box has `overflow: hidden` so its rounded corners hold the header and body. A search dropdown inside it (the Add Advisor form's Connected Member picker) was cut off at the box's edge with no scrollbar. Pass `style={{ overflow: 'visible' }}` to a box that holds a popover, or render the popover outside it.
+
+**799. A tab portal that remembers its tab must never remember Settings (2026-11-27).** The client, specialist and planner portals save their open tab in sessionStorage. A client page that sends you to Settings sets that tab to `'settings'`, and Settings' Back then navigates away without the portal ever saving another tab, so the next visit to the portal opened on Settings. The save writes the tab under Settings instead (`tab === 'settings' ? tabBeforeSettings.current : tab`).

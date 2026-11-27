@@ -647,7 +647,7 @@ A Corporate Member (`58147-C1`) has no Connect account of their own, and their r
 
 ### Member Connect status is read live, and it is the only surface that is (2026-08-03, gotcha #318)
 
-`member_connect_status` (`actions/members/connect-status.ts`, AUTH + `ADMIN_ONLY_ACTIONS`) `GET`s `/v1/accounts/{id}` **fresh on every member-profile open** — no DB cache, no cron, no stored status column — and is strictly **read-only** (it writes nothing to Postgres and creates nothing at Stripe). It resolves the platform through the same shared **"MAP 1"** `pipeline_sandbox_config` toggle everything else Connect-related reads, so it always queries the platform that would actually pay the member out. Returned `status`:
+`member_connect_status` (and, since 2026-11-27, its specialist twin `specialist_connect_status`, same file and same check, keyed by `expert_id`) (`actions/members/connect-status.ts`, AUTH + `ADMIN_ONLY_ACTIONS`) `GET`s `/v1/accounts/{id}` **fresh on every member-profile open** — no DB cache, no cron, no stored status column — and is strictly **read-only** (it writes nothing to Postgres and creates nothing at Stripe). It resolves the platform through the same shared **"MAP 1"** `pipeline_sandbox_config` toggle everything else Connect-related reads, so it always queries the platform that would actually pay the member out. Returned `status`:
 
 | Status | Dot | Meaning |
 |---|---|---|
