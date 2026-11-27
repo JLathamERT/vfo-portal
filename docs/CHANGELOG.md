@@ -9,6 +9,24 @@
 
 ---
 
+## 2026-11-27 (c) — Programs ▾ Clients tab, program Notes tab last, client lists A to Z, no route loading card — by Jake
+
+**What it is.** Four small admin requests in one chat. Website only.
+
+**Built.**
+- **Programs ▾ → Clients** (admin member profile, section `msm_clients`, `MemberAllClients` in `MSMTracking.jsx`): every program's clients in one list, in the program Clients tab's look (Total / Active tiles; Client with its "with" contacts, Ref, Program, Status, the Direct pill). A client in two programs shows once with both names. An **Accountants** sub-tab holds the Partnership Fast Track and Tailored Route accountants; it is hidden for Strategic Members, who run Holistic and Tax only. Built from one `msm_load_clients` per enrolment, so a status reads exactly as on the program's own tab. No add button (Jake): a client is added on a program's tab. A row opens the client page by `program_id`, so Back returns to the list (#800).
+- **Program view tabs.** The first tab, *Home*, held only the program notes, and few members have any (on live: 21 notes on about 290 enrolments). A program now opens on its working tab (Clients for Tax Planning and Tailored Route, 90 Day Plan for Holistic and PFT, Meetings for coaching), and the notes moved to a last **Notes (n)** tab with its count. A `?sub=home` deep link opens Notes. The notes, their visibility and where members read them are unchanged.
+- **Client lists open A to Z by name** (first then last, case ignored): the new combined list and each program's own Clients / Accountants tab. A header click still re-sorts. Sorted on the page; `msm_load_clients` still returns oldest first. The member portal's lists are unchanged.
+- **No placeholder card while a portal's code loads.** `RouteFallback` (`App.jsx`, shown when a page's chunk takes over 300 ms, typically the first visit after hours away) drew one grey card that matched no page. It now draws only the page colour and, on a portal, the navy top bar; the portal's own tab skeleton follows when the chunk lands.
+
+**Docs.** `architecture/02-frontend-shell.md` (*The shared look* MsmKit line, the per-portal chunks line); `tables/programs.md` gains `member_program_notes.visibility` (missing since 2026-07-10) and where the notes are written and read; gotcha #800.
+
+**Backend.** None. Action count stays **733**. `vfo-admin-api-jake` was brought to main (v121) at chat start for testing.
+
+**Tested** by Jake on the test site at 1280 wide: the Clients and Accountants sub-tabs, counts, sort and header sort, row open and Back, each program's opening tab and Notes (n) count with an added and deleted note, the Programs home empty text, the A to Z order on every admin client list, and the route fallback on a throttled hard reload of `/admin`. **Not exercised:** the route fallback on the member, client, specialist and planner portals and on the emailed-link pages (the same code, now only a bar on the page colour); no phone check, as the Clients and Notes changes are admin-only (TEAM_RULES §9).
+
+---
+
 ## 2026-11-27 (b) — Member Activity log, FAQ Editor for both portals by tier, wider lists, save back to Profile — by Jake
 
 **What it is.** A run of small requests in one chat, plus two larger ones: an admin log of what each member does in the portal, and a FAQ Editor that serves the member AND client portals, each FAQ aimed at chosen tiers.
