@@ -21,7 +21,7 @@ import { btnPrimary, btnState } from '../../shared/buttonStyles'
 import { ChangeStatusModal, PlanStatusBanner, PlanStatusTag, planIsLive } from './TaxPlanStatus'
 import { PlanYearModal, StartPlanModal, TaxPlanCard, planTitle } from './TaxPlanCards'
 import { retainerShareGrossFor } from '../taxShared'
-import { ChoiceButtons } from '../../shared/ProfileKit'
+import { BackLink, ChoiceButtons } from '../../shared/ProfileKit'
 
 // The automated cascade card. The STORED program_client_tasks.name is a lookup
 // key on both sides of the wire — the two cards below switch on it, MAP 1 keys
@@ -6017,7 +6017,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   return (
     // vfo-track: the phone-only text floor in index.css (its 10px chips read 11px).
     <div className="vfo-track">
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Tax Plans</button>
+      <BackLink onClick={onBack}>Back to Tax Plans</BackLink>
       <TrackHero
         eyebrow={programName}
         title={planTitle(planNow)}
@@ -6759,7 +6759,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
   if (pendingOpenId != null) {
     return (
       <div>
-        <button onClick={() => setPendingOpenId(null)} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to Tax Plans</button>
+        <BackLink onClick={() => setPendingOpenId(null)}>Back to Tax Plans</BackLink>
         <TaxPlanTrackSkeleton readOnly={readOnly || plannerMode} />
       </div>
     )

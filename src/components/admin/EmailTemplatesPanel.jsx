@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { EmailTemplatesSkeleton } from '../shared/Skeleton'
 import { TEMPLATE_META, ROLE_LABELS } from '../shared/templateMeta'
-import { readable } from '../shared/readableColor'
+import { readable } from '../shared/readableColor'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Program sections — same six that have automation tabs. The standalone Tax
 // Planning program shares the TAX templates with Holistic Tax Priorities, so
@@ -283,8 +284,8 @@ export default function EmailTemplatesPanel() {
   })
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
-      <h2 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em', fontSize: '24px', color: 'var(--vfo-ink)', margin: '0 0 8px 0' }}>Email Templates</h2>
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      <PageHeading eyebrow="Automation & Config" title="Email Templates" style={{ marginBottom: '8px' }} />
       <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 24px' }}>
         Emails are listed in the order they fire. Each email has a <strong>Draft / Send</strong> switch: Draft means it lands in Gmail Drafts for review before you send it yourself; Send means it goes out automatically. Use a section&rsquo;s &ldquo;All draft / All send&rdquo; buttons to set the whole group, then flip individual emails the other way if needed. Expand an email to edit <strong>who receives it</strong> (TO / CC / BCC — mix role chips like Client, Member, Assigned PF with real email addresses) plus its subject and body.
       </p>

@@ -13,7 +13,8 @@ import NextTaxYearList from './tax/NextTaxYearList'
 import { NEXT_YEAR_HEX } from './tax/TaxPlanStatus'
 import { CLIENT_STATUS_LABELS, clientStatusColors, clientStatusHex, clientStatusLabel } from '../shared/clientStatus'
 import { ClientOverviewSkeleton } from '../shared/Skeleton'
-import SubTabs, { MiniTabs } from '../shared/SubTabs'
+import SubTabs, { MiniTabs } from '../shared/SubTabs'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Client Overview — a mirror of Member Overview, but oriented around clients and
 // their program tracks. Four sub-tabs, each lazily loaded from the backend
@@ -445,18 +446,12 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
 
   return (
     <div style={wrap}>
-      <div style={{ marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
-        <div>
-          <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Clients</p>
-          <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '4px 0 0' }}>Client Overview</h2>
-        </div>
-        {memberMode && canAddClient && activeSection === 'clients' && !showAddClient && (
-          <button type="button" onClick={() => { setAddedMessage(''); setShowAddClient(true) }}
-            style={{ padding: isPhone ? '6px 14px' : '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            + Add Client
-          </button>
-        )}
-      </div>
+      <PageHeading eyebrow="Clients" title="Client Overview" action={memberMode && canAddClient && activeSection === 'clients' && !showAddClient && (
+        <button type="button" onClick={() => { setAddedMessage(''); setShowAddClient(true) }}
+          style={{ padding: isPhone ? '6px 14px' : '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          + Add Client
+        </button>
+      )} />
 
       {memberMode && canAddClient && activeSection === 'clients' && showAddClient && (
         <AddClientForm onSave={addClient} onCancel={() => setShowAddClient(false)} profileBase={clientBase} />

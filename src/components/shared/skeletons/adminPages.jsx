@@ -171,8 +171,8 @@ export function ProgramTabsSkeleton({ tabs = 2 }) {
 
 // KPI pages (members, specialists, tax planners): the navy hero, then the
 // breakdown and donut cards. `layout`: 'member' = breakdown + narrow donut column,
-// 'single' = breakdown alone (strategic), 'specialist' = donut + breakdown,
-// 'planner' = donut over a full-width breakdown. `subTabs`: true for the two
+// 'single' = breakdown alone (strategic, tax planners), 'specialist' = donut +
+// breakdown. `subTabs`: true for the two
 // Advisor KPIs pills, or an array of pill widths.
 export function KpiPageSkeleton({ title, layout = 'member', chips = 7, subTabs = false }) {
   const stacked = layout === 'member'
@@ -201,13 +201,12 @@ export function KpiPageSkeleton({ title, layout = 'member', chips = 7, subTabs =
   )
   const row = { display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }
   return (
-    <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
       {subTabs && <PillTabsSkeleton widths={Array.isArray(subTabs) ? subTabs : [70, 270]} />}
       <KpiHeroSkeleton title={title} chips={chips} />
       {layout === 'member' && <div style={row}><div style={{ flex: '3 1 560px', minWidth: '300px' }}>{breakdown}</div><div style={{ flex: '1 1 240px', minWidth: '230px', maxWidth: '320px' }}>{donut}</div></div>}
       {layout === 'single' && breakdown}
       {layout === 'specialist' && <div style={row}><div style={{ flex: '1 1 300px', minWidth: '280px' }}>{donut}</div><div style={{ flex: '2 1 460px', minWidth: '300px' }}>{breakdown}</div></div>}
-      {layout === 'planner' && <>{donut}<div style={{ marginTop: '16px' }}>{breakdown}</div></>}
     </div>
   )
 }

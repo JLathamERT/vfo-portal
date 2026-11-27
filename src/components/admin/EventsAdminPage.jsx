@@ -8,7 +8,8 @@ import MemberEvents from '../member/MemberEvents'
 import EventAttendeesTable, { EVENT_GRID, EVENT_MIN_WIDTH } from './EventAttendeesTable'
 import EventPurchasesTable from './EventPurchasesTable'
 import EventCheckIn from './EventCheckIn'
-import SubTabs, { MiniTabs } from '../shared/SubTabs'
+import SubTabs, { MiniTabs } from '../shared/SubTabs'
+import { PageHeading } from '../shared/ProfileKit'
 
 // More > Events (2026-11-25), open to every admin. The page and its sub-tab pills are
 // format-identical to the Growth Credits page (GrowthCreditsRedemptionsPage.jsx).
@@ -55,18 +56,14 @@ export default function EventsAdminPage() {
 
   return (
     <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
-      <div style={card}>
-        <p style={{ fontSize: '10.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 4px' }}>Admin</p>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', flexWrap: 'wrap' }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>Events</h2>
-          {event && <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>{event.name} · {eventDatesText(event)}{event.location ? ` · ${event.location}` : ''}</span>}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '10px', fontSize: '13px', color: 'var(--vfo-muted)' }}>
+      <PageHeading eyebrow="More" title="Events" sub={<>
+        {event && <div>{event.name} · {eventDatesText(event)}{event.location ? ` · ${event.location}` : ''}</div>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '6px' }}>
           <span>Public page:</span>
           <CopyLink url={PUBLIC_PAGE} label={PUBLIC_PAGE.replace('https://', '')} />
           <a href={PUBLIC_PAGE} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--vfo-link)', fontWeight: 600, textDecoration: 'none' }}>Open</a>
         </div>
-      </div>
+      </>} />
 
       <SubTabs tabs={SUBTABS} active={section} onChange={setSection} />
 

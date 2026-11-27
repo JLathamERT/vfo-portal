@@ -4,7 +4,8 @@ import { ListHeader, PhaseBadge, TrackHero, noMultiClickSelect } from '../shared
 import { SdpAtsgCaseSkeleton, SdpAtsgListSkeleton } from '../shared/Skeleton'
 import { money, StatusPill } from '../admin/specialistRevenueShared'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
-import { useIsPhone } from '../../lib/useMediaQuery'
+import { useIsPhone } from '../../lib/useMediaQuery'
+import { BackLink } from '../shared/ProfileKit'
 
 // SDP - Advanced Tax Strategy Governance (Jake, 2026-11-17). One screen for both
 // the planner portal tab (SDP's planners + team members) and the admin
@@ -101,7 +102,7 @@ export default function SdpAtsgPanel({ mode = 'planner', initialCaseId = null })
   const [adding, setAdding] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const isPhone = useIsPhone()
-  const wrap = { maxWidth: '1180px', margin: '0 auto', padding: isPhone ? '18px 14px' : '28px 24px' }
+  const wrap = { maxWidth: '1200px', margin: '0 auto', padding: isPhone ? '18px 14px' : '28px 24px' }
 
   return (
     <div style={wrap}>
@@ -517,7 +518,7 @@ function CaseView({ caseId, mode, onBack }) {
     } finally { setBusy('') }
   }
 
-  const back = <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0, fontFamily: 'Inter, sans-serif' }}>← Back to clients</button>
+  const back = <BackLink onClick={onBack}>Back to clients</BackLink>
   if (err) return <div>{back}<div style={{ ...card, padding: '14px 18px', color: '#ef4444', fontSize: '13px' }}>{err}</div></div>
   if (!d) return <div>{back}<SdpAtsgCaseSkeleton /></div>
 

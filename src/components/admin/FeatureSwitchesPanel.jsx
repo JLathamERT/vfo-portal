@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
-import { StackedCardsSkeleton } from '../shared/Skeleton'
+import { StackedCardsSkeleton } from '../shared/Skeleton'
+import { PageHeading } from '../shared/ProfileKit'
 
 // The Feature Switches tab (2026-09-28), under More ▾ — superadmins, and any admin
 // it was turned on for in the Admin Editor (2026-11-25). The backend
@@ -209,8 +210,8 @@ export default function FeatureSwitchesPanel() {
   const listStyle = { margin: 0, paddingLeft: '20px', fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.55 }
 
   return (
-    <div style={{ maxWidth: '980px', margin: '0 auto', padding: '32px 24px' }}>
-      <h2 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '0 0 6px' }}>Feature Switches</h2>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
+      <PageHeading eyebrow="More" title="Feature Switches" style={{ marginBottom: '8px' }} />
       <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 24px' }}>
         Features that are built but held back from real members. While a switch is off the portal behaves exactly as it did before the feature. "Test member only" turns it on for the test member ({testMember || '59524'}) alone, so it can be tried on the real portal. A change takes effect immediately — no deploy.
       </p>

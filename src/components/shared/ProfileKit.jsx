@@ -283,12 +283,14 @@ export function SaveBar({ dirty, saving, onSave, disabled = false, status, statu
 }
 
 // A page's title: a small blue eyebrow over the heading (Client Overview's).
-export function PageHeading({ eyebrow, title, action, style }) {
+// `sub`: one muted line (or a small block) under the title: a page's short description.
+export function PageHeading({ eyebrow, title, sub, action, style }) {
   return (
     <div style={{ marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap', ...style }}>
       <div>
         {eyebrow && <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>{eyebrow}</p>}
         <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '4px 0 0', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.02em' }}>{title}</h2>
+        {sub && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '6px', lineHeight: 1.55 }}>{sub}</div>}
       </div>
       {action}
     </div>

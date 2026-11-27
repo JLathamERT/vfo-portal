@@ -66,7 +66,7 @@ export default function TaxPlannerKpiPanel({ planners = [] }) {
   }
 
   return (
-    <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
       <SubTabs tabs={SUB_TABS} active={subTab} onChange={pick} style={{ marginBottom: '20px' }} />
 
       {subTab === 'kpis' && (

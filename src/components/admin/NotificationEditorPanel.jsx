@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
-import { EmailTemplatesSkeleton } from '../shared/Skeleton'
+import { EmailTemplatesSkeleton } from '../shared/Skeleton'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Notification Editor — the notifications sibling of Email Templates. Every
 // in-portal bell notification (and every sweep reminder email's timing) is a
@@ -241,8 +242,8 @@ export default function NotificationEditorPanel() {
   ]
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
-      <h2 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em', fontSize: '24px', color: 'var(--vfo-ink)', margin: '0 0 8px 0' }}>Notification Editor</h2>
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      <PageHeading eyebrow="Automation & Config" title="Notification Editor" style={{ marginBottom: '8px' }} />
       <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 24px' }}>
         Every in-portal bell notification, grouped by pipeline. Expand a notification to change who receives it, how many days a
         follow-up waits before firing, or to switch it off. FYI notifications have a Done button in the bell; ACTION REQUIRED ones

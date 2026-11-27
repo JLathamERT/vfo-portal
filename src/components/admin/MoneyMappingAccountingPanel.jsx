@@ -2,7 +2,8 @@ import { useState, useLayoutEffect, useMemo } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { TableSkeleton } from '../shared/Skeleton'
-import { MemberNameLink } from '../shared/personLinks'
+import { MemberNameLink } from '../shared/personLinks'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Accounting > Members > Money Mapping (2026-10-30). Every member who has earned
 // Money Mapping on the portal (credited automatically from their Money Mapping
@@ -73,23 +74,17 @@ export default function MoneyMappingAccountingPanel() {
     }
   }
 
-  const wrap = { padding: '24px', maxWidth: '1050px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
+  const wrap = { padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
   const members = data?.members || []
   const cols = '1.5fr 120px 120px 120px 130px'
 
   return (
     <div style={wrap}>
-      <div style={{ marginBottom: '18px', display: 'flex', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1 }}>
-          <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting · Members</p>
-          <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>Money Mapping</h2>
-        </div>
-        {!loading && data && (
-          <button type="button" style={primaryBtn(false)} onClick={() => { setShowAdd(v => !v); setNotice(null) }}>
-            {showAdd ? 'Close' : '+ Add a member'}
-          </button>
-        )}
-      </div>
+      <PageHeading eyebrow="Accounting · Members" title="Money Mapping" action={!loading && data && (
+        <button type="button" style={primaryBtn(false)} onClick={() => { setShowAdd(v => !v); setNotice(null) }}>
+          {showAdd ? 'Close' : '+ Add a member'}
+        </button>
+      )} />
 
       {loading && (
         <>

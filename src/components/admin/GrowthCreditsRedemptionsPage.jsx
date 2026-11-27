@@ -3,7 +3,8 @@ import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { TableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
 import GCPurchasesTable from './GCPurchasesTable'
-import SubTabs from '../shared/SubTabs'
+import SubTabs from '../shared/SubTabs'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Growth Credits page (top-level admin tab, open to every admin since 2026-11-25).
 // Sub-tabs: Redemptions (the fulfillment queue), Purchases and Menu (read-only view
@@ -116,11 +117,8 @@ export default function GrowthCreditsRedemptionsPage() {
   })()
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1320px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ ...card, marginBottom: '18px' }}>
-        <p style={{ fontSize: '10.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 4px' }}>Admin</p>
-        <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>Growth Credits</h2>
-      </div>
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+      <PageHeading eyebrow="More" title="Growth Credits" />
 
       <SubTabs tabs={SUBTABS} active={section} onChange={setSection} />
 

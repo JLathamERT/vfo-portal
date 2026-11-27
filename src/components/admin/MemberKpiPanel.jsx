@@ -195,7 +195,7 @@ export default function MemberKpiPanel({ allMembers, category }) {
   }), [pool])
 
   return (
-    <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
       {showStandingTab && (
         <SubTabs tabs={[{ key: 'kpis', label: 'KPIs' }, { key: 'standing', label: `Suspended, Paused & Arrears ${nounTitle}` }]} active={subTab} onChange={setSubTab} style={{ marginBottom: '20px' }} />
       )}

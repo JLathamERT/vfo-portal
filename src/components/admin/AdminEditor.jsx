@@ -77,7 +77,7 @@ export default function AdminEditor({ onBack }) {
   const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
 
   return (
-    <div style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 24px' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 24px' }}>
       <div style={sectionStyle}>
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Add Admin</div>
         <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>

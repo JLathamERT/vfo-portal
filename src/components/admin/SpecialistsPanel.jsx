@@ -39,9 +39,9 @@ const MEMBER_SERVICES = 'Member Services'
 // The Tax section (shared, one set per person) only surfaces under this ecosystem.
 const TAX_ECOSYSTEM = 'Tax Planning'
 import { STATUS_COLORS } from '../shared/statusColors'
-import { HeroAvatar } from '../shared/TrackKit'
+import { HeroAvatar, ListHeader } from '../shared/TrackKit'
 import StripeAccountField from '../shared/StripeAccountField'
-import { ChoiceButtons, DotText, Field, FieldGrid, FormGrid, formInput, formLabel, ProfileCard, ProfileHero, SaveBar, SettingRow, subLabel, Switch } from '../shared/ProfileKit'
+import { BackLink, ChoiceButtons, DotText, Field, FieldGrid, FormGrid, formInput, formLabel, PageHeading, ProfileCard, ProfileHero, SaveBar, SettingRow, subLabel, Switch } from '../shared/ProfileKit'
 import { btnDanger, btnOutline, btnPrimary, btnSecondary, btnState, BTN_SMALL } from '../shared/buttonStyles'
 const HEADSHOT_SUPABASE = HEADSHOTS_URL
 const HEADSHOT_BASE = 'https://biz-diagnostic.com/Uploads/ExpertPhotos/'
@@ -631,13 +631,11 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
   return (
     <div style={{ maxWidth: activeTab === 'edit' && !selectedExpert ? LIST_PAGE_MAX_WIDTH : '900px', margin: '0 auto', padding: '24px' }}>
       {cropState && <ImageCropModal src={cropState.src} onApply={applyCrop} onCancel={() => setCropState(null)} />}
-      {/* Section title */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em', fontSize: '22px', color: 'var(--vfo-ink)' }}>
-          {activeTab === 'add' ? 'Add Specialist' : 'Search Specialists'}
-        </div>
-        {activeTab === 'edit' && !selectedExpert && <ExportButton title="Specialists" columns={specialistExportColumns(ecoMap)} rows={searchedExperts} filterGroups={specFilterGroups} filterValue={specFilter} />}
-      </div>
+      {/* Section title: the Advisors list's header on the list, PageHeading on Add */}
+      {activeTab === 'add' && <PageHeading eyebrow="Specialists" title="Add Specialist" />}
+      {activeTab === 'edit' && !selectedExpert && (
+        <ListHeader title="Specialists" count={searchedExperts.length} action={<ExportButton title="Specialists" columns={specialistExportColumns(ecoMap)} rows={searchedExperts} filterGroups={specFilterGroups} filterValue={specFilter} />} />
+      )}
 
       {/* Add tab */}
       {activeTab === 'add' && (
@@ -698,7 +696,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
 
       {activeTab === 'edit' && selectedExpert && (
         <div>
-          <button onClick={backToList} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to list</button>
+          <BackLink onClick={backToList}>Back to list</BackLink>
 
           <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '1px solid var(--vfo-border)', position: 'relative', zIndex: 50 }}>
             <div style={{ position: 'relative' }} onMouseEnter={() => setProfileDropOpen(true)} onMouseLeave={() => setProfileDropOpen(false)}>

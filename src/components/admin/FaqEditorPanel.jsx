@@ -3,7 +3,7 @@ import { callApi, getSession } from '../../lib/api'
 import { isWistiaLink, wistiaEmbedUrl } from '../shared/wistia'
 import { Skeleton } from '../shared/Skeleton'
 import { btnPrimary, btnSecondary, btnDanger, btnOutline, btnStep, BTN_SMALL, btnState } from '../shared/buttonStyles'
-import { formLabel, formInput } from '../shared/ProfileKit'
+import { formLabel, formInput, PageHeading } from '../shared/ProfileKit'
 import { listSearchStyle } from '../shared/ListTable'
 import SubTabs from '../shared/SubTabs'
 
@@ -52,14 +52,9 @@ export default function FaqEditorPanel() {
   const current = PORTALS.find(p => p.key === portal)
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1340px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
-      <div style={card}>
-        <p style={{ fontSize: '10.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 4px' }}>Admin</p>
-        <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>FAQ Editor</h2>
-        <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '8px 0 0', lineHeight: 1.5 }}>
-          Each portal has its own Help panel (the blue ? button bottom-right) and its own FAQs. A question is required; add an answer, a Wistia video, a PDF document, or any mix.
-        </p>
-      </div>
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+      <PageHeading eyebrow="More" title="FAQ Editor"
+        sub="Each portal has its own Help panel (the blue ? button bottom-right) and its own FAQs. A question is required; add an answer, a Wistia video, a PDF document, or any mix." />
 
       <SubTabs tabs={PORTALS} active={portal} onChange={pick} />
 

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import StripeAccountPill from './StripeAccountPill'
-import { TableSkeleton } from '../shared/Skeleton'
+import { TableSkeleton } from '../shared/Skeleton'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Automation & Config -> Growth Credits. The fixed purchase packages
 // (server-enforced), and a service management table (name / description / category / team member / scheduling
@@ -174,7 +175,7 @@ export default function GrowthCreditsPanel() {
     }
   }
 
-  const wrap = { padding: '24px', maxWidth: '1340px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
+  const wrap = { padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
   const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '22px', marginBottom: '20px' }
   const cardTitle = { fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '0 0 16px', paddingBottom: '8px', borderBottom: `2px solid ${NAVY}`, display: 'inline-block' }
   const input = { padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' }
@@ -190,13 +191,7 @@ export default function GrowthCreditsPanel() {
 
   return (
     <div style={wrap}>
-      <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
-        <div>
-          <p style={{ fontSize: '10.5px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 4px' }}>Automation & Config</p>
-          <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>Growth Credits</h2>
-        </div>
-        <StripeAccountPill sandboxConfig={sandboxConfig} />
-      </div>
+      <PageHeading eyebrow="Automation & Config" title="Growth Credits" action={<StripeAccountPill sandboxConfig={sandboxConfig} />} />
 
       {status && <div style={{ background: 'var(--vfo-accent-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-accent-text)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{status}</div>}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px', marginBottom: '14px' }}>{error}</div>}

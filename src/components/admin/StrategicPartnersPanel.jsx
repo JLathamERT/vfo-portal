@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { STRATEGIC_SPLITS } from '../../lib/strategicSplits'
-import { StrategicPartnersSkeleton } from '../shared/Skeleton'
+import { StrategicPartnersSkeleton } from '../shared/Skeleton'
+import { PageHeading } from '../shared/ProfileKit'
 
 // Strategic Partners (the "companies": Action Coach, Tax Plan IQ, …). Each has a
 // profile showing its holistic/tax split blurb + a Stripe Connect payout account
@@ -25,7 +26,7 @@ export default function StrategicPartnersPanel() {
   return (
     <div>
       <div style={{ marginBottom: '18px' }}>
-        <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>Strategic Partners</div>
+        <PageHeading eyebrow="Strategic Members" title="Strategic Partners" style={{ marginBottom: 0 }} />
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '4px' }}>
           Each partner company earns a Strategic Partner Share off every strategic member's deals. Set up the company's payout account here — the share transfers to it automatically.
         </div>

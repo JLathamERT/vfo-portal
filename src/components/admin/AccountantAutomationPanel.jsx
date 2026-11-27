@@ -236,7 +236,7 @@ export default function AccountantAutomationPanel() {
   ]
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
       <PanelHero
         eyebrow="Automation Pipeline"
         title="Accountant Onboarding Pipeline"
