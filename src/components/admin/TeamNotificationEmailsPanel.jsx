@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { TeamNotificationEmailsSkeleton } from '../shared/Skeleton'
-import { TEMPLATE_META } from '../shared/templateMeta'
+import { TEMPLATE_META } from '../shared/templateMeta'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Team Notification Emails (2026-11-02) — the people the "Team" recipient on an

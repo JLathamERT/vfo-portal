@@ -7,7 +7,7 @@ import { MemberNameLink, useOpenMember } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 // The member History tab's own chip + By label: one look, and the sale-vs-grant
 // split of "purchased" (by Stripe session id, #465) lives in one place.
-import { gcTypeChip, gcActorLabel } from '../shared/GCMarketplaceViews'
+import { gcTypeChip, gcActorLabel } from '../shared/GCMarketplaceViews'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Accounting > Members > Growth Credits. Program-wide totals plus the full

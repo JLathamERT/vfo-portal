@@ -4,7 +4,7 @@ import { ListHeader, PhaseBadge, TrackHero, noMultiClickSelect } from '../shared
 import { SdpAtsgCaseSkeleton, SdpAtsgListSkeleton } from '../shared/Skeleton'
 import { money, StatusPill } from '../admin/specialistRevenueShared'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
-import { useIsPhone } from '../../lib/useMediaQuery'
+import { useIsPhone } from '../../lib/useMediaQuery'
 import { BackLink } from '../shared/ProfileKit'
 
 // SDP - Advanced Tax Strategy Governance (Jake, 2026-11-17). One screen for both

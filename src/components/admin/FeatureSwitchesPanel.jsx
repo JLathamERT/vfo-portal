@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
-import { StackedCardsSkeleton } from '../shared/Skeleton'
+import { StackedCardsSkeleton } from '../shared/Skeleton'
 import { PageHeading } from '../shared/ProfileKit'
 
 // The Feature Switches tab (2026-09-28), under More ▾ — superadmins, and any admin

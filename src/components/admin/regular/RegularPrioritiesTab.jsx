@@ -7,7 +7,7 @@ import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
-import { statusPillStyle } from '../../shared/statusColors'
+import { statusPillStyle } from '../../shared/statusColors'
 import { BackLink } from '../../shared/ProfileKit'
 
 const REGULAR_PRIORITIES = [

@@ -8,7 +8,7 @@ import MemberEvents from '../member/MemberEvents'
 import EventAttendeesTable, { EVENT_GRID, EVENT_MIN_WIDTH } from './EventAttendeesTable'
 import EventPurchasesTable from './EventPurchasesTable'
 import EventCheckIn from './EventCheckIn'
-import SubTabs, { MiniTabs } from '../shared/SubTabs'
+import SubTabs, { MiniTabs } from '../shared/SubTabs'
 import { PageHeading } from '../shared/ProfileKit'
 
 // More > Events (2026-11-25), open to every admin. The page and its sub-tab pills are

@@ -16,7 +16,7 @@ import DenyDialog from './backlog/DenyDialog'
 import AnnounceDialog from './backlog/AnnounceDialog'
 import AnnounceTab from './backlog/AnnounceTab'
 import { PortalBacklogSkeleton } from '../shared/skeletons'
-import SubTabs from '../shared/SubTabs'
+import SubTabs from '../shared/SubTabs'
 import { PageHeading } from '../shared/ProfileKit'
 
 // More > Portal Backlog (2026-11-17): portal update requests, replacing the

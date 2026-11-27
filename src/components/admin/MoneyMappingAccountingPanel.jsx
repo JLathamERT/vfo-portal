@@ -2,7 +2,7 @@ import { useState, useLayoutEffect, useMemo } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { TableSkeleton } from '../shared/Skeleton'
-import { MemberNameLink } from '../shared/personLinks'
+import { MemberNameLink } from '../shared/personLinks'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Accounting > Members > Money Mapping (2026-10-30). Every member who has earned

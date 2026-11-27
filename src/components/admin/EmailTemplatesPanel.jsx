@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { EmailTemplatesSkeleton } from '../shared/Skeleton'
 import { TEMPLATE_META, ROLE_LABELS } from '../shared/templateMeta'
-import { readable } from '../shared/readableColor'
+import { readable } from '../shared/readableColor'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Program sections — same six that have automation tabs. The standalone Tax

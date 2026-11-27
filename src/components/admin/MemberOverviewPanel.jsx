@@ -7,7 +7,7 @@ import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { readable } from '../shared/readableColor'
 import { STATUS_COLORS } from '../shared/statusColors'
 import { clientStatusColors, clientStatusLabel } from '../shared/clientStatus'
-import { TableSkeleton } from '../shared/Skeleton'
+import { TableSkeleton } from '../shared/Skeleton'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Member Overview — one unified list of every member (advisor / accountant /

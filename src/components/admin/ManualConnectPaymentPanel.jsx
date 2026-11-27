@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { callApi } from '../../lib/api'
 import { money } from './specialistRevenueShared'
-import { Skeleton, TableSkeleton } from '../shared/Skeleton'
+import { Skeleton, TableSkeleton } from '../shared/Skeleton'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Accounting > Manually sent Stripe Connect Payment. Pick anyone with a Stripe

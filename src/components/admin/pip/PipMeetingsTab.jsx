@@ -7,7 +7,7 @@ import PipPurchaseDecisionForm from './PipPurchaseDecisionForm'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
-import { useIsPhone } from '../../../lib/useMediaQuery'
+import { useIsPhone } from '../../../lib/useMediaQuery'
 import { BackLink } from '../../shared/ProfileKit'
 
 function fmtDate(d) {

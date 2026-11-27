@@ -3,7 +3,7 @@ import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { TableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
 import GCPurchasesTable from './GCPurchasesTable'
-import SubTabs from '../shared/SubTabs'
+import SubTabs from '../shared/SubTabs'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Growth Credits page (top-level admin tab, open to every admin since 2026-11-25).

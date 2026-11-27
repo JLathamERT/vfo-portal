@@ -8,7 +8,7 @@ import StepEmailsChip from '../shared/StepEmailsChip'
 import { MemberNameLink } from '../shared/personLinks'
 import { MEMBER_TYPES, ACCOUNTANT_TYPES } from '../shared/memberTypes'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
-import SubTabs from '../shared/SubTabs'
+import SubTabs from '../shared/SubTabs'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Accounting > Members > Advisor/Accountant Membership Fees.

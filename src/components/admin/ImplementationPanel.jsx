@@ -5,7 +5,7 @@ import { NAVY, BLUE, money, StatusPill } from './specialistRevenueShared'
 import { AccountingRowsSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
 import { useIsPhone } from '../../lib/useMediaQuery'
-import SubTabs from '../shared/SubTabs'
+import SubTabs from '../shared/SubTabs'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Accounting > Members > Advisor / Accountant Implementation (2026-11-19, the

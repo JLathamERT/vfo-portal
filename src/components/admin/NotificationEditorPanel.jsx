@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
-import { EmailTemplatesSkeleton } from '../shared/Skeleton'
+import { EmailTemplatesSkeleton } from '../shared/Skeleton'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Notification Editor — the notifications sibling of Email Templates. Every

@@ -16,7 +16,7 @@ import OnboardingHero from './OnboardingHero'
 import OnboardingAgreementName from './OnboardingAgreementName'
 import { cleanText, formatPersonName, nameHasBadChars, nameHasTwoPeople, NAME_CHARS_CONTACT_MESSAGE, ONE_MEMBER_NAME_MESSAGE } from '../../lib/formatters'
 import { stage1Lock, createMemberLock, isTier1Onboarding, isConnectedAssociate, tier1MonthlyFee, tier1AdvisorPays, paymentClearing } from './onboardingOrder'
-import { readable } from '../shared/readableColor'
+import { readable } from '../shared/readableColor'
 import { BackLink } from '../shared/ProfileKit'
 
 const STAGE_NAMES = ['', 'Preliminary Meeting', 'Automated steps', 'Add New Accountant']

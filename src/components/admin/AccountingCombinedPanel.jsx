@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import SubTabs from '../shared/SubTabs'
+import SubTabs from '../shared/SubTabs'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Accounting: a single tab that condenses several previously-separate panels

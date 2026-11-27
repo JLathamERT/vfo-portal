@@ -13,7 +13,7 @@ import NextTaxYearList from './tax/NextTaxYearList'
 import { NEXT_YEAR_HEX } from './tax/TaxPlanStatus'
 import { CLIENT_STATUS_LABELS, clientStatusColors, clientStatusHex, clientStatusLabel } from '../shared/clientStatus'
 import { ClientOverviewSkeleton } from '../shared/Skeleton'
-import SubTabs, { MiniTabs } from '../shared/SubTabs'
+import SubTabs, { MiniTabs } from '../shared/SubTabs'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Client Overview — a mirror of Member Overview, but oriented around clients and

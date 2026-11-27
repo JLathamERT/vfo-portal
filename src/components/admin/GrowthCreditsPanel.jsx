@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import StripeAccountPill from './StripeAccountPill'
-import { TableSkeleton } from '../shared/Skeleton'
+import { TableSkeleton } from '../shared/Skeleton'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Automation & Config -> Growth Credits. The fixed purchase packages

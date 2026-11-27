@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { BLUE, money, RequestRow, MarkReceivedButton, isErtLegOpen } from './specialistRevenueShared'
-import { RowCardsSkeleton } from '../shared/Skeleton'
+import { RowCardsSkeleton } from '../shared/Skeleton'
 import { PanelHero } from './automation/StepKit'
 
 // Automation → VFO Specialist Revenue. One row per specialist payment request, with

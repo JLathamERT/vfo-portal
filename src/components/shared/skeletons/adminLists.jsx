@@ -1,6 +1,6 @@
 // Admin / tax planner list-page skeletons: directories, automation trackers,
 // accounting grids, config panels, onboarding lists.
-import { Skeleton, SkeletonText, CardShell, HeroSkeleton, PanelHeroSkeleton, PhaseCardsSkeleton, PillTabsSkeleton, ListHeaderSkeleton, SearchFilterSkeleton, TableSkeleton, RowCardsSkeleton } from './primitives'
+import { Skeleton, SkeletonText, CardShell, HeroSkeleton, PanelHeroSkeleton, PhaseCardsSkeleton, PillTabsSkeleton, ListHeaderSkeleton, SearchFilterSkeleton, TableSkeleton, RowCardsSkeleton } from './primitives'
 import { BackLink } from '../ProfileKit'
 
 // Advisor / Accountant / Strategic / Tax Planner search lists: title + count chip

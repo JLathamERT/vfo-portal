@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { STRATEGIC_SPLITS } from '../../lib/strategicSplits'
-import { StrategicPartnersSkeleton } from '../shared/Skeleton'
+import { StrategicPartnersSkeleton } from '../shared/Skeleton'
 import { PageHeading } from '../shared/ProfileKit'
 
 // Strategic Partners (the "companies": Action Coach, Tax Plan IQ, …). Each has a
