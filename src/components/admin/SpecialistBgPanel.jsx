@@ -7,6 +7,7 @@ import { tableStyle, headerRowStyle, totalsRowStyle, totalsLabelStyle, totalsSub
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink, specialistProfilePath } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import { emptyRowStyle, errorStyle, refreshBtnStyle, rowStyle, selectStyle } from './accountingTable'
 
 // Accounting > Specialists > VFO Specialist Background Checks > the first pill.
 // The License Fees ledger shape: background check payments RECEIVED, filtered by
@@ -38,7 +39,7 @@ function stateOf(status) {
 
 const STATE_PILL = {
   // Same labels + colours as the SpecRev / License Fees pills.
-  paid: { label: 'Payment received', color: '#16a34a' },
+  paid: { label: 'Cleared', color: '#16a34a' },
   processing: { label: 'Bank payment clearing', color: '#e06717' },
   awaiting: { label: 'Payment requested', color: '#0095ff' },
   failed: { label: 'Payment failed', color: '#ef4444' },
@@ -143,7 +144,7 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
   const paidTotal = filtered.reduce((s, r) => s + (Number(r.amount) || 0), 0)
   const paidFee = filtered.reduce((s, r) => s + (r.paidAt ? Number(r.fee) || 0 : 0), 0)
   const periodLabel = month >= 0 ? `${MONTHS[month]} ${year}` : `${year}`
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+  const sel = selectStyle
 
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1100px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
 
@@ -176,11 +177,11 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
           <option value={-1}>All months</option>
           {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
         </select>
-        <button onClick={load} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
+        <button onClick={load} style={refreshBtnStyle}>Refresh</button>
       </div>
 
       {loading && <AccountingTableSkeleton cols={LEDGER_GRID} />}
-      {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
+      {error && <div style={errorStyle}>{error}</div>}
 
       {!loading && !error && (
         <div style={tableStyle}>
@@ -195,12 +196,12 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
             <span />
           </div>
           {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>No background check payments for this period.</div>
+            <div style={emptyRowStyle}>No background check payments for this period.</div>
           )}
           {filtered.map(r => {
             const pill = STATE_PILL[r.state] || { label: r.state || '—', color: 'var(--vfo-muted)' }
             return (
-              <div key={r.key} onClick={r.expertId ? () => navigate(specialistProfilePath(r.expertId)) : undefined} {...(r.expertId ? rowHoverProps : {})} style={{ ...(r.expertId ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: LEDGER_GRID, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
+              <div key={r.key} onClick={r.expertId ? () => navigate(specialistProfilePath(r.expertId)) : undefined} {...(r.expertId ? rowHoverProps : {})} style={{ ...(r.expertId ? clickableRowStyle : null), ...rowStyle, gridTemplateColumns: LEDGER_GRID }}>
                 <span style={{ fontWeight: 600 }}>
                   <SpecialistNameLink expertId={r.expertId}>{r.name}</SpecialistNameLink>
                   {r.last4 && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · ••••{r.last4}</span>}

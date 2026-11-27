@@ -10,6 +10,11 @@ import { MEMBER_TYPES, ACCOUNTANT_TYPES } from '../shared/memberTypes'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import SubTabs from '../shared/SubTabs'
 import { PageHeading } from '../shared/ProfileKit'
+import { errorStyle, innerTotalsStyle, refreshBtnStyle, toolbarStyle } from './accountingTable'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
+import { OutstandingCard, OutstandingEmpty } from './OutstandingLinksPanel'
+import Tag from '../shared/Tag'
+import ExpandChevron from '../shared/ExpandChevron'
 
 // Accounting > Members > Advisor/Accountant Membership Fees.
 //
@@ -27,7 +32,7 @@ import { PageHeading } from '../shared/ProfileKit'
 // links never completed) and Renewals (by month).
 
 const PLAN_STATUS = {
-  setup_pending: { label: 'Awaiting first payment', color: '#0095ff' },
+  setup_pending: { label: 'Setup pending', color: '#0095ff' },
   active: { label: 'Active', color: '#16a34a' },
   canceled: { label: 'Canceled', color: '#8a94a6' },
   terminated: { label: 'Terminated', color: '#ef4444' },
@@ -36,7 +41,7 @@ const PLAN_STATUS = {
 const SCHED_STATUS = {
   scheduled: { label: 'Scheduled', color: '#5b6b8c' },
   processing: { label: 'Clearing', color: '#e06717' },
-  paid: { label: 'Paid', color: '#16a34a' },
+  paid: { label: 'Cleared', color: '#16a34a' },
   missed: { label: 'Missed', color: '#ef4444' },
   declined: { label: 'Declined', color: '#ef4444' },
   waived: { label: 'Waived', color: '#6b7280' },
@@ -380,8 +385,13 @@ export default function MembershipFeesPanel({ title, category, allMembers = [], 
       )}
 
       {loading && <AccountingRowsSkeleton search={260} boxes={[210]} blocks={[110, 110, 80]} pill={150} />}
-      {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
+      {error && <div style={errorStyle}>{error}</div>}
 
+      {!loading && !error && ['members', 'outstanding', 'outstanding_links'].includes(section) && (
+        <div style={toolbarStyle}>
+          <button type="button" onClick={() => load()} style={refreshBtnStyle}>Refresh</button>
+        </div>
+      )}
       {!loading && !error && section === 'members' && (
         <MembersSection plans={plans} allMembers={allMembers} category={category} onChanged={load} onEdit={startEdit} isSuperadmin={isSuperadmin}
           focusMember={focusMember} focusPlanId={focusPlanId}
@@ -773,7 +783,6 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
   return (
     <div ref={cardRef} style={{ ...card, marginBottom: '10px', overflow: 'hidden', opacity: closed ? 0.7 : 1 }}>
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', cursor: 'pointer' }}>
-        <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px' }}>{open ? '▾' : '▸'}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <MemberNameLink memberNumber={plan.member_number}>{plan.member_name || plan.member_number}</MemberNameLink>
@@ -826,6 +835,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
         <div style={{ width: '170px', textAlign: 'right' }}>
           <StatusPill label={meta.label} color={meta.color} />
         </div>
+        <ExpandChevron open={open} />
       </div>
 
       {open && (
@@ -850,8 +860,24 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
-                <div>Period</div><div>Due date</div><div>Amount</div><div>{CARD_FEE_LABEL}</div><div>Credit</div><div>Status</div><div style={{ textAlign: 'right' }}>Payment</div>
+                <div>Period</div><div>Due date</div><div style={{ textAlign: 'right' }}>Amount</div><div style={{ textAlign: 'right' }}>{CARD_FEE_LABEL}</div><div style={{ textAlign: 'right' }}>Credit</div><div>Status</div><div style={{ textAlign: 'right' }}>Payment</div>
               </div>
+              {!gc && <div style={{ ...innerTotalsStyle, gridTemplateColumns: grid, padding: '8px 6px', margin: '0 -6px', borderBottom: '2px solid var(--vfo-border)' }}>
+                <div>Totals</div>
+                <div />
+                <div style={{ textAlign: 'right' }}>
+                  {money(shownSched.reduce((s, r) => s + faceOf(r), 0))}
+                  {tier1 && !licenceOnly && (
+                    <div style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--vfo-faint)' }}>
+                      incl. {money(shownSched.reduce((s, r) => s + Number(r.vfo_portal_licence_amount || 0), 0))} VFO Portal
+                    </div>
+                  )}
+                </div>
+                <div style={{ textAlign: 'right' }}>{sumFees(Object.values(feeOfRow), f => f) > 0 ? money(sumFees(Object.values(feeOfRow), f => f)) : '—'}</div>
+                <div style={{ textAlign: 'right' }}>{shownSched.some(r => Number(r.credit_applied) > 0) ? money(shownSched.reduce((s, r) => s + Number(r.credit_applied || 0), 0)) : '—'}</div>
+                <div style={{ color: 'var(--vfo-success-text-2)' }}>{money(shownSched.filter(r => r.status === 'paid').reduce((s, r) => s + faceOf(r), 0))} cleared</div>
+                <div />
+              </div>}
               {shownSched.map(row => {
                 // Pause markers ride in the same grid — positioned by due_date
                 // among the real rows — so the paused months read as a band.
@@ -861,15 +887,15 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                     <div key={row.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: PAUSE_TINT, borderRadius: '6px' }}>
                       <div style={{ fontWeight: 600 }}>{row.period_label}</div>
                       <div>{fmtDate(row.due_date)}</div>
-                      <div style={{ color: 'var(--vfo-faint)' }}>—</div>
-                      <div style={{ color: 'var(--vfo-faint)' }}>—</div>
-                      <div style={{ color: 'var(--vfo-faint)' }}>—</div>
+                      <div style={{ color: 'var(--vfo-faint)', textAlign: 'right' }}>—</div>
+                      <div style={{ color: 'var(--vfo-faint)', textAlign: 'right' }}>—</div>
+                      <div style={{ color: 'var(--vfo-faint)', textAlign: 'right' }}>—</div>
                       <div><StatusPill label="Paused" color={PAUSE_COLOR} /></div>
                       <div style={{ textAlign: 'right', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>—</div>
                     </div>
                   )
                 }
-                const sMeta = SCHED_STATUS[row.status] || { label: row.status, color: 'var(--vfo-muted)' }
+                const sMeta = SCHED_STATUS[row.status] || { label: paymentStatusLabel(row.status), color: '#6b7280' }
                 const mmPart = Number(row.mm_applied) || 0
                 const zero = faceOf(row) === 0
                 // Paid in full by Money Mapping = the stronger yellow, paid in part = the
@@ -882,7 +908,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                   <div key={row.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: rowBg, borderRadius: '6px' }}>
                     <div style={{ fontWeight: 600 }}>{row.period_label}</div>
                     <div>{fmtDate(row.due_date)}</div>
-                    <div style={{ fontWeight: 600, color: zero && !gc ? 'var(--vfo-faint)' : 'var(--vfo-ink)' }}>
+                    <div style={{ fontWeight: 600, textAlign: 'right', color: zero && !gc ? 'var(--vfo-faint)' : 'var(--vfo-ink)' }}>
                       {gc && row.kind === 'membership' ? `${gcCredits} GC` : money(faceOf(row))}
                       {Number(row.vfo_portal_licence_amount) > 0 && (
                         <div style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--vfo-faint)' }}>
@@ -890,8 +916,8 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                         </div>
                       )}
                     </div>
-                    <div><CardFeeCell fee={feeOfRow[row.id]} /></div>
-                    <div style={{ color: 'var(--vfo-faint)' }}>{Number(row.credit_applied) > 0 ? money(row.credit_applied) : '—'}</div>
+                    <div style={{ textAlign: 'right' }}><CardFeeCell fee={feeOfRow[row.id]} /></div>
+                    <div style={{ color: 'var(--vfo-faint)', textAlign: 'right' }}>{Number(row.credit_applied) > 0 ? money(row.credit_applied) : '—'}</div>
                     <div>
                       {canMarkRows && row.kind === 'membership' ? (
                         <select value={row.status} disabled={busy} onChange={e => setRowStatus(row, e.target.value)}
@@ -934,22 +960,6 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                   </div>
                 )
               })}
-              {!gc && <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '10px 6px 2px', borderTop: '2px solid var(--vfo-border)', marginTop: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
-                <div>Totals</div>
-                <div />
-                <div>
-                  {money(shownSched.reduce((s, r) => s + faceOf(r), 0))}
-                  {tier1 && !licenceOnly && (
-                    <div style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--vfo-faint)' }}>
-                      incl. {money(shownSched.reduce((s, r) => s + Number(r.vfo_portal_licence_amount || 0), 0))} VFO Portal
-                    </div>
-                  )}
-                </div>
-                <div>{money(sumFees(Object.values(feeOfRow), f => f))}</div>
-                <div>{money(shownSched.reduce((s, r) => s + Number(r.credit_applied || 0), 0))}</div>
-                <div style={{ color: 'var(--vfo-success-text-2)' }}>{money(shownSched.filter(r => r.status === 'paid').reduce((s, r) => s + faceOf(r), 0))} paid</div>
-                <div />
-              </div>}
               {tier1 && !closed && (
                 <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
                   Bills monthly{plan.charge_day ? ` on the ${ordinal(plan.charge_day)}` : ''} until {endingOn ? fmtDate(endingOn) : 'the membership is ended'}.
@@ -2264,13 +2274,7 @@ function OutstandingLinksSection({ plans, onChanged, onEdit, isSuperadmin }) {
   // here (badged) — this panel is also where sandbox test runs are watched.
   const rows = plans.filter(p => p.status === 'setup_pending' && p.setup_email_sent_at)
 
-  if (rows.length === 0) {
-    return (
-      <div style={{ ...card, textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>
-        No outstanding payment links — everyone who was sent a setup link has completed it.
-      </div>
-    )
-  }
+  if (rows.length === 0) return <OutstandingEmpty />
 
   return (
     <div>
@@ -2282,7 +2286,6 @@ function OutstandingLinksSection({ plans, onChanged, onEdit, isSuperadmin }) {
 // One outstanding setup link. Per-row busy/message state lives here because
 // hooks can't be used inside the .map above.
 function OutstandingLinkRow({ plan, onChanged, onEdit, isSuperadmin }) {
-  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
 
@@ -2309,31 +2312,15 @@ function OutstandingLinkRow({ plan, onChanged, onEdit, isSuperadmin }) {
   }
 
   return (
-    <div style={{ ...card, marginBottom: '10px', overflow: 'hidden' }}>
-      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', cursor: 'pointer' }}>
-        <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px' }}>{open ? '▾' : '▸'}</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <MemberNameLink memberNumber={plan.member_number}>{plan.member_name || plan.member_number}</MemberNameLink>
-            <StatusPill label="Setup link" color="#125ecc" />
-            {plan.transfer && <StatusPill label="Transferred" color={BLUE} />}
-            {plan.sandbox && <StatusPill label="Sandbox" color="#e06717" />}
-          </div>
-          <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
-            {plan.member_number} · Link sent {fmtStamp(plan.setup_email_sent_at)}
-            {' · '}{plan.frequency === 'monthly' ? `Monthly (${money(perPull)}/mo)` : `Annual (${money(perPull)}/yr)`}
-          </div>
-        </div>
-        <div style={{ width: '120px', textAlign: 'right' }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: saveOnly ? 'var(--vfo-ink-2)' : 'var(--vfo-heading)' }}>
-            {saveOnly ? 'Save-only' : money(perPull)}
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{saveOnly ? 'no charge at link' : 'due at link'}</div>
-        </div>
-      </div>
-
-      {open && (
-        <div style={{ background: 'var(--vfo-input)', borderTop: '1px solid var(--vfo-border-soft)', padding: '14px 18px' }}>
+    <OutstandingCard
+      name={<>{plan.member_name || plan.member_number}{plan.transfer && <Tag color={BLUE} style={{ marginLeft: '8px', verticalAlign: '2px' }}>Transferred</Tag>}</>}
+      subtitle={<>{plan.member_number} · Link sent {fmtStamp(plan.setup_email_sent_at)}{' · '}{plan.frequency === 'monthly' ? `Monthly (${money(perPull)}/mo)` : `Annual (${money(perPull)}/yr)`}</>}
+      badge={{ label: 'Setup pending', color: '#125ecc' }}
+      sandbox={plan.sandbox}
+      amount={perPull}
+      amountText={saveOnly ? 'Save-only' : null}
+      caption={saveOnly ? 'no charge at link' : 'due at link'}
+    >
           <LinkDetail label="Annual value" value={money(plan.annual_amount)} />
           <LinkDetail label="Credit note" value={Number(plan.credit_note) > 0 ? money(plan.credit_note) : '—'} />
           {plan.transfer && <LinkDetail label="Renewal date" value={fmtDate(plan.renewal_date)} />}
@@ -2361,9 +2348,7 @@ function OutstandingLinkRow({ plan, onChanged, onEdit, isSuperadmin }) {
               border: `1px solid ${msg.tone === 'success' ? '#bbf7d0' : msg.tone === 'amber' ? '#fde68a' : '#fecaca'}`,
               background: msg.tone === 'success' ? '#f0fdf4' : msg.tone === 'amber' ? '#fffbeb' : '#fef2f2' }}>{msg.text}</div>
           )}
-        </div>
-      )}
-    </div>
+    </OutstandingCard>
   )
 }
 

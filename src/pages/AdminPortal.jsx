@@ -746,9 +746,9 @@ export default function AdminPortal() {
               breadcrumb="Accounting · Specialists" title="VFO Specialist Revenue"
               maxWidth="1200px" initialKey={accountingSection === 'specialist_payment_input' ? 'specialist_revenue' : accountingSection}
               tabs={[
-                { key: 'specialist_revenue', label: 'VFO Specialist Revenue', render: () => <SpecialistRevenuePanel allExperts={allExperts} allMembers={allMembers} embedded /> },
-                { key: 'specialist_reconciliation', label: 'VFO Specialist Reconciliation', render: () => <SpecialistReconciliationPanel allMembers={allMembers} embedded /> },
-                { key: 'specialist_recurring', label: 'VFO Specialist Recurring Revenue Payments', render: () => <SpecialistRecurringPanel embedded /> },
+                { key: 'specialist_revenue', label: 'Revenue', render: () => <SpecialistRevenuePanel allExperts={allExperts} allMembers={allMembers} embedded /> },
+                { key: 'specialist_reconciliation', label: 'Reconciliation', render: () => <SpecialistReconciliationPanel allMembers={allMembers} embedded /> },
+                { key: 'specialist_recurring', label: 'Recurring', render: () => <SpecialistRecurringPanel embedded /> },
                 { key: 'specialist_deposits', label: 'Bank Transfer Account', render: () => <SpecialistDepositsPanel embedded /> },
                 { key: 'specialist_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="specrev" embedded /> },
                 { key: 'specialist_held_payouts', label: <HeldPayoutsLabel engine="specrev" />, render: () => <HeldPayoutsPanel engine="specrev" embedded /> },
@@ -771,8 +771,8 @@ export default function AdminPortal() {
               breadcrumb="Accounting · Specialists" title="VFO Specialist Background Checks"
               maxWidth="1200px"
               tabs={[
-                { key: 'specialist_bg', label: 'VFO Specialist Background Checks', render: () => <SpecialistBgPanel allExperts={allExperts} embedded /> },
-                { key: 'specialist_bg_reconciliation', label: 'Background Check Reconciliation', render: () => <SpecialistBgReconciliationPanel embedded /> },
+                { key: 'specialist_bg', label: 'Background Checks', render: () => <SpecialistBgPanel allExperts={allExperts} embedded /> },
+                { key: 'specialist_bg_reconciliation', label: 'Reconciliation', render: () => <SpecialistBgReconciliationPanel embedded /> },
                 { key: 'specialist_bg_outstanding', label: 'Outstanding Payment Links', render: () => <SpecialistBgOutstandingPanel embedded /> },
               ]}
             />
@@ -782,8 +782,8 @@ export default function AdminPortal() {
               breadcrumb="Accounting · VFO Services" title="Holistic Planning"
               maxWidth="1200px" initialKey={accountingSection}
               tabs={[
-                { key: 'holistic_revenue', label: 'Holistic Planning Revenue', render: () => <HolisticRevenuePanel embedded /> },
-                { key: 'holistic_reconciliation', label: 'Holistic Planning Reconciliation', render: () => <HolisticReconciliationPanel embedded /> },
+                { key: 'holistic_revenue', label: 'Revenue', render: () => <HolisticRevenuePanel embedded /> },
+                { key: 'holistic_reconciliation', label: 'Reconciliation', render: () => <HolisticReconciliationPanel embedded /> },
                 { key: 'holistic_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="map1" embedded /> },
                 { key: 'holistic_held_payouts', label: <HeldPayoutsLabel engine="map1" />, render: () => <HeldPayoutsPanel engine="map1" embedded /> },
               ]}
@@ -794,8 +794,8 @@ export default function AdminPortal() {
               breadcrumb="Accounting · VFO Services" title="Tax Planning"
               maxWidth="1200px" initialKey={accountingSection}
               tabs={[
-                { key: 'tax_revenue', label: 'Tax Planning Revenue', render: () => <TaxRevenuePanel embedded /> },
-                { key: 'tax_reconciliation', label: 'Tax Planning Reconciliation', render: () => <TaxReconciliationPanel embedded /> },
+                { key: 'tax_revenue', label: 'Revenue', render: () => <TaxRevenuePanel embedded /> },
+                { key: 'tax_reconciliation', label: 'Reconciliation', render: () => <TaxReconciliationPanel embedded /> },
                 { key: 'tax_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="tax" embedded /> },
                 { key: 'tax_held_payouts', label: <HeldPayoutsLabel engine="tax" />, render: () => <HeldPayoutsPanel engine="tax" embedded /> },
               ]}
@@ -806,8 +806,9 @@ export default function AdminPortal() {
               breadcrumb="Accounting · VFO Services" title="Additional PIP"
               maxWidth="1200px" initialKey={accountingSection}
               tabs={[
-                { key: 'pip_revenue', label: 'Additional PIP Revenue', render: () => <PipRevenuePanel embedded /> },
-                { key: 'pip_reconciliation', label: 'Additional PIP Reconciliation', render: () => <PipReconciliationPanel embedded /> },
+                { key: 'pip_revenue', label: 'Revenue', render: () => <PipRevenuePanel embedded /> },
+                { key: 'pip_reconciliation', label: 'Reconciliation', render: () => <PipReconciliationPanel embedded /> },
+                { key: 'pip_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="pip" embedded /> },
                 { key: 'pip_held_payouts', label: <HeldPayoutsLabel engine="pip" />, render: () => <HeldPayoutsPanel engine="pip" embedded /> },
               ]}
             />
@@ -817,7 +818,8 @@ export default function AdminPortal() {
               breadcrumb="Accounting · SDP ATSG" title="SDP ATSG"
               maxWidth="1200px" initialKey={accountingSection}
               tabs={[
-                { key: 'sdp_atsg_revenue', label: 'SDP ATSG Revenue', render: () => <SdpAtsgRevenuePanel embedded /> },
+                { key: 'sdp_atsg_revenue', label: 'Revenue', render: () => <SdpAtsgRevenuePanel embedded /> },
+                { key: 'sdp_atsg_outstanding_links', label: 'Outstanding Payment Links', render: () => <OutstandingLinksPanel kind="sdp_atsg" embedded /> },
                 { key: 'sdp_atsg_held_payouts', label: <HeldPayoutsLabel engine="sdp_atsg" />, render: () => <HeldPayoutsPanel engine="sdp_atsg" embedded /> },
               ]}
             />
@@ -867,12 +869,11 @@ function loadDataSkeleton(tab, section) {
       return <AccountingPageSkeleton maxWidth="1200px" pills={5}><AccountingRowsSkeleton search={260} boxes={[210]} blocks={[110, 110, 80]} pill={150} /></AccountingPageSkeleton>
     }
     const ledger = section === 'specialist_license' || section === 'specialist_bg'
-    // As many pills as the page has (VFO Specialist Revenue 6, Holistic / Tax 4, PIP / Payments / Implementation 3, SDP ATSG 2).
+    // As many pills as the page has (VFO Specialist Revenue 6, Holistic / Tax / PIP 4, Payments / Implementation / SDP ATSG 3).
     const pills = ledger ? 3
       : /^specialist_/.test(section) ? 6
-      : /^(holistic|tax)_/.test(section) ? 4
-      : /^pip_/.test(section) || section === 'payments' || /_onboarding_fees$/.test(section) ? 3
-      : /^sdp_atsg_/.test(section) ? 2
+      : /^(holistic|tax|pip)_/.test(section) ? 4
+      : /^sdp_atsg_/.test(section) || section === 'payments' || /_onboarding_fees$/.test(section) ? 3
       : 5
     return (
       <AccountingPageSkeleton maxWidth="1200px" pills={pills}>

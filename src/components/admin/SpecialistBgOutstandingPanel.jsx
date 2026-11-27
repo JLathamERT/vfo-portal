@@ -3,6 +3,9 @@ import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { cardStyle, Detail, SectionHeader, EmptyLine, OutstandingCard, fmtDate, shortDate } from './OutstandingLinksPanel'
 import { OutstandingLinksSkeleton } from '../shared/Skeleton'
+import { OutstandingEmpty } from './OutstandingLinksPanel'
+import { errorStyle, refreshBtnStyle } from './accountingTable'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 import { bgRowsFrom } from './SpecialistBgPanel'
 
 // Accounting > Specialists > VFO Specialist Background Checks > Outstanding Payment Links.
@@ -19,7 +22,7 @@ const BADGE = {
 }
 
 function LinkCard({ row }) {
-  const badge = BADGE[row.state] || { label: row.state || '—', color: 'var(--vfo-muted)' }
+  const badge = BADGE[row.state] || { label: paymentStatusLabel(row.state) || '—', color: '#6b7280' }
   return (
     <OutstandingCard
       name={row.name}
@@ -87,21 +90,16 @@ export default function SpecialistBgOutstandingPanel({ embedded = false }) {
       )}
 
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => load()}
-          style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-accent-text)', fontWeight: 600, cursor: 'pointer' }}>
-          Refresh
-        </button>
+        <button type="button" onClick={() => load()} style={refreshBtnStyle}>Refresh</button>
       </div>
 
       {loading && <OutstandingLinksSkeleton />}
       {!loading && error && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>
+        <div style={errorStyle}>{error}</div>
       )}
 
       {!loading && !error && empty && (
-        <div style={{ ...cardStyle, textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>
-          No outstanding background check links - everyone who was sent one has paid.
-        </div>
+        <OutstandingEmpty />
       )}
 
       {!loading && !error && !empty && (

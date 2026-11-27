@@ -6,6 +6,9 @@ import { money, StatusPill } from './specialistRevenueShared'
 import { AccountingRowsSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink } from '../shared/personLinks'
 import { btnDanger, btnState } from '../shared/buttonStyles'
+import { errorStyle, innerTotalsStyle, refreshBtnStyle } from './accountingTable'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
+import ExpandChevron from '../shared/ExpandChevron'
 
 // Accounting > Specialists > VFO Specialist License Fees, laid out like Advisor
 // Membership Fees (2026-11-25). Specialists: one card per $99/mo licence — every
@@ -120,7 +123,7 @@ export default function SpecialistLicensePanel({ embedded = false }) {
   return (
     <div style={wrap}>
       {loading && <AccountingRowsSkeleton search={260} boxes={[210]} blocks={[110, 110, 80]} pill={150} />}
-      {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
+      {error && <div style={errorStyle}>{error}</div>}
 
       {!loading && !error && (
         <div>
@@ -131,6 +134,7 @@ export default function SpecialistLicensePanel({ embedded = false }) {
               <option value="all">All statuses</option>
               {STATE_ORDER.map(k => <option key={k} value={k}>{PLAN_STATUS[k].label}</option>)}
             </select>
+            <button type="button" onClick={() => load()} style={refreshBtnStyle}>Refresh</button>
             <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>{filtered.length} license{filtered.length === 1 ? '' : 's'}</span>
           </div>
 
@@ -193,7 +197,6 @@ function LicenseCard({ plan, payments, onChanged }) {
   return (
     <div style={{ ...card, marginBottom: '10px', overflow: 'hidden', opacity: canceled ? 0.7 : 1 }}>
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', cursor: 'pointer' }}>
-        <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px' }}>{open ? '▾' : '▸'}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>
             <SpecialistNameLink expertId={plan.expert_id}>{plan.specialist_name || `Specialist #${plan.expert_id || plan.onboarding_id}`}</SpecialistNameLink>
@@ -215,6 +218,7 @@ function LicenseCard({ plan, payments, onChanged }) {
         <div style={{ width: '190px', textAlign: 'right' }}>
           <StatusPill label={meta.label} color={meta.color} />
         </div>
+        <ExpandChevron open={open} />
       </div>
 
       {open && (
@@ -228,7 +232,15 @@ function LicenseCard({ plan, payments, onChanged }) {
           ) : (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
-                <div>Month</div><div>Date</div><div>Amount</div><div>{CARD_FEE_LABEL}</div><div>Status</div><div style={{ textAlign: 'right' }}>Payment</div>
+                <div>Month</div><div>Date</div><div style={{ textAlign: 'right' }}>Amount</div><div style={{ textAlign: 'right' }}>{CARD_FEE_LABEL}</div><div>Status</div><div style={{ textAlign: 'right' }}>Payment</div>
+              </div>
+              <div style={{ ...innerTotalsStyle, gridTemplateColumns: grid, padding: '8px 6px', margin: '0 -6px', borderBottom: '2px solid var(--vfo-border)' }}>
+                <div>Totals</div>
+                <div />
+                <div style={{ textAlign: 'right' }}>{money(paidTotal)}</div>
+                <div style={{ textAlign: 'right', color: 'var(--vfo-faint)' }}>—</div>
+                <div style={{ color: 'var(--vfo-success-text-2)' }}>{payments.length} cleared</div>
+                <div />
               </div>
               {payments.length === 0 && !next && (
                 <div style={{ padding: '9px 0', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-faint)' }}>No payments yet.</div>
@@ -239,9 +251,9 @@ function LicenseCard({ plan, payments, onChanged }) {
                   <div key={r.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: paid ? 'rgba(22,163,74,0.07)' : 'transparent', borderRadius: '6px' }}>
                     <div style={{ fontWeight: 600 }}>{fmtMonth(new Date(r.paid_at))}</div>
                     <div>{fmtDate(r.paid_at)}</div>
-                    <div style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{money(r.amount)}</div>
-                    <div><CardFeeCell fee={0} /></div>
-                    <div><StatusPill label={paid ? 'Paid' : (r.status || '—')} color={paid ? '#16a34a' : '#5b6b8c'} /></div>
+                    <div style={{ fontWeight: 600, color: 'var(--vfo-ink)', textAlign: 'right' }}>{money(r.amount)}</div>
+                    <div style={{ textAlign: 'right' }}><CardFeeCell fee={null} /></div>
+                    <div><StatusPill label={paid ? 'Cleared' : (paymentStatusLabel(r.status) || '—')} color={paid ? '#16a34a' : '#5b6b8c'} /></div>
                     <div style={{ textAlign: 'right', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>
                       {[
                         r.method ? `${methodWord(r.method)}${r.last4 ? ` ••${r.last4}` : ''}` : '',
@@ -256,20 +268,12 @@ function LicenseCard({ plan, payments, onChanged }) {
                 <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
                   <div style={{ fontWeight: 600 }}>{fmtMonth(next)}</div>
                   <div>{fmtDate(next)}</div>
-                  <div style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{money(FEE)}</div>
-                  <div><CardFeeCell fee={null} /></div>
+                  <div style={{ fontWeight: 600, color: 'var(--vfo-ink)', textAlign: 'right' }}>{money(FEE)}</div>
+                  <div style={{ textAlign: 'right' }}><CardFeeCell fee={null} /></div>
                   <div><StatusPill label="Scheduled" color="#5b6b8c" /></div>
                   <div style={{ textAlign: 'right', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{method ? `${method}${plan.acct_last4 ? ` ••${plan.acct_last4}` : ''}` : '—'}</div>
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '10px 6px 2px', borderTop: '2px solid var(--vfo-border)', marginTop: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
-                <div>Totals</div>
-                <div />
-                <div>{money(paidTotal)}</div>
-                <div>{money(0)}</div>
-                <div style={{ color: 'var(--vfo-success-text-2)' }}>{payments.length} paid</div>
-                <div />
-              </div>
               <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
                 {canceled
                   ? `Canceled ${fmtDate(plan.canceled_at)} — no more payments are taken.`

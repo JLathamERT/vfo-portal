@@ -7,6 +7,10 @@ import { MemberNameLink } from '../shared/personLinks'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import SubTabs from '../shared/SubTabs'
 import { PageHeading } from '../shared/ProfileKit'
+import { OutstandingCard, OutstandingEmpty, SectionHeader, Detail as OLDetail } from './OutstandingLinksPanel'
+import { footnoteStyle, refreshBtnStyle, toolbarStyle } from './accountingTable'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
+import ExpandChevron from '../shared/ExpandChevron'
 
 // Accounting > Members > Advisor / Accountant Implementation (2026-11-19, the
 // "Advisor / Accountant Onboarding" pages before). Every advisor or accountant
@@ -30,7 +34,7 @@ const IMPL_STATUS = {
 }
 
 const PAY_STATUS = {
-  succeeded: { label: 'Paid', color: '#16a34a' },
+  succeeded: { label: 'Cleared', color: '#16a34a' },
   processing: { label: 'Clearing', color: '#e06717' },
   failed: { label: 'Failed', color: '#ef4444' },
   refunded: { label: 'Refunded', color: '#6b7280' },
@@ -135,8 +139,8 @@ export default function ImplementationPanel({ kind = 'advisor', title }) {
       {loading && <AccountingRowsSkeleton />}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
 
-      {!loading && !error && section === 'members' && <MembersSection rows={rows} />}
-      {!loading && !error && section === 'outstanding_links' && <OutstandingLinksSection rows={rows} />}
+      {!loading && !error && section === 'members' && <MembersSection rows={rows} onRefresh={() => load(true)} />}
+      {!loading && !error && section === 'outstanding_links' && <OutstandingLinksSection rows={rows} onRefresh={() => load(true)} />}
       {!loading && !error && section === 'ending' && <EndingSection rows={rows} onRefresh={() => load(true)} />}
     </div>
   )
@@ -144,7 +148,7 @@ export default function ImplementationPanel({ kind = 'advisor', title }) {
 
 // ── Members: one card per implementation ──────────────────────────────────────
 
-function MembersSection({ rows }) {
+function MembersSection({ rows, onRefresh }) {
   const today = todayIso()
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -171,6 +175,7 @@ function MembersSection({ rows }) {
     return nameOf(r).toLowerCase().includes(q) || String(r.member_number || '').toLowerCase().includes(q)
   })
   const total = filtered.reduce((s, r) => s + collected(r), 0)
+  const fees = filtered.reduce((s, r) => s + (r.deposit_status === 'succeeded' ? num(r.deposit_card_fee) : 0) + (paidInFull(r) ? num(r.card_processing_fee) : 0), 0)
 
   return (
     <div>
@@ -191,8 +196,9 @@ function MembersSection({ rows }) {
             {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
           </select>
         )}
-        <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>
-          {filtered.length} implementation{filtered.length === 1 ? '' : 's'} · {money(total)} collected
+        <button type="button" onClick={onRefresh} style={refreshBtnStyle}>Refresh</button>
+        <span style={{ fontSize: '12px', color: 'var(--vfo-faint)', fontVariantNumeric: 'tabular-nums' }}>
+          {filtered.length} implementation{filtered.length === 1 ? '' : 's'} · {money(total)} cleared · card fees {fees > 0 ? money(fees) : '—'}
         </span>
       </div>
 
@@ -241,7 +247,6 @@ function ImplementationCard({ r, today }) {
   return (
     <div style={{ ...card, marginBottom: '10px', overflow: 'hidden', opacity: st === IMPL_STATUS.stopped ? 0.7 : 1 }}>
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', cursor: 'pointer', flexWrap: isPhone ? 'wrap' : 'nowrap' }}>
-        <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px' }}>{open ? '▾' : '▸'}</span>
         <div style={{ flex: 1, minWidth: isPhone ? 'calc(100% - 30px)' : 0 }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {r.member_number ? <MemberNameLink memberNumber={r.member_number}>{nameOf(r)}</MemberNameLink> : nameOf(r)}
@@ -265,22 +270,23 @@ function ImplementationCard({ r, today }) {
         <div style={{ width: isPhone ? 'auto' : '150px', textAlign: 'right' }}>
           <StatusPill label={st.label} color={st.color} />
         </div>
+        <ExpandChevron open={open} />
       </div>
 
       {open && (
         <div style={{ background: 'var(--vfo-input)', borderTop: '1px solid var(--vfo-border-soft)', padding: '14px 18px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
-            <div>Payment</div>{!isPhone && <div>Date</div>}<div>Amount</div>{!isPhone && <div>{CARD_FEE_LABEL}</div>}<div>Status</div>{!isPhone && <div style={{ textAlign: 'right' }}>Payment</div>}
+            <div>Payment</div>{!isPhone && <div>Date</div>}<div style={{ textAlign: 'right' }}>Amount</div>{!isPhone && <div style={{ textAlign: 'right' }}>{CARD_FEE_LABEL}</div>}<div>Status</div>{!isPhone && <div style={{ textAlign: 'right' }}>Payment</div>}
           </div>
           {payRows.map(p => {
-            const meta = PAY_STATUS[p.status] || { label: p.status ? p.status : 'Not paid', color: '#6b7280' }
+            const meta = PAY_STATUS[p.status] || { label: p.status ? paymentStatusLabel(p.status) : 'Not paid', color: '#6b7280' }
             const bg = p.status === 'succeeded' ? 'rgba(22,163,74,0.07)' : p.status === 'failed' ? 'rgba(239,68,68,0.07)' : 'transparent'
             return (
               <div key={p.key} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: bg, borderRadius: '6px' }}>
                 <div style={{ fontWeight: 600 }}>{p.label}{isPhone && p.date ? <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--vfo-faint)' }}>{fmtDate(p.date)}</div> : null}</div>
                 {!isPhone && <div>{fmtDate(p.date)}</div>}
-                <div style={{ fontWeight: 600, color: 'var(--vfo-ink)' }}>{money(p.amount)}</div>
-                {!isPhone && <div><CardFeeCell fee={paidFee(p)} /></div>}
+                <div style={{ fontWeight: 600, color: 'var(--vfo-ink)', textAlign: 'right' }}>{money(p.amount)}</div>
+                {!isPhone && <div style={{ textAlign: 'right' }}><CardFeeCell fee={paidFee(p)} /></div>}
                 <div><StatusPill label={meta.label} color={meta.color} /></div>
                 {!isPhone && <div style={{ textAlign: 'right', fontSize: '11.5px', color: 'var(--vfo-muted)', wordBreak: 'break-all' }}>{p.status === 'succeeded' || p.status === 'processing' ? (paidText(p.date, p.type, p.last4) || '—') : '—'}</div>}
               </div>
@@ -289,7 +295,7 @@ function ImplementationCard({ r, today }) {
           <div style={{ marginTop: '12px' }}>
             <Detail label="Agreement signed" value={fmtDate(r.signed_at)} />
             <Detail label="Implementation" value={started ? `${fmtDate(started)} → ${r.renewal_date ? fmtDate(String(r.renewal_date).slice(0, 10)) : '—'} (${term} months)` : 'Starts when the fee is paid'} />
-            {r.deposit_refund_status && <Detail label="Deposit refund" value={`${money(r.deposit_refund_amount)} · ${r.deposit_refund_status}`} />}
+            {r.deposit_refund_status && <Detail label="Deposit refund" value={`${money(r.deposit_refund_amount)} · ${paymentStatusLabel(r.deposit_refund_status)}`} />}
             <Detail label="Invoice / receipt" value={[r.invoice_number, r.receipt_number].filter(Boolean).join(' · ') || '—'} />
           </div>
         </div>
@@ -309,40 +315,39 @@ function Detail({ label, value }) {
 
 // ── Outstanding Payment Links: signed, payment link sent, nothing paid ────────
 
-function OutstandingLinksSection({ rows }) {
+function OutstandingLinksSection({ rows, onRefresh }) {
   const today = todayIso()
   const shown = rows.filter(r => r.payment_link_sent_at && ['awaiting', 'deposit_paid', 'failed'].includes(statusOf(r, today)))
-  if (shown.length === 0) {
-    return (
-      <div style={{ ...card, textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>
-        No outstanding payment links — everyone who signed has paid.
-      </div>
-    )
-  }
   return (
     <div>
-      {shown.map(r => {
-        const st = IMPL_STATUS[statusOf(r, today)]
-        const due = num(r.payment_amount) - depositPaid(r)
-        return (
-          <div key={r.id} style={{ ...card, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '200px' }}>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>
-                {r.member_number ? <MemberNameLink memberNumber={r.member_number}>{nameOf(r)}</MemberNameLink> : nameOf(r)}
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
-                {[r.email, programs(r), `Link sent ${fmtDate(r.payment_link_sent_at)}`, r.payment_reminder_sent_at ? `reminded ${fmtDate(r.payment_reminder_sent_at)}` : null].filter(Boolean).join(' · ')}
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-heading)' }}>{money(due)}</div>
-              <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{depositPaid(r) > 0 ? 'balance due' : 'due'}</div>
-            </div>
-            <div style={{ width: '150px', textAlign: 'right' }}><StatusPill label={st.label} color={st.color} /></div>
-          </div>
-        )
-      })}
-      <p style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', marginTop: '12px' }}>The payment link and its reminders are sent from the onboarding pipeline (Automation &amp; Config).</p>
+      <div style={toolbarStyle}>
+        <button type="button" onClick={onRefresh} style={refreshBtnStyle}>Refresh</button>
+      </div>
+      {shown.length === 0 ? <OutstandingEmpty /> : (
+        <>
+          <SectionHeader title="Implementation - Payment Links" count={shown.length} />
+          {shown.map(r => {
+            const st = IMPL_STATUS[statusOf(r, today)]
+            const due = num(r.payment_amount) - depositPaid(r)
+            return (
+              <OutstandingCard
+                key={r.id}
+                name={r.member_number ? <MemberNameLink memberNumber={r.member_number}>{nameOf(r)}</MemberNameLink> : nameOf(r)}
+                subtitle={[r.email, programs(r), `Link sent ${fmtDate(r.payment_link_sent_at)}`, r.payment_reminder_sent_at ? `reminded ${fmtDate(r.payment_reminder_sent_at)}` : null].filter(Boolean).join(' · ')}
+                badge={st}
+                amount={due}
+                caption={depositPaid(r) > 0 ? 'balance due' : 'due'}
+              >
+                <OLDetail label="Implementation fee" value={money(r.payment_amount)} />
+                {depositPaid(r) > 0 && <OLDetail label="Deposit cleared" value={money(depositPaid(r))} />}
+                <OLDetail label="Link sent" value={fmtDate(r.payment_link_sent_at)} />
+                <OLDetail label="Reminder sent" value={r.payment_reminder_sent_at ? fmtDate(r.payment_reminder_sent_at) : 'not yet'} />
+              </OutstandingCard>
+            )
+          })}
+        </>
+      )}
+      <p style={footnoteStyle}>The payment link and its reminders are sent from the onboarding pipeline (Automation &amp; Config).</p>
     </div>
   )
 }

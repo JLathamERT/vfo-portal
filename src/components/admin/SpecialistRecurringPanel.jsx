@@ -3,6 +3,9 @@ import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, BLUE, money, StatusPill, RecipientName } from './specialistRevenueShared'
 import { RowCardsSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink } from '../shared/personLinks'
+import { emptyCardStyle, errorStyle, innerTotalsStyle, refreshBtnStyle, toolbarStyle } from './accountingTable'
+import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
+import ExpandChevron from '../shared/ExpandChevron'
 
 // Accounting → VFO Specialist Recurring Revenue Payments. Lists every recurring
 // plan (setup_pending / active / canceled) built from the Payment Input form's
@@ -68,10 +71,14 @@ export default function SpecialistRecurringPanel({ embedded = false }) {
         </div>
       )}
 
+      <div style={toolbarStyle}>
+        <button type="button" onClick={() => load()} style={refreshBtnStyle}>Refresh</button>
+      </div>
+
       {loading && <RowCardsSkeleton blocks={[110]} pill={120} />}
-      {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
+      {error && <div style={errorStyle}>{error}</div>}
       {!loading && !error && plans.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px' }}>No recurring plans yet.</div>
+        <div style={emptyCardStyle}>No recurring plans yet.</div>
       )}
       {!loading && !error && plans.map(p => <PlanRow key={p.id} plan={p} onChanged={load} />)}
     </div>
@@ -82,7 +89,7 @@ function PlanRow({ plan, onChanged }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
-  const meta = PLAN_STATUS[plan.status] || { label: plan.status, color: 'var(--vfo-muted)' }
+  const meta = PLAN_STATUS[plan.status] || { label: paymentStatusLabel(plan.status), color: '#6b7280' }
   const lines = plan.lines || []
   const canceled = plan.status === 'canceled'
 
@@ -106,7 +113,6 @@ function PlanRow({ plan, onChanged }) {
   return (
     <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', marginBottom: '10px', overflow: 'hidden', opacity: canceled ? 0.7 : 1 }}>
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', cursor: 'pointer' }}>
-        <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '12px' }}>{open ? '▾' : '▸'}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}><SpecialistNameLink expertId={plan.expert_id}>{plan.specialist_name || '—'}</SpecialistNameLink>{plan.sandbox ? ' (sandbox)' : ''}</div>
           <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
@@ -123,12 +129,21 @@ function PlanRow({ plan, onChanged }) {
         <div style={{ width: '130px', textAlign: 'right' }}>
           <StatusPill label={meta.label} color={meta.color} />
         </div>
+        <ExpandChevron open={open} />
       </div>
 
       {open && (
         <div style={{ background: 'var(--vfo-input)', borderTop: '1px solid var(--vfo-border-soft)', padding: '14px 18px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '0 0 8px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }}>
-            <div>Recipient</div><div>ERT $</div><div>VFOS $</div><div>Member $</div><div>Deals</div><div>Transaction details</div>
+            <div>Recipient</div><div style={{ textAlign: 'right' }}>ERT $</div><div style={{ textAlign: 'right' }}>VFOS $</div><div style={{ textAlign: 'right' }}>Member $</div><div style={{ textAlign: 'right' }}>Deals</div><div>Transaction details</div>
+          </div>
+          <div style={{ ...innerTotalsStyle, gridTemplateColumns: grid, borderBottom: '2px solid var(--vfo-border)' }}>
+            <div>Totals</div>
+            <div style={{ textAlign: 'right' }}>{money(plan.total_ert_share)}</div>
+            <div style={{ textAlign: 'right' }}>{money(plan.total_vfos_share)}</div>
+            <div style={{ textAlign: 'right' }}>{money(plan.total_member_share)}</div>
+            <div style={{ textAlign: 'right' }}>{plan.total_deals || 0}</div>
+            <div />
           </div>
           {lines.map((line, i) => (
             <div key={line.id || i} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 0', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
@@ -136,21 +151,13 @@ function PlanRow({ plan, onChanged }) {
                 <div style={{ fontWeight: 600 }}><RecipientName line={line} /></div>
                 <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{line.recipient_type === 'specialist' ? 'Specialist' : (line.member_number || 'Member')} · {line.revenue_decision || 'Revenue Share'}</div>
               </div>
-              <div>{money(line.ert_share)}</div>
-              <div>{money(line.vfos_share)}</div>
-              <div>{money(line.member_share)}</div>
-              <div>{line.deals || 0}</div>
+              <div style={{ textAlign: 'right' }}>{money(line.ert_share)}</div>
+              <div style={{ textAlign: 'right' }}>{money(line.vfos_share)}</div>
+              <div style={{ textAlign: 'right' }}>{money(line.member_share)}</div>
+              <div style={{ textAlign: 'right' }}>{line.deals || 0}</div>
               <div style={{ color: 'var(--vfo-muted)' }}>{line.transaction_details || '—'}</div>
             </div>
           ))}
-          <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '10px 0 2px', borderTop: '2px solid var(--vfo-border)', marginTop: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)' }}>
-            <div>Totals</div>
-            <div>{money(plan.total_ert_share)}</div>
-            <div>{money(plan.total_vfos_share)}</div>
-            <div>{money(plan.total_member_share)}</div>
-            <div>{plan.total_deals || 0}</div>
-            <div />
-          </div>
 
           {!canceled && (
             <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>

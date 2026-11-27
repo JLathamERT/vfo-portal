@@ -4,6 +4,8 @@ import { money } from './specialistRevenueShared'
 import { TableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
 import { PageHeading } from '../shared/ProfileKit'
+import ExpandChevron from '../shared/ExpandChevron'
+import { errorStyle, headerRowStyle, refreshBtnStyle, rowStyle, tableStyle, toolbarStyle } from './accountingTable'
 
 // Accounting > Members > Money Mapping (2026-10-30). Every member who has earned
 // Money Mapping on the portal (credited automatically from their Money Mapping
@@ -33,9 +35,9 @@ function TypeChip({ type, amount }) {
   return <span style={{ fontSize: '11px', padding: '2px 10px', borderRadius: '999px', background: `rgba(${rgb},0.15)`, color: hex, fontWeight: 600, border: `1px solid rgba(${rgb},0.3)`, whiteSpace: 'nowrap' }}>{label}</span>
 }
 
-const tableWrap = { border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)', marginBottom: '22px' }
-const headRow = { display: 'grid', gap: '8px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }
-const bodyRow = { display: 'grid', gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }
+const tableWrap = { ...tableStyle, marginBottom: '22px' }
+const headRow = headerRowStyle
+const bodyRow = { ...rowStyle, background: undefined }
 const input = { width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif' }
 const label = { fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '5px' }
 const primaryBtn = busy => ({ padding: '8px 16px', borderRadius: '8px', border: 'none', background: busy ? '#c7d2e4' : 'linear-gradient(90deg, #002855 0%, #0a85e8 100%)', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: busy ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' })
@@ -92,8 +94,13 @@ export default function MoneyMappingAccountingPanel() {
           <TableSkeleton cols={cols} rows={5} />
         </>
       )}
-      {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
+      {error && <div style={errorStyle}>{error}</div>}
 
+      {!loading && !error && data && (
+        <div style={toolbarStyle}>
+          <button type="button" onClick={() => load()} style={refreshBtnStyle}>Refresh</button>
+        </div>
+      )}
       {!loading && !error && data && (
         <>
           {data.sync_error && (
@@ -134,7 +141,7 @@ export default function MoneyMappingAccountingPanel() {
                   <div onClick={() => setOpenMember(isOpen ? null : m.member_number)}
                     style={{ ...bodyRow, gridTemplateColumns: cols, cursor: 'pointer', background: isOpen ? 'var(--vfo-input)' : 'var(--vfo-card)' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                      <span style={{ fontSize: '11px', color: 'var(--vfo-faint)', width: '10px' }}>{isOpen ? '▾' : '▸'}</span>
+                      <ExpandChevron open={isOpen} style={{ margin: '-6px -4px -6px -8px' }} />
                       <MemberNameLink memberNumber={m.member_number} style={{ fontWeight: 600 }}>{m.name}</MemberNameLink>
                       <span style={{ fontSize: '11.5px', color: 'var(--vfo-faint)' }}>{m.member_number}</span>
                     </span>

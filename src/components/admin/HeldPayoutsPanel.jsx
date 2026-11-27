@@ -1,10 +1,13 @@
 import { useState, useLayoutEffect, useMemo, useEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
+import Tag from '../shared/Tag'
+import { btnOutline, BTN_SMALL, btnState } from '../shared/buttonStyles'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { useNavigate } from 'react-router-dom'
 import { MemberNameLink, ClientNameLink, clientPagePath } from '../shared/personLinks'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { emptyRowStyle, errorStyle, footnoteStyle, headerRowStyle, refreshBtnStyle, rowStyle, selectStyle, tableStyle, totalsLabelStyle } from './accountingTable'
 
 // Accounting > ... > "Held Payouts" (one per engine: Holistic, Tax Planning,
 // Additional PIP, VFO Specialist Revenue, and the SDP ATSG tab). Every revenue
@@ -40,19 +43,13 @@ const hoverRowProps = {
   onMouseLeave: e => { e.currentTarget.style.background = 'var(--vfo-card)' },
 }
 
-const ghostBtn = {
-  padding: '5px 12px', borderRadius: '99px', border: '1px solid var(--vfo-border-soft)',
-  background: 'transparent', color: 'var(--vfo-accent-text)', fontSize: '12px', fontWeight: 600,
-  cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
-}
-const busyBtn = {
-  padding: '5px 12px', borderRadius: '99px', border: 'none', background: '#c7d2e4',
-  color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'not-allowed', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
-}
+// A row's own action (TEAM_RULES §9): the small outline button, never a pill.
+const ghostBtn = { ...btnOutline, ...BTN_SMALL }
+const busyBtn = btnState(ghostBtn, true)
 
 function ReasonChip({ reason }) {
-  const t = HOLD_REASONS[reason] || { label: reason || 'Held', fg: '#b45309', bg: '#fef3c7' }
-  return <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: '20px', background: t.bg, color: t.fg, fontSize: '11.5px', fontWeight: 700, whiteSpace: 'nowrap' }}>{t.label}</span>
+  const t = HOLD_REASONS[reason] || { label: reason || 'Held', fg: '#b45309' }
+  return <Tag color={t.fg === '#b42318' ? '#ef4444' : '#b45309'}>{t.label}</Tag>
 }
 
 // The line under the reason: what Stripe said, or the payout-setup email ladder
@@ -234,12 +231,12 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
     .reduce((s, r) => s + (Number(r.amount) || 0), 0)
 
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1150px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+  const sel = selectStyle
   const grid = '92px 1fr 1.2fr 1.5fr 110px 120px'
-  const head = { display: 'grid', gridTemplateColumns: grid, gap: '16px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }
-  const row = { display: 'grid', gridTemplateColumns: grid, gap: '16px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }
+  const head = { ...headerRowStyle, gridTemplateColumns: grid }
+  const row = { ...rowStyle, gridTemplateColumns: grid }
   const phoneRow = { padding: '14px 16px', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)', display: 'flex', flexDirection: 'column', gap: '6px' }
-  const card = { border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', overflow: 'hidden', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }
+  const card = tableStyle
 
   const openRow = (r) => {
     const paid = results[r.id]?.outcome === 'released'
@@ -279,7 +276,7 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
           <option value="">All reasons</option>
           {Object.entries(HOLD_REASONS).filter(([k]) => reasonsPresent.includes(k) || k === reasonFilter).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
-        <button onClick={() => load()} style={{ ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }}>Refresh</button>
+        <button onClick={() => load()} style={refreshBtnStyle}>Refresh</button>
         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--vfo-muted)', cursor: 'pointer' }}>
           <input type="checkbox" checked={showReleased} onChange={e => setShowReleased(e.target.checked)} style={{ accentColor: 'var(--vfo-primary)' }} />
           Show released (last 180 days)
@@ -287,7 +284,7 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
       </div>
 
       {loading && <AccountingTableSkeleton cols={grid} />}
-      {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>}
+      {error && <div style={errorStyle}>{error}</div>}
       {!loading && !error && (
         <div style={card}>
           {!isPhone && (
@@ -299,13 +296,13 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
             ? { ...phoneRow, flexDirection: 'row', justifyContent: 'space-between', borderBottom: '2px solid var(--vfo-border)', background: 'var(--vfo-input)', fontWeight: 800, color: 'var(--vfo-heading)' }
             : { ...row, borderBottom: '2px solid var(--vfo-border)', background: 'var(--vfo-input)', fontWeight: 800, color: 'var(--vfo-heading)' }}>
             {!isPhone && <span />}
-            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>Total Held</span>
+            <span style={totalsLabelStyle}>Total Held</span>
             {!isPhone && <><span /><span /></>}
             <span style={{ textAlign: 'right' }}>{money(openTotal)}</span>
             {!isPhone && <span />}
           </div>
           {shown.map(openRow)}
-          {shown.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }}>{reasonFilter ? 'No held payouts for this reason.' : 'No revenue shares are being held.'}</div>}
+          {shown.length === 0 && <div style={emptyRowStyle}>{reasonFilter ? 'No held payouts for this reason.' : 'No revenue shares are being held.'}</div>}
         </div>
       )}
 
@@ -336,7 +333,7 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
         </div>
       )}
 
-      <p style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', marginTop: '12px' }}>Every revenue share that could not be paid, and why: no payout account, the member suspended, paused or in arrears, the Stripe balance too low, a Stripe error, or no planner allocated. The nightly sweep retries each one and pays it as soon as it can; Retry now runs it straight away. A member with no payout account is emailed their setup link automatically, reminded after 2 business days, and Tracy is asked to follow up after 4.</p>
+      <p style={footnoteStyle}>Every revenue share that could not be paid, and why: no payout account, the member suspended, paused or in arrears, the Stripe balance too low, a Stripe error, or no planner allocated. The nightly sweep retries each one and pays it as soon as it can; Retry now runs it straight away. A member with no payout account is emailed their setup link automatically, reminded after 2 business days, and Tracy is asked to follow up after 4.</p>
     </div>
   )
 }

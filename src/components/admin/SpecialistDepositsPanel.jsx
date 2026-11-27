@@ -5,6 +5,7 @@ import { tableStyle, headerRowStyle, totalsRowStyle, totalsLabelStyle, SPECIALIS
 import { CARD_FEE_LABEL } from './cardFeeColumn'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink } from '../shared/personLinks'
+import { footnoteStyle } from './accountingTable'
 
 // Accounting > Specialists > VFO Specialist Revenue > Bank Transfer Account. The shared
 // Stripe account specialists push bank transfers to, read live (specialist_revenue_deposits_load):
@@ -16,7 +17,7 @@ const SNAP = 'specialistdeposits:'
 const NETWORK = { ach: 'ACH', domestic_wire_us: 'Wire', fednow: 'FedNow', rtp: 'Real-time payment', swift: 'SWIFT' }
 
 const TYPE_LABEL = {
-  applied_to_payment: 'Collected',
+  applied_to_payment: 'Applied to a payment',
   unapplied_from_payment: 'Put back',
   refunded_from_payment: 'Refunded into the account',
   funding_reversed: 'Deposit reversed',
@@ -166,7 +167,7 @@ export default function SpecialistDepositsPanel({ embedded = false }) {
             {movements.length === 0 && <div style={{ textAlign: 'center', padding: '30px', color: 'var(--vfo-faint)', fontSize: '14px' }}>Nothing has been paid into this account yet.</div>}
           </div>
           {data.truncated && <p style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', marginTop: '10px' }}>Showing the newest {movements.length} movements. Older ones are in Stripe.</p>}
-          <p style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', marginTop: '12px' }}>Every specialist pays into this one account, so Stripe doesn't know what a deposit is for. Find the payment above and click Mark payment received, or enter it first in + New Payment as a Bank transfer with no email. When part of the balance is used, the oldest deposit counts as used first.</p>
+          <p style={footnoteStyle}>Every specialist pays into this one account, so Stripe doesn't know what a deposit is for. Find the payment above and click Mark payment received, or enter it first in + New Payment as a Bank transfer with no email. When part of the balance is used, the oldest deposit counts as used first.</p>
         </>
       )}
     </div>
