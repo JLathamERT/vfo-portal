@@ -9,6 +9,14 @@
 
 ---
 
+## 2026-11-27 (d) — Programs ▾ Clients: the sub-tab is remembered per member — by Jake
+
+**Fix to (c), found on live.** The Clients / Accountants pick was saved once for every member, so after choosing Accountants on one member, the next member's Clients tab opened on Accountants too. It is now saved per member (`adminMemberClientsSubTab:<member number>`) and re-read when the member changes: a member opens on Clients unless Accountants was picked for them, and Back from a client page still returns to the pick. Website only.
+
+**Tested** by Jake on the test site at 1280 wide: Accountants on one member, Clients on the next, the first member's pick kept, and Back from an accountant.
+
+---
+
 ## 2026-11-27 (c) — Programs ▾ Clients tab, program Notes tab last, client lists A to Z, no route loading card — by Jake
 
 **What it is.** Four small admin requests in one chat. Website only.
