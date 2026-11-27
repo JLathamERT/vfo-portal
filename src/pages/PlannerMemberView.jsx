@@ -3,26 +3,24 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { getSession, callApi } from '../lib/api'
 import { usePortalTheme } from '../lib/theme'
 import { MemberProfileDetailsSkeleton } from '../components/shared/Skeleton'
-import { TrackHero, HeroAvatar } from '../components/shared/TrackKit'
+import { HeroAvatar } from '../components/shared/TrackKit'
+import { DotText, PersonName, ProfileCard, ProfileHero, rememberSettingsReturn } from '../components/shared/ProfileKit'
+import MemberProfileDetails from '../components/shared/MemberProfileDetails'
 import { VisibilityBadge, noteTint } from '../components/shared/NoteVisibility'
 import PortalHeader from '../components/shared/PortalHeader'
-import vfoCertifiedSeal from '../assets/vfo-certified-emblem.png'
-import vfoAccreditedSeal from '../assets/vfo-accredited-emblem.png'
 import { formatDate } from '../lib/dates'
 import { statusColor } from '../components/shared/statusColors'
 import { HEADSHOTS_URL } from '../lib/environment'
 
 const HEADSHOT_SUPABASE = HEADSHOTS_URL
-const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:\/\//i.test(s) ? 'https://' + s : s }
 const LIST_TITLE = { accountant: 'Accountants', strategic_member: 'Strategic Members' }
 
 // Read-only member profile for the tax-planner portal, reached from the
-// "Member:" name on a planner's client page. Mirrors the admin MemberProfile
-// details tab (MembersPanel.jsx) card for card — same hero, same styles, same
-// field order — with the feature-tab row, the Stripe block and every name link
-// removed. Every value comes from tax_planner_member_view's additive whitelist;
-// the admin component is not reused because it needs the admin roster payload
-// and admin-only actions. Keep the two in step when the admin card changes.
+// "Member:" name on a planner's client page. Its body is the shared member
+// profile (shared/MemberProfileDetails, 2026-11-26), so it matches the admin
+// Details tab and the member's own Profile without a copy to keep in step. Names
+// are plain text, there is no Stripe block, and only what
+// tax_planner_member_view's additive whitelist sends is shown.
 export default function PlannerMemberView() {
   const { memberNumber } = useParams()
   const navigate = useNavigate()
@@ -52,35 +50,21 @@ export default function PlannerMemberView() {
   }, [memberNumber])
 
   const profile = data?.member
-  // Styles copied from MembersPanel.jsx's MemberProfile so the two render identically.
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
-  const fieldLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-faint)', textTransform: 'uppercase' }
-  const fieldValue = { fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: 600, marginTop: '5px' }
-  const countChip = { fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }
-  const introChip = { fontSize: '11px', padding: '2px 9px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.25)' }
-  const initials = (name) => (name || '').split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
-  const metaDot = (color, label) => <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0 }} />{label}</span></>
-
-  // Same row shape as the admin Connections / Corporate Members / Introducer Of
-  // lists, with the name as plain text.
-  const personRow = (p, i, n) => (
-    <div key={p.member_number} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: i < n - 1 ? '1px solid var(--vfo-tint)' : 'none' }}>
-      <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '11px', flexShrink: 0 }}>{initials(p.name)}</div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink)' }}>{p.name}</span>
-          {p.connection_type && <span style={introChip}>{p.connection_type}</span>}
-        </div>
-        <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '1px' }}><span style={{ fontFamily: 'monospace' }}>{p.member_number}</span>{p.member_type ? <> · {p.member_type}</> : null}</div>
-      </div>
-    </div>
-  )
+  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
+  // The shared body's people shape: { name, number, member_type, chip }.
+  const asPerson = (p, chip = false) => ({ ...p, number: p.member_number, chip: chip ? (p.connection_type || null) : null })
+  const people = data ? {
+    introducedBy: data.introduced_by ? asPerson(data.introduced_by, true) : null,
+    introducerOf: data.introduced.map(p => asPerson(p, true)),
+    connections: data.connections.map(p => asPerson(p)),
+    corporate: data.corporate_members.map(p => asPerson(p)),
+    lead: data.lead_member ? asPerson(data.lead_member) : null,
+  } : {}
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
       <PortalHeader name={session?.name || ''} onTitleClick={() => { sessionStorage.removeItem('taxPlannerActiveTab'); navigate('/tax-planner') }} actions={[
-        { key: 'settings', label: 'Settings', onClick: () => { sessionStorage.setItem('taxPlannerActiveTab', 'settings'); navigate('/tax-planner') } },
+        { key: 'settings', label: 'Settings', onClick: () => { rememberSettingsReturn(); sessionStorage.setItem('taxPlannerActiveTab', 'settings'); navigate('/tax-planner') } },
         { key: 'signout', label: 'Sign Out', onClick: () => { sessionStorage.clear(); navigate('/tax-planner/login') } },
       ]} />
 
@@ -98,143 +82,37 @@ export default function PlannerMemberView() {
 
         {!loading && profile && (
           <>
-            <TrackHero
+            <ProfileHero
               eyebrow={LIST_TITLE[profile.member_category] || 'Advisors'}
-              title={profile.name}
-              avatar={<HeroAvatar src={profile.headshot_image ? HEADSHOT_SUPABASE + encodeURIComponent(profile.headshot_image) : null} name={profile.name} />}
-              meta={
-                <>
-                  <span style={{ fontFamily: 'monospace' }}>{profile.member_number}</span>
-                  {profile.member_type && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>{profile.member_type}</span></>}
-                  {profile.elite_status && metaDot(statusColor(profile.elite_status), profile.elite_status)}
-                  {profile.paused && metaDot('#e06717', 'Paused')}
-                  {profile.suspended && metaDot('#e74c3c', 'Suspended')}
-                  {profile.membership_arrears && metaDot('#b45309', 'In Arrears')}
-                </>
-              }
+              name={<PersonName first={profile.first_name} last={profile.last_name} preferred={profile.preferred_name} fallback={profile.name} />}
+              avatar={<HeroAvatar src={profile.headshot_image ? HEADSHOT_SUPABASE + encodeURIComponent(profile.headshot_image) : null} name={profile.name} size={72} />}
+              facts={[
+                { label: 'Member number', value: <span style={{ fontFamily: 'monospace' }}>{profile.member_number}</span> },
+                { label: 'Type', value: profile.member_type },
+                { label: 'Status', value: profile.elite_status ? <DotText color={statusColor(profile.elite_status)}>{profile.elite_status}</DotText> : null },
+              ]}
+              alerts={(profile.paused || profile.suspended || profile.membership_arrears) ? <>
+                {profile.paused && <DotText color="#e06717">Paused</DotText>}
+                {profile.suspended && <DotText color="#e74c3c">Suspended</DotText>}
+                {profile.membership_arrears && <DotText color="#b45309">In Arrears</DotText>}
+              </> : null}
             />
 
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 340px', minWidth: '300px' }}>
-                <div style={sectionStyle}>
-                  <div style={cardTitle}>Member Details</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '18px 24px' }}>
-                    <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{profile.join_date ? formatDate(profile.join_date) : '—'}</div></div>
-                    {(profile.elite_status === 'Lost' || profile.elite_status === 'Removed') && <div><div style={fieldLabel}>Leave Date</div><div style={fieldValue}>{profile.leave_date ? formatDate(profile.leave_date) : '—'}</div></div>}
-                    <div><div style={fieldLabel}>Work email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{profile.email || '—'}</div></div>
-                    <div><div style={fieldLabel}>Personal email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{profile.personal_email || '—'}</div></div>
-                    {(profile.member_category === 'accountant' || profile.member_category === 'advisor') && <div><div style={fieldLabel}>Company Name</div><div style={fieldValue}>{profile.trading_name || '—'}</div></div>}
-                    <div><div style={fieldLabel}>Revenue Decision</div><div style={fieldValue}>{profile.revenue_decision || '—'}</div></div>
-                    <div><div style={fieldLabel}>Eligible for Credit Note</div><div style={fieldValue}>{profile.credit_note_eligible === false ? 'No' : 'Yes'}</div></div>
-                    {profile.website_url && <div><div style={fieldLabel}>Website</div><div style={fieldValue}><a href={normalizeUrl(profile.website_url)} target="_blank" rel="noopener noreferrer" style={{ color: '#0095ff', textDecoration: 'none', wordBreak: 'break-all' }}>{profile.website_url}</a></div></div>}
-                  </div>
-                </div>
-              </div>
-
-              {(data.introduced_by || data.introduced.length > 0 || data.connections.length > 0 || data.corporate_members.length > 0 || data.lead_member || profile.vfo_certified_date || profile.vfo_accredited_date) && (
-                <div style={{ flex: '1 1 300px', minWidth: '280px' }}>
-                  {(data.introduced_by || data.introduced.length > 0) && (
-                    <div style={sectionStyle}>
-                      <div style={{ ...cardTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Introductions</span>
-                        <span style={countChip}>{(data.introduced_by ? 1 : 0) + data.introduced.length}</span>
-                      </div>
-                      {data.introduced_by && (
-                        <div style={{ marginBottom: data.introduced.length > 0 ? '16px' : 0 }}>
-                          <div style={{ ...fieldLabel, marginBottom: '8px' }}>Introduced By</div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '14px', flexShrink: 0, boxShadow: '0 2px 8px rgba(18,94,204,0.28)' }}>{initials(data.introduced_by.name)}</div>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--vfo-ink)' }}>{data.introduced_by.name}</span>
-                                {data.introduced_by.connection_type && <span style={introChip}>{data.introduced_by.connection_type}</span>}
-                              </div>
-                              <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}><span style={{ fontFamily: 'monospace' }}>{data.introduced_by.member_number}</span>{data.introduced_by.member_type ? <> · {data.introduced_by.member_type}</> : null}</div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {data.introduced.length > 0 && (
-                        <div>
-                          <div style={{ ...fieldLabel, marginBottom: '2px' }}>Introducer Of</div>
-                          {data.introduced.map((p, i) => personRow(p, i, data.introduced.length))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {data.connections.length > 0 && (
-                    <div style={sectionStyle}>
-                      <div style={{ ...cardTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Connections</span>
-                        <span style={countChip}>{data.connections.length}</span>
-                      </div>
-                      {data.connections.map((p, i) => personRow(p, i, data.connections.length))}
-                    </div>
-                  )}
-
-                  {data.corporate_members.length > 0 && (
-                    <div style={sectionStyle}>
-                      <div style={{ ...cardTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Corporate Members</span>
-                        <span style={countChip}>{data.corporate_members.length}</span>
-                      </div>
-                      {data.corporate_members.map((p, i) => personRow(p, i, data.corporate_members.length))}
-                    </div>
-                  )}
-
-                  {data.lead_member && (
-                    <div style={sectionStyle}>
-                      <div style={{ ...cardTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Lead Member</span>
-                      </div>
-                      {personRow(data.lead_member, 0, 1)}
-                    </div>
-                  )}
-
-                  {(profile.vfo_certified_date || profile.vfo_accredited_date) && (
-                    <div style={sectionStyle}>
-                      <div style={cardTitle}>Certifications</div>
-                      {profile.vfo_certified_date && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: profile.vfo_accredited_date ? '12px' : 0 }}>
-                          <img src={vfoCertifiedSeal} style={{ width: '36px', height: '36px' }} />
-                          <div><div style={{ fontSize: '14px', color: '#b08d26', fontWeight: '600' }}>VFO Certified</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{formatDate(profile.vfo_certified_date)}</div></div>
-                        </div>
-                      )}
-                      {profile.vfo_accredited_date && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <img src={vfoAccreditedSeal} style={{ width: '36px', height: '36px' }} />
-                          <div><div style={{ fontSize: '14px', color: 'var(--vfo-muted)', fontWeight: '600' }}>VFO Accredited</div><div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{formatDate(profile.vfo_accredited_date)}</div></div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {profile.bio && (
-              <div style={sectionStyle}>
-                <div style={cardTitle}>Bio</div>
-                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.bio}</div>
-              </div>
-            )}
+            {/* The member profile body shared with the admin Details tab and the
+                member's own Profile (shared/MemberProfileDetails), read-only, with
+                plain-text names and only the fields this view is sent. */}
+            <MemberProfileDetails profile={profile} memberNumber={profile.member_number} people={people} adminView omit={['taxPlanning', 'logo']} />
 
             {profile.notes && (
-              <div style={sectionStyle}>
-                <div style={cardTitle}>Notes</div>
-                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.notes}</div>
-              </div>
+              <ProfileCard icon="note" title="Notes">
+                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.75, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.notes}</div>
+              </ProfileCard>
             )}
 
             {data.program_notes.length > 0 && (
-              <div style={sectionStyle}>
-                <div style={{ ...cardTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>All Program Notes</span>
-                  <span style={countChip}>{data.program_notes.length}</span>
-                </div>
+              <ProfileCard icon="layers" title="All Program Notes" sub={`${data.program_notes.length} ${data.program_notes.length === 1 ? 'note' : 'notes'} across every program`}>
                 {data.program_notes.map(note => (
-                  <div key={note.id} style={{ padding: '10px 12px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
+                  <div key={note.id} style={{ padding: '11px 14px', marginBottom: '8px', borderRadius: '12px', border: '1px solid var(--vfo-border-soft)', background: noteTint(note.visibility) }}>
                     <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
@@ -245,20 +123,9 @@ export default function PlannerMemberView() {
                     </div>
                   </div>
                 ))}
-              </div>
+              </ProfileCard>
             )}
 
-            {data.type_history.length > 0 && (
-              <div style={sectionStyle}>
-                <div style={cardTitle}>Member Type History</div>
-                {data.type_history.map(h => (
-                  <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-                    <div style={{ textAlign: 'left' }}><span style={{ color: 'var(--vfo-muted)', fontSize: '13px' }}>{h.old_type}</span><span style={{ color: 'var(--vfo-muted)', margin: '0 8px' }}>→</span><span style={{ color: 'var(--vfo-ink)', fontSize: '13px', fontWeight: '600' }}>{h.new_type}</span></div>
-                    <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{new Date(h.changed_at).toLocaleDateString()}</div>
-                  </div>
-                ))}
-              </div>
-            )}
           </>
         )}
       </div>

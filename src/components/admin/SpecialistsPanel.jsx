@@ -9,10 +9,12 @@ import SpecialistPaymentsTab from '../payments/SpecialistPaymentsTab'
 import SendSetupEmailButton from './SendSetupEmailButton'
 import SpecialistKpiPanel from './SpecialistKpiPanel'
 import ListFilterButton, { matchesFilter, sortByJoin, SortSelect } from './ListFilterButton'
+import ListTable, { ListName, ListPill, ListText, listSearchStyle } from '../shared/ListTable'
 import ImageCropModal from './ImageCropModal'
 import { formatDate } from '../../lib/dates'
 import ExportButton from '../shared/ExportButton'
 import { splitName, exportDate } from '../../lib/exportXlsx'
+import { formatPersonName } from '../../lib/formatters'
 import { HEADSHOTS_URL } from '../../lib/environment'
 
 // `default: false` columns start unticked in the Export window.
@@ -37,6 +39,10 @@ const MEMBER_SERVICES = 'Member Services'
 // The Tax section (shared, one set per person) only surfaces under this ecosystem.
 const TAX_ECOSYSTEM = 'Tax Planning'
 import { STATUS_COLORS } from '../shared/statusColors'
+import { HeroAvatar } from '../shared/TrackKit'
+import StripeAccountField from '../shared/StripeAccountField'
+import { ChoiceButtons, DotText, Field, FieldGrid, FormGrid, formInput, formLabel, ProfileCard, ProfileHero, SaveBar, SettingRow, subLabel, Switch } from '../shared/ProfileKit'
+import { btnDanger, btnOutline, btnPrimary, btnSecondary, btnState, BTN_SMALL } from '../shared/buttonStyles'
 const HEADSHOT_SUPABASE = HEADSHOTS_URL
 const HEADSHOT_BASE = 'https://biz-diagnostic.com/Uploads/ExpertPhotos/'
 
@@ -66,8 +72,10 @@ const SHARED_KEYS = ['name', 'email', 'personal_email', 'status', 'leave_date', 
 const BOOL_KEYS = ['top_of_t', 'vfo_accredited']
 const uniqueEcos = arr => [...new Set(arr || [])]
 
+// first_name / last_name are FORM-ONLY (2026-11-26): experts stores one `name`,
+// so the save joins them and never sends these two keys.
 function blankShared() {
-  const s = {}
+  const s = { first_name: '', last_name: '' }
   SHARED_KEYS.forEach(k => { s[k] = BOOL_KEYS.includes(k) ? false : k === 'status' ? 'Active' : '' })
   return s
 }
@@ -83,6 +91,9 @@ function pickShared(e) {
     else if (BOOL_KEYS.includes(k)) s[k] = e[k] || false
     else s[k] = e[k] || (k === 'status' ? 'Active' : '')
   })
+  const [first, last] = splitName(e.name)
+  s.first_name = first
+  s.last_name = last
   return s
 }
 function pickContent(item) {
@@ -300,13 +311,14 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
     const shared = which === 'add' ? addShared : editShared
     const entries = which === 'add' ? addEntries : editEntries
     const file = which === 'add' ? addFile : editFile
-    if (!shared.name) { showStatus(which, 'error', 'Name is required.'); return }
+    const name = [shared.first_name, shared.last_name].map(v => formatPersonName(v || '')).filter(Boolean).join(' ')
+    if (!formatPersonName(shared.first_name || '') || !formatPersonName(shared.last_name || '')) { showStatus(which, 'error', 'First and last name are required.'); return }
     if (entries.length === 0) { showStatus(which, 'error', 'Add at least one VFO ecosystem.'); return }
     try {
       let headshotFilename = ''
       if (file) {
         const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
-        headshotFilename = ts + '_' + shared.name.replace(/[^a-zA-Z0-9 ]/g, '').trim() + '.jpg'
+        headshotFilename = ts + '_' + name.replace(/[^a-zA-Z0-9 ]/g, '').trim() + '.jpg'
         const base64 = await new Promise((resolve, reject) => {
           const reader = new FileReader()
           reader.onload = () => resolve(reader.result.split(',')[1])
@@ -330,7 +342,8 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
       // Shared identity + the PRIMARY entry's content mirrored into the top-level
       // columns (agreements/BoldSign read the flat D&B_*); flat short_bio holds
       // the combined bios. Dates: '' -> null; Active clears the leave date.
-      const expertData = { ...shared, ...primary, ecosystem_content }
+      const { first_name: _first, last_name: _last, ...sharedCols } = shared
+      const expertData = { ...sharedCols, name, ...primary, ecosystem_content }
       expertData.short_bio = combinedShortBio
       // Tax is now per-entry; mirror the FIRST Tax Planning entry's questionnaire
       // into the flat columns (the SIF go-live path + any legacy reader use them).
@@ -385,8 +398,8 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
     }
   }
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }
+  const inputStyle = formInput
+  const labelStyle = formLabel
   const fieldStyle = { marginBottom: '16px' }
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
@@ -465,10 +478,9 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
 
     return (
       <div>
-        {/* ---- Shared identity (same across every ecosystem) ---- */}
-        <div style={sectionStyle}>
-        <div style={sectionHeader}>Profile &amp; Identity</div>
-
+        {/* ---- The edit boxes mirror the profile (2026-11-26): header, Specialist
+            Details, Revenue Details, Biography, then VFO Ecosystem. ---- */}
+        <ProfileCard icon="camera" title={'Photo, Name & Status'}>
         <div style={fieldStyle}>
           <label style={labelStyle}>Headshot</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -479,13 +491,13 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
               {preview ? <img src={preview} crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { if (which === 'edit') { const exp = allExperts.find(x => x.id === editingId); if (exp) e.target.src = HEADSHOT_BASE + exp.headshot_image } }} /> : <span style={{ color: 'var(--vfo-muted)', fontSize: '24px' }}>?</span>}
             </div>
             <div>
-              <label style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-tint)', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer' }}>
+              <label style={{ ...btnPrimary, display: 'inline-block' }}>
                 Choose Image
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileChange(which, e)} />
               </label>
               {preview && (
                 <button type="button" onClick={() => setCropState({ which, src: preview })}
-                  style={{ marginLeft: '8px', padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--vfo-accent-text)', background: 'var(--vfo-card)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                  style={{ ...btnSecondary, marginLeft: '8px' }}>
                   Adjust / Zoom
                 </button>
               )}
@@ -493,17 +505,72 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
             </div>
           </div>
         </div>
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Background Check</label>
-          <select value={shared.background_check} onChange={e => setShared(p => ({ ...p, background_check: e.target.value }))} style={{ ...inputStyle, background: 'var(--vfo-card)', width: '200px' }}>
-            <option value="">-- None --</option>
-            <option value="Lite">Lite</option>
-            <option value="Core">Core</option>
-            <option value="Max">Max</option>
-          </select>
+        <FormGrid min={220} style={{ marginBottom: '16px' }}>
+          <div><label style={labelStyle}>First Name *</label><input value={shared.first_name || ''} onChange={e => setShared(p => ({ ...p, first_name: e.target.value }))} onBlur={e => setShared(p => ({ ...p, first_name: formatPersonName(e.target.value) }))} style={inputStyle} /></div>
+          <div><label style={labelStyle}>Last Name *</label><input value={shared.last_name || ''} onChange={e => setShared(p => ({ ...p, last_name: e.target.value }))} onBlur={e => setShared(p => ({ ...p, last_name: formatPersonName(e.target.value) }))} style={inputStyle} /></div>
+          <div>
+            <label style={labelStyle}>Status</label>
+            <select value={shared.status || 'Active'} onChange={e => setShared(p => ({ ...p, status: e.target.value }))} style={inputStyle}>
+              {['Active', 'Lost', 'Removed'].map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Background Check</label>
+            <select value={shared.background_check} onChange={e => setShared(p => ({ ...p, background_check: e.target.value }))} style={inputStyle}>
+              <option value="">-- None --</option>
+              <option value="Lite">Lite</option>
+              <option value="Core">Core</option>
+              <option value="Max">Max</option>
+            </select>
+          </div>
+        </FormGrid>
+        <div style={{ display: 'grid', gap: '10px' }}>
+          <SettingRow title="Top of the T">
+            <Switch on={!!shared.top_of_t} label="Top of the T" onClick={() => setShared(p => ({ ...p, top_of_t: !p.top_of_t }))} />
+          </SettingRow>
+          <SettingRow title="VFO Accredited Professional Specialist" hint="Hidden from every Showroom — member, client, specialist, admin preview, and the public website widget. Still appears in Specialist Search and stays selectable in Holistic (Regular & Tax) and Tax Planning specialist pickers.">
+            <Switch on={!!shared.vfo_accredited} color="#002973" label="VFO Accredited Professional Specialist" onClick={() => setShared(p => ({ ...p, vfo_accredited: !p.vfo_accredited }))} />
+          </SettingRow>
         </div>
+        </ProfileCard>
 
+        <ProfileCard icon="id" title="Specialist Details">
+        <FormGrid min={260}>
+          <div><label style={labelStyle}>Work email (emails sent here)</label><input value={shared.email || ''} onChange={e => setShared(p => ({ ...p, email: e.target.value }))} placeholder="specialist@example.com" style={inputStyle} /></div>
+          <div><label style={labelStyle}>Personal email (not emailed)</label><input value={shared.personal_email || ''} onChange={e => setShared(p => ({ ...p, personal_email: e.target.value }))} style={inputStyle} /></div>
+          <div><label style={labelStyle}>Join Date</label><input type="date" value={shared.join_date || ''} onChange={e => setShared(p => ({ ...p, join_date: e.target.value }))} style={inputStyle} /></div>
+          {(shared.status === 'Lost' || shared.status === 'Removed') && (
+            <div><label style={labelStyle}>Leave Date</label><input type="date" value={shared.leave_date || ''} onChange={e => setShared(p => ({ ...p, leave_date: e.target.value }))} style={inputStyle} /></div>
+          )}
+        </FormGrid>
+        </ProfileCard>
+
+        <ProfileCard icon="dollar" tone="green" title="Revenue Details">
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Revenue Decision</label>
+          <ChoiceButtons options={[['Revenue Share', 'Revenue Share'], ['Money Mapping', 'Money Mapping']]} value={shared.revenue_decision} onChange={v => setShared(p => ({ ...p, revenue_decision: v }))} />
+        </div>
+        {which === 'edit' && (
+          <div style={{ ...fieldStyle, marginBottom: 0 }}>
+            <label style={labelStyle}>Stripe Connect (payouts)</label>
+            {selectedExpert?.stripe_account_id
+              ? <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', marginBottom: '8px' }}>Connected · <span style={{ fontFamily: 'monospace', color: 'var(--vfo-muted)' }}>{selectedExpert.stripe_account_id}</span></div>
+              : <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginBottom: '8px' }}>No payout account yet.</div>}
+            <button type="button" onClick={handleSpecialistConnect} disabled={connectBusy}
+              style={{ ...btnState(btnOutline, connectBusy), cursor: connectBusy ? 'wait' : 'pointer' }}>
+              {connectBusy ? 'Working…' : (selectedExpert?.stripe_account_id ? 'Resend Setup Link' : 'Set Up Payment Details')}
+            </button>
+            {connectMsg && <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '8px' }}>{connectMsg}</p>}
+          </div>
+        )}
+        </ProfileCard>
+
+        <ProfileCard icon="text" title="Biography">
+          <textarea value={shared.long_bio} onChange={e => setShared(p => ({ ...p, long_bio: e.target.value }))} placeholder="Detailed biography..." rows={6} style={{ ...inputStyle, resize: 'vertical' }} />
+        </ProfileCard>
+
+        {/* ---- Per-ecosystem content (short bio, D&B, tax) — one write-up per ecosystem ---- */}
+        <ProfileCard icon="layers" title="VFO Ecosystem" sub={multi ? 'One write-up per entry — fill each below' : 'Each entry has its own short bio and Details & Benefits.'}>
         <div style={fieldStyle}>
           <label style={labelStyle}>VFO Ecosystems <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--vfo-faint)' }}>— add one per strategy; you can add the same ecosystem more than once</span></label>
           <select value="" onChange={e => { if (e.target.value) addEntry(which, e.target.value) }} disabled={availableEcos.length === 0}
@@ -523,125 +590,34 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
           )}
         </div>
 
-        <div style={fieldStyle}>
-          <label style={labelStyle}>VFO Accredited Professional Specialist</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div onClick={() => setShared(p => ({ ...p, vfo_accredited: !p.vfo_accredited }))}
-              style={{ width: '44px', height: '24px', borderRadius: '12px', background: shared.vfo_accredited ? '#002973' : 'var(--vfo-border-strong)', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
-              <div style={{ position: 'absolute', top: '2px', left: shared.vfo_accredited ? '22px' : '2px', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--vfo-card)', transition: 'left 0.2s' }} />
-            </div>
-            <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>{shared.vfo_accredited ? 'Yes' : 'No'}</span>
-          </div>
-          <div style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', marginTop: '6px', lineHeight: 1.5 }}>Hidden from every Showroom — member, client, specialist, admin preview, and the public website widget. Still appears in Specialist Search and stays selectable in Holistic (Regular &amp; Tax) and Tax Planning specialist pickers.</div>
-        </div>
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Name *</label>
-          <input value={shared.name} onChange={e => setShared(p => ({ ...p, name: e.target.value }))} placeholder="Full name" style={inputStyle} />
-        </div>
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '200px' }}>
-            <label style={labelStyle}>Work email (emails sent here)</label>
-            <input value={shared.email || ''} onChange={e => setShared(p => ({ ...p, email: e.target.value }))} placeholder="specialist@example.com" style={inputStyle} />
-          </div>
-          <div style={{ flex: 1, minWidth: '200px' }}>
-            <label style={labelStyle}>Personal email (not emailed)</label>
-            <input value={shared.personal_email || ''} onChange={e => setShared(p => ({ ...p, personal_email: e.target.value }))} style={inputStyle} />
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Status</label>
-            <select value={shared.status || 'Active'} onChange={e => setShared(p => ({ ...p, status: e.target.value }))} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
-              {['Active', 'Lost', 'Removed'].map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          {(shared.status === 'Lost' || shared.status === 'Removed') && (
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Leave Date</label>
-              <input type="date" value={shared.leave_date || ''} onChange={e => setShared(p => ({ ...p, leave_date: e.target.value }))} style={inputStyle} />
-            </div>
-          )}
-        </div>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Join Date</label>
-          <input type="date" value={shared.join_date || ''} onChange={e => setShared(p => ({ ...p, join_date: e.target.value }))} style={{ ...inputStyle, width: '200px' }} />
-        </div>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Revenue Decision</label>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {['Revenue Share', 'Money Mapping'].map(v => (
-              <button key={v} type="button" onClick={() => setShared(p => ({ ...p, revenue_decision: v }))}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid ${shared.revenue_decision === v ? 'var(--vfo-accent-text)' : 'var(--vfo-border-mid)'}`, background: shared.revenue_decision === v ? 'rgba(18,94,204,0.12)' : 'var(--vfo-card)', color: shared.revenue_decision === v ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                {v}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Top of the T</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div onClick={() => setShared(p => ({ ...p, top_of_t: !p.top_of_t }))}
-              style={{ width: '44px', height: '24px', borderRadius: '12px', background: shared.top_of_t ? '#125ecc' : 'var(--vfo-border-strong)', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
-              <div style={{ position: 'absolute', top: '2px', left: shared.top_of_t ? '22px' : '2px', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--vfo-card)', transition: 'left 0.2s' }} />
-            </div>
-            <span style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>{shared.top_of_t ? 'Yes' : 'No'}</span>
-          </div>
-        </div>
-        {which === 'edit' && (
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Stripe Connect (payouts)</label>
-            {selectedExpert?.stripe_account_id
-              ? <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', marginBottom: '8px' }}>Connected · <span style={{ fontFamily: 'monospace', color: 'var(--vfo-muted)' }}>{selectedExpert.stripe_account_id}</span></div>
-              : <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginBottom: '8px' }}>No payout account yet.</div>}
-            <button type="button" onClick={handleSpecialistConnect} disabled={connectBusy}
-              style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid var(--vfo-accent-text)', background: 'var(--vfo-card)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600, cursor: connectBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
-              {connectBusy ? 'Working…' : (selectedExpert?.stripe_account_id ? 'Resend Setup Link' : 'Set Up Payment Details')}
-            </button>
-            {connectMsg && <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '8px' }}>{connectMsg}</p>}
-          </div>
-        )}
-        <div style={{ ...fieldStyle, marginBottom: 0 }}>
-          <label style={labelStyle}>Long Bio</label>
-          <textarea value={shared.long_bio} onChange={e => setShared(p => ({ ...p, long_bio: e.target.value }))} placeholder="Detailed biography..." rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
-        </div>
-        </div>{/* end Profile & Identity card */}
-
-        {/* ---- Per-ecosystem content (short bio, D&B, tax) — one write-up per ecosystem ---- */}
-        <div style={sectionStyle}>
-        <div style={{ ...sectionHeader, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-          <span>Bio &amp; Details</span>
-          {multi && <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--vfo-muted)', textTransform: 'none', letterSpacing: 0 }}>One write-up per entry — fill each below</span>}
-        </div>
-
         {entries.length === 0 && (
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', fontStyle: 'italic' }}>Add a VFO ecosystem above to enter this person's bio &amp; details.</div>
         )}
 
         {entries.map((en, idx) => (
-          <div key={idx} style={{ border: '1px solid var(--vfo-border-strong)', borderRadius: '14px', padding: '20px', marginBottom: '18px', background: 'var(--vfo-card)' }}>
+          <div key={idx} style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', padding: '18px', marginBottom: '14px', background: 'var(--vfo-input)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '18px', flexWrap: 'wrap' }}>
               <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '8px' }}>
                 <span style={{ display: 'inline-block', fontSize: '13px', fontWeight: 700, color: '#0095ff', background: 'rgba(0,149,255,0.12)', border: '1px solid rgba(0,149,255,0.25)', borderRadius: '999px', padding: '4px 14px' }}>{entryLabel(entries, idx)}</span>
                 {idx === 0 && <span style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>primary — mirrored to the showroom card</span>}
               </span>
               <div style={{ display: 'flex', gap: '6px' }}>
-                <button type="button" onClick={() => moveEntry(which, idx, -1)} disabled={idx === 0} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-card)', color: 'var(--vfo-muted)', fontSize: '13px', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.4 : 1 }}>↑</button>
-                <button type="button" onClick={() => moveEntry(which, idx, 1)} disabled={idx === entries.length - 1} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-card)', color: 'var(--vfo-muted)', fontSize: '13px', cursor: idx === entries.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === entries.length - 1 ? 0.4 : 1 }}>↓</button>
-                <button type="button" onClick={() => removeEntry(which, idx)} style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(231,76,60,0.4)', background: 'transparent', color: '#e74c3c', fontSize: '13px', cursor: 'pointer' }}>Remove</button>
+                <button type="button" onClick={() => moveEntry(which, idx, -1)} disabled={idx === 0} style={btnState({ ...btnSecondary, ...BTN_SMALL }, idx === 0)}>↑</button>
+                <button type="button" onClick={() => moveEntry(which, idx, 1)} disabled={idx === entries.length - 1} style={btnState({ ...btnSecondary, ...BTN_SMALL }, idx === entries.length - 1)}>↓</button>
+                <button type="button" onClick={() => removeEntry(which, idx)} style={{ ...btnDanger, ...BTN_SMALL }}>Remove</button>
               </div>
             </div>
             {entryBody(idx, en)}
           </div>
         ))}
 
-        </div>{/* end Bio & Details card */}
+        </ProfileCard>
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
       {cropState && <ImageCropModal src={cropState.src} onApply={applyCrop} onCancel={() => setCropState(null)} />}
       {/* Section title */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
@@ -676,33 +652,35 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
             <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: editStatusType === 'success' ? 'rgba(27,146,84,0.1)' : 'rgba(231,76,60,0.1)', color: editStatusType === 'success' ? 'var(--vfo-success-text)' : '#e74c3c', border: `1px solid ${editStatusType === 'success' ? 'rgba(27,146,84,0.3)' : 'rgba(231,76,60,0.3)'}` }}>{editStatus}</div>
           )}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-            <input type="search" name="search" autoComplete="off" placeholder="Search by name..." style={inputStyle} onChange={e => setEditSearch(e.target.value.toLowerCase())} value={editSearch} />
+            <input type="search" name="search" autoComplete="off" placeholder="Search by name..." style={listSearchStyle} onChange={e => setEditSearch(e.target.value.toLowerCase())} value={editSearch} />
             <ListFilterButton groups={specFilterGroups} value={specFilter} onChange={setSpecFilter} />
             <SortSelect value={specSort} onChange={setSpecSort} />
           </div>
-          <div>
-            {visibleExperts.map(expert => (
-              <div key={expert.id}
-                onClick={() => { setProfileOrigin(null); handleEditSelect(expert) }}
-                style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 14px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', cursor: 'pointer' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', background: 'var(--vfo-border)', flexShrink: 0 }}>
-                  {expert.headshot_image && <img src={HEADSHOT_SUPABASE + encodeURIComponent(expert.headshot_image)} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{expert.name}</span>
-                    {expert.vfo_accredited && (
-                      <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,41,115,0.10)', color: '#002973', border: '1px solid rgba(0,41,115,0.28)', whiteSpace: 'nowrap', flexShrink: 0 }}>VFO Accredited Professional Specialist</span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(ecoMap[expert.id] || []).length > 1 ? (ecoMap[expert.id] || []).join(' · ') : (expert.short_bio || '—')}</div>
-                </div>
-                <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-ink)', flexShrink: 0 }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: STATUS_COLORS[expert.status] || '#1b9254', flexShrink: 0 }} />{expert.status || 'Active'}
+          <ListTable
+            rows={visibleExperts}
+            rowKey={e => e.id}
+            resetSortOn={specSort}
+            minWidth="760px"
+            empty={editSearch ? 'No specialists match your search.' : 'No specialists match the current filters.'}
+            onRowClick={e => { setProfileOrigin(null); handleEditSelect(e) }}
+            columns={[
+              { key: 'name', label: 'Name', width: '2fr', get: e => e.name, render: e => (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                  <span style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', background: 'var(--vfo-border)', flexShrink: 0 }}>
+                    {e.headshot_image && <img src={HEADSHOT_SUPABASE + encodeURIComponent(e.headshot_image)} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  </span>
+                  <ListName>{e.name}</ListName>
                 </span>
-              </div>
-            ))}
-          </div>
+              ) },
+              { key: 'area', label: 'Ecosystem', width: '2fr', render: e => {
+                const eco = ecoMap[e.id] || []
+                const text = eco.length ? eco.join(' · ') : e.short_bio
+                return <ListText style={{ color: text ? 'var(--vfo-muted)' : undefined, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{text}</ListText>
+              } },
+              { key: 'accredited', label: 'Accredited', width: '120px', get: e => (e.vfo_accredited ? 'Yes' : ''), render: e => e.vfo_accredited ? <ListPill color="#002973">VFO Accredited</ListPill> : <ListText /> },
+              { key: 'status', label: 'Status', width: '110px', get: e => e.status || 'Active', render: e => <ListPill color={STATUS_COLORS[e.status || 'Active'] || '#8a94a6'}>{e.status || 'Active'}</ListPill> },
+            ]}
+          />
         </>
       )}
 
@@ -736,32 +714,24 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
           {specialistTab === 'edit' && (
             <div>
               {SpecialistForm({ which: 'edit', statusMsg: editStatus, statusType: editStatusType })}
-              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                <button onClick={() => submitSpecialist('edit')}
-                  style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
-                  Save Changes
-                </button>
-                <button onClick={() => { setSelectedExpert(null); setEditingId(null); setSpecialistTab('profile') }}
-                  style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer' }}>
+              {/* The sticky save bar, as on the member's Edit Profile. */}
+              <SaveBar onSave={() => submitSpecialist('edit')} status={editStatus} statusType={editStatusType}>
+                <button onClick={() => { setSelectedExpert(null); setEditingId(null); setSpecialistTab('profile') }} style={{ ...btnSecondary, padding: '10px 20px', fontSize: '14px' }}>
                   Cancel
                 </button>
-                {editStatus && <span style={{ alignSelf: 'center', color: editStatusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', fontWeight: 600 }}>{editStatus}</span>}
-              </div>
+              </SaveBar>
             </div>
           )}
 
           {specialistTab === 'settings' && (
             <>
-              <div style={sectionStyle}>
-                <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Specialist Login</div>
-                <p style={{ fontSize: '14px', color: 'var(--vfo-muted)', marginBottom: '16px' }}>{selectedExpert.email ? <>Send a setup email to <strong>{selectedExpert.email}</strong> so they can set their own portal passcode.</> : <>Add an email in Edit Profile first, then send the setup email.</>}</p>
+              <ProfileCard icon="lock" title="Specialist Login">
+                <p style={{ fontSize: '14px', color: 'var(--vfo-muted)', margin: '0 0 16px' }}>{selectedExpert.email ? <>Send a setup email to <strong>{selectedExpert.email}</strong> so they can set their own portal passcode.</> : <>Add an email in Edit Profile first, then send the setup email.</>}</p>
                 <SendSetupEmailButton loginType="specialist" subjectId={selectedExpert.id} hint="Drafts a Gmail with a secure link. The specialist sets their own passcode." />
-              </div>
-              <div style={{ ...sectionStyle, border: '1px solid rgba(231,76,60,0.3)' }}>
-                <div style={{ fontSize: '13px', color: '#e74c3c', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Danger Zone</div>
-                <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginBottom: '12px' }}>Permanently delete this specialist. This cannot be undone.</p>
-                <button onClick={deleteSpecialist} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid rgba(231,76,60,0.4)', background: 'transparent', color: '#e74c3c', fontWeight: 500, fontSize: '14px', cursor: 'pointer' }}>Delete Specialist</button>
-              </div>
+              </ProfileCard>
+              <ProfileCard icon="alert" tone="red" title="Danger Zone" sub="Permanently delete this specialist. This cannot be undone." style={{ border: '1px solid rgba(231,76,60,0.3)' }}>
+                <button onClick={deleteSpecialist} style={btnDanger}>Delete Specialist</button>
+              </ProfileCard>
             </>
           )}
 
@@ -789,6 +759,22 @@ function SpecialistProfileView({ expert, ecos: ecosProp, connectBusy = false, co
   const en = entries[activeIdx] || { eco: '', content: blankContent() }
   const activeEco = en.eco || ''
   const c = en.content || blankContent()
+  // The Stripe Account tile's live status: the same Stripe check the member
+  // profile runs (specialist_connect_status), refreshed on demand.
+  const acctId = (expert.stripe_account_id || '').trim()
+  const [connectStatus, setConnectStatus] = useState(null)
+  const [connectLoading, setConnectLoading] = useState(false)
+  const [connectRefresh, setConnectRefresh] = useState(0)
+  useEffect(() => {
+    if (!acctId) { setConnectStatus(null); setConnectLoading(false); return }
+    let alive = true
+    setConnectLoading(true)
+    callApi('specialist_connect_status', { expert_id: expert.id })
+      .then(res => { if (alive) setConnectStatus(res || { status: 'unavailable' }) })
+      .catch(() => { if (alive) setConnectStatus({ status: 'unavailable' }) })
+      .finally(() => { if (alive) setConnectLoading(false) })
+    return () => { alive = false }
+  }, [expert.id, acctId, connectRefresh])
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
   const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
   const fieldLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-faint)', textTransform: 'uppercase' }
@@ -799,10 +785,12 @@ function SpecialistProfileView({ expert, ecos: ecosProp, connectBusy = false, co
   // Accredited specialists carry a badge in the profile header only.
   const accredited = !!expert.vfo_accredited
   const accBadge = { display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: 700, padding: '4px 12px', borderRadius: '999px', background: 'rgba(0,41,115,0.10)', color: '#002973', border: '1px solid rgba(0,41,115,0.30)' }
+  // A long answer in a soft tile: its label over plain text.
+  const longTile = { background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '12px 14px', marginBottom: '10px' }
   const longField = (label, value) => value ? (
-    <div style={{ marginBottom: '18px' }}>
-      <div style={dbHeading}>{label}</div>
-      <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.6, marginTop: '7px', whiteSpace: 'pre-wrap' }}>{value}</div>
+    <div style={longTile}>
+      <div style={subLabel}>{label}</div>
+      <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.6, marginTop: '6px', whiteSpace: 'pre-wrap' }}>{value}</div>
     </div>
   ) : null
 
@@ -824,9 +812,9 @@ function SpecialistProfileView({ expert, ecos: ecosProp, connectBusy = false, co
   const multi = entries.length > 1
   const suffix = multi ? ` — ${entryLabel(entries, activeIdx)}` : ''
   const alwaysField = (label, value) => (
-    <div style={{ marginBottom: '18px' }}>
-      <div style={dbHeading}>{label}</div>
-      <div style={{ fontSize: '13.5px', color: value ? 'var(--vfo-ink)' : 'var(--vfo-faint)', lineHeight: 1.6, marginTop: '7px', whiteSpace: 'pre-wrap' }}>{value || '—'}</div>
+    <div style={longTile}>
+      <div style={subLabel}>{label}</div>
+      <div style={{ fontSize: '13.5px', color: value ? 'var(--vfo-ink)' : 'var(--vfo-faint)', lineHeight: 1.6, marginTop: '6px', whiteSpace: 'pre-wrap' }}>{value || '—'}</div>
     </div>
   )
   const alwaysFieldSmall = (label, value) => (
@@ -836,112 +824,92 @@ function SpecialistProfileView({ expert, ecos: ecosProp, connectBusy = false, co
     </div>
   )
 
+  const headshot = expert.headshot_image
+    ? <div style={{ width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden', background: 'var(--vfo-tint)' }}><img src={HEADSHOT_SUPABASE + encodeURIComponent(expert.headshot_image)} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.src = HEADSHOT_BASE + expert.headshot_image }} /></div>
+    : <HeroAvatar src={null} name={expert.name} size={72} />
+
   return (
     <div>
-      {/* Profile header */}
-      <div style={{ ...sectionStyle, padding: 0, overflow: 'hidden' }}>
-        <div style={{ height: '4px', background: 'linear-gradient(90deg, #002973 0%, #125ecc 55%, #0a85e8 100%)' }} />
-        <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
-          <div style={{ width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {expert.headshot_image
-              ? <img src={HEADSHOT_SUPABASE + encodeURIComponent(expert.headshot_image)} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.src = HEADSHOT_BASE + expert.headshot_image }} />
-              : <span style={{ color: 'var(--vfo-faint)', fontSize: '24px', fontWeight: 700 }}>{(expert.name || '?').split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}</span>}
-          </div>
-          <div style={{ minWidth: '200px', flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '22px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1.15 }}>{expert.name}</span>
-              {accredited && <span style={accBadge}>VFO Accredited Professional Specialist</span>}
-            </div>
-            {c.short_bio && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '6px' }}>{c.short_bio}</div>}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap', fontSize: '12.5px', color: 'var(--vfo-muted)' }}>
-              {expert.top_of_t && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e06717', flexShrink: 0 }} />Top of the T</span>}
-              {expert.top_of_t && expert.background_check && <span style={{ color: 'var(--vfo-border-mid)' }}>·</span>}
-              {expert.background_check && <span>Background check: {expert.background_check}</span>}
-            </div>
-          </div>
-        </div>
-      </div>
+      <ProfileHero
+        eyebrow="Specialist"
+        name={expert.name}
+        avatar={headshot}
+        meta={(accredited || c.short_bio) ? <>
+          {accredited && <span style={accBadge}>VFO Accredited Professional Specialist</span>}
+          {c.short_bio && <span>{c.short_bio}</span>}
+        </> : null}
+        facts={[
+          { label: 'Status', value: <DotText color={STATUS_COLORS[expert.status] || '#1b9254'}>{expert.status || 'Active'}</DotText> },
+          { label: 'Top of the T', value: expert.top_of_t ? <DotText color="#e06717">Yes</DotText> : null },
+          { label: 'Background check', value: expert.background_check || null },
+        ]}
+      />
 
-      {/* Short facts row — beside each other so long text sections below can
-          run full width (a long bio used to strand a short sidebar and leave
-          half the page empty). */}
-      <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 320px', minWidth: '280px', display: 'flex' }}>
-          <div style={{ ...sectionStyle, flex: 1 }}>
-            <div style={cardTitle}>Account &amp; Payout</div>
-            {[
-              ['Work email', expert.email || '—'],
-              ['Personal email', expert.personal_email || '—'],
-              ['Status', expert.status || 'Active'],
-              ...(expert.leave_date ? [['Leave date', formatDate(expert.leave_date)]] : []),
-              ['Join date', expert.join_date ? formatDate(expert.join_date) : '—'],
-              ['Revenue decision', expert.revenue_decision || '—'],
-              ['Stripe Connect', expert.stripe_account_id ? 'Connected' : 'Not set up'],
-            ].map(([label, value]) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '7px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-                <span style={fieldLabel}>{label}</span>
-                <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', fontWeight: 600, textAlign: 'right', wordBreak: 'break-word' }}>{value}</span>
-              </div>
-            ))}
-            {expert.stripe_account_id && <div style={{ fontSize: '11px', color: 'var(--vfo-faint)', fontFamily: 'monospace', marginTop: '8px', wordBreak: 'break-all' }}>{expert.stripe_account_id}</div>}
-            {!expert.stripe_account_id && (
-              <div style={{ marginTop: '16px' }}>
-                <button type="button" onClick={onConnect} disabled={connectBusy}
-                  style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid var(--vfo-accent-text)', background: 'var(--vfo-card)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600, cursor: connectBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                  {connectBusy ? 'Working…' : 'Send Stripe Connect setup email'}
-                </button>
-                {connectMsg && <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '8px' }}>{connectMsg}</p>}
-              </div>
+      {/* Specialist Details, then Revenue Details, then the long write-ups. */}
+      <ProfileCard icon="id" title="Specialist Details">
+        <FieldGrid min={360} phoneCols={1}>
+          <Field label="Work email" nowrap>{expert.email}</Field>
+          <Field label="Personal email" nowrap>{expert.personal_email}</Field>
+          <Field label="Join date">{expert.join_date ? formatDate(expert.join_date) : null}</Field>
+          {expert.leave_date && <Field label="Leave date">{formatDate(expert.leave_date)}</Field>}
+        </FieldGrid>
+      </ProfileCard>
+
+      <ProfileCard icon="dollar" tone="green" title="Revenue Details">
+        <FieldGrid min={360} phoneCols={1}>
+          <Field label="Revenue decision">{expert.revenue_decision}</Field>
+          <div style={{ gridColumn: '1 / -1', minWidth: 0 }}>
+            {acctId ? (
+              <StripeAccountField acctId={acctId} loading={connectLoading} connectStatus={connectStatus} onRefresh={() => setConnectRefresh(n => n + 1)} />
+            ) : (
+              <Field label="Stripe Connect">
+                <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={onConnect} disabled={connectBusy} style={{ ...btnState(btnOutline, connectBusy), cursor: connectBusy ? 'wait' : 'pointer' }}>
+                    {connectBusy ? 'Working…' : 'Send Stripe Connect setup email'}
+                  </button>
+                </div>
+                {connectMsg && <p style={{ fontSize: '12px', fontWeight: 500, margin: '8px 0 0', color: 'var(--vfo-muted)' }}>{connectMsg}</p>}
+              </Field>
             )}
           </div>
-        </div>
-        {entries.length > 0 && (
-          <div style={{ flex: '1 1 320px', minWidth: '280px' }}>
-            <div style={sectionStyle}>
-              <div style={cardTitle}>VFO Ecosystem</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {entries.map((e, i) => multi
-                  ? <span key={i} onClick={() => setActive(i)} style={i === activeIdx ? activeChip : idleChip}>{entryLabel(entries, i)}</span>
-                  : <span key={i} style={chip}>{entryLabel(entries, i)}</span>)}
-              </div>
-              {multi && <div style={{ fontSize: '11px', color: 'var(--vfo-faint)', marginTop: '10px' }}>Click an entry to see its bio &amp; details.</div>}
-            </div>
-          </div>
-        )}
-      </div>
+        </FieldGrid>
+      </ProfileCard>
 
-      {/* Long-form content — full width. */}
       {expert.long_bio && (
-        <div style={sectionStyle}>
-          <div style={cardTitle}>Biography</div>
-          <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{expert.long_bio}</div>
-        </div>
+        <ProfileCard icon="text" title="Biography">
+          <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.75, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{expert.long_bio}</div>
+        </ProfileCard>
       )}
 
-      <div style={sectionStyle}>
-        <div style={cardTitle}>Details &amp; Benefits{suffix}</div>
+      {entries.length > 0 && (
+        <ProfileCard icon="layers" title="VFO Ecosystem" sub={multi ? 'Pick an entry to see its bio and details.' : null}>
+          {multi
+            ? <ChoiceButtons options={entries.map((e, i) => [i, entryLabel(entries, i)])} value={activeIdx} onChange={setActive} />
+            : <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>{entries.map((e, i) => <span key={i} style={chip}>{entryLabel(entries, i)}</span>)}</div>}
+        </ProfileCard>
+      )}
+
+      <ProfileCard icon="clipboard" title={`Details & Benefits${suffix}`}>
         {hasDb
           ? dbFields.map(([label, value]) => <Fragment key={label}>{longField(label, value)}</Fragment>)
           : <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', fontStyle: 'italic' }}>No details entered yet — use Edit Specialist to add them.</div>}
-      </div>
+      </ProfileCard>
 
       {/* Tax Planning Audit Risk Questionnaire — per-entry; only under a Tax
           Planning entry, and only when at least one answer is filled. */}
       {activeEco === TAX_ECOSYSTEM && hasAudit && (
-        <div style={sectionStyle}>
-          <div style={cardTitle}>Tax Planning Audit Risk Questionnaire{suffix}</div>
+        <ProfileCard icon="shield" tone="gold" title={`Tax Planning Audit Risk Questionnaire${suffix}`}>
           {alwaysField('1. General risks of this strategy', c['D&B_audit_risk_general'])}
           {alwaysField('2. History of these risks coming to fruition', c['D&B_audit_risk_history'])}
           {alwaysField('3. Potential worst-case scenarios', c['D&B_audit_risk_worst_case'])}
           {alwaysField('4. Precautions to prevent or minimize the risks', c['D&B_audit_risk_precautions'])}
-        </div>
+        </ProfileCard>
       )}
 
       {c['D&B_revenue_share'] && (
-        <div style={sectionStyle}>
-          <div style={cardTitle}>Revenue Share{suffix}</div>
+        <ProfileCard icon="dollar" tone="green" title={`Revenue Share${suffix}`}>
           <div style={{ fontSize: '13.5px', color: 'var(--vfo-ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{c['D&B_revenue_share']}</div>
-        </div>
+        </ProfileCard>
       )}
     </div>
   )

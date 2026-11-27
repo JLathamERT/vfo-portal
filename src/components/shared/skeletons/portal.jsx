@@ -1,9 +1,9 @@
 // Member / client / specialist portal skeletons, desktop and phone.
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { getTheme } from '../../../lib/theme'
-import { Skeleton, SkeletonText, CardShell, HeroSkeleton, PillTabsSkeleton, SearchFilterSkeleton, RuledTitleSkeleton, ACCENT_STRIP } from './primitives'
+import { Skeleton, SkeletonText, CardShell, HeroSkeleton, PillTabsSkeleton, SearchFilterSkeleton, RuledTitleSkeleton, ACCENT_STRIP, ProfileCardSkeleton } from './primitives'
 import { ClientOverviewSkeleton, PageHeadingSkeleton } from './adminLists'
-import { MemberProfileDetailsSkeleton, ProgramHeadingSkeleton, ProgramTabsSkeleton } from './adminPages'
+import { MemberProfileDetailsSkeleton, ProgramCardHeadSkeleton, ProgramTabsSkeleton } from './adminPages'
 import { CiqListSkeleton, MsmHomeSkeleton } from './tracks'
 
 // Placeholders on the showroom's solid blue cards: the same shimmer, in white.
@@ -56,39 +56,38 @@ export function ShowroomSkeleton({ cards = 8 }) {
 
 // Vault: the document sections, each with a couple of file rows and the add box.
 export function VaultSectionsSkeleton({ sections = 2, filesPerSection = 2 }) {
+  // Each section a profile box (VaultKit, 2026-11-26).
   return (
     <div>
       {Array.from({ length: sections }).map((_, s) => (
-        <div key={s} className="vfo-skel-on-tint" style={{ background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '12px', padding: '22px', marginBottom: '20px' }}>
-          <Skeleton width={150} height={15} style={{ marginBottom: '8px' }} />
-          <Skeleton width={260} height={11} style={{ marginBottom: '16px', maxWidth: '100%' }} />
+        <ProfileCardSkeleton key={s} titleWidth={170} sub>
           <VaultRowsSkeleton rows={filesPerSection} add />
-        </div>
+        </ProfileCardSkeleton>
       ))}
     </div>
   )
 }
 
-// The file rows of one vault section. `add` = the dashed Add document box under
-// them; `icon={false}` = rows without the file icon.
+// The file tiles of one vault section. `add` = the dashed upload tile under them;
+// `icon={false}` = tiles without the file-type badge.
 export function VaultRowsSkeleton({ rows = 2, add = false, icon = true }) {
   const isPhone = useIsPhone()
+  const tile = { display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', marginBottom: '8px' }
   return (
     <div>
       {Array.from({ length: rows }).map((_, i) => isPhone ? (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 10px 10px 12px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px', marginBottom: '8px' }}>
+        <div key={i} style={{ ...tile, padding: '10px 10px 10px 12px' }}>
           <div style={{ flex: 1, minWidth: 0 }}><Skeleton width="70%" height={13} /><Skeleton width={46} height={10} style={{ marginTop: '6px' }} /></div>
-          <Skeleton width={34} height={34} style={{ borderRadius: '50%', flexShrink: 0 }} />
+          <Skeleton width={30} height={30} style={{ borderRadius: '50%', flexShrink: 0 }} />
         </div>
       ) : (
-        <div key={i} className="vfo-skel-on-tint" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px', marginBottom: '8px' }}>
-          {icon && <Skeleton width={18} height={18} style={{ flexShrink: 0 }} />}
-          <div style={{ flex: 1, minWidth: 0 }}><Skeleton width="45%" height={13} /></div>
-          <Skeleton width={44} height={11} />
-          <Skeleton width={52} height={26} style={{ borderRadius: '6px' }} />
+        <div key={i} style={{ ...tile, padding: '10px 12px' }}>
+          {icon && <Skeleton width={36} height={36} style={{ borderRadius: '10px', flexShrink: 0 }} />}
+          <div style={{ flex: 1, minWidth: 0 }}><Skeleton width="45%" height={13} /><Skeleton width={50} height={10} style={{ marginTop: '6px' }} /></div>
+          <Skeleton width={48} height={24} style={{ borderRadius: '7px' }} />
         </div>
       ))}
-      {add && <Skeleton height={44} style={{ borderRadius: '8px', marginTop: '10px' }} />}
+      {add && <Skeleton height={56} style={{ borderRadius: '12px', marginTop: '10px' }} />}
     </div>
   )
 }
@@ -117,26 +116,23 @@ export function MemberEditProfileSkeleton() {
   )
   return (
     <div style={{ maxWidth: '980px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
-      <CardShell pad={pad}>
-        <RuledTitleSkeleton width={170} />
+      <ProfileCardSkeleton titleWidth={170}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
           <Skeleton width={110} height={110} style={{ borderRadius: '50%', flexShrink: 0 }} />
           <Skeleton width={120} height={34} style={{ borderRadius: '8px' }} />
           {!isPhone && <Skeleton width={120} height={34} style={{ borderRadius: '8px' }} />}
         </div>
-      </CardShell>
-      <CardShell pad={pad}>
-        <RuledTitleSkeleton width={190} />
+      </ProfileCardSkeleton>
+      <ProfileCardSkeleton titleWidth={190}>
         <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>{[0, 1].map(field)}</div>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>{[2, 3].map(field)}</div>
-      </CardShell>
+      </ProfileCardSkeleton>
       <div style={{ padding: '16px 0', marginBottom: '16px', borderTop: '1px solid var(--vfo-border)' }}>
         <Skeleton width={150} height={40} style={{ borderRadius: '8px' }} />
       </div>
-      <CardShell pad={pad}>
-        <RuledTitleSkeleton width={120} />
+      <ProfileCardSkeleton titleWidth={120}>
         <BrandingBodySkeleton />
-      </CardShell>
+      </ProfileCardSkeleton>
     </div>
   )
 }
@@ -194,7 +190,7 @@ export function MemberProfileSkeleton() {
 export function MemberProgramSkeleton({ tabs = 2, children }) {
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: 'var(--vfo-gutter)' }}>
-      <ProgramHeadingSkeleton />
+      <ProgramCardHeadSkeleton />
       {tabs > 0 && <ProgramTabsSkeleton tabs={tabs} />}
       {children}
     </div>

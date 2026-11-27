@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { clientStatusHex, clientStatusKey, clientStatusLabel } from '../shared/clientStatus'
 import DirectPill from '../shared/DirectPill'
+import { DotText, ProfileCard } from '../shared/ProfileKit'
+import { btnPrimary } from '../shared/buttonStyles'
+import ListTable, { ListName, ListPill, ListText } from '../shared/ListTable'
+import { LinkTile, MeetingHistoryList, ProgramNotesList } from '../shared/MsmKit'
 import { useNavigate } from 'react-router-dom'
 import { callApi, loadCachedAction, getLastSeen, setLastSeen, getWriteCount } from '../../lib/api'
 import { ClientsListSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, MemberProgramSkeleton, MsmHomeSkeleton, Skeleton, TeamNotesSkeleton, TrainingTrackSkeleton } from '../shared/Skeleton'
@@ -15,7 +19,6 @@ import PhoneInput from '../shared/PhoneInput'
 import { cleanText, formatPersonName } from '../../lib/formatters'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { statusPillStyle } from '../shared/statusColors'
-import EmailText from '../shared/EmailText'
 import { msmTypeCounts } from '../shared/msmMeetingTypes'
 import MsmMeetingsCounter from '../shared/MsmMeetingsCounter'
 import { isAccountantProgram, TAILORED_PROGRAM } from '../shared/accountantPrograms'
@@ -46,11 +49,12 @@ const groupTasks = (list) => {
 // the pre-unit-1 behaviour.
 const TAX_PROGRAM_NAME = 'VFO Tax Planning'
 
+// In the one program order (shared/programOrder.js, 2026-11-26).
 const PROGRAMS = [
+  { key: 'tax', name: 'VFO Tax Planning' },
   { key: 'holistic', name: 'VFO Holistic Planning' },
   { key: 'partnership', name: 'Partnership Fast Track' },
   { key: 'tailored', name: 'Tailored Route for Accountants' },
-  { key: 'tax', name: 'VFO Tax Planning' },
   { key: 'coaching', name: 'Advanced Coaching' },
   { key: 'standard', name: 'Standard Coaching' },
 ]
@@ -64,10 +68,8 @@ function MemberProgramNotes({ memberNumber, sectionStyle, programName = null, ti
   const isPhone = useIsPhone()
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
-  // Phone: the title sits closer to its rows, an empty card says so in one plain
-  // line (not a padded, centred block), and a note scoped to this page's own
-  // program drops the program pill that repeats the page header.
-  const titleStyle = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
+  // Phone: a note scoped to this page's own program drops the program pill that
+  // repeats the page header.
 
   // Read-only for the member: a re-visit draws the last notes before the first
   // paint, then refreshes them.
@@ -84,38 +86,26 @@ function MemberProgramNotes({ memberNumber, sectionStyle, programName = null, ti
     return () => { live = false }
   }, [memberNumber, programName])
 
+  // A titled box like the rest of the portal (2026-11-26).
   if (loading) return (
-    <div style={sectionStyle}>
-      <div style={titleStyle}>{title}</div>
+    <ProfileCard icon="note" title={title}>
       <Skeleton width="90%" height={14} style={{ marginBottom: '8px' }} />
       <Skeleton width="70%" height={14} />
-    </div>
+    </ProfileCard>
   )
   if (notes.length === 0) {
     if (!emptyText) return null
     return (
-      <div style={sectionStyle}>
-        <div style={titleStyle}>{title}</div>
-        <div style={isPhone ? { color: 'var(--vfo-muted)', fontSize: '14px' } : { textAlign: 'center', padding: '24px', color: 'var(--vfo-faint)', fontSize: '13px' }}>{emptyText}</div>
-      </div>
+      <ProfileCard icon="note" title={title}>
+        <div style={{ color: 'var(--vfo-muted)', fontSize: '13.5px' }}>{emptyText}</div>
+      </ProfileCard>
     )
   }
 
   return (
-    <div style={sectionStyle}>
-      <div style={titleStyle}>{title}</div>
-      {notes.map(note => (
-        <div key={note.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '6px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: isPhone ? '12px' : '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
-            <span style={{ fontSize: isPhone ? '12px' : '11px', color: 'var(--vfo-muted)' }}>·</span>
-            <span style={{ fontSize: isPhone ? '12px' : '11px', color: 'var(--vfo-muted)' }}>{formatFullDate(note.created_at)}</span>
-            {note.program_name && !(isPhone && programName) && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.2)' }}>{note.program_name}</span>}
-          </div>
-        </div>
-      ))}
-    </div>
+    <ProfileCard icon="note" title={title}>
+      <ProgramNotesList notes={notes} hideProgram={isPhone && !!programName} />
+    </ProfileCard>
   )
 }
 
@@ -261,48 +251,34 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
     const summaryNumber = { fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)' }
     const summaryLabel = { fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', textTransform: 'uppercase' }
     const summary = [['Advanced Meetings', advancedCount], ['Standard Meetings', standardCount], ['VFO 90 Day Plan', vfo90Count], ['PFT 90 Day Plan', pft90Count]]
-    const homeSection = isPhone ? { ...sectionStyle, padding: '14px 16px', marginBottom: '12px' } : sectionStyle
-    const homeLabel = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
-    return (
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: isPhone ? '16px var(--vfo-gutter)' : '24px' }}>
-        {/* Phone: one row - label left, name right - instead of a card for one name. */}
-        {isPhone ? (
-          <div style={{ ...homeSection, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-            <span style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Assigned MSM</span>
-            <span style={{ fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: 600, textAlign: 'right' }}>{member.assigned_msm || '—'}</span>
-          </div>
-        ) : (
-          <div style={sectionStyle}>
-            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Assigned MSM</div>
-            <div style={{ fontSize: '16px', color: 'var(--vfo-ink)', fontWeight: '600' }}>{member.assigned_msm || '—'}</div>
-          </div>
-        )}
-
-        <div style={homeSection}>
-          <div style={homeLabel}>Your Programs</div>
-          {PROGRAMS.map(p => {
-            const dbProgram = programs.find(prog => prog.name === p.name)
-            if (!dbProgram) return null
-            const isEnabled = enabledPrograms.some(e => e.program_id === dbProgram.id) || (taxIntakeEnabled && p.name === TAX_PROGRAM_NAME)
-            if (!isEnabled) return null
-            const tabKey = { holistic: 'msm_holistic', partnership: 'msm_partnership', tailored: 'msm_tailored', tax: 'msm_tax', coaching: 'msm_coaching', standard: 'msm_standard' }[p.key]
-            return (
-              <div key={p.key} onClick={() => onNavigate(tabKey)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)', cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                <span style={{ fontSize: '14px', color: '#0095ff', fontWeight: 500 }}>{p.name}</span>
-              </div>
-            )
-          })}
-          {enabledPrograms.length === 0 && <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No programs enabled yet.</p>}
+    // The MSM Home (2026-11-26), laid out as the admin's: your MSM and programs on
+    // top, then the meeting summary, the history and the program notes.
+    const programLinks = PROGRAMS.map(p => {
+      const dbProgram = programs.find(prog => prog.name === p.name)
+      if (!dbProgram) return null
+      const isEnabled = enabledPrograms.some(e => e.program_id === dbProgram.id) || (taxIntakeEnabled && p.name === TAX_PROGRAM_NAME)
+      if (!isEnabled) return null
+      const tabKey = { holistic: 'msm_holistic', partnership: 'msm_partnership', tailored: 'msm_tailored', tax: 'msm_tax', coaching: 'msm_coaching', standard: 'msm_standard' }[p.key]
+      return <LinkTile key={p.key} onClick={() => onNavigate(tabKey)}>{p.name}</LinkTile>
+    }).filter(Boolean)
+    const msmBox = (
+      <ProfileCard icon="layers" title="Your MSM & Programs">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+          <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'var(--vfo-muted)' }}>Assigned MSM</span>
+          <span style={{ fontSize: '14.5px', fontWeight: 700, color: member.assigned_msm ? 'var(--vfo-ink)' : 'var(--vfo-faint)', textAlign: 'right' }}>{member.assigned_msm || '—'}</span>
         </div>
-
-        <div style={homeSection}>
-          <div style={homeLabel}>Meeting Summary</div>
+        {programLinks.length
+          ? <div style={{ display: 'grid', gridTemplateColumns: isPhone ? '1fr' : `repeat(${programLinks.length === 4 ? 2 : Math.min(3, programLinks.length)}, minmax(0, 1fr))`, gap: '8px' }}>{programLinks}</div>
+          : <div style={{ color: 'var(--vfo-muted)', fontSize: '13.5px' }}>No programs enabled yet.</div>}
+      </ProfileCard>
+    )
+    const main = (
+      <>
+        <ProfileCard icon="calendar" title="Meeting Summary">
           {/* Phone: a list, count on the right - five big numbers wrapped into an uneven grid. */}
           {isPhone ? (
             <>
-              <div style={{ padding: '9px 0 6px', fontSize: '14px', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-tint)' }}>MSM Meetings</div>
+              <div style={{ padding: '4px 0 6px', fontSize: '14px', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-tint)' }}>MSM Meetings</div>
               {msmCounts.map(([label, count], i) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', marginLeft: '16px', borderTop: i > 0 ? '1px solid var(--vfo-tint)' : 'none' }}>
                   <span style={{ fontSize: '14px', color: 'var(--vfo-muted)' }}>{label}</span>
@@ -317,8 +293,9 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
               ))}
             </>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-              <div style={summaryTile}>
+            // The MSM counter takes two of three slots so the rows come out even.
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+              <div style={{ ...summaryTile, gridColumn: 'span 2' }}>
                 <MsmMeetingsCounter meetings={meetings} numberStyle={summaryNumber} labelStyle={summaryLabel} ruleInset={16} />
               </div>
               {summary.map(([label, count]) => (
@@ -329,25 +306,19 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
               ))}
             </div>
           )}
-        </div>
+        </ProfileCard>
 
-        <div style={homeSection}>
-          <div style={homeLabel}>Meeting History</div>
-          {meetings.length === 0
-            ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No meetings logged yet.</p>
-            : meetings.map(m => (
-              <div key={m.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{m.meeting_type}</div>
-                <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
-                  {new Date(m.meeting_date + 'T12:00:00').toLocaleDateString()}{m.conducted_by ? ` · ${m.conducted_by}` : ''}
-                </div>
-                {m.notes && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>{m.notes}</div>}
-              </div>
-            ))
-          }
-        </div>
+        <ProfileCard icon="history" title="Meeting History" sub={meetings.length ? `${meetings.length} logged` : null}>
+          <MeetingHistoryList meetings={meetings} />
+        </ProfileCard>
 
         <MemberProgramNotes memberNumber={member.member_number} sectionStyle={sectionStyle} />
+      </>
+    )
+    return (
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: isPhone ? '16px var(--vfo-gutter)' : '24px' }}>
+        {msmBox}
+        {main}
       </div>
     )
   }
@@ -415,14 +386,14 @@ function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged 
 
   return (
     <div>
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }}>Program</div>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.03em', fontSize: '22px', color: 'var(--vfo-heading)' }}>{program.name}</div>
-        <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span>Joined {enrollment?.date_enrolled ? formatFullDate(enrollment.date_enrolled) : '—'}</span>
-          {!isCoachingLike && enrollment?.program_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[enrollment.program_status] || 'var(--vfo-faint)', flexShrink: 0 }} />{enrollment?.program_status}</span></>}
-        </div>
-      </div>
+      {/* The program's own box (2026-11-26), as on the admin's view of it. */}
+      <ProfileCard icon="layers" title={program.name}
+        sub={(
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span>Joined {enrollment?.date_enrolled ? formatFullDate(enrollment.date_enrolled) : '—'}</span>
+            {!isCoachingLike && enrollment?.program_status && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><DotText color={statusColors[enrollment.program_status] || 'var(--vfo-faint)'} style={{ fontSize: '12.5px' }}>{enrollment.program_status}</DotText></>}
+          </span>
+        )} />
       {/* Phone: a tab bar holding ONE tab (Tax Planning's Clients) does nothing - drop it. */}
       <div style={isPhone && (program.name === 'VFO Tax Planning' || isTailored) && !isStandard && !isCoaching ? { display: 'none' } : { display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px' }}>
         {isStandard ? (
@@ -924,74 +895,72 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     </div>
   )
 
-  if (loading) return <ClientsListSkeleton add={intakeOn} />
+  if (loading) return <ClientsListSkeleton add={intakeOn} table />
+
+  const countTile = (n, label) => (
+    <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: isPhone ? '10px 14px' : '12px 18px', minWidth: isPhone ? '88px' : '110px' }}>
+      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: isPhone ? '20px' : '24px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{n}</div>
+      <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '6px', textTransform: 'uppercase' }}>{label}</div>
+    </div>
+  )
 
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '20px', width: '100%' }}>
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', paddingLeft: isPhone ? '4px' : '24px' }}>
-          <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>TOTAL</div></div>
-          <div><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--vfo-heading)', lineHeight: 1 }}>{clients.filter(c => clientStatusKey(c) === 'active').length}</div><div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.8px', color: 'var(--vfo-muted)', marginTop: '4px' }}>ACTIVE</div></div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px', marginBottom: '16px', width: '100%' }}>
+        <div style={{ display: 'flex', gap: isPhone ? '8px' : '10px' }}>
+          {countTile(clients.length, 'Total')}
+          {countTile(clients.filter(c => clientStatusKey(c) === 'active').length, 'Active')}
         </div>
         {intakeOn && (
           <button type="button" onClick={() => setMode('form')}
-            style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            style={{ ...btnPrimary, ...(isPhone ? { padding: '7px 14px', fontSize: '12.5px' } : {}), whiteSpace: 'nowrap' }}>
             + Add Client
           </button>
         )}
       </div>
 
-      {clients.length === 0
+      {/* Laptop: the shared list table (2026-11-26). Phone: the list cards below. */}
+      {!isPhone && (
+        <ListTable
+          rows={clients}
+          rowKey={c => c.id}
+          onRowClick={c => navigate(`/member/client/${c.id}`, { state: { enrollment_id: enrollment?.id } })}
+          minWidth="600px"
+          empty={`No ${isPFT ? 'accountants' : 'clients'} added yet.`}
+          columns={[
+            { key: 'name', label: isPFT ? 'Accountant' : 'Client', width: '2fr', get: c => `${c.first_name} ${c.last_name}`, render: c => (
+              // No email or phone on this list (Jake, 2026-11-26): name, then any "with" contacts.
+              <ListName sub={contactsMap[c.id]?.length > 0 ? <span style={{ fontStyle: 'italic' }}>with {contactsMap[c.id].map(x => `${x.first_name} ${x.last_name}`).join(', ')}</span> : null}>{`${c.first_name} ${c.last_name}`}</ListName>
+            ) },
+            { key: 'ref', label: 'Ref', width: '120px', get: c => c.client_ref, render: c => <ListText mono>{c.client_ref}</ListText> },
+            { key: 'status', label: 'Status', width: '120px', get: c => (c.status ? clientStatusLabel(clientStatusKey(c)) : ''), render: c => c.status ? <ListPill color={clientStatusHex(clientStatusKey(c)) || '#8a94a6'}>{clientStatusLabel(clientStatusKey(c))}</ListPill> : <ListText /> },
+            ...(intakeOn ? [{ key: 'route', label: '', width: '90px', render: c => (c.pf_member_number && String(c.pf_member_number) === String(member?.member_number) ? <DirectPill /> : null) }] : []),
+          ]}
+        />
+      )}
+
+      {isPhone && (clients.length === 0
         ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No {isPFT ? 'accountants' : 'clients'} added yet.</div>
-        : clients.map(client => isPhone ? (
+        : clients.map(client => (
           // Phone: name on its own line with a chevron (the whole card opens the
-          // client), then number + status, then contact details - not one squeezed
-          // line where the number broke in half and "Active" ran into "View".
+          // client), then number + status.
           <div key={client.id} style={{ ...sectionStyle, padding: '12px 14px', marginBottom: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
             onClick={() => navigate(`/member/client/${client.id}`, { state: { enrollment_id: enrollment?.id } })}>
-            {/* The phone list-card pattern: two equal halves side by side -
-                identity (name, then number + status) | contact (email, then phone). */}
+            {/* No email or phone on this list (Jake, 2026-11-26): name, then number + status. */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '14px', alignItems: 'start' }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-ink)', lineHeight: 1.3 }}>{client.first_name} {client.last_name}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '3px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{client.client_ref}</span>
-                    {client.status && <span style={statusPillStyle(clientStatusHex(clientStatusKey(client)))}>{clientStatusLabel(clientStatusKey(client))}</span>}
-                    {intakeOn && client.pf_member_number && String(client.pf_member_number) === String(member?.member_number) && <DirectPill />}
-                  </div>
-                </div>
-                <div style={{ minWidth: 0, fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.45, paddingTop: '1px' }}>
-                  {client.email && <div><EmailText email={client.email} /></div>}
-                  {client.phone && <div>{client.phone}</div>}
-                </div>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-ink)', lineHeight: 1.3 }}>{client.first_name} {client.last_name}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '3px' }}>
+                <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{client.client_ref}</span>
+                {client.status && <span style={statusPillStyle(clientStatusHex(clientStatusKey(client)))}>{clientStatusLabel(clientStatusKey(client))}</span>}
+                {intakeOn && client.pf_member_number && String(client.pf_member_number) === String(member?.member_number) && <DirectPill />}
               </div>
               {contactsMap[client.id]?.length > 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px', fontStyle: 'italic' }}>with {contactsMap[client.id].map(c => `${c.first_name} ${c.last_name}`).join(', ')}</div>}
             </div>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--vfo-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><polyline points="9 6 15 12 9 18" /></svg>
           </div>
-        ) : (
-          <div key={client.id} style={{ ...sectionStyle, cursor: 'pointer' }}
-            onClick={() => navigate(`/member/client/${client.id}`, { state: { enrollment_id: enrollment?.id } })}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--vfo-tint)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '15px', fontWeight: '600', color: 'var(--vfo-ink)' }}>{client.first_name} {client.last_name}</span>
-                  <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{client.client_ref}</span>
-                  {client.status && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: clientStatusHex(clientStatusKey(client)) || 'var(--vfo-faint)', flexShrink: 0 }} />{clientStatusLabel(clientStatusKey(client))}</span>}
-                  {intakeOn && client.pf_member_number && String(client.pf_member_number) === String(member?.member_number) && <DirectPill />}
-                </div>
-                {(client.email || client.phone) && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{client.email}{client.email && client.phone ? ' · ' : ''}{client.phone}</div>}
-                {contactsMap[client.id]?.length > 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px', fontStyle: 'italic' }}>with {contactsMap[client.id].map(c => `${c.first_name} ${c.last_name}`).join(', ')}</div>}
-              </div>
-              <span style={{ color: '#0095ff', fontWeight: 500, fontSize: '13px' }}>View →</span>
-            </div>
-          </div>
         ))
-      }
+      )}
     </div>
   )
 }
@@ -1496,7 +1465,7 @@ export function MemberProgramLoading({ tab }) {
   const tabs = clientsOnly ? (isPhone ? 0 : 1) : tab === 'msm_coaching' ? 3 : 2
   return (
     <MemberProgramSkeleton tabs={tabs}>
-      {coaching ? <TeamNotesSkeleton /> : clientsOnly ? <ClientsListSkeleton add={tab === 'msm_tax'} /> : <TrainingTrackSkeleton />}
+      {coaching ? <TeamNotesSkeleton /> : clientsOnly ? <ClientsListSkeleton add={tab === 'msm_tax'} table /> : <TrainingTrackSkeleton />}
     </MemberProgramSkeleton>
   )
 }

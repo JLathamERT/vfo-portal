@@ -3,6 +3,7 @@ import vfoAccreditedSeal from '../../assets/vfo-accredited-emblem.png'
 import { formatDate } from '../../lib/dates'
 import { logoUrl } from './logoPng'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { Field, FieldGrid, Initials, ProfileCard, subLabel } from './ProfileKit'
 
 // The member profile's read-only body, shared by the admin member profile
 // (Details tab) and the member's own Profile tab so the two always mirror.
@@ -15,12 +16,6 @@ import { useIsPhone } from '../../lib/useMediaQuery'
 // Network is ONE full-width card whose people sit in a responsive grid, so a
 // long introductions / connections / corporate list grows sideways first
 // instead of stretching a narrow column down the page.
-
-const fieldLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-faint)', textTransform: 'uppercase' }
-const fieldValue = { fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: 600, marginTop: '5px' }
-const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '18px 24px' }
-const countChip = { fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }
-const introChip = { fontSize: '11px', padding: '2px 9px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.25)' }
 
 function normalizeUrl(u) {
   return /^https?:\/\//i.test(u) ? u : `https://${u}`
@@ -42,26 +37,22 @@ function agreementNameValue(profile) {
   return '—'
 }
 
-function Field({ label, children }) {
-  return <div><div style={fieldLabel}>{label}</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{children}</div></div>
-}
-
+// One person in the Network box: initials, name (an admin can open it), number and
+// type, and the introducer tier where there is one.
 function Person({ person, chip, onOpenMember }) {
   const clickable = !!onOpenMember
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', border: '1px solid var(--vfo-border-soft)', borderRadius: '10px', background: 'var(--vfo-card)', minWidth: 0 }}>
-      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '11px', flexShrink: 0 }}>{initials(person.name)}</div>
+    <div onClick={clickable ? () => onOpenMember(person) : undefined}
+      onMouseEnter={clickable ? e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 22px rgba(20,45,95,0.12)'; e.currentTarget.style.borderColor = 'var(--vfo-border-mid)' } : undefined}
+      onMouseLeave={clickable ? e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--vfo-border-soft)' } : undefined}
+      style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 13px', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', background: 'var(--vfo-input)', minWidth: 0, cursor: clickable ? 'pointer' : 'default', transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease' }}>
+      <Initials name={person.name} size={34} />
       <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <span onClick={clickable ? () => onOpenMember(person) : undefined}
-            onMouseEnter={clickable ? e => { e.currentTarget.style.textDecoration = 'underline' } : undefined}
-            onMouseLeave={clickable ? e => { e.currentTarget.style.textDecoration = 'none' } : undefined}
-            style={{ fontSize: '13px', fontWeight: 600, color: clickable ? 'var(--vfo-accent-text)' : 'var(--vfo-ink)', cursor: clickable ? 'pointer' : 'default', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.name}</span>
-          {chip && <span style={introChip}>{chip}</span>}
-        </div>
-        <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: '13.5px', fontWeight: 700, color: clickable ? 'var(--vfo-accent-text)' : 'var(--vfo-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.name}</div>
+        <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           <span style={{ fontFamily: 'monospace' }}>{person.number}</span>{person.member_type ? <> · {person.member_type}</> : null}
         </div>
+        {chip && <div style={{ fontSize: '11.5px', fontWeight: 600, color: '#0095ff', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chip}</div>}
       </div>
     </div>
   )
@@ -70,9 +61,9 @@ function Person({ person, chip, onOpenMember }) {
 function PeopleGroup({ title, people, onOpenMember, first }) {
   if (!people.length) return null
   return (
-    <div style={{ marginTop: first ? 0 : '18px' }}>
-      <div style={{ ...fieldLabel, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>{title}<span style={countChip}>{people.length}</span></div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '8px' }}>
+    <div style={{ marginTop: first ? 0 : '20px' }}>
+      <div style={{ ...subLabel, marginBottom: '9px' }}>{title}<span style={{ color: 'var(--vfo-muted)', marginLeft: '6px' }}>{people.length}</span></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '10px' }}>
         {people.map(p => <Person key={p.number} person={p} chip={p.chip} onOpenMember={onOpenMember} />)}
       </div>
     </div>
@@ -133,19 +124,40 @@ function DirectStanding({ standing, admin, control }) {
   )
 }
 
+// The member's VFO certifications as seal badges: the last section of Member
+// Details, shown only when the member holds one (2026-11-26 - a side box squeezed
+// the details). Renders nothing without vfo_certified_date / vfo_accredited_date.
+function CertificationSeals({ profile }) {
+  const isPhone = useIsPhone()
+  if (!profile?.vfo_certified_date && !profile?.vfo_accredited_date) return null
+  const badge = (gold) => ({ display: 'flex', alignItems: 'center', gap: '10px', padding: isPhone ? '7px 12px 7px 8px' : '8px 14px 8px 9px', borderRadius: '12px', minWidth: 0, background: gold ? 'linear-gradient(135deg, rgba(176,141,38,0.14) 0%, rgba(176,141,38,0.03) 100%)' : 'var(--vfo-card)', border: gold ? '1px solid rgba(176,141,38,0.32)' : '1px solid var(--vfo-border-soft)' })
+  const img = { width: isPhone ? '34px' : '42px', height: isPhone ? '34px' : '42px', flexShrink: 0 }
+  return (
+    <FieldGrid min={360} phoneCols={1}>
+      {profile.vfo_certified_date && (
+        <div style={badge(true)}>
+          <img src={vfoCertifiedSeal} alt="" style={img} />
+          <div><div style={{ fontSize: '13px', fontWeight: 800, color: '#b08d26', whiteSpace: 'nowrap' }}>VFO Certified</div><div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '1px' }}>{formatDate(profile.vfo_certified_date)}</div></div>
+        </div>
+      )}
+      {profile.vfo_accredited_date && (
+        <div style={badge(false)}>
+          <img src={vfoAccreditedSeal} alt="" style={img} />
+          <div><div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>VFO Accredited</div><div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '1px' }}>{formatDate(profile.vfo_accredited_date)}</div></div>
+        </div>
+      )}
+    </FieldGrid>
+  )
+}
+
 export default function MemberProfileDetails({
   profile, memberNumber, directEligibility, directControl, hideRevenueDecision = false,
-  payoutSlot, people = {}, onOpenMember, styles, adminView = false,
+  payoutSlot, people = {}, onOpenMember, adminView = false, omit = [],
 }) {
-  const { sectionStyle, cardTitle } = styles
-  // Phone: the certification seals shrink - at full size they filled the card.
-  const isPhone = useIsPhone()
-  const seal = { width: isPhone ? '44px' : '76px', height: isPhone ? '44px' : '76px', flexShrink: 0 }
-  const sealTitle = isPhone ? '16px' : '19px'
-  // Phone: two short fields side by side instead of one long column.
-  const fieldGrid = isPhone ? { ...grid, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '16px' } : grid
+  // `omit` leaves out what a caller is not sent (the tax planner's member view has
+  // no logo or agreement-name fields): 'renewal', 'taxPlanning', 'logo'.
+  const shows = key => !omit.includes(key)
   const lost = profile.elite_status === 'Lost' || profile.elite_status === 'Removed'
-  const hasCerts = profile.vfo_certified_date || profile.vfo_accredited_date
   const introducedBy = people.introducedBy ? [people.introducedBy] : []
   const introducerOf = people.introducerOf || []
   const connections = people.connections || []
@@ -154,101 +166,78 @@ export default function MemberProfileDetails({
   const hasNetwork = introducedBy.length + introducerOf.length + connections.length + corporate.length + lead.length > 0
   const row = { display: 'flex', gap: '16px', alignItems: 'stretch', flexWrap: 'wrap' }
   const col = (basis, min) => ({ flex: `1 1 ${basis}`, minWidth: min, display: 'flex' })
-  const card = { ...sectionStyle, flex: 1 }
+  const card = { flex: 1, minWidth: 0 }
 
   return (
     <div>
       <div style={row}>
-        <div style={col('420px', '300px')}>
-          <div style={card}>
-            <div style={cardTitle}>Member Details</div>
-            <div style={fieldGrid}>
-              <Field label="Join Date">{profile.join_date ? formatDate(profile.join_date) : '—'}</Field>
-              {lost && <Field label="Leave Date">{profile.leave_date ? formatDate(profile.leave_date) : '—'}</Field>}
-              <Field label="Renewal Date">{profile.membership_renewal_date ? formatDate(profile.membership_renewal_date) : '—'}</Field>
-              {profile.preferred_name && <Field label="Preferred Name">{profile.preferred_name}</Field>}
-              <Field label="Work email">{profile.email || '—'}</Field>
-              <Field label="Personal email">{profile.personal_email || '—'}</Field>
-              <Field label="Company Name">{profile.trading_name || '—'}</Field>
-              <Field label="Website">
+        <div style={col('100%', '0px')}>
+          <ProfileCard icon="id" title="Member Details" style={card}>
+            {/* Who they are and how to reach them, then their membership dates. */}
+            <FieldGrid min={360} phoneCols={1}>
+              <Field label="Company Name">{profile.trading_name}</Field>
+              <Field label="Website" nowrap>
                 {profile.website_url
-                  ? <a href={normalizeUrl(profile.website_url)} target="_blank" rel="noopener noreferrer" style={{ color: '#0095ff', textDecoration: 'none', wordBreak: 'break-all' }}>{profile.website_url}</a>
-                  : '—'}
+                  ? <a href={normalizeUrl(profile.website_url)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--vfo-link)', textDecoration: 'none' }} title={profile.website_url}>{profile.website_url}</a>
+                  : null}
               </Field>
-            </div>
-          </div>
+              <Field label="Work email" nowrap>{profile.email}</Field>
+              <Field label="Personal email" nowrap>{profile.personal_email}</Field>
+            </FieldGrid>
+            <div style={{ ...subLabel, margin: '18px 0 9px' }}>Membership</div>
+            <FieldGrid min={360}>
+              <Field label="Join Date">{profile.join_date ? formatDate(profile.join_date) : null}</Field>
+              {shows('renewal') && <Field label="Renewal Date">{profile.membership_renewal_date ? formatDate(profile.membership_renewal_date) : null}</Field>}
+              {lost && <Field label="Leave Date">{profile.leave_date ? formatDate(profile.leave_date) : null}</Field>}
+            </FieldGrid>
+            {(profile.vfo_certified_date || profile.vfo_accredited_date) && <>
+              <div style={{ ...subLabel, margin: '18px 0 9px' }}>Certifications</div>
+              <CertificationSeals profile={profile} />
+            </>}
+          </ProfileCard>
         </div>
-        {hasCerts && (
-          <div style={col('260px', '240px')}>
-            <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
-              <div style={cardTitle}>Certifications</div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-evenly', gap: isPhone ? '12px' : '18px' }}>
-                {profile.vfo_certified_date && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isPhone ? '12px' : '18px' }}>
-                    <img src={vfoCertifiedSeal} alt="" style={seal} />
-                    <div><div style={{ fontSize: sealTitle, color: '#b08d26', fontWeight: 700 }}>VFO Certified</div><div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{formatDate(profile.vfo_certified_date)}</div></div>
-                  </div>
-                )}
-                {profile.vfo_accredited_date && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isPhone ? '12px' : '18px' }}>
-                    <img src={vfoAccreditedSeal} alt="" style={seal} />
-                    <div><div style={{ fontSize: sealTitle, color: 'var(--vfo-muted)', fontWeight: 700 }}>VFO Accredited</div><div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginTop: '4px' }}>{formatDate(profile.vfo_accredited_date)}</div></div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <div style={row}>
         <div style={col('420px', '300px')}>
-          <div style={card}>
-            <div style={cardTitle}>Revenue Details</div>
-            <div style={fieldGrid}>
-              {!hideRevenueDecision && <Field label="Revenue Decision">{profile.revenue_decision || '—'}</Field>}
+          <ProfileCard icon="dollar" tone="green" title="Revenue Details" style={card}>
+            <FieldGrid min={180}>
+              {!hideRevenueDecision && <Field label="Revenue Decision">{profile.revenue_decision}</Field>}
               <Field label="Eligible for Credit Note">{profile.credit_note_eligible === false ? 'No' : 'Yes'}</Field>
-            </div>
-            <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--vfo-tint)' }}>
-              {payoutSlot}
-            </div>
-          </div>
+              {payoutSlot && <div style={{ gridColumn: '1 / -1', minWidth: 0 }}>{payoutSlot}</div>}
+            </FieldGrid>
+          </ProfileCard>
         </div>
-        <div style={col('300px', '260px')}>
-          <div style={card}>
-            <div style={cardTitle}>Tax Planning</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '18px' }}>
+        {shows('taxPlanning') && <div style={col('300px', '260px')}>
+          <ProfileCard icon="calculator" title="Tax Planning" style={card}>
+            <FieldGrid min={240} phoneCols={1}>
               {directEligibility && (
-                <Field label="Direct to Tax Planning">
+                <Field label="Direct to Tax Planning" wide>
                   <DirectStanding standing={directEligibility} admin={!!directControl} control={directControl} />
                 </Field>
               )}
-              <Field label="Logo on ROI presentations">{profile.logo_image ? (profile.logo_enabled ? 'On' : 'Off') : '—'}</Field>
-              <Field label="Name in tax planning agreements">{agreementNameValue(profile)}</Field>
-            </div>
-          </div>
-        </div>
+              <Field label="Logo on ROI presentations" wide>{profile.logo_image ? (profile.logo_enabled ? 'On' : 'Off') : null}</Field>
+              <Field label="Name in tax planning agreements" wide>{agreementNameValue(profile)}</Field>
+            </FieldGrid>
+          </ProfileCard>
+        </div>}
       </div>
 
-      <div style={sectionStyle}>
-        <div style={cardTitle}>Logo</div>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.55, marginBottom: '14px', maxWidth: '760px' }}>
-          {adminView
-            ? "Shown on this member's clients' ROI presentations, beside the VFO Services logo and the tax planning team's logo."
-            : "Shown on your clients' ROI presentations, beside the VFO Services logo and the tax planning team's logo."}
-        </div>
+      {shows('logo') && <ProfileCard icon="image" title="Logo"
+        sub={adminView
+          ? "Shown on this member's clients' ROI presentations, beside the VFO Services logo and the tax planning team's logo."
+          : "Shown on your clients' ROI presentations, beside the VFO Services logo and the tax planning team's logo."}>
         {profile.logo_image
-          ? <img src={logoUrl(profile.logo_image)} alt="Logo" style={{ height: '80px', maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
-          : <div style={{ width: '240px', height: '80px', borderRadius: '10px', border: '1px dashed var(--vfo-border-mid)', background: 'var(--vfo-tint)', boxSizing: 'border-box' }} />}
-      </div>
+          ? <div style={{ display: 'inline-flex', padding: '14px 18px', borderRadius: '12px', background: '#fff', border: '1px solid var(--vfo-border-soft)', maxWidth: '100%', boxSizing: 'border-box' }}><img src={logoUrl(profile.logo_image)} alt="Logo" style={{ height: '72px', maxWidth: '100%', objectFit: 'contain', display: 'block' }} /></div>
+          : <div style={{ width: '240px', maxWidth: '100%', height: '80px', borderRadius: '12px', border: '1px dashed var(--vfo-border-mid)', background: 'var(--vfo-input)', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12.5px', color: 'var(--vfo-faint)' }}>No logo yet</div>}
+      </ProfileCard>}
 
       {hasNetwork && (
-        <div style={sectionStyle}>
-          <div style={cardTitle}>Network</div>
+        <ProfileCard icon="users" title="Network">
           {introducedBy.length > 0 && (
             <div>
-              <div style={{ ...fieldLabel, marginBottom: '8px' }}>Introduced By</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '8px' }}>
+              <div style={{ ...subLabel, marginBottom: '9px' }}>Introduced By</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '10px' }}>
                 <Person person={introducedBy[0]} chip={introducedBy[0].chip} onOpenMember={onOpenMember} />
               </div>
             </div>
@@ -257,15 +246,15 @@ export default function MemberProfileDetails({
           <PeopleGroup title="Connections" people={connections} onOpenMember={onOpenMember} first={!introducedBy.length && !introducerOf.length} />
           <PeopleGroup title="Corporate Members" people={corporate} onOpenMember={onOpenMember} first={!introducedBy.length && !introducerOf.length && !connections.length} />
           <PeopleGroup title="Lead Member" people={lead} onOpenMember={onOpenMember} first={!introducedBy.length && !introducerOf.length && !connections.length && !corporate.length} />
-        </div>
+        </ProfileCard>
       )}
 
       {profile.bio && (
-        <div style={sectionStyle}>
-          <div style={cardTitle}>Bio</div>
-          <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.bio}</div>
-        </div>
+        <ProfileCard icon="text" title="Bio">
+          <div style={{ fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.75, whiteSpace: 'pre-wrap', maxWidth: '900px' }}>{profile.bio}</div>
+        </ProfileCard>
       )}
+
     </div>
   )
 }

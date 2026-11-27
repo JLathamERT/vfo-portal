@@ -1,4 +1,4 @@
-import { useEffect, useState, useLayoutEffect } from 'react'
+import { useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession, clearSession, getLastSeen, setLastSeen } from '../lib/api'
 import SpecialistVault from '../components/specialist/SpecialistVault'
@@ -7,6 +7,7 @@ import ChangePasswordCard from '../components/shared/ChangePasswordCard'
 import CollapsibleNavBar from '../components/shared/CollapsibleNavBar'
 import PortalHeader from '../components/shared/PortalHeader'
 import AppearanceCard from '../components/shared/AppearanceCard'
+import { SettingsHeader, SETTINGS_WIDTH, useSettingsReturn } from '../components/shared/ProfileKit'
 import { usePortalTheme } from '../lib/theme'
 import MemberShowroom from '../components/member/MemberShowroom'
 import { ShowroomSkeleton } from '../components/shared/Skeleton'
@@ -15,6 +16,9 @@ import { ShowroomSkeleton } from '../components/shared/Skeleton'
 // "Shared with Me" (client documents the VFO team shared with them to review).
 export default function SpecialistPortal() {
   const navigate = useNavigate()
+  // Settings' Back returns to the tab it was opened from (or the page that sent you).
+  const settingsReturn = useSettingsReturn(navigate)
+  const tabBeforeSettings = useRef('showroom')
   const session = getSession()
   usePortalTheme()
   const [tab, setTab] = useState(() => sessionStorage.getItem('specialistActiveTab') || 'showroom')
@@ -33,7 +37,9 @@ export default function SpecialistPortal() {
     loadShowroom(!!snap)
   }, [])
 
-  useEffect(() => { sessionStorage.setItem('specialistActiveTab', tab) }, [tab])
+  // Settings is never the remembered tab: the tab under it is, so a reload or a
+  // later return to the portal lands there, not on Settings.
+  useEffect(() => { sessionStorage.setItem('specialistActiveTab', tab === 'settings' ? tabBeforeSettings.current : tab) }, [tab])
 
   async function refreshUnread() {
     try {
@@ -67,12 +73,15 @@ export default function SpecialistPortal() {
 
   function signOut() { clearSession(); navigate('/specialist/login') }
 
+  function openSettings() { if (tab !== 'settings') { settingsReturn.open(); tabBeforeSettings.current = tab } setTab('settings') }
+  function closeSettings() { settingsReturn.back(() => setTab(tabBeforeSettings.current)) }
+
   const TABS = [['showroom', 'Showroom'], ['vault', 'Vault'], ['shared', 'Shared with Me']]
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
       <PortalHeader name={session.name || session.email} showBell={false} onTitleClick={() => setTab('showroom')} actions={[
-        { key: 'settings', label: 'Settings', active: tab === 'settings', onClick: () => setTab('settings') },
+        { key: 'settings', label: 'Settings', active: tab === 'settings', onClick: openSettings },
         { key: 'signout', label: 'Sign Out', onClick: signOut },
       ]}>
         {tab !== 'settings' && (
@@ -117,11 +126,10 @@ export default function SpecialistPortal() {
         </div>
       )}
       {tab === 'settings' && (
-        <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
+        <div style={{ maxWidth: SETTINGS_WIDTH, margin: '0 auto', padding: '28px var(--vfo-gutter)' }}>
+          <SettingsHeader name={getSession()?.name} email={getSession()?.email} onBack={closeSettings} />
           <ChangePasswordCard action="specialist_update_login" />
-          <div style={{ maxWidth: '460px', margin: '20px auto 0' }}>
-            <AppearanceCard />
-          </div>
+          <AppearanceCard />
         </div>
       )}
     </div>

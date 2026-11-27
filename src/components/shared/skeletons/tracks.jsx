@@ -2,7 +2,7 @@
 // client and tax planner portals. `readOnly` = the member / client view (no Live
 // switch, rows end in status pills); admins get the switch and the row's controls.
 import { useIsPhone } from '../../../lib/useMediaQuery'
-import { Skeleton, CardShell, HeroSkeleton, SkeletonStats, PhaseCardsSkeleton, ListHeaderSkeleton, PillTabsSkeleton, TableSkeleton, RuledTitleSkeleton, FieldGridSkeleton } from './primitives'
+import { Skeleton, CardShell, HeroSkeleton, SkeletonStats, PhaseCardsSkeleton, ListHeaderSkeleton, PillTabsSkeleton, TableSkeleton, RuledTitleSkeleton, FieldGridSkeleton, ProfileCardSkeleton, ProfileHeroSkeleton, TileGridSkeleton } from './primitives'
 import { ListCardsSkeleton, ToolCardsSkeleton } from './adminLists'
 import { ProgramNotesSkeleton } from './admin'
 import { SummaryTileSkeleton } from './adminPages'
@@ -137,8 +137,25 @@ export function TrainingTrackSkeleton({ phases = [4, 5, 0] }) {
 }
 
 // Client list under a program (`add` = the Add button is on that view).
-export function ClientsListSkeleton({ rows = 3, add = true }) {
+export function ClientsListSkeleton({ rows = 3, add = true, table = false }) {
   const isPhone = useIsPhone()
+  // The admin program's client list (2026-11-26): two count tiles + the list table.
+  if (table && !isPhone) return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {[0, 1].map(i => (
+            <div key={i} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '12px 18px', minWidth: '110px' }}>
+              <Skeleton width={30} height={22} />
+              <Skeleton width={46} height={10} style={{ marginTop: '8px' }} />
+            </div>
+          ))}
+        </div>
+        {add && <Skeleton width={110} height={36} style={{ borderRadius: '8px' }} />}
+      </div>
+      <TableSkeleton cols="2fr 120px 120px 90px" rows={rows} twoLine pillCol={2} minWidth="640px" pad="11px 18px" />
+    </div>
+  )
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: isPhone ? 0 : '20px', width: '100%' }}>
@@ -222,37 +239,37 @@ export function CoachingRenewalSkeleton({ historyRows = 2, action = false }) {
 
 // Member-portal MSM Home.
 export function MsmHomeSkeleton({ programRows = 3, historyRows = 2 }) {
+  // The member MSM Home (2026-11-26), one column: MSM & programs, summary, history.
   const isPhone = useIsPhone()
-  const card = { pad: isPhone ? '14px 16px' : '24px', style: { marginBottom: isPhone ? '12px' : '20px' } }
-  const gap = isPhone ? '8px' : '16px'
-  const line = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: isPhone ? '9px 0' : '12px 0', borderBottom: '1px solid var(--vfo-tint)' }
+  const tile = { background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '11px 14px' }
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: isPhone ? '16px var(--vfo-gutter)' : '24px' }}>
-      <CardShell {...card}>
-        <div style={isPhone ? { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } : undefined}>
-          <Skeleton width={120} height={12} style={{ marginBottom: isPhone ? 0 : '13px' }} />
-          <Skeleton width={150} height={16} />
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: isPhone ? '16px var(--vfo-gutter)' : '24px' }}>
+      <ProfileCardSkeleton titleWidth={170}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '14px', marginBottom: '14px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+          <Skeleton width={100} height={12} /><Skeleton width={110} height={15} />
         </div>
-      </CardShell>
-      <CardShell {...card}>
-        <Skeleton width={120} height={12} style={{ marginBottom: gap }} />
-        {Array.from({ length: programRows }).map((_, i) => <div key={i} style={{ ...line, padding: '12px 0' }}><Skeleton width={i % 2 ? 150 : 190} height={14} /></div>)}
-      </CardShell>
-      <CardShell {...card}>
-        <Skeleton width={140} height={12} style={{ marginBottom: gap }} />
+        <div style={{ display: 'grid', gridTemplateColumns: isPhone ? '1fr' : 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px' }}>
+          {Array.from({ length: programRows }).map((_, i) => <div key={i} style={tile}><Skeleton width={i % 2 ? 150 : 190} height={14} style={{ maxWidth: '100%' }} /></div>)}
+        </div>
+      </ProfileCardSkeleton>
+      <ProfileCardSkeleton titleWidth={150}>
         {isPhone
-          ? Array.from({ length: 6 }).map((_, i) => <div key={i} style={line}><Skeleton width={i % 2 ? 120 : 150} height={13} /><Skeleton width={18} height={15} /></div>)
-          : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>{Array.from({ length: 5 }).map((_, i) => <SummaryTileSkeleton key={i} />)}</div>}
-      </CardShell>
-      <CardShell {...card}>
-        <Skeleton width={130} height={12} style={{ marginBottom: gap }} />
-        {Array.from({ length: historyRows }).map((_, i) => (
-          <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-            <Skeleton width={130} height={14} />
-            <Skeleton width={200} height={11} style={{ marginTop: '6px', maxWidth: '100%' }} />
+          ? Array.from({ length: 6 }).map((_, i) => <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid var(--vfo-tint)' }}><Skeleton width={i % 2 ? 120 : 150} height={13} /><Skeleton width={18} height={15} /></div>)
+          : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+            <div style={{ gridColumn: 'span 2' }}><SummaryTileSkeleton /></div>
+            {Array.from({ length: 4 }).map((_, i) => <SummaryTileSkeleton key={i} />)}
+          </div>}
+      </ProfileCardSkeleton>
+      <ProfileCardSkeleton titleWidth={140}>
+          <div style={{ display: 'grid', gap: '8px' }}>
+            {Array.from({ length: historyRows }).map((_, i) => (
+              <div key={i} style={{ ...tile, display: 'flex', justifyContent: 'space-between' }}>
+                <div><Skeleton width={150} height={14} /><Skeleton width={190} height={11} style={{ marginTop: '6px', maxWidth: '100%' }} /></div>
+                
+              </div>
+            ))}
           </div>
-        ))}
-      </CardShell>
+      </ProfileCardSkeleton>
     </div>
   )
 }
@@ -292,37 +309,31 @@ function CiqRow() {
 // The single client page's header: the same card the loaded page draws (no avatar
 // on a phone).
 export function ClientHeaderSkeleton() {
-  const isPhone = useIsPhone()
-  return <HeroSkeleton avatar={!isPhone} />
+  return <ProfileHeroSkeleton facts={3} />
 }
 
 // The client page's Profile tab: Contact Info, Status beside Proactive Facilitator,
 // Additional Contacts, notes. (A member's phone folds the pair into Contact Info.)
 export function ClientProfileTabSkeleton({ notes = true, phoneRows = false }) {
-  const pad = 'var(--vfo-card-pad)'
-  const cardStyle = { marginBottom: '20px' }
+  const card = { flex: 1, minWidth: 0 }
   return (
     <div>
-      <CardShell pad={pad} style={cardStyle}>
-        <RuledTitleSkeleton width={130} />
-        {phoneRows
-          ? [0, 1, 2].map(i => <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderTop: i ? '1px solid var(--vfo-tint)' : 'none' }}><Skeleton width={70} height={11} /><Skeleton width={140} height={14} /></div>)
-          : <FieldGridSkeleton fields={2} columns="repeat(auto-fit, minmax(150px, 1fr))" />}
-      </CardShell>
+      <ProfileCardSkeleton titleWidth={110}>
+        <TileGridSkeleton fields={phoneRows ? 3 : 2} min={360} phoneCols={1} />
+      </ProfileCardSkeleton>
       {!phoneRows && (
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-          {[130, 190].map(w => (
-            <div key={w} style={{ flex: '1 1 300px', minWidth: '260px' }}>
-              <CardShell pad={`14px ${pad}`} style={cardStyle}>
-                <RuledTitleSkeleton width={w} />
-                <Skeleton width={190} height={24}style={{ borderRadius: '8px', maxWidth: '100%' }} />
-              </CardShell>
+          {[110, 160].map(w => (
+            <div key={w} style={{ flex: '1 1 300px', minWidth: '260px', display: 'flex' }}>
+              <ProfileCardSkeleton titleWidth={w} style={card}>
+                <Skeleton width={190} height={34} style={{ borderRadius: '10px', maxWidth: '100%' }} />
+              </ProfileCardSkeleton>
             </div>
           ))}
         </div>
       )}
-      <CardShell pad={pad} style={cardStyle}><RuledTitleSkeleton width={180} /><Skeleton width="55%" height={14} /></CardShell>
-      {notes && <ProgramNotesSkeleton />}
+      <ProfileCardSkeleton titleWidth={150}><Skeleton width="55%" height={14} /></ProfileCardSkeleton>
+      {notes && <ProfileCardSkeleton titleWidth={90} sub><Skeleton height={56} style={{ borderRadius: '8px', marginBottom: '14px' }} />{[0, 1].map(i => <Skeleton key={i} height={58} style={{ borderRadius: '12px', marginBottom: '8px' }} />)}</ProfileCardSkeleton>}
     </div>
   )
 }

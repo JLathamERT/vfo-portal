@@ -7,9 +7,12 @@ import VaultSections from '../shared/VaultSections'
 import VaultDropLink from '../shared/VaultDropLink'
 import ImageCropModal from './ImageCropModal'
 import ListFilterButton, { matchesFilter, sortByJoin, SortSelect } from './ListFilterButton'
+import ListTable, { ListName, ListPill, ListText, listSearchStyle } from '../shared/ListTable'
 import TaxPlannerKpiPanel from './TaxPlannerKpiPanel'
 import { DirectoryListSkeleton, KpiPageSkeleton, StrategicPartnersSkeleton, TableSkeleton } from '../shared/Skeleton'
-import { TrackHero, HeroAvatar, ListHeader } from '../shared/TrackKit'
+import { HeroAvatar, ListHeader } from '../shared/TrackKit'
+import { DotText, Field, FieldGrid, FormGrid, formInput, formLabel, PageHeading, ProfileCard, ProfileHero, SaveBar } from '../shared/ProfileKit'
+import { btnDanger, btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 import { FeatureTabDropdown } from './MembersPanel'
 import SendSetupEmailButton from './SendSetupEmailButton'
 import { useNavigate } from 'react-router-dom'
@@ -253,9 +256,6 @@ export default function TaxPlannersPanel({ section }) {
     }
   }
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }
-  const fieldStyle = { marginBottom: '16px' }
   const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
   const listFilterGroups = [
@@ -271,7 +271,6 @@ export default function TaxPlannersPanel({ section }) {
     const setForm = which === 'add' ? setAddForm : setEditForm
     const preview = which === 'add' ? addPreview : editPreview
     const upd = (k, v) => setForm(p => ({ ...p, [k]: v }))
-    const sectionHeader = { fontSize: '14px', color: 'var(--vfo-ink)', fontWeight: 600, marginBottom: '18px', borderBottom: '1px solid var(--vfo-border)', paddingBottom: '12px' }
 
     // Certifications multi-add (professional designations). Cloned from
     // SpecialistForm's "VFO Ecosystems" removable-chip idiom (SpecialistsPanel.jsx
@@ -287,105 +286,87 @@ export default function TaxPlannersPanel({ section }) {
     }
     const removeCert = (idx) => setForm(p => ({ ...p, certifications: (Array.isArray(p.certifications) ? p.certifications : []).filter((_, i) => i !== idx) }))
 
+    // Split into titled boxes like the member's Edit Profile (2026-11-26).
+    const fld = (label, node, wide) => (
+      <div style={wide ? { gridColumn: '1 / -1' } : undefined}><label style={formLabel}>{label}</label>{node}</div>
+    )
     return (
       <div>
-        {/* ---- Profile & Identity ---- */}
-        <div style={sectionStyle}>
-          <div style={sectionHeader}>Profile &amp; Identity</div>
-
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Headshot</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div
-                onClick={() => { if (preview) setCropState({ which, src: preview }) }}
-                title={preview ? 'Click to adjust / zoom' : ''}
-                style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: preview ? 'pointer' : 'default', flexShrink: 0 }}>
-                {preview ? <img src={preview} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: 'var(--vfo-muted)', fontSize: '24px' }}>?</span>}
-              </div>
-              <div>
-                <label style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-tint)', color: 'var(--vfo-ink)', fontSize: '13px', cursor: 'pointer' }}>
-                  Choose Image
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileChange(which, e)} />
-                </label>
-                {preview && (
-                  <button type="button" onClick={() => setCropState({ which, src: preview })}
-                    style={{ marginLeft: '8px', padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--vfo-accent-text)', background: 'var(--vfo-card)', color: 'var(--vfo-accent-text)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                    Adjust / Zoom
-                  </button>
-                )}
-                <p style={{ color: 'var(--vfo-muted)', fontSize: '12px', marginTop: '6px' }}>JPG or PNG, recommended 400×400px. Click the photo to adjust &amp; zoom.</p>
-              </div>
+        <ProfileCard icon="camera" title="Photo & Name">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            <div
+              onClick={() => { if (preview) setCropState({ which, src: preview }) }}
+              title={preview ? 'Click to adjust / zoom' : ''}
+              style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: preview ? 'pointer' : 'default', flexShrink: 0 }}>
+              {preview ? <img src={preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: 'var(--vfo-muted)', fontSize: '24px' }}>?</span>}
+            </div>
+            <div>
+              <label style={{ ...btnPrimary, display: 'inline-block' }}>
+                Choose Image
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileChange(which, e)} />
+              </label>
+              {preview && (
+                <button type="button" onClick={() => setCropState({ which, src: preview })} style={{ ...btnSecondary, marginLeft: '8px' }}>
+                  Adjust / Zoom
+                </button>
+              )}
+              <p style={{ color: 'var(--vfo-muted)', fontSize: '12px', margin: '6px 0 0' }}>JPG or PNG, recommended 400×400px. Click the photo to adjust &amp; zoom.</p>
             </div>
           </div>
+          <FormGrid min={200}>
+            {fld('First Name *', <input value={form.first_name} onChange={e => upd('first_name', e.target.value)} style={formInput} />)}
+            {fld('Last Name *', <input value={form.last_name} onChange={e => upd('last_name', e.target.value)} style={formInput} />)}
+          </FormGrid>
+        </ProfileCard>
 
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label><input value={form.first_name} onChange={e => upd('first_name', e.target.value)} style={inputStyle} /></div>
-            <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label><input value={form.last_name} onChange={e => upd('last_name', e.target.value)} style={inputStyle} /></div>
-          </div>
+        <ProfileCard icon="contacts" title="Contact">
+          {fld('Email', <input value={form.email} onChange={e => upd('email', e.target.value)} type="email" placeholder="planner@example.com" style={formInput} />)}
+        </ProfileCard>
 
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Email</label>
-            <input value={form.email} onChange={e => upd('email', e.target.value)} type="email" placeholder="planner@example.com" style={inputStyle} />
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Status</label>
-              <select value={form.status} onChange={e => upd('status', e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
+        <ProfileCard icon="briefcase" title="Membership">
+          <FormGrid min={200}>
+            {fld('Status', (
+              <select value={form.status} onChange={e => upd('status', e.target.value)} style={formInput}>
                 {['Active', 'Lost', 'Removed'].map(s => <option key={s} value={s}>{s}</option>)}
               </select>
-            </div>
-            {full && (form.status === 'Lost' || form.status === 'Removed') && (
-              <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Leave Date</label>
-                <input type="date" value={form.leave_date} onChange={e => upd('leave_date', e.target.value)} style={inputStyle} />
-              </div>
-            )}
-          </div>
+            ))}
+            {full && fld('Join Date', <input type="date" value={form.join_date} onChange={e => upd('join_date', e.target.value)} style={formInput} />)}
+            {full && (form.status === 'Lost' || form.status === 'Removed') && fld('Leave Date', <input type="date" value={form.leave_date} onChange={e => upd('leave_date', e.target.value)} style={formInput} />)}
+            {fld('Member Type', (
+              <select value={form.planner_role || 'Tax Planner'} onChange={e => upd('planner_role', e.target.value)} style={formInput}>
+                {PLANNER_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            ))}
+            {fld('Partnership', (
+              <>
+                <select value={form.member_type} onChange={e => upd('member_type', e.target.value)} style={formInput} disabled={groupNames.length === 0}>
+                  <option value="">-- Select group --</option>
+                  {groupNames.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                {groupNames.length === 0 && <p style={{ color: 'var(--vfo-muted)', fontSize: '12px', margin: '6px 0 0' }}>No Tax Planning Groups yet. Add one under Add Tax Planner → Add Tax Planning Group.</p>}
+              </>
+            ))}
+          </FormGrid>
+        </ProfileCard>
 
-          {full && (
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Join Date</label>
-              <input type="date" value={form.join_date} onChange={e => upd('join_date', e.target.value)} style={{ ...inputStyle, width: '200px' }} />
-            </div>
-          )}
-
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Member Type</label>
-            <select value={form.planner_role || 'Tax Planner'} onChange={e => upd('planner_role', e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }}>
-              {PLANNER_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
-
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Partnership</label>
-            <select value={form.member_type} onChange={e => upd('member_type', e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)' }} disabled={groupNames.length === 0}>
-              <option value="">-- Select group --</option>
-              {groupNames.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-            {groupNames.length === 0 && <p style={{ color: 'var(--vfo-muted)', fontSize: '12px', marginTop: '6px' }}>No Tax Planning Groups yet. Add one under Add Tax Planner → Add Tax Planning Group.</p>}
-          </div>
-
-          {form.planner_role !== 'Team Member' && (
-          <div style={{ ...fieldStyle, marginBottom: 0 }}>
-            <label style={labelStyle}>Certifications <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--vfo-faint)' }}>— professional designations shown after the name (e.g. EA, CPA)</span></label>
+        {form.planner_role !== 'Team Member' && (
+          <ProfileCard icon="award" title="Certifications" sub="Professional designations shown after the name (e.g. EA, CPA).">
             <div style={{ display: 'flex', gap: '8px' }}>
-              <input value={certInput} onChange={e => setCertInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCert() } }} placeholder="e.g. EA" style={{ ...inputStyle, flex: 1 }} />
-              <button type="button" onClick={addCert} style={{ padding: '10px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'Inter, sans-serif' }}>Add</button>
+              <input value={certInput} onChange={e => setCertInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCert() } }} placeholder="e.g. EA" style={{ ...formInput, flex: 1 }} />
+              <button type="button" onClick={addCert} style={btnPrimary}>Add</button>
             </div>
             {certs.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
                 {certs.map((c, i) => (
-                  <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '999px', border: '1px solid rgba(0,149,255,0.25)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontSize: '12px', fontWeight: 600 }}>
+                  <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '999px', border: '1px solid rgba(0,149,255,0.25)', background: 'rgba(0,149,255,0.12)', color: 'var(--vfo-accent-text)', fontSize: '12px', fontWeight: 600 }}>
                     {c}
                     <span onClick={() => removeCert(i)} title="Remove" style={{ cursor: 'pointer', fontWeight: 700, opacity: 0.7 }}>×</span>
                   </span>
                 ))}
               </div>
             )}
-          </div>
-          )}
-        </div>{/* end Profile & Identity card */}
+          </ProfileCard>
+        )}
       </div>
     )
   }
@@ -407,7 +388,7 @@ export default function TaxPlannersPanel({ section }) {
   // the person form and the one-field group-creation form.
   if (section === 'add_tax_planner') {
     return (
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
         {cropState && <ImageCropModal src={cropState.src} onApply={applyCrop} onCancel={() => setCropState(null)} />}
         <AddTaxPlannerSection
           addTab={addTab}
@@ -426,7 +407,7 @@ export default function TaxPlannersPanel({ section }) {
 
   // ---- Section: Tax Planner Search (list + detail) ----
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
       {cropState && <ImageCropModal src={cropState.src} onApply={applyCrop} onCancel={() => setCropState(null)} />}
 
       {loading && <DirectoryListSkeleton numbered={false} chip />}
@@ -450,32 +431,24 @@ export default function TaxPlannersPanel({ section }) {
           )}
           <ListHeader title="Tax Planners" count={filteredPlanners.length} action={<ExportButton title="Tax Planners" columns={PLANNER_EXPORT_COLUMNS} rows={searchedPlanners} filterGroups={listFilterGroups} filterValue={listFilter} />} />
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-            <input type="search" name="search" autoComplete="off" placeholder="Search by name or type..." style={inputStyle} onChange={e => setSearch(e.target.value.toLowerCase())} value={search} />
+            <input type="search" name="search" autoComplete="off" placeholder="Search by name or type..." style={listSearchStyle} onChange={e => setSearch(e.target.value.toLowerCase())} value={search} />
             <ListFilterButton groups={listFilterGroups} value={listFilter} onChange={setListFilter} />
             <SortSelect value={listSort} onChange={setListSort} />
           </div>
-          <div>
-            {filteredPlanners.map(planner => {
-              return (
-              <div key={planner.id}
-                onClick={() => handleSelect(planner)}
-                style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px 16px', marginBottom: '6px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', boxShadow: '0 2px 8px rgba(20,45,95,0.04)', cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,149,255,0.4)'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border-soft)'}>
-                <span style={{ fontSize: '14px', color: 'var(--vfo-ink)', fontWeight: 600, width: '220px', flexShrink: 0 }}>{plannerDisplayName(planner)}</span>
-                <span style={{ width: '90px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-ink)' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: statusColor(planner.status) }} />
-                  {planner.status || '—'}
-                </span>
-                <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', width: '160px', flexShrink: 0 }}>{planner.member_type || '—'}</span>
-                <span style={{ marginLeft: 'auto', flexShrink: 0, fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{roleOf(planner) === 'Team Member' ? 'Team Member' : allocationLabel(planner)}</span>
-              </div>
-              )
-            })}
-            {filteredPlanners.length === 0 && !loadError && (
-              <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--vfo-faint)', fontSize: '13.5px', background: 'var(--vfo-tint)', border: '1px dashed var(--vfo-border-chip)', borderRadius: '12px' }}>No tax planners match your search.</div>
-            )}
-          </div>
+          <ListTable
+            rows={filteredPlanners}
+            rowKey={p => p.id}
+            resetSortOn={listSort}
+            minWidth="700px"
+            empty={loadError ? '' : 'No tax planners match your search.'}
+            onRowClick={p => handleSelect(p)}
+            columns={[
+              { key: 'name', label: 'Name', width: '1.6fr', get: p => plannerDisplayName(p), render: p => <ListName>{plannerDisplayName(p)}</ListName> },
+              { key: 'status', label: 'Status', width: '110px', get: p => p.status, render: p => p.status ? <ListPill color={statusColor(p.status, '#8a94a6')}>{p.status}</ListPill> : <ListText /> },
+              { key: 'partnership', label: 'Partnership', width: '1.3fr', get: p => p.member_type, render: p => <ListText>{p.member_type}</ListText> },
+              { key: 'allocations', label: 'Allocations', width: '1fr', get: p => (roleOf(p) === 'Team Member' ? 'Team Member' : allocationLabel(p)), render: p => <ListText>{roleOf(p) === 'Team Member' ? 'Team Member' : allocationLabel(p)}</ListText> },
+            ]}
+          />
         </>
         )
       })()}
@@ -484,16 +457,16 @@ export default function TaxPlannersPanel({ section }) {
         <div>
           <button onClick={backToList} style={{ background: 'none', border: 'none', color: '#0095ff', fontWeight: 500, fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}>← Back to list</button>
 
-          <TrackHero
+          <ProfileHero
             eyebrow="Tax Planner"
-            title={plannerDisplayName(selectedPlanner)}
-            avatar={<HeroAvatar src={selectedPlanner.headshot_image ? HEADSHOT_SUPABASE + encodeURIComponent(selectedPlanner.headshot_image) : null} name={fullName(selectedPlanner)} />}
-            meta={
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--vfo-ink)' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: STATUS_COLORS[selectedPlanner.status] || '#1b9254', flexShrink: 0 }} />
-                {selectedPlanner.status || 'Active'}
-              </span>
-            }
+            name={plannerDisplayName(selectedPlanner)}
+            avatar={<HeroAvatar src={selectedPlanner.headshot_image ? HEADSHOT_SUPABASE + encodeURIComponent(selectedPlanner.headshot_image) : null} name={fullName(selectedPlanner)} size={72} />}
+            facts={[
+              { label: 'Status', value: <DotText color={STATUS_COLORS[selectedPlanner.status] || '#1b9254'}>{selectedPlanner.status || 'Active'}</DotText> },
+              { label: 'Member Type', value: roleOf(selectedPlanner) },
+              { label: 'Partnership', value: selectedPlanner.member_type || null },
+              { label: 'Allocations', value: allocationLabel(selectedPlanner) },
+            ]}
           />
 
           <div style={{ display: 'flex', borderBottom: '1px solid var(--vfo-border)', marginBottom: '24px', flexWrap: 'wrap', position: 'relative', zIndex: 50 }}>
@@ -517,17 +490,12 @@ export default function TaxPlannersPanel({ section }) {
           {plannerTab === 'edit' && (
             <div>
               {plannerForm('edit', true)}
-              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                <button onClick={() => submit('edit')}
-                  style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
-                  Save Changes
-                </button>
-                <button onClick={backToList}
-                  style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer' }}>
+              {/* The sticky save bar, as on the member's Edit Profile. */}
+              <SaveBar onSave={() => submit('edit')} status={editStatus} statusType={editStatusType}>
+                <button onClick={backToList} style={{ ...btnSecondary, padding: '10px 20px', fontSize: '14px' }}>
                   Cancel
                 </button>
-                {editStatus && <span style={{ alignSelf: 'center', color: editStatusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', fontWeight: 600 }}>{editStatus}</span>}
-              </div>
+              </SaveBar>
             </div>
           )}
 
@@ -547,17 +515,14 @@ export default function TaxPlannersPanel({ section }) {
 
           {plannerTab === 'settings' && (
             <>
-            <div style={sectionStyle}>
-              <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Tax Planner Login</div>
-              <p style={{ fontSize: '14px', color: 'var(--vfo-muted)', marginBottom: '16px' }}>{selectedPlanner.email ? <>Send a setup email to <strong>{selectedPlanner.email}</strong> so they can set their own portal passcode.</> : <>Add an email in Edit Profile first, then send the setup email.</>}</p>
+            <ProfileCard icon="lock" title="Tax Planner Login">
+              <p style={{ fontSize: '14px', color: 'var(--vfo-muted)', margin: '0 0 16px' }}>{selectedPlanner.email ? <>Send a setup email to <strong>{selectedPlanner.email}</strong> so they can set their own portal passcode.</> : <>Add an email in Edit Profile first, then send the setup email.</>}</p>
               {selectedPlanner.email && <SendSetupEmailButton loginType="tax_planner" subjectId={selectedPlanner.id} hint="Drafts a Gmail with a secure link. The tax planner sets their own passcode." />}
-            </div>
-            <div style={{ ...sectionStyle, border: '1px solid rgba(231,76,60,0.3)' }}>
-              <div style={{ fontSize: '13px', color: '#e74c3c', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Danger Zone</div>
-              <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginBottom: '12px' }}>Permanently delete this tax planner. This cannot be undone, and is blocked while they are allocated to any tax plan.</p>
-              <button onClick={deletePlanner} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid rgba(231,76,60,0.4)', background: 'transparent', color: '#e74c3c', fontWeight: 500, fontSize: '14px', cursor: 'pointer' }}>Delete Tax Planner</button>
+            </ProfileCard>
+            <ProfileCard icon="alert" tone="red" title="Danger Zone" sub="Permanently delete this tax planner. This cannot be undone, and is blocked while they are allocated to any tax plan." style={{ border: '1px solid rgba(231,76,60,0.3)' }}>
+              <button onClick={deletePlanner} style={btnDanger}>Delete Tax Planner</button>
               {deleteMsg && <p style={{ fontSize: '13px', color: '#d93025', fontWeight: 600, marginTop: '12px' }}>{deleteMsg}</p>}
-            </div>
+            </ProfileCard>
             </>
           )}
         </div>
@@ -572,32 +537,16 @@ export default function TaxPlannersPanel({ section }) {
 // the planner — it moved to the planner's Tax Planning Group (Partners tab). The
 // name + photo header and the tabs are rendered by the parent (TrackHero + tabs).
 function TaxPlannerProfileView({ planner }) {
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
-  const fieldLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-faint)', textTransform: 'uppercase' }
-  const fieldValue = { fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: 600, marginTop: '5px' }
-
   const hasLeaveDate = planner.status === 'Lost' || planner.status === 'Removed' || !!planner.leave_date
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 340px', minWidth: '300px', display: 'flex' }}>
-          <div style={{ ...sectionStyle, flex: 1 }}>
-            <div style={cardTitle}>Tax Planner Details</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '18px 24px' }}>
-              <div><div style={fieldLabel}>Email</div><div style={{ ...fieldValue, wordBreak: 'break-word' }}>{planner.email || '—'}</div></div>
-              <div><div style={fieldLabel}>Status</div><div style={fieldValue}>{planner.status || 'Active'}</div></div>
-              <div><div style={fieldLabel}>Join Date</div><div style={fieldValue}>{planner.join_date ? formatDate(planner.join_date) : '—'}</div></div>
-              {hasLeaveDate && <div><div style={fieldLabel}>Leave Date</div><div style={fieldValue}>{planner.leave_date ? formatDate(planner.leave_date) : '—'}</div></div>}
-              <div><div style={fieldLabel}>Member Type</div><div style={fieldValue}>{roleOf(planner)}</div></div>
-              <div><div style={fieldLabel}>Partnership</div><div style={fieldValue}>{planner.member_type || '—'}</div></div>
-              <div><div style={fieldLabel}>Allocations</div><div style={fieldValue}>{allocationLabel(planner)}</div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ProfileCard icon="id" title="Tax Planner Details">
+      <FieldGrid min={360}>
+        <Field label="Email" nowrap>{planner.email}</Field>
+        <Field label="Join Date">{planner.join_date ? formatDate(planner.join_date) : null}</Field>
+        {hasLeaveDate && <Field label="Leave Date">{planner.leave_date ? formatDate(planner.leave_date) : null}</Field>}
+      </FieldGrid>
+    </ProfileCard>
   )
 }
 
@@ -897,7 +846,7 @@ function AddTaxPlannerSection({ addTab, setAddTab, groupNames, plannerForm, subm
   const pill = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '6px' })
   return (
     <div>
-      <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '-0.02em', fontSize: '22px', color: 'var(--vfo-ink)', marginBottom: '18px' }}>Add Tax Planner</div>
+      <PageHeading eyebrow="Tax Planners" title="Add Tax Planner" />
       <div style={{ display: 'flex', marginBottom: '18px' }}>
         <button style={pill(addTab === 'planner')} onClick={() => setAddTab('planner')}>Add Tax Planner</button>
         <button style={pill(addTab === 'group')} onClick={() => setAddTab('group')}>Add Tax Planning Group</button>
@@ -906,17 +855,9 @@ function AddTaxPlannerSection({ addTab, setAddTab, groupNames, plannerForm, subm
       {addTab === 'planner' && (
         <div>
           {plannerForm('add', false)}
-          <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-            <button onClick={() => submit('add')}
-              style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
-              Add Tax Planner
-            </button>
-            <button onClick={clearAddForm}
-              style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer' }}>
-              Clear Form
-            </button>
-            {addStatus && <span style={{ alignSelf: 'center', color: addStatusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', fontWeight: 600 }}>{addStatus}</span>}
-          </div>
+          <SaveBar onSave={() => submit('add')} label="Add Tax Planner" status={addStatus} statusType={addStatusType}>
+            <button type="button" onClick={clearAddForm} style={btnSecondary}>Clear Form</button>
+          </SaveBar>
         </div>
       )}
 
@@ -931,9 +872,6 @@ function AddTaxPlanningGroupForm({ onGroupsChange }) {
   const [statusType, setStatusType] = useState('success')
   const [loading, setLoading] = useState(false)
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 
   async function submit() {
     const name = groupName.trim()
@@ -949,16 +887,16 @@ function AddTaxPlanningGroupForm({ onGroupsChange }) {
   }
 
   return (
-    <div style={sectionStyle}>
-      <div style={{ marginBottom: '16px', maxWidth: '420px' }}>
-        <label style={labelStyle}>Tax Planning Group Name *</label>
-        <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="e.g. Innovation Advisory Group" style={inputStyle} onKeyDown={e => { if (e.key === 'Enter') submit() }} />
+    <ProfileCard icon="users" title="New Tax Planning Group" sub="Each group becomes a Partnership option when adding a tax planner.">
+      <div style={{ maxWidth: '420px', marginBottom: '14px' }}>
+        <label style={formLabel}>Tax Planning Group Name *</label>
+        <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="e.g. Innovation Advisory Group" style={formInput} onKeyDown={e => { if (e.key === 'Enter') submit() }} />
       </div>
-      <button onClick={submit} disabled={loading} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
-        {loading ? 'Creating...' : 'Create Group'}
-      </button>
-      {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
-    </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+        <button type="button" onClick={submit} disabled={loading} style={{ ...btnState(btnPrimary, loading), cursor: loading ? 'wait' : 'pointer' }}>{loading ? 'Creating…' : 'Create Group'}</button>
+        {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', fontWeight: 500 }}>{status}</span>}
+      </div>
+    </ProfileCard>
   )
 }
 

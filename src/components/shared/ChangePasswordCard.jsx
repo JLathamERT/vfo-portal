@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { callApi, getSession } from '../../lib/api'
 import PasswordInput from './PasswordInput'
+import { FormGrid, formInput, formLabel, ProfileCard } from './ProfileKit'
+import { btnPrimary, btnState } from './buttonStyles'
 
 // Self-service change-passcode card for the specialist, client and tax-planner
 // portals. The action (specialist_update_login / client_update_login /
@@ -31,19 +33,26 @@ export default function ChangePasswordCard({ action }) {
   }
 
   return (
-    <form onSubmit={save} style={{ maxWidth: '460px', margin: '0 auto', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', padding: '24px' }}>
-      <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Change Passcode</div>
-      <input id="username" name="email" autoComplete="username" type="email" value={getSession()?.email || ''} readOnly tabIndex={-1} style={hiddenFieldStyle} />
-      <label style={labelStyle}>New Passcode (min 6 characters)</label>
-      <PasswordInput id="new-password" name="new-password" value={passcode} onChange={e => setPasscode(e.target.value)} autoComplete="new-password" style={inputStyle} />
-      <label style={{ ...labelStyle, marginTop: '14px' }}>Confirm Passcode</label>
-      <PasswordInput id="confirm-password" name="confirm-password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" style={inputStyle} />
-      {msg && <p style={{ fontSize: '13px', marginTop: '12px', marginBottom: 0, color: msg.ok ? '#1f9d55' : '#d93025' }}>{msg.text}</p>}
-      <button type="submit" disabled={busy} style={{ marginTop: '18px', padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: busy ? 'default' : 'pointer' }}>{busy ? 'Saving…' : 'Update Passcode'}</button>
-    </form>
+    <ProfileCard icon="lock" title="Change Passcode" sub="At least 6 characters.">
+      <form onSubmit={save}>
+        <input id="username" name="email" autoComplete="username" type="email" value={getSession()?.email || ''} readOnly tabIndex={-1} style={hiddenFieldStyle} />
+        <FormGrid min={220}>
+          <div>
+            <label style={formLabel} htmlFor="new-password">New Passcode</label>
+            <PasswordInput id="new-password" name="new-password" value={passcode} onChange={e => setPasscode(e.target.value)} autoComplete="new-password" style={formInput} />
+          </div>
+          <div>
+            <label style={formLabel} htmlFor="confirm-password">Confirm Passcode</label>
+            <PasswordInput id="confirm-password" name="confirm-password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" style={formInput} />
+          </div>
+        </FormGrid>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', marginTop: '18px' }}>
+          <button type="submit" disabled={busy} style={btnState(btnPrimary, busy)}>{busy ? 'Saving…' : 'Update Passcode'}</button>
+          {msg && <span style={{ fontSize: '13px', fontWeight: 500, color: msg.ok ? 'var(--vfo-success-text)' : '#d93025' }}>{msg.text}</span>}
+        </div>
+      </form>
+    </ProfileCard>
   )
 }
 
-const labelStyle = { fontSize: '13px', color: 'var(--vfo-muted)', marginBottom: '6px', fontWeight: 500, display: 'block' }
 const hiddenFieldStyle = { position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', border: 0, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }
-const inputStyle = { padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' }

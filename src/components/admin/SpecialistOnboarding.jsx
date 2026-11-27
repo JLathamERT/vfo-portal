@@ -6,8 +6,26 @@ import { TrackHero, PhaseBadge, ListHeader, noMultiClickSelect } from '../shared
 import StepEmailsChip from '../shared/StepEmailsChip'
 import { formatDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
+import ListFilterButton, { matchesFilter, SortSelect } from './ListFilterButton'
+import ListTable, { ListName, ListText, listSearchStyle } from '../shared/ListTable'
+import { DotText } from '../shared/ProfileKit'
  
 const STAGE_NAMES = ['', 'Preliminary Meeting', 'Detail Meetings', 'Due Diligence', 'Contract & Details', 'Going Live']
+
+// The list's Phase column and filter: "1 - Preliminary Meeting" ... then Complete and Stopped.
+const SPEC_DONE = 'Complete'
+const SPEC_STOPPED = 'Stopped'
+const specPhaseLabel = n => `${n} - ${STAGE_NAMES[n] || `Stage ${n}`}`
+const SPEC_PHASES = [...STAGE_NAMES.slice(1).map((_, i) => specPhaseLabel(i + 1)), SPEC_DONE, SPEC_STOPPED]
+const specPhaseOf = o => (o.status === 'completed' ? SPEC_DONE : o.status === 'stopped' ? SPEC_STOPPED : specPhaseLabel(o.current_stage))
+const SPEC_LIST_VIEW_KEY = 'specialistOnboardingListView'
+const SPEC_DEFAULT_VIEW = { search: '', filter: { phase: SPEC_PHASES.filter(p => p !== SPEC_STOPPED) }, sort: 'newest' }
+const SPEC_SORT_OPTIONS = [
+  { value: 'newest', label: 'Started: Newest' },
+  { value: 'oldest', label: 'Started: Oldest' },
+  { value: 'az', label: 'Name: A to Z' },
+  { value: 'za', label: 'Name: Z to A' },
+]
 
 // Stage 2 "Initial executive approval" voters. Voting is account-scoped: only the
 // matching logged-in exec can cast their vote, and a vote stays private until both
@@ -95,8 +113,14 @@ export default function SpecialistOnboarding() {
   const [newName, setNewName] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [creating, setCreating] = useState(false)
-  const [showCompleted, setShowCompleted] = useState(false)
-  const [showStopped, setShowStopped] = useState(false)
+  // The list (2026-11-26): the advisor / accountant onboarding table's shape, one
+  // table with search, a Phase filter and sort. Stopped is left out by default, as
+  // there; the view survives a trip into a record and back.
+  const [listView, setListView] = useState(() => {
+    try { const v = JSON.parse(sessionStorage.getItem(SPEC_LIST_VIEW_KEY) || 'null'); if (v && typeof v === 'object') return { ...SPEC_DEFAULT_VIEW, ...v } } catch { /* private mode */ }
+    return SPEC_DEFAULT_VIEW
+  })
+  useEffect(() => { try { sessionStorage.setItem(SPEC_LIST_VIEW_KEY, JSON.stringify(listView)) } catch { /* private mode */ } }, [listView])
   const session = getSession()
   const [searchParams] = useSearchParams()
 
@@ -173,64 +197,43 @@ export default function SpecialistOnboarding() {
       ) : onboardings.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px', color: 'var(--vfo-muted)' }}>No onboarding records yet. Click "+ New Onboarding" to start.</div>
       ) : (() => {
-        // Same three-bucket shape as the advisor / accountant lists: in-progress
-        // rows stay loose at the top, done and stopped collapse away.
-        const inProgress = onboardings.filter(o => o.status !== 'completed' && o.status !== 'stopped')
-        const completed = onboardings.filter(o => o.status === 'completed')
-        const stopped = onboardings.filter(o => o.status === 'stopped')
-
-        const renderRow = ob => {
-          const isStopped = ob.status === 'stopped'
-          const isDone = ob.status === 'completed'
-          const stageColor = isStopped ? '#e74c3c' : isDone ? '#1b9254' : '#0095ff'
-          return (
-            <div key={ob.id} onClick={() => { setSelectedId(ob.id); setView('detail') }} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '18px', marginBottom: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,149,255,0.4)'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--vfo-border)'}>
-              <div>
-                <div style={{ fontSize: '15px', color: 'var(--vfo-ink)', fontWeight: '500', marginBottom: '4px' }}>{ob.specialist_name}</div>
-                <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{ob.specialist_email || 'No email'} · Started {formatDate(ob.created_at)}</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: isStopped ? 'rgba(231,76,60,0.15)' : isDone ? 'rgba(27,146,84,0.15)' : 'rgba(0,149,255,0.15)', color: stageColor, border: `1px solid ${isStopped ? 'rgba(231,76,60,0.3)' : isDone ? 'rgba(27,146,84,0.3)' : 'rgba(0,149,255,0.3)'}` }}>
-                  {isStopped ? 'Stopped' : isDone ? 'Completed' : `Stage ${ob.current_stage} · ${STAGE_NAMES[ob.current_stage]}`}
-                </span>
-              </div>
-            </div>
-          )
-        }
-
-        const SectionHeader = ({ title, count, open, onToggle, color }) => (
-          <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', marginTop: '20px', marginBottom: '10px', borderRadius: '8px', cursor: 'pointer', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: color, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</span>
-              <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>({count})</span>
-            </div>
-          </div>
-        )
-
+        const q = listView.search.trim().toLowerCase()
+        const filterGroups = [{ key: 'phase', label: 'Phase', options: SPEC_PHASES, get: specPhaseOf }]
+        const searched = q ? onboardings.filter(o => (o.specialist_name || '').toLowerCase().includes(q) || (o.specialist_email || '').toLowerCase().includes(q)) : onboardings
+        const at = o => o.created_at || ''
+        const ordered = searched.filter(o => matchesFilter(o, filterGroups, listView.filter)).sort((x, y) => (
+          listView.sort === 'oldest' ? at(x).localeCompare(at(y))
+            : listView.sort === 'az' ? (x.specialist_name || '').localeCompare(y.specialist_name || '')
+            : listView.sort === 'za' ? (y.specialist_name || '').localeCompare(x.specialist_name || '')
+            : at(y).localeCompare(at(x))
+        ))
         return (
-          <div>
-            {inProgress.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '20px', color: 'var(--vfo-muted)', fontSize: '13px' }}>No active onboardings in progress.</div>
-            )}
-            {inProgress.map(renderRow)}
-
-            {completed.length > 0 && (
-              <>
-                <SectionHeader title="Completed" count={completed.length} open={showCompleted} onToggle={() => setShowCompleted(v => !v)} color="#1b9254" />
-                {showCompleted && completed.map(renderRow)}
-              </>
-            )}
-
-            {stopped.length > 0 && (
-              <>
-                <SectionHeader title="Stopped" count={stopped.length} open={showStopped} onToggle={() => setShowStopped(v => !v)} color="#e74c3c" />
-                {showStopped && stopped.map(renderRow)}
-              </>
-            )}
-          </div>
+          <>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <input type="search" name="search" autoComplete="off" placeholder="Search by name or email..." value={listView.search} onChange={e => setListView(v => ({ ...v, search: e.target.value }))} style={listSearchStyle} />
+              <ListFilterButton groups={filterGroups} value={listView.filter} onChange={f => setListView(v => ({ ...v, filter: f }))} />
+              <SortSelect value={listView.sort} onChange={srt => setListView(v => ({ ...v, sort: srt }))} options={SPEC_SORT_OPTIONS} />
+            </div>
+            <ListTable
+              rows={ordered}
+              rowKey={o => o.id}
+              resetSortOn={listView.sort}
+              minWidth="760px"
+              empty="No onboardings match the current filters."
+              onRowClick={o => { setSelectedId(o.id); setView('detail') }}
+              columns={[
+                { key: 'name', label: 'Name', width: '1.4fr', get: o => o.specialist_name, render: o => <ListName>{o.specialist_name}</ListName> },
+                { key: 'email', label: 'Email', width: '1.6fr', get: o => o.specialist_email, render: o => <ListText style={{ color: o.specialist_email ? 'var(--vfo-muted)' : undefined }}>{o.specialist_email}</ListText> },
+                { key: 'phase', label: 'Phase', width: '200px', type: 'number', get: o => SPEC_PHASES.indexOf(specPhaseOf(o)), render: o => {
+                  const ph = specPhaseOf(o)
+                  return ph === SPEC_DONE ? <DotText color="#1b9254" style={{ fontSize: '12.5px', fontWeight: 600 }}>{ph}</DotText>
+                    : ph === SPEC_STOPPED ? <DotText color="#e74c3c" style={{ fontSize: '12.5px', fontWeight: 600 }}>{ph}</DotText>
+                    : <ListText>{ph}</ListText>
+                } },
+                { key: 'started', label: 'Started', width: '120px', type: 'date', get: o => o.created_at, render: o => <ListText style={{ color: 'var(--vfo-muted)' }}>{o.created_at ? formatDate(o.created_at) : null}</ListText> },
+              ]}
+            />
+          </>
         )
       })()}
     </div>

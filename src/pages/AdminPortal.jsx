@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect, useState, useLayoutEffect, useRef } from 'react'
+import { timeGreeting } from '../lib/greeting'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { getSession, clearSession, loadCachedData, hasCachedData, getLastSeen, setLastSeen } from '../lib/api'
 import { usePortalTheme } from '../lib/theme'
+import { useSettingsReturn } from '../components/shared/ProfileKit'
 import SpecialistsPanel from '../components/admin/SpecialistsPanel'
 import TaxPlannersPanel from '../components/admin/TaxPlannersPanel'
 import MembersPanel, { MEMBER_PROFILE_ORIGIN_KEY } from '../components/admin/MembersPanel'
@@ -302,6 +304,15 @@ export default function AdminPortal() {
 
   function signOut() { clearSession(); navigate('/') }
   function handleTitleClick() { setShowEditor(false); setShowSettings(false); setActiveTab(null); sessionStorage.removeItem('adminActiveTab') }
+  // Settings keeps the page you were on (drawn hidden underneath, or the Admin
+  // Editor) so Back returns to it.
+  const settingsReturn = useSettingsReturn(navigate)
+  const settingsFromEditor = useRef(false)
+  function openSettings() {
+    if (!showSettings) { settingsReturn.open(); settingsFromEditor.current = showEditor }
+    setShowSettings(true); setShowEditor(false)
+  }
+  function closeSettings() { settingsReturn.back(() => { setShowSettings(false); if (settingsFromEditor.current) setShowEditor(true) }) }
 
   function selectAdvisorsSection(key) {
     setActiveTab('advisors')
@@ -533,17 +544,17 @@ export default function AdminPortal() {
     <div style={{ minHeight: '100vh', background: 'var(--vfo-page)', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif' }}>
       <PortalHeader name={session.name} onTitleClick={handleTitleClick} actions={[
         ...(session.is_superadmin ? [{ key: 'editor', label: 'Admin Editor', tone: 'gold', onClick: () => { setShowEditor(true); setShowSettings(false); setActiveTab(null) } }] : []),
-        { key: 'settings', label: 'Settings', onClick: () => { setShowSettings(true); setShowEditor(false); setActiveTab(null) } },
+        { key: 'settings', label: 'Settings', onClick: openSettings },
         { key: 'signout', label: 'Sign Out', onClick: signOut },
       ]}>
         {!showEditor && !showSettings && <AdminNavBar session={session} activeTab={activeTab} onSelect={selectNav} />}
       </PortalHeader>
 
       {showEditor && <AdminEditor onBack={handleTitleClick} />}
-      {showSettings && <AdminSettings onBack={handleTitleClick} session={session} />}
+      {showSettings && <AdminSettings onBack={closeSettings} session={session} />}
 
-      {!showEditor && !showSettings && (
-        <>
+      {!showEditor && (
+        <div style={{ display: showSettings ? 'none' : 'contents' }}>
           <div style={{ flex: 1 }}>
           {loadError && (
             <div style={{ maxWidth: '980px', margin: '20px auto 0', padding: '0 24px' }}>
@@ -557,7 +568,7 @@ export default function AdminPortal() {
 
           {!activeTab && (
             <div style={{ textAlign: 'center', padding: '60px 24px 0' }}>
-              <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2.5px', marginBottom: '10px' }}>Welcome back</p>
+              <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2.5px', marginBottom: '10px' }}>{timeGreeting()}</p>
               <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.02em', fontSize: '38px', color: 'var(--vfo-heading)', margin: 0 }}>{session.name}</p>
               <div style={{ width: '46px', height: '4px', borderRadius: '99px', background: '#fb895a', margin: '18px auto 0' }} />
               {StagingHome && <Suspense fallback={null}><StagingHome /></Suspense>}
@@ -839,7 +850,7 @@ export default function AdminPortal() {
 
           {loading && viewNeedsLoadData && loadDataSkeleton(activeTab, { advisors: advisorsSection, accountants: accountantsSection, strategic: strategicSection, specialists: specialistsSection, accounting: accountingSection }[activeTab])}
           </div>
-        </>
+        </div>
       )}
     </div>
   )

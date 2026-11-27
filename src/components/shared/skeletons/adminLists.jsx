@@ -3,28 +3,17 @@
 import { Skeleton, SkeletonText, CardShell, HeroSkeleton, PanelHeroSkeleton, PhaseCardsSkeleton, PillTabsSkeleton, ListHeaderSkeleton, SearchFilterSkeleton, TableSkeleton, RowCardsSkeleton } from './primitives'
 
 // Advisor / Accountant / Strategic / Tax Planner search lists: title + count chip
-// + Export, search + filter + sort, then row cards. `numbered` = the rows open with
-// a member number; `chip` = they end in a role chip (tax planners).
+// + Export, search + filter + sort, then the ListTable card (2026-11-26).
+// `numbered` = the table opens with a member number column.
 export function DirectoryListSkeleton({ rows = 6, numbered = true, chip = false }) {
   return (
     <div>
       <ListHeaderSkeleton action width={120} />
       <SearchFilterSkeleton boxes={[84, 130]} height={40} />
-      {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} style={{ ...directoryRow, padding: '12px 16px' }}>
-          {numbered && <div style={{ width: '70px', flexShrink: 0 }}><Skeleton width={46} height={12} /></div>}
-          <div style={{ width: numbered ? '200px' : '220px', flexShrink: 0 }}><Skeleton width={i % 2 ? 130 : 160} height={15} /></div>
-          <div style={{ width: '80px', flexShrink: 0 }}><DotText width={44} /></div>
-          <div style={{ width: '160px', flexShrink: 0 }}><Skeleton width={110} height={12} /></div>
-          {numbered && <Skeleton width={74} height={12} />}
-          {chip && <Skeleton width={84} height={20} style={{ borderRadius: '999px', marginLeft: 'auto' }} />}
-        </div>
-      ))}
+      <TableSkeleton cols={numbered ? '100px 1.6fr 110px 1.3fr 1fr' : chip ? '1.6fr 110px 1.3fr 1fr' : '1.6fr 110px 1.3fr'} rows={rows} pillCol={numbered ? 2 : 1} minWidth={numbered ? '760px' : '700px'} pad="11px 18px" />
     </div>
   )
 }
-
-const directoryRow = { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '6px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', boxShadow: '0 2px 8px rgba(20,45,95,0.04)' }
 
 // A coloured status dot and its word.
 export function DotText({ width = 44 }) {
@@ -36,46 +25,26 @@ export function DotText({ width = 44 }) {
   )
 }
 
-// Search Specialists: title + Export, toolbar, then photo rows.
+// Search Specialists: toolbar, then the ListTable card.
 export function SpecialistDirectorySkeleton({ rows = 6 }) {
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
       <ListHeaderSkeleton action chip={false} width={200} marginBottom="24px" />
       <SearchFilterSkeleton boxes={[84, 130]} height={40} />
-      {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="vfo-skel-on-tint" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 14px', marginBottom: '4px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '8px' }}>
-          <Skeleton width={36} height={36} style={{ borderRadius: '50%', flexShrink: 0 }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <Skeleton width={i % 2 ? 130 : 170} height={14} />
-            <Skeleton width={240} height={11} style={{ marginTop: '6px', maxWidth: '100%' }} />
-          </div>
-          <DotText width={40} />
-        </div>
-      ))}
+      <TableSkeleton cols="2fr 2fr 120px 110px" rows={rows} pillCol={3} minWidth="760px" pad="11px 18px" />
     </div>
   )
 }
 
 // The tax planner portal's client list: title + chip, search, then an ACTIVE group
-// of rows (ref, client over member, next step, planner, date).
+// label over its ListTable card (ref, client over member, next step, planner, date).
 export function PlannerClientsSkeleton({ rows = 5 }) {
   return (
     <div>
       <ListHeaderSkeleton width={130} />
       <SearchFilterSkeleton boxes={[104]} height={40} />
       <Skeleton width={82} height={10} style={{ margin: '0 0 10px 4px' }} />
-      {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} style={{ ...directoryRow, padding: '12px 16px' }}>
-          <div style={{ width: '90px', flexShrink: 0 }}><Skeleton width={72} height={12} /></div>
-          <div style={{ minWidth: '160px', flexShrink: 0 }}>
-            <Skeleton width={i % 2 ? 110 : 140} height={14} />
-            <Skeleton width={90} height={10} style={{ marginTop: '6px' }} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}><Skeleton width="75%" height={12} /></div>
-          <Skeleton width={90} height={12} style={{ flexShrink: 0 }} />
-          <Skeleton width={70} height={12} style={{ flexShrink: 0 }} />
-        </div>
-      ))}
+      <TableSkeleton cols="100px 1.4fr 2fr 1fr 110px" rows={rows} twoLine minWidth="760px" pad="11px 18px" />
     </div>
   )
 }
@@ -271,18 +240,14 @@ export function OnboardingListSkeleton({ rows = 6 }) {
 }
 
 // Specialist onboarding list: one card per record, stage pill on the right.
+// Specialist Onboarding list (2026-11-26): toolbar, then the ListTable card.
 export function SpecialistOnboardingListSkeleton({ rows = 4 }) {
-  return Array.from({ length: rows }).map((_, i) => (
-    <CardShell key={i} pad={18} style={{ marginBottom: '10px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <Skeleton width={150} height={16} />
-          <Skeleton width={240} height={12} style={{ marginTop: '7px' }} />
-        </div>
-        <Skeleton width={130} height={22} style={{ borderRadius: '999px' }} />
-      </div>
-    </CardShell>
-  ))
+  return (
+    <>
+      <SearchFilterSkeleton boxes={[84, 130]} height={40} />
+      <TableSkeleton cols="1.4fr 1.6fr 200px 120px" rows={rows} minWidth="760px" pad="11px 18px" />
+    </>
+  )
 }
 
 // Advisor / Accountant onboarding record: back link, the person's header card, the

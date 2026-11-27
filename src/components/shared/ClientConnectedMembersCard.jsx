@@ -3,6 +3,7 @@ import { callApi } from '../../lib/api'
 import { formatDate } from '../../lib/dates'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { btnPrimary, btnSecondary, btnDanger } from './buttonStyles'
+import { formInput, ProfileCard } from './ProfileKit'
 
 // Portal licensing L5: the CLIENT MIRRORING card on a client (member Profile tab
 // and the admin client Profile tab). member_client_connections_load decides what
@@ -119,8 +120,7 @@ export default function ClientConnectedMembersCard({ clientId, sectionStyle, car
   if (state.viewer === 'connected') {
     const mine = state.connections?.[0]
     if (isPhone) return (
-      <div style={sectionStyle}>
-        <div style={cardTitle}>Client Mirroring</div>
+      <ProfileCard icon="link" title="Client Mirroring">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
           <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.5 }}>
             {state.owner?.name || 'This client\'s member'} has mirrored this client to you{mine?.connected_at ? ` since ${formatDate(mine.connected_at)}` : ''}. You can view this client's case, but not change it.
@@ -129,11 +129,10 @@ export default function ClientConnectedMembersCard({ clientId, sectionStyle, car
         </div>
         {mine && phoneConfirm(mine, true)}
         {error && <p style={{ fontSize: '13px', marginTop: '12px', marginBottom: 0, color: '#d93025' }}>{error}</p>}
-      </div>
+      </ProfileCard>
     )
     return (
-      <div style={sectionStyle}>
-        <div style={cardTitle}>Client Mirroring</div>
+      <ProfileCard icon="link" title="Client Mirroring">
         <div style={row}>
           <span style={{ fontSize: '13px', color: 'var(--vfo-ink)' }}>
             {state.owner?.name || 'This client\'s member'} has mirrored this client to you{mine?.connected_at ? ` since ${formatDate(mine.connected_at)}` : ''}. You can view this client's case, but not change it.
@@ -141,7 +140,7 @@ export default function ClientConnectedMembersCard({ clientId, sectionStyle, car
           {mine && removeControls(mine, true)}
         </div>
         {error && <p style={{ fontSize: '13px', marginTop: '12px', marginBottom: 0, color: '#d93025' }}>{error}</p>}
-      </div>
+      </ProfileCard>
     )
   }
 
@@ -149,9 +148,7 @@ export default function ClientConnectedMembersCard({ clientId, sectionStyle, car
   const partners = state.partners || []
 
   return (
-    <div style={sectionStyle}>
-      <div style={cardTitle}>Client Mirroring</div>
-      <p style={{ ...muted, margin: '0 0 8px' }}>Mirroring lets another member view this client's case on their own portal. They cannot change anything and never see fees or payments.</p>
+    <ProfileCard icon="link" title="Client Mirroring" sub="Mirroring lets another member view this client's case on their own portal. They cannot change anything and never see fees or payments.">
 
       {connections.length === 0 && <div style={{ ...muted, padding: '8px 0' }}>This client is not mirrored to any member.</div>}
       {connections.map(c => isPhone ? (
@@ -192,7 +189,7 @@ export default function ClientConnectedMembersCard({ clientId, sectionStyle, car
       <div style={{ marginTop: '16px' }}>
         <div style={{ ...muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', fontSize: '10.5px', marginBottom: '6px' }}>{connections.length ? 'Mirror to another member' : 'Mirror to a member'}</div>
         <input type="search" name="connect-member-search" autoComplete="off" placeholder="Search by name or member number…" value={q} onChange={e => { setQ(e.target.value); setError(null) }}
-          style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }} />
+          style={formInput} />
         {q.trim().length >= 2 && (
           <div style={{ marginTop: '4px' }}>
             {searching && results.length === 0 && <div style={{ ...muted, padding: '8px 0' }}>Searching…</div>}
@@ -222,6 +219,6 @@ export default function ClientConnectedMembersCard({ clientId, sectionStyle, car
       </div>
 
       {error && <p style={{ fontSize: '13px', marginTop: '12px', marginBottom: 0, color: '#d93025' }}>{error}</p>}
-    </div>
+    </ProfileCard>
   )
 }

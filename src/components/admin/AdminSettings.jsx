@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { callApi } from '../../lib/api'
 import AppearanceCard from '../shared/AppearanceCard'
 import PasswordInput from '../shared/PasswordInput'
+import { FormGrid, formInput, formLabel, formReadOnly, ProfileCard, SettingsHeader, SETTINGS_WIDTH } from '../shared/ProfileKit'
+import { btnPrimary } from '../shared/buttonStyles'
 
 export default function AdminSettings({ onBack, session }) {
   const [newPasscode, setNewPasscode] = useState('')
@@ -25,33 +27,31 @@ export default function AdminSettings({ onBack, session }) {
     } catch (err) { showStatus('error', err.message) }
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
-
   return (
-    <div style={{ maxWidth: '500px', margin: '0 auto', padding: '32px 24px' }}>
-      <form onSubmit={e => { e.preventDefault(); updatePasscode() }} style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Account Settings</div>
-        <div style={{ marginBottom: '12px' }}>
-          <label style={labelStyle}>Email</label>
-          <input id="username" name="email" autoComplete="username" type="email" value={session?.email || ''} readOnly style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }} />
-        </div>
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>New Passcode</label>
-            <PasswordInput id="new-password" name="new-password" value={newPasscode} autoComplete="new-password" onChange={e => setNewPasscode(e.target.value)} placeholder="Leave blank to keep current" style={inputStyle} />
+    <div style={{ maxWidth: SETTINGS_WIDTH, margin: '0 auto', padding: '32px 24px' }}>
+      <SettingsHeader name={session?.name} email={session?.email} onBack={onBack} />
+      <ProfileCard icon="lock" title="Account Settings" sub="Change the passcode you sign in with.">
+        <form onSubmit={e => { e.preventDefault(); updatePasscode() }}>
+          <div style={{ marginBottom: '14px' }}>
+            <label style={formLabel} htmlFor="username">Email</label>
+            <input id="username" name="email" autoComplete="username" type="email" value={session?.email || ''} readOnly style={formReadOnly} />
           </div>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Confirm Passcode</label>
-            <PasswordInput id="confirm-password" name="confirm-password" value={confirmPasscode} autoComplete="new-password" onChange={e => setConfirmPasscode(e.target.value)} placeholder="Confirm new passcode" style={inputStyle} />
+          <FormGrid min={220}>
+            <div>
+              <label style={formLabel} htmlFor="new-password">New Passcode</label>
+              <PasswordInput id="new-password" name="new-password" value={newPasscode} autoComplete="new-password" onChange={e => setNewPasscode(e.target.value)} placeholder="Leave blank to keep current" style={formInput} />
+            </div>
+            <div>
+              <label style={formLabel} htmlFor="confirm-password">Confirm Passcode</label>
+              <PasswordInput id="confirm-password" name="confirm-password" value={confirmPasscode} autoComplete="new-password" onChange={e => setConfirmPasscode(e.target.value)} placeholder="Confirm new passcode" style={formInput} />
+            </div>
+          </FormGrid>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', marginTop: '18px' }}>
+            <button type="submit" style={btnPrimary}>Update Passcode</button>
+            {status && <span style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', fontWeight: 500 }}>{status}</span>}
           </div>
-        </div>
-        <button type="submit" style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
-          Update Passcode
-        </button>
-        {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
-      </form>
+        </form>
+      </ProfileCard>
       <AppearanceCard />
     </div>
   )

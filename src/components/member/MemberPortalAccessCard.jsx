@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { formatDate } from '../../lib/dates'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { ProfileCard } from '../shared/ProfileKit'
 
 // Portal licensing L2: the member's "Send portal access" on one of their clients.
 // Rendered only when msm_load_client_home carries portal_access, i.e. while the
@@ -127,8 +128,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
   const canChangeMethod = !readOnly && ['active', 'ending', 'past_due'].includes(lic?.state) && (lic?.subscription_count || 0) > 0
 
   return (
-    <div style={sectionStyle}>
-      <div style={cardTitle}>Client Portal</div>
+    <ProfileCard icon="globe" title="Client Portal">
       {readOnly ? (
         <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: 0 }}>
           {!client?.email ? 'This client has no email address.' : sentAt ? <>Portal access sent <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(sentAt)}</strong>{hasLogin ? ' - the client has a login.' : '.'}</> : 'The member has not sent portal access yet.'}
@@ -202,7 +202,7 @@ export default function MemberPortalAccessCard({ client, portalAccess, onSent, c
           {licError && <p style={{ fontSize: '13px', marginTop: '10px', marginBottom: 0, color: '#d93025' }}>{licError}</p>}
         </div>
       )}
-    </div>
+    </ProfileCard>
   )
 }
 
