@@ -12,7 +12,7 @@ import { SettingsHeader, SETTINGS_WIDTH, useSettingsReturn } from '../components
 import { usePortalTheme } from '../lib/theme'
 import { useIsPhone } from '../lib/useMediaQuery'
 import { lazyPage } from '../lib/lazyPage'
-import { ClientProgressSkeleton, OnePagePlanSkeleton, ShowroomSkeleton, VaultSectionsSkeleton } from '../components/shared/Skeleton'
+import { ClientProgressSkeleton, OnePagePlanSkeleton, ShowroomSkeleton, Skeleton, VaultSectionsSkeleton } from '../components/shared/Skeleton'
 import OnePagePlanView from '../components/shared/OnePagePlanView'
 // Portal licensing L8: My Progress pulls in the member screen's track tabs, so it is
 // its own chunk, loaded only when a Premium client opens the tab.
@@ -31,7 +31,11 @@ export default function ClientPortal() {
   const session = getSession()
   usePortalTheme()
   const isPhone = useIsPhone()
-  const [tab, setTab] = useState(sessionStorage.getItem('clientActiveTab') || 'showroom')
+  // A fresh sign-in starts on Home (2026-11-27): portal licensing, which gives the
+  // portal its Home landing, is on for every member, so starting on Showroom drew
+  // the Showroom placeholder and then jumped to Home. The first load still moves a
+  // client whose member has licensing off to Showroom.
+  const [tab, setTab] = useState(sessionStorage.getItem('clientActiveTab') || 'home')
   // A tab the client picked (this visit or earlier in the session) always wins
   // over the Home landing — a ref, so the load below sees a click made while it ran.
   const tabChosen = useRef(!!sessionStorage.getItem('clientActiveTab'))
@@ -179,6 +183,8 @@ export default function ClientPortal() {
           <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2.5px', marginBottom: '10px' }}>{timeGreeting()}</p>
           <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.02em', fontSize: '38px', color: 'var(--vfo-heading)', margin: 0 }}>{session.name || session.email}</p>
           <div style={{ width: '46px', height: '4px', borderRadius: '99px', background: '#fb895a', margin: '18px auto 0' }} />
+          {/* The membership line's place while the first load runs. */}
+          {showroomLoading && !loadError && <Skeleton width={320} height={14} style={{ margin: '30px auto 0', maxWidth: '100%' }} />}
           {licence && (
             <p style={{ fontSize: '14px', color: 'var(--vfo-muted)', marginTop: '28px' }}>
               {licence.status === 'active' && licence.monthly
