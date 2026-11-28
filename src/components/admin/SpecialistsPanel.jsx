@@ -857,8 +857,8 @@ function SpecialistProfileView({ expert, ecos: ecosProp, connectBusy = false, co
       {/* Specialist Details, then Revenue Details, then the long write-ups. */}
       <ProfileCard icon="id" title="Specialist Details">
         <FieldGrid min={360} phoneCols={1}>
-          <Field label="Work email" nowrap>{expert.email}</Field>
-          <Field label="Personal email" nowrap>{expert.personal_email}</Field>
+          <Field label="Work email" nowrap pair>{expert.email}</Field>
+          <Field label="Personal email" nowrap pair>{expert.personal_email}</Field>
           <Field label="Join date">{expert.join_date ? formatDate(expert.join_date) : null}</Field>
           {expert.leave_date && <Field label="Leave date">{formatDate(expert.leave_date)}</Field>}
         </FieldGrid>

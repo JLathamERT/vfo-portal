@@ -138,14 +138,16 @@ const isEmpty = (v) => v == null || v === '' || v === '—' || v === false
 // faint dash. `wide` spans the whole grid row (a long website, a note).
 // `nowrap` keeps the value on one line (emails, websites). Lay those out in a
 // grid wide enough to hold them (FieldGrid min 360, one per row on a phone); the
-// "…" cut is only a last resort for an unusually long address.
-export function Field({ label, children, wide = false, nowrap = false, style }) {
+// "…" cut is only a last resort for an unusually long address. `pair` keeps a
+// field beside its partner however long the value (the two emails, Jake 2026-11-28:
+// the details read 2-2-2); a value too long for its half ends in "…", whole on hover.
+export function Field({ label, children, wide = false, nowrap = false, pair = false, style }) {
   const isPhone = useIsPhone()
   const empty = isEmpty(children)
   const oneLine = nowrap && !empty
   // A one-line value too long for half a row (a long email) takes the whole row
   // rather than being cut.
-  const long = oneLine && String(typeof children === 'string' ? children : (children?.props?.children ?? '')).length > 34
+  const long = oneLine && !pair && String(typeof children === 'string' ? children : (children?.props?.children ?? '')).length > 34
   return (
     <div style={{ background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: isPhone ? '9px 12px' : '10px 14px', minWidth: 0, gridColumn: wide || long ? '1 / -1' : undefined, ...style }}>
       <div style={subLabel}>{label}</div>

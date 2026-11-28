@@ -166,14 +166,14 @@ function MemberClientCard({ c, onOpen }) {
 // reads across as two aligned pairs.
 const line = { lineHeight: '17px', padding: '1px 0' }
 
-function ProgramPill({ label, direct = false }) {
-  const isPlanning = label === 'Tax Planning'
-  // A Direct case is one pill, not two: the same Tax Planning pill turned orange.
-  const bg = direct ? 'rgba(224,103,23,0.12)' : isPlanning ? 'var(--vfo-accent-tint)' : 'var(--vfo-tint)'
-  const color = direct ? '#e06717' : isPlanning ? 'var(--vfo-accent-text)' : 'var(--vfo-chip-text)'
+// The plan a row is on, in plain words (Jake 2026-11-28: every row has one, so it is
+// not a tag). A Direct case says so in orange after the name.
+function ProgramName({ label, direct = false }) {
   return (
     <span title={direct ? 'Direct: the member runs this case and is the Planning Facilitator' : undefined}
-      style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', whiteSpace: 'nowrap', background: bg, color, border: '1px solid var(--vfo-border-chip)' }}>{direct ? `${label} - Direct` : label}</span>
+      style={{ fontSize: '12px', color: 'var(--vfo-ink)', whiteSpace: 'nowrap' }}>
+      {label}{direct && <span style={{ color: '#e06717', fontWeight: 600 }}> · Direct</span>}
+    </span>
   )
 }
 
@@ -533,10 +533,8 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
                       : <span style={{ color: 'var(--vfo-faint)' }}>—</span>}
                   </span>
                   <span style={{ fontSize: '12px', color: c.assigned_pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.assigned_pf || '—'}</span>
-                  <span style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {(c.programs || []).length
-                      ? c.programs.map(p => <ProgramPill key={p.id} label={programLabel(p.name)} />)
-                      : <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>No program yet</span>}
+                  <span style={{ fontSize: '12px', color: (c.programs || []).length ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>
+                    {(c.programs || []).length ? c.programs.map(p => programLabel(p.name)).join(', ') : 'No program yet'}
                   </span>
                   <span style={{ fontSize: '12px', color: c.ciq_count ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.ciq_count == null ? '—' : c.ciq_count}</span>
                 </div>
@@ -642,7 +640,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
                   {activeSection === 'tax_planning' && (
                     <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       {t.program_label
-                        ? <ProgramPill label={t.program_label} direct={t.tax_route === 'direct'} />
+                        ? <ProgramName label={t.program_label} direct={t.tax_route === 'direct'} />
                         : <span style={{ fontSize: '12.5px', color: 'var(--vfo-faint)' }}>—</span>}
                     </span>
                   )}

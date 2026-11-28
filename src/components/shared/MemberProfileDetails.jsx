@@ -181,8 +181,8 @@ export default function MemberProfileDetails({
                   ? <a href={normalizeUrl(profile.website_url)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--vfo-link)', textDecoration: 'none' }} title={profile.website_url}>{profile.website_url}</a>
                   : null}
               </Field>
-              <Field label="Work email" nowrap>{profile.email}</Field>
-              <Field label="Personal email" nowrap>{profile.personal_email}</Field>
+              <Field label="Work email" nowrap pair>{profile.email}</Field>
+              <Field label="Personal email" nowrap pair>{profile.personal_email}</Field>
             </FieldGrid>
             <div style={{ ...subLabel, margin: '18px 0 9px' }}>Membership</div>
             <FieldGrid min={360}>
