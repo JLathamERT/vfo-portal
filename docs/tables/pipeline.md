@@ -225,6 +225,24 @@ three meeting-reminder tiers and the deposit stall ladder.
 
 ---
 
+## `onboarding_phase_notes` *(2026-11-28, migration `20261128120000_phase_notes_onboarding_msm.sql`)*
+
+The **Notes** button on each phase of the Advisor, Accountant and Specialist onboarding trackers (Issue JLathamERT/vfo-edge-functions#661 part 5). An onboarding has no client, so these cannot live in `client_notes`. Team-only: no visibility column, no @mentions.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigint identity | pk |
+| `pipeline` | text | not null; CHECK `'ADVISOR'` \| `'ACCOUNTANT'` \| `'SPECIALIST'` |
+| `onboarding_id` | integer | not null; the `advisor_onboarding` / `accountant_onboarding` / `specialist_onboarding` row id (no FK: one column serves three tables) |
+| `phase_name` | text | not null; the phase / stage title as the tracker shows it (Specialist: without the "Stage N — " prefix) |
+| `note_text` | text | not null |
+| `created_by` | text | the signed-in admin's NAME (`utils/admin-name.ts`), never a body value |
+| `created_at` / `updated_at` | timestamptz | default `now()` |
+
+Index `onboarding_phase_notes_record_idx (pipeline, onboarding_id)`. RLS on, `"Deny all access"` (#141); anon probe `*/0` on the test site 2026-11-28.
+
+**Touched by:** `onboarding_notes_load`, `onboarding_note_add`, `onboarding_note_update`, `onboarding_note_delete` (`actions/onboarding-notes/notes.ts`), all in `ADMIN_ONLY_ACTIONS`. Frontend: `shared/OnboardingNotes.js` (`useOnboardingNotes`) + `RecordPhaseNotesPanel` (`shared/PhaseNotes.jsx`).
+
 ## `pipeline_sandbox_config`
 
 Per-pipeline sandbox/live toggle. Read at the top of every automation handler to decide whether to use `STRIPE_SECRET_KEY` vs `STRIPE_SECRET_KEY_SANDBOX` and `BOLDSIGN_API_KEY` vs `BOLDSIGN_API_KEY_SANDBOX`. **Since 2026-09-11 it also names the Stripe ACCOUNT — see `stripe_account` below.**

@@ -203,6 +203,10 @@ To **Tracy** (`tnmiller@elitert.com` — who owns BOTH note prompts since 2026-0
 - ~~Frontend production deploy required~~ **DONE** — the whole Specialist UI is now deployed/live. (Code is deployed but **not yet committed** in git.)
 - Card declines mid-Checkout don't webhook; **ACH first-payment bounces now do** (`checkout.session.async_payment_failed`, 2026-06-15 → `bg_payment_status='failed'` + Jake alert). License lapse/cancel also alerts now (`customer.subscription.updated`/`deleted` → "consider revoking access").
 
+## The tracker: phase Notes, dates, checklist *(2026-11-28, Issue #661 part 5)*
+
+Each stage is the shared `PhaseCard` with a **Notes** button: a team-only thread per stage in `onboarding_phase_notes` (pipeline `SPECIALIST`, phase name = the stage title without "Stage N — "). Rows show **read-only** dates: the step's `onboarding_progress` `completed_at` (the Stage 1 decision, the Stage 2 checklist, the Stage 5 items) or the stamp an automated row already used. The Stage 2 checklist and the Stage 5 items are dot rows with **Mark done** (and **Undo** where the step could be unticked before), not square checkboxes. The stages show "In progress" without an n/m count: a stage has no fixed step list to count.
+
 ## Cross-references
 
 - License Fee Continuation (existing specialists): [specialist-license-continuation.md](specialist-license-continuation.md)

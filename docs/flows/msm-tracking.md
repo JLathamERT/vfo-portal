@@ -157,6 +157,10 @@ Three new backend actions — `member_client_vault_list` / `_download` / `_uploa
 4. **Roleplay intro is email-first, not transactional** — `training_roleplay_send_intro` drafts the email, THEN stamps `training_roleplays`; a failed stamp returns 500 "The intro email was drafted, but the step could not be saved" with the draft already in Gmail. `training_roleplay_confirm` is the opposite (row first, rolled back on email failure — unexercised).
 5. **`msm_link_existing_client`** could in theory let an admin link a client to any enrollment without ownership validation. No checks observed — now admin-only (2026-09-12), so the exposure is admin-side only.
 
+## Phase Notes on the 90 Day Plan *(2026-11-28, Issue #661 part 5)*
+
+Each training-track phase (admin `TrainingTrack`, now the shared `PhaseCard`) has a **Notes** button: the member's program notes (`member_program_notes`) with that phase's `phase_name`, saved Admin or Shared like the Notes tab (`useProgramPhaseNotes`). The program's Notes tab still lists every note, each with its phase name. The member's training view shows a phase's **shared** notes read-only (the button only when there are some). Step dates are read-only on both sides, as on every tracker (2026-11-28). Unused, not changed: `ClientTrack` (admin `MSMTracking.jsx`) and `MemberClientTrackView` (`MemberMSMTracking.jsx`) are defined but never rendered.
+
 ## Cross-references
 
 - Programs/enrollments tables: [../tables/programs.md](../tables/programs.md)
