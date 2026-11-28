@@ -41,8 +41,8 @@ const TAX_ECOSYSTEM = 'Tax Planning'
 import { STATUS_COLORS } from '../shared/statusColors'
 import { HeroAvatar, ListHeader } from '../shared/TrackKit'
 import StripeAccountField from '../shared/StripeAccountField'
-import { BackLink, ChoiceButtons, DotText, Field, FieldGrid, FormGrid, formInput, formLabel, PageHeading, ProfileCard, ProfileHero, SaveBar, SettingRow, subLabel, Switch } from '../shared/ProfileKit'
-import { btnDanger, btnOutline, btnPrimary, btnSecondary, btnState, BTN_SMALL } from '../shared/buttonStyles'
+import { BackLink, cardBox, ChoiceButtons, DotText, Field, FieldGrid, FormGrid, formInput, formLabel, PageHeading, ProfileCard, ProfileHero, SaveBar, SettingRow, subLabel, Switch } from '../shared/ProfileKit'
+import { BTN_SMALL, btnDanger, btnOutline, btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 const HEADSHOT_SUPABASE = HEADSHOTS_URL
 const HEADSHOT_BASE = 'https://biz-diagnostic.com/Uploads/ExpertPhotos/'
 
@@ -413,7 +413,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
   const inputStyle = formInput
   const labelStyle = formLabel
   const fieldStyle = { marginBottom: '16px' }
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
 
   function SpecialistForm({ which, statusMsg, statusType: sType }) {
     const shared = which === 'add' ? addShared : editShared
@@ -643,7 +643,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
           {SpecialistForm({ which: 'add', statusMsg: addStatus, statusType: addStatusType })}
           <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
             <button onClick={() => submitSpecialist('add')}
-              style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
+              style={btnPrimary}>
               Add Specialist
             </button>
             <button onClick={clearAddForm}
@@ -785,8 +785,7 @@ function SpecialistProfileView({ expert, ecos: ecosProp, connectBusy = false, co
       .finally(() => { if (alive) setConnectLoading(false) })
     return () => { alive = false }
   }, [expert.id, acctId, connectRefresh])
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
-  const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
+  const sectionStyle = cardBox
   const fieldLabel = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--vfo-faint)', textTransform: 'uppercase' }
   const dbHeading = { fontSize: '14px', fontWeight: 800, letterSpacing: '0.4px', color: 'var(--vfo-heading)', textTransform: 'uppercase' }
   const chip = { fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.25)' }

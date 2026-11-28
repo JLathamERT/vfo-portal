@@ -4,13 +4,13 @@ import { PhaseNotesButton, PhaseNotesPanel, useOpenLinkedNote } from '../../shar
 import { PipMeetingDetailSkeleton, PipMeetingsListSkeleton } from '../../shared/Skeleton'
 import { TrackHero, ListHeader, StepRow, SubStepRow, AutoSteps, PhaseCard, StepAnswer, TrackEmpty } from '../../shared/TrackKit'
 import Tag from '../../shared/Tag'
-import { stepChoice, stepSend, btnStep, btnState } from '../../shared/buttonStyles'
+import { btnPrimary, btnState, btnStep, stepChoice, stepSend } from '../../shared/buttonStyles'
 import PipPurchaseDecisionForm from './PipPurchaseDecisionForm'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
-import { BackLink } from '../../shared/ProfileKit'
+import { BackLink, cardBox, formInput, ProfileCard } from '../../shared/ProfileKit'
 import { formatDate } from '../../../lib/dates'
 
 // Replicates the backend [Scheduled Meeting Date] substitution (see
@@ -524,9 +524,9 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
     finally { setAdding(false) }
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
+  const sectionStyle = cardBox
   const rowStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', boxShadow: '0 2px 10px rgba(20,45,95,0.05)', padding: '14px 18px', marginBottom: '8px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = formInput
 
   if (loading && selectedTrack) return <PipMeetingDetailSkeleton back readOnly={readOnly} />
   if (loading) return <PipMeetingsListSkeleton action={!readOnly} />
@@ -577,23 +577,22 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
       <ListHeader
         title="PIP Meetings"
         count={tracks.length}
-        action={!readOnly && <button onClick={() => showAdd ? setShowAdd(false) : openAdd()} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>+ Add Year</button>}
+        action={!readOnly && <button onClick={() => showAdd ? setShowAdd(false) : openAdd()} style={btnPrimary}>+ Add Year</button>}
       />
 
 
       {showAdd && (
-        <div style={{ ...sectionStyle, marginBottom: '20px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Add PIP Meetings · Year {nextYearDefault()}</div>
+        <ProfileCard icon="calendar" title={`Add PIP Meetings · Year ${nextYearDefault()}`} style={{ marginBottom: '20px' }}>
           <div style={{ marginBottom: '12px' }}>
             <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '4px' }}>How many PIP meetings paid for (excluding PIP 1 where applicable)?</label>
             <input type="number" min="1" max="50" value={newCount} onChange={e => setNewCount(e.target.value)} style={inputStyle} autoFocus />
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={addMeetings} disabled={adding} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: adding ? 'default' : 'pointer', opacity: adding ? 0.6 : 1 }}>{adding ? 'Adding...' : 'Add'}</button>
+            <button onClick={addMeetings} disabled={adding} style={btnState(btnPrimary, adding)}>{adding ? 'Adding...' : 'Add'}</button>
             <button onClick={() => setShowAdd(false)} disabled={adding} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
           </div>
           {addStatus && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '8px' }}>{addStatus}</p>}
-        </div>
+        </ProfileCard>
       )}
 
       {tracks.length === 0 && !showAdd && (

@@ -7,6 +7,7 @@ import { useIsPhone } from '../../lib/useMediaQuery'
 import { useGcPromo } from '../../lib/gcPromo'
 import { GC_PACKAGES, creditWord, gcMoney } from '../../lib/gcPackages'
 import { BF, BlackFridayBuyBanner } from '../shared/BlackFridayPromo'
+import { cardBox, ProfileCard } from '../shared/ProfileKit'
 
 // The member's Growth Credits marketplace. The packages are always on the
 // Dashboard as cards (2026-11-20, replacing the Buy Credits table behind a
@@ -123,9 +124,8 @@ export default function MemberGCMarketplace({ memberNumber, openBuyKey = 0 }) {
   const subTabStyle = (active) => ({
     padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px'
   })
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
-  // The member portal's own card + heading styles (MemberPortal sectionStyle / cardTitle / profile eyebrow).
-  const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
+  const sectionStyle = cardBox
+  // The member portal's own card + heading styles (MemberPortal sectionStyle / profile eyebrow).
   const eyebrow = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }
 
   return (
@@ -159,8 +159,8 @@ export default function MemberGCMarketplace({ memberNumber, openBuyKey = 0 }) {
             </div>
           </div>
 
-          <div ref={buyRef} style={{ ...sectionStyle, scrollMarginTop: '16px' }}>
-            <div style={cardTitle}>Buy Credits</div>
+          <div ref={buyRef} style={{ scrollMarginTop: '16px' }}>
+          <ProfileCard icon="dollar" title="Buy Credits">
             <BlackFridayBuyBanner freeLeft={freeLeft} onBuy={(n) => buy(n, true)} />
             <div style={{ display: 'grid', gridTemplateColumns: isPhone ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: isPhone ? '10px' : '14px' }}>
               {GC_PACKAGES.map(pkg => (
@@ -169,6 +169,7 @@ export default function MemberGCMarketplace({ memberNumber, openBuyKey = 0 }) {
               ))}
             </div>
             <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '14px' }}>Pick a package, then choose bank (no fee) or card on the next page.</div>
+          </ProfileCard>
           </div>
         </>
       )}
@@ -240,7 +241,7 @@ function PurchaseNotice({ purchase, onClose, isPhone }) {
 // loads): the sub-tabs, the balance card and the Buy Credits card, in place.
 export function GCMarketplaceSkeleton({ inner = false }) {
   const isPhone = useIsPhone()
-  const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
+  const card = cardBox
   const body = (
     <>
       <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--vfo-border)', paddingBottom: '10px', marginBottom: '24px' }}>

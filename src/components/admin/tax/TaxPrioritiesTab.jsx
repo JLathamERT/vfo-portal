@@ -3,7 +3,7 @@ import DirectPill from '../../shared/DirectPill'
 import { callApi, loadCachedAction, getSession, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
 import { TaxPlanListSkeleton, TaxPlanTrackSkeleton } from '../../shared/Skeleton'
 import { PhaseNotesButton, PhaseNotesPanel, noteInScope, useOpenLinkedNote } from '../../shared/PhaseNotes'
-import { TrackHero, PhaseBadge, ListHeader, noMultiClickSelect, StepRow, SubStepRow, AutoSteps, PhaseCard, StepAnswer, StepDot, StepChevron, StepRight, TrackEmpty, STEP_AMBER, answerBox } from '../../shared/TrackKit'
+import { answerBox, AutoSteps, ListHeader, noMultiClickSelect, PhaseBadge, PhaseCard, STEP_AMBER, StepAnswer, StepChevron, StepDot, StepRight, StepRow, stepSelect, SubStepRow, TrackEmpty, TrackHero } from '../../shared/TrackKit'
 import Tag from '../../shared/Tag'
 import { hasStrategicSplit, computeStrategicShares } from '../../../lib/strategicSplits'
 import { MEMBER_PAYS_SPLIT_TYPE, memberPaysTaxShares } from '../../../lib/memberPaysSplit'
@@ -19,11 +19,11 @@ import { TAX_DISPLAY_NAMES, taxDisplayName } from '../../shared/taxDisplayNames'
 import { numberTaxIntakeQuestions, TAX_INTAKE_QUESTIONS, taxIntakeQuestionEditable, taxIntakeQuestionShown, formatTaxIntakeMoneyInput, formatTaxIntakeContactList } from '../../member/taxIntakeQuestions'
 import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
-import { btnPrimary, btnState, btnStep, stepChoice, stepStop, stepSend } from '../../shared/buttonStyles'
+import { btnPrimary, btnState, btnStep, stepChoice, stepSend, stepStop } from '../../shared/buttonStyles'
 import { ChangeStatusModal, PlanStatusBanner, PlanStatusTag, planIsLive } from './TaxPlanStatus'
 import { PlanYearModal, StartPlanModal, TaxPlanCard, planTitle } from './TaxPlanCards'
 import { retainerShareGrossFor } from '../taxShared'
-import { BackLink, ChoiceButtons } from '../../shared/ProfileKit'
+import { BackLink, cardBox, ChoiceButtons, formInput, tintBox } from '../../shared/ProfileKit'
 
 // The automated cascade card. The STORED program_client_tasks.name is a lookup
 // key on both sides of the wire — the two cards below switch on it, MAP 1 keys
@@ -1116,7 +1116,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
               {preview?.error && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '12px', marginTop: '6px' }}>{preview.error}</div>}
               {preview?.split && <FeeBreakdown split={preview.split} paidFlags={paidFlags} />}
               <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                <button disabled={!canSubmitAmend} onClick={() => submit('amend')} style={{ padding: '6px 16px', borderRadius: '6px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '12px', cursor: canSubmitAmend ? 'pointer' : 'not-allowed', opacity: canSubmitAmend ? 1 : 0.5 }}>
+                <button disabled={!canSubmitAmend} onClick={() => submit('amend')} style={btnState(btnPrimary, !(canSubmitAmend))}>
                   {busy ? 'Saving...' : 'Save amended fee'}
                 </button>
                 <button disabled={busy} onClick={() => { setMode(''); setTotalInput(''); setSubmitError('') }} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }}>Cancel</button>
@@ -1277,9 +1277,9 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
   function handleMemberShareChange(val) { setMemberShare(val) }
   function handlePlannerShareChange(val) { setTaxPlannerShare(val) }
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = formInput
   const labelStyle = { fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }
-  const sectionStyle = { background: 'var(--vfo-tint)', borderRadius: '8px', padding: '16px', marginBottom: '12px', border: '1px solid var(--vfo-border-chip)' }
+  const sectionStyle = tintBox
   const readOnlyInput = { ...inputStyle, opacity: 0.6, pointerEvents: 'none' }
 
   async function handleSubmit() {
@@ -1690,7 +1690,7 @@ function TaxDecisionForm({ task, plan, saveTask, taxSpecialistId, existingData, 
               {videoMissing && !feeBlank && !presentationMissing && (
                 <div style={{ fontSize: '12px', color: '#e06717', fontWeight: 600, marginBottom: '8px' }}>Paste the video link (https://…) before sending.</div>
               )}
-              <button onClick={handleSubmit} disabled={blockSubmit} style={{ width: '100%', padding: '12px', borderRadius: '8px', background: blockSubmit ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '15px', fontWeight: '600', cursor: blockSubmit ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+              <button onClick={handleSubmit} disabled={blockSubmit} style={{ ...btnState(btnPrimary, blockSubmit), width: '100%', padding: '12px', fontSize: '15px' }}>
                 {submitting ? (decision === 'Rapid' ? 'Sending...' : 'Submitting...') : (decision === 'Rapid' ? 'Send Rapid Route email' : 'Submit Outcome')}
               </button>
             </>
@@ -1759,9 +1759,9 @@ function TaxPricingForm({ submitLabel = 'Submit', onSubmit, onCancel, memberCate
     }
   }, [isStrategic, memberType, totalFee, splitType])
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = formInput
   const labelStyle = { fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }
-  const sectionStyle = { background: 'var(--vfo-tint)', borderRadius: '8px', padding: '14px', marginBottom: '10px', border: '1px solid var(--vfo-border-chip)' }
+  const sectionStyle = tintBox
   const riskOptions = ['Yes — Risk 1 — Very Conservative Mindset','Yes — Risk 2 - Moderately Conservative Mindset','Yes — Risk 3 — Average Risk Mindset','Yes — Risk 4 — Moderately Aggressive Mindset','Yes — Risk 5 — Very Aggressive Mindset']
   const splitOptions = ['1/3 Member, 1/3 Tax Planner, 1/3 VFOS', 'Custom']
   const isPresetSplit = splitType && splitType !== 'Custom'
@@ -1954,7 +1954,7 @@ function TaxPricingForm({ submitLabel = 'Submit', onSubmit, onCancel, memberCate
       )}
       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '14px' }}>
         {onCancel && <button disabled={submitting} onClick={onCancel} style={{ padding: '8px 16px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Cancel</button>}
-        <button disabled={blockSubmit} onClick={handle} style={{ padding: '8px 18px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: blockSubmit ? 'not-allowed' : 'pointer', border: 'none', background: blockSubmit ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff' }}>{submitting ? 'Submitting…' : submitLabel}</button>
+        <button disabled={blockSubmit} onClick={handle} style={btnState(btnPrimary, blockSubmit)}>{submitting ? 'Submitting…' : submitLabel}</button>
       </div>
     </div>
   )
@@ -2152,7 +2152,7 @@ function AssessTaxForm({ task, plan, saveTask, existingData, onSubmitted, onCanc
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = formInput
   const labelStyle = { fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }
   const wrapStyle = { marginLeft: '18px', padding: '16px', background: 'var(--vfo-tint)', borderRadius: '10px', border: '1px solid var(--vfo-tint-deep)', marginTop: '4px', marginBottom: '8px' }
   const sectionLabelStyle = { fontSize: '11px', color: 'var(--vfo-ink)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }
@@ -2373,7 +2373,7 @@ function AssessTaxForm({ task, plan, saveTask, existingData, onSubmitted, onCanc
 
       {submitError && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '13px', marginBottom: '8px' }}>{submitError}</div>}
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={handleSubmit} disabled={submitting} style={{ flex: 1, padding: '12px', borderRadius: '8px', background: submitting ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '15px', fontWeight: '600', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+        <button onClick={handleSubmit} disabled={submitting} style={{ ...btnState(btnPrimary, submitting), flex: 1, padding: '12px', fontSize: '15px' }}>
           {submitting ? 'Submitting...' : editing ? 'Save changes' : 'Submit'}
         </button>
         {onCancel && <button onClick={onCancel} disabled={submitting} style={{ padding: '12px 20px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--vfo-border-strong)', color: 'var(--vfo-muted)', fontSize: '15px', fontWeight: '600', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
@@ -2432,7 +2432,7 @@ function ClientQuestionsCard({ planId, act }) {
   const waiting = list.filter(q => !q.answered_at).length
   const summary = questions == null ? '' : list.length === 0 ? 'No questions asked'
     : `${list.length} asked${waiting ? ` · ${waiting} waiting` : ' · All answered'}`
-  const btn = { padding: '8px 18px', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)' }
+  const btn = btnPrimary
   return (
     <div style={{ background: 'var(--vfo-plan-tool-bg)', border: '1px solid var(--vfo-plan-tool-border)', borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden' }}>
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer', gap: '10px', flexWrap: 'wrap' }}>
@@ -3661,7 +3661,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
   }
 
 
-  const inputStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = stepSelect
 
 
   // The owner chip says whose step it is FROM THE VIEWER'S SEAT, so the same
@@ -6125,7 +6125,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <PhasePill state={tax5aHeroState} />
                 {!readOnly && !stepsLocked && (
-                  <button onClick={() => setShowAddSpec(!showAddSpec)} style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff' }}>+ Add Specialist</button>
+                  <button onClick={() => setShowAddSpec(!showAddSpec)} style={btnPrimary}>+ Add Specialist</button>
                 )}
               </div>
             </div>
@@ -6148,7 +6148,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                 )}
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {(() => { const blocked = newSpecId === OTHER_SPEC_VALUE && !newCustomName.trim(); return (
-                    <button onClick={addSpecialist} disabled={blocked} style={{ padding: '6px 16px', borderRadius: '6px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '12px', cursor: blocked ? 'not-allowed' : 'pointer', opacity: blocked ? 0.5 : 1 }}>Add</button>
+                    <button onClick={addSpecialist} disabled={blocked} style={btnState(btnPrimary, blocked)}>Add</button>
                   ) })()}
                   <button onClick={() => { setShowAddSpec(false); setNewCustomName('') }} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }}>Cancel</button>
                 </div>
@@ -6647,7 +6647,7 @@ function TaxPrioritiesTab({ clientId, programId, programName, client, specialist
     return at('not started')
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
+  const sectionStyle = cardBox
   // One open plan per client: live or paused, and not finished.
   const planStates = new Map(taxPlans.map(p => [p.id, getPlanState(p)]))
   const isOpenPlan = (p) => p.status !== 'stopped' && p.status !== 'completed' && planStates.get(p.id)?.state !== 'completed'

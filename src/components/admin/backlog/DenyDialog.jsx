@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { btnDanger, btnSecondary, btnState } from '../../shared/buttonStyles'
-import BacklogModal, { errorText, fieldLabel, inputStyle } from './BacklogModal'
+import Modal, { errorText, fieldLabel, inputStyle } from '../../shared/Modal'
 
 // Deny needs a reason; the requester sees it in their bell and the drawer.
 export default function DenyDialog({ request, onDeny, onClose }) {
@@ -16,7 +16,7 @@ export default function DenyDialog({ request, onDeny, onClose }) {
   }
 
   return (
-    <BacklogModal title="Deny request" onClose={onClose}
+    <Modal title="Deny request" onClose={onClose}
       footer={(
         <>
           <button style={btnSecondary} onClick={onClose}>Cancel</button>
@@ -29,6 +29,6 @@ export default function DenyDialog({ request, onDeny, onClose }) {
       <label style={fieldLabel} htmlFor="backlog-deny-reason">Reason (required)</label>
       <textarea id="backlog-deny-reason" rows={4} value={note} onChange={(e) => setNote(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
       {error && <div style={errorText}>{error}</div>}
-    </BacklogModal>
+    </Modal>
   )
 }

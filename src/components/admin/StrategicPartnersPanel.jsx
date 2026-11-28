@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { STRATEGIC_SPLITS } from '../../lib/strategicSplits'
 import { StrategicPartnersSkeleton } from '../shared/Skeleton'
-import { PageHeading } from '../shared/ProfileKit'
+import { cardBox, formInput, PageHeading } from '../shared/ProfileKit'
+import { btnPrimary, btnState } from '../shared/buttonStyles'
 
 // Strategic Partners (the "companies": Action Coach, Tax Plan IQ, …). Each has a
 // profile showing its holistic/tax split blurb + a Stripe Connect payout account
@@ -61,9 +62,9 @@ function PartnerCard({ group, onSaved }) {
     finally { setRequesting(false) }
   }
 
-  const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const cardStyle = { ...cardBox, marginBottom: '20px' }
   const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', maxWidth: '340px', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = { ...formInput, maxWidth: '340px' }
   const blurb = (text) => (
     <div style={{ fontSize: '13px', color: '#334155', lineHeight: 1.6, padding: '10px 14px', background: 'var(--vfo-input)', borderRadius: '10px', border: '1px solid var(--vfo-tint)', marginBottom: '8px' }}>{text}</div>
   )
@@ -93,7 +94,7 @@ function PartnerCard({ group, onSaved }) {
         <input value={contactEmail} onChange={e => setContactEmail(e.target.value)} type="email" placeholder="payments@company.com" style={inputStyle} />
       </div>
       <button onClick={setUp} disabled={requesting}
-        style={{ padding: '10px 24px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: requesting ? 'not-allowed' : 'pointer', opacity: requesting ? 0.6 : 1 }}>
+        style={btnState(btnPrimary, requesting)}>
         {requesting ? 'Working…' : connected ? 'Resend Setup Email' : 'Set Up Payment Details'}
       </button>
       {msg && <p style={{ color: msgType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{msg}</p>}

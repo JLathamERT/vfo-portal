@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { loadCachedAction, getSession } from '../../lib/api'
 import { TEMPLATE_META, ROLE_LABELS } from './templateMeta'
+import Modal from './Modal'
 
 const MEMBER_TWIN_SUFFIX = ' (member signing/paying on clients behalf)'
 const TOKEN_RE = /\[([^\[\]<>]{1,60})\]/g
@@ -190,27 +191,16 @@ function StepEmailsChipInner({ pipeline, templates, label = 'Emails', context, t
         {collapsedText}
       </button>
       {open && (
-        <div
-          onClick={e => { e.stopPropagation(); setOpen(false) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(10,18,40,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'Inter, sans-serif' }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: '0 18px 50px rgba(10,18,40,0.35)', maxWidth: '760px', width: '100%', maxHeight: '84vh', display: 'flex', flexDirection: 'column' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '14px 18px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)' }}>{title}{cards.length > 1 ? ` (${cards.length})` : ''}</span>
-              <button type="button" onClick={() => setOpen(false)} style={{ padding: '4px 12px', borderRadius: '999px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }}>Close</button>
-            </div>
-            <div style={{ overflowY: 'auto', padding: '16px 18px' }}>
-              {status === 'loading' && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Loading emails...</div>}
-              {status === 'error' && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Email previews unavailable for your login.</div>}
-              {status === 'ready' && cards.map(c => (
-                <EmailCard key={c.key} headerLabel={c.headerLabel} name={c.name} row={c.row} normCtx={normCtx} />
-              ))}
-            </div>
-          </div>
-        </div>
+        // The chip sits inside a clickable step row: keep the pop-up's clicks out of it.
+        <span onClick={e => e.stopPropagation()}>
+          <Modal title={`${title}${cards.length > 1 ? ` (${cards.length})` : ''}`} width={760} onClose={() => setOpen(false)}>
+            {status === 'loading' && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Loading emails...</div>}
+            {status === 'error' && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Email previews unavailable for your login.</div>}
+            {status === 'ready' && cards.map(c => (
+              <EmailCard key={c.key} headerLabel={c.headerLabel} name={c.name} row={c.row} normCtx={normCtx} />
+            ))}
+          </Modal>
+        </span>
       )}
     </>
   )

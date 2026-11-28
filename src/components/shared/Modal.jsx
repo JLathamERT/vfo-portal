@@ -1,7 +1,10 @@
 import { useEffect } from 'react'
 
-// The Portal Backlog's centred dialog: New request, Deny, Archive.
-export default function BacklogModal({ title, onClose, children, footer, width = 520 }) {
+// The house pop-up (HOUSE_STYLE §7; moved from backlog/ in Issue #661 part 6b):
+// overlay, 16px card, title with ×, optional footer bar; Escape or a click on the
+// overlay closes it. A dialog that must not close mid-save passes an onClose that
+// ignores the call while busy.
+export default function Modal({ title, onClose, children, footer, width = 520 }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)

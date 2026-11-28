@@ -8,6 +8,7 @@ import { formatDate } from '../../lib/dates'
 import { exportDate } from '../../lib/exportXlsx'
 import EventTiles from './EventTiles'
 import { ATTENDEE_TYPES, connectionOf, eventMoney as money, howOf, needsAnswer, partiesOf, peopleOf } from './eventRows'
+import { listSelectStyle } from '../shared/ListTable'
 
 // Events > Attendees (2026-11-25): one row per PERSON coming, so the rows and the
 // count agree. People are kept in parties: a member (or a buyer who is nobody's
@@ -97,7 +98,7 @@ export default function EventAttendeesTable({ data, onOpenPurchases }) {
   const exportRows = peopleOf(data.rows || []).filter(p => !q || [p.name, p.email, p.phone, p.member_number, p.guest_of].some(hit))
     .sort((a, b) => `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`))
 
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
+  const sel = listSelectStyle
   const cells = { display: 'grid', gridTemplateColumns: EVENT_GRID, gap: '10px', alignItems: 'center', fontSize: '12.5px', color: 'var(--vfo-ink)' }
 
   // A member who registered free and then left the tier that comes free.

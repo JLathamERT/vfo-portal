@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { KpiHero, SplitDonut, BreakdownRows, BreakdownCard } from './KpiKit'
+import { STANDING_COLORS } from '../shared/statusColors'
 import SubTabs from '../shared/SubTabs'
 import { MemberNameLink } from '../shared/personLinks'
 
@@ -48,9 +49,9 @@ const SEPARATE_BUCKETS = {
 // segments, because they'd double-count Active in the stacked bar).
 const LENSES = [
   { key: 'active', label: 'Active', color: '#1b9254', desc: 'of total' },
-  { key: 'suspended', label: 'Suspended', color: '#c98a14', desc: 'of active', sub: true },
-  { key: 'paused', label: 'Paused', color: '#e06717', desc: 'of active', sub: true },
-  { key: 'arrears', label: 'In Arrears', color: '#b45309', desc: 'of active', sub: true },
+  { key: 'suspended', label: 'Suspended', color: STANDING_COLORS.Suspended, desc: 'of active', sub: true },
+  { key: 'paused', label: 'Paused', color: STANDING_COLORS.Paused, desc: 'of active', sub: true },
+  { key: 'arrears', label: 'In Arrears', color: STANDING_COLORS['In Arrears'], desc: 'of active', sub: true },
   { key: 'lost', label: 'Lost', color: '#e74c3c', desc: 'of total' },
   { key: 'removed', label: 'Removed', color: '#9b1c1c', desc: 'of total' },
   { key: 'all', label: 'Total', color: '#125ecc', desc: 'incl. lost & removed' },
@@ -70,12 +71,11 @@ const LENS_PREDICATE = {
   removed: (m) => statusOf(m) === 'Removed',
 }
 
-// Colors match the member-profile Suspended/Paused toggles: suspended = red,
-// paused = orange; arrears = amber, the held-payout colour Accounting uses.
+// One colour per standing flag, the same as the lens above and the profile.
 const STANDING = {
-  suspended: { label: 'Suspended', color: '#e74c3c' },
-  paused: { label: 'Paused', color: '#e06717' },
-  arrears: { label: 'In Arrears', color: '#b45309' },
+  suspended: { label: 'Suspended', color: STANDING_COLORS.Suspended },
+  paused: { label: 'Paused', color: STANDING_COLORS.Paused },
+  arrears: { label: 'In Arrears', color: STANDING_COLORS['In Arrears'] },
 }
 
 export default function MemberKpiPanel({ allMembers, category }) {

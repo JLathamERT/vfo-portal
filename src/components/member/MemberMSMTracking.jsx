@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { clientStatusHex, clientStatusKey, clientStatusLabel } from '../shared/clientStatus'
 import DirectPill from '../shared/DirectPill'
-import { DotText, ProfileCard } from '../shared/ProfileKit'
-import { btnPrimary } from '../shared/buttonStyles'
+import { cardBox, DotText, formInput, ProfileCard } from '../shared/ProfileKit'
+import { btnPrimary, btnState } from '../shared/buttonStyles'
 import ListTable, { ListName, ListPill, ListText } from '../shared/ListTable'
 import { LinkTile, MeetingHistoryList, ProgramNotesList } from '../shared/MsmKit'
 import { useNavigate } from 'react-router-dom'
@@ -229,7 +229,7 @@ export default function MemberMSMTracking({ member, activeTab, onNavigate }) {
 
   const taxIntakeEnabled = features.tax_intake === true
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
 
   const advancedCount = coachingCounts['Advanced Coaching'] || 0
   const standardCount = coachingCounts['Standard Coaching'] || 0
@@ -386,7 +386,7 @@ function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged 
   const didMountRef = useRef(false)
   useEffect(() => { if (didMountRef.current) setActiveTab(defaultTab); else didMountRef.current = true }, [program.id])
   const tabStyle = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' })
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '20px' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
   const statusColors = { 'On Fast Track': '#1b9254', 'Paused Fast Track': '#e06717', 'Lost/Removed': '#e74c3c', 'Revert to Legacy': 'var(--vfo-muted)', 'Active': '#1b9254' }
 
   return (
@@ -523,7 +523,7 @@ function MemberTrainingView({ enrollment, program, memberNumber }) {
     finally { setLoading(false) }
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
+  const sectionStyle = cardBox
   const statusColors = { Completed: '#1b9254', 'Have Watched': '#1b9254', 'In Progress': '#e06717', 'Will Watch': '#e06717', Outstanding: 'var(--vfo-muted)', 'N/A': 'var(--vfo-muted)', Pending: '#e74c3c', Stopped: '#e74c3c' }
   const statusBg = { Completed: 'rgba(27,146,84,0.15)', 'Have Watched': 'rgba(27,146,84,0.15)', 'In Progress': 'rgba(251,137,90,0.15)', 'Will Watch': 'rgba(251,137,90,0.15)', Outstanding: 'rgba(91,107,140,0.15)', 'N/A': 'rgba(91,107,140,0.15)', Pending: 'rgba(231,76,60,0.15)', Stopped: 'rgba(231,76,60,0.15)' }
   // Positive values are open-ended per program ("3 to Call", "Built - 45%", "Type 2 ...")
@@ -664,7 +664,7 @@ function MemberTrackerTask({ task, meta, enrollmentId, progress, inGroup, onStat
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = formInput
   const labelStyle = { fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }
 
   // Before the entries load we can only approximate the count from the step status
@@ -759,7 +759,7 @@ function MemberTrackerTask({ task, meta, enrollmentId, progress, inGroup, onStat
               <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
             {error && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '13px', marginBottom: '8px' }}>{error}</div>}
-            <button onClick={addEntry} disabled={submitting} style={{ padding: '10px 24px', borderRadius: '8px', background: submitting ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+            <button onClick={addEntry} disabled={submitting} style={btnState(btnPrimary, submitting)}>
               {submitting ? 'Adding...' : `Add ${meta.noun}`}
             </button>
           </div>
@@ -882,7 +882,7 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     onEnrollmentsChanged?.()
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
+  const sectionStyle = cardBox
 
   if (intakeOn && mode === 'form') return (
     <TaxIntakeForm
@@ -1084,7 +1084,7 @@ function MemberCoachingMeetings({ enrollment, eyebrow = 'Advanced Coaching' }) {
   const [loading, setLoading] = useState(true)
   const [expandedMeeting, setExpandedMeeting] = useState(null)
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: isPhone ? '14px' : '20px' }
+  const sectionStyle = { ...cardBox, marginBottom: isPhone ? '14px' : '20px' }
   const labelStyle = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
 
   useEffect(() => { loadMeetings() }, [enrollment.id])
@@ -1182,7 +1182,7 @@ function MemberCoachingRenewal({ enrollment }) {
   const [renewals, setRenewals] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: isPhone ? '14px' : '20px' }
+  const sectionStyle = { ...cardBox, marginBottom: isPhone ? '14px' : '20px' }
   const labelStyle = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: isPhone ? '8px' : '16px' }
 
   useEffect(() => { loadRenewals() }, [enrollment.id])
@@ -1274,8 +1274,7 @@ function MemberCoachingRenewal({ enrollment }) {
         </>}
       />
 
-      <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Renewal History</div>
+      <ProfileCard icon="history" title="Renewal History">
         {renewals.length === 0
           ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No renewals recorded yet.</p>
           : renewals.map(r => (
@@ -1289,7 +1288,7 @@ function MemberCoachingRenewal({ enrollment }) {
             </div>
           ))
         }
-      </div>
+      </ProfileCard>
     </div>
   )
 }

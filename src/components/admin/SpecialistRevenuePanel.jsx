@@ -3,7 +3,6 @@ import { CARD_FEE_COL, CARD_FEE_LABEL } from './cardFeeColumn'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money, requestDate, RequestRow, MarkReceivedButton, DeleteRequestButton, canDeleteSpecrevRequest, memberShareNote, shareNoteStyle, isHeldLine } from './specialistRevenueShared'
 import { PENDING_COLOR } from './shareLegState'
-import SpecialistPaymentInput from './SpecialistPaymentInput'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink, SpecialistNameLink } from '../shared/personLinks'
 import { MiniTabs } from '../shared/SubTabs'
@@ -13,8 +12,8 @@ import { formatDate } from '../../lib/dates'
 
 // Accounting → VFO Specialist Revenue. Pick year + month to see the specialist
 // payment requests for that period, expand each to see recipients and statuses.
-// The "New Payment" button at the top reveals the Payment Input form inline (the
-// two used to be separate tabs).
+// New Payment is its own sub-tab, second after Revenue (Issue #661 part 6b, Jake
+// 2026-11-28); it was a button that opened the form above this ledger.
 //
 // Each expanded recipient line annotates its Member $ the way the three VFO Services
 // revenue tabs do — "paid" once transferred, "Held - Suspended" / "Held - Paused" while
@@ -24,7 +23,6 @@ import { formatDate } from '../../lib/dates'
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [], embedded = false }) {
-  const [showInput, setShowInput] = useState(false)
   const [viewMode, setViewMode] = useState('specialist') // 'specialist' | 'member'
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
@@ -111,25 +109,12 @@ export default function SpecialistRevenuePanel({ allExperts = [], allMembers = [
 
   return (
     <div style={wrap}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {embedded ? <div /> : (
-          <div>
-            <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting</p>
-            <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>VFO Specialist Revenue</h2>
-          </div>
-        )}
-        <button onClick={() => setShowInput(s => !s)}
-          style={{ padding: '10px 18px', borderRadius: '8px', border: showInput ? '1px solid var(--vfo-border-strong)' : 'none', background: showInput ? 'var(--vfo-card)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: showInput ? 'var(--vfo-muted)' : '#fff', fontWeight: 600, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: showInput ? 'none' : '0 2px 8px rgba(18,94,204,0.28)' }}>
-          {showInput ? 'Close form' : '+ New Payment'}
-        </button>
-      </div>
-
-      {showInput && (
-        <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', background: 'var(--vfo-input)', marginBottom: '22px', overflow: 'hidden' }}>
-          <SpecialistPaymentInput allExperts={allExperts} allMembers={allMembers} onSent={load} />
+      {!embedded && (
+        <div style={{ marginBottom: '18px' }}>
+          <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting</p>
+          <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>VFO Specialist Revenue</h2>
         </div>
       )}
-
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap' }}>
         <select style={sel} value={year} onChange={e => setYear(Number(e.target.value))}>
           {years.map(y => <option key={y} value={y}>{y}</option>)}

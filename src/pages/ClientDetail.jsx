@@ -20,7 +20,7 @@ import { NoteText, MentionTextarea, mentionEmails, pickedFromNote } from '../com
 import { VisibilityBadge, noteTint, SaveVisibilityButtons, MemberBadge, isMemberNote } from '../components/shared/NoteVisibility'
 import { CiqListSkeleton, ClientHeaderSkeleton, ClientProfileTabSkeleton, Map1TrackSkeleton, PFTTrackSkeleton, PaymentsTabSkeleton, PipMeetingsListSkeleton, Skeleton, TaxPlanListSkeleton, TaxPlanTrackSkeleton, VaultSectionsSkeleton } from '../components/shared/Skeleton'
 import { HeroAvatar } from '../components/shared/TrackKit'
-import { DotText, Field, FieldGrid, formInput, formLabel, Initials, PersonName, ProfileCard, ProfileHero, rememberSettingsReturn, subLabel } from '../components/shared/ProfileKit'
+import { cardBox, DotText, Field, FieldGrid, formInput, formLabel, Initials, PersonName, ProfileCard, ProfileHero, rememberSettingsReturn, subLabel } from '../components/shared/ProfileKit'
 import { MemberNameLink } from '../components/shared/personLinks'
 import PortalHeader from '../components/shared/PortalHeader'
 import AdminNavBar, { openAdminSection } from '../components/admin/AdminNavBar'
@@ -32,12 +32,13 @@ import PhoneInput from '../components/shared/PhoneInput'
 import ClientTabDropdown from '../components/shared/ClientTabDropdown'
 import { useIsPhone } from '../lib/useMediaQuery'
 import EmailText from '../components/shared/EmailText'
-import { btnPrimary, btnSecondary, btnDanger, btnState, BTN_SMALL } from '../components/shared/buttonStyles'
+import { BTN_SMALL, btnDanger, btnPrimary, btnSecondary, btnState } from '../components/shared/buttonStyles'
 import { TAILORED_PROGRAM, ACCOUNTANT_FEATURE_TAB } from '../components/shared/accountantPrograms'
 import TailoredRouteTrack from '../components/admin/pft/TailoredRouteTrack'
 import { ChangeStatusModal } from '../components/admin/tax/TaxPlanStatus'
 import { clientStatusHex, clientStatusKey, clientStatusLabel } from '../components/shared/clientStatus'
 import { sortPrograms } from '../components/shared/programOrder'
+import Modal, { errorText } from '../components/shared/Modal'
 
 // Program names as programs.name holds them (single client profile tab strip).
 const HOLISTIC = 'VFO Holistic Planning'
@@ -49,7 +50,6 @@ const HOLISTIC_TABS = ['map1', 'regular', 'tax', 'pip']
 const TEAM_MEMBERS = ['Sarah Freitas', 'Rachael', 'Bridger Silvester', 'Tracy Miller', 'Evan Anderson']
 const statusColors = { Completed: '#1b9254', Confirmed: '#1b9254', Yes: '#1b9254', 'In Progress': '#e06717', Scheduled: '#0095ff', No: '#e74c3c', 'N/A': 'var(--vfo-muted)', Pending: '#e06717' }
 // Specialist-style section heading (navy, underlined) — matches SpecialistProfileView.
-const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
 // Additional Contact Cc — an additional contact is a future Cc recipient, so the
 // email bar here matches the backend's (add-client-contact.ts / dedupeEmails).
 const CONTACT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -327,7 +327,7 @@ export default function ClientDetail() {
     setActiveTab(key)
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: isPhone ? '14px' : '20px' }
+  const sectionStyle = { ...cardBox, marginBottom: isPhone ? '14px' : '20px' }
   const tabStyle = (active) => ({ padding: '7px 12px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' })
 
   // Logged out (e.g. a deep link opened from an email in a new tab): render nothing
@@ -481,11 +481,11 @@ export default function ClientDetail() {
         ) : (
           <>
             {activeTab === 'home' && <ClientHome initialNoteId={initialNoteId} client={client} contacts={contacts} onUpdate={() => loadData(true)} onReloadContacts={reloadContacts} sectionStyle={sectionStyle} readOnly={isMember || isPlanner} plannerMode={isPlanner} directMode={isDirect} memberCanAdd={memberCanAddNotes} contactsEditable={contactsEditable} memberOwnView={isMember && !isMirror} notes={clientNotes} onNotesChange={setClientNotes} program={program}
-              portalCard={isMember && portalAccess !== undefined && client ? <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={tier1Own ? null : ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} readOnly={isAdmin} /> : null}
-              mirroringCard={(isMember || isAdmin) && client ? <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} cardTitle={cardTitle} onLeft={() => navigate('/member')} /> : null} />}
+              portalCard={isMember && portalAccess !== undefined && client ? <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={tier1Own ? null : ciqLicence} sectionStyle={sectionStyle} readOnly={isAdmin} /> : null}
+              mirroringCard={(isMember || isAdmin) && client ? <ClientConnectedMembersCard key={`conn-${client.id}`} clientId={client.id} sectionStyle={sectionStyle} onLeft={() => navigate('/member')} /> : null} />}
             {/* The admin view keeps the Client Portal card at the bottom; the member's sits above Client Mirroring. */}
             {activeTab === 'home' && isAdmin && portalAccess !== undefined && client && (
-              <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={tier1Own ? null : ciqLicence} sectionStyle={sectionStyle} cardTitle={cardTitle} readOnly={isAdmin} />
+              <MemberPortalAccessCard key={client.id} client={client} portalAccess={portalAccess} onSent={setPortalAccess} ciqLicence={tier1Own ? null : ciqLicence} sectionStyle={sectionStyle} readOnly={isAdmin} />
             )}
             {/* Remove prospect (2026-11-11): the owning member (any tier) or an admin,
                 shown only while the server says nothing has happened to this client. */}
@@ -908,7 +908,7 @@ function DirectAddNote({ clientId, notes, onNotesChange, programName }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
         <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Add a note for the Tax Planning Team..." rows={2} maxLength={5000} style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
-        <button onClick={save} disabled={saving || !text.trim()} style={{ padding: '8px 14px', borderRadius: '8px', background: (saving || !text.trim()) ? 'var(--vfo-tint)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: (saving || !text.trim()) ? '1px solid var(--vfo-border-mid)' : 'none', color: (saving || !text.trim()) ? 'var(--vfo-muted)' : '#fff', fontSize: '12px', cursor: (saving || !text.trim()) ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>{saving ? 'Saving...' : 'Save'}</button>
+        <button onClick={save} disabled={saving || !text.trim()} style={btnState(btnPrimary, (saving || !text.trim()))}>{saving ? 'Saving...' : 'Save'}</button>
         <button onClick={() => { setOpen(false); setText(''); setError('') }} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }}>✕</button>
       </div>
       {error && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '12px' }}>{error}</div>}
@@ -1236,38 +1236,24 @@ function RemoveProspect({ client, isAdmin, onRemoved }) {
           style={{ padding: 0, border: 'none', background: 'transparent', color: '#e74c3c', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Remove prospect</button>
       </div>
       {open && (
-        <div onClick={() => { if (!busy && !done) setOpen(false) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(9,14,26,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: '0 18px 50px rgba(9,14,26,0.35)', padding: '26px 28px', maxWidth: '440px', width: '100%' }}>
-            {done ? (
-              <>
-                <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>Prospect removed</div>
-                <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 18px', lineHeight: 1.5 }}><strong>{name}</strong> has been removed.</p>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={onRemoved}
-                    style={{ padding: '8px 22px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Back to clients</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>Remove {name}?</div>
-                <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 18px', lineHeight: 1.5 }}>
-                  This removes the client, any unfinished CIQ and their additional contacts{isAdmin ? '' : ' from your portal'}. It can't be undone.
-                </p>
-                {error && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '13px', margin: '-6px 0 14px' }}>{error}</div>}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <button onClick={() => setOpen(false)} disabled={busy}
-                    style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: busy ? 'default' : 'pointer' }}>Cancel</button>
-                  <button onClick={remove} disabled={busy}
-                    style={{ padding: '8px 22px', borderRadius: '8px', border: 'none', background: '#d93025', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.7 : 1 }}>
-                    {busy ? 'Removing...' : 'Remove'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <Modal title={done ? 'Prospect removed' : `Remove ${name}?`} width={440} onClose={() => { if (!busy && !done) setOpen(false) }}
+          footer={done
+            ? <button onClick={onRemoved} style={btnPrimary}>Back to clients</button>
+            : <>
+              <button onClick={() => setOpen(false)} disabled={busy} style={btnState(btnSecondary, busy)}>Cancel</button>
+              <button onClick={remove} disabled={busy} style={btnState(btnDanger, busy)}>{busy ? 'Removing...' : 'Remove'}</button>
+            </>}>
+          {done ? (
+            <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: 0, lineHeight: 1.5 }}><strong>{name}</strong> has been removed.</p>
+          ) : (
+            <>
+              <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: 0, lineHeight: 1.5 }}>
+                This removes the client, any unfinished CIQ and their additional contacts{isAdmin ? '' : ' from your portal'}. It can't be undone.
+              </p>
+              {error && <div style={errorText}>{error}</div>}
+            </>
+          )}
+        </Modal>
       )}
     </>
   )

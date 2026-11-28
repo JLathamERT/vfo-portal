@@ -12,7 +12,7 @@ import { formInput, ProfileCard } from './ProfileKit'
 // click Connect) and a search for any other active member; for a connected member,
 // only "you are connected" + Leave. Every rule is enforced by the handlers - this
 // card only draws them.
-export default function ClientConnectedMembersCard({ clientId, sectionStyle, cardTitle, onLeft }) {
+export default function ClientConnectedMembersCard({ clientId, sectionStyle, onLeft }) {
   const isPhone = useIsPhone()
   const [state, setState] = useState(null)
   const [busy, setBusy] = useState(null)

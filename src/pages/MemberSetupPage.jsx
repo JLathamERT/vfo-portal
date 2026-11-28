@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { SetupFormSkeleton } from '../components/shared/Skeleton'
 import PasswordInput from '../components/shared/PasswordInput'
+import { btnPrimary } from '../components/shared/buttonStyles'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -197,5 +198,5 @@ const subtitleStyle = { fontSize: '14px', color: 'var(--vfo-muted)', lineHeight:
 const formStyle = { display: 'flex', flexDirection: 'column' }
 const labelStyle = { fontSize: '13px', color: 'var(--vfo-muted)', marginBottom: '6px', fontWeight: 500 }
 const inputStyle = { padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'inherit' }
-const primaryButtonStyle = { padding: '12px 24px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '15px', fontWeight: 600, cursor: 'pointer', marginTop: '16px' }
+const primaryButtonStyle = { ...btnPrimary, padding: '12px 24px', fontSize: '15px', marginTop: '16px' }
 const securityNoteStyle = { textAlign: 'center', color: 'var(--vfo-muted)', fontSize: '12px', marginTop: '24px', lineHeight: 1.6 }

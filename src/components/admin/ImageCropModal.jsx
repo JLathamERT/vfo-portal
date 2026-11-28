@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import Modal from '../shared/Modal'
+import { btnPrimary, btnSecondary } from '../shared/buttonStyles'
 
 // Square crop + zoom editor for headshots. Drag the image to reposition, slide to
 // zoom, Apply → returns a square JPEG data URL (the cropped/zoomed result). The image
@@ -64,14 +66,13 @@ export default function ImageCropModal({ src, onApply, onCancel, output = 500, v
     img.src = src
   }
 
-  const overlay = { position: 'fixed', inset: 0, background: 'rgba(16,38,74,0.55)', backdropFilter: 'blur(2px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif' }
-  const card = { background: 'var(--vfo-card)', borderRadius: '16px', padding: '24px', width: 'min(380px, 92vw)', boxShadow: '0 24px 60px rgba(20,45,95,0.3)' }
   const frame = { width: viewport, height: viewport, maxWidth: '100%', margin: '0 auto', borderRadius: '50%', overflow: 'hidden', position: 'relative', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-strong)', cursor: 'grab', touchAction: 'none', userSelect: 'none' }
 
   return (
-    <div style={overlay} onClick={onCancel}>
-      <div style={card} onClick={e => e.stopPropagation()}>
-        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--vfo-ink)', marginBottom: '4px' }}>Adjust photo</div>
+    <Modal title="Adjust photo" width={380} onClose={onCancel} footer={<>
+      <button type="button" onClick={onCancel} style={btnSecondary}>Cancel</button>
+      <button type="button" onClick={apply} style={btnPrimary}>Apply</button>
+    </>}>
         <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '16px' }}>Drag to reposition · slide to zoom</div>
 
         <div
@@ -95,13 +96,6 @@ export default function ImageCropModal({ src, onApply, onCancel, output = 500, v
           <span style={{ fontSize: '18px', color: 'var(--vfo-muted)' }}>+</span>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-          <button type="button" onClick={onCancel}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'var(--vfo-card)', color: 'var(--vfo-muted)', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
-          <button type="button" onClick={apply}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Apply</button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

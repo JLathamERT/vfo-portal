@@ -3,6 +3,7 @@ import { callApi } from '../../lib/api'
 import { PaymentsTabSkeleton } from '../shared/Skeleton'
 import PaymentsTable from './PaymentsTable'
 import PaymentsHeader from './PaymentsHeader'
+import { cardBox, ProfileCardHead, pullHead } from '../shared/ProfileKit'
 
 // Read-only Payments tab for a member (admin view). Unifies three sources into one
 // filterable, chronological list via member_payments_load:
@@ -10,8 +11,7 @@ import PaymentsHeader from './PaymentsHeader'
 //   • On behalf of clients  — MAP 1 / Tax payments they made for their clients
 //   • Rev-share payouts      — money paid OUT to them via Stripe Connect
 // The filter chips (in PaymentsTable) keep the three clearly separated.
-const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px' }
-const titleStyle = { fontSize: '17px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '0 0 16px', fontFamily: 'Inter, sans-serif' }
+const cardStyle = { ...cardBox, marginBottom: 0 }
 
 export default function MemberPaymentsTab({ member }) {
   const memberNumber = member?.plugin_member_number
@@ -44,7 +44,7 @@ export default function MemberPaymentsTab({ member }) {
   if (error) {
     return (
       <div style={cardStyle}>
-        <h3 style={titleStyle}>Payments</h3>
+        <ProfileCardHead icon="dollar" title="Payments" style={pullHead} />
         <div style={{ marginTop: '12px', padding: '14px 16px', background: '#fdecea', border: '1px solid #f7c4bd', borderRadius: '10px', color: '#b42318', fontSize: '13px' }}>{error}</div>
       </div>
     )

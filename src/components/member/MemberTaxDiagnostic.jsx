@@ -4,6 +4,7 @@ import TaxIntakeForm from './TaxIntakeForm'
 import { DiagnosticCard } from '../admin/TaxDiagnosticsPanel'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { TaxDiagnosticCardsSkeleton } from '../shared/Skeleton'
+import { cardBox } from '../shared/ProfileKit'
 
 // The member portal's Tax Diagnostic tab (2026-10-14) — open to EVERY member, no
 // feature switch. Two views:
@@ -93,7 +94,7 @@ export default function MemberTaxDiagnostic({ member }) {
     setFormKey(k => k + 1)
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: isPhone ? 'var(--vfo-card-pad)' : '24px', marginBottom: '16px' }
+  const sectionStyle = cardBox
   const card = { ...sectionStyle, marginBottom: isPhone ? '12px' : '20px' }
 
   return (

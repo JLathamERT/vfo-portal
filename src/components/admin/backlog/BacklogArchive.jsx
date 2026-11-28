@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { callApi } from '../../../lib/api'
-import { btnSecondary } from '../../shared/buttonStyles'
+import { btnSecondary, btnState } from '../../shared/buttonStyles'
 import { hexA } from '../KpiKit'
 import { departmentChipStyle, PORTAL_DEPARTMENTS } from './portalDepartments'
 import { isTask } from './backlogModel'
 import { TaskTag } from './TaskBits'
 import BigNewsBadge from './BigNewsBadge'
 import LikeButton from './LikeButton'
-import { inputStyle } from './BacklogModal'
+import { inputStyle } from '../../shared/Modal'
 import { PortalBacklogArchiveRowsSkeleton } from '../../shared/skeletons'
 import ListTable, { ListName, ListText, listSearchStyle } from '../../shared/ListTable'
 import { formatDate, formatDateTime } from '../../../lib/dates'
@@ -83,7 +83,7 @@ export default function BacklogArchive({ people, canManage, reloadKey, onOpen, o
               {r.reviewed_at && <span style={{ display: 'block' }}>{formatDateTime(r.reviewed_at, '–')}</span>}
               {r.review_note && <span style={{ display: 'block', overflowWrap: 'anywhere' }}>Reason: {r.review_note}</span>}
               {canManage && (
-                <button style={{ ...btnSecondary, padding: '5px 12px', fontSize: '12px', marginTop: '6px' }} disabled={busyId === r.id}
+                <button style={{ ...btnState(btnSecondary, busyId === r.id), padding: '5px 12px', fontSize: '12px', marginTop: '6px' }} disabled={busyId === r.id}
                   onClick={(e) => { e.stopPropagation(); onReopen(r) }}>Reopen</button>
               )}
             </>
@@ -95,7 +95,7 @@ export default function BacklogArchive({ people, canManage, reloadKey, onOpen, o
               {r.announce_note && <span style={{ display: 'block', overflowWrap: 'anywhere' }}>{r.announce_note}</span>}
               <span style={{ display: 'block' }}>Archived by {people[r.archived_by_admin_id] || 'a former admin'}, {formatDateTime(r.archived_at, '–')}</span>
               {canManage && (
-                <button style={{ ...btnSecondary, padding: '5px 12px', fontSize: '12px', marginTop: '6px' }} disabled={busyId === r.id}
+                <button style={{ ...btnState(btnSecondary, busyId === r.id), padding: '5px 12px', fontSize: '12px', marginTop: '6px' }} disabled={busyId === r.id}
                   onClick={(e) => { e.stopPropagation(); onRestore(r) }}>Restore</button>
               )}
             </>
@@ -133,9 +133,9 @@ export default function BacklogArchive({ people, canManage, reloadKey, onOpen, o
       )}
       {total > pageSize && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', gap: '8px' }}>
-          <button style={btnSecondary} disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - pageSize))}>Newer</button>
+          <button style={btnState(btnSecondary, offset === 0)} disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - pageSize))}>Newer</button>
           <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>{offset + 1}–{Math.min(total, offset + pageSize)} of {total}</span>
-          <button style={btnSecondary} disabled={offset + pageSize >= total} onClick={() => setOffset(offset + pageSize)}>Older</button>
+          <button style={btnState(btnSecondary, offset + pageSize >= total)} disabled={offset + pageSize >= total} onClick={() => setOffset(offset + pageSize)}>Older</button>
         </div>
       )}
     </div>

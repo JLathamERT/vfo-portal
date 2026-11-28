@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { btnPrimary, btnSecondary, btnState } from '../../shared/buttonStyles'
-import BacklogModal, { errorText, fieldLabel, inputStyle } from './BacklogModal'
+import Modal, { errorText, fieldLabel, inputStyle } from '../../shared/Modal'
 
 // Backlog 7b (superadmins): how many likes each person can have on open
 // requests. Lowering it removes nobody's likes.
@@ -18,7 +18,7 @@ export default function LikeCapDialog({ value, onSave, onClose }) {
   }
 
   return (
-    <BacklogModal title="Likes per person" onClose={onClose} width={420}
+    <Modal title="Likes per person" onClose={onClose} width={420}
       footer={(
         <>
           <button style={btnSecondary} onClick={onClose}>Cancel</button>
@@ -33,6 +33,6 @@ export default function LikeCapDialog({ value, onSave, onClose }) {
         onChange={(e) => setCap(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
         style={{ ...inputStyle, width: '120px' }} />
       {error && <div style={errorText}>{error}</div>}
-    </BacklogModal>
+    </Modal>
   )
 }

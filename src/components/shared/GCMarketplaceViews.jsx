@@ -3,6 +3,9 @@ import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton, TableSkeleton } from './Skeleton'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { formatDate } from '../../lib/dates'
+import Modal from './Modal'
+import { btnDanger, btnPrimary, btnSecondary, btnState } from './buttonStyles'
+import { cardBox, ProfileCard } from './ProfileKit'
 
 // The member-facing Growth Credits Services and History views, shared verbatim
 // between the member portal (MemberGCMarketplace) and the admin per-member GC
@@ -27,7 +30,7 @@ function formatServiceDetails(description) {
   return parts.map((part, i) => part.trim() ? `<div style="margin-bottom:8px;text-align:left;"><span style="color:var(--vfo-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">${labels[i] || ''}</span><div style="color:var(--vfo-ink-2);font-size:13px;margin-top:2px;">${escapeHtml(part.trim())}</div></div>` : '').join('')
 }
 
-const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
+const sectionStyle = cardBox
 const bannerStyle = { background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.4)', color: 'var(--vfo-success-text)', fontWeight: 500, padding: '14px 20px', borderRadius: '10px', fontSize: '14px', marginBottom: '20px', textAlign: 'left' }
 // The hosts funnel failures through showBanner('Error: ...'), so the prefix is
 // the discriminator the historical single green banner never had.
@@ -102,8 +105,7 @@ export function gcActorLabel(tx) {
 export function GCTransactionHistory({ transactions }) {
   const isPhone = useIsPhone()
   return (
-    <div style={sectionStyle}>
-      <div style={{ fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }}>Transaction History</div>
+    <ProfileCard icon="history" title="Transaction History">
       {transactions === null
         ? !isPhone ? <TableSkeleton card={false} header={false} cols={TX_GRID.gridTemplateColumns} rows={4} pad="14px 0" /> : Array.from({ length: 3 }).map((_, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
@@ -159,7 +161,7 @@ export function GCTransactionHistory({ transactions }) {
         ))}
         </>
       }
-    </div>
+    </ProfileCard>
   )
 }
 
@@ -299,7 +301,6 @@ export function GCServicesView({
   const pillBase = { padding: '4px 12px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap' }
   // The member portal's card heading + eyebrow (as on the Dashboard), and the
   // service tiles: two across, one on a phone (2026-11-20).
-  const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
   const eyebrow = { fontSize: '10.5px', fontWeight: 700, letterSpacing: '1.2px', color: '#0095ff', textTransform: 'uppercase', marginBottom: '4px' }
   const tileGrid = { display: 'grid', gridTemplateColumns: isPhone ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: isPhone ? '10px' : '14px' }
   const tileStyle = { display: 'flex', flexDirection: 'column', padding: isPhone ? '14px' : '18px', borderRadius: '14px', border: '1px solid var(--vfo-border-soft)', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)', minWidth: 0 }
@@ -373,8 +374,7 @@ export function GCServicesView({
         <div style={{ ...sectionStyle, color: 'var(--vfo-muted)', fontSize: '14px' }}>No services are available right now.</div>
       )}
       {servicesLoaded && categories.map(cat => (
-        <div key={cat} style={sectionStyle}>
-          <div style={cardTitle}>{cat}</div>
+        <ProfileCard key={cat} icon="briefcase" title={cat}>
           <div style={tileGrid}>
             {catMap[cat].map(svc => {
               const sub = liveSubByService[svc.id]
@@ -415,45 +415,37 @@ export function GCServicesView({
                       <button onClick={() => setCancelTarget({ sub, svc })} style={{ ...cancelBtnStyle, padding: '7px 16px', fontSize: '12.5px', borderRadius: '8px' }}>Cancel</button>
                     ) : (
                       <button onClick={() => setConfirmService(svc)} title={short ? 'Not enough credits' : undefined}
-                        style={{ padding: '8px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', ...(short
-                          ? { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-muted)' }
-                          : { background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff' }) }}>Redeem</button>
+                        style={short ? btnSecondary : btnPrimary}>Redeem</button>
                     )}
                   </div>
                 </div>
               )
             })}
           </div>
-        </div>
+        </ProfileCard>
       ))}
-      {confirmService && (
-        <div onClick={() => { if (!redeeming) setConfirmService(null) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(9,14,26,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: '0 18px 50px rgba(9,14,26,0.35)', padding: '26px 28px', maxWidth: '420px', width: '100%', textAlign: 'left' }}>
-            {balance !== null && balance < confirmService.credit_cost ? (
-              <>
-                <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>Not enough credits</div>
+      {confirmService && (() => { const short = balance !== null && balance < confirmService.credit_cost; return (
+        <Modal title={short ? 'Not enough credits' : 'Redeem service'} width={420} onClose={() => { if (!redeeming) setConfirmService(null) }}
+          footer={short ? <>
+            <button onClick={() => setConfirmService(null)} style={btnSecondary}>Close</button>
+            {!adminMode && <button onClick={() => { setConfirmService(null); if (onBuyCredits) onBuyCredits() }} style={btnPrimary}>Buy credits</button>}
+          </> : <>
+            <button onClick={() => setConfirmService(null)} disabled={redeeming} style={btnState(btnSecondary, redeeming)}>Cancel</button>
+            <button onClick={() => redeemService(confirmService)} disabled={redeeming} style={btnState(btnPrimary, redeeming)}>{redeeming ? 'Redeeming…' : 'Confirm redemption'}</button>
+          </>}>
+          {short ? (
+            <>
                 <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 6px', lineHeight: 1.5 }}>
                   <strong>{confirmService.name}</strong> requires <strong>{confirmService.credit_cost} {creditWord(confirmService.credit_cost)}</strong> and {adminMode ? 'this member' : 'you'} currently {adminMode ? 'has' : 'have'} <strong>{balance}</strong>.
                 </p>
-                <p style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', margin: '0 0 18px' }}>
+                <p style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', margin: 0 }}>
                   {adminMode
                     ? 'Add credits from the Dashboard tab first.'
                     : `You need ${confirmService.credit_cost - balance} more ${creditWord(confirmService.credit_cost - balance)} to redeem this service.`}
                 </p>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <button onClick={() => setConfirmService(null)}
-                    style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Close</button>
-                  {!adminMode && (
-                    <button onClick={() => { setConfirmService(null); if (onBuyCredits) onBuyCredits() }}
-                      style={{ padding: '8px 22px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Buy credits</button>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>Redeem service</div>
+            </>
+          ) : (
+            <>
                 <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 6px', lineHeight: 1.5 }}>
                   Redeem <strong>{confirmService.name}</strong> {adminMode ? 'for this member ' : ''}for <strong>{confirmService.credit_cost} {creditWord(confirmService.credit_cost)}</strong>
                   {isRecurring(confirmService)
@@ -461,30 +453,20 @@ export function GCServicesView({
                     : '?'}
                 </p>
                 {balance !== null && (
-                  <p style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', margin: '0 0 18px' }}>
+                  <p style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', margin: 0 }}>
                     Balance after: {balance - confirmService.credit_cost} {creditWord(balance - confirmService.credit_cost)}
                   </p>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: balance === null ? '18px' : 0 }}>
-                  <button onClick={() => setConfirmService(null)} disabled={redeeming}
-                    style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: redeeming ? 'default' : 'pointer', opacity: redeeming ? 0.6 : 1 }}>Cancel</button>
-                  <button onClick={() => redeemService(confirmService)} disabled={redeeming}
-                    style={{ padding: '8px 22px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: redeeming ? 'default' : 'pointer', opacity: redeeming ? 0.7 : 1 }}>
-                    {redeeming ? 'Redeeming…' : 'Confirm redemption'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </Modal>
+      ) })()}
 
       {rescheduleTarget && (
-        <div onClick={() => { if (!rescheduling) setRescheduleTarget(null) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(9,14,26,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: '0 18px 50px rgba(9,14,26,0.35)', padding: '26px 28px', maxWidth: '420px', width: '100%', textAlign: 'left' }}>
-            <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>Reschedule recurring service</div>
+        <Modal title="Reschedule recurring service" width={420} onClose={() => { if (!rescheduling) setRescheduleTarget(null) }} footer={<>
+          <button onClick={() => setRescheduleTarget(null)} disabled={rescheduling} style={btnState(btnSecondary, rescheduling)}>Cancel</button>
+          <button onClick={saveScheduleDate} disabled={rescheduleBlocked} style={btnState(btnPrimary, rescheduleBlocked)}>{rescheduling ? 'Saving…' : 'Save date'}</button>
+        </>}>
             <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 14px', lineHeight: 1.5 }}>
               Set the date <strong>{rescheduleTarget.svc?.name || rescheduleTarget.sub.gc_services?.name}</strong> starts. It currently starts <strong>{formatDate(rescheduleStart.current)}</strong>.
             </p>
@@ -493,44 +475,25 @@ export function GCServicesView({
               style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' }} />
             {rescheduleStart.renewal
               ? (
-                <p style={{ fontSize: '12.5px', color: rescheduleStart.alreadyDue ? '#d93025' : 'var(--vfo-muted)', margin: '10px 0 18px', lineHeight: 1.5 }}>
+                <p style={{ fontSize: '12.5px', color: rescheduleStart.alreadyDue ? '#d93025' : 'var(--vfo-muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
                   {rescheduleStart.alreadyDue
                     ? <>That start date already renewed on <strong>{formatDate(rescheduleStart.renewal)}</strong>, so they would be charged tonight. Pick a later start date.</>
                     : <>Renews <strong>{formatDate(rescheduleStart.renewal)}</strong>, then every {rescheduleStart.noun}. No additional credits are taken.</>}
                 </p>
               )
-              : <div style={{ height: '18px' }} />}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button onClick={() => setRescheduleTarget(null)} disabled={rescheduling}
-                style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: rescheduling ? 'default' : 'pointer', opacity: rescheduling ? 0.6 : 1 }}>Cancel</button>
-              <button onClick={saveScheduleDate} disabled={rescheduleBlocked}
-                style={{ padding: '8px 22px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: rescheduleBlocked ? 'default' : 'pointer', opacity: rescheduleBlocked ? 0.6 : 1 }}>
-                {rescheduling ? 'Saving…' : 'Save date'}
-              </button>
-            </div>
-          </div>
-        </div>
+              : null}
+        </Modal>
       )}
 
       {cancelTarget && (
-        <div onClick={() => { if (!cancelling) setCancelTarget(null) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(9,14,26,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: '0 18px 50px rgba(9,14,26,0.35)', padding: '26px 28px', maxWidth: '420px', width: '100%', textAlign: 'left' }}>
-            <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>Cancel recurring service</div>
-            <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 18px', lineHeight: 1.5 }}>
+        <Modal title="Cancel recurring service" width={420} onClose={() => { if (!cancelling) setCancelTarget(null) }} footer={<>
+          <button onClick={() => setCancelTarget(null)} disabled={cancelling} style={btnState(btnSecondary, cancelling)}>Keep it</button>
+          <button onClick={() => cancelSubscription(cancelTarget.sub, cancelTarget.svc)} disabled={cancelling} style={btnState(btnDanger, cancelling)}>{cancelling ? 'Cancelling…' : 'Stop service'}</button>
+        </>}>
+            <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: 0, lineHeight: 1.5 }}>
               Stop the recurring service <strong>{cancelTarget.svc?.name || cancelTarget.sub.gc_services?.name}</strong>? No further credits will be deducted. Credits already spent for the current period are not refunded.
             </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button onClick={() => setCancelTarget(null)} disabled={cancelling}
-                style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: cancelling ? 'default' : 'pointer', opacity: cancelling ? 0.6 : 1 }}>Keep it</button>
-              <button onClick={() => cancelSubscription(cancelTarget.sub, cancelTarget.svc)} disabled={cancelling}
-                style={{ padding: '8px 22px', borderRadius: '8px', border: 'none', background: '#d93025', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: cancelling ? 'default' : 'pointer', opacity: cancelling ? 0.7 : 1 }}>
-                {cancelling ? 'Cancelling…' : 'Stop service'}
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </>
   )

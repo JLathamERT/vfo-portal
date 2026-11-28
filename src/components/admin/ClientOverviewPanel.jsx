@@ -16,6 +16,8 @@ import { ClientOverviewSkeleton } from '../shared/Skeleton'
 import SubTabs, { MiniTabs } from '../shared/SubTabs'
 import { PageHeading } from '../shared/ProfileKit'
 import { formatDate } from '../../lib/dates'
+import { listSelectStyle } from '../shared/ListTable'
+import { btnPrimary } from '../shared/buttonStyles'
 
 // Client Overview — a mirror of Member Overview, but oriented around clients and
 // their program tracks. Four sub-tabs, each lazily loaded from the backend
@@ -437,13 +439,13 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
 
   const wrap = { padding: isPhone ? '16px var(--vfo-gutter)' : '24px', maxWidth: '1500px', margin: '0 auto' }
   const phoneCards = isPhone && memberMode && isList
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
+  const sel = listSelectStyle
 
   return (
     <div style={wrap}>
       <PageHeading eyebrow="Clients" title="Client Overview" action={memberMode && canAddClient && activeSection === 'clients' && !showAddClient && (
         <button type="button" onClick={() => { setAddedMessage(''); setShowAddClient(true) }}
-          style={{ padding: isPhone ? '6px 14px' : '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: isPhone ? '12.5px' : '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          style={btnPrimary}>
           + Add Client
         </button>
       )} />

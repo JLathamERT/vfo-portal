@@ -5,11 +5,12 @@ import { ordinal } from '../../lib/ordinal'
 import { money, StatusPill } from './specialistRevenueShared'
 import { AccountingRowsSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink } from '../shared/personLinks'
-import { btnDanger, btnState } from '../shared/buttonStyles'
+import { btnDanger, btnPrimary, btnState } from '../shared/buttonStyles'
 import { errorStyle, innerTotalsStyle, refreshBtnStyle } from './accountingTable'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 import ExpandChevron from '../shared/ExpandChevron'
 import { formatDate } from '../../lib/dates'
+import { cardFrame, ProfileCard } from '../shared/ProfileKit'
 
 // Accounting > Specialists > VFO Specialist License Fees, laid out like Advisor
 // Membership Fees (2026-11-25). Specialists: one card per $99/mo licence — every
@@ -35,7 +36,7 @@ const STATE_ORDER = ['active', 'processing', 'scheduled', 'awaiting_verification
 
 const label = { fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '5px' }
 const input = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', outline: 'none' }
-const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)' }
+const card = { ...cardFrame, borderRadius: '14px' }
 
 function fmtMonth(d) {
   return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -354,8 +355,7 @@ export function LicenseSetupSection({ allExperts = [] }) {
   const ready = !!expertId && !!chargeDay && !sending && !active
 
   return (
-    <div style={{ ...card, padding: '22px' }}>
-      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '16px' }}>Set Up Monthly License</div>
+    <ProfileCard icon="dollar" title="Set Up Monthly License">
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr', gap: '14px', alignItems: 'start', marginBottom: '14px' }}>
         <div>
@@ -391,13 +391,13 @@ export function LicenseSetupSection({ allExperts = [] }) {
       )}
 
       <button onClick={send} disabled={!ready}
-        style={{ padding: '11px 26px', borderRadius: '8px', border: 'none', background: ready ? 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)' : '#93b4e8', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: ready ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif' }}>
+        style={btnState(btnPrimary, !(ready))}>
         {sending ? 'Sending…' : 'Send setup link'}
       </button>
 
       {sent && <p style={{ fontSize: '13px', color: 'var(--vfo-success-text)', margin: '14px 0 0' }}>{sent}</p>}
       {warn && <p style={{ fontSize: '13px', color: '#b7791f', background: 'rgba(214,158,46,0.10)', padding: '10px 14px', borderRadius: '10px', margin: '14px 0 0' }}>{warn}</p>}
       {error && <p style={{ fontSize: '13px', color: '#b91c1c', margin: '14px 0 0' }}>{error}</p>}
-    </div>
+    </ProfileCard>
   )
 }

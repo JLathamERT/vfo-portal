@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import PhoneInput from './PhoneInput'
 import { cleanText, contactNameProblem, formatPersonName, nameHasTwoPeople, nameProblem, phoneIncomplete } from '../../lib/formatters'
+import { cardBox, formInput, ProfileCard } from './ProfileKit'
+import { btnPrimary, btnState } from './buttonStyles'
 
 // The "Add New Client" form - the admin MSM Clients tab's layout (First / Last /
 // Email / Phone, an optional additional contact, Save / Back), shared by the admin
@@ -60,17 +62,16 @@ export default function AddClientForm({
     }
   }
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = formInput
   const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
   const nameBox = (value, set) => (
     <input value={value} onChange={e => set(e.target.value)} onBlur={() => set(formatPersonName(value))} style={inputStyle} />
   )
   const isNameClash = duplicate?.kind === 'name'
 
   return (
-    <div style={sectionStyle}>
-      <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>{title}</div>
+    <ProfileCard icon="user" title={title}>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>First Name *</label>{nameBox(firstName, setFirstName)}</div>
         <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Last Name *</label>{nameBox(lastName, setLastName)}</div>
@@ -110,10 +111,10 @@ export default function AddClientForm({
         </div>
       )}
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" onClick={() => save(false)} disabled={saving} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving...' : saveLabel}</button>
+        <button type="button" onClick={() => save(false)} disabled={saving} style={btnState(btnPrimary, saving)}>{saving ? 'Saving...' : saveLabel}</button>
         <button type="button" onClick={onCancel} disabled={saving} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>{cancelLabel}</button>
       </div>
       {status && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '8px' }}>{status}</p>}
-    </div>
+    </ProfileCard>
   )
 }

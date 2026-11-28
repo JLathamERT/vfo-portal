@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import TokenShell from '../components/shared/TokenShell'
 import TaxIntakeForm from '../components/member/TaxIntakeForm'
 import MemberNamePicker from '../components/shared/MemberNamePicker'
+import { formInput } from '../components/shared/ProfileKit'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -132,7 +133,7 @@ function PublicTaxDiagnostic() {
 
   const labelStyle = { fontSize: '12.5px', fontWeight: 600, color: 'var(--vfo-ink)', display: 'block', marginBottom: '6px', lineHeight: 1.45 }
   const hintStyle = { fontSize: '11.5px', color: 'var(--vfo-muted)', lineHeight: 1.55, marginTop: '-2px', marginBottom: '8px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = formInput
   const radioRow = { display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: 'var(--vfo-ink)', cursor: 'pointer', lineHeight: 1.5 }
   const req = <span style={{ color: '#d93025' }}> *</span>
 

@@ -12,6 +12,7 @@ import AccountingCombinedPanel from './AccountingCombinedPanel'
 import { miniTabStyle as miniTab } from '../shared/SubTabs'
 import { tableStyle, headerRowStyle } from './SpecialistRevenuePanel'
 import { formatDateTime } from '../../lib/dates'
+import { listSelectStyle } from '../shared/ListTable'
 
 // Admin Notifications page (bell "View all"), in the house Accounting layout:
 // breadcrumb + title, pills (Current / Archive / Reminders), the filter row, the
@@ -52,7 +53,7 @@ const ARCHIVE_GRID = 'minmax(0, 1fr) 150px 170px'
 const UPCOMING_GRID = 'minmax(0, 1fr) 230px 190px 110px'
 const FIRED_GRID = 'minmax(0, 1fr) 190px'
 
-const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+const sel = listSelectStyle
 const ghost = { ...sel, color: 'var(--vfo-accent-text)', fontWeight: 600 }
 const bigPrimary = { ...btnPrimary, padding: '10px 18px', fontSize: '13px' }
 const bigSecondary = { ...btnSecondary, padding: '10px 18px', fontSize: '13px' }

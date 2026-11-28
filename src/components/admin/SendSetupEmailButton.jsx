@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { callApi } from '../../lib/api'
+import { btnPrimary, btnState } from '../shared/buttonStyles'
 
 // Admin "Send account-setup email" button — drafts a Gmail with a /set-password
 // link so the person chooses their own passcode. Used in the member, specialist,
@@ -20,7 +21,7 @@ export default function SendSetupEmailButton({ loginType, subjectId, hint }) {
 
   return (
     <div>
-      <button onClick={send} disabled={busy} style={{ padding: '10px 24px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: busy ? 'default' : 'pointer' }}>
+      <button onClick={send} disabled={busy} style={btnState(btnPrimary, busy)}>
         {busy ? 'Drafting…' : 'Send account-setup email'}
       </button>
       {hint && <p style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '10px', marginBottom: 0 }}>{hint}</p>}

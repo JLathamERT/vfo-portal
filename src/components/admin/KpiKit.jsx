@@ -2,10 +2,24 @@
 // lives INSIDE the navy hero — a clickable stacked bar + chip row — so the
 // page reads as one instrument panel and themes cleanly in dark mode.
 
+import { AMBER } from '../shared/statusColors'
+
 export function hexA(hex, a) {
   const h = hex.replace('#', '')
   const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16)
   return `rgba(${r},${g},${b},${a})`
+}
+
+// The one set of KPI tones (Issue #661 part 6b): a pass rate, a tile's rail, a
+// status dot. `text` and `color` are the same value (two callers, two names);
+// `none` and `grey` are the same neutral.
+const NEUTRAL = { text: 'var(--vfo-muted)', color: 'var(--vfo-muted)', bg: 'var(--vfo-tint)', rail: 'var(--vfo-border-strong)' }
+export const KPI_TONES = {
+  green: { text: 'var(--vfo-success-text)', color: 'var(--vfo-success-text)', bg: 'rgba(27,146,84,0.12)', rail: '#1b9254' },
+  amber: { text: 'var(--vfo-gold-text)', color: 'var(--vfo-gold-text)', bg: hexA(AMBER, 0.14), rail: AMBER },
+  red: { text: '#c0392b', color: '#c0392b', bg: 'rgba(231,76,60,0.12)', rail: '#e74c3c' },
+  none: NEUTRAL,
+  grey: NEUTRAL,
 }
 
 // Navy gradient hero: title on the left, the selected lens's big count on the

@@ -7,7 +7,7 @@ import LikeButton from './LikeButton'
 import ScorePill from './ScorePill'
 import { DueChip, TaskTag } from './TaskBits'
 import BigNewsBadge from './BigNewsBadge'
-import { fieldLabel, inputStyle } from './BacklogModal'
+import { fieldLabel, inputStyle } from '../../shared/Modal'
 import { formatDate, formatDateTime } from '../../../lib/dates'
 
 // A request's details: every field, the write-up, the review, the Move to /

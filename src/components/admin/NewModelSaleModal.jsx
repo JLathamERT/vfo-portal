@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { loadCachedData } from '../../lib/api'
+import Modal from '../shared/Modal'
+import { btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 import { isTier1Onboarding, isConnectedAssociate, tier1AdvisorPays } from './onboardingOrder'
+import { formInput } from '../shared/ProfileKit'
 
 // ── Team-member name list for the three dropdowns (closer / setter / introduced-by).
 // One shared list for all three. Edit this array (then redeploy) to add/remove names.
@@ -49,7 +52,7 @@ function formatLong(d) {
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
-const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+const inputStyle = { ...formInput, background: 'var(--vfo-card)' }
 const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }
 
 // Modal that opens on the Stage-3 "Create Advisor/Accountant" click. Collects the
@@ -133,9 +136,14 @@ export default function NewModelSaleModal({ ob, kind, submitting, onClose, onCon
   )
 
   return (
-    <div onClick={() => { if (!submitting) onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(16,24,40,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: '0 12px 40px rgba(20,45,95,0.25)', padding: '24px', width: '100%', maxWidth: '540px', maxHeight: '90vh', overflowY: 'auto', fontFamily: 'Inter, sans-serif' }}>
-        <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--vfo-ink)', marginBottom: '4px' }}>{tier1 ? (isAcct ? 'New VFO Associate' : 'New Financial Collaborator') : 'New Model Sale'}</div>
+    <Modal title={tier1 ? (isAcct ? 'New VFO Associate' : 'New Financial Collaborator') : 'New Model Sale'} width={540}
+      onClose={() => { if (!submitting) onClose() }}
+      footer={<>
+        <button onClick={onClose} disabled={submitting} style={btnState(btnSecondary, submitting)}>Cancel</button>
+        <button onClick={confirm} disabled={submitting} style={btnState(btnPrimary, submitting)}>
+          {submitting ? 'Creating…' : `Create ${isAcct ? 'Accountant' : 'Advisor'} & Notify Team`}
+        </button>
+      </>}>
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', marginBottom: '16px' }}>
           Fill in the details below. On confirm, the {isAcct ? 'accountant' : 'advisor'} is created and the team notification email is drafted.
         </div>
@@ -165,7 +173,7 @@ export default function NewModelSaleModal({ ob, kind, submitting, onClose, onCon
         <Dropdown label="Setter responsible" value={setter} setValue={setSetter} />
         <Dropdown label="Introduced by team member" value={introducedBy} setValue={setIntroducedBy} />
 
-        <div style={{ marginBottom: '20px', position: 'relative' }}>
+        <div style={{ position: 'relative' }}>
           <label style={labelStyle}>Member introduction (search advisors &amp; accountants)</label>
           {selectedMember ? (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '7px 12px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', border: '1px solid rgba(0,149,255,0.3)', fontSize: '13px', color: 'var(--vfo-ink)' }}>
@@ -195,14 +203,6 @@ export default function NewModelSaleModal({ ob, kind, submitting, onClose, onCon
             </>
           )}
         </div>
-
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} disabled={submitting} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
-          <button onClick={confirm} disabled={submitting} style={{ padding: '10px 24px', borderRadius: '8px', background: submitting ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            {submitting ? 'Creating…' : `Create ${isAcct ? 'Accountant' : 'Advisor'} & Notify Team`}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

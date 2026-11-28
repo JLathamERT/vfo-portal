@@ -6,6 +6,15 @@ import { readable } from './readableColor'
 // because callers build tints from it (`${colour}22`).
 export const STATUS_COLORS = { Active: '#1b9254', Lost: '#e74c3c', Removed: '#9b1c1c' }
 
+// The one amber (Issue #661 part 6b, Jake 2026-11-28): a KPI's middling pass
+// rate, a waiting step, and a Suspended member. Paused stays orange, In Arrears
+// the darker held-payout amber.
+export const AMBER = '#c98a14'
+
+// A member's standing flags, on top of an Active status: one colour each on
+// every screen (the KPI lens, the profile toggle, the lists).
+export const STANDING_COLORS = { Paused: '#e06717', Suspended: AMBER, 'In Arrears': '#b45309' }
+
 export function statusColor(status, fallback = 'var(--vfo-faint)') {
   return STATUS_COLORS[status] || fallback
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { StackedCardsSkeleton } from '../shared/Skeleton'
-import { PageHeading } from '../shared/ProfileKit'
+import { cardBox, PageHeading } from '../shared/ProfileKit'
 import { formatDateTime } from '../../lib/dates'
 
 // The Feature Switches tab (2026-09-28), under More ▾ — superadmins, and any admin
@@ -200,7 +200,7 @@ export default function FeatureSwitchesPanel() {
     )
   }
 
-  const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const cardStyle = { ...cardBox, marginBottom: '20px' }
   const labelStyle = { fontSize: '12px', color: 'var(--vfo-faint)', textTransform: 'uppercase', letterSpacing: '0.6px', margin: '14px 0 6px', fontWeight: 600 }
   const listStyle = { margin: 0, paddingLeft: '20px', fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.55 }
 

@@ -16,7 +16,7 @@ import { BlackFridayStrip } from '../components/shared/BlackFridayPromo'
 import MemberNavBar, { orderMemberPrograms, TIER1_TABS } from '../components/member/MemberNavBar'
 import AppearanceCard from '../components/shared/AppearanceCard'
 import { HeroAvatar } from '../components/shared/TrackKit'
-import { DotText, Field, FormGrid, PersonName, formInput, formLabel, formReadOnly, ProfileCard, ProfileHero, SaveBar, SettingsHeader, SETTINGS_WIDTH, useSettingsReturn } from '../components/shared/ProfileKit'
+import { cardBox, DotText, Field, FormGrid, formInput, formLabel, formReadOnly, PersonName, ProfileCard, ProfileHero, SaveBar, SETTINGS_WIDTH, SettingsHeader, useSettingsReturn } from '../components/shared/ProfileKit'
 import { btnPrimary, btnSecondary } from '../components/shared/buttonStyles'
 import { usePortalTheme } from '../lib/theme'
 import { useIsPhone } from '../lib/useMediaQuery'
@@ -293,7 +293,7 @@ function MemberEditProfile({ member, onSaved }) {
     finally { setSaving(false) }
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
+  const sectionStyle = cardBox
   const labelStyle = formLabel
   const inputStyle = formInput
 
@@ -418,7 +418,7 @@ function MemberProfile({ member, allMembers = [], memberConnections = [] }) {
   // Mirrors the admin-side member profile (MembersPanel MemberProfile):
   // hero header with headshot + status meta, short facts side by side, then
   // full-width long-form (bio).
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
+  const sectionStyle = cardBox
   // Accountants have no revenue decision — hide the field for them. Advisors
   // and uncategorized members keep it. Mirrors the admin-side hiddenFields.
   const isAccountant = member.member_category === 'accountant'

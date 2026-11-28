@@ -2,14 +2,14 @@ import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel, noteInScope, useOpenLinkedNote } from '../../shared/PhaseNotes'
 import { RegularPriorityTrackSkeleton, TaxPlanListSkeleton } from '../../shared/Skeleton'
-import { TrackHero, ListHeader, StepRow, SubStepRow, AutoSteps, PhaseCard, StepAnswer, TrackEmpty, STEP_GREEN } from '../../shared/TrackKit'
-import { stepChoice, stepStop, stepSend, btnStep, btnState } from '../../shared/buttonStyles'
+import { AutoSteps, ListHeader, PhaseCard, STEP_GREEN, StepAnswer, StepRow, stepSelect, SubStepRow, TrackEmpty, TrackHero } from '../../shared/TrackKit'
+import { btnPrimary, btnState, btnStep, stepChoice, stepSend, stepStop } from '../../shared/buttonStyles'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { statusPillStyle } from '../../shared/statusColors'
-import { BackLink } from '../../shared/ProfileKit'
+import { BackLink, cardBox, formInput, ProfileCard } from '../../shared/ProfileKit'
 import { formatDate } from '../../../lib/dates'
 
 const REGULAR_PRIORITIES = [
@@ -86,7 +86,7 @@ function Map4ConfirmStep({ trackId, task, p, track, onDone, emailCtx }) {
   const [slot, setSlot] = useState(p.notes || '')
   const isDone = !!p.status
   const statusColor = isDone ? '#1b9254' : 'var(--vfo-muted)'
-  const inputStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = stepSelect
   async function fire(decision, d, t, z) {
     setPending(decision)
     try {
@@ -131,7 +131,7 @@ function Map4ConfirmStep({ trackId, task, p, track, onDone, emailCtx }) {
         <option value="HT">Hawaii (HT)</option>
       </select>
       <button onClick={() => date && fire('confirm_date', date, time, tz)} disabled={!date || !!pending} style={btnState(stepSend, !date || !!pending)}>{pending === 'confirm_date' ? 'Sending…' : 'Send'}</button>
-      <button onClick={() => !pending && onCancel()} disabled={!!pending} style={btnStep}>Cancel</button>
+      <button onClick={() => !pending && onCancel()} disabled={!!pending} style={btnState(btnStep, !!pending)}>Cancel</button>
     </div>
   )
 
@@ -181,7 +181,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
   // Saving a NEW meeting date clears the follow-up/reminder/stall stamps server-side;
   // mirror that here so the auto rows below stop claiming the old sends until reload.
   const [ladderCleared, setLadderCleared] = useState(false)
-  const inputStyle ={ padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = stepSelect
   async function saveDate() {
     if (!date || pending) return
     setPending(true)
@@ -251,7 +251,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
           ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} />
               <button onClick={saveDate} disabled={!date || pending} style={btnState(stepSend, !date || pending)}>{pending ? 'Saving…' : 'Save'}</button>
-              <button onClick={() => !pending && setShowDate(false)} disabled={pending} style={btnStep}>Cancel</button>
+              <button onClick={() => !pending && setShowDate(false)} disabled={pending} style={btnState(btnStep, pending)}>Cancel</button>
             </div>
           : enteredDate
             ? <div className="vfo-stepchips" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -700,8 +700,8 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
     return 'not started'
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '16px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const sectionStyle = cardBox
+  const inputStyle = formInput
   const statePillHex = { 'not started': null, 'in progress': '#0095ff', 'completed': '#1b9254' }
 
   // A priority's title (the Custom rename edits it in place). `extra` styles it
@@ -797,13 +797,12 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
           <ListHeader
             title="Regular Priorities"
             count={priorityTracks.length}
-            action={!readOnly && <button onClick={() => setShowAdd(!showAdd)} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>+ Add Priority</button>}
+            action={!readOnly && <button onClick={() => setShowAdd(!showAdd)} style={btnPrimary}>+ Add Priority</button>}
           />
 
 
           {showAdd && (
-            <div style={{ ...sectionStyle, marginBottom: '20px' }}>
-              <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Add Regular Priority</div>
+            <ProfileCard icon="clipboard" title="Add Regular Priority" style={{ marginBottom: '20px' }}>
               <select value={newPriority} onChange={e => setNewPriority(e.target.value)} style={{ ...inputStyle, background: 'var(--vfo-card)', marginBottom: '12px' }}>
                 <option value="">-- Select Priority --</option>
                 {REGULAR_PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
@@ -817,11 +816,11 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
                 <input value={newCustomName} onChange={e => setNewCustomName(e.target.value)} maxLength={80} placeholder={'Name — saved as "Custom - Name"'} style={{ ...inputStyle, background: 'var(--vfo-card)', marginBottom: '12px' }} />
               )}
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={addPriority} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>Add</button>
+                <button onClick={addPriority} style={btnPrimary}>Add</button>
                 <button onClick={() => setShowAdd(false)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
               </div>
               {addStatus && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '8px' }}>{addStatus}</p>}
-            </div>
+            </ProfileCard>
           )}
 
           {priorityTracks.length === 0 && !showAdd && (

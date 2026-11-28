@@ -6,7 +6,7 @@ import { useIsPhone } from '../../lib/useMediaQuery'
 import { getGrowthConfig } from './constants'
 import AddActionForm from './AddActionForm'
 import { ProfileCard } from '../shared/ProfileKit'
-import { btnPrimary, btnSecondary, btnOutline, btnDanger, btnState } from '../shared/buttonStyles'
+import { btnDanger, btnOutline, btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 
 const LEVELS = [{ value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }]
 
@@ -137,7 +137,7 @@ function AddRow({ a, i, memberNumber, reload, isParking, namePool = [], adminSet
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={addToPlan} disabled={busy} style={btnState(btnPrimary, busy)}>{busy ? 'Adding…' : 'Add to Plan'}</button>
-            <button onClick={() => setOpen(false)} disabled={busy} style={btnSecondary}>Cancel</button>
+            <button onClick={() => setOpen(false)} disabled={busy} style={btnState(btnSecondary, busy)}>Cancel</button>
           </div>
         </div>
       )}

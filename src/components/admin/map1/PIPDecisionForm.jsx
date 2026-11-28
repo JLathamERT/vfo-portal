@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { callApi } from '../../../lib/api'
 import { hasStrategicSplit, computeStrategicShares } from '../../../lib/strategicSplits'
+import { formInput, tintBox } from '../../shared/ProfileKit'
+import { btnPrimary, btnState } from '../../shared/buttonStyles'
 
 const PIP_PRIORITIES = [
   { group: '— Business Advisory —', items: ['Business Growth', 'Business Exit', 'Business Advisory'] },
@@ -65,9 +67,9 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
   const [maxNA, setMaxNA] = useState(existing.maxNA || false)
   const [submitting, setSubmitting] = useState(false)
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = formInput
   const labelStyle = { fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }
-  const sectionStyle = { background: 'var(--vfo-tint)', borderRadius: '8px', padding: '16px', marginBottom: '12px', border: '1px solid var(--vfo-border-chip)' }
+  const sectionStyle = tintBox
   const readOnlyInput = { ...inputStyle, opacity: 0.6, pointerEvents: 'none' }
 
   function addCurrentPriority() {
@@ -194,7 +196,7 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
             {!isViewMode && (
               <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
                 {priorityDropdown(currentPriorityInput, e => setCurrentPriorityInput(e.target.value))}
-                <button onClick={addCurrentPriority} style={{ padding: '8px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add</button>
+                <button onClick={addCurrentPriority} style={btnPrimary}>Add</button>
               </div>
             )}
             {currentPriorities.length === 0 && isViewMode && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>None</div>}
@@ -206,7 +208,7 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
             {!isViewMode && (
               <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
                 {priorityDropdown(parkedPriorityInput, e => setParkedPriorityInput(e.target.value))}
-                <button onClick={addParkedPriority} style={{ padding: '8px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add</button>
+                <button onClick={addParkedPriority} style={btnPrimary}>Add</button>
               </div>
             )}
             {parkedPriorities.length === 0 && isViewMode && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>None</div>}
@@ -334,7 +336,7 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
             {!isViewMode && (
               <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
                 {priorityDropdown(currentPriorityInput, e => setCurrentPriorityInput(e.target.value))}
-                <button onClick={addCurrentPriority} style={{ padding: '8px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add</button>
+                <button onClick={addCurrentPriority} style={btnPrimary}>Add</button>
               </div>
             )}
             {currentPriorities.length === 0 && isViewMode && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>None</div>}
@@ -346,7 +348,7 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
             {!isViewMode && (
               <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
                 {priorityDropdown(parkedPriorityInput, e => setParkedPriorityInput(e.target.value))}
-                <button onClick={addParkedPriority} style={{ padding: '8px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add</button>
+                <button onClick={addParkedPriority} style={btnPrimary}>Add</button>
               </div>
             )}
             {parkedPriorities.length === 0 && isViewMode && <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>None</div>}
@@ -394,7 +396,7 @@ function PIPDecisionForm({ task, clientId, saveTask, existingData, onSubmitted, 
           {!isViewMode && (
             <>
               {submitError && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '13px', marginBottom: '8px' }}>{submitError}</div>}
-              <button onClick={handleSubmit} disabled={submitting} style={{ width: '100%', padding: '12px', borderRadius: '8px', background: submitting ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '15px', fontWeight: '600', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+              <button onClick={handleSubmit} disabled={submitting} style={{ ...btnState(btnPrimary, submitting), width: '100%', padding: '12px', fontSize: '15px' }}>
                 {submitting ? 'Submitting...' : 'Submit Outcome'}
               </button>
             </>

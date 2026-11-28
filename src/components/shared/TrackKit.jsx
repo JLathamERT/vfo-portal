@@ -181,6 +181,10 @@ export function StepDot({ done, color = STEP_GREEN, small = false }) {
 // edge into the same card margin, in line with every other row's.
 export const STEP_CHEVRON_MARGIN = 30
 const SUB_BOX_PAD = 14
+// A step's own dropdown or small field, in the control slot of a step row (Issue #661
+// part 6b: seven trackers each typed it out). 8px corners, like the value box.
+export const stepSelect = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
+
 export function StepChevron({ open, onToggle, sub = false }) {
   const isPhone = useIsPhone()
   const inset = isPhone ? (sub ? 10 : 14) : STEP_CHEVRON_MARGIN

@@ -4,6 +4,7 @@ import ListFilterButton, { matchesFilter } from './ListFilterButton'
 import { peopleOf } from './eventRows'
 import { btnOutline, btnPrimary, btnState, BTN_SMALL } from '../shared/buttonStyles'
 import { formatDateTime } from '../../lib/dates'
+import { listSelectStyle } from '../shared/ListTable'
 
 // Events > Check-in (2026-11-25): one row per person with a place, for the door.
 const GRID = 'minmax(180px, 1.2fr) minmax(190px, 1.2fr) 130px minmax(200px, 1.2fr) 140px 190px'
@@ -32,7 +33,7 @@ export default function EventCheckIn({ rows, onDone }) {
     catch (e) { setErr(e?.message || 'Could not save') }
     finally { setBusy(null) }
   }
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
+  const sel = listSelectStyle
 
   return (
     <>

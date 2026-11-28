@@ -3,6 +3,7 @@ import { callApi, getSession } from '../../lib/api'
 import { PaymentsTabSkeleton } from '../shared/Skeleton'
 import PaymentsTable, { parseGroupKey, chargeSavedLabel, fmtMoney } from './PaymentsTable'
 import PaymentsHeader from './PaymentsHeader'
+import { ProfileCardHead, pullHead } from '../shared/ProfileKit'
 
 // Read-only Payments tab for a client (admin view). Aggregates their MAP 1, Tax and
 // PIP Meetings payments via client_payments_load. Member-paid-on-behalf rows are
@@ -95,8 +96,6 @@ export default function ClientPaymentsTab({ clientId, sectionStyle }) {
     }
   }
 
-  const titleStyle = { fontSize: '17px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '0 0 16px', fontFamily: 'Inter, sans-serif' }
-
   if (loading) {
     return (
       <div style={sectionStyle}>
@@ -108,7 +107,7 @@ export default function ClientPaymentsTab({ clientId, sectionStyle }) {
   if (error) {
     return (
       <div style={sectionStyle}>
-        <h3 style={titleStyle}>Payments</h3>
+        <ProfileCardHead icon="dollar" title="Payments" style={pullHead} />
         <div style={{ marginTop: '12px', padding: '14px 16px', background: '#fdecea', border: '1px solid #f7c4bd', borderRadius: '10px', color: '#b42318', fontSize: '13px' }}>
           {error}
         </div>

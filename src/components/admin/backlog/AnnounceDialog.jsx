@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { btnPrimary, btnSecondary, btnState } from '../../shared/buttonStyles'
-import BacklogModal, { errorText, fieldLabel, inputStyle } from './BacklogModal'
+import Modal, { errorText, fieldLabel, inputStyle } from '../../shared/Modal'
 import { RELEASE_IMPORTANCE, todayLocal } from './backlogModel'
 
 // Mark as announced (Backlog 5a): a Ready to announce item goes Live with the
@@ -23,7 +23,7 @@ export default function AnnounceDialog({ request, onAnnounce, onClose }) {
   }
 
   return (
-    <BacklogModal title="Mark as announced" onClose={onClose}
+    <Modal title="Mark as announced" onClose={onClose}
       footer={(
         <>
           <button style={btnSecondary} onClick={onClose}>Cancel</button>
@@ -43,6 +43,6 @@ export default function AnnounceDialog({ request, onAnnounce, onClose }) {
         {RELEASE_IMPORTANCE.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
       </select>
       {error && <div style={errorText}>{error}</div>}
-    </BacklogModal>
+    </Modal>
   )
 }

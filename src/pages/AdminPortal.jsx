@@ -36,7 +36,8 @@ import SpecialistRecurringPanel from '../components/admin/SpecialistRecurringPan
 import SpecialistDepositsPanel from '../components/admin/SpecialistDepositsPanel'
 import SpecialistLicensePanel, { LicenseSetupSection } from '../components/admin/SpecialistLicensePanel'
 import SpecialistLicenseOutstandingPanel from '../components/admin/SpecialistLicenseOutstandingPanel'
-import SpecialistBgPanel from '../components/admin/SpecialistBgPanel'
+import SpecialistBgPanel, { BgRequestSection } from '../components/admin/SpecialistBgPanel'
+import SpecialistPaymentInput from '../components/admin/SpecialistPaymentInput'
 import SpecialistBgOutstandingPanel from '../components/admin/SpecialistBgOutstandingPanel'
 import SpecialistBgReconciliationPanel from '../components/admin/SpecialistBgReconciliationPanel'
 import SpecialistReconciliationPanel from '../components/admin/SpecialistReconciliationPanel'
@@ -744,9 +745,10 @@ export default function AdminPortal() {
           {activeTab === 'accounting' && !loading && canSeeTab('accounting') && (accountingSection === 'specialist_revenue' || accountingSection === 'specialist_payment_input' || accountingSection === 'specialist_recurring' || accountingSection === 'specialist_deposits' || accountingSection === 'specialist_reconciliation' || accountingSection === 'specialist_held_payouts') && (
             <AccountingCombinedPanel
               breadcrumb="Accounting · Specialists" title="VFO Specialist Revenue"
-              maxWidth="1200px" initialKey={accountingSection === 'specialist_payment_input' ? 'specialist_revenue' : accountingSection}
+              maxWidth="1200px" initialKey={accountingSection}
               tabs={[
                 { key: 'specialist_revenue', label: 'Revenue', render: () => <SpecialistRevenuePanel allExperts={allExperts} allMembers={allMembers} embedded /> },
+                { key: 'specialist_payment_input', label: 'New Payment', render: () => <SpecialistPaymentInput allExperts={allExperts} allMembers={allMembers} embedded /> },
                 { key: 'specialist_reconciliation', label: 'Reconciliation', render: () => <SpecialistReconciliationPanel allMembers={allMembers} embedded /> },
                 { key: 'specialist_recurring', label: 'Recurring', render: () => <SpecialistRecurringPanel embedded /> },
                 { key: 'specialist_deposits', label: 'Bank Transfer Account', render: () => <SpecialistDepositsPanel embedded /> },
@@ -773,6 +775,7 @@ export default function AdminPortal() {
               tabs={[
                 { key: 'specialist_bg', label: 'Background Checks', render: () => <SpecialistBgPanel allExperts={allExperts} embedded /> },
                 { key: 'specialist_bg_reconciliation', label: 'Reconciliation', render: () => <SpecialistBgReconciliationPanel embedded /> },
+                { key: 'specialist_bg_request', label: 'Request Payment', render: () => <BgRequestSection allExperts={allExperts} /> },
                 { key: 'specialist_bg_outstanding', label: 'Outstanding Payment Links', render: () => <SpecialistBgOutstandingPanel embedded /> },
               ]}
             />
@@ -869,9 +872,9 @@ function loadDataSkeleton(tab, section) {
       return <AccountingPageSkeleton maxWidth="1200px" pills={5}><AccountingRowsSkeleton search={260} boxes={[210]} blocks={[110, 110, 80]} pill={150} /></AccountingPageSkeleton>
     }
     const ledger = section === 'specialist_license' || section === 'specialist_bg'
-    // As many pills as the page has (VFO Specialist Revenue 6, Holistic / Tax / PIP 4, Payments / Implementation / SDP ATSG 3).
-    const pills = ledger ? 3
-      : /^specialist_/.test(section) ? 6
+    // As many pills as the page has (Background Checks 4, License 3, VFO Specialist Revenue 7, Holistic / Tax / PIP 4, Payments / Implementation / SDP ATSG 3).
+    const pills = section === 'specialist_bg' ? 4 : ledger ? 3
+      : /^specialist_/.test(section) ? 7
       : /^(holistic|tax|pip)_/.test(section) ? 4
       : /^sdp_atsg_/.test(section) || section === 'payments' || /_onboarding_fees$/.test(section) ? 3
       : 5

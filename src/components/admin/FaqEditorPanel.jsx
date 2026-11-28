@@ -3,7 +3,7 @@ import { callApi, getSession } from '../../lib/api'
 import { isWistiaLink, wistiaEmbedUrl } from '../shared/wistia'
 import { Skeleton } from '../shared/Skeleton'
 import { btnPrimary, btnSecondary, btnDanger, btnOutline, btnStep, BTN_SMALL, btnState } from '../shared/buttonStyles'
-import { formLabel, formInput, PageHeading } from '../shared/ProfileKit'
+import { cardBox, formInput, formLabel, PageHeading, ProfileCard } from '../shared/ProfileKit'
 import { listSearchStyle } from '../shared/ListTable'
 import SubTabs from '../shared/SubTabs'
 import { formatDate } from '../../lib/dates'
@@ -32,8 +32,7 @@ const PORTAL_KEY = 'faqEditorPortal'
 const emptyForm = (tiers) => ({ question: '', answer: '', video_url: '', category_id: '', active: true, document_path: '', document_name: '', portal_tiers: tiers.map(t => t.key) })
 const UNCATEGORISED_LABEL = 'Uncategorised'
 
-const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '22px', marginBottom: '20px' }
-const cardTitle = { fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '0 0 14px', paddingBottom: '8px', borderBottom: `2px solid ${NAVY}`, display: 'inline-block' }
+const card = { ...cardBox, marginBottom: '20px' }
 const note = { fontSize: '12.5px', color: 'var(--vfo-muted)', margin: '0 0 14px', lineHeight: 1.5 }
 const small = (style, disabled) => btnState({ ...style, ...BTN_SMALL }, disabled)
 const flag = (color) => ({ fontSize: '11px', color, fontWeight: 600, marginLeft: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' })
@@ -297,8 +296,7 @@ function FaqPortalEditor({ audience, people, portalLabel, tiers }) {
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) minmax(0, 1.6fr)', gap: '20px', alignItems: 'start' }}>
-        <div style={card}>
-          <div style={cardTitle}>Categories</div>
+        <ProfileCard icon="layers" title="Categories">
           <p style={note}>The {portalLabel} Help panel groups FAQs under these headings, in this order. Deleting a category keeps its FAQs; they just become uncategorised.</p>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             <input value={newCategory} onChange={e => setNewCategory(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCategory() }} placeholder="New category, e.g. Getting started" style={{ ...formInput, flex: 1 }} />
@@ -338,10 +336,10 @@ function FaqPortalEditor({ audience, people, portalLabel, tiers }) {
             )
           })}
           {catError && <p style={errorText}>{catError}</p>}
-        </div>
+        </ProfileCard>
 
-        <div ref={formRef} style={{ ...card, scrollMarginTop: '90px' }}>
-          <div style={cardTitle}>{editingId ? 'Edit FAQ' : 'Add FAQ'}</div>
+        <div ref={formRef} style={{ scrollMarginTop: '90px' }}>
+        <ProfileCard icon="note" title={editingId ? 'Edit FAQ' : 'Add FAQ'} style={{ marginBottom: 0 }}>
           <div style={field}>
             <label style={formLabel}>Question *</label>
             <input value={form.question} onChange={e => setForm({ ...form, question: e.target.value })} placeholder={audience === 'client' ? 'e.g. How do I upload a document?' : 'e.g. How do I add a client?'} style={formInput} />
@@ -416,14 +414,11 @@ function FaqPortalEditor({ audience, people, portalLabel, tiers }) {
             </button>
           </div>
           {error && <p style={errorText}>{error}</p>}
+        </ProfileCard>
         </div>
       </div>
 
-      <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={cardTitle}>Current FAQs</div>
-          <div style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>{loading ? '' : <>{items.length} item{items.length === 1 ? '' : 's'} · {items.filter(i => i.active).length} visible</>}</div>
-        </div>
+      <ProfileCard icon="clipboard" title="Current FAQs" action={<div style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>{loading ? '' : <>{items.length} item{items.length === 1 ? '' : 's'} · {items.filter(i => i.active).length} visible</>}</div>}>
         <p style={note}>{people[0].toUpperCase() + people.slice(1)} see them in this order within each category. Use the arrows to reorder{q ? ' (clear the search first)' : ''}.</p>
         <input type="search" name="search" autoComplete="off" value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search questions, answers or categories..." style={{ ...listSearchStyle, width: '100%', marginBottom: '6px' }} />
@@ -505,7 +500,7 @@ function FaqPortalEditor({ audience, people, portalLabel, tiers }) {
             </div>
           )
         })}
-      </div>
+      </ProfileCard>
     </>
   )
 }

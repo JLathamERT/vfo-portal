@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { clientStatusHex, clientStatusKey, clientStatusLabel } from '../shared/clientStatus'
 import DirectPill from '../shared/DirectPill'
-import { DotText, FormGrid, formInput, formLabel, ProfileCard, SettingRow, Switch } from '../shared/ProfileKit'
-import { btnPrimary, btnSecondary, btnState, BTN_SMALL } from '../shared/buttonStyles'
+import { cardBox, DotText, FormGrid, formInput, formLabel, ProfileCard, SettingRow, Switch } from '../shared/ProfileKit'
+import { BTN_SMALL, btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 import { MeetingHistoryList, ProgramNotesList } from '../shared/MsmKit'
 import ListTable, { ListName, ListPill, ListText, listSearchStyle } from '../shared/ListTable'
 import { useNavigate } from 'react-router-dom'
@@ -366,8 +366,8 @@ function EnrollPanel({ member, program, onEnrolled }) {
   const [dateEnrolled, setDateEnrolled] = useState(new Date().toISOString().split('T')[0])
   const [status, setStatus] = useState('')
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const inputStyle = formInput
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
 
   async function enroll() {
     try {
@@ -389,7 +389,7 @@ function EnrollPanel({ member, program, onEnrolled }) {
         <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Date Joined</label>
         <input type="date" value={dateEnrolled} onChange={e => setDateEnrolled(e.target.value)} style={inputStyle} />
       </div>
-      <button onClick={enroll} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
+      <button onClick={enroll} style={btnPrimary}>
         Enroll in {program.name}
       </button>
       {status && <p style={{ color: '#d93025', fontWeight: 500, fontSize: '13px', marginTop: '12px' }}>{status}</p>}
@@ -407,7 +407,7 @@ function ProgramNotes({ memberNumber, programName, onCount }) {
   const [editingId, setEditingId] = useState(null)
   const [editText, setEditText] = useState('')
   const session = getSession()
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
 
   // Re-opening Notes draws the last notes before the first paint when nothing has
   // been saved since (notes are added / edited here), then refreshes them.
@@ -467,7 +467,7 @@ function ProgramNotes({ memberNumber, programName, onCount }) {
     <div style={sectionStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Notes ({notes.length})</div>
-        {!showAdd && <button onClick={() => setShowAdd(true)} style={{ padding: '4px 12px', borderRadius: '6px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>+ Add Note</button>}
+        {!showAdd && <button onClick={() => setShowAdd(true)} style={btnPrimary}>+ Add Note</button>}
       </div>
       {showAdd && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
@@ -1374,8 +1374,8 @@ function CoachingMeetings({ enrollment, member, eyebrow = 'Advanced Coaching' })
   const [expandedMeeting, setExpandedMeeting] = useState(null)
   const [editingNotes, setEditingNotes] = useState({})
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
+  const inputStyle = formInput
 
   useEffect(() => { loadMeetings() }, [enrollment.id])
 
@@ -1429,7 +1429,7 @@ function CoachingMeetings({ enrollment, member, eyebrow = 'Advanced Coaching' })
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0095ff', flexShrink: 0 }} />{scheduledCount} scheduled</span>
           {nextScheduled && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span>Next meeting {formatDate(nextScheduled.meeting_date)}</span></>}
         </>}
-        action={<button onClick={() => setShowLog(!showLog)} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Log Meeting</button>}
+        action={<button onClick={() => setShowLog(!showLog)} style={btnPrimary}>+ Log Meeting</button>}
       />
 
       {showLog && (
@@ -1460,8 +1460,7 @@ function CoachingMeetings({ enrollment, member, eyebrow = 'Advanced Coaching' })
       )}
 
       {meetings.filter(m => m.status === 'scheduled').length > 0 && (
-        <div style={sectionStyle}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Upcoming</div>
+        <ProfileCard icon="calendar" title="Upcoming">
           {meetings.filter(m => m.status === 'scheduled').sort((a, b) => a.meeting_date.localeCompare(b.meeting_date)).map(m => (
             <div key={m.id} style={{ borderBottom: '1px solid var(--vfo-tint)' }}>
               <div onClick={() => setExpandedMeeting(expandedMeeting === m.id ? null : m.id)}
@@ -1486,11 +1485,10 @@ function CoachingMeetings({ enrollment, member, eyebrow = 'Advanced Coaching' })
               )}
             </div>
           ))}
-        </div>
+        </ProfileCard>
       )}
 
-      <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Meeting History</div>
+      <ProfileCard icon="history" title="Meeting History">
         {meetings.filter(m => m.status === 'completed').length === 0
           ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No meetings completed yet.</p>
           : meetings.filter(m => m.status === 'completed').sort((a, b) => a.meeting_date.localeCompare(b.meeting_date)).map(m => (
@@ -1521,7 +1519,7 @@ function CoachingMeetings({ enrollment, member, eyebrow = 'Advanced Coaching' })
             </div>
           ))
         }
-      </div>
+      </ProfileCard>
     </div>
   )
 }
@@ -1536,8 +1534,8 @@ function CoachingRenewal({ enrollment, member }) {
   const [renewalNotes, setRenewalNotes] = useState('')
   const [processStatus, setProcessStatus] = useState('')
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
+  const inputStyle = formInput
 
   useEffect(() => { loadRenewals() }, [enrollment.id])
 
@@ -1623,7 +1621,7 @@ function CoachingRenewal({ enrollment, member }) {
           <span>{currentPeriod}</span>
           {nextDate && <><span style={{ color: 'var(--vfo-border-mid)' }}>·</span><span style={{ fontWeight: 600, color: renewalUrgency }}>{daysUntilRenewal !== null && daysUntilRenewal < 0 ? `Overdue ${Math.abs(daysUntilRenewal)} days` : `Ends ${formatDate(nextDate)}${daysUntilRenewal !== null ? ` (${daysUntilRenewal} days)` : ''}`}</span></>}
         </>}
-        action={<button onClick={() => setShowLog(!showLog)} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Log Renewal</button>}
+        action={<button onClick={() => setShowLog(!showLog)} style={btnPrimary}>Log Renewal</button>}
       />
 
       {showLog && (
@@ -1662,8 +1660,7 @@ function CoachingRenewal({ enrollment, member }) {
         </div>
       )}
 
-      <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Renewal History</div>
+      <ProfileCard icon="history" title="Renewal History">
         {renewals.length === 0
           ? <p style={{ color: 'var(--vfo-muted)', fontSize: '14px' }}>No renewals recorded yet.</p>
           : renewals.map(r => (
@@ -1682,7 +1679,7 @@ function CoachingRenewal({ enrollment, member }) {
             </div>
           ))
         }
-      </div>
+      </ProfileCard>
     </div>
   )
 }

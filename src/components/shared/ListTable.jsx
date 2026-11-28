@@ -103,5 +103,9 @@ export const ONE_LINE = { display: 'block', overflow: 'hidden', textOverflow: 'e
 // Members, Specialists, Tax Planners). An opened profile stays at 900px.
 export const LIST_PAGE_MAX_WIDTH = '1200px'
 
+// A dropdown in the toolbar above a list or money table: a filter, a sort, a period
+// (Issue #661 part 6b: nine pages each typed their own). Accounting's selectStyle is this.
+export const listSelectStyle = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+
 // The search box above a list (Client Overview's).
 export const listSearchStyle = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', flex: 1, minWidth: '240px', boxSizing: 'border-box' }

@@ -4,6 +4,7 @@ import { callApi, setSession } from '../lib/api'
 import AuthShell from '../components/shared/AuthShell'
 import LoginError from '../components/shared/LoginError'
 import PasswordInput from '../components/shared/PasswordInput'
+import { btnPrimary, btnState } from '../components/shared/buttonStyles'
 
 const inputStyle = { width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px' }
 const labelStyle = { display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.8px' }
@@ -58,7 +59,7 @@ export default function MemberLogin() {
           <PasswordInput ref={passRef} id="password" name="password" autoComplete="current-password" value={passcode} onChange={e=>setPasscode(e.target.value)} placeholder="••••••••" required style={inputStyle} />
         </div>
         <LoginError message={error} portalLabel="Member" />
-        <button type="submit" disabled={loading} style={{ padding: '13px', borderRadius: '10px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 4px 14px rgba(18,94,204,0.35)', color: '#fff', fontSize: '15px', fontWeight: 600, cursor: 'pointer', marginTop: '4px' }}>{loading ? 'Signing in...' : 'Sign In'}</button>
+        <button type="submit" disabled={loading} style={{ ...btnState(btnPrimary, loading), padding: '13px', fontSize: '15px', marginTop: '4px' }}>{loading ? 'Signing in...' : 'Sign In'}</button>
       </form>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginTop: '20px', textAlign: 'center', cursor: 'pointer' }} onClick={()=>navigate('/forgot-password?type=member')}>Forgot passcode?</p>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginTop: '10px', textAlign: 'center', cursor: 'pointer' }} onClick={()=>navigate('/')}>← Back to portal selection</p>

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { callApi } from '../../lib/api'
 import { money } from './specialistRevenueShared'
 import { Skeleton, TableSkeleton } from '../shared/Skeleton'
-import { PageHeading } from '../shared/ProfileKit'
+import { cardBox, PageHeading, ProfileCard } from '../shared/ProfileKit'
 import Tag from '../shared/Tag'
 import { emptyRowStyle, headerRowStyle, refreshBtnStyle, rowStyle, tableStyle } from './accountingTable'
 import { formatDateTime } from '../../lib/dates'
@@ -162,7 +162,7 @@ export default function ManualConnectPaymentPanel() {
   }
 
   const wrap = { padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
-  const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)', padding: '20px', marginBottom: '22px' }
+  const card = { ...cardBox, borderRadius: '14px', marginBottom: '22px' }
   const label = { fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '6px' }
   const input = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--vfo-card)', color: 'var(--vfo-ink)' }
   const histCols = '150px 1.3fr 90px 1.6fr 1.1fr 150px'
@@ -174,7 +174,7 @@ export default function ManualConnectPaymentPanel() {
 
       {loadError && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px', marginBottom: '16px' }}>{loadError}</div>}
 
-      <div style={card}>
+      <ProfileCard icon="dollar" title="Send a payment">
         {loading ? (
           <>
             <div style={label}>Pay to</div>
@@ -229,7 +229,7 @@ export default function ManualConnectPaymentPanel() {
             )}
           </>
         )}
-      </div>
+      </ProfileCard>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', margin: '0 2px 10px' }}>
         <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--vfo-heading)' }}>History</div>

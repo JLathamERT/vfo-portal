@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { callApi, loadCachedAction, getLastSeen, setLastSeen } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel, useOpenLinkedNote } from '../../shared/PhaseNotes'
 import { PFTTrackSkeleton } from '../../shared/Skeleton'
-import { TrackHero, StepRow, SubStepRow, AutoSteps, PhaseCard, StepAnswer, StepDot, StepChevron } from '../../shared/TrackKit'
-import { stepChoice, stepStop, stepSend, btnStep, btnState } from '../../shared/buttonStyles'
+import { AutoSteps, PhaseCard, StepAnswer, StepChevron, StepDot, StepRow, stepSelect, SubStepRow, TrackHero } from '../../shared/TrackKit'
+import { btnState, btnStep, stepChoice, stepSend, stepStop } from '../../shared/buttonStyles'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
@@ -64,7 +64,7 @@ function pftMeetingCtx(client, meeting) {
 }
 
 const pftStatusColors = { Complete: '#1b9254', Completed: '#1b9254', 'Complete - Yes': '#1b9254', 'Complete - No': '#e74c3c', Yes: '#1b9254', No: '#e74c3c', Undecided: '#e06717', VFOS: '#0095ff', Member: '#0095ff', New: '#1b9254', 'Re-Set': '#1b9254', 'VFO FT': '#1b9254', 'VFO Associate': '#1b9254', Stopped: '#e74c3c', 'No show': '#e74c3c', 'Meeting 1 scheduled': '#1b9254', 'Meeting 2 scheduled': '#1b9254', 'Meeting 3 scheduled': '#1b9254', 'Confirmation email sent': '#1b9254', 'Email sent - date not yet arranged': '#1b9254', 'Meeting declined': '#e74c3c', 'No response': '#e74c3c', 'Call arranged': '#1b9254', 'VFO FT confirmed': '#1b9254', 'VFO Associate confirmed': '#1b9254', 'No confirmed': '#e74c3c', 'Undecided - awaiting client': '#e06717', 'Declined by Member': '#e74c3c', 'Declined by ERT/VFOS': '#e74c3c' }
-const inputStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
+const inputStyle = stepSelect
 // The step buttons (HOUSE_STYLE §6, Jake 2026-11-27): each choice white outline,
 // the decline choices red outline, Send blue, Cancel / Reschedule the small grey one.
 // Solid green stays on the hidden "mark complete without sending an email" backfill
@@ -258,7 +258,7 @@ function MeetingStep({ task, meeting, p, readOnly, client, onSend, onCompleteNoE
           : isDone
             ? <div className="vfo-stepchips" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <StatusPill status={p.status} color={statusColor} />
-                {canReschedule && <button onClick={openReschedule} disabled={!!pending} style={btnStep}>Reschedule</button>}
+                {canReschedule && <button onClick={openReschedule} disabled={!!pending} style={btnState(btnStep, !!pending)}>Reschedule</button>}
               </div>
             : readOnly
               ? null
@@ -300,7 +300,7 @@ function MeetingStep({ task, meeting, p, readOnly, client, onSend, onCompleteNoE
             <p style={{ margin: 0 }}>Regards,</p>
           </div>
           <div style={{ marginTop: '14px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-            <button disabled={!!pending} onClick={() => { setDeclineOpen(false); setReason('') }} style={btnStep}>Cancel</button>
+            <button disabled={!!pending} onClick={() => { setDeclineOpen(false); setReason('') }} style={btnState(btnStep, !!pending)}>Cancel</button>
             <button disabled={!!pending || !reason.trim()} onClick={() => fire('us_declined', null, null, null, reason)} style={btnState(stepSend, !!pending || !reason.trim())}>{pending === 'us_declined' ? 'Sending…' : 'Send Decline Email'}</button>
           </div>
         </div>

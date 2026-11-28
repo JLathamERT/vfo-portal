@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import { readable } from '../shared/readableColor'
 import { MarkReceivedButton } from './specialistRevenueShared'
+import { cardBox, ProfileCard } from '../shared/ProfileKit'
 
 // Accounting → VFO Specialist Payment Input.
 // Pick a specialist to charge, add recipient lines (recipient + ERT share + VFOS share +
@@ -125,7 +126,7 @@ const BANK_CHOICES = [
   { key: 'direct', title: 'They pay on their own, no email', desc: 'For specialists who already pay into our bank transfer account, and for money that is already there. Nothing is sent until you mark it received.' },
 ]
 
-export default function SpecialistPaymentInput({ allExperts = [], allMembers = [], onSent }) {
+export default function SpecialistPaymentInput({ allExperts = [], allMembers = [], onSent, embedded = false }) {
   const [expertKey, setExpertKey] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('link')
   const [bankChoice, setBankChoice] = useState('email')
@@ -250,8 +251,9 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
     }
   }
 
-  const wrap = { padding: '24px', maxWidth: '1100px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
-  const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', padding: '22px', boxShadow: 'var(--vfo-shadow-card)', marginBottom: '20px' }
+  // Embedded = the New Payment sub-tab of VFO Specialist Revenue, which draws the page header.
+  const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1100px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
+  const card = { ...cardBox, marginBottom: '20px' }
   const numInput = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none' }
   const reqBorder = (filled) => filled ? '1px solid var(--vfo-border-strong)' : '1px solid #f3c0c0'
   const offInput = { background: 'var(--vfo-tint)', color: 'var(--vfo-faint)', cursor: 'not-allowed' }
@@ -260,10 +262,12 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
 
   return (
     <div style={wrap}>
-      <div style={{ marginBottom: '20px' }}>
-        <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting</p>
-        <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>VFO Specialist Payment Input</h2>
-      </div>
+      {!embedded && (
+        <div style={{ marginBottom: '20px' }}>
+          <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting</p>
+          <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>VFO Specialist Payment Input</h2>
+        </div>
+      )}
 
       {result && result.no_email && (
         <div style={{ ...card, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
@@ -335,8 +339,7 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
       )}
 
       {/* Specialist picker */}
-      <div style={card}>
-        <div style={{ ...colLabel, marginBottom: '8px' }}>Specialist (who is paying)</div>
+      <ProfileCard icon="user" title="Who is paying">
         <div style={{ maxWidth: '420px' }}>
           {interCompany ? (
             <div style={{ ...numInput, ...offInput, color: 'var(--vfo-ink)' }}>{interCompanyExpert ? interCompanyExpert.name : 'The IAG specialist is not set up in this portal'}</div>
@@ -347,11 +350,10 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
         {selectedExpert && !selectedExpert.email && !alreadyPaid && (
           <div style={{ marginTop: '10px', fontSize: '12px', color: '#b45309' }}>This specialist has no email on file — add one in their profile before sending a request.</div>
         )}
-      </div>
+      </ProfileCard>
 
       {/* Payment method */}
-      <div style={card}>
-        <div style={{ ...colLabel, marginBottom: '10px' }}>Payment method</div>
+      <ProfileCard icon="dollar" title="Payment method">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
           {PAYMENT_METHODS.map(opt => {
             const active = paymentMethod === opt.key
@@ -401,10 +403,10 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
             </div>
           </div>
         )}
-      </div>
+      </ProfileCard>
 
       {/* Recipient lines */}
-      <div style={card}>
+      <ProfileCard icon="users" title="Revenue shares">
         <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '12px', alignItems: 'end', paddingBottom: '10px', borderBottom: '1px solid var(--vfo-tint)' }}>
           <div style={colLabel}>Member / Recipient</div>
           <div style={colLabel}>ERT Share $</div>
@@ -460,7 +462,7 @@ export default function SpecialistPaymentInput({ allExperts = [], allMembers = [
           style={{ marginTop: '14px', padding: '9px 16px', borderRadius: '8px', border: `1px solid ${BLUE}`, background: 'var(--vfo-card)', color: BLUE, fontWeight: 600, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
           + Add member
         </button>
-      </div>
+      </ProfileCard>
 
       {/* Gross + send */}
       <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>

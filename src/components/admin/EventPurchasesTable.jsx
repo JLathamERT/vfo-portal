@@ -8,6 +8,7 @@ import EventConnectionCell from './EventConnectionCell'
 import EventRefundDialog from './EventRefundDialog'
 import EventTiles from './EventTiles'
 import { connectionOf, eventMoney as money, methodOf, needsAnswer, sourceOf } from './eventRows'
+import { listSelectStyle } from '../shared/ListTable'
 
 // Events > Purchases (2026-11-25): one row per payment, in the Growth Credits Purchases
 // list's style. The money, who the buyer is (allocating a public buyer) and the
@@ -73,7 +74,7 @@ export default function EventPurchasesTable({ data, onDone }) {
     { label: 'Refunded', value: money(sum(all, r => r.refunded_amount)) },
   ]
   const needCount = all.filter(needsAnswer).length
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
+  const sel = listSelectStyle
 
   return (
     <>

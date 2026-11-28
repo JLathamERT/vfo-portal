@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
+import { cardBox } from '../shared/ProfileKit'
 
 // The admin home page on the test site, in place of the live KPI cards (Jake
 // 2026-11-05). Loaded only in a staging build.
 
-const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '20px 24px', marginBottom: '16px' }
+const cardStyle = cardBox
 const titleStyle = { fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }
 const listStyle = { fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.55, margin: 0, paddingLeft: '20px' }
 const textStyle = { fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.55, margin: '0 0 10px' }

@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { callApi, getSession } from '../../lib/api'
+import { ProfileCardHead, pullHead } from '../shared/ProfileKit'
+import { btnPrimary, btnState } from '../shared/buttonStyles'
 
 // The "Payments" tab header: title on the left, and (superadmin/Jake only) a
 // "Send Email to Change Payment Method" button on the right. The result message
@@ -8,8 +10,6 @@ import { callApi, getSession } from '../../lib/api'
 //
 // personType: 'client' | 'member' | 'specialist'
 // personRef:  client id / member_number / expert id
-const titleStyle = { fontSize: '17px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0, fontFamily: 'Inter, sans-serif' }
-
 export default function PaymentsHeader({ personType, personRef }) {
   const isSuper = getSession()?.is_superadmin
   const [status, setStatus] = useState('idle') // idle | sending
@@ -45,25 +45,16 @@ export default function PaymentsHeader({ personType, personRef }) {
   }
 
   return (
-    <div style={{ marginBottom: '16px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        <h3 style={titleStyle}>Payments</h3>
-        {showButton && (
-          <button
-            onClick={send}
-            disabled={status === 'sending'}
-            style={{
-              background: status === 'sending' ? '#9db8e8' : '#125ecc',
-              color: '#fff', border: 'none', borderRadius: '8px',
-              padding: '9px 16px', fontSize: '12.5px', fontWeight: 700,
-              fontFamily: 'Inter, sans-serif', cursor: status === 'sending' ? 'default' : 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {status === 'sending' ? 'Sending…' : 'Send Email to Change Payment Method'}
-          </button>
-        )}
-      </div>
+    <div style={{ marginBottom: msg ? '16px' : 0 }}>
+      <ProfileCardHead icon="dollar" title="Payments" style={pullHead} action={showButton && (
+        <button
+          onClick={send}
+          disabled={status === 'sending'}
+          style={btnState(btnPrimary, status === 'sending')}
+        >
+          {status === 'sending' ? 'Sending…' : 'Send Email to Change Payment Method'}
+        </button>
+      )} />
       {msg && (
         <div style={{
           marginTop: '12px', padding: '10px 14px', borderRadius: '10px',

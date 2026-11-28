@@ -5,6 +5,8 @@ import { MemberNameLink } from '../shared/personLinks'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { formatDate } from '../../lib/dates'
 import { SearchFilterSkeleton, TableSkeleton } from '../shared/Skeleton'
+import { listSelectStyle } from '../shared/ListTable'
+import { BTN_SMALL, btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 
 // Growth Credits > Purchases (2026-11-20): every Growth Credits sale in the
 // Advisor Onboarding list's style (OnboardingListTable.jsx): search, filter,
@@ -100,7 +102,7 @@ export default function GCPurchasesTable() {
   })
   const needCount = rowsAll.filter(r => statusOf(r) === NEEDS).length
 
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
+  const sel = listSelectStyle
 
   if (error && !data) return <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>{error}</div>
   if (!data) return <><SearchFilterSkeleton boxes={[84, 150]} /><TableSkeleton cols={GRID} rows={6} minWidth="1240px" pad="11px 18px" twoLine /></>
@@ -219,7 +221,7 @@ function MemberCell({ row, members, onDone }) {
     } finally { setBusy(false) }
   }
 
-  const btn = (primary) => ({ padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', border: primary ? 'none' : '1px solid var(--vfo-border-strong)', background: primary ? 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)' : 'transparent', color: primary ? '#fff' : 'var(--vfo-muted)', opacity: busy ? 0.6 : 1 })
+  const btn = (primary) => btnState({ ...(primary ? btnPrimary : btnSecondary), ...BTN_SMALL }, busy)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative', minWidth: 0 }}>

@@ -3,13 +3,13 @@ import { callApi } from '../../lib/api'
 import { PaymentsTabSkeleton } from '../shared/Skeleton'
 import PaymentsTable from './PaymentsTable'
 import PaymentsHeader from './PaymentsHeader'
+import { cardBox, ProfileCardHead, pullHead } from '../shared/ProfileKit'
 
 // Read-only Payments tab for a specialist (admin view). Shows the one-time
 // background-check payment + the full monthly $99 license history. The license
 // history is pulled live from Stripe by specialist_payments_load (only the latest
 // month is stored locally), so it reflects the real subscription invoices.
-const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px' }
-const titleStyle = { fontSize: '17px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '0 0 16px', fontFamily: 'Inter, sans-serif' }
+const cardStyle = { ...cardBox, marginBottom: 0 }
 
 export default function SpecialistPaymentsTab({ expertId }) {
   const [data, setData] = useState(null)
@@ -41,7 +41,7 @@ export default function SpecialistPaymentsTab({ expertId }) {
   if (error) {
     return (
       <div style={cardStyle}>
-        <h3 style={titleStyle}>Payments</h3>
+        <ProfileCardHead icon="dollar" title="Payments" style={pullHead} />
         <div style={{ marginTop: '12px', padding: '14px 16px', background: '#fdecea', border: '1px solid #f7c4bd', borderRadius: '10px', color: '#b42318', fontSize: '13px' }}>{error}</div>
       </div>
     )

@@ -9,7 +9,7 @@ import EventAttendeesTable, { EVENT_GRID, EVENT_MIN_WIDTH } from './EventAttende
 import EventPurchasesTable from './EventPurchasesTable'
 import EventCheckIn from './EventCheckIn'
 import SubTabs, { MiniTabs } from '../shared/SubTabs'
-import { PageHeading } from '../shared/ProfileKit'
+import { cardBox, PageHeading } from '../shared/ProfileKit'
 
 // More > Events (2026-11-25), open to every admin. The page and its sub-tab pills are
 // format-identical to the Growth Credits page (GrowthCreditsRedemptionsPage.jsx).
@@ -51,7 +51,7 @@ export default function EventsAdminPage() {
     return load(true)
   }
 
-  const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '22px', marginBottom: '18px' }
+  const card = { ...cardBox, marginBottom: '18px' }
   const event = data?.event
 
   return (

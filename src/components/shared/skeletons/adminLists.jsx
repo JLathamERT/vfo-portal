@@ -177,7 +177,7 @@ export function MemberOverviewSkeleton({ rows = 8 }) {
     <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
       <PageHeadingSkeleton chip />
       <SearchFilterSkeleton boxes={[84, 150]} />
-      <TableSkeleton cols="30px 84px 1.5fr 100px 1.1fr 96px 128px 110px 70px 1.3fr 176px" rows={rows} minWidth="1320px" pad="11px 18px" />
+      <TableSkeleton cols="84px 1.6fr 110px 1.2fr 110px 150px 1fr 180px 90px 110px" rows={rows} minWidth="1320px" pad="11px 18px" />
     </div>
   )
 }

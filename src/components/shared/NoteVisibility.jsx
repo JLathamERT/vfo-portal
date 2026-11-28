@@ -1,3 +1,4 @@
+import { btnPrimary, btnState } from './buttonStyles'
 // Shared UI for the internal-vs-member-visible note treatment (Phase 3).
 //
 //  • VisibilityBadge  — an "Internal" (amber) or "Shared with member" (teal)
@@ -57,7 +58,7 @@ export function SaveVisibilityButtons({ onSave, saving = false, disabled = false
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <button onClick={() => onSave('internal')} disabled={off}
-          style={{ padding: pad, borderRadius: '8px', background: off ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: font, cursor: off ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', fontFamily: 'Inter, sans-serif' }}>
+          style={btnState(btnPrimary, off)}>
           {saving ? 'Saving...' : internalLabel}
         </button>
         <button onClick={() => onSave('shared')} disabled={off}

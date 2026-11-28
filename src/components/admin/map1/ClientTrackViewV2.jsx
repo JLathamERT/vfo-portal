@@ -8,8 +8,8 @@ import PIPDecisionForm from './PIPDecisionForm'
 import MeetingCompleteButton from './MeetingCompleteButton'
 import { PhaseNotesButton, PhaseNotesPanel, useOpenLinkedNote } from '../../shared/PhaseNotes'
 import Tag from '../../shared/Tag'
-import { TrackHero, StepRow, SubStepRow, AutoSteps, PhaseCard, StepAnswer, StepChevron, TrackEmpty } from '../../shared/TrackKit'
-import { stepChoice, stepStop, stepSend, btnStep, btnState } from '../../shared/buttonStyles'
+import { AutoSteps, PhaseCard, StepAnswer, StepChevron, StepRow, stepSelect, SubStepRow, TrackEmpty, TrackHero } from '../../shared/TrackKit'
+import { btnState, btnStep, stepChoice, stepSend, stepStop } from '../../shared/buttonStyles'
 import Map1PricingSplitCard from './Map1PricingSplitCard'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
@@ -76,7 +76,7 @@ function PipConfirmStep({ clientId, task, p, meeting, readOnly, onDone, emailCtx
   const [slot, setSlot] = useState(p.notes || '')
   const isDone = !!p.status
   const statusColor = isDone ? '#1b9254' : 'var(--vfo-muted)'
-  const inputStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = stepSelect
   async function fire(decision, d, t, z) {
     setPending(decision)
     try {
@@ -113,7 +113,7 @@ function PipConfirmStep({ clientId, task, p, meeting, readOnly, onDone, emailCtx
         <option value="HT">Hawaii (HT)</option>
       </select>
       <button onClick={() => date && fire('confirm_date', date, time, tz)} disabled={!date || !!pending} style={btnState(stepSend, !date || !!pending)}>{pending === 'confirm_date' ? 'Sending…' : 'Send'}</button>
-      <button onClick={() => !pending && onCancel()} disabled={!!pending} style={btnStep}>Cancel</button>
+      <button onClick={() => !pending && onCancel()} disabled={!!pending} style={btnState(btnStep, !!pending)}>Cancel</button>
     </div>
   )
 
@@ -389,7 +389,7 @@ function ClientTrackViewV2({ clientId, programId, client, readOnly = false, memb
     return { done: steps.filter(Boolean).length, total: steps.length }
   }
 
-  const inputStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = stepSelect
 
   // Known-value substitutions for the email previews (see StepEmailsChip).
   // Reactive to the selected client + loaded pipeline row; empty values are
