@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import { useIsPhone } from '../../../lib/useMediaQuery'
-import { fmtDate, isTask, placeLabel } from './backlogModel'
+import { isTask, placeLabel } from './backlogModel'
 import BacklogDetails from './BacklogDetails'
+import { formatDate } from '../../../lib/dates'
 
 // The request drawer (Tasks board, Archive): the blue header, then the request's
 // details stacked in one column (BacklogDetails, which the Requests tab's row
@@ -25,7 +26,7 @@ export default function BacklogDrawer({ request: r, people, onClose, ...details 
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.72 }}>{isTask(r) ? 'Task · ' : ''}{placeLabel(r, people)}</div>
               <div style={{ fontSize: '18px', fontWeight: 800, marginTop: '4px', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{r.title}</div>
-              <div style={{ fontSize: '12.5px', opacity: 0.8, marginTop: '4px' }}>{r.requester_name} · {isTask(r) ? 'Added' : 'Requested'} {fmtDate(r.requested_on)}{r.imported ? ' · Imported from sheet' : ''}</div>
+              <div style={{ fontSize: '12.5px', opacity: 0.8, marginTop: '4px' }}>{r.requester_name} · {isTask(r) ? 'Added' : 'Requested'} {formatDate(r.requested_on, '–')}{r.imported ? ' · Imported from sheet' : ''}</div>
             </div>
             <button onClick={onClose} aria-label="Close" title="Close"
               style={{ background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.3)', color: '#ffffff', borderRadius: '50%', width: '30px', height: '30px', fontSize: '17px', lineHeight: 1, cursor: 'pointer', flexShrink: 0 }}>×</button>

@@ -2,12 +2,13 @@ import { useEffect, useId, useState } from 'react'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { btnDanger, btnPrimary, btnSecondary, btnState } from '../../shared/buttonStyles'
 import { departmentChipStyle } from './portalDepartments'
-import { PROGRESS_LABELS, RELEASE_IMPORTANCE, columnName, fmtDate, fmtDateTime, isPool, isTask, likedByText, parseColumn, placeLabel, releaseImportanceLabel } from './backlogModel'
+import { PROGRESS_LABELS, RELEASE_IMPORTANCE, columnName, isPool, isTask, likedByText, parseColumn, placeLabel, releaseImportanceLabel } from './backlogModel'
 import LikeButton from './LikeButton'
 import ScorePill from './ScorePill'
 import { DueChip, TaskTag } from './TaskBits'
 import BigNewsBadge from './BigNewsBadge'
 import { fieldLabel, inputStyle } from './BacklogModal'
+import { formatDate, formatDateTime } from '../../../lib/dates'
 
 // A request's details: every field, the write-up, the review, the Move to /
 // Assign to selects (what dragging does, for a touch screen), the announcement
@@ -61,12 +62,12 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
   // status line, where a pending request's Approve / Deny need no "Waiting" line.
   const reviewBody = (inline) => {
     if (task) {
-      return <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.55 }}>Task added by {r.requester_name || 'a former admin'}, {fmtDateTime(r.created_at)}</div>
+      return <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.55 }}>Task added by {r.requester_name || 'a former admin'}, {formatDateTime(r.created_at, '–')}</div>
     }
     const buttons = canManage && pending
     const line = pending ? (inline && buttons ? null : 'Waiting for Jake or Paxton to review.')
       : r.review_status === 'withdrawn' ? 'Withdrawn by the requester.'
-      : `${r.review_status === 'approved' ? 'Approved' : 'Denied'} by ${people[r.reviewed_by_admin_id] || (r.imported ? 'the sheet' : 'a former admin')}${r.reviewed_at ? `, ${fmtDateTime(r.reviewed_at)}` : ''}`
+      : `${r.review_status === 'approved' ? 'Approved' : 'Denied'} by ${people[r.reviewed_by_admin_id] || (r.imported ? 'the sheet' : 'a former admin')}${r.reviewed_at ? `, ${formatDateTime(r.reviewed_at, '–')}` : ''}`
     const gap = inline ? '8px' : '12px'
     return (
       <>
@@ -205,16 +206,16 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
           {r.archived_at ? (
             <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>
               {r.announced_on
-                ? <div>Announced on <strong>{fmtDate(r.announced_on)}</strong></div>
-                : r.live_at && <div>Live <strong>{fmtDate(String(r.live_at).slice(0, 10))}</strong>, not announced</div>}
+                ? <div>Announced on <strong>{formatDate(r.announced_on, '–')}</strong></div>
+                : r.live_at && <div>Live <strong>{formatDate(String(r.live_at).slice(0, 10), '–')}</strong>, not announced</div>}
               {r.announce_note && <div style={{ overflowWrap: 'anywhere' }}>{r.announce_note}</div>}
-              <div style={{ color: 'var(--vfo-muted)' }}>Archived by {people[r.archived_by_admin_id] || 'a former admin'}, {fmtDateTime(r.archived_at)}</div>
+              <div style={{ color: 'var(--vfo-muted)' }}>Archived by {people[r.archived_by_admin_id] || 'a former admin'}, {formatDateTime(r.archived_at, '–')}</div>
               {canManage && <button style={{ ...btnState(btnSecondary, busy), marginTop: '10px' }} disabled={busy} onClick={onRestore}>Restore</button>}
             </div>
           ) : isLive ? (
             <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: 1.6 }}>
-              <div>Live{r.live_at ? <> since <strong>{fmtDate(String(r.live_at).slice(0, 10))}</strong></> : ''}</div>
-              {r.announced_on ? <div>Announced on <strong>{fmtDate(r.announced_on)}</strong></div> : <div style={{ color: 'var(--vfo-muted)' }}>Not announced.</div>}
+              <div>Live{r.live_at ? <> since <strong>{formatDate(String(r.live_at).slice(0, 10), '–')}</strong></> : ''}</div>
+              {r.announced_on ? <div>Announced on <strong>{formatDate(r.announced_on, '–')}</strong></div> : <div style={{ color: 'var(--vfo-muted)' }}>Not announced.</div>}
               {r.announce_note && <div style={{ overflowWrap: 'anywhere' }}>{r.announce_note}</div>}
               {canManage && <button style={{ ...btnState(btnSecondary, busy), marginTop: '10px' }} disabled={busy} onClick={onArchive}>Archive</button>}
             </div>
@@ -241,7 +242,7 @@ export default function BacklogDetails({ request: r, people, assignees, canManag
             {task && <><TaskTag />{' '}</>}
             {r.release_importance === 'big' && <><BigNewsBadge request={r} />{' '}</>}
             <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--vfo-accent-text)' }}>{placeLabel(r, people)}</span>
-            {' · '}{r.requester_name} · {task ? 'Added' : 'Requested'} {fmtDate(r.requested_on)}{r.imported ? ' · Imported from sheet' : ''}
+            {' · '}{r.requester_name} · {task ? 'Added' : 'Requested'} {formatDate(r.requested_on, '–')}{r.imported ? ' · Imported from sheet' : ''}
           </div>
           {reviewBody(true)}
         </div>
@@ -317,8 +318,8 @@ function describe(e, people) {
   if (e.kind === 'edited' && e.note) return `Edited ${e.note.split(', ').map((f) => FIELD_NAMES[f] || f).join(', ')}`
   // Before Backlog 5a an archive carried the announced date; since then it is
   // just "Archived", and Mark as announced carries the date.
-  if (e.kind === 'archived') return e.to_value ? `Archived, announced on ${fmtDate(e.to_value)}` : 'Archived'
-  if (e.kind === 'announced') return `Marked as announced on ${fmtDate(e.to_value)}: now Live`
+  if (e.kind === 'archived') return e.to_value ? `Archived, announced on ${formatDate(e.to_value, '–')}` : 'Archived'
+  if (e.kind === 'announced') return `Marked as announced on ${formatDate(e.to_value, '–')}: now Live`
   if (e.kind === 'went_live') return `Moved from ${col(e.from_value)} to Live`
   if (e.kind === 'release_importance') return `Set release importance to ${releaseImportanceLabel(e.to_value)}`
   if (e.kind === 'writeup' && e.note === 'cleared') return 'Cleared the write-up'
@@ -345,13 +346,13 @@ function History({ request, people }) {
               <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '2px', overflowWrap: 'anywhere' }}>Was denied: {e.from_value}</div>
             )}
             {e.kind === 'restored' && e.from_value && (
-              <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>Had been announced on {fmtDate(e.from_value)}</div>
+              <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '2px' }}>Had been announced on {formatDate(e.from_value, '–')}</div>
             )}
             {isTitleFix(e) && e.from_value && (
               <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '2px', overflowWrap: 'anywhere' }}>Was: {e.from_value}</div>
             )}
             <div style={{ fontSize: '11.5px', color: 'var(--vfo-faint)', marginTop: '2px' }}>
-              {e.kind === 'imported' ? 'Sheet import' : isTitleFix(e) ? 'Title clean-up' : (people[e.actor_admin_id] || 'A former admin')} · {fmtDateTime(e.created_at)}
+              {e.kind === 'imported' ? 'Sheet import' : isTitleFix(e) ? 'Title clean-up' : (people[e.actor_admin_id] || 'A former admin')} · {formatDateTime(e.created_at, '–')}
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { clientPagePath, useOpenMember, specialistProfilePath } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import SharedTag from '../shared/Tag'
+import { formatDate } from '../../lib/dates'
 
 // Global admin page only (rows carry person/clientId): where a client row's payment
 // lives on the client page, read off the row key the loader builds (normalize.ts).
@@ -61,18 +62,6 @@ export function fmtMoney(n) {
   if (n === null || n === undefined) return '—'
   const s = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return n < 0 ? `−$${s}` : `$${s}`
-}
-
-export function fmtDate(d) {
-  if (!d) return '—'
-  // Date-only values ("YYYY-MM-DD", e.g. pay1_date / retainer_date) are calendar
-  // dates — build them in local time so they render as-is. `new Date("YYYY-MM-DD")`
-  // would parse as UTC midnight and slip back a day for users west of UTC.
-  // Full ISO timestamps (Stripe payouts/invoices) keep their instant behavior.
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d))
-  const dt = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(d)
-  if (isNaN(dt.getTime())) return '—'
-  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export function fmtMethod(method, last4) {
@@ -307,7 +296,7 @@ export default function PaymentsTable({
     return (
       <tr key={r.key} onClick={onRow || undefined} {...(onRow ? rowHoverProps : {})} style={{ ...(onRow ? clickableRowStyle : null), ...(onBehalf ? { background: 'var(--vfo-row-behalf)' } : null), ...(child ? { background: 'var(--vfo-row-child)' } : null), ...(sub && !onBehalf ? { background: 'var(--vfo-row-sub)' } : null) }}>
         <td style={td} />
-        <td style={{ ...td, whiteSpace: 'nowrap', color: 'var(--vfo-muted)', ...(child ? { paddingLeft: '14px' } : null), ...(sub ? { paddingLeft: '24px', borderLeft: '3px solid var(--vfo-border-chip)' } : null) }}>{fmtDate(r.date)}</td>
+        <td style={{ ...td, whiteSpace: 'nowrap', color: 'var(--vfo-muted)', ...(child ? { paddingLeft: '14px' } : null), ...(sub ? { paddingLeft: '24px', borderLeft: '3px solid var(--vfo-border-chip)' } : null) }}>{formatDate(r.date, '—')}</td>
         {hasPerson && (
           <td style={{ ...td, whiteSpace: 'nowrap' }}>
             {!child && personName(r)}
@@ -436,7 +425,7 @@ export default function PaymentsTable({
           <td style={{ ...td, padding: '12px 4px', textAlign: 'center', color: 'var(--vfo-muted)' }}>
             <span style={{ fontSize: '18px', lineHeight: 1, fontWeight: 700 }}>{open ? '▾' : '▸'}</span>
           </td>
-          <td style={{ ...td, whiteSpace: 'nowrap', color: 'var(--vfo-muted)' }}>{fmtDate(startDate)}</td>
+          <td style={{ ...td, whiteSpace: 'nowrap', color: 'var(--vfo-muted)' }}>{formatDate(startDate, '—')}</td>
           {hasPerson && (
             <td style={{ ...td, whiteSpace: 'nowrap' }}>
               {personName(first)}

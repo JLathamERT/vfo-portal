@@ -1,9 +1,10 @@
 import { useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
-import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
+import { StepCard, Detail, Badge, Pending, fmtMoney, PanelHero, EmptyState } from './automation/StepKit'
 import StripeAccountPill from './StripeAccountPill'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
+import { formatDate } from '../../lib/dates'
 
 const STAGE_LABELS = {
   new: 'New', sif_sent: 'SIF Sent', sif_review: 'SIF Submitted', voting: 'Exec Voting',
@@ -100,7 +101,7 @@ function SpecialistPipelineRow({ row, expanded, onToggle }) {
             {row.sif_token ? (
               <>
                 <Detail l="SIF form sent" v={!!row.sif_token} />
-                <Detail l="Submitted" v={fmtDate(row.sif_submitted_at)} showEmpty />
+                <Detail l="Submitted" v={formatDate(row.sif_submitted_at)} showEmpty />
                 <Detail l="Tax specialist" v={row.sif_data ? (row.sif_data.is_tax_specialist || '—') : null} />
               </>
             ) : <Pending />}
@@ -119,14 +120,14 @@ function SpecialistPipelineRow({ row, expanded, onToggle }) {
                       </div>
                       {m.rev_proposal_text && (
                         <div style={{ fontSize: '11px', color: respColor, marginTop: '3px' }}>
-                          ↳ Revenue share proposal emailed {fmtDate(m.rev_proposal_email_sent_at) || 'pending'} · Response: {m.rev_proposal_response || 'Awaiting'}
+                          ↳ Revenue share proposal emailed {formatDate(m.rev_proposal_email_sent_at) || 'pending'} · Response: {m.rev_proposal_response || 'Awaiting'}
                         </div>
                       )}
                     </div>
                   )
                 })}
                 <div style={{ marginTop: '6px' }}>
-                  <Detail l="Final revenue share proposal" v={fmtDate(row.final_rev_proposal && row.final_rev_proposal.at)} showEmpty />
+                  <Detail l="Final revenue share proposal" v={formatDate(row.final_rev_proposal && row.final_rev_proposal.at)} showEmpty />
                 </div>
               </>
             ) : <Pending />}
@@ -152,15 +153,15 @@ function SpecialistPipelineRow({ row, expanded, onToggle }) {
 
           <StepCard title="Stage 3 Email" status={row.bg_step3_email_sent_at ? 'done' : 'pending'}>
             {row.bg_step3_email_sent_at ? (
-              <Detail l="Sent to specialist" v={fmtDate(row.bg_step3_email_sent_at)} />
+              <Detail l="Sent to specialist" v={formatDate(row.bg_step3_email_sent_at)} />
             ) : <Pending />}
           </StepCard>
 
           {row.further_questions_requested_at && (
             <StepCard title="Further Questions" status={row.further_questions_resolved_at ? 'done' : 'awaiting'}>
-              <Detail l="Requested" v={fmtDate(row.further_questions_requested_at)} />
+              <Detail l="Requested" v={formatDate(row.further_questions_requested_at)} />
               <Detail l="Resolution" v={row.further_questions_resolution} showEmpty />
-              <Detail l="Resolved" v={fmtDate(row.further_questions_resolved_at)} showEmpty />
+              <Detail l="Resolved" v={formatDate(row.further_questions_resolved_at)} showEmpty />
             </StepCard>
           )}
 
@@ -171,8 +172,8 @@ function SpecialistPipelineRow({ row, expanded, onToggle }) {
                 <Detail l="Method" v={row.bg_payment_method_type} />
                 <Detail l="Account" v={row.bg_acct_last4 ? `****${row.bg_acct_last4}` : null} />
                 <Detail l="Status" v={paymentStatusLabel(row.bg_payment_status)} />
-                <Detail l="Confirmation email sent" v={fmtDate(row.bg_confirmation_email_sent_at)} />
-                <Detail l="Payment cleared" v={fmtDate(row.bg_payment_completed_at)} />
+                <Detail l="Confirmation email sent" v={formatDate(row.bg_confirmation_email_sent_at)} />
+                <Detail l="Payment cleared" v={formatDate(row.bg_payment_completed_at)} />
                 <Detail l="Routed to" v={checkProcess} />
               </>
             ) : <Pending />}
@@ -181,7 +182,7 @@ function SpecialistPipelineRow({ row, expanded, onToggle }) {
           <StepCard title="Invoice & Receipt" status={recStatus}>
             {row.bg_confirmation_email_sent_at || row.bg_invoice_number ? (
               <>
-                <Detail l="Receipt email sent" v={fmtDate(row.bg_receipt_email_sent_at)} showEmpty />
+                <Detail l="Receipt email sent" v={formatDate(row.bg_receipt_email_sent_at)} showEmpty />
                 <Detail l="Invoice #" v={row.bg_invoice_number} mono />
                 <Detail l="Receipt #" v={row.bg_receipt_number} mono />
               </>
@@ -189,7 +190,7 @@ function SpecialistPipelineRow({ row, expanded, onToggle }) {
           </StepCard>
 
           <div style={{ marginTop: '10px', fontSize: '10px', color: 'var(--vfo-faint)' }}>
-            Onboarding #{row.id} · Started {fmtDate(row.created_at)} · {row.specialist_email || 'no email'}
+            Onboarding #{row.id} · Started {formatDate(row.created_at)} · {row.specialist_email || 'no email'}
           </div>
         </div>
       )}

@@ -22,7 +22,7 @@ export function MeetingHistoryList({ meetings, onDelete, showVisibility = false 
               {showVisibility && m.notes && <VisibilityBadge visibility={m.visibility} />}
             </div>
             <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '3px' }}>
-              {new Date(m.meeting_date + 'T12:00:00').toLocaleDateString()}{m.conducted_by ? ` · ${m.conducted_by}` : ''}
+              {formatDate(m.meeting_date)}{m.conducted_by ? ` · ${m.conducted_by}` : ''}
             </div>
             {m.notes && <div style={{ fontSize: '13px', color: 'var(--vfo-ink-2)', marginTop: '6px', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{m.notes}</div>}
           </div>

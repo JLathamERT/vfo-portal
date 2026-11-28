@@ -4,6 +4,7 @@ import { callApi, getSession } from '../../lib/api'
 import { AdvisorOnboardingListSkeleton, AdvisorOnboardingDetailSkeleton } from '../shared/Skeleton'
 import { PhaseBadge } from '../shared/TrackKit'
 import NewModelSaleModal from './NewModelSaleModal'
+import { formatDate, formatDateTime } from '../../lib/dates'
 
 // The Team Member Responsible step offers only the people who run preliminary
 // meetings; the New Model Sale modal keeps the wider SALES_TEAM_NAMES list. A
@@ -535,7 +536,7 @@ function OnboardingDetail({ id, onBack }) {
     <div style={{ marginLeft: '18px', marginBottom: '4px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
       <AutoRow label="Reminder email sent (1 business day before)" done={!!ob.meeting_reminder_sent_at} date={ob.meeting_reminder_sent_at} />
       {!ob.meeting_reminder_sent_at && ob.meeting_reminder_due_at && (
-        <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '4px 0 0 14px' }}>{new Date(ob.meeting_reminder_due_at) <= new Date() ? 'Sends on the next sweep run (within 5 minutes) — the 1-business-day mark has already passed' : `Sends ${formatStampFull(ob.meeting_reminder_due_at)} (1 business day before the meeting)`}</div>
+        <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', padding: '4px 0 0 14px' }}>{new Date(ob.meeting_reminder_due_at) <= new Date() ? 'Sends on the next sweep run (within 5 minutes) — the 1-business-day mark has already passed' : `Sends ${formatDateTime(ob.meeting_reminder_due_at)} (1 business day before the meeting)`}</div>
       )}
       <AutoRow label="Prospective advisor responded" done={!!ob.meeting_response} date={ob.meeting_response_at} tag={responseTag} />
       <AutoRow label="60-minute reminder sent" done={!!ob.meeting_reminder_60m_sent_at} date={ob.meeting_reminder_60m_sent_at} />
@@ -914,21 +915,6 @@ function StageBlock({ stage, title, state, expanded, onToggle, dimmed, children 
   )
 }
 
-// A bare 'YYYY-MM-DD' is split as a string — new Date() would read it as UTC
-// and show the previous day west of Greenwich. A timestamptz goes through Date
-// so it lands on the day the viewer actually saw.
-function formatDate(d) {
-  if (!d) return ''
-  const s = String(d)
-  if (!s.includes('T')) {
-    const parts = s.split('-')
-    return `${parts[1]}/${parts[2]}`
-  }
-  const dt = new Date(s)
-  if (isNaN(dt.getTime())) return ''
-  return `${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`
-}
-
 // Keep only digits and a single decimal point, capped at 2 decimals, so the
 // dollar field can't hold anything that isn't a dollar amount.
 function sanitizeMoney(raw) {
@@ -945,7 +931,7 @@ function fmtMoney(n) {
   return num.toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(num) ? 0 : 2, maximumFractionDigits: 2 })
 }
 
-const dateTextStyle = { fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0, display: 'inline-block', width: '38px' }
+const dateTextStyle = { fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0, display: 'inline-block', width: '72px' }
 
 // Prerequisite lock, drawn the same way the tax priorities tab draws it so every
 // locked step in the portal reads as one thing.
@@ -959,14 +945,6 @@ function LockedIcon({ size = 13 }) {
 }
 
 const lockedHintStyle = { fontSize: '11px', color: 'var(--vfo-muted)', fontWeight: 500 }
-
-// Full local date + time, for a scheduled send that hasn't happened yet.
-function formatStampFull(d) {
-  if (!d) return ''
-  const dt = new Date(String(d))
-  if (isNaN(dt.getTime())) return ''
-  return dt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-}
 
 function Row({ label, done, date, children, emails, pipeline, emailCtx, onDateChange, saving, locked, lockedHint }) {
   return (

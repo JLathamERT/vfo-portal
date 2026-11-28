@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { Skeleton } from '../../shared/Skeleton'
 import { TONES, fmtKpiMoney } from './kpiFormat'
+import { formatDate } from '../../../lib/dates'
 
 // Tax Plan KPI Tracker (2026-11-16, Jake's Workbench spec): the body under a plan
 // row on Client Overview > Tax Planning. Every rule (statuses, day counts, fee
@@ -83,9 +84,9 @@ function StepTile({ step, strategies, blockedReason }) {
       {step.reason && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{step.reason}</span>}
       {step.number === 0 && blockedReason && <span style={{ fontSize: '12px', fontWeight: 600, color: '#e06717' }}>{blockedReason}</span>}
       {/* A paid or refunded date shows only when the tile has no $ amount (Jake 2026-11-25). */}
-      {step.number === 0 && step.paid_date && !hasAmount && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Paid {fmtShortDate(step.paid_date)}</span>}
+      {step.number === 0 && step.paid_date && !hasAmount && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Paid {formatDate(step.paid_date)}</span>}
       <MoneyLines money={step.money} />
-      {step.refunded_date && !hasAmount && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Refunded {fmtShortDate(step.refunded_date)}</span>}
+      {step.refunded_date && !hasAmount && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Refunded {formatDate(step.refunded_date)}</span>}
       {subs.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
           {subs.map(s => (
@@ -158,11 +159,6 @@ function StepRow({ plan, isPhone }) {
       )}
     </div>
   )
-}
-
-function fmtShortDate(iso) {
-  const [y, m, d] = String(iso).slice(0, 10).split('-')
-  return y && m && d ? `${m}/${d}/${y}` : String(iso)
 }
 
 // Every header label sits on one top line (fixed line height), its value below.

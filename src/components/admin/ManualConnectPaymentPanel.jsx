@@ -5,6 +5,7 @@ import { Skeleton, TableSkeleton } from '../shared/Skeleton'
 import { PageHeading } from '../shared/ProfileKit'
 import Tag from '../shared/Tag'
 import { emptyRowStyle, headerRowStyle, refreshBtnStyle, rowStyle, tableStyle } from './accountingTable'
+import { formatDateTime } from '../../lib/dates'
 
 // Accounting > Manually sent Stripe Connect Payment. Pick anyone with a Stripe
 // Connect account, type an amount + memo, Send: the transfer happens at once from the
@@ -20,11 +21,6 @@ const TYPE_LABELS = {
 
 function newClientRef() {
   return crypto.randomUUID().replace(/-/g, '')
-}
-
-function fmtDateTime(s) {
-  if (!s) return '—'
-  try { return new Date(s).toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }) } catch { return String(s) }
 }
 
 // Same searchable single-select as MembershipFeesPanel / SpecialistPaymentInput.
@@ -247,7 +243,7 @@ export default function ManualConnectPaymentPanel() {
           {history.length === 0 && <div style={emptyRowStyle}>No manual payments yet.</div>}
           {history.map(p => (
             <div key={p.id} style={{ ...rowStyle, gridTemplateColumns: histCols, minWidth: '760px' }}>
-              <div>{fmtDateTime(p.created_at)}</div>
+              <div>{formatDateTime(p.created_at, '—')}</div>
               <div>
                 <div style={{ fontWeight: 600 }}>{p.recipient_name || p.entity_key}</div>
                 <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{TYPE_LABELS[p.entity_type] || p.entity_type}</div>

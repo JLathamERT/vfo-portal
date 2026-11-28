@@ -6,6 +6,7 @@ import { money, StatusPill } from '../admin/specialistRevenueShared'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { BackLink } from '../shared/ProfileKit'
+import { formatDate } from '../../lib/dates'
 
 // SDP - Advanced Tax Strategy Governance (Jake, 2026-11-17). One screen for both
 // the planner portal tab (SDP's planners + team members) and the admin
@@ -68,12 +69,6 @@ const inputStyle = { width: '100%', padding: '9px 12px', borderRadius: '8px', bo
 const labelStyle = { display: 'block', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '5px' }
 const sectionTitle = { fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }
 
-function fmtDate(d) {
-  if (!d) return '—'
-  const s = String(d)
-  const dt = new Date(s.length <= 10 ? `${s}T12:00:00Z` : s)
-  return Number.isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: s.length <= 10 ? 'UTC' : undefined })
-}
 const methodWord = t => (t === 'ach' ? 'bank' : t === 'card' ? 'card' : '')
 const freqLabel = f => (FREQS.find(x => x[0] === f) || [])[1] || '—'
 
@@ -377,13 +372,7 @@ const declinedEvent = c => (c.agreement_declined_at && !c.agreement_sent_at ? (c
 const declinedNoticeStyle = { background: 'rgba(180,83,9,0.08)', border: '1px solid rgba(180,83,9,0.35)', borderRadius: '10px', padding: '10px 14px', margin: '4px 0 12px', fontSize: '13px', lineHeight: 1.5, color: '#b45309' }
 const chipStyle = hex => ({ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: `${hex}26`, color: hex, fontWeight: 600, border: `1px solid ${hex}4d`, whiteSpace: 'nowrap' })
 const neutralChipStyle = { fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', color: 'var(--vfo-muted)', fontWeight: 600, border: '1px solid var(--vfo-border-chip)', whiteSpace: 'nowrap' }
-const mmdd = d => {
-  if (!d) return ''
-  const dt = new Date(String(d).length <= 10 ? `${d}T12:00:00Z` : d)
-  if (Number.isNaN(dt.getTime())) return ''
-  return `${String(dt.getUTCMonth() + 1).padStart(2, '0')}/${String(dt.getUTCDate()).padStart(2, '0')}`
-}
-const STEP_DATE = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }
+const STEP_DATE = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }
 const formBox = { marginLeft: '18px', marginTop: '8px', marginBottom: '8px', padding: '14px 16px', background: 'var(--vfo-tint)', borderRadius: '10px', border: '1px solid var(--vfo-tint-deep)', fontFamily: 'Inter, sans-serif' }
 const formTitle = { fontSize: '11px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }
 const formSection = { background: 'var(--vfo-tint)', borderRadius: '8px', padding: '14px', marginBottom: '10px', border: '1px solid var(--vfo-border-chip)' }
@@ -465,7 +454,7 @@ function StepRow({ done, name, owner, status, date, right, children, expandable,
         <span style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1, minWidth: '160px' }}>{name}{owner && <OwnerChip label={owner} />}</span>
         {right}
         {status}
-        <span style={STEP_DATE}>{mmdd(date)}</span>
+        <span style={STEP_DATE}>{formatDate(date)}</span>
         {expandable && <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
       </div>
       {children}
@@ -483,7 +472,7 @@ function AutoStep({ label, done, pending, at, action }) {
         {action}
         {done && <span style={chipStyle(GREEN)}>Done</span>}
         {!done && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>{typeof pending === 'string' ? pending : 'Bank payment clearing'}</span>}
-        {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{mmdd(at)}</span>}
+        {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(at)}</span>}
       </span>
     </div>
   )
@@ -508,7 +497,7 @@ function CaseView({ caseId, mode, onBack }) {
     try {
       const res = await callApi(action, { case_id: caseId, ...payload })
       if (res?.email_sent === false) setMsg({ tone: 'amber', text: `Done, but the email failed: ${res.email_error || 'unknown error'}` })
-      else if (res?.already_sent_at) setMsg({ tone: 'amber', text: `A payout setup email already went to ${res.to_email} on ${fmtDate(res.already_sent_at)}.` })
+      else if (res?.already_sent_at) setMsg({ tone: 'amber', text: `A payout setup email already went to ${res.to_email} on ${formatDate(res.already_sent_at, '—')}.` })
       else if (okText) setMsg({ tone: 'success', text: okText })
       await load()
       return res || {}
@@ -590,7 +579,7 @@ function CaseView({ caseId, mode, onBack }) {
         eyebrow="SDP - Advanced Tax Strategy Governance"
         title={`${c.client_first} ${c.client_last}`}
         meta={<>
-          <span>Started {fmtDate(c.created_at)}</span>
+          <span>Started {formatDate(c.created_at, '—')}</span>
           <span>·</span><span>{c.client_ref}</span>
           <span>·</span><span>Member: {d.member ? `${d.member.name} (${d.member.member_number})` : c.member_number}</span>
           {c.sandbox && <><span>·</span><span>Sandbox</span></>}
@@ -614,7 +603,7 @@ function CaseView({ caseId, mode, onBack }) {
 
       {headsUp && (
         <div style={{ ...card, padding: '11px 16px', marginBottom: '10px', fontSize: '13px', color: '#b45309', background: 'rgba(224,103,23,0.08)', border: '1px solid rgba(224,103,23,0.3)', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <span style={{ flex: 1, minWidth: '220px' }}>Year {d.renewal.latest_year + 1}'s terms are emailed to {c.client_first} on {fmtDate(d.renewal.reminder_on)}. Change them, or end the engagement after year {d.renewal.latest_year}, under Following years before then.</span>
+          <span style={{ flex: 1, minWidth: '220px' }}>Year {d.renewal.latest_year + 1}'s terms are emailed to {c.client_first} on {formatDate(d.renewal.reminder_on, '—')}. Change them, or end the engagement after year {d.renewal.latest_year}, under Following years before then.</span>
           <button type="button" onClick={() => setExpanded(p => ({ ...p, s1: true, nextyear: true }))} style={smallBtn('#b45309')}>Open Following years</button>
         </div>
       )}
@@ -769,10 +758,10 @@ function PricingSplit({ c, d, retainer, fees, busy, act, open, onToggle }) {
         <div style={{ marginTop: '9px', padding: '8px 12px', borderRadius: '8px', background: 'rgba(185,69,29,0.08)', border: '1px solid rgba(185,69,29,0.25)', fontSize: '11px', color: '#b9451d', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <span style={{ flex: 1, minWidth: '200px' }}>
             {!sdpReady && 'SDP Personalized Planning has no active Stripe payout account. '}
-            {!memberReady && m && `${m.name} has no active Stripe payout account — their share is held until they finish setup, then paid automatically.${m.setup_email_sent_at ? ` Setup email sent ${fmtDate(m.setup_email_sent_at)}.` : ''}`}
+            {!memberReady && m && `${m.name} has no active Stripe payout account — their share is held until they finish setup, then paid automatically.${m.setup_email_sent_at ? ` Setup email sent ${formatDate(m.setup_email_sent_at, '—')}.` : ''}`}
           </span>
           {!memberReady && m && (
-            <button type="button" disabled={!!busy} onClick={e => { e.stopPropagation(); act('sdp_atsg_member_payout_request', { force: !!m.setup_email_sent_at }, `Payout setup email sent to ${m.name}.`, m.setup_email_sent_at ? `${m.name} was already sent a payout setup email on ${fmtDate(m.setup_email_sent_at)}. Send it again?` : `Email ${m.name} their Stripe payout setup link?`) }} style={smallBtn('#b9451d')}>
+            <button type="button" disabled={!!busy} onClick={e => { e.stopPropagation(); act('sdp_atsg_member_payout_request', { force: !!m.setup_email_sent_at }, `Payout setup email sent to ${m.name}.`, m.setup_email_sent_at ? `${m.name} was already sent a payout setup email on ${formatDate(m.setup_email_sent_at, '—')}. Send it again?` : `Email ${m.name} their Stripe payout setup link?`) }} style={smallBtn('#b9451d')}>
               {busy === 'sdp_atsg_member_payout_request' ? 'Sending…' : m.setup_email_sent_at ? 'Send setup request again' : 'Send payout setup request'}
             </button>
           )}
@@ -876,7 +865,7 @@ function RetainerForm({ c, caseId, locked, busy, act }) {
       <div style={formTitle}>{locked ? 'Pricing sent with the agreement' : 'Complete pricing & send agreement'}</div>
       {!locked && declinedEvent(c) && (
         <div style={declinedNoticeStyle}>
-          {declinedEvent(c) === 'Expired' ? 'The agreement expired unsigned' : declinedEvent(c) === 'Revoked' ? 'The agreement was revoked' : 'The client declined the agreement'} on {fmtDate(c.agreement_declined_at)}. Check the pricing and send it again.
+          {declinedEvent(c) === 'Expired' ? 'The agreement expired unsigned' : declinedEvent(c) === 'Revoked' ? 'The agreement was revoked' : 'The client declined the agreement'} on {formatDate(c.agreement_declined_at, '—')}. Check the pricing and send it again.
         </div>
       )}
       <div style={formSection}>
@@ -927,7 +916,7 @@ function RetainerForm({ c, caseId, locked, busy, act }) {
 function ContinueSwitch({ c, r, busy, act }) {
   const off = !!r.renewal_off
   const endsAfter = r.editable_now ? r.latest_year - 1 : r.latest_year
-  const endDate = r.year1_start ? fmtDate(r.editable_year_start) : 'its anniversary'
+  const endDate = r.year1_start ? formatDate(r.editable_year_start, '—') : 'its anniversary'
   async function flip() {
     if (off) {
       await act('sdp_atsg_set_renewal', { continue: true }, 'The retainer continues each year again.',
@@ -937,7 +926,7 @@ function ContinueSwitch({ c, r, busy, act }) {
     const told = r.editable_now && Number(c.renewal_reminder_year || 0) >= r.editable_year
     const res = await act('sdp_atsg_set_renewal', { continue: false }, '',
       `End ${c.client_first} ${c.client_last}'s engagement after year ${endsAfter}?\n\nNo year ${endsAfter + 1} is set up${r.editable_now ? ` (its payments are removed)` : ''} and no reminder is sent. Year ${endsAfter}'s payments are still collected. You can turn it back on any time before then.${told ? `\n\nThe client has already been emailed that the retainer continues - nothing is emailed now, so let them know.` : ''}`)
-    if (res) window.alert(`Ends after year ${res.ends_after_year}${res.ends_on ? ` (${fmtDate(res.ends_on)})` : ''}.${res.client_was_told ? ' The client was already emailed that it continues - let them know it is ending.' : ''}`)
+    if (res) window.alert(`Ends after year ${res.ends_after_year}${res.ends_on ? ` (${formatDate(res.ends_on, '—')})` : ''}.${res.client_was_told ? ' The client was already emailed that it continues - let them know it is ending.' : ''}`)
   }
   return (
     <div style={{ ...formBox, display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
@@ -945,7 +934,7 @@ function ContinueSwitch({ c, r, busy, act }) {
         <div style={{ fontWeight: 600 }}>Continue next year</div>
         <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
           {off
-            ? <>Off: the engagement ends after year {r.latest_year}{r.ends_on ? ` (${fmtDate(r.ends_on)})` : ''}. No reminder goes to the client.</>
+            ? <>Off: the engagement ends after year {r.latest_year}{r.ends_on ? ` (${formatDate(r.ends_on, '—')})` : ''}. No reminder goes to the client.</>
             : <>On: the retainer continues into year {endsAfter + 1}{r.year1_start ? ` from ${endDate}` : ''}. Turn off to end the engagement after year {endsAfter}.</>}
         </div>
       </div>
@@ -972,7 +961,7 @@ function NextYearForm({ c, r, busy, act }) {
   const pct = parsePct(sdpPct)
   const plan = paymentsFor(n, freq)
   const per = plan[0] || 0
-  const start = r.editable_year_start ? fmtDate(r.editable_year_start) : '12 months after payment 1'
+  const start = r.editable_year_start ? formatDate(r.editable_year_start, '—') : '12 months after payment 1'
   const unchanged = n === Number(t.retainer_amount) && freq === t.frequency && pct === Number(t.sdp_pct)
   const payChanged = n !== Number(t.retainer_amount) || freq !== t.frequency
   const tellsClient = r.editable_now && payChanged && Number(c.renewal_reminder_year || 0) >= r.editable_year
@@ -985,7 +974,7 @@ function NextYearForm({ c, r, busy, act }) {
     const what = `${money(n)} a year, billed ${freqLabel(freq).toLowerCase()}. Split: SDP ${pctText(pct)} / member ${pctText(SHARED_PCT - pct)} / VFO Services ${pctText(VFOS_PCT)}.`
     const confirmText = r.editable_now
       ? `Change year ${r.editable_year} (from ${start}) to ${what}\n\nYear ${r.editable_year}'s payments are rewritten now${tellsClient ? ` and ${c.client_first} ${c.client_last} is emailed the new figure` : ''}.`
-      : `Save year ${r.editable_year} (from ${start}) as ${what}\n\nIt is used when year ${r.editable_year} is set up${r.reminder_on ? ` on ${fmtDate(r.reminder_on)}` : ''}, and the client's reminder email carries it.`
+      : `Save year ${r.editable_year} (from ${start}) as ${what}\n\nIt is used when year ${r.editable_year} is set up${r.reminder_on ? ` on ${formatDate(r.reminder_on, '—')}` : ''}, and the client's reminder email carries it.`
     await act('sdp_atsg_save_next_retainer', { retainer_amount: n, frequency: freq, sdp_pct: pct },
       r.editable_now ? `Year ${r.editable_year} changed.` : `Saved for year ${r.editable_year}.`, confirmText)
   }
@@ -996,7 +985,7 @@ function NextYearForm({ c, r, busy, act }) {
       <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '10px', lineHeight: 1.6 }}>
         {r.editable_now
           ? <>Year {r.editable_year}'s payments are set up and none has been taken yet. A change here rewrites them now{Number(c.renewal_reminder_year || 0) >= r.editable_year ? ' and, if the amount or billing changes, emails the client the new figure' : ''}.</>
-          : <>Unless changed here, the retainer continues on the same amount, billing and split. {r.reminder_on ? <>On {fmtDate(r.reminder_on)} year {r.editable_year}'s payments are set up and the client is emailed that their retainer continues (and to reply if they want a meeting).</> : <>Year {r.editable_year} is set up 11 months after payment 1, when the client is emailed that their retainer continues.</>}</>}
+          : <>Unless changed here, the retainer continues on the same amount, billing and split. {r.reminder_on ? <>On {formatDate(r.reminder_on, '—')} year {r.editable_year}'s payments are set up and the client is emailed that their retainer continues (and to reply if they want a meeting).</> : <>Year {r.editable_year} is set up 11 months after payment 1, when the client is emailed that their retainer continues.</>}</>}
       </div>
       <div style={formSection}>
         <div style={formSectionTitle}>Fee details</div>
@@ -1034,7 +1023,7 @@ function NextYearForm({ c, r, busy, act }) {
 // Payments 2+ are dated from the day payment 1 is made, so until then each row
 // says how far after it falls; once payment 1 is in, the real dates show.
 function dueLabel(c, r) {
-  if (r.due_date) return fmtDate(r.due_date)
+  if (r.due_date) return formatDate(r.due_date, '—')
   if (r.seq === 1) return 'On countersign'
   const months = (Number(r.total_count) === 4 ? 3 : Number(r.total_count) === 12 ? 1 : 12) * ((r.year_seq || r.seq) - 1) + 12 * ((r.year || 1) - 1)
   return `${months} month${months === 1 ? '' : 's'} after payment 1`
@@ -1077,7 +1066,7 @@ function PaymentRow({ r, grid, label, due, actions }) {
       <div><StatusPill label={sMeta.label} color={sMeta.color} /></div>
       <div style={{ textAlign: 'right', fontSize: '11.5px', color: 'var(--vfo-muted)', wordBreak: 'break-word' }}>
         {r.status === 'paid' || r.status === 'processing'
-          ? [r.paid_at ? fmtDate(r.paid_at) : '', r.payment_method_type ? `${methodWord(r.payment_method_type)}${r.acct_last4 ? ` ••${r.acct_last4}` : ''}` : ''].filter(Boolean).join(' · ') || '—'
+          ? [r.paid_at ? formatDate(r.paid_at, '—') : '', r.payment_method_type ? `${methodWord(r.payment_method_type)}${r.acct_last4 ? ` ••${r.acct_last4}` : ''}` : ''].filter(Boolean).join(' · ') || '—'
           : (r.failure_reason || '—')}
         {r.receipt_number && <div>{r.receipt_number}</div>}
         {legs.length > 0 && (
@@ -1185,7 +1174,7 @@ function ImpactFees({ c, fees, strategies, unlocked, busy, act, isPhone }) {
                 <div>Strategy</div><div>Meeting</div><div>Amount</div><div>Card fee</div><div>Status</div><div style={{ textAlign: 'right' }}>Payment</div>
               </div>
               {fees.map(f => (
-                <PaymentRow key={f.id} r={f} grid={grid} due={fmtDate(f.meeting_date)}
+                <PaymentRow key={f.id} r={f} grid={grid} due={formatDate(f.meeting_date, '—')}
                   label={<>{f.strategy_name}<div style={{ fontSize: '11px', fontWeight: 400, color: 'var(--vfo-muted)' }}>SDP {pctText(pctOf(f))} / Member {pctText(SHARED_PCT - pctOf(f))} / VFOS {pctText(VFOS_PCT)}</div></>} />
               ))}
             </div>

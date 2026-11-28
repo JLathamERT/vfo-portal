@@ -11,7 +11,7 @@ import PricingSplitCard from './PricingSplitCard'
 import PersonalTaxFormLink from './PersonalTaxFormLink'
 import AgreementResend from './AgreementResend'
 import { CONFIRMATION_CARD_SKIP } from '../../../lib/confirmationStatus'
-import { formatDate as formatFullDate } from '../../../lib/dates'
+import { formatDate, formatDateTime } from '../../../lib/dates'
 import { makeTaxPlanRules, KNOWN_FEE_PROCESS_VERSIONS, isNewFeeProcess, AMEND_FEE_CODE, AMEND_FEE_TAX5_CODE, isAmendStepTask, amendStage, DEPOSIT_NA_STATUS, DEPOSIT_PROCESSING_STATUS, DEPOSIT_FAILED_STATUS, phaseBadgeToken, phaseShortLabel, implRevShareDone, IMPL_REV_NO_SHARE } from './taxPlanRules'
 import { TAX_DISPLAY_NAMES, taxDisplayName } from '../../shared/taxDisplayNames'
 import { numberTaxIntakeQuestions, TAX_INTAKE_QUESTIONS, taxIntakeQuestionEditable, taxIntakeQuestionShown, formatTaxIntakeMoneyInput, formatTaxIntakeContactList } from '../../member/taxIntakeQuestions'
@@ -444,14 +444,9 @@ function FeeBreakdown({ split, projected = false, paidFlags = null }) {
 // is whatever the save recorded and is never hand-editable, so this deliberately
 // shadows the shared editable StepDate control and ignores onChange/disabled.
 // Every call site keeps the same shape as the read-only spans beside it.
-const stepDateLabel = (d) => {
-  if (!d) return ''
-  const parts = String(d).split('-')
-  return parts.length >= 3 ? `${parts[1]}/${parts[2]}` : String(d)
-}
-const STEP_DATE_STYLE = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }
+const STEP_DATE_STYLE = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }
 function StepDate({ value }) {
-  return <span className="vfo-stepdate" style={STEP_DATE_STYLE}>{stepDateLabel(value)}</span>
+  return <span className="vfo-stepdate" style={STEP_DATE_STYLE}>{formatDate(value)}</span>
 }
 // A timestamp as its Eastern calendar date, YYYY-MM-DD (the shape StepDate reads).
 const etDateOnly = (iso) => {
@@ -1150,7 +1145,7 @@ function AmendFeeStep({ task, plan, stage, status, completedDate, readOnly, mirr
       )}
       {revisedDone && !mirror && (
         <div style={{ marginLeft: '18px', marginBottom: '10px', color: 'var(--vfo-muted)', fontSize: '11px' }}>
-          Revised invoice drafted {new Date(revisedSentAt).toLocaleDateString()}{plan.amended_invoice_threaded === false ? ' as a new email (original thread not found)' : ' in the original invoice email thread'}.
+          Revised invoice drafted {formatDate(revisedSentAt)}{plan.amended_invoice_threaded === false ? ' as a new email (original thread not found)' : ' in the original invoice email thread'}.
         </div>
       )}
     </div>
@@ -2395,11 +2390,6 @@ function AssessTaxForm({ task, plan, saveTask, existingData, onSubmitted, onCanc
 // cannot start a new question. Admin, the planner portal and the member on their own Direct plan
 // (`act` maps the two actions to their tax_direct_* twins).
 function ClientQuestionsCard({ planId, act }) {
-  // Full date: questions can stay open across a year boundary.
-  const formatStamp = (ts) => {
-    const d = ts ? new Date(ts) : null
-    return d && !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : ''
-  }
   const [open, setOpen] = useState(false)
   const [questions, setQuestions] = useState(null)
   const [loadError, setLoadError] = useState('')
@@ -2479,12 +2469,12 @@ function ClientQuestionsCard({ planId, act }) {
             <div key={q.id} style={{ marginTop: '14px', padding: '12px 14px', borderRadius: '10px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>
-                  Asked {formatStamp(q.asked_at)}{q.asked_by_name ? ` by ${q.asked_by_name}` : ''}
+                  Asked {formatDate(q.asked_at)}{q.asked_by_name ? ` by ${q.asked_by_name}` : ''}
                   {q.email_result === 'drafted' ? ' · Email drafted' : q.email_result === 'sent' ? ' · Email sent' : ''}
-                  {q.reminder_sent_at ? ` · Reminder ${formatStamp(q.reminder_sent_at)}` : ''}
+                  {q.reminder_sent_at ? ` · Reminder ${formatDate(q.reminder_sent_at)}` : ''}
                 </span>
                 {q.answered_at
-                  ? <span style={chipStyle('#1b9254')}>Answered {formatStamp(q.answered_at)}</span>
+                  ? <span style={chipStyle('#1b9254')}>Answered {formatDate(q.answered_at)}</span>
                   : <span style={chipStyle('#0095ff')}>Waiting for the client</span>}
               </div>
               <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', fontWeight: 600, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{q.question}</div>
@@ -2581,10 +2571,6 @@ function intakeAnswerText(id, raw) {
   if (INTAKE_DEFS[id]?.type === 'contact_list') return formatTaxIntakeContactList(s)
   return INTAKE_DEFS[id]?.type === 'money' && /^\d+(\.\d+)?$/.test(s) ? `$${formatTaxIntakeMoneyInput(s)}` : s
 }
-const intakeStamp = (at) => {
-  const d = new Date(at || '')
-  return isNaN(d.getTime()) ? '' : d.toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-}
 // The Export button's look (shared/ExportButton.jsx) as a square icon-only
 // button, for the card's two header buttons (Jake, 2026-10-26).
 const intakeToolBtn = (enabled) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', padding: 0, borderRadius: '7px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: enabled ? 'var(--vfo-ink)' : 'var(--vfo-muted)', fontSize: '11.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: enabled ? 'pointer' : 'default', whiteSpace: 'nowrap' })
@@ -2608,11 +2594,11 @@ function TaxIntakeCard({ intake, questions, earlier = [], clientId, planId, canE
 
   const answers = intake.answers || {}
   const edits = Array.isArray(intake.answer_edits) ? intake.answer_edits : []
-  const submitted = intake.created_at ? formatFullDate(intake.created_at) : ''
+  const submitted = intake.created_at ? formatDate(intake.created_at) : ''
   // Which of the two intake routes produced this form (unit 1b). 'client' means
   // the member emailed a tokened link and the client filled it in and paid.
   const byClient = intake.payer === 'client'
-  const linkDate = intake.link_sent_at ? formatFullDate(intake.link_sent_at) : submitted
+  const linkDate = intake.link_sent_at ? formatDate(intake.link_sent_at) : submitted
   const completedBy = byClient
     ? `Completed by the client via link on ${linkDate}`
     : 'Completed by the member'
@@ -2773,7 +2759,7 @@ function TaxIntakeCard({ intake, questions, earlier = [], clientId, planId, canE
                   <div style={{ margin: '6px 0 2px', padding: '8px 12px', borderRadius: '8px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-chip)' }}>
                     {qEdits.slice().reverse().map((e, k) => (
                       <div key={k} style={{ fontSize: '11.5px', color: 'var(--vfo-ink)', lineHeight: 1.5, padding: '2px 0' }}>
-                        <span style={{ color: 'var(--vfo-muted)' }}>{intakeStamp(e.at)} — {e.by}{e.role ? ` (${e.role})` : ''}:</span>{' '}
+                        <span style={{ color: 'var(--vfo-muted)' }}>{formatDateTime(e.at)} — {e.by}{e.role ? ` (${e.role})` : ''}:</span>{' '}
                         changed <b>{intakeAnswerText(q.id, e.from) || '—'}</b> to <b>{intakeAnswerText(q.id, e.to) || '—'}</b>
                       </div>
                     ))}
@@ -2796,7 +2782,7 @@ function TaxIntakeCard({ intake, questions, earlier = [], clientId, planId, canE
                 <div key={f.id} style={{ marginTop: '8px', padding: '10px 14px', borderRadius: '10px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)' }}>
                   <div onClick={() => setEarlierOpen(o => ({ ...o, [f.id]: !o[f.id] }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', cursor: 'pointer', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>
-                      Submitted {formatFullDate(f.created_at)} by the {f.payer === 'client' ? 'client' : 'member'}{f.replaced_at ? ` · replaced ${formatFullDate(f.replaced_at)}` : ''}
+                      Submitted {formatDate(f.created_at)} by the {f.payer === 'client' ? 'client' : 'member'}{f.replaced_at ? ` · replaced ${formatDate(f.replaced_at)}` : ''}
                     </span>
                     <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: earlierOpen[f.id] ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
                   </div>
@@ -3322,31 +3308,6 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
     'Completed - Kept': '#1b9254', 'Completed - Amended': '#1b9254', 'Completed - Confirmed': '#1b9254',
   }
 
-  function formatDate(d) {
-    if (!d) return ''
-    const parts = d.split('-')
-    return `${parts[1]}/${parts[2]}`
-  }
-  // Same MM/DD format as formatDate, but for full timestamptz values (rendered
-  // in the viewer's local time, so a late-UTC stamp shows the correct local day).
-  function formatStamp(ts) {
-    if (!ts) return ''
-    const dt = new Date(ts)
-    if (isNaN(dt.getTime())) return ''
-    return `${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`
-  }
-  // Substep completion dates take either shape, so a plain DATE is string-split
-  // (new Date('2026-08-12') is UTC midnight and renders as the day before west of
-  // Greenwich) while a timestamptz goes through Date for the viewer's local day.
-  const fmtMMDD = (v) => {
-    if (!v) return ''
-    const s = String(v)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const p = s.split('-'); return `${p[1]}/${p[2]}` }
-    const d = new Date(s)
-    if (isNaN(d.getTime())) return ''
-    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
-  }
-
   // The chase rows under a stalled AI PC Admin substep: the 48h client reminder,
   // the 96h internal notification, and the human acknowledgement that someone
   // actually called. Each cascade codes its own row renderer, so the caller
@@ -3371,7 +3332,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', marginLeft: '14px', borderBottom: '1px solid var(--vfo-border-soft)' }}>
         <input type="checkbox" checked={!!ackAt} disabled={busy} onChange={e => toggleStallAck(stall, e.target.checked)} style={{ margin: 0, cursor: busy ? 'not-allowed' : 'pointer' }} />
         <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Reached out?</span>
-        {ackAt && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0, marginLeft: 'auto' }}>{fmtMMDD(ackAt)}</span>}
+        {ackAt && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0, marginLeft: 'auto' }}>{formatDate(ackAt)}</span>}
       </div>
     )
   }
@@ -3764,7 +3725,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
       </span>
     )
     const dateCell = (
-      <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{(generatedAt || skippedAt) ? formatStamp(generatedAt || skippedAt) : ''}</span>
+      <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{(generatedAt || skippedAt) ? formatDate(generatedAt || skippedAt) : ''}</span>
     )
     const dot = (
       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? green : 'transparent', flexShrink: 0, border: `1.5px solid ${done ? green : 'var(--vfo-border-mid)'}` }} />
@@ -3783,7 +3744,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             <LockedIcon />
             <span style={lockedHintStyle}>{hint}</span>
           </span>
-          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>—</span>
+          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>—</span>
         </div>
       )
     }
@@ -3844,7 +3805,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           {label}
           {generated ? (
             <>
-              <span style={chipStyle(green)}>Generated — {formatStamp(generatedAt)}</span>
+              <span style={chipStyle(green)}>Generated — {formatDate(generatedAt)}</span>
               {url && <button onClick={() => window.open(url, '_blank', 'noopener')} style={genGreen} title="Opens the detailed tax plan presentation in Google Slides.">Open</button>}
               <button disabled={generating} onClick={generateBookends} style={genPlain} title="Builds a fresh detailed tax plan presentation and replaces the link above.">{generating ? 'Generating…' : 'Regenerate'}</button>
             </>
@@ -3941,7 +3902,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <span className="vfo-stepchips" style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
             <span style={chipStyle(isRoiBookingStep ? '#1b9254' : 'var(--vfo-muted)')}>{skipChip}</span>
           </span>
-          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isRoiBookingStep ? formatStamp(livePlan.roi_meeting_skipped_at) : '—'}</span>
+          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{isRoiBookingStep ? formatDate(livePlan.roi_meeting_skipped_at) : '—'}</span>
         </div>
       )
     }
@@ -3963,7 +3924,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <span className="vfo-stepchips" style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 1 auto', minWidth: '150px', justifyContent: 'flex-end', textAlign: 'right' }}>
             <span style={chipStyle('var(--vfo-muted)')}>Not applicable</span>
           </span>
-          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>—</span>
+          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>—</span>
         </div>
       )
     }
@@ -3986,7 +3947,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               <LockedIcon />
               <span style={lockedHintStyle}>{gate.hint}</span>
             </span>
-            <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>—</span>
+            <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>—</span>
           </div>
         )
       }
@@ -4056,7 +4017,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             {submitted
               ? <span style={chipStyle(green)}>Submitted</span>
               : <span style={neutralChipStyle}>Not started</span>}
-            <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{submitted ? formatStamp(livePlan.assess_form_submitted_at) : ''}</span>
+            <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{submitted ? formatDate(livePlan.assess_form_submitted_at) : ''}</span>
           </div>
         )
       }
@@ -4074,7 +4035,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               {!isEditing && (
                 <button onClick={e => { e.stopPropagation(); setExpanded(prev => ({ ...prev, [expandKey]: true, [editKey]: true })) }} style={{ padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Edit</button>
               )}
-              <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{formatStamp(livePlan.assess_form_submitted_at)}</span>
+              <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{formatDate(livePlan.assess_form_submitted_at)}</span>
               <span className="vfo-steparrow" style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isShown ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
             </div>
             {isShown && (
@@ -4108,11 +4069,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
             <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
             <button onClick={() => setExpanded(prev => ({ ...prev, [expandKey]: !prev[expandKey] }))} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600 }}>Enter Details</button>
-            <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}></span>
+            <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}></span>
           </div>
           {vaultDropAt && (
             <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '4px', marginLeft: '18px' }}>
-              Tax Assessment PDF in vault — uploaded by {vaultDropBy || 'the tax planner'} on {formatStamp(vaultDropAt)}. Enter its information here.
+              Tax Assessment PDF in vault — uploaded by {vaultDropBy || 'the tax planner'} on {formatDate(vaultDropAt)}. Enter its information here.
             </div>
           )}
           {formOpen && (
@@ -4213,7 +4174,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             <span className="vfo-stepname" style={{ fontSize: '13px', color: generated ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: '1 1 auto', minWidth: '140px' }}>{stepName(task, phase)}</span>
             {generated ? (
               <>
-                <span style={chipStyle(green)}>Generated — {formatStamp(generatedAt)}</span>
+                <span style={chipStyle(green)}>Generated — {formatDate(generatedAt)}</span>
                 {!locked && (
                   <>
                     <button onClick={() => { window.open(deckUrl, '_blank', 'noopener'); markPresentationDownloaded() }} style={genGreen} title="Opens the generated deck in Google Slides.">Open</button>
@@ -4229,7 +4190,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             ) : plannerMode ? null : (
               <button disabled={generating} onClick={generatePresentation} style={genBlue} title="Builds the client ROI deck in Google Slides from the Assess form figures. Takes up to a minute.">{generating ? 'Generating…' : 'Generate presentation'}</button>
             )}
-            <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{generatedAt ? formatStamp(generatedAt) : ''}</span>
+            <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{generatedAt ? formatDate(generatedAt) : ''}</span>
           </div>
           {genError && !locked && (
             <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '12px', marginTop: '6px', marginLeft: '18px' }}>{genError}</div>
@@ -4251,7 +4212,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: decisionColor, flexShrink: 0 }} />
               <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{stepName(task, phase)}</span>
               <span style={chipStyle(decisionColor)}>{decisionLabel}</span>
-              <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>
+              <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>
             </div>
           )
         }
@@ -4261,7 +4222,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'transparent', flexShrink: 0, border: '1.5px solid var(--vfo-border-mid)' }} />
               <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}</span>
               <span style={neutralChipStyle}>Not started</span>
-              <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}></span>
+              <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}></span>
             </div>
           )
         }
@@ -4281,7 +4242,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? decisionColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? decisionColor : 'var(--vfo-border-mid)'}` }} />
               <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={planTaskLabel(task)} templates={decisionEmailTemplates} context={emailCtx} /></span>}</span>
               {isDone && <span style={chipStyle(decisionColor)}>{decisionLabel}</span>}
-              {isDone && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
+              {isDone && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
               {isDone && <span className="vfo-steparrow" style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isFormShown ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
             </div>
             {isFormShown && (
@@ -4321,7 +4282,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               <span style={lockedHintStyle}>Starts automatically after the "{rapidPlan ? RAPID_STEP_LABELS.enter_details : 'Client tax planning decision'}" step</span>
             </span>
           )}
-          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}></span>
+          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}></span>
         </div>
       )
       // Cascade is done when invoice/receipt sent (Yes path) OR decline state
@@ -4338,7 +4299,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}{chip && <span style={{ marginLeft: '8px' }}>{chip}</span>}</span>
           {done && <span style={{ ...chipStyle('#1b9254'), marginLeft: 'auto' }}>Done</span>}
           {!done && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717', marginLeft: 'auto' }}>{typeof pending === 'string' ? pending : 'Bank payment clearing'}</span>}
-          {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
+          {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(at)}</span>}
         </div>
       )
       const stallRows = (stall) => stallSteps(stall, (label, done, at) => autoStep(label, done, null, at))
@@ -4387,11 +4348,11 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         }
         return decisionQuestions.map((q, i) => (
           <div key={i} style={qaBox}>
-            <div style={qaLabel}>Client question{q.asked_at ? ` · ${fmtMMDD(q.asked_at)}` : ''}</div>
+            <div style={qaLabel}>Client question{q.asked_at ? ` · ${formatDate(q.asked_at)}` : ''}</div>
             <div style={{ fontSize: '12.5px', color: 'var(--vfo-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5, marginBottom: q.reply ? '8px' : 0 }}>{q.question}</div>
             {q.reply && (
               <>
-                <div style={qaLabel}>Reply sent{q.replied_at ? ` · ${fmtMMDD(q.replied_at)}` : ''}</div>
+                <div style={qaLabel}>Reply sent{q.replied_at ? ` · ${formatDate(q.replied_at)}` : ''}</div>
                 <div style={{ fontSize: '12.5px', color: 'var(--vfo-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{q.reply}</div>
               </>
             )}
@@ -4679,7 +4640,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               the email goes out. DELIBERATELY the inverse of overview-tax.ts, which
               prefers the sent stamp. sentAt is the fallback only for the plans
               scheduled before presentation_scheduled_at existed. */}
-          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{formatStamp(livePlan?.presentation_scheduled_at || sentAt)}</span>
+          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{formatDate(livePlan?.presentation_scheduled_at || sentAt)}</span>
         </div>
       )
     }
@@ -4723,7 +4684,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isGreen ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${isGreen ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
           <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
           {isGreen && <span style={{ ...chipStyle('#1b9254'), marginLeft: 'auto' }}>Done</span>}
-          {isGreen && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
+          {isGreen && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(at)}</span>}
         </div>
       )
       return (
@@ -4732,9 +4693,9 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0, border: `1.5px solid ${dotBorder}` }} />
             <span className="vfo-stepname" style={{ fontSize: '13px', color: (done || requestedAt) ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{stepName(task, phase)}{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={taxDisplayName(task.name)} templates={[{ name: (plan.program_id || 1) === 1 ? 'TAX_request_returns|holistic' : 'TAX_request_returns', when: 'Asks the client to upload tax returns via a secure link' }]} context={emailCtx} /></span>}</span>
             {done ? (
-              <span style={chipStyle('#1b9254')}>{requestedAt ? `Returns received — ${formatStamp(receivedAt)}` : 'Returns on file'}</span>
+              <span style={chipStyle('#1b9254')}>{requestedAt ? `Returns received — ${formatDate(receivedAt)}` : 'Returns on file'}</span>
             ) : memberLocked ? (
-              requestedAt ? <span style={chipStyle('#0095ff')}>Email sent — {formatStamp(requestedAt)}</span> : <span style={neutralChipStyle}>Not started</span>
+              requestedAt ? <span style={chipStyle('#0095ff')}>Email sent — {formatDate(requestedAt)}</span> : <span style={neutralChipStyle}>Not started</span>
             ) : (
               <>
                 <button disabled={sending} onClick={sendRequest} style={tdGreen} title="Drafts a Gmail to the client with a secure link to upload their tax returns.">{sending ? 'Sending…' : (requestedAt ? 'Resend request email' : 'Send email to request tax returns')}</button>
@@ -4744,7 +4705,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             {/* The step completes on RECEIPT, so received wins over requested;
                 requested is the in-flight (blue) fallback. Same precedence as
                 overview-tax.ts. */}
-            <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{formatStamp(receivedAt || requestedAt)}</span>
+            <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{formatDate(receivedAt || requestedAt)}</span>
           </div>
           {requestedAt && (
             <div style={{ padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
@@ -4815,7 +4776,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               overview-tax.ts's `at` for this step. Legacy plans dated through the
               retired automation_TAX_save_meeting_date carry no stamp — blank, as
               the backend already shows. */}
-          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{formatStamp(livePlan?.tax4_meeting_confirm_email_sent_at)}</span>
+          <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{formatDate(livePlan?.tax4_meeting_confirm_email_sent_at)}</span>
         </div>
       )
     }
@@ -4847,7 +4808,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
               <button onClick={handleSend} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Send implementation decision email</button>
             </div>
           )}
-          {implDecision && p.status && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{implDecision && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
+          {implDecision && p.status && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{implDecision && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
         </div>
       )
     }
@@ -4879,7 +4840,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             {memberLocked ? (
               <>
                 <span style={neutralChipStyle}>Not started</span>
-                <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}></span>
+                <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}></span>
               </>
             ) : (
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -4904,7 +4865,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           {done && <span style={{ ...chipStyle('#1b9254'), marginLeft: 'auto' }}>Done</span>}
           {!done && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717', marginLeft: 'auto' }}>Bank payment clearing</span>}
           {!done && !pending && <span style={{ ...neutralChipStyle, marginLeft: 'auto' }}>Not completed</span>}
-          {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
+          {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(at)}</span>}
         </div>
       )
       const stallRows = (stall) => stallSteps(stall, (label, done, at) => autoStep(label, done, null, at))
@@ -5003,7 +4964,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: autoIsDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${autoIsDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
           <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{stepName(task, phase)}</span>
           <span style={autoIsDone ? chipStyle('#1b9254') : neutralChipStyle}>{autoIsDone ? 'Completed' : 'Not completed'}</span>
-          {autoIsDone && p.status && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{autoIsDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
+          {autoIsDone && p.status && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{autoIsDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
         </div>
       )
     }
@@ -5094,7 +5055,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                     ? <span style={neutralChipStyle}>Not started</span>
                     : null
             }
-            {stopped && livePlan?.tax_stopped_at ? <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{formatDate(String(livePlan.tax_stopped_at).slice(0, 10))}</span> : refunded && livePlan?.deposit_refund_date ? <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{formatDate(livePlan.deposit_refund_date)}</span> : (done && p.status && !readOnly) ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{done && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
+            {stopped && livePlan?.tax_stopped_at ? <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{formatDate(String(livePlan.tax_stopped_at).slice(0, 10))}</span> : refunded && livePlan?.deposit_refund_date ? <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{formatDate(livePlan.deposit_refund_date)}</span> : (done && p.status && !readOnly) ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{done && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
           </div>
           {/* Buttons sit on their own line under the step name, indented past the
               dot — inline they squeezed the name into a four-line wrap. */}
@@ -5160,7 +5121,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           ? <span style={chipStyle(statusColor)}>{task.status_options === 'tax_deposit_pi' && p.status === DEPOSIT_PROCESSING_STATUS ? 'Clearing' : p.status}</span>
           : <span style={neutralChipStyle}>Not started</span>
         }
-        <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
+        <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
       </div>
     )
 
@@ -5173,7 +5134,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           ? <span style={chipStyle('#1b9254')}>Completed</span>
           : <button onClick={() => saveTask(task.id, 'Completed', p.completed_date, taxSpecialistId)} style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600 }}>Enter details</button>
         }
-        {isDone && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>}
+        {isDone && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>}
       </div>
     )
 
@@ -5267,7 +5228,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
             </>
           )}
           {/* The submit date stays fixed while the transfer clears or after it bounced. */}
-          {isDone && !readOnly && !depositClearing && !depositBounced ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
+          {isDone && !readOnly && !depositClearing && !depositBounced ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
         </div>
       )
     }
@@ -5391,7 +5352,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                       </div>
                     )
             }
-            {isDone && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
+            {isDone && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
           </div>
           {declineOpen && !isDone && (
             <div style={{ marginLeft: '18px', marginBottom: '8px', padding: '14px 16px', background: 'var(--vfo-tint)', borderRadius: '10px', border: '1px solid var(--vfo-tint-deep)', fontFamily: 'Inter, sans-serif' }}>
@@ -5500,7 +5461,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
           <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}{opts.chip && <span style={{ marginLeft: '8px' }}>{cloneElement(opts.chip, { title: label })}</span>}</span>
           {(done || na) && <span style={{ ...chipStyle('#1b9254'), marginLeft: 'auto' }}>{na ? 'N/A' : 'Done'}</span>}
           {!(done || na) && <span style={{ ...neutralChipStyle, marginLeft: 'auto' }}>{opts.pendingLabel || 'Not completed'}</span>}
-          {done && opts.at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(opts.at)}</span>}
+          {done && opts.at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(opts.at)}</span>}
         </div>
         )
       }
@@ -5595,7 +5556,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                 </div>
               )
             )}
-            {adminDecision && p.status && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{adminDecision && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
+            {adminDecision && p.status && !readOnly ? <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, taxSpecialistId)} disabled={saving[key]} /> : <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{adminDecision && p.completed_date ? formatDate(p.completed_date) : ''}</span>}
           </div>
           {adminDecision && (
             <div style={{ marginLeft: isPhone ? 0 : '18px', padding: isPhone ? '8px 10px' : '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)', marginBottom: '8px' }}>
@@ -5859,7 +5820,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         <div style={{ marginLeft: '14px', marginBottom: '8px', padding: '12px 14px', background: 'var(--vfo-card)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
           {entries.map((r, k) => (
             <div key={k} style={{ marginBottom: k === entries.length - 1 ? 0 : '10px' }}>
-              <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginBottom: '4px' }}>{formatStamp(r?.at)}</div>
+              <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginBottom: '4px' }}>{formatDate(r?.at)}</div>
               <div style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', whiteSpace: 'pre-wrap' }}>{render(r)}</div>
             </div>
           ))}
@@ -5877,7 +5838,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                   <button type="button" onClick={() => setExpanded(prev => ({ ...prev, [expand.key]: !prev[expand.key] }))} style={aiViewBtn}>{open ? 'Hide' : 'View'} {expand.noun}</button>
                 )}
                 {isGreen && <span style={chipStyle('#1b9254')}>Done</span>}
-                {isGreen && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{fmtMMDD(at)}</span>}
+                {isGreen && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{formatDate(at)}</span>}
               </span>
             </div>
             {open && expand.panel}
@@ -5927,12 +5888,12 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
                 <span className="vfo-stepname" style={{ fontSize: '13px', color: (done || requestedAt) ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>Request additional information{!(readOnly || plannerMode) && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="TAX" title={taxDisplayName(task.name)} templates={[{ name: 'TAX_request_additional_info', when: 'Asks the client to open a secure page, read the request and respond (the request is not in the email)' }]} context={emailCtx} /></span>}</span>
                 {(readOnly || addlInfoLocked) ? (
                   done
-                    ? <span style={chipStyle('#1b9254')}>Information received — {formatStamp(receivedAt)}</span>
-                    : requestedAt ? <span style={chipStyle('#0095ff')}>Email sent — {formatStamp(requestedAt)}</span> : null
+                    ? <span style={chipStyle('#1b9254')}>Information received — {formatDate(receivedAt)}</span>
+                    : requestedAt ? <span style={chipStyle('#0095ff')}>Email sent — {formatDate(requestedAt)}</span> : null
                 ) : (
                   <button disabled={sending} onClick={() => setDraft({ composeOpen: !composeOpen })} style={tdGreen} title="Drafts a Gmail to the client requesting additional information with a secure upload link.">{requestedAt ? 'Resend request email' : 'Send email to request additional information'}</button>
                 )}
-                <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{requestedAt ? formatStamp(requestedAt) : ''}</span>
+                <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{requestedAt ? formatDate(requestedAt) : ''}</span>
               </div>
               {composeOpen && !readOnly && !addlInfoLocked && (
                 <div style={{ marginLeft: '18px', marginBottom: '8px', padding: '14px 16px', background: 'var(--vfo-tint)', borderRadius: '10px', border: '1px solid var(--vfo-tint-deep)', fontFamily: 'Inter, sans-serif' }}>
@@ -6022,7 +5983,7 @@ function TaxPlanTrackView({ plan, phases, progress: initialProgress, initialTaxS
         eyebrow={programName}
         title={planTitle(planNow)}
         meta={<>
-          <span>Started {formatFullDate(plan.created_at) || ''}</span>
+          <span>Started {formatDate(plan.created_at) || ''}</span>
           {planNow.tax_route === 'direct' && <DirectPill />}
         </>}
         completed={heroDoneTasks}

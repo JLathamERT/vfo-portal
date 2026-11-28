@@ -33,12 +33,6 @@ export function PlanStatusTag({ plan, state, style }) {
   return <span style={{ ...statusPillStyle(t.hex), ...style }}>{t.label}</span>
 }
 
-// A change's day as the reader's clock has it (formatDate prints the UTC day).
-export const changeDay = (ts) => {
-  const d = new Date(ts)
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
-}
-
 const logTag = (row) => {
   if (row.to_status === 'paused') return { label: 'Paused', hex: '#e06717' }
   if (row.to_status === 'stopped') return row.to_kind === 'next_tax_year' ? { label: `Next tax year: ${row.next_tax_year || ''}`, hex: NEXT_YEAR_HEX } : { label: 'Stopped', hex: '#e74c3c' }
@@ -56,7 +50,7 @@ function LogRow({ row, action }) {
   const after = at >= 0 ? row.email_body.slice(at + row.email_message.length) : ''
   const message = <strong style={{ fontWeight: 600 }}>{row.email_message}</strong>
   const line = [
-    `${changeDay(row.created_at)}${row.changed_by ? ` by ${row.changed_by}` : ''}`,
+    `${formatDate(row.created_at)}${row.changed_by ? ` by ${row.changed_by}` : ''}`,
     row.check_back_on ? `Check back ${formatDate(row.check_back_on)}` : '',
     row.to_status === 'live' || row.to_status === 'completed' ? ''
       : row.email_sent ? `Email sent to ${row.email_to || 'the client'}`
@@ -102,7 +96,7 @@ export function PlanStatusBanner({ plan, state, info, canChange, onPick }) {
   const last = log[0] && log[0].to_status === plan.status && (log[0].to_kind || null) === (plan.status_kind || null) ? log[0] : null
   const summary = now === 'paused' ? (plan.pause_check_back_on ? `Check back ${formatDate(plan.pause_check_back_on)}` : '')
     : now === 'next_tax_year' ? (plan.next_tax_year ? `Moving to ${plan.next_tax_year}` : '')
-    : (now === 'stopped' || now === 'completed') && last ? changeDay(last.created_at) : ''
+    : (now === 'stopped' || now === 'completed') && last ? formatDate(last.created_at) : ''
   const dateButton = now === 'paused' || now === 'next_tax_year'
     ? <button style={btnSecondary} onClick={() => onPick(now)}>{now === 'paused' ? 'Change check-back date' : 'Change the year'}</button>
     : null

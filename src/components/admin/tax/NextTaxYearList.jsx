@@ -7,8 +7,9 @@ import { clickableRowStyle, rowHoverProps } from '../../shared/rowHover'
 import { btnPrimary, btnSecondary } from '../../shared/buttonStyles'
 import { statusPillStyle } from '../../shared/statusColors'
 import EmailText from '../../shared/EmailText'
-import { ChangeStatusModal, NEXT_YEAR_HEX, changeDay } from './TaxPlanStatus'
+import { ChangeStatusModal, NEXT_YEAR_HEX } from './TaxPlanStatus'
 import { StartPlanModal } from './TaxPlanCards'
+import { formatDate } from '../../../lib/dates'
 
 // Client Overview > Tax Planning > Next tax year (admin, 2026-11-23): everyone moved
 // to next tax year, how to reach them, and both ways back: Continue the same plan or
@@ -48,7 +49,7 @@ export default function NextTaxYearList({ rows, total, onOpenTrack, onOpenProfil
     { header: 'Phone', value: r => of(r).phone },
     { header: 'Phase reached', value: r => taxDisplayName(r.track.reached_phase || '') },
     { header: 'Paid', value: r => of(r).paid },
-    { header: 'Moved on', value: r => changeDay(of(r).moved_at) },
+    { header: 'Moved on', value: r => formatDate(of(r).moved_at) },
     { header: 'Moved by', value: r => of(r).moved_by },
     { header: 'Message', value: r => of(r).message || (of(r).no_email_reason ? `No email sent: ${of(r).no_email_reason}` : '') },
   ]
@@ -98,7 +99,7 @@ export default function NextTaxYearList({ rows, total, onOpenTrack, onOpenProfil
                   <span title={x.message || undefined} style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>
                     {x.message || (x.no_email_reason ? `No email sent: ${x.no_email_reason}` : '-')}
                   </span>
-                  {x.moved_at && <span style={{ display: 'block', fontSize: '11px', color: 'var(--vfo-faint)', marginTop: '2px' }}>{changeDay(x.moved_at)}{x.moved_by ? ` by ${x.moved_by}` : ''}</span>}
+                  {x.moved_at && <span style={{ display: 'block', fontSize: '11px', color: 'var(--vfo-faint)', marginTop: '2px' }}>{formatDate(x.moved_at)}{x.moved_by ? ` by ${x.moved_by}` : ''}</span>}
                 </span>
                 <span onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end', cursor: 'default' }}>
                   {x.open_plan

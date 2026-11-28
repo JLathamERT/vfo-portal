@@ -9,6 +9,7 @@ import { MemberNameLink, SpecialistNameLink } from '../shared/personLinks'
 import { MiniTabs } from '../shared/SubTabs'
 import ExpandChevron from '../shared/ExpandChevron'
 import { emptyRowStyle, errorStyle, headerRowStyle, refreshBtnStyle, selectStyle, tableStyle, totalsLabelStyle, totalsRowStyle, totalsSubStyle } from './accountingTable'
+import { formatDate } from '../../lib/dates'
 
 // Accounting → VFO Specialist Revenue. Pick year + month to see the specialist
 // payment requests for that period, expand each to see recipients and statuses.
@@ -253,7 +254,7 @@ function MemberGroupRow({ group }) {
             return (
               <div key={i} style={{ display: 'grid', gridTemplateColumns: DEAL_GRID, gap: '10px', alignItems: 'center', padding: '9px 0', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
                 <div style={{ fontWeight: 600 }}><SpecialistNameLink expertId={it.specialistId}>{it.specialist}</SpecialistNameLink></div>
-                <div style={{ color: 'var(--vfo-muted)' }}>{it.date ? new Date(it.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</div>
+                <div style={{ color: 'var(--vfo-muted)' }}>{formatDate(it.date, '—')}</div>
                 <div style={{ textAlign: 'right' }}>{money(it.ert_share)}</div>
                 <div style={{ textAlign: 'right' }}>{money(it.vfos_share)}</div>
                 <div style={{ textAlign: 'right' }}>

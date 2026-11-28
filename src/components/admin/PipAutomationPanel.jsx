@@ -1,12 +1,13 @@
 import { useEffect, useState, useLayoutEffect } from 'react'
 import { IS_STAGING } from '../../lib/environment'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
-import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
+import { StepCard, Detail, Badge, Pending, fmtMoney, PanelHero, EmptyState } from './automation/StepKit'
 import StripeAccountPill from './StripeAccountPill'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import { useNavigate } from 'react-router-dom'
 import { ClientNameLink, clientPagePath } from '../shared/personLinks'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
+import { formatDate } from '../../lib/dates'
 
 const STAGE_LABELS = {
   purchase: 'Purchase',
@@ -87,18 +88,18 @@ function PipPipelineRow({ row, expanded, onToggle }) {
             <Detail l="Member share" v={fmtMoney(row.pip_purchase_member_share)} />
             <Detail l="VFOs share" v={fmtMoney(row.pip_purchase_vfos_share)} />
             <Detail l="Engagement year" v={row.pip_engagement_year ? `Year ${row.pip_engagement_year}` : null} />
-            <Detail l="Purchased" v={fmtDate(row.pip_completed_date)} />
+            <Detail l="Purchased" v={formatDate(row.pip_completed_date)} />
           </StepCard>
 
           <StepCard title="Payment" status={payStatus}>
             {row.pip_payment_status ? (
               <>
-                <Detail l="Payment link emailed" v={fmtDate(row.pip_payment_email_sent_at)} />
+                <Detail l="Payment link emailed" v={formatDate(row.pip_payment_email_sent_at)} />
                 <Detail l="Method" v={row.pip_payment_method_type} />
                 <Detail l="Account" v={row.pip_acct_last4 ? `****${row.pip_acct_last4}` : null} />
                 <Detail l="Payment amount" v={fmtMoney(row.pip_purchase_amount)} />
                 <Detail l="Status" v={paymentStatusLabel(row.pip_payment_status)} />
-                <Detail l="Payment received" v={fmtDate(row.pip_payment_completed_at)} />
+                <Detail l="Payment received" v={formatDate(row.pip_payment_completed_at)} />
               </>
             ) : <Pending />}
           </StepCard>
@@ -108,7 +109,7 @@ function PipPipelineRow({ row, expanded, onToggle }) {
           <StepCard title="Confirmation Email" status={row.pip_confirmation_email_sent_at ? 'done'
             : row.pip_payment_method_type === 'card' ? 'skipped' : 'pending'}>
             {row.pip_confirmation_email_sent_at
-              ? <Detail l="Confirmation email" v={fmtDate(row.pip_confirmation_email_sent_at)} />
+              ? <Detail l="Confirmation email" v={formatDate(row.pip_confirmation_email_sent_at)} />
               : row.pip_payment_method_type === 'card'
                 ? <Detail l="Confirmation email" v="Not sent — card is receipt-only" />
                 : <Pending />}
@@ -117,7 +118,7 @@ function PipPipelineRow({ row, expanded, onToggle }) {
           <StepCard title="Invoice & Receipt" status={invStatus}>
             {row.pip_invoice_number ? (
               <>
-                <Detail l="Invoice emailed" v={fmtDate(row.pip_invoice_receipt_email_sent_at)} showEmpty />
+                <Detail l="Invoice emailed" v={formatDate(row.pip_invoice_receipt_email_sent_at)} showEmpty />
                 <Detail l="Invoice #" v={row.pip_invoice_number} mono />
                 <Detail l="Receipt #" v={row.pip_receipt_number} mono />
               </>
@@ -128,16 +129,16 @@ function PipPipelineRow({ row, expanded, onToggle }) {
             {row.pip_rev_share_status ? (
               <>
                 <Detail l="Revenue decision" v={revDecision} showEmpty />
-                <Detail l="Revenue share completed" v={fmtDate(row.pip_rev_share_completed_at)} />
+                <Detail l="Revenue share completed" v={formatDate(row.pip_rev_share_completed_at)} />
                 <Detail l="Revenue share amount" v={fmtMoney(row.pip_rev_share_amount)} />
                 <Detail l="Transfer id" v={row.pip_rev_share_transfer_id} mono />
-                <Detail l="Rev share confirmation email" v={fmtDate(row.pip_rev_member_email_sent_at)} />
+                <Detail l="Rev share confirmation email" v={formatDate(row.pip_rev_member_email_sent_at)} />
               </>
             ) : <Pending />}
           </StepCard>
 
           <div style={{ marginTop: '10px', fontSize: '10px', color: 'var(--vfo-faint)' }}>
-            Track #{row.id} · Created {fmtDate(row.created_at)}
+            Track #{row.id} · Created {formatDate(row.created_at)}
           </div>
         </div>
       )}

@@ -14,14 +14,10 @@ import { useIsPhone } from '../lib/useMediaQuery'
 import { lazyPage } from '../lib/lazyPage'
 import { ClientProgressSkeleton, OnePagePlanSkeleton, ShowroomSkeleton, Skeleton, VaultSectionsSkeleton } from '../components/shared/Skeleton'
 import OnePagePlanView from '../components/shared/OnePagePlanView'
+import { formatDate } from '../lib/dates'
 // Portal licensing L8: My Progress pulls in the member screen's track tabs, so it is
 // its own chunk, loaded only when a Premium client opens the tab.
 const ClientProgressTab = lazyPage(() => import('../components/client/ClientProgressTab'))
-
-function fmtLicenceDate(iso) {
-  const [y, m, d] = String(iso).slice(0, 10).split('-')
-  return `${m}/${d}/${y}`
-}
 
 export default function ClientPortal() {
   const navigate = useNavigate()
@@ -190,9 +186,9 @@ export default function ClientPortal() {
               {licence.status === 'active' && licence.monthly
                 ? <>Your VFO Premium portal membership is active.</>
                 : licence.status === 'active'
-                ? <>Your VFO Premium portal membership is active until <strong style={{ color: 'var(--vfo-ink)' }}>{fmtLicenceDate(licence.ends_on)}</strong>.</>
+                ? <>Your VFO Premium portal membership is active until <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(licence.ends_on)}</strong>.</>
                 : licence.status === 'expired'
-                  ? <>Your VFO Premium portal membership ended on <strong style={{ color: 'var(--vfo-ink)' }}>{fmtLicenceDate(licence.ends_on)}</strong>.</>
+                  ? <>Your VFO Premium portal membership ended on <strong style={{ color: 'var(--vfo-ink)' }}>{formatDate(licence.ends_on)}</strong>.</>
                   : <>Your VFO Premium portal membership has ended.</>}
             </p>
           )}

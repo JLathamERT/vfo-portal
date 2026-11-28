@@ -9,6 +9,7 @@ import { ClientNameLink, MemberNameLink, clientPagePath } from '../shared/person
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { useNavigate } from 'react-router-dom'
 import { emptyRowStyle, errorStyle, headerRowStyle, refreshBtnStyle, rowStyle, selectStyle, tableStyle, totalsLabelStyle, totalsRowStyle, totalsSubStyle } from './accountingTable'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > VFO Services > Holistic Planning Revenue. Each payment that actually
 // cleared (hit the bank) in the chosen month/year — connected member, Lite/Core/Max,
@@ -28,11 +29,6 @@ import { emptyRowStyle, errorStyle, headerRowStyle, refreshBtnStyle, rowStyle, s
 // cash. Same routing the Reconciliation panel uses; the other column shows a dash.
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-
-function fmtDate(s) {
-  if (!s) return '—'
-  try { return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return String(s) }
-}
 
 // A settled leg buckets by what actually happened; only an unsettled one falls back to
 // the member's current decision. See isMoneyMappingLeg.
@@ -162,7 +158,7 @@ export default function HolisticRevenuePanel({ embedded = false }) {
             <div key={p.id} onClick={p.clientId ? () => navigate(clientPagePath(p.clientId, { program: 1, tab: 'map1' })) : undefined} {...(p.clientId ? rowHoverProps : {})}
               style={{ ...(p.clientId ? clickableRowStyle : null), ...rowStyle, gridTemplateColumns: grid, background: 'var(--vfo-card)' }}>
               <span style={{ fontWeight: 600 }}><ClientNameLink clientId={p.clientId} program={1}>{p.clientName}</ClientNameLink>{p.plan === 'Quarterly' && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · Q{p.installment}</span>}</span>
-              <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(p.clearedAt)}</span>
+              <span style={{ color: 'var(--vfo-muted)' }}>{formatDate(p.clearedAt, '—')}</span>
               <span>{p.memberName ? <MemberNameLink memberNumber={p.memberNumber}>{p.memberName}</MemberNameLink> : '—'}{p.memberNumber && <span style={{ color: 'var(--vfo-faint)' }}> · {p.memberNumber}</span>}</span>
               <span><TierTag tier={p.tier} /></span>
               <span style={{ textAlign: 'right', fontWeight: 700 }}>{money(p.amount)}<SubNote text={p.paymentNote} /></span>

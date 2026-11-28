@@ -8,7 +8,8 @@ import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import AccountingCombinedPanel from '../admin/AccountingCombinedPanel'
 import { miniTabStyle as miniTab } from '../shared/SubTabs'
 import { tableStyle, headerRowStyle, totalsRowStyle, totalsLabelStyle, totalsSubStyle } from '../admin/SpecialistRevenuePanel'
-import { clientPlanPath, fmtMoney, fmtDate, fmtMethod, StatusPill } from './PaymentsTable'
+import { clientPlanPath, fmtMoney, fmtMethod, StatusPill } from './PaymentsTable'
+import { formatDate } from '../../lib/dates'
 
 // Admin GLOBAL Payments page — Accounting → Payments. A flat ledger, ONE row per
 // real money movement (all_payments_load, rebuilt 2026-10-22), in the house
@@ -38,7 +39,7 @@ const PTYPE_TAG = {
 const GRID = `104px 1.3fr 1.5fr 120px ${CARD_FEE_COL} 130px 120px 1fr`
 
 // The row's calendar month: a date-only value is a calendar date as stored; a
-// timestamp is read in the viewer's local time (as fmtDate shows it).
+// timestamp is read in the viewer's local time (as formatDate shows it).
 function monthKeyOf(d) {
   if (!d) return null
   const m = /^(\d{4})-(\d{2})-\d{2}$/.exec(String(d))
@@ -189,7 +190,7 @@ function PaymentsLedger({ direction }) {
             return (
               <div key={r.key} onClick={onRow || undefined} {...(onRow ? rowHoverProps : {})}
                 style={{ ...(onRow ? clickableRowStyle : null), display: 'grid', gridTemplateColumns: GRID, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'start', fontSize: '13px', color: 'var(--vfo-ink)' }}>
-                <span style={{ color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{fmtDate(r.date)}</span>
+                <span style={{ color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{formatDate(r.date, '—')}</span>
                 <span>
                   <span style={{ fontWeight: 600, color: onRow ? 'var(--vfo-accent-text)' : 'var(--vfo-ink)' }}>{r.person}</span>
                   {tag && (

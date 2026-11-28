@@ -9,6 +9,7 @@ import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { statusPillStyle } from '../../shared/statusColors'
 import { BackLink } from '../../shared/ProfileKit'
+import { formatDate } from '../../../lib/dates'
 
 const REGULAR_PRIORITIES = [
   "Business Growth", "Business Exit", "Business Advisory",
@@ -31,18 +32,6 @@ const REGULAR_PRIORITIES = [
 // owns the "Custom - " prefix; the sentinel can never collide with a real name.
 const OTHER_SPEC_VALUE = '__other__'
 
-// MM/DD for the AI PC Admin auto rows. Plain 'YYYY-MM-DD' DATE columns are split
-// as strings (new Date() would shift them a day west of UTC); timestamptz values
-// go through Date so they read in the viewer's local time.
-const fmtMMDD = (v) => {
-  if (!v) return ''
-  const s = String(v)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const p = s.split('-'); return `${p[1]}/${p[2]}` }
-  const d = new Date(s)
-  if (isNaN(d.getTime())) return ''
-  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
-}
-
 // Ack sub-row under a 96h "assigned PF notified" auto row — records that a human
 // actually chased the stall. Admin surface only.
 function StallAckRow({ pipeline, id, stall, ackAt, onAck }) {
@@ -62,7 +51,7 @@ function StallAckRow({ pipeline, id, stall, ackAt, onAck }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', marginLeft: '14px' }}>
       <input type="checkbox" checked={checked} disabled={saving} onChange={e => toggle(e.target.checked)} style={{ cursor: saving ? 'default' : 'pointer' }} />
       <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Reached out?</span>
-      {checked && ackAt && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(ackAt)}</span>}
+      {checked && ackAt && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(ackAt)}</span>}
     </div>
   )
 }
@@ -100,8 +89,6 @@ function Map4ConfirmStep({ trackId, task, p, track, onDone, emailCtx }) {
   const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
   const redBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600 }
   const cancelBtn = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
-  function fmtDate(d) { if (!d) return ''; const parts = d.split('-'); return `${parts[1]}/${parts[2]}` }
-
   async function fire(decision, d, t, z) {
     setPending(decision)
     try {
@@ -169,7 +156,7 @@ function Map4ConfirmStep({ trackId, task, p, track, onDone, emailCtx }) {
               <button onClick={() => fire('declined')} disabled={!!pending} style={{ ...redBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'declined' ? 'Sending…' : 'Meeting declined - email client'}</button>
             </div>
       }
-      <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? fmtDate(p.completed_date) : ''}</span>
+      <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
     </div>
   )
 }
@@ -196,9 +183,6 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
   const inputStyle ={ padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
   const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
   const cancelBtn = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
-  function fmtLong(d) { if (!d) return ''; const dt = new Date(d + 'T00:00:00'); return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }
-  function fmtDate(d) { if (!d) return ''; const parts = String(d).split('-'); return parts.length === 3 ? `${parts[1]}/${parts[2]}` : d }
-
   async function saveDate() {
     if (!date || pending) return
     setPending(true)
@@ -241,7 +225,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
       <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
       <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', marginLeft: 'auto', ...(done ? { background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 } : { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }) }}>{done ? 'Done' : 'Awaiting'}</span>
-      {done && at && <span className="vfo-stepdate" style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
+      {done && at && <span className="vfo-stepdate" style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(at)}</span>}
     </div>
   )
 
@@ -274,14 +258,14 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
             </div>
           : enteredDate
             ? <div className="vfo-stepchips" style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', border: '1px solid rgba(27,146,84,0.3)' }}>MAP 4 meeting: {fmtLong(enteredDate)}</span>
+                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', border: '1px solid rgba(27,146,84,0.3)' }}>MAP 4 meeting: {formatDate(enteredDate)}</span>
                 {/* Saving a different date re-arms the follow-up ladder (the backend
                     clears the sent/reminder/stall stamps), so it re-drafts. */}
                 <button onClick={() => { setDate(enteredDate); setShowDate(true) }} style={cancelBtn}>Edit date</button>
               </div>
             : <button onClick={() => setShowDate(true)} style={greenBtn}>Enter date of MAP 4 meeting</button>
         }
-        <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{p.completed_date ? fmtDate(p.completed_date) : ''}</span>
+        <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>
       </div>
 
       {enteredDate && (
@@ -301,7 +285,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
                 {formDone
                   ? <>
                       <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
-                      {track.map4_form_submitted_at && <span className="vfo-stepdate" style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(track.map4_form_submitted_at)}</span>}
+                      {track.map4_form_submitted_at && <span className="vfo-stepdate" style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(track.map4_form_submitted_at)}</span>}
                       <span className="vfo-steparrow" style={{ color: 'var(--vfo-muted)', fontSize: '9px', transform: formOpen ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
                     </>
                   : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', marginLeft: 'auto' }}>Awaiting</span>}
@@ -420,12 +404,6 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
       tasks = tasks.concat(phases.flatMap(p => p.program_client_tasks || []).filter(t => ADD_INFO_CHILD_NAMES.includes(t.name)))
     }
     return tasks
-  }
-
-  function formatDate(d) {
-    if (!d) return ''
-    const parts = d.split('-')
-    return `${parts[1]}/${parts[2]}`
   }
 
   const totalTasks = phases.reduce((s, p) => s + countedPhaseTasks(p).length, 0)
@@ -917,7 +895,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
                     {renderTitle(track, { marginBottom: 0, lineHeight: 1.3, minWidth: 0 })}
                     <span style={{ ...statusPillStyle(track.status === 'stopped' ? '#e74c3c' : statePillHex[state]), textTransform: 'capitalize' }}>{track.status === 'stopped' ? 'Stopped' : state}</span>
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px' }}>{new Date(track.created_at).toLocaleDateString()}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px' }}>{formatDate(track.created_at)}</div>
                 </div>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--vfo-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><polyline points="9 6 15 12 9 18" /></svg>
               </div>
@@ -929,7 +907,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>
                 <div>
                   {renderTitle(track)}
-                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{new Date(track.created_at).toLocaleDateString()}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{formatDate(track.created_at)}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ ...statusPillStyle(track.status === 'stopped' ? '#e74c3c' : statePillHex[state]), textTransform: 'capitalize' }}>{track.status === 'stopped' ? 'Stopped' : state}</span>

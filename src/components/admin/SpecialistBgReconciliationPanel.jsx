@@ -7,6 +7,7 @@ import { SpecialistNameLink, specialistProfilePath } from '../shared/personLinks
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { bgRowsFrom } from './SpecialistBgPanel'
 import { emptyRowStyle, errorStyle, footnoteStyle, headerRowStyle, refreshBtnStyle, rowStyle, selectStyle, tableStyle, totalsLabelStyle, totalsRowStyle, totalsSubStyle } from './accountingTable'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > Specialists > VFO Specialist Background Checks > Background Check
 // Reconciliation. The License Reconciliation shape: one row per specialist who has
@@ -14,11 +15,6 @@ import { emptyRowStyle, errorStyle, footnoteStyle, headerRowStyle, refreshBtnSty
 // all-time total, payment count, most recent paid date. Rolled up in the browser from
 // the same specialist_bg_payments_load the monthly view reads, so the two tabs can
 // never disagree.
-
-function fmtDate(s) {
-  if (!s) return '—'
-  try { return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return String(s) }
-}
 
 export default function SpecialistBgReconciliationPanel({ embedded = false }) {
   const [paid, setPaid] = useState([])
@@ -97,7 +93,7 @@ export default function SpecialistBgReconciliationPanel({ embedded = false }) {
             <span style={totalsLabelStyle}>Totals<span style={totalsSubStyle}>all time · paid checks</span></span>
             <span style={{ textAlign: 'right' }}>{tot.count}</span>
             <span style={{ textAlign: 'right' }}>{money(tot.total)}</span>
-            <span style={{ textAlign: 'right' }}>{fmtDate(lastOverall)}</span>
+            <span style={{ textAlign: 'right' }}>{formatDate(lastOverall, '—')}</span>
           </div>
           <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
             {rows.map(r => (
@@ -105,7 +101,7 @@ export default function SpecialistBgReconciliationPanel({ embedded = false }) {
                 <span style={{ fontWeight: 600 }}><SpecialistNameLink expertId={r.expertId}>{r.name}</SpecialistNameLink></span>
                 <span style={{ textAlign: 'right', color: 'var(--vfo-muted)' }}>{r.count}</span>
                 <span style={{ textAlign: 'right', fontWeight: r.total ? 700 : 400, color: r.total ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{r.total ? money(r.total) : '—'}</span>
-                <span style={{ textAlign: 'right', ...(r.last ? { color: 'var(--vfo-muted)' } : muted) }}>{fmtDate(r.last)}</span>
+                <span style={{ textAlign: 'right', ...(r.last ? { color: 'var(--vfo-muted)' } : muted) }}>{formatDate(r.last, '—')}</span>
               </div>
             ))}
             {rows.length === 0 && <div style={emptyRowStyle}>No background check payments recorded yet.</div>}

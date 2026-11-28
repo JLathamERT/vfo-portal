@@ -4,21 +4,13 @@ import ListTable, { ListText, listSearchStyle } from '../shared/ListTable'
 import ListFilterButton, { matchesFilter } from './ListFilterButton'
 import { ListHeader } from '../shared/TrackKit'
 import { TableSkeleton } from '../shared/Skeleton'
+import { formatDateTime } from '../../lib/dates'
 
 // Member Profile > Activity (admin view): when the member signed in and the key
 // things they did in the portal, newest first (member_activity_load). Only the
 // member's own actions; edits that save often (a CIQ, the Growth Plan, the
 // profile) show as one line per 30 minutes with the number of saves.
 
-// Local date + time. A timestamp's ISO prefix is the UTC day, so it is not used
-// for the date here (late-evening activity would show tomorrow's date).
-function whenText(ts) {
-  if (!ts) return ''
-  const d = new Date(ts)
-  if (Number.isNaN(d.getTime())) return ''
-  const date = d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
-  return `${date} ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-}
 const timeText = ts => new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
 export default function MemberActivityTab({ member }) {
@@ -65,7 +57,7 @@ export default function MemberActivityTab({ member }) {
         minWidth="640px"
         empty={rows.length ? 'No activity matches the current filters.' : 'No activity yet. Sign-ins and portal actions show here from now on.'}
         columns={[
-          { key: 'at', label: 'When', width: '170px', type: 'date', get: r => r.at, render: r => <ListText>{whenText(r.at)}</ListText> },
+          { key: 'at', label: 'When', width: '170px', type: 'date', get: r => r.at, render: r => <ListText>{formatDateTime(r.at)}</ListText> },
           { key: 'label', label: 'Activity', width: '1.2fr', get: r => r.label, render: r => <ListText style={{ fontWeight: 600 }}>{r.label}</ListText> },
           { key: 'detail', label: 'Detail', width: '1.6fr', render: r => (
             <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>

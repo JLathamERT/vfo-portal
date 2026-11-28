@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { Skeleton, TableSkeleton } from './Skeleton'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { formatDate } from '../../lib/dates'
 
 // The member-facing Growth Credits Services and History views, shared verbatim
 // between the member portal (MemberGCMarketplace) and the admin per-member GC
@@ -68,15 +69,6 @@ function subIntervalLocal(dateIso, billingInterval) {
   return new Date(Date.UTC(year, month, Math.min(d, lastDayOfTarget))).toISOString().slice(0, 10)
 }
 
-// next_charge_date arrives as a bare YYYY-MM-DD, which Date() reads as UTC
-// midnight and would render as the previous day west of Greenwich — pin those
-// to local midnight before formatting.
-function fmtDate(v) {
-  if (!v) return ''
-  const d = /^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? new Date(String(v) + 'T00:00:00') : new Date(v)
-  return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
 const TX_GRID = { display: 'grid', gridTemplateColumns: 'minmax(140px, 1fr) 90px 150px 90px 56px 50px', gap: '12px', alignItems: 'center' }
 
 const TX_NUM = { fontSize: '13px', fontWeight: 600, textAlign: 'right' }
@@ -134,7 +126,7 @@ export function GCTransactionHistory({ transactions }) {
             <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
               <div style={{ minWidth: 0, textAlign: 'left' }}>
                 <div style={{ color: 'var(--vfo-ink)', fontSize: '14px' }}>{tx.description || tx.type}</div>
-                <div style={{ color: 'var(--vfo-muted)', fontSize: '12.5px', marginTop: '2px' }}>{new Date(tx.created_at).toLocaleDateString()}{by !== '—' ? ` · ${by}` : ''}</div>
+                <div style={{ color: 'var(--vfo-muted)', fontSize: '12.5px', marginTop: '2px' }}>{formatDate(tx.created_at)}{by !== '—' ? ` · ${by}` : ''}</div>
               </div>
               <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -158,7 +150,7 @@ export function GCTransactionHistory({ transactions }) {
           {transactions.map(tx => (
           <div key={tx.id} style={{ ...TX_GRID, padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
             <span style={{ color: 'var(--vfo-ink)', fontSize: '14px', textAlign: 'left' }}>{tx.description || tx.type}</span>
-            <span style={{ color: 'var(--vfo-muted)', fontSize: '13px' }}>{new Date(tx.created_at).toLocaleDateString()}</span>
+            <span style={{ color: 'var(--vfo-muted)', fontSize: '13px' }}>{formatDate(tx.created_at)}</span>
             <span style={{ color: 'var(--vfo-muted)', fontSize: '13px' }}>{gcActorLabel(tx)}</span>
             <span style={{ justifySelf: 'end' }}>{gcTypeChip(tx)}</span>
             <span style={{ ...TX_NUM, color: tx.amount > 0 ? 'var(--vfo-success-text)' : '#d93025' }}>{tx.amount > 0 ? '+' : ''}{tx.amount}</span>
@@ -239,7 +231,7 @@ export function GCServicesView({
       if (onBalanceChange) onBalanceChange(result.balance)
       const rec = result.recurring
       if (rec) {
-        showBanner(`Successfully redeemed ${svc.name}. This service renews automatically on ${fmtDate(rec.next_charge_date)} each ${intervalNoun(rec.billing_interval) || intervalNoun(svc.billing_interval)} — you can cancel anytime from this tab.`)
+        showBanner(`Successfully redeemed ${svc.name}. This service renews automatically on ${formatDate(rec.next_charge_date)} each ${intervalNoun(rec.billing_interval) || intervalNoun(svc.billing_interval)} — you can cancel anytime from this tab.`)
       } else {
         showBanner(`Successfully redeemed ${svc.name} for ${svc.credit_cost} ${creditWord(svc.credit_cost)}.`)
       }
@@ -271,7 +263,7 @@ export function GCServicesView({
       const res = await callApi('gc_update_subscription_date', { subscription_id: rescheduleTarget.sub.id, start_date: rescheduleDate })
       // Quote the renewal the SERVER derived, not the one previewed here.
       const renewal = res?.subscription?.next_charge_date || rescheduleStart.renewal
-      showBanner(`${rescheduleTarget.svc?.name || rescheduleTarget.sub.gc_services?.name || 'Recurring service'} now starts ${fmtDate(rescheduleDate)} and renews ${fmtDate(renewal)}. No additional credits were taken.`)
+      showBanner(`${rescheduleTarget.svc?.name || rescheduleTarget.sub.gc_services?.name || 'Recurring service'} now starts ${formatDate(rescheduleDate)} and renews ${formatDate(renewal)}. No additional credits were taken.`)
       setRescheduleTarget(null)
       await loadServices()
     } catch (err) {
@@ -410,7 +402,7 @@ export function GCServicesView({
                   {sub && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
                       {sub.status === 'active'
-                        ? <span style={{ ...pillBase, background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)' }}>Subscribed - renews {fmtDate(sub.next_charge_date)}</span>
+                        ? <span style={{ ...pillBase, background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)' }}>Subscribed - renews {formatDate(sub.next_charge_date)}</span>
                         : <span style={{ ...pillBase, background: 'rgba(176,141,38,0.15)', color: '#b08d26' }}>On hold - add credits to resume</span>}
                       {adminMode && <button onClick={() => { setRescheduleTarget({ sub, svc }); setRescheduleDate(subIntervalLocal(sub.next_charge_date, svc.billing_interval)) }} style={rescheduleBtnStyle}>Edit date</button>}
                     </div>
@@ -494,7 +486,7 @@ export function GCServicesView({
             style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: '0 18px 50px rgba(9,14,26,0.35)', padding: '26px 28px', maxWidth: '420px', width: '100%', textAlign: 'left' }}>
             <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>Reschedule recurring service</div>
             <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 14px', lineHeight: 1.5 }}>
-              Set the date <strong>{rescheduleTarget.svc?.name || rescheduleTarget.sub.gc_services?.name}</strong> starts. It currently starts <strong>{fmtDate(rescheduleStart.current)}</strong>.
+              Set the date <strong>{rescheduleTarget.svc?.name || rescheduleTarget.sub.gc_services?.name}</strong> starts. It currently starts <strong>{formatDate(rescheduleStart.current)}</strong>.
             </p>
             <input type="date" value={rescheduleDate} disabled={rescheduling}
               onChange={e => setRescheduleDate(e.target.value)}
@@ -503,8 +495,8 @@ export function GCServicesView({
               ? (
                 <p style={{ fontSize: '12.5px', color: rescheduleStart.alreadyDue ? '#d93025' : 'var(--vfo-muted)', margin: '10px 0 18px', lineHeight: 1.5 }}>
                   {rescheduleStart.alreadyDue
-                    ? <>That start date already renewed on <strong>{fmtDate(rescheduleStart.renewal)}</strong>, so they would be charged tonight. Pick a later start date.</>
-                    : <>Renews <strong>{fmtDate(rescheduleStart.renewal)}</strong>, then every {rescheduleStart.noun}. No additional credits are taken.</>}
+                    ? <>That start date already renewed on <strong>{formatDate(rescheduleStart.renewal)}</strong>, so they would be charged tonight. Pick a later start date.</>
+                    : <>Renews <strong>{formatDate(rescheduleStart.renewal)}</strong>, then every {rescheduleStart.noun}. No additional credits are taken.</>}
                 </p>
               )
               : <div style={{ height: '18px' }} />}

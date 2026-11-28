@@ -9,23 +9,7 @@ import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { BackLink } from '../../shared/ProfileKit'
-
-function fmtDate(d) {
-  if (!d) return ''
-  const [y, m, day] = d.split('-')
-  return `${m}/${day}/${y}`
-}
-
-// Plain DATE strings are split, never fed to new Date() — that reads them as UTC
-// midnight and renders the previous day west of Greenwich. timestamptz is local.
-const fmtMMDD = (v) => {
-  if (!v) return ''
-  const s = String(v)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const p = s.split('-'); return `${p[1]}/${p[2]}` }
-  const d = new Date(s)
-  if (isNaN(d.getTime())) return ''
-  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
-}
+import { formatDate } from '../../../lib/dates'
 
 // Replicates the backend [Scheduled Meeting Date] substitution (see
 // actions/msm/pip-meeting-confirmation-email.ts): formatLongDate ("August 18,
@@ -49,8 +33,8 @@ function fmtTime12(t) {
 }
 
 function meetingLabel(track) {
-  if (track.pip_completed_date) return `PIP meeting completed on ${fmtDate(track.pip_completed_date)}`
-  if (track.pip_scheduled_date) return `PIP meeting scheduled for ${fmtDate(track.pip_scheduled_date)}`
+  if (track.pip_completed_date) return `PIP meeting completed on ${formatDate(track.pip_completed_date)}`
+  if (track.pip_scheduled_date) return `PIP meeting scheduled for ${formatDate(track.pip_scheduled_date)}`
   return 'PIP meeting not yet scheduled'
 }
 
@@ -285,7 +269,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                           {stepDone && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Done</span>}
                           {!stepDone && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>Bank payment clearing</span>}
                         </span>
-                        {stepDone && date && <span className="vfo-stepdate" style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(date)}</span>}
+                        {stepDone && date && <span className="vfo-stepdate" style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(date)}</span>}
                       </div>
                     )
                     const methodTag = !mirror && track.pip_payment_method_type
@@ -334,7 +318,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                             ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${pillColor}22`, color: readable(pillColor), border: `1px solid ${pillColor}44` }}>{decisionLabel}</span>
                             : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
                           }
-                          {done && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{fmtDate(p.completed_date)}</span>}
+                          {done && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
                           {done && <span className="vfo-steparrow" style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isFormShown ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
                         </div>
                         {!readOnly && isFormShown && (
@@ -361,7 +345,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                       <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
                         <div className="vfo-stepcheck" onClick={() => !readOnly && !done && toggleCheckbox(task.id)} style={{ width: '16px', height: '16px', borderRadius: '4px', border: `1.5px solid ${done ? '#1b9254' : 'var(--vfo-border-strong)'}`, background: done ? '#1b9254' : 'transparent', cursor: done || readOnly ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#fff', flexShrink: 0 }}>{done ? '✓' : ''}</div>
                         <span className="vfo-stepname" style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', textDecoration: done ? 'line-through' : 'none', flex: 1 }}>{task.name}</span>
-                        {done && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{fmtDate(p.completed_date)}</span>}
+                        {done && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
                       </div>
                     )
                   }
@@ -398,7 +382,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                                 </div>
                               : <button onClick={openReconfirm} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Send confirmation email to client</button>
                         }
-                        <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? fmtDate(p.completed_date) : ''}</span>
+                        <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
                       </div>
                     )
                   }
@@ -410,7 +394,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: savedDate ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${savedDate ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
                         <span className="vfo-stepname" style={{ fontSize: '13px', color: savedDate ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
                         {readOnly ? (
-                          savedDate && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: '#1b925422', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid #1b925444' }}>{fmtDate(savedDate)}</span>
+                          savedDate && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: '#1b925422', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid #1b925444' }}>{formatDate(savedDate)}</span>
                         ) : (
                           <input type="date" value={savedDate} onChange={e => saveScheduled(e.target.value)} style={{ ...inputStyle, fontFamily: 'Inter, sans-serif' }} />
                         )}
@@ -426,7 +410,7 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                         ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
                         : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
                       }
-                      {isDone && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{fmtDate(p.completed_date)}</span>}
+                      {isDone && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
                     </div>
                   )
 
@@ -664,7 +648,7 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
                     style={{ ...rowStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginLeft: isPhone ? 0 : '18px', opacity: 0.55, cursor: 'not-allowed', ...(isPhone ? { padding: '12px 14px', gap: '10px' } : {}) }}>
                     <div>
                       <div style={{ fontSize: '14px', fontWeight: '500', color: 'var(--vfo-muted)' }}>{meetingLabel(track)}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '3px' }}>Awaiting payment · Created {new Date(track.created_at).toLocaleDateString()}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '3px' }}>Awaiting payment · Created {formatDate(track.created_at)}</div>
                     </div>
                     <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(251,137,90,0.15)', color: '#e06717', fontWeight: 600, border: '1px solid rgba(251,137,90,0.3)' }}>Locked</span>
                   </div>
@@ -677,7 +661,7 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
                   onMouseLeave={e => e.currentTarget.style.background = 'var(--vfo-card)'}>
                   <div>
                     <div style={{ fontSize: '14px', fontWeight: '500', color: labelColor }}>{meetingLabel(track)}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '3px' }}>Created {new Date(track.created_at).toLocaleDateString()}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '3px' }}>Created {formatDate(track.created_at)}</div>
                   </div>
                   {isPhone
                     ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--vfo-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><polyline points="9 6 15 12 9 18" /></svg>

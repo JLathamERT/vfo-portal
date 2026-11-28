@@ -1,18 +1,13 @@
 import { useEffect, useState } from 'react'
 import { callApi, loadCachedData } from '../../lib/api'
 import { PageHeading } from '../shared/ProfileKit'
+import { formatDateTime } from '../../lib/dates'
 
 // The Staging tab: test site only, loaded only in a staging build. Any admin can see
 // what is running and reset their OWN test member; only a superadmin sees Reset
 // everyone. The backend is the real gate (actions/staging/reset.ts).
 
 const BUILD_SHA = import.meta.env.VITE_BUILD_SHA || ''
-
-function fmtWhen(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return `${d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-}
 
 const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
 const titleStyle = { fontSize: '17px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }
@@ -21,7 +16,7 @@ const rowStyle = { display: 'flex', justifyContent: 'space-between', gap: '12px'
 const inputStyle = { padding: '9px 12px', border: '1px solid var(--vfo-border-strong)', borderRadius: '8px', fontSize: '14px', fontFamily: 'Inter, sans-serif', flex: '1 1 180px', maxWidth: '260px', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', boxSizing: 'border-box' }
 
 function eventLine(event, extra = '') {
-  return event ? `${fmtWhen(event.at)}, by ${event.by}${extra}` : 'Not yet'
+  return event ? `${formatDateTime(event.at)}, by ${event.by}${extra}` : 'Not yet'
 }
 
 function subscriptionNote(res) {

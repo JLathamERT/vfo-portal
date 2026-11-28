@@ -8,6 +8,7 @@ import { orderOnePage, displayNumbers } from './grouping'
 import AddActionForm from './AddActionForm'
 import GrowthAddPriority from './GrowthAddPriority'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { formatDate } from '../../lib/dates'
 
 // Accountability progress statuses + their dot colors (light dots — yellow,
 // light green — carry a `dark` flag so the matrix number stays navy/legible).
@@ -42,12 +43,6 @@ function seedField(bundle, field) {
   const o = {}
   for (const a of (bundle.actions || [])) o[a.id] = a[field] || ''
   return o
-}
-
-function fmtDueDate(d) {
-  const [y, m, day] = String(d).split('-').map(Number)
-  if (!y || !m || !day) return String(d)
-  return new Date(Date.UTC(y, m - 1, day)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 }
 
 export default function GrowthOnePage({ memberNumber, bundle, reload, onNavigate, role = 'admin', variant }) {
@@ -135,8 +130,7 @@ export default function GrowthOnePage({ memberNumber, bundle, reload, onNavigate
   for (const a of op) for (const v of [a.owned_by, a.assisted_by]) if (v && v.trim()) planNames.push(v.trim())
   const { pool: namePool, adminSet } = buildNamePool(planNames, admins.map(a => a.name))
 
-  const dateStr = new Date(score.completed_at || score.created_at)
-    .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  const dateStr = formatDate(score.completed_at || score.created_at)
 
   return (
     <div>
@@ -338,7 +332,7 @@ function ActionRow({ a, acct, isAdmin, canEdit, dues, statuses, onDue, onStatus,
           <td style={td}>
             {isAdmin
               ? <input type="date" value={dues[a.id] || ''} onChange={e => onDue(a.id, e.target.value)} style={{ ...inputStyle, padding: '5px 8px', fontSize: '12px' }} />
-              : <span style={{ fontSize: '12.5px', color: dues[a.id] ? INK : 'var(--vfo-faint)' }}>{dues[a.id] ? fmtDueDate(dues[a.id]) : '—'}</span>}
+              : <span style={{ fontSize: '12.5px', color: dues[a.id] ? INK : 'var(--vfo-faint)' }}>{dues[a.id] ? formatDate(dues[a.id]) : '—'}</span>}
           </td>
         )}
         {acct && (
@@ -392,7 +386,7 @@ function PhoneActionItem({ a, acct, isAdmin, canEdit, dues, statuses, onDue, onS
           : (a.assisted_by || '—'), canEdit)}
         {acct && field('Update by', isAdmin
           ? <input type="date" value={dues[a.id] || ''} onChange={e => onDue(a.id, e.target.value)} style={{ ...inputStyle, padding: '5px 8px', fontSize: '12px' }} />
-          : <span style={{ color: dues[a.id] ? INK : 'var(--vfo-faint)' }}>{dues[a.id] ? fmtDueDate(dues[a.id]) : '—'}</span>, isAdmin)}
+          : <span style={{ color: dues[a.id] ? INK : 'var(--vfo-faint)' }}>{dues[a.id] ? formatDate(dues[a.id]) : '—'}</span>, isAdmin)}
         {acct && field('Progress', (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0, background: STATUS_COLOR[statuses[a.id]] || '#cdd8ea' }} />

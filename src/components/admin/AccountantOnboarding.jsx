@@ -4,6 +4,7 @@ import { callApi, getSession } from '../../lib/api'
 import { AccountantOnboardingListSkeleton, AccountantOnboardingDetailSkeleton } from '../shared/Skeleton'
 import { PhaseBadge } from '../shared/TrackKit'
 import NewModelSaleModal from './NewModelSaleModal'
+import { formatDate } from '../../lib/dates'
 
 // The Team Member Responsible step offers only the people who run preliminary
 // meetings; the New Model Sale modal keeps the wider SALES_TEAM_NAMES list. A
@@ -839,21 +840,6 @@ function StageBlock({ stage, title, state, expanded, onToggle, dimmed, children 
   )
 }
 
-// A bare 'YYYY-MM-DD' is split as a string — new Date() would read it as UTC
-// and show the previous day west of Greenwich. A timestamptz goes through Date
-// so it lands on the day the viewer actually saw.
-function formatDate(d) {
-  if (!d) return ''
-  const s = String(d)
-  if (!s.includes('T')) {
-    const parts = s.split('-')
-    return `${parts[1]}/${parts[2]}`
-  }
-  const dt = new Date(s)
-  if (isNaN(dt.getTime())) return ''
-  return `${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`
-}
-
 // Keep only digits and a single decimal point, capped at 2 decimals, so the
 // dollar field can't hold anything that isn't a dollar amount.
 function sanitizeMoney(raw) {
@@ -870,7 +856,7 @@ function fmtMoney(n) {
   return num.toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(num) ? 0 : 2, maximumFractionDigits: 2 })
 }
 
-const dateTextStyle = { fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0, display: 'inline-block', width: '38px' }
+const dateTextStyle = { fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0, display: 'inline-block', width: '72px' }
 
 // Prerequisite lock, drawn the same way the tax priorities tab draws it so every
 // locked step in the portal reads as one thing.

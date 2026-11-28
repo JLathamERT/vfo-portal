@@ -1,9 +1,10 @@
 import { useEffect, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
-import { StepCard, Detail, Badge, Pending, SubBlock, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
+import { StepCard, Detail, Badge, Pending, SubBlock, PanelHero, EmptyState } from './automation/StepKit'
 import StripeAccountPill from './StripeAccountPill'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
+import { formatDate } from '../../lib/dates'
 
 // Which button the client clicked, mapped to human labels.
 const DECISION_RESPONSE = { vfo_ft: 'VFO Fast Track', vfo_associate: 'VFO Associate', no: 'No Thank You' }
@@ -46,7 +47,7 @@ function MeetingCard({ title, cell }) {
       {cell?.status ? (
         <SubBlock label="Selected & sent">
           <Detail l="Outcome" v={<Badge text={cell.status} color={meetingColor(cell.status)} />} showEmpty />
-          <Detail l="Date" v={fmtDate(cell.date)} />
+          <Detail l="Date" v={formatDate(cell.date)} />
         </SubBlock>
       ) : <Pending />}
     </StepCard>
@@ -91,15 +92,15 @@ function PftPipelineRow({ row, expanded, onToggle, navigate }) {
             {row.meeting2?.status ? (
               <SubBlock label="Selected & sent">
                 <Detail l="Outcome" v={<Badge text={row.meeting2.status} color={meetingColor(row.meeting2.status)} />} showEmpty />
-                <Detail l="Date" v={fmtDate(row.meeting2.date)} />
+                <Detail l="Date" v={formatDate(row.meeting2.date)} />
               </SubBlock>
             ) : <Pending />}
             {(eng.discovery_email_sent_at || eng.discovery_submitted_at) && (
               <SubBlock label="Discovery form">
-                <Detail l="Form emailed" v={fmtDate(eng.discovery_email_sent_at)} />
-                <Detail l="Client submitted" v={fmtDate(eng.discovery_submitted_at)} showEmpty />
-                <Detail l="2-business-day reminder sent" v={fmtDate(eng.discovery_reminder_sent_at)} />
-                <Detail l="4-business-day PF notified" v={fmtDate(eng.discovery_pf_notified_at)} />
+                <Detail l="Form emailed" v={formatDate(eng.discovery_email_sent_at)} />
+                <Detail l="Client submitted" v={formatDate(eng.discovery_submitted_at)} showEmpty />
+                <Detail l="2-business-day reminder sent" v={formatDate(eng.discovery_reminder_sent_at)} />
+                <Detail l="4-business-day PF notified" v={formatDate(eng.discovery_pf_notified_at)} />
               </SubBlock>
             )}
           </StepCard>
@@ -111,15 +112,15 @@ function PftPipelineRow({ row, expanded, onToggle, navigate }) {
               <>
                 <SubBlock label="Admin selected">
                   <Detail l="Decision" v={<Badge text={row.decision_step?.status} />} showEmpty />
-                  <Detail l="Recorded" v={fmtDate(row.decision_step?.date)} />
+                  <Detail l="Recorded" v={formatDate(row.decision_step?.date)} />
                 </SubBlock>
                 {decEmailSent && (
                   <SubBlock label="Undecided email — client buttons">
-                    <Detail l="Email sent" v={fmtDate(eng.decision_email_sent_at)} />
+                    <Detail l="Email sent" v={formatDate(eng.decision_email_sent_at)} />
                     <Detail l="Button clicked" v={decResp ? <Badge text={DECISION_RESPONSE[decResp] || decResp} color={decResp === 'no' ? '#e74c3c' : '#16a34a'} /> : null} />
-                    <Detail l="Clicked at" v={fmtDate(eng.decision_response_at)} />
-                    <Detail l="2-business-day reminder sent" v={fmtDate(eng.decision_reminder_sent_at)} />
-                    <Detail l="4-business-day PF notified" v={fmtDate(eng.decision_pf_notified_at)} />
+                    <Detail l="Clicked at" v={formatDate(eng.decision_response_at)} />
+                    <Detail l="2-business-day reminder sent" v={formatDate(eng.decision_reminder_sent_at)} />
+                    <Detail l="4-business-day PF notified" v={formatDate(eng.decision_pf_notified_at)} />
                   </SubBlock>
                 )}
               </>
@@ -129,11 +130,11 @@ function PftPipelineRow({ row, expanded, onToggle, navigate }) {
           <StepCard title="FT follow-up email" status={ftStatus}>
             {ftEmailSent ? (
               <SubBlock label="Follow-up email — client buttons">
-                <Detail l="Email sent" v={fmtDate(eng.ft_email_sent_at)} />
+                <Detail l="Email sent" v={formatDate(eng.ft_email_sent_at)} />
                 <Detail l="Button clicked" v={ftResp ? <Badge text={FT_RESPONSE[ftResp] || ftResp} color={ftResp === 'confirm' ? '#16a34a' : '#0095ff'} /> : null} />
-                <Detail l="Clicked at" v={fmtDate(eng.ft_response_at)} />
-                <Detail l="2-business-day reminder sent" v={fmtDate(eng.ft_reminder_sent_at)} />
-                <Detail l="4-business-day PF notified" v={fmtDate(eng.ft_pf_notified_at)} />
+                <Detail l="Clicked at" v={formatDate(eng.ft_response_at)} />
+                <Detail l="2-business-day reminder sent" v={formatDate(eng.ft_reminder_sent_at)} />
+                <Detail l="4-business-day PF notified" v={formatDate(eng.ft_pf_notified_at)} />
               </SubBlock>
             ) : <Pending />}
           </StepCard>

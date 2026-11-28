@@ -10,14 +10,10 @@ import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { gcTypeChip, gcActorLabel } from '../shared/GCMarketplaceViews'
 import { PageHeading } from '../shared/ProfileKit'
 import { emptyRowStyle, errorStyle, headerRowStyle, refreshBtnStyle, tableStyle, toolbarStyle } from './accountingTable'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > Members > Growth Credits. Program-wide totals plus the full
 // transaction ledger and every member's current balance. Read-only.
-
-function fmtDate(s) {
-  if (!s) return '—'
-  try { return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return String(s) }
-}
 
 
 export default function GrowthCreditsAccountingPanel() {
@@ -117,7 +113,7 @@ export default function GrowthCreditsAccountingPanel() {
             )}
             {(data.transactions || []).map(t => (
               <div key={t.id} {...memberRow(t.member_number)} style={{ ...memberRowStyle(t.member_number), display: 'grid', gridTemplateColumns: txCols, gap: '8px', padding: '12px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)' }}>
-                <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(t.created_at)}</span>
+                <span style={{ color: 'var(--vfo-muted)' }}>{formatDate(t.created_at, '—')}</span>
                 <span><MemberNameLink memberNumber={t.member_number} style={{ fontWeight: 600 }}>{t.member_name}</MemberNameLink></span>
                 <span>{gcTypeChip(t)}</span>
                 <span style={{ textAlign: 'right', fontWeight: 700, color: (t.amount || 0) < 0 ? '#d93025' : 'var(--vfo-success-text-2)' }}>{(t.amount || 0) > 0 ? '+' : ''}{t.amount}</span>

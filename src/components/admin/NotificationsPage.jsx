@@ -11,6 +11,7 @@ import { pipelineLabel } from '../shared/notificationPipeline'
 import AccountingCombinedPanel from './AccountingCombinedPanel'
 import { miniTabStyle as miniTab } from '../shared/SubTabs'
 import { tableStyle, headerRowStyle } from './SpecialistRevenuePanel'
+import { formatDateTime } from '../../lib/dates'
 
 // Admin Notifications page (bell "View all"), in the house Accounting layout:
 // breadcrumb + title, pills (Current / Archive / Reminders), the filter row, the
@@ -59,11 +60,6 @@ const errorBox = { background: '#fef2f2', border: '1px solid #fecaca', color: '#
 const emptyRow = { textAlign: 'center', padding: '40px', color: 'var(--vfo-faint)', fontSize: '14px' }
 const bodyRow = { display: 'grid', gap: '12px', padding: '13px 18px 13px 15px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'start', fontSize: '13px', color: 'var(--vfo-ink)' }
 const input = { padding: '9px 11px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }
-
-function fmtDateTime(s) {
-  if (!s) return ''
-  try { return new Date(s).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) } catch { return String(s) }
-}
 
 export default function NotificationsPage() {
   return (
@@ -231,7 +227,7 @@ function NotificationsView({ scope }) {
                     {isAction && <Tag color={ACTION_ORANGE}>Action</Tag>}
                     {pipelineLabel(n.pipeline) && <Tag color={isReminder ? REMINDER_VIOLET : isSdp ? SDP_BELL : PIPELINE_BLUE}>{pipelineLabel(n.pipeline)}</Tag>}
                   </span>
-                  <span style={{ color: 'var(--vfo-muted)', fontSize: '12.5px', whiteSpace: 'nowrap' }}>{fmtDateTime(n.created_at)}</span>
+                  <span style={{ color: 'var(--vfo-muted)', fontSize: '12.5px', whiteSpace: 'nowrap' }}>{formatDateTime(n.created_at)}</span>
                   {current && (
                     <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
                       {isAction
@@ -367,7 +363,7 @@ function RemindersView() {
             <div key={r.id} style={{ ...bodyRow, gridTemplateColumns: UPCOMING_GRID, alignItems: 'center', borderLeft: `3px solid ${REMINDER_VIOLET}` }}>
               <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{r.message}</span>
               <span style={{ color: 'var(--vfo-muted)', fontSize: '12.5px' }}>{r.fire_date} at {r.fire_time} ({zoneLabel(r.timezone)})</span>
-              <span style={{ color: 'var(--vfo-muted)', fontSize: '12.5px' }}>{fmtDateTime(r.fire_at)}</span>
+              <span style={{ color: 'var(--vfo-muted)', fontSize: '12.5px' }}>{formatDateTime(r.fire_at)}</span>
               <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => cancel(r.id)} disabled={busy} style={btnState({ ...btnDanger, background: 'var(--vfo-card)' }, busy)}>Cancel</button>
               </span>
@@ -385,7 +381,7 @@ function RemindersView() {
           {fired.map(r => (
             <div key={r.id} style={{ ...bodyRow, gridTemplateColumns: FIRED_GRID, borderLeft: '3px solid transparent' }}>
               <span style={{ overflowWrap: 'anywhere' }}>{r.message}</span>
-              <span style={{ color: 'var(--vfo-muted)', fontSize: '12.5px' }}>{fmtDateTime(r.fired_at)}</span>
+              <span style={{ color: 'var(--vfo-muted)', fontSize: '12.5px' }}>{formatDateTime(r.fired_at)}</span>
             </div>
           ))}
         </div>

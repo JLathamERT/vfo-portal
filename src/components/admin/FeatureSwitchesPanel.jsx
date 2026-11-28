@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { StackedCardsSkeleton } from '../shared/Skeleton'
 import { PageHeading } from '../shared/ProfileKit'
+import { formatDateTime } from '../../lib/dates'
 
 // The Feature Switches tab (2026-09-28), under More ▾ — superadmins, and any admin
 // it was turned on for in the Admin Editor (2026-11-25). The backend
@@ -99,12 +100,6 @@ const MODE_PILL = {
   mixed: { label: 'MIXED', color: '#7f8c8d' },
 }
 
-function fmtWhen(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return `${d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-}
-
 export default function FeatureSwitchesPanel() {
   const [switches, setSwitches] = useState([])
   const [testMember, setTestMember] = useState('')
@@ -198,7 +193,7 @@ export default function FeatureSwitchesPanel() {
         {missing.length > 0 && <span style={{ fontSize: '12px', color: '#e74c3c' }}>No database row yet for {missing.map(r => r.key).join(', ')} — it reads as off.</span>}
         {last && (
           <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>
-            Last changed {fmtWhen(last.updated_at)}{last.updated_by ? ` by ${last.updated_by}` : ''}
+            Last changed {formatDateTime(last.updated_at)}{last.updated_by ? ` by ${last.updated_by}` : ''}
           </span>
         )}
       </div>

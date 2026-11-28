@@ -32,17 +32,6 @@ export function fmtMoney(v) {
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export function fmtDate(v) {
-  if (!v) return null
-  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) {
-    const d = new Date(v)
-    if (!isNaN(d.getTime())) {
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    }
-  }
-  return String(v)
-}
-
 // ---- atoms --------------------------------------------------------------
 export function StatusPill({ status, label }) {
   const s = STATUS[status] || STATUS.pending

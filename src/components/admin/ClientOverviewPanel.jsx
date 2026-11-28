@@ -15,6 +15,7 @@ import { CLIENT_STATUS_LABELS, clientStatusColors, clientStatusHex, clientStatus
 import { ClientOverviewSkeleton } from '../shared/Skeleton'
 import SubTabs, { MiniTabs } from '../shared/SubTabs'
 import { PageHeading } from '../shared/ProfileKit'
+import { formatDate } from '../../lib/dates'
 
 // Client Overview — a mirror of Member Overview, but oriented around clients and
 // their program tracks. Four sub-tabs, each lazily loaded from the backend
@@ -56,12 +57,6 @@ const CIQ_STATE = {
   completed: { label: 'Questionnaire complete', rank: 1, bg: 'var(--vfo-accent-tint)', color: 'var(--vfo-accent-text)' },
   draft: { label: 'In progress', rank: 0, bg: 'rgba(224,103,23,0.14)', color: '#e06717' },
 }
-function fmtDate(iso) {
-  if (!iso) return ''
-  const [y, m, d] = String(iso).slice(0, 10).split('-')
-  return `${m}/${d}/${y}`
-}
-
 // The second column exists only where a row needs its own identity: a Regular
 // priority has a title, and the Tax Planning tab merges both tax programs' plans
 // so its rows carry a program pill to tell them apart. MAP 1 and PFT rows are
@@ -121,7 +116,7 @@ const TAX_PILLS = [
 ]
 // A paused or closed tax plan in words: orange paused, orange-red next tax year, red stopped.
 function closedTaxText(t) {
-  if (t.track_status === 'paused') return { text: `Paused${t.pause_check_back_on ? ` - check back ${fmtDate(t.pause_check_back_on)}` : ''}`, color: '#e06717' }
+  if (t.track_status === 'paused') return { text: `Paused${t.pause_check_back_on ? ` - check back ${formatDate(t.pause_check_back_on)}` : ''}`, color: '#e06717' }
   if (t.status_kind === 'next_tax_year') return { text: t.closed_reason || 'Next tax year', color: NEXT_YEAR_HEX }
   return { text: t.closed_reason || 'Closed', color: '#b23c30' }
 }
@@ -572,7 +567,7 @@ export default function ClientOverviewPanel({ mode = 'admin', onOpenCiq, canAddC
                     <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, background: st.bg, color: st.color, whiteSpace: 'nowrap' }}>{st.label}</span>
                   </span>
                   <span style={{ fontSize: '12px', color: c.ciq?.last_at ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>
-                    {c.ciq?.last_at ? fmtDate(c.ciq.last_at) : '—'}
+                    {c.ciq?.last_at ? formatDate(c.ciq.last_at) : '—'}
                   </span>
                   <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{c.ciq?.count || 0}</span>
                 </div>

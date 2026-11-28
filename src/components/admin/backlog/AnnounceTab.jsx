@@ -2,9 +2,10 @@ import { useMemo } from 'react'
 import { btnSecondary, btnState } from '../../shared/buttonStyles'
 import { hexA } from '../KpiKit'
 import { departmentChipStyle } from './portalDepartments'
-import { byReleaseThenNewest, fmtDate, isTask } from './backlogModel'
+import { byReleaseThenNewest, isTask } from './backlogModel'
 import { TaskTag } from './TaskBits'
 import { GOLD, ReleaseImportancePill } from './BigNewsBadge'
+import { formatDate } from '../../../lib/dates'
 
 // The What's new tab (Backlog 5a, named by Paxton 2026-11-23): what is waiting
 // to be announced and what has gone Live (until it is archived), each section
@@ -53,7 +54,7 @@ function Section({ title, count, empty, children }) {
   )
 }
 
-const isoDay = (ts) => (ts ? fmtDate(String(ts).slice(0, 10)) : null)
+const isoDay = (ts) => (ts ? formatDate(String(ts).slice(0, 10), '–') : null)
 
 function AnnouncementCard({ request: r, people, onOpen, section, action }) {
   const level = r.release_importance || 'normal'
@@ -70,7 +71,7 @@ function AnnouncementCard({ request: r, people, onOpen, section, action }) {
     if (r.live_at) meta.push(`Live ${isoDay(r.live_at)}`)
     if (doneBy) meta.push(`Done by ${doneBy}`)
   }
-  if (r.announced_on) meta.push(`Announced ${fmtDate(r.announced_on)}`)
+  if (r.announced_on) meta.push(`Announced ${formatDate(r.announced_on, '–')}`)
 
   return (
     <div

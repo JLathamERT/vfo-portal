@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { callApi } from '../../lib/api'
 import { readable } from './readableColor'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import { formatDate } from '../../lib/dates'
 
 // 90 Day Plan — the Proactive Facilitator Roleplay step (Holistic + Partnership
 // Fast Track, end of "MSM 5 Activity"). MSM-driven, laid out like the tax
@@ -36,19 +37,10 @@ const neutralChip = { fontSize: '10px', padding: '2px 8px', borderRadius: '999px
 const tdInput = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '11px' }
 const tdGreen = (busy) => ({ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: busy ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: GREEN, fontWeight: 600, opacity: busy ? 0.6 : 1 })
 const tdCancel = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
-const stampStyle = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'right', flexShrink: 0 }
+const stampStyle = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'right', flexShrink: 0 }
 
 function todayET() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
-}
-function fmtDate(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '')
-  return m ? `${m[2]}/${m[3]}/${m[1]}` : ''
-}
-function fmtStamp(ts) {
-  if (!ts) return ''
-  const d = new Date(ts)
-  return isNaN(d) ? '' : `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
 }
 function fmtTime(hhmm) {
   const m = /^(\d{1,2}):(\d{2})/.exec(hhmm || '')
@@ -56,7 +48,7 @@ function fmtTime(hhmm) {
   const h = Number(m[1])
   return `${h % 12 === 0 ? 12 : h % 12}:${m[2]} ${h >= 12 ? 'PM' : 'AM'}`
 }
-const whenLabel = (a) => `${fmtDate(a.scheduled_date)} ${fmtTime(a.scheduled_time)} ${a.scheduled_timezone || ''}`.trim()
+const whenLabel = (a) => `${formatDate(a.scheduled_date)} ${fmtTime(a.scheduled_time)} ${a.scheduled_timezone || ''}`.trim()
 
 export default function RoleplayStep({ task, enrollmentId, programId, inGroup, readOnly = false, onProgressChange }) {
   const isPhone = useIsPhone()
@@ -171,8 +163,8 @@ export default function RoleplayStep({ task, enrollmentId, programId, inGroup, r
       </select>
     )
     return [
-      subRow(`d${a.id}`, label, dateRight, fmtStamp(a.confirmation_sent_at), GREEN),
-      subRow(`o${a.id}`, 'Outcome', outcomeRight, fmtStamp(a.outcome_at), outcomeColor),
+      subRow(`d${a.id}`, label, dateRight, formatDate(a.confirmation_sent_at), GREEN),
+      subRow(`o${a.id}`, 'Outcome', outcomeRight, formatDate(a.outcome_at), outcomeColor),
     ]
   })
 
@@ -212,7 +204,7 @@ export default function RoleplayStep({ task, enrollmentId, programId, inGroup, r
             <button key={b.variant} disabled={busy} onClick={() => sendIntro(b.variant, b.label.replace('Send', 'Resend'))} style={tdCancel}>{b.label.replace('Send', 'Resend')}</button>
           ))}
         </div>
-      : introRight, fmtStamp(roleplay?.intro_sent_at), introSent ? BLUE : null)
+      : introRight, formatDate(roleplay?.intro_sent_at), introSent ? BLUE : null)
     : null
 
   return (
@@ -221,7 +213,7 @@ export default function RoleplayStep({ task, enrollmentId, programId, inGroup, r
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: stepColor || 'transparent', flexShrink: 0, border: `1.5px solid ${stepColor || 'var(--vfo-border-mid)'}` }} />
         <span style={{ fontSize: '14px', color: latest?.outcome === 'completed' ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1, minWidth: isPhone ? 0 : '150px' }}>{task.name}</span>
         {!isPhone && introRight}
-        {!isPhone && <span style={stampStyle}>{fmtStamp(roleplay?.intro_sent_at)}</span>}
+        {!isPhone && <span style={stampStyle}>{formatDate(roleplay?.intro_sent_at)}</span>}
       </div>
       {(introRow || attempts.length > 0 || pendingRow) && (
         <div style={{ marginTop: '6px' }}>

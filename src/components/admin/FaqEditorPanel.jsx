@@ -6,6 +6,7 @@ import { btnPrimary, btnSecondary, btnDanger, btnOutline, btnStep, BTN_SMALL, bt
 import { formLabel, formInput, PageHeading } from '../shared/ProfileKit'
 import { listSearchStyle } from '../shared/ListTable'
 import SubTabs from '../shared/SubTabs'
+import { formatDate } from '../../lib/dates'
 
 // The FAQ Editor tab — open to every admin (2026-11-25). Laid out like Growth
 // Credits and Events (2026-11-27): a header card, then one sub-tab per portal.
@@ -491,7 +492,7 @@ function FaqPortalEditor({ audience, people, portalLabel, tiers }) {
                   {(item.updated_by || item.created_by) && (
                     <div style={{ fontSize: '11px', color: 'var(--vfo-faint)', marginTop: '6px' }}>
                       Last edited by {(item.updated_by || item.created_by || '').toLowerCase() === myEmail ? 'you' : (item.updated_by || item.created_by)}
-                      {item.updated_at ? ` · ${new Date(item.updated_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}` : ''}
+                      {item.updated_at ? ` · ${formatDate(item.updated_at)}` : ''}
                     </div>
                   )}
                 </div>
