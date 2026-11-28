@@ -1,10 +1,11 @@
 import { useEffect, useState, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
-import { StepCard, Detail, Badge, Pending, fmtMoney, fmtDate, PanelHero, EmptyState } from './automation/StepKit'
+import { StepCard, Detail, Badge, Pending, fmtMoney, PanelHero, EmptyState } from './automation/StepKit'
 import StripeAccountPill from './StripeAccountPill'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import OnboardingExtraMeetingCard from './OnboardingExtraMeetingCard'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
+import { formatDate } from '../../lib/dates'
 
 const STAGE_LABELS = {
   new: 'New',
@@ -110,9 +111,9 @@ function AccountantPipelineRow({ row, expanded, onToggle, onReload }) {
             <Detail l="Via extra meeting" v={row.via_extra_meeting ? 'Yes' : null} />
             <Detail l="Direct/Advisor" v={row.accountant_partnership === 'Accountant Partnership' ? 'Advisor' : row.accountant_partnership === 'No accountant partnership' ? 'Direct' : row.accountant_partnership} />
             {row.accountant_partnership === 'Accountant Partnership' && <Detail l="CC Connected Advisor" v={row.cc_advisor_name ? `${row.cc_advisor_name} · ${row.cc_advisor_email}` : null} />}
-            <Detail l="Undecided email sent" v={fmtDate(row.decision_email_sent_at)} />
-            <Detail l="2-business-day reminder sent" v={fmtDate(row.decision_reminder_sent_at)} />
-            <Detail l="4-business-day PF notified" v={fmtDate(row.decision_pf_notified_at)} />
+            <Detail l="Undecided email sent" v={formatDate(row.decision_email_sent_at)} />
+            <Detail l="2-business-day reminder sent" v={formatDate(row.decision_reminder_sent_at)} />
+            <Detail l="4-business-day PF notified" v={formatDate(row.decision_pf_notified_at)} />
           </StepCard>
 
           {emStage === 'decision' && extraCard}
@@ -120,11 +121,11 @@ function AccountantPipelineRow({ row, expanded, onToggle, onReload }) {
           <StepCard title="Agreement" status={agreementStatus}>
             {row.boldsign_document_id ? (
               <>
-                <Detail l="Agreement sent" v={fmtDate(row.agreement_sent_at)} showEmpty />
-                <Detail l="2-business-day reminder sent" v={fmtDate(row.signing_reminder_sent_at)} />
-                <Detail l="4-business-day PF notified" v={fmtDate(row.signing_pf_notified_at)} />
-                <Detail l="Signed by accountant" v={fmtDate(row.agreement_signed_by_accountant_at)} showEmpty />
-                <Detail l="CEO countersigned" v={fmtDate(row.agreement_signed_by_ceo_at)} showEmpty />
+                <Detail l="Agreement sent" v={formatDate(row.agreement_sent_at)} showEmpty />
+                <Detail l="2-business-day reminder sent" v={formatDate(row.signing_reminder_sent_at)} />
+                <Detail l="4-business-day PF notified" v={formatDate(row.signing_pf_notified_at)} />
+                <Detail l="Signed by accountant" v={formatDate(row.agreement_signed_by_accountant_at)} showEmpty />
+                <Detail l="CEO countersigned" v={formatDate(row.agreement_signed_by_ceo_at)} showEmpty />
                 <Detail l="Selected plans" v={plans} />
                 <Detail l="Payment amount" v={fmtMoney(row.payment_amount)} />
                 <Detail l="Engagement term" v={row.engagement_term_months ? `${row.engagement_term_months} months` : null} />
@@ -137,15 +138,15 @@ function AccountantPipelineRow({ row, expanded, onToggle, onReload }) {
           <StepCard title="Payment" status={payStatus}>
             {row.stripe_customer_id || row.payment_link_sent_at ? (
               <>
-                <Detail l="Payment link emailed" v={fmtDate(row.payment_link_sent_at)} />
-                <Detail l="2-business-day reminder sent" v={fmtDate(row.payment_reminder_sent_at)} />
-                <Detail l="4-business-day PF notified" v={fmtDate(row.payment_pf_notified_at)} />
+                <Detail l="Payment link emailed" v={formatDate(row.payment_link_sent_at)} />
+                <Detail l="2-business-day reminder sent" v={formatDate(row.payment_reminder_sent_at)} />
+                <Detail l="4-business-day PF notified" v={formatDate(row.payment_pf_notified_at)} />
                 <Detail l="Method" v={row.payment_method_type} />
                 <Detail l="Account" v={row.acct_last4 ? `****${row.acct_last4}` : null} />
                 <Detail l="Payment amount" v={fmtMoney(row.payment_amount)} />
                 <Detail l="Status" v={paymentStatusLabel(row.payment_status)} />
-                <Detail l="Payment received" v={fmtDate(row.payment_completed_at)} />
-                <Detail l="Renewal review" v={fmtDate(row.renewal_date)} />
+                <Detail l="Payment received" v={formatDate(row.payment_completed_at)} />
+                <Detail l="Renewal review" v={formatDate(row.renewal_date)} />
               </>
             ) : <Pending />}
           </StepCard>
@@ -155,8 +156,8 @@ function AccountantPipelineRow({ row, expanded, onToggle, onReload }) {
           <StepCard title="Confirmation, Invoice & Receipt" status={invStatus}>
             {row.confirmation_email_sent_at || row.invoice_number ? (
               <>
-                <Detail l="Confirmation email sent" v={fmtDate(row.confirmation_email_sent_at)} />
-                <Detail l="Invoice emailed" v={fmtDate(row.invoice_sent_at)} showEmpty />
+                <Detail l="Confirmation email sent" v={formatDate(row.confirmation_email_sent_at)} />
+                <Detail l="Invoice emailed" v={formatDate(row.invoice_sent_at)} showEmpty />
                 <Detail l="Invoice #" v={row.invoice_number} mono />
                 <Detail l="Receipt #" v={row.receipt_number} mono />
               </>
@@ -167,7 +168,7 @@ function AccountantPipelineRow({ row, expanded, onToggle, onReload }) {
             {row.member_number ? (
               <>
                 <Detail l="Member number" v={row.member_number} />
-                <Detail l="Created" v={fmtDate(row.member_created_at)} />
+                <Detail l="Created" v={formatDate(row.member_created_at)} />
                 <Detail l="Revenue decision" v={row.revenue_decision} />
               </>
             ) : <Pending />}
@@ -176,15 +177,15 @@ function AccountantPipelineRow({ row, expanded, onToggle, onReload }) {
           <StepCard title="Member Login Setup" status={loginStatus}>
             {row.login_setup_token || row.login_setup_email_sent_at ? (
               <>
-                <Detail l="Setup email sent" v={fmtDate(row.login_setup_email_sent_at)} />
-                <Detail l="Token expires" v={fmtDate(row.login_setup_token_expires_at)} />
-                <Detail l="Completed" v={fmtDate(row.login_setup_completed_at)} showEmpty />
+                <Detail l="Setup email sent" v={formatDate(row.login_setup_email_sent_at)} />
+                <Detail l="Token expires" v={formatDate(row.login_setup_token_expires_at)} />
+                <Detail l="Completed" v={formatDate(row.login_setup_completed_at)} showEmpty />
               </>
             ) : <Pending />}
           </StepCard>
 
           <div style={{ marginTop: '10px', fontSize: '10px', color: 'var(--vfo-faint)' }}>
-            Onboarding #{row.id} · Started {fmtDate(row.created_at)} · {row.email || 'no email'}
+            Onboarding #{row.id} · Started {formatDate(row.created_at)} · {row.email || 'no email'}
           </div>
         </div>
       )}

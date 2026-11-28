@@ -3,12 +3,13 @@ import { callApi } from '../../../lib/api'
 import { btnSecondary } from '../../shared/buttonStyles'
 import { hexA } from '../KpiKit'
 import { departmentChipStyle, PORTAL_DEPARTMENTS } from './portalDepartments'
-import { fmtDate, fmtDateTime, isTask } from './backlogModel'
+import { isTask } from './backlogModel'
 import { TaskTag } from './TaskBits'
 import BigNewsBadge from './BigNewsBadge'
 import LikeButton from './LikeButton'
 import { inputStyle } from './BacklogModal'
 import { PortalBacklogArchiveRowsSkeleton } from '../../shared/skeletons'
+import { formatDate, formatDateTime } from '../../../lib/dates'
 
 // The archive: archived items (from Live since Backlog 5a, from Ready to
 // announce before it) and denied requests, newest first, read-only. Search
@@ -87,7 +88,7 @@ export default function BacklogArchive({ people, canManage, reloadKey, onOpen, o
                   <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--vfo-ink)', overflowWrap: 'anywhere' }}>{r.title}</span>
                   <LikeButton count={r.like_count || 0} />
                 </div>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginTop: '3px' }}>{r.requester_name} · {fmtDate(r.requested_on)}</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--vfo-muted)', marginTop: '3px' }}>{r.requester_name} · {formatDate(r.requested_on, '–')}</div>
                 {r.departments?.length > 0 && <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '5px' }}>{r.departments.map((d) => <span key={d} style={departmentChipStyle(d)}>{d}</span>)}</div>}
                 <div style={{ fontSize: '12.5px', color: 'var(--vfo-ink-soft)', marginTop: '5px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>
                   {denied ? r.request_text : (r.announcement || r.request_text)}
@@ -97,7 +98,7 @@ export default function BacklogArchive({ people, canManage, reloadKey, onOpen, o
                 {denied ? (
                   <>
                     <div><strong style={{ color: 'var(--vfo-ink)' }}>Denied by {people[r.reviewed_by_admin_id] || (r.imported ? 'the sheet' : 'a former admin')}</strong></div>
-                    {r.reviewed_at && <div>{fmtDateTime(r.reviewed_at)}</div>}
+                    {r.reviewed_at && <div>{formatDateTime(r.reviewed_at, '–')}</div>}
                     {r.review_note && <div style={{ overflowWrap: 'anywhere' }}>Reason: {r.review_note}</div>}
                     {canManage && (
                       <button style={{ ...btnSecondary, padding: '5px 12px', fontSize: '12px', marginTop: '6px' }} disabled={busyId === r.id}
@@ -107,10 +108,10 @@ export default function BacklogArchive({ people, canManage, reloadKey, onOpen, o
                 ) : (
                   <>
                     {r.announced_on
-                      ? <div><strong style={{ color: 'var(--vfo-ink)' }}>Announced on {fmtDate(r.announced_on)}</strong></div>
-                      : r.live_at && <div><strong style={{ color: 'var(--vfo-ink)' }}>Live {fmtDate(String(r.live_at).slice(0, 10))}</strong></div>}
+                      ? <div><strong style={{ color: 'var(--vfo-ink)' }}>Announced on {formatDate(r.announced_on, '–')}</strong></div>
+                      : r.live_at && <div><strong style={{ color: 'var(--vfo-ink)' }}>Live {formatDate(String(r.live_at).slice(0, 10), '–')}</strong></div>}
                     {r.announce_note && <div style={{ overflowWrap: 'anywhere' }}>{r.announce_note}</div>}
-                    <div>Archived by {people[r.archived_by_admin_id] || 'a former admin'}, {fmtDateTime(r.archived_at)}</div>
+                    <div>Archived by {people[r.archived_by_admin_id] || 'a former admin'}, {formatDateTime(r.archived_at, '–')}</div>
                     {canManage && (
                       <button style={{ ...btnSecondary, padding: '5px 12px', fontSize: '12px', marginTop: '6px' }} disabled={busyId === r.id}
                         onClick={(e) => { e.stopPropagation(); onRestore(r) }}>Restore</button>

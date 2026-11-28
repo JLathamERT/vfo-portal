@@ -6,6 +6,7 @@ import { MemberNameLink } from '../shared/personLinks'
 import { PageHeading } from '../shared/ProfileKit'
 import ExpandChevron from '../shared/ExpandChevron'
 import { errorStyle, headerRowStyle, refreshBtnStyle, rowStyle, tableStyle, toolbarStyle } from './accountingTable'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > Members > Money Mapping (2026-10-30). Every member who has earned
 // Money Mapping on the portal (credited automatically from their Money Mapping
@@ -15,11 +16,6 @@ import { errorStyle, headerRowStyle, refreshBtnStyle, rowStyle, tableStyle, tool
 // fees today) shows in the statement.
 
 const MM_COLOR = '#ca8a04'
-
-function fmtDate(s) {
-  if (!s) return '—'
-  try { return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return String(s) }
-}
 
 // Same soft tinted chip as the Growth Credits ledger (gcTypeChip).
 const TYPE_META = {
@@ -187,7 +183,7 @@ function Statement({ member, adjusting, onAdjust, onAdjusted }) {
         </div>
         {member.entries.map(e => (
           <div key={e.id} style={{ ...bodyRow, gridTemplateColumns: cols }}>
-            <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(e.date)}</span>
+            <span style={{ color: 'var(--vfo-muted)' }}>{formatDate(e.date, '—')}</span>
             <span><TypeChip type={e.entry_type} amount={e.amount} /></span>
             <span style={{ color: 'var(--vfo-ink-2)' }}>
               {e.description || '—'}

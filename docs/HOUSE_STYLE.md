@@ -98,7 +98,10 @@ Buttons and tags never look alike, and tags are rare: the full rule is TEAM_RULE
 
 ### Dates
 
-- **Shown:** `formatDate` / `formatDateTime` from `src/lib/dates.js` (MM/DD/YYYY). Never `new Date('YYYY-MM-DD')` (it shows the day before, west of Greenwich), never a bare `toLocaleDateString()`, never a new local `fmtDate`. One format everywhere (Jake, 2026-11-27): Accounting moves off its own "Nov 15, 2026" formatters to this one.
+- **Shown:** `formatDate` / `formatDateTime` from `src/lib/dates.js`: `11/15/2026`, and `11/15/2026 3:05 PM` for a stamp with its time. Never `new Date('YYYY-MM-DD')` (it shows the day before, west of Greenwich), never a bare `toLocaleDateString()`, never a new local `fmtDate`. One format everywhere (Jake, 2026-11-27), Accounting and tracker step dates included: no "Nov 15, 2026", no "11/15" without the year. The second argument is what an empty value shows (`formatDate(d, '—')` in a table cell).
+- **A date or a moment:** a calendar date (`2026-11-15`, a DATE column) prints as stored. A moment (a timestamptz such as `created_at` or `paid_at`, which carries `Z` or `+00:00`) prints the day it was where the viewer is: its first ten characters are the UTC day, which is tomorrow for anything after 7 pm Eastern (Jake, 2026-11-27).
+- **Kept as words** (Jake, 2026-11-27): a date inside a sentence or an email keeps its long form, "November 15, 2026" (a pay page's "charged on" line, the card-update page, the MAP 4 form, the New Model Sale summary, the sale and event end dates, an email placeholder such as `[Renewal Date]` and the email previews that copy it). A period keeps its month label ("Nov 2026", "November 2026").
+- **Width:** a tracker's read-only step date is 72px (`MM/DD/YYYY` at 11-12px), until Part 5 of Issue JLathamERT/vfo-edge-functions#661 moves the rows to `StepDate`.
 - **Typed:** `<input type="date">`, ISO underneath; on a tracker step, `StepDate`.
 
 ### Money

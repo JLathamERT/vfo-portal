@@ -13,6 +13,7 @@ import Tag from '../shared/Tag'
 import ExpandChevron from '../shared/ExpandChevron'
 import { innerTotalsStyle } from './accountingTable'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
+import { formatDate } from '../../lib/dates'
 
 export const NAVY = '#002973'
 export const BLUE = '#125ecc'
@@ -299,7 +300,7 @@ export function RequestRow({ request, actions, grid }) {
   // specialist's payment is in — before that no line has been attempted at all.
   const heldMemberTotal = received ? lines.reduce((s, l) => s + (isHeldLine(l) ? Number(l.member_share) || 0 : 0), 0) : 0
   const d = requestDate(request)
-  const dateStr = d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
+  const dateStr = formatDate(d, '—')
   const detail = <RequestDetail request={request} actions={actions} received={settled} heldMemberTotal={heldMemberTotal} />
 
   if (grid) {
@@ -440,7 +441,7 @@ function RequestDetail({ request, actions, received, heldMemberTotal }) {
           )}
           {request.payment_status === 'denied' && (
             <div style={{ marginTop: '14px', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
-              Denied{request.intercompany_answered_by ? ` by ${request.intercompany_answered_by}` : ''}{request.intercompany_answered_at ? ` on ${new Date(request.intercompany_answered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}. Reason: {request.intercompany_deny_reason || 'none given'}
+              Denied{request.intercompany_answered_by ? ` by ${request.intercompany_answered_by}` : ''}{request.intercompany_answered_at ? ` on ${formatDate(request.intercompany_answered_at)}` : ''}. Reason: {request.intercompany_deny_reason || 'none given'}
             </div>
           )}
           {actions && <div style={{ marginTop: '14px' }}>{actions({ request })}</div>}

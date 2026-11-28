@@ -9,6 +9,7 @@ import { btnOutline, BTN_SMALL, btnState } from '../shared/buttonStyles'
 import Tag from '../shared/Tag'
 import ExpandChevron from '../shared/ExpandChevron'
 import { refreshBtnStyle, emptyCardStyle } from './accountingTable'
+import { formatDate } from '../../lib/dates'
 
 // Where a map1 / tax card's "Open plan" goes. MAP 1 lives under Holistic (program 1).
 // A tax card needs the plan's program_id or the client page opens the wrong program
@@ -37,24 +38,6 @@ const BADGE_ATSG_FEE = { label: 'Impact fee', color: '#e06717' }
 // The one empty line for every Outstanding Payment Links tab (HOUSE_STYLE §1).
 export function OutstandingEmpty() {
   return <div style={emptyCardStyle}>No outstanding payment links.</div>
-}
-
-export function fmtDate(s) {
-  if (!s) return null
-  try {
-    const d = new Date(s)
-    if (Number.isNaN(d.getTime())) return String(s)
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  } catch { return String(s) }
-}
-
-export function shortDate(s) {
-  if (!s) return null
-  try {
-    const d = new Date(s)
-    if (Number.isNaN(d.getTime())) return String(s)
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  } catch { return String(s) }
 }
 
 function programLabel(pid) {
@@ -198,9 +181,9 @@ export function OutstandingCard({ name, clientId, program, planPath, expertId, s
 }
 
 function FirstLinkCard({ item, kind, showProgram, onDone }) {
-  const sent = fmtDate(item.link_sent_at)
+  const sent = formatDate(item.link_sent_at)
   const parts = []
-  parts.push(sent ? `Link sent ${shortDate(item.link_sent_at)}` : 'Link not sent yet')
+  parts.push(sent ? `Link sent ${formatDate(item.link_sent_at)}` : 'Link not sent yet')
   parts.push(emailCount(item.emails_sent))
   return (
     <OutstandingCard
@@ -223,8 +206,8 @@ function FirstLinkCard({ item, kind, showProgram, onDone }) {
       {item.payment_plan ? <Detail label="Payment plan" value={item.payment_plan} /> : null}
       {showProgram ? <Detail label="Program" value={programLabel(item.program_id)} /> : null}
       <Detail label="Link sent" value={sent || 'not yet'} />
-      <Detail label="Reminder sent" value={fmtDate(item.reminder_sent_at) || 'not yet'} />
-      <Detail label="PF notified" value={fmtDate(item.pf_notified_at) || 'not yet'} />
+      <Detail label="Reminder sent" value={formatDate(item.reminder_sent_at) || 'not yet'} />
+      <Detail label="PF notified" value={formatDate(item.pf_notified_at) || 'not yet'} />
       <Detail label="Emails sent" value={String(Number(item.emails_sent) || 0)} />
     </OutstandingCard>
   )
@@ -248,7 +231,7 @@ function RemainingTable({ kind, remaining }) {
             ? (
               <>
                 <div>Payment {r.n}</div>
-                <div>{fmtDate(r.date) || '-'}</div>
+                <div>{formatDate(r.date) || '-'}</div>
                 <div>{money(r.amount)}</div>
                 <div style={{ color: 'var(--vfo-muted)' }}>{paymentStatusLabel(r.status) || 'scheduled'}</div>
               </>
@@ -266,7 +249,7 @@ function RemainingTable({ kind, remaining }) {
 
 function ContinuationCard({ item, kind, onDone }) {
   const parts = []
-  parts.push(item.link_sent_at ? `Link sent ${shortDate(item.link_sent_at)}` : 'Link not sent yet')
+  parts.push(item.link_sent_at ? `Link sent ${formatDate(item.link_sent_at)}` : 'Link not sent yet')
   parts.push(emailCount(item.emails_sent))
   const history = item.history || []
   const subtitle = (
@@ -275,7 +258,7 @@ function ContinuationCard({ item, kind, onDone }) {
       {parts.join(' · ')}
       {item.expired
         ? <span style={{ color: '#ef4444', fontWeight: 600 }}> · link EXPIRED</span>
-        : (item.expires_at ? <> · expires {shortDate(item.expires_at)}</> : null)}
+        : (item.expires_at ? <> · expires {formatDate(item.expires_at)}</> : null)}
     </>
   )
   return (
@@ -302,13 +285,13 @@ function ContinuationCard({ item, kind, onDone }) {
       {history.length === 0 && <div style={{ fontSize: '13px', color: 'var(--vfo-faint)', padding: '4px 0' }}>No link emails recorded.</div>}
       {history.map((h, i) => (
         <div key={i} style={{ padding: '7px 0', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink)' }}>
-          <span style={{ fontWeight: 600 }}>{fmtDate(h.sent_at) || 'Date unknown'}</span>
+          <span style={{ fontWeight: 600 }}>{formatDate(h.sent_at) || 'Date unknown'}</span>
           <span style={{ color: 'var(--vfo-muted)' }}>
             {' · '}{h.auto ? 'auto-resent by system' : `sent by ${h.sent_by || 'unknown'}`}
             {h.expired
               ? null
-              : (h.expires_at ? ` · expires ${fmtDate(h.expires_at)}` : '')}
-            {h.reminder_sent_at ? ` · reminder sent ${fmtDate(h.reminder_sent_at)}` : ''}
+              : (h.expires_at ? ` · expires ${formatDate(h.expires_at)}` : '')}
+            {h.reminder_sent_at ? ` · reminder sent ${formatDate(h.reminder_sent_at)}` : ''}
           </span>
           {h.expired ? <span style={{ color: '#ef4444', fontWeight: 600 }}>{' · expired'}</span> : null}
         </div>
@@ -319,8 +302,8 @@ function ContinuationCard({ item, kind, onDone }) {
         </div>
       ) : null}
       <div style={{ marginTop: '12px' }}>
-        <Detail label="Reminder sent" value={fmtDate(item.reminder_sent_at) || 'not yet'} />
-        <Detail label="PF notified" value={fmtDate(item.pf_notified_at) || 'not yet'} />
+        <Detail label="Reminder sent" value={formatDate(item.reminder_sent_at) || 'not yet'} />
+        <Detail label="PF notified" value={formatDate(item.pf_notified_at) || 'not yet'} />
         <Detail label="Auto-resends used" value={String(Number(item.auto_resends) || 0)} />
         <Detail label="Emails sent" value={String(Number(item.emails_sent) || 0)} />
       </div>
@@ -332,7 +315,7 @@ function ImplementationCard({ item }) {
   const parts = []
   parts.push(programLabel(item.program_id))
   if (item.charge_status) parts.push(`charge ${paymentStatusLabel(item.charge_status)}`)
-  const charged = fmtDate(item.charge_date)
+  const charged = formatDate(item.charge_date)
   if (charged) parts.push(charged)
   return (
     <OutstandingCard
@@ -367,8 +350,8 @@ function InstallmentCard({ item, onDone }) {
   const failed = item.failed_payments || []
   const parts = []
   parts.push(`Payment ${item.payment_number} ${item.charge_status === 'auth_required' ? 'needs authentication' : 'declined'}`)
-  const charged = fmtDate(item.charge_date)
-  if (charged) parts.push(`due ${shortDate(item.charge_date)}`)
+  const charged = formatDate(item.charge_date)
+  if (charged) parts.push(`due ${formatDate(item.charge_date)}`)
   if (failed.length > 1) parts.push(`${failed.length} failed installments`)
   return (
     <OutstandingCard
@@ -405,7 +388,7 @@ function InstallmentCard({ item, onDone }) {
 
 function RecurringCard({ item }) {
   const parts = []
-  parts.push(item.link_sent_at ? `Link sent ${shortDate(item.link_sent_at)}` : 'Link not sent yet')
+  parts.push(item.link_sent_at ? `Link sent ${formatDate(item.link_sent_at)}` : 'Link not sent yet')
   parts.push(emailCount(item.emails_sent))
   return (
     <OutstandingCard
@@ -418,8 +401,8 @@ function RecurringCard({ item }) {
     >
       <Detail label="Monthly amount" value={money(item.monthly_amount)} />
       <Detail label="Charge day" value={item.charge_day ? `${ordinal(item.charge_day)} of the month` : 'not set'} />
-      <Detail label="Link sent" value={fmtDate(item.link_sent_at) || 'not yet'} />
-      <Detail label="Reminder sent" value={fmtDate(item.reminder_sent_at) || 'not yet'} />
+      <Detail label="Link sent" value={formatDate(item.link_sent_at) || 'not yet'} />
+      <Detail label="Reminder sent" value={formatDate(item.reminder_sent_at) || 'not yet'} />
       <Detail label="Emails sent" value={String(Number(item.emails_sent) || 0)} />
     </OutstandingCard>
   )
@@ -427,7 +410,7 @@ function RecurringCard({ item }) {
 
 function RequestCard({ item }) {
   const parts = []
-  parts.push(item.link_sent_at ? `Link sent ${shortDate(item.link_sent_at)}` : 'Link not sent yet')
+  parts.push(item.link_sent_at ? `Link sent ${formatDate(item.link_sent_at)}` : 'Link not sent yet')
   parts.push(emailCount(item.emails_sent))
   return (
     <OutstandingCard
@@ -439,8 +422,8 @@ function RequestCard({ item }) {
       caption="due"
     >
       <Detail label="Amount" value={money(item.gross_amount)} />
-      <Detail label="Requested" value={fmtDate(item.link_sent_at) || 'not yet'} />
-      <Detail label="Reminder sent" value={fmtDate(item.reminder_sent_at) || 'not yet'} />
+      <Detail label="Requested" value={formatDate(item.link_sent_at) || 'not yet'} />
+      <Detail label="Reminder sent" value={formatDate(item.reminder_sent_at) || 'not yet'} />
       <Detail label="Emails sent" value={String(Number(item.emails_sent) || 0)} />
     </OutstandingCard>
   )
@@ -456,14 +439,14 @@ function PastDueCard({ item }) {
       clientId={item.client_id}
       program={1}
       planPath={planPathFor('map1', item)}
-      subtitle={<><MemberPrefix memberNumber={item.member_number} />Payment {item.payment_number} due {shortDate(item.due_date)} · {item.reason}</>}
+      subtitle={<><MemberPrefix memberNumber={item.member_number} />Payment {item.payment_number} due {formatDate(item.due_date)} · {item.reason}</>}
       badge={BADGE_PAST_DUE}
       amount={item.amount_due}
       caption="due"
     >
       <Detail label="Amount due" value={money(item.amount_due)} />
       <Detail label="Installment" value={`Payment ${item.payment_number} of 4`} />
-      <Detail label="Due" value={fmtDate(item.due_date) || 'not set'} />
+      <Detail label="Due" value={formatDate(item.due_date) || 'not set'} />
       <Detail label="Payment method" value={item.method === 'check' ? 'Check' : item.method === 'ach' ? 'Bank (ACH)' : item.method === 'card' ? 'Card' : 'none saved'} />
       <Detail label="Why it is open" value={item.reason} />
     </OutstandingCard>
@@ -499,15 +482,15 @@ function FailedRequestCard({ item }) {
     <OutstandingCard
       name={item.specialist_name}
       expertId={item.expert_id}
-      subtitle={`${item.recurring ? 'Recurring month' : 'One-off payment'} · failed ${shortDate(item.failed_at) || 'date unknown'}`}
+      subtitle={`${item.recurring ? 'Recurring month' : 'One-off payment'} · failed ${formatDate(item.failed_at) || 'date unknown'}`}
       badge={BADGE_FAILED}
       amount={item.gross_amount}
       caption="due"
     >
       <Detail label="Amount" value={money(item.gross_amount)} />
       <Detail label="Kind" value={item.recurring ? 'Recurring monthly payment - Stripe retries it automatically' : 'One-off payment request - re-send or follow up'} />
-      <Detail label="Requested" value={fmtDate(item.link_sent_at) || 'not known'} />
-      <Detail label="Failed" value={fmtDate(item.failed_at) || 'not known'} />
+      <Detail label="Requested" value={formatDate(item.link_sent_at) || 'not known'} />
+      <Detail label="Failed" value={formatDate(item.failed_at) || 'not known'} />
     </OutstandingCard>
   )
 }
@@ -521,14 +504,14 @@ function PipCard({ item }) {
       clientId={item.client_id}
       program={1}
       planPath={item.client_id ? clientPagePath(item.client_id, { program: 1, tab: 'pip' }) : null}
-      subtitle={<><MemberPrefix memberNumber={item.member_number} />{item.purchase} · {item.link_sent_at ? `Link sent ${shortDate(item.link_sent_at)}` : 'Link not sent yet'}</>}
+      subtitle={<><MemberPrefix memberNumber={item.member_number} />{item.purchase} · {item.link_sent_at ? `Link sent ${formatDate(item.link_sent_at)}` : 'Link not sent yet'}</>}
       badge={BADGE_PIP}
       amount={item.amount_due}
       caption="due"
     >
       <Detail label="Purchase" value={item.purchase} />
       <Detail label="Amount due" value={money(item.amount_due)} />
-      <Detail label="Link sent" value={fmtDate(item.link_sent_at) || 'not yet'} />
+      <Detail label="Link sent" value={formatDate(item.link_sent_at) || 'not yet'} />
       <Detail label="Payment status" value={paymentStatusLabel(item.payment_status) || 'not started'} />
     </OutstandingCard>
   )
@@ -543,15 +526,15 @@ function AtsgCard({ item, badge }) {
       name={item.client_name}
       planPath={`/admin?tab=sdp_atsg&case=${item.case_id}`}
       sandbox={item.sandbox}
-      subtitle={<><MemberPrefix memberNumber={item.member_number} />{[item.client_ref, item.label, item.link_sent_at ? `Link sent ${shortDate(item.link_sent_at)}` : 'Link not sent yet'].filter(Boolean).join(' · ')}</>}
+      subtitle={<><MemberPrefix memberNumber={item.member_number} />{[item.client_ref, item.label, item.link_sent_at ? `Link sent ${formatDate(item.link_sent_at)}` : 'Link not sent yet'].filter(Boolean).join(' · ')}</>}
       badge={badge}
       amount={item.amount_due}
       caption="due"
     >
       <Detail label="Payment" value={item.label} />
       <Detail label="Amount due" value={money(item.amount_due)} />
-      {item.due_date ? <Detail label="Due" value={fmtDate(item.due_date)} /> : null}
-      <Detail label="Link sent" value={fmtDate(item.link_sent_at) || 'not yet'} />
+      {item.due_date ? <Detail label="Due" value={formatDate(item.due_date)} /> : null}
+      <Detail label="Link sent" value={formatDate(item.link_sent_at) || 'not yet'} />
       <Detail label="Status" value={paymentStatusLabel(item.status) || 'not started'} />
       {item.failure_reason ? <Detail label="Why it failed" value={item.failure_reason} /> : null}
     </OutstandingCard>

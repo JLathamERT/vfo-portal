@@ -15,6 +15,7 @@ import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 import { OutstandingCard, OutstandingEmpty } from './OutstandingLinksPanel'
 import Tag from '../shared/Tag'
 import ExpandChevron from '../shared/ExpandChevron'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > Members > Advisor/Accountant Membership Fees.
 //
@@ -52,22 +53,6 @@ const SCHED_STATUS = {
 // as a band in the grid without looking like a money row.
 const PAUSE_COLOR = '#b45309'
 const PAUSE_TINT = 'rgba(180,83,9,0.06)'
-
-function fmtDate(d) {
-  if (!d) return '—'
-  const [y, m, day] = String(d).slice(0, 10).split('-').map(Number)
-  return new Date(y, m - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-// For timestamptz values (e.g. paid_at, setup_email_sent_at): parse the full
-// timestamp and render the LOCAL calendar date, so an evening-ET payment shows
-// on the day it happened rather than the UTC date. Same visual format as fmtDate.
-function fmtStamp(d) {
-  if (!d) return '—'
-  const dt = new Date(d)
-  if (isNaN(dt.getTime())) return '—'
-  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
 
 function todayIso() {
   const n = new Date()
@@ -648,31 +633,31 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
 
   async function endEarly() {
     const finalLine = endKept.length
-      ? `Final payment ${money(faceOf(endKept[endKept.length - 1]))} on ${fmtDate(endPick)}.`
+      ? `Final payment ${money(faceOf(endKept[endKept.length - 1]))} on ${formatDate(endPick, '—')}.`
       : 'No further payments.'
     const res = await run('membership_end_early', { plan_id: plan.id, final_due_date: endPick },
       `End ${plan.member_name}'s membership early (90 days' notice)?\n\n${finalLine} ${endCut} later payment${endCut === 1 ? ' is' : 's are'} cancelled and it will not renew. No termination fee.\n\nThe End of Membership Confirmation email goes to the member.`)
     if (!res) return
     const doneLine = res.final_payment
-      ? `Final payment ${money(res.final_payment.amount_due)} on ${fmtDate(res.final_payment.due_date)}.`
+      ? `Final payment ${money(res.final_payment.amount_due)} on ${formatDate(res.final_payment.due_date, '—')}.`
       : 'No further payments.'
     setMsg(res.emailed
-      ? { tone: 'success', text: `Early termination recorded — the membership ends ${fmtDate(res.ending_on)}. ${doneLine} End of Membership Confirmation email created.` }
-      : { tone: 'amber', text: `Early termination recorded — the membership ends ${fmtDate(res.ending_on)}. ${doneLine} The confirmation email could not be created — send it by hand.` })
+      ? { tone: 'success', text: `Early termination recorded — the membership ends ${formatDate(res.ending_on, '—')}. ${doneLine} End of Membership Confirmation email created.` }
+      : { tone: 'amber', text: `Early termination recorded — the membership ends ${formatDate(res.ending_on, '—')}. ${doneLine} The confirmation email could not be created — send it by hand.` })
     setShowEndEarly(false)
     onChanged?.()
   }
 
   async function endWithNotice() {
     const res = await run('membership_end_with_notice', { plan_id: plan.id },
-      `End ${plan.member_name}'s membership with 30 days' notice?\n\nIt ends on ${fmtDate(addDaysIso(todayIso(), 30))}. Payments due on or before that date are still collected; later ones are cancelled. No termination fee.\n\nThe End of Membership Confirmation email goes to the member${payerNumber ? ' (Cc the connected advisor)' : ''}.`)
+      `End ${plan.member_name}'s membership with 30 days' notice?\n\nIt ends on ${formatDate(addDaysIso(todayIso(), 30), '—')}. Payments due on or before that date are still collected; later ones are cancelled. No termination fee.\n\nThe End of Membership Confirmation email goes to the member${payerNumber ? ' (Cc the connected advisor)' : ''}.`)
     if (!res) return
     const finalLine = res.final_payment
-      ? `Final payment ${money(res.final_payment.amount_due)} on ${fmtDate(res.final_payment.due_date)}.`
+      ? `Final payment ${money(res.final_payment.amount_due)} on ${formatDate(res.final_payment.due_date, '—')}.`
       : 'No further payments.'
     setMsg(res.emailed
-      ? { tone: 'success', text: `Notice recorded — the membership ends ${fmtDate(res.ending_on)}. ${finalLine} End of Membership Confirmation email created.` }
-      : { tone: 'amber', text: `Notice recorded — the membership ends ${fmtDate(res.ending_on)}. ${finalLine} The confirmation email could not be created — send it by hand.` })
+      ? { tone: 'success', text: `Notice recorded — the membership ends ${formatDate(res.ending_on, '—')}. ${finalLine} End of Membership Confirmation email created.` }
+      : { tone: 'amber', text: `Notice recorded — the membership ends ${formatDate(res.ending_on, '—')}. ${finalLine} The confirmation email could not be created — send it by hand.` })
     onChanged?.()
   }
 
@@ -720,15 +705,15 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
   async function pausePayments() {
     if (!pauseMonthsValid || !pausePreview) return
     const resumeLine = pausePreview.resume_due_date
-      ? `Payments continue on ${fmtDate(pausePreview.resume_due_date)}`
+      ? `Payments continue on ${formatDate(pausePreview.resume_due_date, '—')}`
       : 'No upcoming payments this year — only the renewal date moves'
     const res = await run('membership_pause', { plan_id: plan.id, months: pauseMonthsNum },
-      `Pause ${plan.member_name}'s membership payments for ${pauseMonthsNum} month${pauseMonthsNum === 1 ? '' : 's'}? ${resumeLine}. The renewal date moves to ${fmtDate(pausePreview.new_renewal_date)}.`)
+      `Pause ${plan.member_name}'s membership payments for ${pauseMonthsNum} month${pauseMonthsNum === 1 ? '' : 's'}? ${resumeLine}. The renewal date moves to ${formatDate(pausePreview.new_renewal_date, '—')}.`)
     if (!res) return
     setShowPause(false); setPausePreview(null); setPauseErr('')
     setMsg({
       tone: 'success',
-      text: `Payments paused for ${res.months} month${Number(res.months) === 1 ? '' : 's'}${res.resume_due_date ? ` — payments continue ${fmtDate(res.resume_due_date)}` : ''} · renewal now ${fmtDate(res.new_renewal_date)}.`,
+      text: `Payments paused for ${res.months} month${Number(res.months) === 1 ? '' : 's'}${res.resume_due_date ? ` — payments continue ${formatDate(res.resume_due_date, '—')}` : ''} · renewal now ${formatDate(res.new_renewal_date, '—')}.`,
     })
     onChanged?.()
   }
@@ -791,7 +776,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
             {gc && <StatusPill label="Growth Credits" color="#7c3aed" />}
             {tier1 && <StatusPill label="Month to month" color="#0d9488" />}
             {mmOn && <StatusPill label="Money Mapping" color={MM_COLOR} />}
-            {endingOn && <StatusPill label={`Ends ${fmtDate(endingOn)}`} color="#be123c" />}
+            {endingOn && <StatusPill label={`Ends ${formatDate(endingOn, '—')}`} color="#be123c" />}
             {openMeeting && <StatusPill label="Meeting requested" color="#e06717" />}
             {m.suspended && <StatusPill label="Suspended" color="#ef4444" />}
             {m.paused && <StatusPill label="Paused" color="#e06717" />}
@@ -823,7 +808,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
           <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{gc ? 'per year' : tier1 ? 'per month' : 'net / year'}</div>
         </div>
         <div style={{ textAlign: 'right', width: '110px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{plan.status === 'setup_pending' ? '—' : endingOn ? fmtDate(endingOn) : tier1 ? (nextDue ? fmtDate(nextDue.due_date) : '—') : fmtDate(plan.renewal_date)}</div>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{plan.status === 'setup_pending' ? '—' : endingOn ? formatDate(endingOn, '—') : tier1 ? (nextDue ? formatDate(nextDue.due_date, '—') : '—') : formatDate(plan.renewal_date, '—')}</div>
           <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{endingOn ? 'ends' : tier1 ? 'next payment' : 'renewal'}</div>
         </div>
         <div style={{ textAlign: 'right', width: '80px' }}>
@@ -886,7 +871,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                   return (
                     <div key={row.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: PAUSE_TINT, borderRadius: '6px' }}>
                       <div style={{ fontWeight: 600 }}>{row.period_label}</div>
-                      <div>{fmtDate(row.due_date)}</div>
+                      <div>{formatDate(row.due_date, '—')}</div>
                       <div style={{ color: 'var(--vfo-faint)', textAlign: 'right' }}>—</div>
                       <div style={{ color: 'var(--vfo-faint)', textAlign: 'right' }}>—</div>
                       <div style={{ color: 'var(--vfo-faint)', textAlign: 'right' }}>—</div>
@@ -907,7 +892,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                 return (
                   <div key={row.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: rowBg, borderRadius: '6px' }}>
                     <div style={{ fontWeight: 600 }}>{row.period_label}</div>
-                    <div>{fmtDate(row.due_date)}</div>
+                    <div>{formatDate(row.due_date, '—')}</div>
                     <div style={{ fontWeight: 600, textAlign: 'right', color: zero && !gc ? 'var(--vfo-faint)' : 'var(--vfo-ink)' }}>
                       {gc && row.kind === 'membership' ? `${gcCredits} GC` : money(faceOf(row))}
                       {Number(row.vfo_portal_licence_amount) > 0 && (
@@ -930,7 +915,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                     </div>
                     <div style={{ textAlign: 'right', fontSize: '11.5px', color: 'var(--vfo-muted)', wordBreak: 'break-all' }}>
                       {gc && row.kind === 'membership' ? (
-                        row.status === 'paid' ? `${row.paid_at ? `${fmtStamp(row.paid_at)} · ` : ''}Growth Credits` : '—'
+                        row.status === 'paid' ? `${row.paid_at ? `${formatDate(row.paid_at, '—')} · ` : ''}Growth Credits` : '—'
                       ) : tracking ? (
                         row.status === 'paid' ? (
                           canMarkRows ? (
@@ -941,15 +926,15 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                                 style={{ padding: '3px 6px', borderRadius: '6px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '11.5px', fontFamily: 'Inter, sans-serif' }} />
                               · Old system
                             </span>
-                          ) : `${row.paid_at ? `${fmtStamp(row.paid_at)} · ` : ''}Old system`
+                          ) : `${row.paid_at ? `${formatDate(row.paid_at, '—')} · ` : ''}Old system`
                         ) : '—'
                       ) : row.status === 'paid' && row.payment_method_type === 'money_mapping' ? (
-                        `${row.paid_at ? `${fmtStamp(row.paid_at)} · ` : ''}Money Mapping balance`
+                        `${row.paid_at ? `${formatDate(row.paid_at, '—')} · ` : ''}Money Mapping balance`
                       ) : row.status === 'paid' || row.status === 'processing' ? (
                         // No Stripe payment id here (Jake, 2026-10-31) — it wrapped the column; it stays in Stripe.
                         [
                           row.paid_on_onboarding ? 'Paid at onboarding' : '',
-                          row.paid_at ? fmtStamp(row.paid_at) : '',
+                          row.paid_at ? formatDate(row.paid_at, '—') : '',
                           mmPart > 0 ? `Money Mapping ${money(mmPart)} + ${methodWord(row.payment_method_type) || 'card / bank'}${row.acct_last4 ? ` ••${row.acct_last4}` : ''} ${money(row.amount_due)}` : '',
                           row.payment_method_type && !(mmPart > 0) ? `${methodWord(row.payment_method_type)}${row.acct_last4 ? ` ••${row.acct_last4}` : ''}` : '',
                         ].filter(Boolean).join(' · ') || '—'
@@ -962,7 +947,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
               })}
               {tier1 && !closed && (
                 <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
-                  Bills monthly{plan.charge_day ? ` on the ${ordinal(plan.charge_day)}` : ''} until {endingOn ? fmtDate(endingOn) : 'the membership is ended'}.
+                  Bills monthly{plan.charge_day ? ` on the ${ordinal(plan.charge_day)}` : ''} until {endingOn ? formatDate(endingOn, '—') : 'the membership is ended'}.
                 </div>
               )}
             </>
@@ -1001,7 +986,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <StatusPill label="Requested" color="#e06717" />
                     <span style={{ flex: 1, minWidth: '220px', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
-                      Renewal meeting requested {fmtStamp(openMeeting.requested_at)} — renewal {fmtDate(openMeeting.renewal_date_for)}
+                      Renewal meeting requested {formatDate(openMeeting.requested_at, '—')} — renewal {formatDate(openMeeting.renewal_date_for, '—')}
                     </span>
                     {outcomeFor !== openMeeting.id && (
                       <button type="button" disabled={busy} style={primaryBtn(busy)} onClick={() => setOutcomeFor(openMeeting.id)}>
@@ -1030,15 +1015,15 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
 
               {doneMeetings.map(mt => (
                 <div key={mt.id} style={{ fontSize: '12px', color: 'var(--vfo-faint)', padding: '5px 0' }}>
-                  Meeting {fmtStamp(mt.requested_at)} → {mt.outcome === 'cancel' ? 'Cancelled membership' : 'Continued membership'}
+                  Meeting {formatDate(mt.requested_at, '—')} → {mt.outcome === 'cancel' ? 'Cancelled membership' : 'Continued membership'}
                   {mt.recorded_by ? ` · ${mt.recorded_by}` : ''}
-                  {mt.completed_at ? ` · ${fmtStamp(mt.completed_at)}` : ''}
+                  {mt.completed_at ? ` · ${formatDate(mt.completed_at, '—')}` : ''}
                 </div>
               ))}
 
               {!openMeeting && plan.renewal_notice_for && (
                 <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', padding: '5px 0' }}>
-                  Renewal notice sent for {fmtDate(plan.renewal_notice_for)}
+                  Renewal notice sent for {formatDate(plan.renewal_notice_for, '—')}
                 </div>
               )}
             </div>
@@ -1049,9 +1034,9 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
               <div style={{ ...label, marginBottom: '8px' }}>Pauses</div>
               {plan.pauses.map(pz => (
                 <div key={pz.id} style={{ fontSize: '12px', color: 'var(--vfo-faint)', padding: '5px 0' }}>
-                  Paused {pz.months} month{Number(pz.months) === 1 ? '' : 's'} on {fmtStamp(pz.created_at)}
+                  Paused {pz.months} month{Number(pz.months) === 1 ? '' : 's'} on {formatDate(pz.created_at, '—')}
                   {pz.created_by ? ` by ${pz.created_by}` : ''}
-                  {' — '}renewal {fmtDate(pz.old_renewal_date)} → {fmtDate(pz.new_renewal_date)}
+                  {' — '}renewal {formatDate(pz.old_renewal_date, '—')} → {formatDate(pz.new_renewal_date, '—')}
                 </div>
               ))}
             </div>
@@ -1065,7 +1050,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                     {busy ? 'Working…' : (plan.setup_email_sent_at ? 'Resend payment setup link' : 'Send payment setup link')}
                   </button>
                   {plan.setup_email_sent_at && (
-                    <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Link sent {fmtStamp(plan.setup_email_sent_at)}</span>
+                    <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Link sent {formatDate(plan.setup_email_sent_at, '—')}</span>
                   )}
                   <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); onEdit?.(plan) }}
                     style={{ ...ghostBtn, border: `1px solid ${BLUE}`, color: BLUE }}>
@@ -1106,14 +1091,14 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                     </button>
                   )}
                   {!tier1 && endingOn && (
-                    <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Ending early — ends {fmtDate(endingOn)}. Payments due up to then are still collected.</span>
+                    <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Ending early — ends {formatDate(endingOn, '—')}. Payments due up to then are still collected.</span>
                   )}
                   {!tier1 ? (
                     <button type="button" disabled={busy} style={dangerBtn} onClick={() => setShowTerminate(v => !v)}>
                       {tracking ? 'End membership' : 'Terminate member'}
                     </button>
                   ) : endingOn ? (
-                    <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Notice given — ends {fmtDate(endingOn)}. Payments due up to then are still collected.</span>
+                    <span style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Notice given — ends {formatDate(endingOn, '—')}. Payments due up to then are still collected.</span>
                   ) : (
                     <button type="button" disabled={busy} style={dangerBtn} onClick={endWithNotice}>
                       {busy ? 'Working…' : "End membership (30 days' notice)"}
@@ -1155,7 +1140,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
 
           {showNextYear && isSuperadmin && plan.status === 'active' && (
             <div style={{ marginTop: '12px', padding: '14px 16px', borderRadius: '10px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)' }}>
-              <div style={{ ...label, marginBottom: '10px' }}>Next membership year (applies at renewal on {fmtDate(plan.renewal_date)})</div>
+              <div style={{ ...label, marginBottom: '10px' }}>Next membership year (applies at renewal on {formatDate(plan.renewal_date, '—')})</div>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 <div style={{ width: '180px' }}>
                   <div style={label}>Annual value ($)</div>
@@ -1219,11 +1204,11 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                 <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--vfo-tint)', opacity: pausePreviewBusy ? 0.55 : 1 }}>
                   <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}>
                     {pausePreview.resume_due_date
-                      ? `Payments continue on ${fmtDate(pausePreview.resume_due_date)}`
+                      ? `Payments continue on ${formatDate(pausePreview.resume_due_date, '—')}`
                       : 'No upcoming payments this year — only the renewal date moves'}
                   </div>
                   <div style={{ marginTop: '4px', fontSize: '13.5px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>
-                    Renewal date moves {fmtDate(pausePreview.old_renewal_date)} → {fmtDate(pausePreview.new_renewal_date)}
+                    Renewal date moves {formatDate(pausePreview.old_renewal_date, '—')} → {formatDate(pausePreview.new_renewal_date, '—')}
                   </div>
                   <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
                     ({Number(pausePreview.rows_to_shift) || 0} upcoming payment{Number(pausePreview.rows_to_shift) === 1 ? '' : 's'} will each move {pausePreview.months} month{Number(pausePreview.months) === 1 ? '' : 's'} later)
@@ -1241,7 +1226,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
                   <div style={label}>Final payment</div>
                   <select value={endPick} onChange={e => setEndFinal(e.target.value)} style={input}>
                     {endEarlyRows.map(r => (
-                      <option key={r.id} value={String(r.due_date).slice(0, 10)}>{fmtDate(r.due_date)} — {money(faceOf(r))}</option>
+                      <option key={r.id} value={String(r.due_date).slice(0, 10)}>{formatDate(r.due_date, '—')} — {money(faceOf(r))}</option>
                     ))}
                     <option value="none">No further payments</option>
                   </select>
@@ -1254,7 +1239,7 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
               </div>
               <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
                 {endKept.length
-                  ? <>{endKept.length} more payment{endKept.length === 1 ? '' : 's'} collected as scheduled ({endKept.map(r => fmtDate(r.due_date)).join(', ')}). </>
+                  ? <>{endKept.length} more payment{endKept.length === 1 ? '' : 's'} collected as scheduled ({endKept.map(r => formatDate(r.due_date, '—')).join(', ')}). </>
                   : <>Nothing more is collected. </>}
                 {endCut} later payment{endCut === 1 ? '' : 's'} cancelled. Auto-renew goes off, there is no termination fee, and any missed payment is still owed. The member gets the End of Membership Confirmation email.
               </div>
@@ -1580,7 +1565,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
         payer_member_number: gcPayerRow.member_number,
       })
       if (!res?.ok) { setMsg({ tone: 'error', text: res?.error || 'Could not save the plan.' }); return }
-      const base = `Membership created — ${gcCredits} Growth Credits taken from ${gcPayerRow.name} (${res.balance_after} left), renews ${fmtDate(res.renewal_date)}.`
+      const base = `Membership created — ${gcCredits} Growth Credits taken from ${gcPayerRow.name} (${res.balance_after} left), renews ${formatDate(res.renewal_date, '—')}.`
       onSaved?.(res.email
         ? { tone: 'success', text: `${base} Confirmation email drafted.` }
         : { tone: 'amber', text: `${base} The confirmation email could not be drafted: ${res.email_error || 'unknown error'}.` })
@@ -1607,7 +1592,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
       if (!res?.ok) { setMsg({ tone: 'error', text: res?.error || 'Could not save the plan.' }); return }
       if (editPlan) { onSaved?.({ tone: 'success', text: 'Plan updated.' }); return }
       if (res.card_on_file) {
-        onSaved?.({ tone: 'success', text: `Plan created — ${money(res.per_pull)} a month on the ${methodWord(res.method)} ending ${res.last4 || '—'}. Month 1 (due ${fmtDate(res.first_due)}) is charged on the next morning run, then the invoice and receipt go out${t1Licence ? ', with their portal set-up email' : ''}.` })
+        onSaved?.({ tone: 'success', text: `Plan created — ${money(res.per_pull)} a month on the ${methodWord(res.method)} ending ${res.last4 || '—'}. Month 1 (due ${formatDate(res.first_due, '—')}) is charged on the next morning run, then the invoice and receipt go out${t1Licence ? ', with their portal set-up email' : ''}.` })
         return
       }
       try {
@@ -1673,7 +1658,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
       if (!res?.ok) { setMsg({ tone: 'error', text: res?.error || 'Could not save the plan.' }); return }
       if (editPlan) { onSaved?.({ tone: 'success', text: 'Plan updated.' }); return }
       if (res.card_on_file) {
-        onSaved?.({ tone: 'success', text: `Plan started on the ${methodWord(res.method)} ending ${res.last4 || '—'} — no setup link.${res.first_due ? ` The first payment (${money(res.first_amount)}, due ${fmtDate(res.first_due)}) is charged on the ${res.first_due <= todayIso() ? 'next morning run' : 'morning it falls due'}, then the invoice and receipt go out.` : ' Nothing is due until their renewal.'}` })
+        onSaved?.({ tone: 'success', text: `Plan started on the ${methodWord(res.method)} ending ${res.last4 || '—'} — no setup link.${res.first_due ? ` The first payment (${money(res.first_amount)}, due ${formatDate(res.first_due, '—')}) is charged on the ${res.first_due <= todayIso() ? 'next morning run' : 'morning it falls due'}, then the invoice and receipt go out.` : ' Nothing is due until their renewal.'}` })
         return
       }
       // Create: the plan now exists, so email failure is reported but never
@@ -1965,7 +1950,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
             <div>
               <strong>{gcCredits} Growth Credits</strong> taken from <strong>{gcPayerRow.name}</strong> today
               {' '}({gcPayerRow.balance} → {Math.round((gcPayerRow.balance - gcCredits) * 100) / 100} left)
-              {' · '}membership year {fmtDate(today)} to <strong>{fmtDate(previewRenewal)}</strong>
+              {' · '}membership year {formatDate(today, '—')} to <strong>{formatDate(previewRenewal, '—')}</strong>
               {' · '}renews each year on the same credits from the same account, with a notice 30 days before
             </div>
           )
@@ -1976,7 +1961,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
             <div>
               <div>
                 Based on your inputs there {trackRows.length === 1 ? 'is' : 'are'} <strong>{trackRows.length} payment{trackRows.length === 1 ? '' : 's'}</strong> left this year
-                {' · '}renewal <strong>{fmtDate(trackRenewal)}</strong>
+                {' · '}renewal <strong>{formatDate(trackRenewal, '—')}</strong>
                 {frequency === 'annual' ? <> · next year's {money(trackPerPull)} is due at renewal</> : null}
                 {credit > 0 ? <> · credit {money(credit)}</> : null}
               </div>
@@ -2024,14 +2009,14 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
                   {credit > 0 ? <> · credit {money(credit)}</> : null}
                 </div>
                 <div style={{ marginTop: '6px' }}>
-                  First charge <strong>{fmtDate(daySched.firstChargeDate)}</strong>
+                  First charge <strong>{formatDate(daySched.firstChargeDate, '—')}</strong>
                   {' · '}{daySched.payments} payment{daySched.payments === 1 ? '' : 's'} remaining
-                  {' · '}last charge <strong>{fmtDate(daySched.lastChargeDate)}</strong>
-                  {' · '}renewal <strong>{fmtDate(xferRenewal)}</strong>
+                  {' · '}last charge <strong>{formatDate(daySched.lastChargeDate, '—')}</strong>
+                  {' · '}renewal <strong>{formatDate(xferRenewal, '—')}</strong>
                 </div>
                 {daySched.catchUpMonths > 1 && (
                   <div style={{ marginTop: '6px', fontSize: '12px', color: '#b45309' }}>
-                    Behind: the first charge on <strong>{fmtDate(daySched.firstChargeDate)}</strong> will be{' '}
+                    Behind: the first charge on <strong>{formatDate(daySched.firstChargeDate, '—')}</strong> will be{' '}
                     <strong>{money(perPull * daySched.catchUpMonths)}</strong>, covering {daySched.catchUpMonths} months
                     ({daySched.catchUpMonths - 1}-month catch-up) — the same {remaining} payments still have to fit before the renewal.
                   </div>
@@ -2050,13 +2035,13 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
                 <div>
                   Paid {prior} of 12 — <strong>{remaining} × {money(perPull)}</strong> left: <strong>{money(linkAmount)}</strong> at the link
                   {pullsAtLink > 1 ? ` (includes ${pullsAtLink - 1}-month catch-up)` : ''}, then {remaining - pullsAtLink} monthly
-                  {', last charge '}<strong>{fmtDate(lastChargeDate)}</strong>
-                  {' · '}renewal <strong>{fmtDate(xferRenewal)}</strong>
+                  {', last charge '}<strong>{formatDate(lastChargeDate, '—')}</strong>
+                  {' · '}renewal <strong>{formatDate(xferRenewal, '—')}</strong>
                   {credit > 0 ? <> · credit {money(credit)}</> : null}
                 </div>
                 {cliff && (
                   <div style={{ marginTop: '6px', fontSize: '12px', color: '#b45309' }}>
-                    Based on payment today. On or after <strong>{fmtDate(cliff.date)}</strong> the link collects{' '}
+                    Based on payment today. On or after <strong>{formatDate(cliff.date, '—')}</strong> the link collects{' '}
                     <strong>{money(cliff.pullsAtLink * perPull)}</strong> ({cliff.pullsAtLink - 1}-month catch-up) — the same {remaining} payments
                     still have to fit before the renewal.
                   </div>
@@ -2071,7 +2056,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
           ) : !transferRenewalValid ? (
             <div style={{ color: '#b45309' }}>Enter their existing renewal date to see the remaining schedule.</div>
           ) : (
-            <div>Nothing due now · next charge <strong>{money(roundDollar(annual))}</strong> at renewal <strong>{fmtDate(xferRenewal)}</strong></div>
+            <div>Nothing due now · next charge <strong>{money(roundDollar(annual))}</strong> at renewal <strong>{formatDate(xferRenewal, '—')}</strong></div>
           )
         ) : (
           <div>
@@ -2081,7 +2066,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
               ? <>{' · '}first payment charged to the {methodWord(cardOnFilePlan.payment_method_type)} ending <strong>{cardOnFilePlan.acct_last4 || '—'}</strong> on the next morning run</>
               : <>{' · '}first payment at the link</>}
             {net === 0 && annual > 0 ? (useCardOnFile ? ' (fully credited — nothing to charge)' : ' (fully credited — link saves their payment method only)') : ''}
-            {' · '}{useCardOnFile ? 'starting today' : 'if paid today'}: {frequency === 'monthly' ? <>charge day the {ordinal(previewChargeDay)}, </> : null}renewal <strong>{fmtDate(previewRenewal)}</strong>
+            {' · '}{useCardOnFile ? 'starting today' : 'if paid today'}: {frequency === 'monthly' ? <>charge day the {ordinal(previewChargeDay)}, </> : null}renewal <strong>{formatDate(previewRenewal, '—')}</strong>
           </div>
         )}
       </div>
@@ -2210,7 +2195,7 @@ function RenewalsSection({ plans, onOpenPlan, onRefresh }) {
               <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>net / year</div>
             </div>
             <div style={{ textAlign: 'right', width: '110px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{fmtDate(date)}</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{formatDate(date, '—')}</div>
               <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{state === 'renewed' ? 'renewed' : 'renewal'}</div>
             </div>
             <div style={{ width: '140px', textAlign: 'right' }}>
@@ -2314,7 +2299,7 @@ function OutstandingLinkRow({ plan, onChanged, onEdit, isSuperadmin }) {
   return (
     <OutstandingCard
       name={<>{plan.member_name || plan.member_number}{plan.transfer && <Tag color={BLUE} style={{ marginLeft: '8px', verticalAlign: '2px' }}>Transferred</Tag>}</>}
-      subtitle={<>{plan.member_number} · Link sent {fmtStamp(plan.setup_email_sent_at)}{' · '}{plan.frequency === 'monthly' ? `Monthly (${money(perPull)}/mo)` : `Annual (${money(perPull)}/yr)`}</>}
+      subtitle={<>{plan.member_number} · Link sent {formatDate(plan.setup_email_sent_at, '—')}{' · '}{plan.frequency === 'monthly' ? `Monthly (${money(perPull)}/mo)` : `Annual (${money(perPull)}/yr)`}</>}
       badge={{ label: 'Setup pending', color: '#125ecc' }}
       sandbox={plan.sandbox}
       amount={perPull}
@@ -2323,12 +2308,12 @@ function OutstandingLinkRow({ plan, onChanged, onEdit, isSuperadmin }) {
     >
           <LinkDetail label="Annual value" value={money(plan.annual_amount)} />
           <LinkDetail label="Credit note" value={Number(plan.credit_note) > 0 ? money(plan.credit_note) : '—'} />
-          {plan.transfer && <LinkDetail label="Renewal date" value={fmtDate(plan.renewal_date)} />}
+          {plan.transfer && <LinkDetail label="Renewal date" value={formatDate(plan.renewal_date, '—')} />}
           {plan.transfer && plan.frequency === 'monthly' && Number(plan.charge_day) >= 1 && (
             <LinkDetail label="Charge day" value={`${ordinal(plan.charge_day)} of each month`} />
           )}
-          <LinkDetail label="Plan created" value={`${fmtStamp(plan.created_at)}${plan.created_by ? ` · ${plan.created_by}` : ''}`} />
-          <LinkDetail label="Link sent" value={fmtStamp(plan.setup_email_sent_at)} />
+          <LinkDetail label="Plan created" value={`${formatDate(plan.created_at, '—')}${plan.created_by ? ` · ${plan.created_by}` : ''}`} />
+          <LinkDetail label="Link sent" value={formatDate(plan.setup_email_sent_at, '—')} />
 
           {isSuperadmin && (
             <div style={{ marginTop: '14px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>

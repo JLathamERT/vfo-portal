@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { TrackHero } from './TrackKit'
 import { BackLink, DotText, ProfileCard, formInput } from './ProfileKit'
+import { formatDate } from '../../lib/dates'
 
 // Portal licensing L4 (2026-10-16, decision 41): the READ-ONLY One Page Plan —
 // what a Premium client sees on their portal's My Plan tab. (The member client
@@ -18,12 +19,6 @@ import { BackLink, DotText, ProfileCard, formInput } from './ProfileKit'
 const pillTab = (on) => ({ padding: '8px 16px', borderRadius: '99px', border: '1px solid ' + (on ? 'transparent' : 'var(--vfo-border-strong)'), background: on ? 'linear-gradient(90deg, #002973 0%, #125ecc 100%)' : 'var(--vfo-card)', color: on ? '#fff' : 'var(--vfo-ink-2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' })
 const rowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '11px 14px', marginBottom: '6px', background: 'var(--vfo-input)', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', cursor: 'pointer' }
 const PhoneChevron = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--vfo-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><polyline points="9 6 15 12 9 18" /></svg>
-
-function fmtDate(iso) {
-  if (!iso) return ''
-  const [y, m, d] = String(iso).slice(0, 10).split('-')
-  return `${m}/${d}/${y}`
-}
 
 function itemText(item) {
   const isOther = item.key?.includes('other_focus')
@@ -89,7 +84,7 @@ export default function OnePagePlanView({ plans, title, subtitle, emptyText }) {
       {plans.length > 1 && (
         <select value={planIdx} onChange={e => { setPlanIdx(Number(e.target.value)); setSubTab('latest'); setSnapshot(null) }}
           style={{ ...formInput, width: 'auto', maxWidth: '100%', marginBottom: '14px' }}>
-          {plans.map((p, i) => <option key={p.ciq_id} value={i}>Plan completed {fmtDate(p.priorities_completed_at)}</option>)}
+          {plans.map((p, i) => <option key={p.ciq_id} value={i}>Plan completed {formatDate(p.priorities_completed_at)}</option>)}
         </select>
       )}
 
@@ -100,7 +95,7 @@ export default function OnePagePlanView({ plans, title, subtitle, emptyText }) {
 
       {subTab === 'latest' && (
         <div>
-          <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '14px' }}>Plan Completed on {fmtDate(plan.priorities_completed_at)}</div>
+          <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '14px' }}>Plan Completed on {formatDate(plan.priorities_completed_at)}</div>
           <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: '1.8', marginBottom: '18px' }}>
             Having completed: Client Information Questionnaire to identify areas of interest, and Prioritization Process to determine immediate / later areas of focus.
           </div>
@@ -112,7 +107,7 @@ export default function OnePagePlanView({ plans, title, subtitle, emptyText }) {
         snapshot ? (
           <div>
             <BackLink onClick={() => setSnapshot(null)}>Back to list</BackLink>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', marginBottom: '16px' }}>Version from {fmtDate(snapshot.saved_at)}</div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', marginBottom: '16px' }}>Version from {formatDate(snapshot.saved_at)}</div>
             <PlanSections items={snapshot.items} showCompleted={false} />
           </div>
         ) : (
@@ -120,7 +115,7 @@ export default function OnePagePlanView({ plans, title, subtitle, emptyText }) {
             ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No earlier versions yet.</div>
             : plan.history.map((snap, i) => (
               <div key={`${snap.saved_at}-${i}`} onClick={() => setSnapshot(snap)} style={rowStyle}>
-                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{fmtDate(snap.saved_at)} at {String(snap.saved_at || '').split('T')[1]?.substring(0, 5)}</div>
+                <div style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{formatDate(snap.saved_at)} at {String(snap.saved_at || '').split('T')[1]?.substring(0, 5)}</div>
                 {isPhone ? <PhoneChevron /> : <span style={{ color: 'var(--vfo-link)', fontWeight: 600, fontSize: '12px' }}>View →</span>}
               </div>
             ))

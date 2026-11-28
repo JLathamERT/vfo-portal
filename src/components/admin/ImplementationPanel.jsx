@@ -11,6 +11,7 @@ import { OutstandingCard, OutstandingEmpty, SectionHeader, Detail as OLDetail } 
 import { footnoteStyle, refreshBtnStyle, toolbarStyle } from './accountingTable'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 import ExpandChevron from '../shared/ExpandChevron'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > Members > Advisor / Accountant Implementation (2026-11-19, the
 // "Advisor / Accountant Onboarding" pages before). Every advisor or accountant
@@ -48,17 +49,6 @@ function todayIso() {
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
 }
 
-function fmtDate(d) {
-  if (!d) return '—'
-  const s = String(d)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const [y, m, day] = s.split('-').map(Number)
-    return new Date(y, m - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  }
-  const dt = new Date(s)
-  return isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
 const num = v => Number(v) || 0
 const depositPaid = r => r.deposit_status === 'succeeded' ? num(r.deposit_amount) : 0
 const paidInFull = r => r.payment_status === 'succeeded'
@@ -86,7 +76,7 @@ function programs(r) {
 // The Payment column's wording, as on Membership Fees: "Nov 15, 2026 · card ••9370".
 function paidText(date, type, last4) {
   const how = type ? `${type === 'ach' || type === 'us_bank_account' ? 'ACH' : 'card'}${last4 ? ` ••${last4}` : ''}` : ''
-  return [date ? fmtDate(date) : '', how].filter(Boolean).join(' · ')
+  return [date ? formatDate(date, '—') : '', how].filter(Boolean).join(' · ')
 }
 
 function methodText(type, last4) {
@@ -260,7 +250,7 @@ function ImplementationCard({ r, today }) {
           <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>implementation fee</div>
         </div>
         <div style={{ textAlign: 'right', width: '110px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{r.renewal_date ? fmtDate(String(r.renewal_date).slice(0, 10)) : '—'}</div>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{r.renewal_date ? formatDate(String(r.renewal_date).slice(0, 10), '—') : '—'}</div>
           <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{st === IMPL_STATUS.ended ? 'ended' : 'ends'}</div>
         </div>
         <div style={{ textAlign: 'right', width: '70px' }}>
@@ -283,8 +273,8 @@ function ImplementationCard({ r, today }) {
             const bg = p.status === 'succeeded' ? 'rgba(22,163,74,0.07)' : p.status === 'failed' ? 'rgba(239,68,68,0.07)' : 'transparent'
             return (
               <div key={p.key} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: bg, borderRadius: '6px' }}>
-                <div style={{ fontWeight: 600 }}>{p.label}{isPhone && p.date ? <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--vfo-faint)' }}>{fmtDate(p.date)}</div> : null}</div>
-                {!isPhone && <div>{fmtDate(p.date)}</div>}
+                <div style={{ fontWeight: 600 }}>{p.label}{isPhone && p.date ? <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--vfo-faint)' }}>{formatDate(p.date, '—')}</div> : null}</div>
+                {!isPhone && <div>{formatDate(p.date, '—')}</div>}
                 <div style={{ fontWeight: 600, color: 'var(--vfo-ink)', textAlign: 'right' }}>{money(p.amount)}</div>
                 {!isPhone && <div style={{ textAlign: 'right' }}><CardFeeCell fee={paidFee(p)} /></div>}
                 <div><StatusPill label={meta.label} color={meta.color} /></div>
@@ -293,8 +283,8 @@ function ImplementationCard({ r, today }) {
             )
           })}
           <div style={{ marginTop: '12px' }}>
-            <Detail label="Agreement signed" value={fmtDate(r.signed_at)} />
-            <Detail label="Implementation" value={started ? `${fmtDate(started)} → ${r.renewal_date ? fmtDate(String(r.renewal_date).slice(0, 10)) : '—'} (${term} months)` : 'Starts when the fee is paid'} />
+            <Detail label="Agreement signed" value={formatDate(r.signed_at, '—')} />
+            <Detail label="Implementation" value={started ? `${formatDate(started, '—')} → ${r.renewal_date ? formatDate(String(r.renewal_date).slice(0, 10), '—') : '—'} (${term} months)` : 'Starts when the fee is paid'} />
             {r.deposit_refund_status && <Detail label="Deposit refund" value={`${money(r.deposit_refund_amount)} · ${paymentStatusLabel(r.deposit_refund_status)}`} />}
             <Detail label="Invoice / receipt" value={[r.invoice_number, r.receipt_number].filter(Boolean).join(' · ') || '—'} />
           </div>
@@ -333,15 +323,15 @@ function OutstandingLinksSection({ rows, onRefresh }) {
               <OutstandingCard
                 key={r.id}
                 name={r.member_number ? <MemberNameLink memberNumber={r.member_number}>{nameOf(r)}</MemberNameLink> : nameOf(r)}
-                subtitle={[r.email, programs(r), `Link sent ${fmtDate(r.payment_link_sent_at)}`, r.payment_reminder_sent_at ? `reminded ${fmtDate(r.payment_reminder_sent_at)}` : null].filter(Boolean).join(' · ')}
+                subtitle={[r.email, programs(r), `Link sent ${formatDate(r.payment_link_sent_at, '—')}`, r.payment_reminder_sent_at ? `reminded ${formatDate(r.payment_reminder_sent_at, '—')}` : null].filter(Boolean).join(' · ')}
                 badge={st}
                 amount={due}
                 caption={depositPaid(r) > 0 ? 'balance due' : 'due'}
               >
                 <OLDetail label="Implementation fee" value={money(r.payment_amount)} />
                 {depositPaid(r) > 0 && <OLDetail label="Deposit cleared" value={money(depositPaid(r))} />}
-                <OLDetail label="Link sent" value={fmtDate(r.payment_link_sent_at)} />
-                <OLDetail label="Reminder sent" value={r.payment_reminder_sent_at ? fmtDate(r.payment_reminder_sent_at) : 'not yet'} />
+                <OLDetail label="Link sent" value={formatDate(r.payment_link_sent_at, '—')} />
+                <OLDetail label="Reminder sent" value={r.payment_reminder_sent_at ? formatDate(r.payment_reminder_sent_at, '—') : 'not yet'} />
               </OutstandingCard>
             )
           })}
@@ -394,7 +384,7 @@ function EndingSection({ rows, onRefresh }) {
                 {r.member_number ? <MemberNameLink memberNumber={r.member_number}>{nameOf(r)}</MemberNameLink> : nameOf(r)}
               </div>
               <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
-                {[r.member_number, r.member_type, programs(r), `started ${fmtDate(r.payment_completed_at)}`].filter(Boolean).join(' · ')}
+                {[r.member_number, r.member_type, programs(r), `started ${formatDate(r.payment_completed_at, '—')}`].filter(Boolean).join(' · ')}
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -402,7 +392,7 @@ function EndingSection({ rows, onRefresh }) {
               <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>implementation fee</div>
             </div>
             <div style={{ textAlign: 'right', width: '110px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{fmtDate(String(r.renewal_date).slice(0, 10))}</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{formatDate(String(r.renewal_date).slice(0, 10), '—')}</div>
               <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{ended ? 'ended' : 'ends'}</div>
             </div>
             <div style={{ width: '140px', textAlign: 'right' }}>

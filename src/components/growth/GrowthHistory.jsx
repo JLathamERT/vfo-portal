@@ -4,6 +4,7 @@ import { TrackHero } from '../shared/TrackKit'
 import { INK, MUTED, BLUE, rowRule } from './ui'
 import { ProfileCard } from '../shared/ProfileKit'
 import { Skeleton, SkeletonText, HeroSkeleton, ProfileCardSkeleton } from '../shared/Skeleton'
+import { formatDateTime, formatDate } from '../../lib/dates'
 
 const EVENT_LABEL = {
   scored: 'Plan scored',
@@ -18,14 +19,6 @@ const EVENT_LABEL = {
   due_date_set: 'Due dates set',
 }
 
-function fmtDateTime(iso) {
-  if (!iso) return ''
-  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-}
-function fmtDate(iso) {
-  if (!iso) return ''
-  return new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-}
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : '—' }
 function detailSummary(h) {
   const d = h.detail || {}
@@ -94,7 +87,7 @@ function HistoryRow({ h, i }) {
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: '13px', fontWeight: 600, color: INK }}>{EVENT_LABEL[h.event] || h.event}{detailSummary(h)}</div>
         <div style={{ fontSize: '11.5px', color: MUTED, marginTop: '3px' }}>
-          {fmtDateTime(h.created_at)} · {h.actor_name || 'Unknown'}<RoleText role={h.actor_role} />
+          {formatDateTime(h.created_at)} · {h.actor_name || 'Unknown'}<RoleText role={h.actor_role} />
         </div>
       </div>
     </div>
@@ -128,7 +121,7 @@ function ArchivedRow({ s, i, memberNumber }) {
   return (
     <div style={rowRule(i)}>
       <button onClick={toggle} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: INK }}>{fmtDate(s.completed_at || s.created_at)}</span>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: INK }}>{formatDate(s.completed_at || s.created_at)}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <span style={{ fontSize: '12px', color: MUTED }}>Score <strong style={{ color: 'var(--vfo-heading)' }}>{s.composite_score ?? 'N/A'}</strong></span>
           <span style={{ color: MUTED, fontSize: '11px' }}>{open ? '▲' : '▼'}</span>

@@ -43,7 +43,7 @@ const HEADSHOT_SUPABASE = HEADSHOTS_URL
 const normalizeUrl = (u) => { const s = (u || '').trim(); return s && !/^https?:\/\//i.test(s) ? 'https://' + s : s }
 import vfoCertifiedSeal from '../../assets/vfo-certified-emblem.png'
 import vfoAccreditedSeal from '../../assets/vfo-accredited-emblem.png'
-import { formatDate } from '../../lib/dates'
+import { formatDate, formatDateTime } from '../../lib/dates'
 import { cleanText, formatPersonName } from '../../lib/formatters'
 import PhoneInput from '../shared/PhoneInput'
 import MemberBrandingCard from '../shared/MemberBrandingCard'
@@ -940,7 +940,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
       let res = await callApi('member_stripe_connect_request', { member_number: member.plugin_member_number })
       // Guard refusal (new backend only — an older one never returns this).
       if (res.already_sent_at) {
-        if (!window.confirm(`A setup email was already sent to this member on ${new Date(res.already_sent_at).toLocaleString()}. Send another?`)) return
+        if (!window.confirm(`A setup email was already sent to this member on ${formatDateTime(res.already_sent_at)}. Send another?`)) return
         res = await callApi('member_stripe_connect_request', { member_number: member.plugin_member_number, force: true })
       }
       setStripeMsgType('success')
@@ -1432,7 +1432,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
             : typeHistory.map(h => (
               <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
                 <div style={{ textAlign: 'left' }}><span style={{ color: 'var(--vfo-muted)', fontSize: '13px' }}>{h.old_type}</span><span style={{ color: 'var(--vfo-muted)', margin: '0 8px' }}>→</span><span style={{ color: 'var(--vfo-ink)', fontSize: '13px', fontWeight: '600' }}>{h.new_type}</span></div>
-                <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{new Date(h.changed_at).toLocaleDateString()}</div>
+                <div style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{formatDate(h.changed_at)}</div>
               </div>
             ))
           }
@@ -1693,7 +1693,7 @@ function MemberSettings({ member, allMembers = [], onDataChange }) {
       let res = await callApi('member_stripe_connect_request', { member_number: member.plugin_member_number })
       // Guard refusal (new backend only — an older one never returns this).
       if (res.already_sent_at) {
-        if (!window.confirm(`A setup email was already sent to this member on ${new Date(res.already_sent_at).toLocaleString()}. Send another?`)) return
+        if (!window.confirm(`A setup email was already sent to this member on ${formatDateTime(res.already_sent_at)}. Send another?`)) return
         res = await callApi('member_stripe_connect_request', { member_number: member.plugin_member_number, force: true })
       }
       setStripeMsgType('success')

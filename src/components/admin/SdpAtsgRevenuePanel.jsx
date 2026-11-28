@@ -9,6 +9,7 @@ import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { emptyRowStyle, errorStyle, headerRowStyle, periodLabelOf, refreshBtnStyle, rowStyle, selectStyle, tableStyle, totalsLabelStyle, totalsRowStyle, totalsSubStyle } from './accountingTable'
 import Tag from '../shared/Tag'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > SDP ATSG > SDP ATSG Revenue (2026-11-19). Each SDP - Advanced Tax
 // Strategy Governance payment that cleared in the chosen month/year and how it
@@ -18,11 +19,6 @@ import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 // Revenue. A row opens the case on the SDP ATSG tab.
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-
-function fmtDate(s) {
-  if (!s) return '—'
-  try { return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return String(s) }
-}
 
 // Where a payout leg stands, as a small note under its amount.
 function legNote(status) {
@@ -136,7 +132,7 @@ export default function SdpAtsgRevenuePanel({ embedded = false }) {
                   {p.client_name || '—'}{p.client_ref && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · {p.client_ref}</span>}
                   {p.sandbox && <Tag color="#e06717" style={{ marginLeft: '6px' }}>Sandbox</Tag>}
                 </span>
-                <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(p.paid_at)}</span>
+                <span style={{ color: 'var(--vfo-muted)' }}>{formatDate(p.paid_at, '—')}</span>
                 <span>{p.member_name ? <MemberNameLink memberNumber={p.member_number}>{p.member_name}</MemberNameLink> : (p.member_number || '—')}{p.member_name && <span style={{ color: 'var(--vfo-faint)' }}> · {p.member_number}</span>}</span>
                 <span style={{ color: 'var(--vfo-ink-2)' }}>
                   {p.period_label || (p.kind === 'retainer' ? 'Retainer' : 'Impact fee')}

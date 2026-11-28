@@ -10,6 +10,7 @@ import { ClientNameLink, MemberNameLink, clientPagePath } from '../shared/person
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { useNavigate } from 'react-router-dom'
 import { emptyRowStyle, errorStyle, headerRowStyle, refreshBtnStyle, rowStyle, selectStyle, tableStyle, totalsLabelStyle, totalsRowStyle, totalsSubStyle } from './accountingTable'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > VFO Services > Additional PIP Revenue. Each additional-PIP purchase
 // (additional PIP meetings or Tax Planning) that cleared in the chosen month/year, with
@@ -28,11 +29,6 @@ import { emptyRowStyle, errorStyle, headerRowStyle, refreshBtnStyle, rowStyle, s
 // cash. Same routing the Reconciliation panel uses; the other column shows a dash.
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-
-function fmtDate(s) {
-  if (!s) return '—'
-  try { return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return String(s) }
-}
 
 // PIP carries its own history IN the status ('Completed - Money Mapping' vs
 // 'Completed - Revenue Share'), so a settled purchase buckets by what happened; only an
@@ -153,7 +149,7 @@ export default function PipRevenuePanel({ embedded = false }) {
             <div key={p.id} onClick={p.clientId ? () => navigate(clientPagePath(p.clientId, { program: 1, tab: 'pip' })) : undefined} {...(p.clientId ? rowHoverProps : {})}
               style={{ ...(p.clientId ? clickableRowStyle : null), ...rowStyle, gridTemplateColumns: grid, background: 'var(--vfo-card)' }}>
               <span style={{ fontWeight: 600 }}><ClientNameLink clientId={p.clientId} program={1}>{p.clientName}</ClientNameLink></span>
-              <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(p.clearedAt)}</span>
+              <span style={{ color: 'var(--vfo-muted)' }}>{formatDate(p.clearedAt, '—')}</span>
               <span>{p.memberName ? <MemberNameLink memberNumber={p.memberNumber}>{p.memberName}</MemberNameLink> : '—'}{p.memberNumber && <span style={{ color: 'var(--vfo-faint)' }}> · {p.memberNumber}</span>}</span>
               <span style={{ color: 'var(--vfo-muted)' }}>{p.kindLabel}</span>
               <span style={{ textAlign: 'right', fontWeight: 700 }}>{money(p.amount)}<SubNote text={p.paymentNote} /></span>

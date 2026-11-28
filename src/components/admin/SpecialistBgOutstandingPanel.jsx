@@ -1,12 +1,13 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { money } from './specialistRevenueShared'
-import { cardStyle, Detail, SectionHeader, EmptyLine, OutstandingCard, fmtDate, shortDate } from './OutstandingLinksPanel'
+import { cardStyle, Detail, SectionHeader, EmptyLine, OutstandingCard } from './OutstandingLinksPanel'
 import { OutstandingLinksSkeleton } from '../shared/Skeleton'
 import { OutstandingEmpty } from './OutstandingLinksPanel'
 import { errorStyle, refreshBtnStyle } from './accountingTable'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 import { bgRowsFrom } from './SpecialistBgPanel'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > Specialists > VFO Specialist Background Checks > Outstanding Payment Links.
 // Two read-only groups from specialist_bg_payments_load:
@@ -27,13 +28,13 @@ function LinkCard({ row }) {
     <OutstandingCard
       name={row.name}
       expertId={row.expertId}
-      subtitle={row.sentAt ? `Link sent ${shortDate(row.sentAt)}` : 'Link not sent yet'}
+      subtitle={row.sentAt ? `Link sent ${formatDate(row.sentAt)}` : 'Link not sent yet'}
       badge={badge}
       amount={row.amount}
       caption={row.amount == null ? 'Core or Max' : 'due'}
     >
       <Detail label="Amount" value={row.amount == null ? 'Core $350 or Max $950 — not chosen yet' : money(row.amount)} />
-      <Detail label="Link sent" value={fmtDate(row.sentAt) || 'not yet'} />
+      <Detail label="Link sent" value={formatDate(row.sentAt) || 'not yet'} />
       <Detail label="Status" value={badge.label} />
     </OutstandingCard>
   )

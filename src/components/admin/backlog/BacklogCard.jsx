@@ -1,10 +1,11 @@
 import { useRef } from 'react'
 import { departmentChipStyle } from './portalDepartments'
-import { fmtDate, isTask } from './backlogModel'
+import { isTask } from './backlogModel'
 import ScorePill from './ScorePill'
 import { DueChip, TaskTag } from './TaskBits'
 import { ReleaseImportancePill } from './BigNewsBadge'
 import LikeButton from './LikeButton'
+import { formatDate } from '../../../lib/dates'
 
 // One request on the board or in a list, Workbench style: the title, who asked
 // and when, then the key pills (departments, urgency, importance). The
@@ -19,7 +20,7 @@ export default function BacklogCard({ request: r, people, onOpen, draggable, onD
   const from = task && r.requester_admin_id !== r.assignee_admin_id
     ? (people[r.requester_admin_id] || 'a former admin') : null
   const needsWriteup = !task && r.review_status === 'approved' && !r.archived_at && r.progress === 'done' && !String(r.announcement || '').trim()
-  const liveOn = r.progress === 'live' && r.live_at ? fmtDate(String(r.live_at).slice(0, 10)) : null
+  const liveOn = r.progress === 'live' && r.live_at ? formatDate(String(r.live_at).slice(0, 10), '–') : null
   // A press on the like button never starts a drag of the card (Backlog 7a).
   const pressOnButton = useRef(false)
   return (
@@ -46,7 +47,7 @@ export default function BacklogCard({ request: r, people, onOpen, draggable, onD
       </div>
       <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-ink)', lineHeight: 1.35, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{r.title}</div>
       <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', fontWeight: 600, marginTop: '5px', overflowWrap: 'anywhere' }}>
-        {r.requester_name} · {fmtDate(r.requested_on)}
+        {r.requester_name} · {formatDate(r.requested_on, '–')}
       </div>
       {(!task || (r.departments || []).length > 0 || r.due_on) && (
         <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '10px' }}>

@@ -9,6 +9,7 @@ import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import OnboardingPhaseChip from './OnboardingPhaseChip'
+import { formatDate } from '../../../lib/dates'
 
 // Read-only per-step email previews (see StepEmailsChip). Meeting 1 uses the
 // member-declined variant; Meetings 2/3 use the ERT/VFOS-declined variant.
@@ -63,7 +64,7 @@ function pftMeetingCtx(client, meeting) {
 
 const pftStatusColors = { Complete: '#1b9254', Completed: '#1b9254', 'Complete - Yes': '#1b9254', 'Complete - No': '#e74c3c', Yes: '#1b9254', No: '#e74c3c', Undecided: '#e06717', VFOS: '#0095ff', Member: '#0095ff', New: '#1b9254', 'Re-Set': '#1b9254', 'VFO FT': '#1b9254', 'VFO Associate': '#1b9254', Stopped: '#e74c3c', 'No show': '#e74c3c', 'Meeting 1 scheduled': '#1b9254', 'Meeting 2 scheduled': '#1b9254', 'Meeting 3 scheduled': '#1b9254', 'Confirmation email sent': '#1b9254', 'Email sent - date not yet arranged': '#1b9254', 'Meeting declined': '#e74c3c', 'No response': '#e74c3c', 'Call arranged': '#1b9254', 'VFO FT confirmed': '#1b9254', 'VFO Associate confirmed': '#1b9254', 'No confirmed': '#e74c3c', 'Undecided - awaiting client': '#e06717', 'Declined by Member': '#e74c3c', 'Declined by ERT/VFOS': '#e74c3c' }
 const inputStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
-const dateSpanStyle = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }
+const dateSpanStyle = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }
 const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
 // Solid green — the "mark complete without sending an email" backfill buttons.
 // Filled (vs the tinted send buttons above) so the no-email path is visually
@@ -73,12 +74,6 @@ const blueBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cu
 const redBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600 }
 const amberBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1px solid rgba(224,103,23,0.4)', background: 'rgba(224,103,23,0.12)', color: '#e06717', fontWeight: 600 }
 const cancelBtn = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
-
-function formatDate(d) {
-  if (!d) return ''
-  const parts = d.split('-')
-  return `${parts[1]}/${parts[2]}`
-}
 
 const PFT_TZ_CODES = ['ET', 'CT', 'MT', 'PT', 'AKT', 'HT']
 // The confirmed meeting slot is only ever stored as the space-joined
@@ -104,18 +99,6 @@ const PFT_CONFIRM_STATUSES = ['Confirmation email sent', 'Email sent - date not 
 // existing rows holding its status keep rendering.
 const SHOW_NO_EMAIL_BACKFILL = false
 const SHOW_CONFIRM_NO_DATE = false
-
-// MM/DD for the AI PC Admin auto rows. Plain 'YYYY-MM-DD' DATE columns are split
-// as strings (new Date() would shift them a day west of UTC); timestamptz values
-// go through Date so they read in the viewer's local time.
-const fmtMMDD = (v) => {
-  if (!v) return ''
-  const s = String(v)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const p = s.split('-'); return `${p[1]}/${p[2]}` }
-  const d = new Date(s)
-  if (isNaN(d.getTime())) return ''
-  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
-}
 
 const DISCOVERY_FIELDS = [
   ['business_name', 'Business Name'],
@@ -410,7 +393,7 @@ function autoStep(label, done, at = null) {
       {done
         ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
         : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', marginLeft: 'auto' }}>Not completed</span>}
-      {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
+      {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(at)}</span>}
     </div>
   )
 }
@@ -434,7 +417,7 @@ function StallAckRow({ pipeline, id, stall, ackAt, onAck }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', marginLeft: '14px' }}>
       <input type="checkbox" checked={checked} disabled={saving} onChange={e => toggle(e.target.checked)} style={{ cursor: saving ? 'default' : 'pointer' }} />
       <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Reached out?</span>
-      {checked && ackAt && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(ackAt)}</span>}
+      {checked && ackAt && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(ackAt)}</span>}
     </div>
   )
 }

@@ -197,21 +197,6 @@ export function parseColumn(v) {
   return { progress: progress || null, assignee: assignee ? Number(assignee) : null }
 }
 
-export function fmtDate(d) {
-  if (!d) return '–'
-  const s = String(d)
-  const [y, m, day] = s.slice(0, 10).split('-')
-  if (!y || !m || !day) return s
-  return `${Number(m)}/${Number(day)}/${y}`
-}
-
-export function fmtDateTime(ts) {
-  if (!ts) return '–'
-  const d = new Date(ts)
-  if (Number.isNaN(d.getTime())) return String(ts)
-  return d.toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-}
-
 export function todayLocal() {
   const d = new Date()
   const p = (n) => String(n).padStart(2, '0')

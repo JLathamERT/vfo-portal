@@ -6,6 +6,7 @@ import { CARD_FEE_LABEL } from './cardFeeColumn'
 import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink } from '../shared/personLinks'
 import { footnoteStyle } from './accountingTable'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > Specialists > VFO Specialist Revenue > Bank Transfer Account. The shared
 // Stripe account specialists push bank transfers to, read live (specialist_revenue_deposits_load):
@@ -25,10 +26,6 @@ const TYPE_LABEL = {
   return_canceled: 'Return canceled',
   transferred_to_balance: 'Moved to our Stripe balance by Stripe',
   adjusted_for_overdraft: 'Overdraft adjustment',
-}
-
-function fmtDate(iso) {
-  return iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
 }
 
 export default function SpecialistDepositsPanel({ embedded = false }) {
@@ -141,7 +138,7 @@ export default function SpecialistDepositsPanel({ embedded = false }) {
               const collected = m.type === 'applied_to_payment'
               return (
                 <div key={m.id} style={row}>
-                  <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(m.created_at)}</span>
+                  <span style={{ color: 'var(--vfo-muted)' }}>{formatDate(m.created_at, '—')}</span>
                   <span style={{ minWidth: 0 }}>
                     {deposit
                       ? <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>Deposit from {m.sender_name || 'unknown sender'}</span>
@@ -155,7 +152,7 @@ export default function SpecialistDepositsPanel({ embedded = false }) {
                     {deposit && (m.unmatched > 0
                       ? <>
                         <StatusPill label={m.unmatched < m.amount ? `${money(m.unmatched)} not collected` : 'Not collected'} color="#e06717" />
-                        <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '4px', lineHeight: 1.4 }}>Stripe tries to send it back after {fmtDate(m.return_after)}</div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)', marginTop: '4px', lineHeight: 1.4 }}>Stripe tries to send it back after {formatDate(m.return_after, '—')}</div>
                       </>
                       : <StatusPill label="Collected" color="#16a34a" />)}
                   </span>

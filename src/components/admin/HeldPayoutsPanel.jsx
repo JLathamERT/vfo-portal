@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import { MemberNameLink, ClientNameLink, clientPagePath } from '../shared/personLinks'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { emptyRowStyle, errorStyle, footnoteStyle, headerRowStyle, refreshBtnStyle, rowStyle, selectStyle, tableStyle, totalsLabelStyle } from './accountingTable'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > ... > "Held Payouts" (one per engine: Holistic, Tax Planning,
 // Additional PIP, VFO Specialist Revenue, and the SDP ATSG tab). Every revenue
@@ -30,12 +31,6 @@ export const HOLD_REASONS = {
 const LEG_LABEL = {
   member: 'Member', strategic: 'Strategic partner', planner: 'Planner group',
   deposit_team: 'Deposit team share', specialist: 'Specialist', ert: 'ERT', sdp: 'SDP',
-}
-
-const fmtDate = (iso) => {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
 }
 
 const hoverRowProps = {
@@ -61,12 +56,12 @@ function reasonNote(r) {
   if (memberSetup) {
     if (!r.asked_at) parts.push('Member not emailed')
     else {
-      parts.push(r.asked_by_hand ? `Setup link sent by hand ${fmtDate(r.asked_at)}` : `Member emailed ${fmtDate(r.asked_at)}`)
-      if (r.reminded_at) parts.push(`reminded ${fmtDate(r.reminded_at)}`)
+      parts.push(r.asked_by_hand ? `Setup link sent by hand ${formatDate(r.asked_at)}` : `Member emailed ${formatDate(r.asked_at)}`)
+      if (r.reminded_at) parts.push(`reminded ${formatDate(r.reminded_at)}`)
       if (r.tracy_notified_at) parts.push('Tracy asked to chase')
     }
   }
-  if (r.last_attempt_at) parts.push(`last tried ${fmtDate(r.last_attempt_at)}${r.attempts > 1 ? ` (${r.attempts} tries)` : ''}`)
+  if (r.last_attempt_at) parts.push(`last tried ${formatDate(r.last_attempt_at)}${r.attempts > 1 ? ` (${r.attempts} tries)` : ''}`)
   return parts.join(' · ')
 }
 
@@ -252,14 +247,14 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
           <SourceCell r={r} engine={engine} />
           {reason}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Held since {fmtDate(r.held_at)}</span>{retry}
+            <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Held since {formatDate(r.held_at)}</span>{retry}
           </div>
         </div>
       )
     }
     return (
       <div key={r.id} style={{ ...row, cursor: clickable ? 'pointer' : undefined }} {...rowProps(r)}>
-        <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(r.held_at)}</span>
+        <span style={{ color: 'var(--vfo-muted)' }}>{formatDate(r.held_at)}</span>
         <PayeeCell r={r} />
         <SourceCell r={r} engine={engine} />
         {reason}
@@ -317,16 +312,16 @@ export default function HeldPayoutsPanel({ engine, embedded = false }) {
             <div key={r.id} style={phoneRow} {...rowProps(r)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}><PayeeCell r={r} /><span style={{ fontWeight: 700 }}>{r.amount == null ? '—' : money(r.amount)}</span></div>
               <SourceCell r={r} engine={engine} />
-              <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{r.release_reason === 'paid' ? 'Paid' : (r.release_reason || '—')} {fmtDate(r.released_at)} · held {fmtDate(r.held_at)}</span>
+              <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{r.release_reason === 'paid' ? 'Paid' : (r.release_reason || '—')} {formatDate(r.released_at)} · held {formatDate(r.held_at)}</span>
             </div>
           ) : (
             <div key={r.id} style={{ ...row, cursor: r.client_id && TAB_BY_ENGINE[engine] ? 'pointer' : undefined }} {...rowProps(r)}>
-              <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(r.released_at)}</span>
+              <span style={{ color: 'var(--vfo-muted)' }}>{formatDate(r.released_at)}</span>
               <PayeeCell r={r} />
               <SourceCell r={r} engine={engine} />
               <span><ReasonChip reason={r.reason} /></span>
               <span style={{ textAlign: 'right', fontWeight: 700 }}>{r.amount == null ? '—' : money(r.amount)}</span>
-              <span style={{ fontSize: '12px', color: r.release_reason === 'paid' ? 'var(--vfo-success-text)' : 'var(--vfo-muted)' }}>{r.release_reason === 'paid' ? 'Paid' : (r.release_reason || '—')} · held {fmtDate(r.held_at)}</span>
+              <span style={{ fontSize: '12px', color: r.release_reason === 'paid' ? 'var(--vfo-success-text)' : 'var(--vfo-muted)' }}>{r.release_reason === 'paid' ? 'Paid' : (r.release_reason || '—')} · held {formatDate(r.held_at)}</span>
             </div>
           ))}
           {data.released.length === 0 && <div style={{ textAlign: 'center', padding: '30px', color: 'var(--vfo-faint)', fontSize: '14px' }}>Nothing released in the last 180 days.</div>}

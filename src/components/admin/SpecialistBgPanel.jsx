@@ -8,6 +8,7 @@ import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink, specialistProfilePath } from '../shared/personLinks'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { emptyRowStyle, errorStyle, refreshBtnStyle, rowStyle, selectStyle } from './accountingTable'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > Specialists > VFO Specialist Background Checks > the first pill.
 // The License Fees ledger shape: background check payments RECEIVED, filtered by
@@ -22,11 +23,6 @@ import { emptyRowStyle, errorStyle, refreshBtnStyle, rowStyle, selectStyle } fro
 // Same columns + widths the License Fees ledger had before its 2026-11-25 redesign.
 const LEDGER_GRID = `1.4fr 118px 112px ${CARD_FEE_COL} 178px`
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-
-function fmtDate(s) {
-  if (!s) return '—'
-  try { return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return String(s) }
-}
 
 // Onboarding status → the four display states. A link that was sent with no payment
 // recorded yet (bg_payment_status NULL or 'pending') reads as Awaiting payment.
@@ -206,7 +202,7 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
                   <SpecialistNameLink expertId={r.expertId}>{r.name}</SpecialistNameLink>
                   {r.last4 && <span style={{ color: 'var(--vfo-faint)', fontWeight: 400 }}> · ••••{r.last4}</span>}
                 </span>
-                <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(r.paidAt)}</span>
+                <span style={{ color: 'var(--vfo-muted)' }}>{formatDate(r.paidAt, '—')}</span>
                 <span style={{ textAlign: 'right', fontWeight: 700 }}>{r.amount == null ? '—' : money(r.amount)}</span>
                 <span style={{ textAlign: 'right' }}><CardFeeCell fee={r.paidAt ? r.fee : 0} /></span>
                 <span style={{ display: 'flex', justifyContent: 'flex-end' }}><StatusPill label={pill.label} color={pill.color} /></span>

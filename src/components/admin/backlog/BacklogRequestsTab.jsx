@@ -3,12 +3,13 @@ import ListFilterButton, { useHeaderSort, sortByColumn, SortHeader, SortSelect }
 import { clickableRowStyle, rowHoverProps } from '../../shared/rowHover'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { departmentChipStyle } from './portalDepartments'
-import { fmtDate, isTask, sortRequests, REQUEST_SORT_OPTIONS } from './backlogModel'
+import { isTask, sortRequests, REQUEST_SORT_OPTIONS } from './backlogModel'
 import ScorePill from './ScorePill'
 import { TaskTag } from './TaskBits'
 import BigNewsBadge from './BigNewsBadge'
 import BacklogDetails from './BacklogDetails'
 import LikeButton from './LikeButton'
+import { formatDate } from '../../../lib/dates'
 
 // The Requests tab, laid out like Client Overview: search, Filter and Sort, then
 // one table of the requests waiting for review (Ready to announce moved to the
@@ -118,7 +119,7 @@ function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, o
                       </div>
                     )}
                     <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--vfo-link)', lineHeight: 1.3, overflowWrap: 'anywhere' }}>{r.title}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px' }}>{r.requester_name} · {fmtDate(r.requested_on)}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '3px' }}>{r.requester_name} · {formatDate(r.requested_on, '–')}</div>
                     {(r.departments || []).length > 0 && (
                       <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '8px' }}>
                         {r.departments.map((d) => <span key={d} style={departmentChipStyle(d)}>{d}</span>)}
@@ -203,7 +204,7 @@ function RequestsTable({ rows, emptyText, sort, onSort, people, assignedField, o
                   </span>
                   <span>{r.urgency == null ? <span style={faint}>–</span> : <ScorePill label="Urgency" value={r.urgency} numberOnly />}</span>
                   <span>{r.importance == null ? <span style={faint}>–</span> : <ScorePill label="Importance" value={r.importance} numberOnly />}</span>
-                  <span style={{ fontSize: '12px', color: r.requested_on ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{fmtDate(r.requested_on)}</span>
+                  <span style={{ fontSize: '12px', color: r.requested_on ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{formatDate(r.requested_on, '–')}</span>
                   <span style={{ fontSize: '12px', color: assigned != null ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>
                     {assigned != null ? (people[assigned] || 'A former admin') : 'Unassigned'}
                   </span>

@@ -4,6 +4,7 @@ import { callApi, getSession } from '../../lib/api'
 import { ListHeader } from '../shared/TrackKit'
 import ListTable, { ListName, ListText, listSearchStyle } from '../shared/ListTable'
 import { PlannerClientsSkeleton } from '../shared/Skeleton'
+import { formatDate } from '../../lib/dates'
 
 const STORAGE_KEY = 'taxPlannerListIncluded'
 const ROSTER_KEY = 'taxPlannerListRoster'
@@ -232,7 +233,7 @@ export default function PlannerClientsList() {
                 ...(section.showNextStep ? [{ key: 'next', label: 'Next step', width: '2fr', render: r => <ListText style={{ color: r.next_step ? 'var(--vfo-muted)' : undefined }}>{r.next_step}</ListText> }] : []),
                 { key: 'planner', label: 'Planner', width: '1fr', get: r => r.planner_name, render: r => <ListText style={{ color: r.planner_name ? 'var(--vfo-muted)' : undefined }}>{r.planner_name}</ListText> },
                 // When the VFO team sent the client over (the team-member allocation date).
-                { key: 'assigned', label: 'Assigned', width: '110px', type: 'date', get: r => r.assigned_at, render: r => <ListText style={{ color: r.assigned_at ? 'var(--vfo-muted)' : undefined }}>{r.assigned_at ? new Date(r.assigned_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null}</ListText> },
+                { key: 'assigned', label: 'Assigned', width: '110px', type: 'date', get: r => r.assigned_at, render: r => <ListText style={{ color: r.assigned_at ? 'var(--vfo-muted)' : undefined }}>{r.assigned_at ? formatDate(r.assigned_at) : null}</ListText> },
               ]}
             />
           </div>

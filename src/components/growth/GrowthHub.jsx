@@ -1,16 +1,11 @@
 import { TrackHero } from '../shared/TrackKit'
 import { HubGrid, HubCard, HubBanner } from '../shared/HubKit'
 import { getGrowthConfig } from './constants'
+import { formatDate } from '../../lib/dates'
 
 // Growth Plan hub — the CIQ-style "chooser" landing shown once a plan exists.
 // A polished completed banner plus a grid of boxes that jump to each step. This
 // is the intentional home base the sub-views return to via the menu bar.
-function fmtDate(iso) {
-  if (!iso) return ''
-  const d = new Date(iso); const pad = n => String(n).padStart(2, '0')
-  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`
-}
-
 export default function GrowthHub({ memberName, bundle, onNavigate, variant }) {
   const cfg = getGrowthConfig(variant)
   const score = bundle.score
@@ -35,7 +30,7 @@ export default function GrowthHub({ memberName, bundle, onNavigate, variant }) {
       <TrackHero eyebrow="Growth Plan" title={memberName ? `${memberName} — Growth Plan` : 'Growth Plan'} />
 
       {score ? (
-        <HubBanner complete title="Growth Plan scored" meta={<>Completed {fmtDate(score.completed_at || score.created_at)}{composite != null && <> · Overall score <strong style={{ color: 'var(--vfo-ink-2)' }}>{composite}</strong></>}</>} />
+        <HubBanner complete title="Growth Plan scored" meta={<>Completed {formatDate(score.completed_at || score.created_at)}{composite != null && <> · Overall score <strong style={{ color: 'var(--vfo-ink-2)' }}>{composite}</strong></>}</>} />
       ) : (
         <HubBanner complete={false} title="Not yet scored" meta={<>Begin with <strong style={{ color: 'var(--vfo-ink-2)' }}>Get Started</strong> to assign an MSM, then work through to Scoring Growth.</>} />
       )}

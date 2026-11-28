@@ -9,6 +9,7 @@ import { btnDanger, btnState } from '../shared/buttonStyles'
 import { errorStyle, innerTotalsStyle, refreshBtnStyle } from './accountingTable'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 import ExpandChevron from '../shared/ExpandChevron'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > Specialists > VFO Specialist License Fees, laid out like Advisor
 // Membership Fees (2026-11-25). Specialists: one card per $99/mo licence — every
@@ -35,14 +36,6 @@ const STATE_ORDER = ['active', 'processing', 'scheduled', 'awaiting_verification
 const label = { fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '5px' }
 const input = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', outline: 'none' }
 const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)' }
-
-function fmtDate(s) {
-  if (!s) return '—'
-  const str = String(s)
-  const d = /^\d{4}-\d{2}-\d{2}$/.test(str) ? new Date(str + 'T12:00:00') : new Date(str)
-  if (Number.isNaN(d.getTime())) return str
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-}
 
 function fmtMonth(d) {
   return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -166,7 +159,7 @@ function LicenseCard({ plan, payments, onChanged }) {
   const grid = `1.1fr 120px 110px ${CARD_FEE_COL} 160px 1.6fr`
 
   async function cancelLicense() {
-    const nextLine = next ? ` (the next one was due ${fmtDate(next)})` : ''
+    const nextLine = next ? ` (the next one was due ${formatDate(next, '—')})` : ''
     if (!window.confirm(`Cancel ${plan.specialist_name}'s $99/month VFO Specialist License now?\n\nThe Stripe subscription is cancelled straight away, so no more payments are taken${nextLine}. The Cancellation Confirmation email goes to the specialist.\n\nTo restart it later, send a new setup link from Set Up License.`)) return
     setBusy(true); setMsg(null)
     try {
@@ -189,9 +182,9 @@ function LicenseCard({ plan, payments, onChanged }) {
     plan.license_continuation ? 'Moved from old system' : 'Onboarding',
     `Monthly (${money(FEE)}/mo${day ? ` on the ${ordinal(day)}` : ''})`,
     method ? `${method}${plan.acct_last4 ? ` ••${plan.acct_last4}` : ''}` : '',
-    plan.has_subscription && plan.setup_at ? `Set up ${fmtDate(plan.setup_at)}` : '',
-    !plan.has_subscription && plan.link_sent_at ? `Link sent ${fmtDate(plan.link_sent_at)}` : '',
-    canceled && plan.canceled_at ? `Canceled ${fmtDate(plan.canceled_at)}` : '',
+    plan.has_subscription && plan.setup_at ? `Set up ${formatDate(plan.setup_at, '—')}` : '',
+    !plan.has_subscription && plan.link_sent_at ? `Link sent ${formatDate(plan.link_sent_at, '—')}` : '',
+    canceled && plan.canceled_at ? `Canceled ${formatDate(plan.canceled_at, '—')}` : '',
   ].filter(Boolean).join(' · ')
 
   return (
@@ -208,7 +201,7 @@ function LicenseCard({ plan, payments, onChanged }) {
           <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>per month</div>
         </div>
         <div style={{ textAlign: 'right', width: '110px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{canceled ? fmtDate(plan.canceled_at) : next ? fmtDate(next) : '—'}</div>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--vfo-ink-2)' }}>{canceled ? formatDate(plan.canceled_at, '—') : next ? formatDate(next, '—') : '—'}</div>
           <div style={{ fontSize: '11px', color: 'var(--vfo-faint)' }}>{canceled ? 'canceled' : 'next payment'}</div>
         </div>
         <div style={{ textAlign: 'right', width: '80px' }}>
@@ -227,7 +220,7 @@ function LicenseCard({ plan, payments, onChanged }) {
             <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', padding: '4px 0 6px' }}>
               {canceled
                 ? 'Canceled before the payment was set up.'
-                : `Waiting for them to set up their payment at the link sent ${fmtDate(plan.link_sent_at)}. Nothing is charged at setup — the first payment collects on the ${day ? ordinal(day) : 'charge day'}. It also shows under Outstanding Payment Links.`}
+                : `Waiting for them to set up their payment at the link sent ${formatDate(plan.link_sent_at, '—')}. Nothing is charged at setup — the first payment collects on the ${day ? ordinal(day) : 'charge day'}. It also shows under Outstanding Payment Links.`}
             </div>
           ) : (
             <>
@@ -250,7 +243,7 @@ function LicenseCard({ plan, payments, onChanged }) {
                 return (
                   <div key={r.id} style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)', background: paid ? 'rgba(22,163,74,0.07)' : 'transparent', borderRadius: '6px' }}>
                     <div style={{ fontWeight: 600 }}>{fmtMonth(new Date(r.paid_at))}</div>
-                    <div>{fmtDate(r.paid_at)}</div>
+                    <div>{formatDate(r.paid_at, '—')}</div>
                     <div style={{ fontWeight: 600, color: 'var(--vfo-ink)', textAlign: 'right' }}>{money(r.amount)}</div>
                     <div style={{ textAlign: 'right' }}><CardFeeCell fee={null} /></div>
                     <div><StatusPill label={paid ? 'Cleared' : (paymentStatusLabel(r.status) || '—')} color={paid ? '#16a34a' : '#5b6b8c'} /></div>
@@ -267,7 +260,7 @@ function LicenseCard({ plan, payments, onChanged }) {
               {next && (
                 <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', alignItems: 'center', padding: '9px 6px', margin: '0 -6px', borderTop: '1px solid var(--vfo-tint)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
                   <div style={{ fontWeight: 600 }}>{fmtMonth(next)}</div>
-                  <div>{fmtDate(next)}</div>
+                  <div>{formatDate(next, '—')}</div>
                   <div style={{ fontWeight: 600, color: 'var(--vfo-ink)', textAlign: 'right' }}>{money(FEE)}</div>
                   <div style={{ textAlign: 'right' }}><CardFeeCell fee={null} /></div>
                   <div><StatusPill label="Scheduled" color="#5b6b8c" /></div>
@@ -276,7 +269,7 @@ function LicenseCard({ plan, payments, onChanged }) {
               )}
               <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--vfo-faint)' }}>
                 {canceled
-                  ? `Canceled ${fmtDate(plan.canceled_at)} — no more payments are taken.`
+                  ? `Canceled ${formatDate(plan.canceled_at, '—')} — no more payments are taken.`
                   : `Bills ${money(FEE)} monthly${day ? ` on the ${ordinal(day)}` : ''} until the license is canceled. No card fee on card or bank.`}
               </div>
             </>
@@ -338,7 +331,7 @@ export function LicenseSetupSection({ allExperts = [] }) {
   const note = active
     ? 'This specialist already has an active license subscription.'
     : current?.link_sent_at && current?.payment_status !== 'canceled'
-      ? `A setup link was already sent on ${fmtDate(current.link_sent_at)}. Sending again sends another copy of the same link and restarts the reminder clock.`
+      ? `A setup link was already sent on ${formatDate(current.link_sent_at, '—')}. Sending again sends another copy of the same link and restarts the reminder clock.`
       : ''
 
   async function send() {

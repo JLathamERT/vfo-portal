@@ -5,6 +5,7 @@ import { MemberNameLink } from '../shared/personLinks'
 import GCPurchasesTable from './GCPurchasesTable'
 import SubTabs from '../shared/SubTabs'
 import { PageHeading } from '../shared/ProfileKit'
+import { formatDate } from '../../lib/dates'
 
 // Growth Credits page (top-level admin tab, open to every admin since 2026-11-25).
 // Sub-tabs: Redemptions (the fulfillment queue), Purchases and Menu (read-only view
@@ -25,11 +26,6 @@ const SUBTABS = [
   { key: 'purchases', label: 'Purchases' },
   { key: 'menu', label: 'Menu' },
 ]
-
-function fmtDate(s) {
-  if (!s) return ''
-  try { return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return String(s) }
-}
 
 export default function GrowthCreditsRedemptionsPage() {
   const [redemptions, setRedemptions] = useState(null)
@@ -143,7 +139,7 @@ export default function GrowthCreditsRedemptionsPage() {
                 <span><MemberNameLink memberNumber={r.member_number} style={{ fontWeight: 600 }}>{memberOf(r)}</MemberNameLink></span>
                 <span>{serviceOf(r)}</span>
                 <span style={{ color: 'var(--vfo-muted)' }}>{r.credits}</span>
-                <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(r.created_at)}</span>
+                <span style={{ color: 'var(--vfo-muted)' }}>{formatDate(r.created_at)}</span>
                 <span style={{ display: 'flex', gap: '8px', justifySelf: 'end' }}>
                   <button onClick={() => update(r.id, 'fulfilled')} disabled={busy}
                     style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: 'rgba(22,163,74,0.14)', color: 'var(--vfo-success-text-2)', fontSize: '12.5px', fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>Mark completed</button>
@@ -167,7 +163,7 @@ export default function GrowthCreditsRedemptionsPage() {
                 <span><MemberNameLink memberNumber={r.member_number}>{memberOf(r)}</MemberNameLink></span>
                 <span>{serviceOf(r)}</span>
                 <span style={{ color: 'var(--vfo-muted)' }}>{r.credits}</span>
-                <span style={{ color: 'var(--vfo-muted)' }}>{fmtDate(r.created_at)}</span>
+                <span style={{ color: 'var(--vfo-muted)' }}>{formatDate(r.created_at)}</span>
                 <span style={{ justifySelf: 'end', padding: '3px 12px', borderRadius: '20px', fontSize: '11.5px', fontWeight: 700, background: r.status === 'fulfilled' ? 'rgba(22,163,74,0.12)' : 'rgba(217,48,37,0.12)', color: r.status === 'fulfilled' ? 'var(--vfo-success-text-2)' : '#d93025' }}>{r.status === 'fulfilled' ? 'Completed' : 'Rejected'}</span>
               </div>
             ))}

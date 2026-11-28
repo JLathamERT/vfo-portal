@@ -10,6 +10,7 @@ import { readable } from '../../shared/readableColor'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { TAILORED_PROGRAM } from '../../shared/accountantPrograms'
 import OnboardingPhaseChip from './OnboardingPhaseChip'
+import { formatDate } from '../../../lib/dates'
 
 // Tailored Route for Accountants (2026-11-12): two steps. The Tailored meeting
 // (Completed / No show, recorded only), then the Post Meeting Decision Email: the
@@ -46,25 +47,9 @@ const AGREEMENT_NAMES = { ft: 'Accountant-Implementation-Agreement.pdf', associa
 
 const statusColors = { Completed: '#1b9254', 'No show': '#e74c3c', [AWAITING]: '#e06717', 'VFO FT confirmed': '#1b9254', 'VFO Associate confirmed': '#1b9254', 'No confirmed': '#e74c3c' }
 const inputStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
-const dateSpanStyle = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '55px', textAlign: 'left', flexShrink: 0 }
+const dateSpanStyle = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }
 const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
 const blueBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600 }
-
-function formatDate(d) {
-  if (!d) return ''
-  const parts = String(d).split('-')
-  return `${parts[1]}/${parts[2]}`
-}
-
-// MM/DD: a plain DATE is split as a string; a timestamp reads in local time.
-const fmtMMDD = (v) => {
-  if (!v) return ''
-  const s = String(v)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const p = s.split('-'); return `${p[1]}/${p[2]}` }
-  const d = new Date(s)
-  if (isNaN(d.getTime())) return ''
-  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
-}
 
 function nameCtx(client) {
   const full = client ? `${client.first_name || ''} ${client.last_name || ''}`.trim() : ''
@@ -93,7 +78,7 @@ function autoStep(label, done, at = null) {
       {done
         ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
         : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', marginLeft: 'auto' }}>Not completed</span>}
-      {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>}
+      {done && at && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(at)}</span>}
     </div>
   )
 }
@@ -117,7 +102,7 @@ function StallAckRow({ id, stall, ackAt, onAck }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', marginLeft: '14px' }}>
       <input type="checkbox" checked={checked} disabled={saving} onChange={e => toggle(e.target.checked)} style={{ cursor: saving ? 'default' : 'pointer' }} />
       <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>Reached out?</span>
-      {checked && ackAt && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(ackAt)}</span>}
+      {checked && ackAt && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(ackAt)}</span>}
     </div>
   )
 }
@@ -264,11 +249,11 @@ function QuestionRow({ q, isOpen, chose, readOnly, onReply }) {
   }
   return (
     <div style={{ padding: '8px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-      <div style={{ fontSize: '10px', fontWeight: 700, color: '#0095ff', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Accountant's question · {fmtMMDD(q.asked_at)}</div>
+      <div style={{ fontSize: '10px', fontWeight: 700, color: '#0095ff', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Accountant's question · {formatDate(q.asked_at)}</div>
       <div style={{ fontSize: '12px', color: 'var(--vfo-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{q.question}</div>
       {q.reply ? (
         <>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--vfo-success-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '8px 0 2px' }}>Our reply · {fmtMMDD(q.replied_at)}</div>
+          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--vfo-success-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '8px 0 2px' }}>Our reply · {formatDate(q.replied_at)}</div>
           <div style={{ fontSize: '12px', color: 'var(--vfo-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{q.reply}</div>
         </>
       ) : isOpen && !readOnly ? (

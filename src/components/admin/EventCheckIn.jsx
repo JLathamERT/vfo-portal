@@ -3,6 +3,7 @@ import { callApi } from '../../lib/api'
 import ListFilterButton, { matchesFilter } from './ListFilterButton'
 import { peopleOf } from './eventRows'
 import { btnOutline, btnPrimary, btnState, BTN_SMALL } from '../shared/buttonStyles'
+import { formatDateTime } from '../../lib/dates'
 
 // Events > Check-in (2026-11-25): one row per person with a place, for the door.
 const GRID = 'minmax(180px, 1.2fr) minmax(190px, 1.2fr) 130px minmax(200px, 1.2fr) 140px 190px'
@@ -31,7 +32,6 @@ export default function EventCheckIn({ rows, onDone }) {
     catch (e) { setErr(e?.message || 'Could not save') }
     finally { setBusy(null) }
   }
-  const at = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
   const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
 
   return (
@@ -56,7 +56,7 @@ export default function EventCheckIn({ rows, onDone }) {
               <span style={{ fontSize: '12.5px', overflowWrap: 'anywhere' }}>{p.email || '—'}</span>
               <span style={{ fontSize: '12.5px' }}>{p.phone || '—'}</span>
               {p.checked_in_at
-                ? <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ fontSize: '11.5px', color: 'var(--vfo-success-text)', fontWeight: 600 }} title={p.checked_in_by || ''}>{at(p.checked_in_at)}</span><button type="button" disabled={busy === p.id} onClick={() => set(p, false)} style={btnState({ ...btnOutline, ...BTN_SMALL }, busy === p.id)}>Undo</button></span>
+                ? <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ fontSize: '11.5px', color: 'var(--vfo-success-text)', fontWeight: 600 }} title={p.checked_in_by || ''}>{formatDateTime(p.checked_in_at)}</span><button type="button" disabled={busy === p.id} onClick={() => set(p, false)} style={btnState({ ...btnOutline, ...BTN_SMALL }, busy === p.id)}>Undo</button></span>
                 : <span><button type="button" disabled={busy === p.id} onClick={() => set(p, true)} style={btnState({ ...btnPrimary, ...BTN_SMALL }, busy === p.id)}>{busy === p.id ? 'Saving...' : 'Check in'}</button></span>}
             </div>
           ))}

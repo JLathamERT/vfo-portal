@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState, useLayoutEffect } from 'react'
 import { IS_STAGING } from '../../lib/environment'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
-import { StepCard, Detail, Badge, Pending, fmtDate, PanelHero, EmptyState, TableCard } from './automation/StepKit'
+import { StepCard, Detail, Badge, Pending, PanelHero, EmptyState, TableCard } from './automation/StepKit'
 import { AutomationTrackerSkeleton } from '../shared/Skeleton'
 import StripeAccountPill from './StripeAccountPill'
 import { CONFIRMATION_CARD_SKIP } from '../../lib/confirmationStatus'
@@ -147,7 +147,7 @@ function ExpandedRow({ row, onRefresh }) {
         {row.ready_for_tax3_decision ? (
           <>
             <Detail l="Decision" v={<Badge text={row.ready_for_tax3_decision} />} showEmpty />
-            <Detail l="Email" v={fmtDate(row.ready_for_tax3_email_sent_at) || (row.ready_for_tax3_email_sent === 'Yes' ? 'Sent' : null)} showEmpty />
+            <Detail l="Email" v={formatDate(row.ready_for_tax3_email_sent_at) || (row.ready_for_tax3_email_sent === 'Yes' ? 'Sent' : null)} showEmpty />
           </>
         ) : <Pending />}
       </StepCard>
@@ -163,9 +163,9 @@ function ExpandedRow({ row, onRefresh }) {
                 <Detail l="Initial retainer quoted" v={money(row.initial_retainer_quoted)} />
               </>
             )}
-            <Detail l="Decision email sent" v={fmtDate(row.tax_decision_email_sent_at) || row.tax_decision_email_sent} />
-            <Detail l="2-business-day reminder sent" v={fmtDate(row.tax_decision_reminder_sent_at)} />
-            <Detail l="4-business-day PF notified" v={fmtDate(row.tax_decision_pf_notified_at)} />
+            <Detail l="Decision email sent" v={formatDate(row.tax_decision_email_sent_at) || row.tax_decision_email_sent} />
+            <Detail l="2-business-day reminder sent" v={formatDate(row.tax_decision_reminder_sent_at)} />
+            <Detail l="4-business-day PF notified" v={formatDate(row.tax_decision_pf_notified_at)} />
             <Detail l="Presentation link" v={row.presentation_link} />
             <Detail l="Meeting notes" v={row.meeting_notes} />
             <Detail l="Extra CC" v={row.extra_cc} />
@@ -186,12 +186,12 @@ function ExpandedRow({ row, onRefresh }) {
       <StepCard title="Agreement" status={sContract}>
         {row.agreement_sent === 'Yes' ? (
           <>
-            <Detail l="Agreement sent" v={fmtDate(row.agreement_sent_at) || 'Sent'} showEmpty />
-            <Detail l="Signing follow-up" v={fmtDate(row.signed_followup_sent_date)} />
-            <Detail l="2-business-day reminder sent" v={fmtDate(row.signed_reminder_sent_at)} />
-            <Detail l="4-business-day PF notified" v={fmtDate(row.signed_pf_notified_at)} />
-            <Detail l="Client signed" v={fmtDate(row.client_signed_at) || (row.client_signed === 'Yes' ? 'Signed' : null)} showEmpty />
-            <Detail l="CEO countersigned" v={fmtDate(row.ceo_signed_at) || (row.ceo_signed === 'Yes' ? 'Signed' : null)} showEmpty />
+            <Detail l="Agreement sent" v={formatDate(row.agreement_sent_at) || 'Sent'} showEmpty />
+            <Detail l="Signing follow-up" v={formatDate(row.signed_followup_sent_date)} />
+            <Detail l="2-business-day reminder sent" v={formatDate(row.signed_reminder_sent_at)} />
+            <Detail l="4-business-day PF notified" v={formatDate(row.signed_pf_notified_at)} />
+            <Detail l="Client signed" v={formatDate(row.client_signed_at) || (row.client_signed === 'Yes' ? 'Signed' : null)} showEmpty />
+            <Detail l="CEO countersigned" v={formatDate(row.ceo_signed_at) || (row.ceo_signed === 'Yes' ? 'Signed' : null)} showEmpty />
           </>
         ) : <Pending />}
       </StepCard>
@@ -199,14 +199,14 @@ function ExpandedRow({ row, onRefresh }) {
       <StepCard title="Payment" status={sPay}>
         {row.checkout_token || row.retainer_status ? (
           <>
-            <Detail l="Payment link emailed" v={fmtDate(row.payment_email_sent_at)} />
-            <Detail l="2-business-day reminder sent" v={fmtDate(row.payment_reminder_sent_at)} />
-            <Detail l="4-business-day PF notified" v={fmtDate(row.payment_pf_notified_at)} />
+            <Detail l="Payment link emailed" v={formatDate(row.payment_email_sent_at)} />
+            <Detail l="2-business-day reminder sent" v={formatDate(row.payment_reminder_sent_at)} />
+            <Detail l="4-business-day PF notified" v={formatDate(row.payment_pf_notified_at)} />
             <Detail l="Method" v={row.payment_method_type} />
             <Detail l="Account" v={row.acct_last4 ? `****${row.acct_last4}` : null} />
             <Detail l="Payment amount" v={money(row.retainer_amount)} />
             <Detail l="Retainer status" v={paymentStatusLabel(row.retainer_status)} />
-            <Detail l="Retainer paid" v={fmtDate(row.retainer_date)} />
+            <Detail l="Retainer paid" v={formatDate(row.retainer_date)} />
             <PaymentButtons plan={row} onRefresh={onRefresh} />
           </>
         ) : (
@@ -219,14 +219,14 @@ function ExpandedRow({ row, onRefresh }) {
 
       <StepCard title="Confirmation Email" status={sConfirm}>
         {(row.retainer_confirmation_email_sent_at || row.retainer_confirmation_status)
-          ? <Detail l="Confirmation email" v={fmtDate(row.retainer_confirmation_email_sent_at) || row.retainer_confirmation_status} />
+          ? <Detail l="Confirmation email" v={formatDate(row.retainer_confirmation_email_sent_at) || row.retainer_confirmation_status} />
           : <Pending />}
       </StepCard>
 
       <StepCard title="Invoice & Receipt" status={sInvoice}>
         {row.retainer_invoice_number ? (
           <>
-            <Detail l="Invoice emailed" v={fmtDate(row.retainer_invoice_email_sent_at) || (row.retainer_invoice_email_sent ? 'Yes' : null)} showEmpty />
+            <Detail l="Invoice emailed" v={formatDate(row.retainer_invoice_email_sent_at) || (row.retainer_invoice_email_sent ? 'Yes' : null)} showEmpty />
             <Detail l="Invoice #" v={row.retainer_invoice_number} mono />
             <Detail l="Receipt #" v={row.retainer_receipt_number} mono />
             <Detail l="Receipt status" v={row.retainer_receipt_status} />
@@ -238,15 +238,15 @@ function ExpandedRow({ row, onRefresh }) {
         {row.post_review_decision ? (
           <>
             <Detail l="Decision" v={<Badge text={row.post_review_decision} color={/refund|stop/i.test(row.post_review_decision) ? '#e74c3c' : '#1b9254'} />} showEmpty />
-            <Detail l="Decision email sent" v={fmtDate(row.post_review_decision_email_sent_at)} />
-            <Detail l="2-business-day reminder sent" v={fmtDate(row.post_review_reminder_sent_at)} />
-            <Detail l="4-business-day PF notified" v={fmtDate(row.post_review_pf_notified_at)} />
+            <Detail l="Decision email sent" v={formatDate(row.post_review_decision_email_sent_at)} />
+            <Detail l="2-business-day reminder sent" v={formatDate(row.post_review_reminder_sent_at)} />
+            <Detail l="4-business-day PF notified" v={formatDate(row.post_review_pf_notified_at)} />
             <Detail l="Client decision" v={row.post_review_client_decision} />
             {row.refund_status && (
               <>
                 <Detail l="Refund status" v={row.refund_status} />
                 <Detail l="Refund amount" v={money(row.refund_amount)} />
-                <Detail l="Refund date" v={fmtDate(row.refund_date)} />
+                <Detail l="Refund date" v={formatDate(row.refund_date)} />
                 <Detail l="Refund email sent" v={row.refund_email_sent ? 'Sent' : null} />
               </>
             )}
@@ -258,9 +258,9 @@ function ExpandedRow({ row, onRefresh }) {
         {row.retainer_rev_share ? (
           <>
             <Detail l="Revenue decision" v={retRevDecision} showEmpty />
-            <Detail l="Revenue share completed" v={fmtDate(row.retainer_rev_completed_at) || ((row.retainer_rev_paid === 'Yes' || row.retainer_rev_paid === 'Money Mapping') ? row.retainer_rev_paid : null)} />
+            <Detail l="Revenue share completed" v={formatDate(row.retainer_rev_completed_at) || ((row.retainer_rev_paid === 'Yes' || row.retainer_rev_paid === 'Money Mapping') ? row.retainer_rev_paid : null)} />
             <Detail l="Revenue share amount" v={money(row.member_share)} />
-            <Detail l="Rev share confirmation email" v={fmtDate(row.retainer_rev_email_sent_at) || (row.retainer_rev_email_sent ? 'Sent' : null)} showEmpty />
+            <Detail l="Rev share confirmation email" v={formatDate(row.retainer_rev_email_sent_at) || (row.retainer_rev_email_sent ? 'Sent' : null)} showEmpty />
             <Detail l="Tracy intro sent" v={row.tracy_intro_email_sent ? 'Sent' : null} />
           </>
         ) : <Pending />}
@@ -270,7 +270,7 @@ function ExpandedRow({ row, onRefresh }) {
         {row.implementation_charge_status ? (
           <>
             <Detail l="Charge status" v={paymentStatusLabel(row.implementation_charge_status)} />
-            <Detail l="Charged" v={fmtDate(row.implementation_charge_date)} />
+            <Detail l="Charged" v={formatDate(row.implementation_charge_date)} />
             <Detail l="Receipt #" v={row.implementation_receipt_number} mono />
             <Detail l="Receipt status" v={row.implementation_receipt_status} />
           </>
@@ -281,20 +281,20 @@ function ExpandedRow({ row, onRefresh }) {
         {row.implementation_rev_share ? (
           <>
             <Detail l="Revenue decision" v={implRevDecision} showEmpty />
-            <Detail l="Revenue share completed" v={fmtDate(row.implementation_rev_completed_at) || ((row.implementation_rev_paid === 'Yes' || row.implementation_rev_paid === 'Money Mapping') ? row.implementation_rev_paid : null)} />
-            <Detail l="Rev share confirmation email" v={fmtDate(row.implementation_rev_email_sent_at) || (row.implementation_rev_email_sent ? 'Sent' : null)} showEmpty />
+            <Detail l="Revenue share completed" v={formatDate(row.implementation_rev_completed_at) || ((row.implementation_rev_paid === 'Yes' || row.implementation_rev_paid === 'Money Mapping') ? row.implementation_rev_paid : null)} />
+            <Detail l="Rev share confirmation email" v={formatDate(row.implementation_rev_email_sent_at) || (row.implementation_rev_email_sent ? 'Sent' : null)} showEmpty />
           </>
         ) : <Pending />}
       </StepCard>
 
       <StepCard title="Wrap-up Announcement" status={sWrap}>
         {row.implementation_announcement_email_sent
-          ? <Detail l="Announcement email" v={fmtDate(row.implementation_announcement_email_sent_at) || 'Sent'} />
+          ? <Detail l="Announcement email" v={formatDate(row.implementation_announcement_email_sent_at) || 'Sent'} />
           : <Pending />}
       </StepCard>
 
       <div style={{ marginTop: '10px', fontSize: '10px', color: 'var(--vfo-faint)' }}>
-        Plan #{row.id} · Created {fmtDate(row.created_at)}
+        Plan #{row.id} · Created {formatDate(row.created_at)}
       </div>
     </div>
   )

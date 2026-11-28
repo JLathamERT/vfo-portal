@@ -6,6 +6,7 @@ import { SpecialistNameLink } from '../shared/personLinks'
 import { emptyCardStyle, errorStyle, innerTotalsStyle, refreshBtnStyle, toolbarStyle } from './accountingTable'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 import ExpandChevron from '../shared/ExpandChevron'
+import { formatDate } from '../../lib/dates'
 
 // Accounting → VFO Specialist Recurring Revenue Payments. Lists every recurring
 // plan (setup_pending / active / canceled) built from the Payment Input form's
@@ -21,10 +22,6 @@ function ordinal(n) {
 
 function moPerMonth(n) {
   return `${money(n)} / mo`
-}
-
-function fmtDate(d) {
-  return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
 }
 
 const PLAN_STATUS = {
@@ -117,9 +114,9 @@ function PlanRow({ plan, onChanged }) {
           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)' }}><SpecialistNameLink expertId={plan.expert_id}>{plan.specialist_name || '—'}</SpecialistNameLink>{plan.sandbox ? ' (sandbox)' : ''}</div>
           <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '2px' }}>
             {lines.length} recipient{lines.length === 1 ? '' : 's'} · Bills on the {ordinal(plan.charge_day)}
-            {plan.status === 'active' && plan.next_billing_date ? ` · Next ${fmtDate(plan.next_billing_date)}` : ''}
-            {plan.activated_at ? ` · Activated ${fmtDate(plan.activated_at)}` : ''}
-            {plan.canceled_at ? ` · Canceled ${fmtDate(plan.canceled_at)}` : ''}
+            {plan.status === 'active' && plan.next_billing_date ? ` · Next ${formatDate(plan.next_billing_date, '—')}` : ''}
+            {plan.activated_at ? ` · Activated ${formatDate(plan.activated_at, '—')}` : ''}
+            {plan.canceled_at ? ` · Canceled ${formatDate(plan.canceled_at, '—')}` : ''}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>

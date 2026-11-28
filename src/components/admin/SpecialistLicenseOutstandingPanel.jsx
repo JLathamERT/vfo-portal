@@ -2,11 +2,12 @@ import { useState, useEffect, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { ordinal } from '../../lib/ordinal'
 import { money } from './specialistRevenueShared'
-import { cardStyle, Detail, SectionHeader, EmptyLine, OutstandingCard, fmtDate, shortDate } from './OutstandingLinksPanel'
+import { cardStyle, Detail, SectionHeader, EmptyLine, OutstandingCard } from './OutstandingLinksPanel'
 import { OutstandingLinksSkeleton } from '../shared/Skeleton'
 import { OutstandingEmpty } from './OutstandingLinksPanel'
 import { errorStyle, refreshBtnStyle } from './accountingTable'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
+import { formatDate } from '../../lib/dates'
 
 // Accounting > Specialists > VFO Specialist License Fees > Outstanding Payment Links.
 // The same surface the SpecRev pill row carries, for license setup links: every
@@ -28,7 +29,7 @@ const PENDING_STATUS = {
 function LicenseLinkCard({ item }) {
   const badge = PENDING_STATUS[item.state] || { label: paymentStatusLabel(item.state) || '—', color: '#6b7280' }
   const parts = []
-  parts.push(item.link_sent_at ? `Link sent ${shortDate(item.link_sent_at)}` : 'Link not sent yet')
+  parts.push(item.link_sent_at ? `Link sent ${formatDate(item.link_sent_at)}` : 'Link not sent yet')
   if (item.charge_day) parts.push(`charge day ${ordinal(item.charge_day)}`)
   return (
     <OutstandingCard
@@ -41,7 +42,7 @@ function LicenseLinkCard({ item }) {
     >
       <Detail label="Monthly amount" value={money(99)} />
       <Detail label="Charge day" value={item.charge_day ? `${ordinal(item.charge_day)} of the month` : 'not set'} />
-      <Detail label="Link sent" value={fmtDate(item.link_sent_at) || 'not yet'} />
+      <Detail label="Link sent" value={formatDate(item.link_sent_at) || 'not yet'} />
       <Detail label="Status" value={badge.label} />
       <Detail label="Payment method" value={item.method === 'ach' ? 'Bank transfer (ACH)' : (item.method || 'not saved yet')} />
     </OutstandingCard>

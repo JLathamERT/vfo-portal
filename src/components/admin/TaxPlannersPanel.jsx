@@ -584,15 +584,8 @@ function fmtMoney(n) {
   const s = Math.abs(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return num < 0 ? `−$${s}` : `$${s}`
 }
-function fmtDate(d) {
-  if (!d) return null
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d))
-  const dt = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(d)
-  if (Number.isNaN(dt.getTime())) return null
-  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
 function HalfCell({ amount, paid, completedAt, receipt }) {
-  const date = fmtDate(completedAt)
+  const date = formatDate(completedAt)
   return (
     <div>
       <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{fmtMoney(amount)}</div>

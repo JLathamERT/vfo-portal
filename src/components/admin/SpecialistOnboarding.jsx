@@ -75,17 +75,6 @@ const SIF_TAX_FIELDS = [
   ['tax_precautions', 'What precautions are in place to prevent or minimize the risks?'],
 ]
 
-// Plain DATE strings are split, never fed to new Date() — that reads them as UTC
-// midnight and renders the previous day west of Greenwich. timestamptz is local.
-const fmtMMDD = (v) => {
-  if (!v) return ''
-  const s = String(v)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const p = s.split('-'); return `${p[1]}/${p[2]}` }
-  const d = new Date(s)
-  if (isNaN(d.getTime())) return ''
-  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
-}
-
 const TZ_CODES = ['ET', 'CT', 'MT', 'PT', 'AKT', 'HT']
 // Meeting slots are only ever stored as a space-joined "YYYY-MM-DD HH:MM TZ"
 // string (Stage 1: the decision progress notes; Stage 2: "Next meeting: <slot>"
@@ -490,7 +479,7 @@ function OnboardingDetail({ id, onBack }) {
             ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>Bank payment clearing</span>
             : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: done ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: done ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: done ? 'var(--vfo-success-text)' : 'var(--vfo-muted)' }}>{done ? 'Done' : 'Not completed'}</span>}
         </span>
-        {done && date && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(date)}</span>}
+        {done && date && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(date)}</span>}
       </div>
     )
   }
@@ -525,7 +514,7 @@ function OnboardingDetail({ id, onBack }) {
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center' }}>
           <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.3)', color: 'var(--vfo-success-text)' }}>Done</span>
         </span>
-        <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(at)}</span>
+        <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(at)}</span>
       </div>
     )
 
@@ -538,7 +527,7 @@ function OnboardingDetail({ id, onBack }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', marginLeft: '14px' }}>
               <input type="checkbox" checked={!!ackAt} disabled={ackBusy} onChange={e => toggleAck(e.target.checked)} style={{ margin: 0, flexShrink: 0, cursor: ackBusy ? 'default' : 'pointer' }} />
               <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>Reached out?</span>
-              {ackAt && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginLeft: 'auto', flexShrink: 0 }}>{fmtMMDD(ackAt)}</span>}
+              {ackAt && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginLeft: 'auto', flexShrink: 0 }}>{formatDate(ackAt)}</span>}
             </div>
           </>
         )}
@@ -668,7 +657,7 @@ function OnboardingDetail({ id, onBack }) {
               <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
               <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
               {done && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>}
-              {done && date && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(date)}</span>}
+              {done && date && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(date)}</span>}
             </div>
           )
           const sifDone = !!ob.sif_submitted_at
@@ -690,7 +679,7 @@ function OnboardingDetail({ id, onBack }) {
                     {sifDone
                       ? <>
                           <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
-                          <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{fmtMMDD(ob.sif_submitted_at)}</span>
+                          <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(ob.sif_submitted_at)}</span>
                           <span style={{ color: 'var(--vfo-muted)', fontSize: '9px', transform: sifOpen ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
                         </>
                       : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', marginLeft: 'auto' }}>Awaiting</span>}
