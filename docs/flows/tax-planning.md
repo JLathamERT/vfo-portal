@@ -147,7 +147,7 @@ The specialist picker's permanent trailing option is **"Custom"** (module sentin
 
 ### Completion dates on the tax track are DISPLAY-ONLY (both programs)
 
-Every step's completion date in `TaxPrioritiesTab.jsx` is read-only: the date is whatever the save recorded and cannot be hand-edited. The mechanism is a **module-level `StepDate` component that SHADOWS the shared editable control** in `components/shared/StepDate` — the import was removed, and the local version renders a muted span, ignoring the `onChange`/`disabled` props the call sites still pass. Every other tracking track (MAP 1, onboarding, PFT, PIP, Regular) still imports and uses the **editable** shared control, so do not "fix" the tax call sites by re-adding the import. "Allocate Team Member / Tax Planner" now shows its completion date too.
+Every step's completion date in `TaxPrioritiesTab.jsx` is read-only: the date is whatever the save recorded and cannot be hand-edited. Since 2026-11-28 (Issue #661 part 5) every call site uses the **shared `StepDate`** (`components/shared/StepDate.jsx`), which is read-only text on every tracker: Jake made ALL tracker step dates read-only that day, so Tax is no longer special. The old module-level shadow component and the `onChange` / `disabled` props it ignored are gone. Do not make step dates editable again without a fresh decision. "Allocate Team Member / Tax Planner" now shows its completion date too.
 
 **Which column feeds that cell (2026-08-17).** Ordinary steps read `client_tax_progress.completed_date`. The three steps with **bespoke renderers** have no progress row and must name their stamp explicitly — and each had been reading a field that is not a completion date at all (gotcha **#406**):
 

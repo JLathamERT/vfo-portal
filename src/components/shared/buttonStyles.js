@@ -20,6 +20,16 @@ export const BTN_SMALL = { padding: '4px 11px', fontSize: '11.5px', borderRadius
 // The small button on a step row of a tracker (Edit, Re-send agreement).
 export const btnStep = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', lineHeight: 1.2, fontFamily: 'Inter, sans-serif', cursor: 'pointer', whiteSpace: 'nowrap', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
 
+// The buttons inside a tracker step (HOUSE_STYLE §6): each choice in the row is
+// stepChoice, green outline on white; the stop / decline / refund choice is
+// stepStop, red outline; Send inside a date form or composer is stepSend, solid
+// green; Cancel / Reschedule / Edit are btnStep. Green, not the blue of the rest
+// of the portal, so a step's actions stand out (Jake 2026-11-28, after trying blue
+// and white). Never the old tinted green: coloured text on a tint is a tag.
+export const stepChoice = { ...btnOutline, ...BTN_SMALL, border: '1px solid rgba(27,146,84,0.55)', color: 'var(--vfo-success-text)' }
+export const stepStop = { ...btnDanger, ...BTN_SMALL }
+export const stepSend = { ...btnPrimary, ...BTN_SMALL, background: '#1b9254', border: '1px solid #1b9254', boxShadow: '0 2px 8px rgba(27,146,84,0.25)' }
+
 // Any of them, greyed while it cannot be pressed.
 export function btnState(style, disabled) {
   return disabled ? { ...style, opacity: 0.55, cursor: 'not-allowed', boxShadow: 'none' } : style

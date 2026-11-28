@@ -539,6 +539,10 @@ Plan of record: [../plans/portal-licensing/README.md](../plans/portal-licensing/
 
 ---
 
+## The tracker: phase Notes and step dates *(2026-11-28, Issue #661 part 5)*
+
+Each phase (`StageBlock`, now the shared `PhaseCard`) shows "In progress · n/m" — the manual `Row`s it draws, or its automated `AutoRow`s when it has no manual ones; a locked row does not count — and a **Notes** button: a team-only thread per phase in `onboarding_phase_notes` (`onboarding_notes_*`, `useOnboardingNotes`; [../tables/pipeline.md](../tables/pipeline.md)). Every step date is read-only text (the shared `StepDate`; Jake 2026-11-28, all trackers): the website does not call `save_onboarding_step_date`, which stays in the backend unchanged.
+
 ## Backend files
 
 `actions/advisor/` and `actions/accountant/` (identical sets): **new** `meeting-reminder.ts`,

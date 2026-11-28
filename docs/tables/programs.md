@@ -261,7 +261,8 @@ Free-text per-program notes attached to a member.
 | `created_by` | text | not null |
 | `created_at` / `updated_at` | timestamptz | default `now()` |
 | `visibility` | text | not null, default `'internal'`; `'internal'` or `'shared'` (shared rows are shown to the member, #214) |
+| `phase_name` | text | nullable (2026-11-28, migration `20261128120000`). NULL = a note on the whole program (every note before then). Set = a note written from that phase's **Notes** button on the 90 Day Plan training track (admin `MSMTracking` `TrainingTrack`); the member's training view shows the shared ones on that phase, read-only. |
 
-Written on a program's **Notes** tab in the admin member profile (the last sub-tab since 2026-11-27, with its count; it was the program's first tab, *Home*). Read back on the admin and member MSM Home (*Program Notes*, every program) and on a coaching program's member *Home* (*Notes from your team*, shared only).
+Written on a program's **Notes** tab (which lists phase notes too, each with its phase name) in the admin member profile (the last sub-tab since 2026-11-27, with its count; it was the program's first tab, *Home*). Read back on the admin and member MSM Home (*Program Notes*, every program) and on a coaching program's member *Home* (*Notes from your team*, shared only).
 
 **Touched by:** `load_member_program_notes`, `add_member_program_note`, `update_member_program_note`, `delete_member_program_note`.

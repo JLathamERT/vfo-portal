@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { callApi, getSession } from '../../lib/api'
 import { SpecialistOnboardingListSkeleton, SpecialistOnboardingDetailSkeleton } from '../shared/Skeleton'
-import { TrackHero, PhaseBadge, ListHeader, noMultiClickSelect } from '../shared/TrackKit'
+import { TrackHero, ListHeader, PhaseCard, StepRow, SubStepRow, AutoSteps, StepAnswer, answerBox } from '../shared/TrackKit'
+import Tag from '../shared/Tag'
+import StepDate from '../shared/StepDate'
+import { PhaseNotesButton, RecordPhaseNotesPanel } from '../shared/PhaseNotes'
+import { useOnboardingNotes } from '../shared/OnboardingNotes'
+import { stepChoice, stepStop, stepSend, btnStep, btnState } from '../shared/buttonStyles'
 import StepEmailsChip from '../shared/StepEmailsChip'
 import { formatDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
@@ -239,6 +244,7 @@ function OnboardingDetail({ id, onBack }) {
   const [fqPending, setFqPending] = useState(null)
   const [togglingStatus, setTogglingStatus] = useState(false)
   const [expanded, setExpanded] = useState({})
+  const phaseNotes = useOnboardingNotes('SPECIALIST', id)
   const session = getSession()
   const navigate = useNavigate()
 
@@ -413,52 +419,31 @@ function OnboardingDetail({ id, onBack }) {
     return ctx
   })()
  
-  function StageBadge({ stage }) {
-    const state = getStageState(stage)
-    if (state === 'done') return <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
-    if (state === 'active') return <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress</span>
-    return <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
-  }
- 
+  // One stage: the shared PhaseCard with its Notes (onboarding_phase_notes). The
+  // Notes thread's open state lives in `expanded` because this component is
+  // re-created on every render of the page.
   function StageHeader({ stage, title }) {
     const state = getStageState(stage)
-    const borderColor = state === 'done' ? 'rgba(27,146,84,0.3)' : state === 'active' ? 'rgba(0,149,255,0.4)' : 'var(--vfo-border)'
-    const titleColor = state === 'active' ? 'var(--vfo-primary)' : 'var(--vfo-heading)'
-    const isExpanded = expanded[stage]
     // the numbered badge replaces the "Stage N — " text prefix
     const displayTitle = title.replace(/^Stage \d+ — /, '')
-
+    const notes = phaseNotes(displayTitle)
+    const notesKey = `notes_${stage}`
     return (
-      <div style={{ background: 'var(--vfo-card)', border: `1px solid ${borderColor}`, borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden' }}>
-        <div onClick={() => setExpanded(p => ({ ...p, [stage]: !p[stage] }))} onMouseDown={noMultiClickSelect} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-            <PhaseBadge number={stage} state={state} />
-            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{displayTitle}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <StageBadge stage={stage} />
-            <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-          </div>
-        </div>
-        {isExpanded && ob.current_stage >= stage && (
-          <div style={{ borderTop: `1px solid ${borderColor}`, padding: '12px 18px' }}>
-            {stage === 1 && <Stage1Content />}
-            {stage === 2 && <Stage2Content />}
-            {stage === 3 && <Stage3Content />}
-            {stage === 4 && <Stage4Content />}
-            {stage === 5 && <Stage5Content />}
-          </div>
-        )}
-        {isExpanded && ob.current_stage < stage && (
-          <div style={{ borderTop: `1px solid ${borderColor}`, padding: '12px 18px' }}>
-            {stage === 1 && <Stage1Content />}
-            {stage === 2 && <Stage2Content />}
-            {stage === 3 && <Stage3Content />}
-            {stage === 4 && <Stage4Content />}
-            {stage === 5 && <Stage5Content />}
-          </div>
-        )}
-      </div>
+      <PhaseCard
+        number={stage}
+        state={state}
+        name={displayTitle}
+        open={!!expanded[stage]}
+        onToggle={() => setExpanded(p => ({ ...p, [stage]: !p[stage] }))}
+        notes={<PhaseNotesButton count={notes.count} isOpen={!!expanded[notesKey]} onClick={() => setExpanded(p => ({ ...p, [notesKey]: !p[notesKey] }))} />}
+        notesPanel={expanded[notesKey] && <RecordPhaseNotesPanel notes={notes.notes} onNotesChange={notes.onNotesChange} api={notes.api} />}
+      >
+        {stage === 1 && <Stage1Content />}
+        {stage === 2 && <Stage2Content />}
+        {stage === 3 && <Stage3Content />}
+        {stage === 4 && <Stage4Content />}
+        {stage === 5 && <Stage5Content />}
+      </PhaseCard>
     )
   }
  
@@ -470,17 +455,10 @@ function OnboardingDetail({ id, onBack }) {
   // "Not completed".
   function AutoStep({ done, label, detail, date, pending = false }) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : pending ? '#e06717' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : pending ? '#e06717' : 'var(--vfo-border-mid)'}` }} />
-        <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
-        <span style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center' }}>
-          {detail && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{detail}</span>}
-          {!done && pending
-            ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>Bank payment clearing</span>
-            : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: done ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: done ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: done ? 'var(--vfo-success-text)' : 'var(--vfo-muted)' }}>{done ? 'Done' : 'Not completed'}</span>}
-        </span>
-        {done && date && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(date)}</span>}
-      </div>
+      <SubStepRow done={done || pending} dotColor={!done && pending ? '#e06717' : undefined} name={label} date={<StepDate value={done ? date : ''} readOnly />}>
+        {detail && <StepAnswer>{detail}</StepAnswer>}
+        {!done && pending && <Tag color="#e06717">Bank payment clearing</Tag>}
+      </SubStepRow>
     )
   }
 
@@ -507,16 +485,7 @@ function OnboardingDetail({ id, onBack }) {
       finally { setAckBusy(false) }
     }
 
-    const doneRow = (label, at) => (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#1b9254', flexShrink: 0, border: '1px solid #1b9254' }} />
-        <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
-        <span style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center' }}>
-          <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', border: '1px solid rgba(27,146,84,0.3)', color: 'var(--vfo-success-text)' }}>Done</span>
-        </span>
-        <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(at)}</span>
-      </div>
-    )
+    const doneRow = (label, at) => <SubStepRow done name={label} date={<StepDate value={at} readOnly />} />
 
     return (
       <>
@@ -535,36 +504,41 @@ function OnboardingDetail({ id, onBack }) {
     )
   }
 
-  function CheckItem({ done, label, onClick, toggle }) {
+  // A checklist step (HOUSE_STYLE §6: a dot, never a square checkbox). "Mark done"
+  // records it; a `toggle` step can be undone. `date` = when it was recorded.
+  function CheckItem({ done, label, onClick, toggle, date }) {
     const clickable = !isStopped && (toggle || !done)
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-        <div onClick={() => clickable && onClick?.()} style={{ width: '16px', height: '16px', borderRadius: '4px', border: `1.5px solid ${done ? '#1b9254' : 'var(--vfo-border-strong)'}`, background: done ? '#1b9254' : 'transparent', cursor: clickable ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#fff', flexShrink: 0 }}>{done ? '✓' : ''}</div>
-        <span style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', textDecoration: done ? 'line-through' : 'none' }}>{label}</span>
-      </div>
+      <StepRow done={done} name={label} date={<StepDate value={done ? date : ''} readOnly />}>
+        {clickable && (done
+          ? <button onClick={() => onClick?.()} style={btnStep}>Undo</button>
+          : <button onClick={() => onClick?.()} style={stepChoice}>Mark done</button>)}
+      </StepRow>
     )
   }
 
-  // Stage-5 Showroom task: a toggleable checkbox + a link that opens this
+  // Stage-5 Showroom task: Mark done / Undo + a link that opens this
   // specialist's record in Search Specialists so the admin can enter the item.
   function ShowroomCheck({ taskKey, label }) {
     const done = !!getTaskStatus(5, taskKey)
+    const toggle = async () => { if (isStopped) return; await saveProgress(5, taskKey, done ? 'unchecked' : 'Completed'); await loadDetail() }
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-        <div onClick={async () => { if (isStopped) return; await saveProgress(5, taskKey, done ? 'unchecked' : 'Completed'); await loadDetail() }} style={{ width: '16px', height: '16px', borderRadius: '4px', border: `1.5px solid ${done ? '#1b9254' : 'var(--vfo-border-strong)'}`, background: done ? '#1b9254' : 'transparent', cursor: isStopped ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#fff', flexShrink: 0 }}>{done ? '✓' : ''}</div>
-        <span style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', textDecoration: done ? 'line-through' : 'none' }}>{label}</span>
-        {ob.expert_id && <button onClick={() => navigate(`/admin?tab=specialists&section=specialist_search&expert=${ob.expert_id}&_n=${Date.now()}`)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#0095ff', fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', padding: 0, whiteSpace: 'nowrap' }}>Open specialist →</button>}
-      </div>
+      <StepRow done={done} name={label} date={<StepDate value={done ? progress[`5-${taskKey}`]?.completed_at : ''} readOnly />}>
+        {ob.expert_id && <button onClick={() => navigate(`/admin?tab=specialists&section=specialist_search&expert=${ob.expert_id}&_n=${Date.now()}`)} style={{ background: 'none', border: 'none', color: '#0095ff', fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', padding: 0, whiteSpace: 'nowrap' }}>Open specialist →</button>}
+        {!isStopped && (done
+          ? <button onClick={toggle} style={btnStep}>Undo</button>
+          : <button onClick={toggle} style={stepChoice}>Mark done</button>)}
+      </StepRow>
     )
   }
 
 
-  function ActionButton({ label, onClick, color = '#0095ff', disabled = false }) {
-    const bg = color === '#1b9254' ? 'rgba(27,146,84,0.15)' : color === '#e74c3c' ? 'rgba(231,76,60,0.15)' : color === '#e06717' ? 'rgba(251,137,90,0.15)' : 'rgba(0,149,255,0.15)'
-    const border = color === '#1b9254' ? 'rgba(27,146,84,0.4)' : color === '#e74c3c' ? 'rgba(231,76,60,0.4)' : color === '#e06717' ? 'rgba(251,137,90,0.4)' : 'rgba(0,149,255,0.4)'
-    return (
-      <button onClick={onClick} disabled={disabled || isStopped} style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '11px', cursor: disabled || isStopped ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif', background: bg, border: `1px solid ${border}`, color, whiteSpace: 'nowrap' }}>{label}</button>
-    )
+  // The step buttons (HOUSE_STYLE §6): a choice is white outline, the stop /
+  // decline / failed one red outline, Send inside a form blue (`kind="send"`),
+  // Cancel the small grey step button. `color` keeps its old meaning: red = stop.
+  function ActionButton({ label, onClick, color = '#0095ff', disabled = false, kind }) {
+    const style = kind === 'send' ? stepSend : label === 'Cancel' ? btnStep : color === '#e74c3c' ? stepStop : stepChoice
+    return <button onClick={onClick} disabled={disabled || isStopped} style={btnState(style, disabled || isStopped)}>{label}</button>
   }
  
   function SectionLabel({ children }) {
@@ -593,23 +567,27 @@ function OnboardingDetail({ id, onBack }) {
           ? 'Declined - email sent'
           : ''
 
-    const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
-    const redBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600 }
-    const cancelBtn = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
+    const greenBtn = stepChoice
+    const redBtn = stepStop
+    const cancelBtn = btnStep
 
     return (
       <>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-          <span style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>Post-meeting decision<span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="SPECIALIST_ONBOARDING" title="Post-meeting decision" context={emailCtx} templates={[
+        <StepRow
+          done={isDone}
+          dotColor={statusColor}
+          name="Post-meeting decision"
+          emails={<StepEmailsChip pipeline="SPECIALIST_ONBOARDING" title="Post-meeting decision" context={emailCtx} templates={[
             { name: 'SPECIALIST_yes', when: 'If Yes — continue email with agreement + presentation attachments' },
             { name: 'SPECIALIST_no', when: 'If No' },
             { name: 'SPECIALIST_sif_reminder', when: 'Automatic reminder if the intake form is not submitted (2 business days)' },
-          ]} /></span></span>
+          ]} />}
+          date={<StepDate value={isDone ? progress['1-decision']?.completed_at : ''} readOnly />}
+        >
           {isDone && !showDate
-            ? <span style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{statusLabel}</span>
-                {canReschedule && <button onClick={() => { const s = parseSlotNotes(progress['1-decision']?.notes); setMeetingDate(s.date); setMeetingTime(s.time); setMeetingTz(s.tz); setResched(true); setShowDate(true) }} disabled={!!pending} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600 }}>Reschedule</button>}
+            ? <span className="vfo-stepchips" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <StepAnswer color={readable(statusColor)}>{statusLabel}</StepAnswer>
+                {canReschedule && <button onClick={() => { const s = parseSlotNotes(progress['1-decision']?.notes); setMeetingDate(s.date); setMeetingTime(s.time); setMeetingTz(s.tz); setResched(true); setShowDate(true) }} disabled={!!pending} style={btnStep}>Reschedule</button>}
               </span>
             : showDate
               ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -639,7 +617,7 @@ function OnboardingDetail({ id, onBack }) {
                     saveProgress(1, 'decision', 'continue', slotString(meetingDate, meetingTime, meetingTz))
                     saveProgress(1, 'email_sent', 'completed')
                     advanceStage()
-                  }} disabled={!meetingDate || !!pending} style={{ ...greenBtn, opacity: (!meetingDate || pending) ? 0.6 : 1, cursor: (!meetingDate || pending) ? 'not-allowed' : 'pointer' }}>{pending === 'continue' ? 'Sending…' : resched ? 'Re-send' : 'Send'}</button>
+                  }} disabled={!meetingDate || !!pending} style={btnState(stepSend, !meetingDate || !!pending)}>{pending === 'continue' ? 'Sending…' : resched ? 'Re-send' : 'Send'}</button>
                   <button onClick={() => { if (pending) return; setShowDate(false); setResched(false) }} disabled={!!pending} style={cancelBtn}>Cancel</button>
                 </div>
               : <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -648,42 +626,28 @@ function OnboardingDetail({ id, onBack }) {
                   <button onClick={async () => { if (pending) return; setPending('stop'); await sendPrelimEmail('stop'); await saveProgress(1, 'decision', 'stop'); await stopOnboarding() }} disabled={isStopped || !!pending} style={{ ...redBtn, opacity: pending ? 0.6 : 1, cursor: pending ? 'not-allowed' : 'pointer' }}>{pending === 'stop' ? 'Sending…' : 'Stop - Send email'}</button>
                 </div>
           }
-        </div>
+        </StepRow>
 
         {decision && decision !== 'stop' && (() => {
           const emailSent = !!getTaskStatus(1, 'email_sent')
-          const autoStep = (label, done, date) => (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-              <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
-              {done && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>}
-              {done && date && <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(date)}</span>}
-            </div>
-          )
+          const autoStep = (label, done, date) => <SubStepRow done={done} name={label} date={<StepDate value={done ? date : ''} readOnly />} />
           const sifDone = !!ob.sif_submitted_at
           const sifData = ob.sif_data || {}
           const aipcDone = emailSent && sifDone
           return (
-            <div style={{ padding: '7px 0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: aipcDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${aipcDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1, fontWeight: '600' }}>Automated steps</span>
-              </div>
-              <div style={{ marginLeft: '18px', padding: '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
+            <AutoSteps done={aipcDone}>
                 {autoStep('Email sent to potential VFO specialist (SIF form, rev share examples, template agreement attached)', emailSent, ob.sif_email_sent_at)}
                 <StallRows stall="sif" />
                 <div>
-                  <div onClick={() => sifDone && setSifOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', cursor: sifDone ? 'pointer' : 'default' }}>
-                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: sifDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${sifDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                    <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>SIF form completed by potential specialist</span>
-                    {sifDone
-                      ? <>
-                          <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
-                          <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(ob.sif_submitted_at)}</span>
-                          <span style={{ color: 'var(--vfo-muted)', fontSize: '9px', transform: sifOpen ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-                        </>
-                      : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', marginLeft: 'auto' }}>Awaiting</span>}
-                  </div>
+                  <SubStepRow
+                    last
+                    done={sifDone}
+                    name="SIF form completed by potential specialist"
+                    onClick={sifDone ? () => setSifOpen(o => !o) : undefined}
+                    open={sifOpen}
+                    onToggle={sifDone ? () => setSifOpen(o => !o) : undefined}
+                    date={<StepDate value={sifDone ? ob.sif_submitted_at : ''} readOnly />}
+                  />
                   {sifDone && sifOpen && (
                     <div style={{ padding: '10px 12px 4px 16px' }}>
                       {SIF_FIELDS.map(([k, label]) => (
@@ -705,8 +669,7 @@ function OnboardingDetail({ id, onBack }) {
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
+            </AutoSteps>
           )
         })()}
       </>
@@ -763,7 +726,7 @@ function OnboardingDetail({ id, onBack }) {
               <option value="AKT">Alaska (AKT)</option>
               <option value="HT">Hawaii (HT)</option>
             </select>
-            <ActionButton label={sending === 'meeting' ? 'Sending…' : 'Confirm & Send email'} onClick={() => { if (!meetingDate) return; doMeeting(meetingDate, meetingTime, meetingTz) }} color="#1b9254" disabled={!meetingDate || !!sending || blockSend} />
+            <ActionButton kind="send" label={sending === 'meeting' ? 'Sending…' : 'Confirm & Send email'} onClick={() => { if (!meetingDate) return; doMeeting(meetingDate, meetingTime, meetingTz) }} color="#1b9254" disabled={!meetingDate || !!sending || blockSend} />
             <ActionButton label="Cancel" onClick={() => setShowDateInput(false)} color="#0095ff" disabled={!!sending} />
           </div>
         )}
@@ -995,7 +958,7 @@ function OnboardingDetail({ id, onBack }) {
                         <option value="AKT">Alaska (AKT)</option>
                         <option value="HT">Hawaii (HT)</option>
                       </select>
-                      <ActionButton label={rsSending ? 'Sending…' : 'Re-send email'} color="#1b9254" disabled={!rsDate || rsSending} onClick={async () => {
+                      <ActionButton kind="send" label={rsSending ? 'Sending…' : 'Re-send email'} color="#1b9254" disabled={!rsDate || rsSending} onClick={async () => {
                         if (!rsDate || rsSending) return
                         setRsSending(true)
                         try { await resendMeeting(meeting, rsDate, rsTime, rsTz) } finally { setRsSending(false); setResendId(null) }
@@ -1019,7 +982,7 @@ function OnboardingDetail({ id, onBack }) {
                 { name: 'SPECIALIST_choice_reminder', when: 'Automatic reminder if Core/Max/Questions not chosen (2 business days)' },
               ]} /></span></SectionLabel>
             {remainingItems.map(({ item, index }) => (
-              <CheckItem key={index} done={!!getTaskStatus(2, `checklist_${index}`)} label={item} toggle onClick={() => toggleChecklist(index)} />
+              <CheckItem key={index} done={!!getTaskStatus(2, `checklist_${index}`)} date={progress[`2-checklist_${index}`]?.completed_at} label={item} toggle onClick={() => toggleChecklist(index)} />
             ))}
 
             {!isStopped && <Stage2MeetingButtons onLogMeeting={logMeeting} onLogStop={logStop} blockSend={false} allComplete={allComplete} />}
@@ -1095,7 +1058,7 @@ function OnboardingDetail({ id, onBack }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0' }}>
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: sent ? '#e74c3c' : 'transparent', flexShrink: 0, border: `1.5px solid ${sent ? '#e74c3c' : 'var(--vfo-border-mid)'}` }} />
                     <span style={{ fontSize: '13px', color: sent ? '#e74c3c' : 'var(--vfo-muted)', flex: 1 }}>Decline email drafted to specialist — Tracy Miller will follow up</span>
-                    <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: sent ? 'rgba(231,76,60,0.15)' : 'var(--vfo-tint)', color: sent ? '#e74c3c' : 'var(--vfo-muted)', border: `1px solid ${sent ? 'rgba(231,76,60,0.3)' : 'var(--vfo-border)'}` }}>{sent ? 'Sent — process stopped' : 'Sending…'}</span>
+                    <span style={{ ...answerBox(sent ? '#e74c3c' : 'var(--vfo-muted)') }}>{sent ? 'Sent — process stopped' : 'Sending…'}</span>
                   </div>
                 </>
               )
@@ -1152,7 +1115,7 @@ function OnboardingDetail({ id, onBack }) {
               {revealed ? (
                 <span style={{ fontSize: '12px', color, fontWeight: 600 }}>{value === 'Approved' ? '✓ ' : value === 'Denied' ? '✗ ' : '⚠ '}{value}</span>
               ) : voted ? (
-                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.12)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.25)' }}>Voted — awaiting other executive</span>
+                <span style={{ ...answerBox('#0095ff') }}>Voted — awaiting other executive</span>
               ) : isMe ? (
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {options.map(opt => {
@@ -1161,7 +1124,7 @@ function OnboardingDetail({ id, onBack }) {
                   })}
                 </div>
               ) : (
-                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', color: 'var(--vfo-muted)', border: '1px solid var(--vfo-border-chip)' }}>Awaiting response</span>
+                <span style={{ ...answerBox() }}>Awaiting response</span>
               )}
             </div>
           )
@@ -1368,7 +1331,7 @@ function OnboardingDetail({ id, onBack }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
           <div style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, background: grey ? 'transparent' : c, border: `1px solid ${grey ? '#bac9e1' : c}` }} />
           <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
-          <span style={{ marginLeft: 'auto', fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: grey ? 'var(--vfo-tint)' : `${c}26`, border: grey ? '1px solid var(--vfo-border-chip)' : `1px solid ${c}44`, color: grey ? 'var(--vfo-muted)' : readable(c) }}>{pill}</span>
+          <span style={{ ...answerBox(grey ? 'var(--vfo-muted)' : readable(c)), marginLeft: 'auto' }}>{pill}</span>
         </div>
       )
     }
@@ -1424,8 +1387,8 @@ function OnboardingDetail({ id, onBack }) {
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
               {fqResolved ? (
                 ob.further_questions_resolution === 'Stop'
-                  ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(231,76,60,0.15)', color: '#e74c3c', fontWeight: 600 }}>Stopped</span>
-                  : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Questions answered</span>
+                  ? <span style={{ ...answerBox('#e74c3c') }}>Stopped</span>
+                  : <span style={{ ...answerBox('var(--vfo-success-text)') }}>Questions answered</span>
               ) : (
                 <>
                   <ActionButton label={fqPending === 'Proceed' ? 'Sending…' : 'Questions answered'} onClick={() => resolveQuestions('Proceed')} color="#1b9254" disabled={!!fqPending} />
@@ -1443,11 +1406,11 @@ function OnboardingDetail({ id, onBack }) {
           <span style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center' }}>
             {bgChosen ? (
               <>
-                <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600 }}>{ob.background_check_type}</span>
-                <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Done</span>
+                <span style={{ ...answerBox('#0095ff') }}>{ob.background_check_type}</span>
+                <span style={{ ...answerBox('var(--vfo-success-text)') }}>Done</span>
               </>
             ) : (
-              <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not completed</span>
+              <span style={{ ...answerBox() }}>Not completed</span>
             )}
           </span>
         </div>
@@ -1471,7 +1434,7 @@ function OnboardingDetail({ id, onBack }) {
           <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>Background check sent{ob.background_check_type ? ` to ${ob.background_check_type === 'Max' ? 'Scherzer International' : 'Checkr'}` : ''}</span>
           <span style={{ marginLeft: 'auto' }}>
             {bgInitiated
-              ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Done</span>
+              ? <span style={{ ...answerBox('var(--vfo-success-text)') }}>Done</span>
               : <ActionButton label="Mark as sent" onClick={() => saveProgress(3, 'bg_initiated', 'completed')} color="#1b9254" />}
           </span>
         </div>
@@ -1485,9 +1448,9 @@ function OnboardingDetail({ id, onBack }) {
                 <ActionButton label="Failed" onClick={() => { saveProgress(3, 'bg_results_received', 'failed'); stopOnboarding() }} color="#e74c3c" />
               </>
             ) : bgDone ? (
-              <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Passed</span>
+              <span style={{ ...answerBox('var(--vfo-success-text)') }}>Passed</span>
             ) : (
-              <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(231,76,60,0.15)', color: '#e74c3c', fontWeight: 600 }}>Failed</span>
+              <span style={{ ...answerBox('#e74c3c') }}>Failed</span>
             )}
           </span>
         </div>
@@ -1515,7 +1478,7 @@ function OnboardingDetail({ id, onBack }) {
             <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>Answer the specialist's checklist questions</span>
             <span style={{ marginLeft: 'auto' }}>
               {helpResolved
-                ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Help received</span>
+                ? <span style={{ ...answerBox('var(--vfo-success-text)') }}>Help received</span>
                 : <ActionButton label="Help received" onClick={() => saveProgress(3, 'ddc_help_resolved', 'completed')} color="#1b9254" />}
             </span>
           </div>
@@ -1577,14 +1540,14 @@ function OnboardingDetail({ id, onBack }) {
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
               <div style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, background: '#1b9254', border: '1px solid #1b9254' }} />
               <span style={{ fontSize: '12px', color: 'var(--vfo-ink)', fontWeight: 600 }}>Due Diligence Checklist approved</span>
-              <span style={{ marginLeft: 'auto', fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Approved</span>
+              <span style={{ ...answerBox('var(--vfo-success-text)'), marginLeft: 'auto' }}>Approved</span>
             </div>
           ) : (
             <div key={i} style={{ padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, background: '#e74c3c', border: '1px solid #e74c3c' }} />
                 <span style={{ fontSize: '12px', color: '#e74c3c', fontWeight: 600 }}>Due Diligence Checklist denied</span>
-                <span style={{ marginLeft: 'auto', fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(231,76,60,0.15)', color: '#e74c3c', fontWeight: 600 }}>Denied</span>
+                <span style={{ ...answerBox('#e74c3c'), marginLeft: 'auto' }}>Denied</span>
               </div>
               {e.reason && <div style={{ fontSize: '11px', color: 'var(--vfo-muted)', whiteSpace: 'pre-wrap', lineHeight: 1.5, margin: '4px 0 0 14px', padding: '6px 10px', background: 'var(--vfo-tint)', borderRadius: '6px', border: '1px solid var(--vfo-border-chip)' }}>{e.reason}</div>}
             </div>
@@ -1604,7 +1567,7 @@ function OnboardingDetail({ id, onBack }) {
                 <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '8px' }}>Reason — included in the email the specialist receives</div>
                 <textarea value={editsReason} onChange={e => setEditsReason(e.target.value)} placeholder="Explain what needs to be changed or added…" rows={4} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical', boxSizing: 'border-box' }} />
                 <div style={{ marginTop: '8px' }}>
-                  <ActionButton label={ddcBusy === 'edits' ? 'Sending…' : 'Send to specialist'} onClick={sendEdits} color="#e74c3c" disabled={!!ddcBusy || !editsReason.trim()} />
+                  <ActionButton kind="send" label={ddcBusy === 'edits' ? 'Sending…' : 'Send to specialist'} onClick={sendEdits} color="#e74c3c" disabled={!!ddcBusy || !editsReason.trim()} />
                 </div>
               </div>
             )}
@@ -1634,7 +1597,7 @@ function OnboardingDetail({ id, onBack }) {
                 <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginBottom: '8px' }}>Edit the revenue share proposal — submitting locks it in as final.</div>
                 <textarea value={revEditText} onChange={e => setRevEditText(e.target.value)} rows={5} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', resize: 'vertical', boxSizing: 'border-box' }} />
                 <div style={{ marginTop: '8px' }}>
-                  <ActionButton label={revBusy === 'edit' ? 'Saving…' : 'Submit & make final'} onClick={submitRevEdit} color="#1b9254" disabled={!!revBusy || !revEditText.trim()} />
+                  <ActionButton kind="send" label={revBusy === 'edit' ? 'Saving…' : 'Submit & make final'} onClick={submitRevEdit} color="#1b9254" disabled={!!revBusy || !revEditText.trim()} />
                 </div>
               </div>
             )}
@@ -1792,7 +1755,7 @@ function OnboardingDetail({ id, onBack }) {
         {open && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
             <input value={link} onChange={e => setLink(e.target.value)} placeholder="Paste the VFO Skool invite link..." style={{ ...inputStyle, flex: 1 }} />
-            <ActionButton label={sending ? 'Sending...' : 'Send'} onClick={send} color="#1b9254" disabled={!link.trim() || sending} />
+            <ActionButton kind="send" label={sending ? 'Sending...' : 'Send'} onClick={send} color="#1b9254" disabled={!link.trim() || sending} />
             <ActionButton label="Cancel" onClick={() => { setOpen(false); setLink('') }} color="#e74c3c" disabled={sending} />
           </div>
         )}
@@ -1806,8 +1769,8 @@ function OnboardingDetail({ id, onBack }) {
       <>
         <SectionLabel>VFO Skool</SectionLabel>
         <SkoolInviteStep />
-        <CheckItem done={!!getTaskStatus(5, 'intro_post')} label="Introduction post made" onClick={() => saveProgress(5, 'intro_post', 'Completed')} />
-        <CheckItem done={teamAdded} toggle label="Additional team members added (optional)" onClick={() => saveProgress(5, 'team_members_added', teamAdded ? 'unchecked' : 'Completed')} />
+        <CheckItem done={!!getTaskStatus(5, 'intro_post')} date={progress['5-intro_post']?.completed_at} label="Introduction post made" onClick={() => saveProgress(5, 'intro_post', 'Completed')} />
+        <CheckItem done={teamAdded} date={progress['5-team_members_added']?.completed_at} toggle label="Additional team members added (optional)" onClick={() => saveProgress(5, 'team_members_added', teamAdded ? 'unchecked' : 'Completed')} />
         {teamAdded && (
           <TeamMembersInput currentNotes={progress['5-team_members_added']?.notes || ''} onSave={(notes) => saveProgress(5, 'team_members_added', 'Completed', notes)} />
         )}

@@ -4,6 +4,7 @@ import { getSession } from '../../lib/api'
 import { VisibilityBadge, noteTint, SaveVisibilityButtons, MemberBadge, isMemberNote } from './NoteVisibility'
 import { formatDate } from '../../lib/dates'
 import { MentionTextarea, NoteText, mentionEmails, pickedFromNote } from './MentionTextarea'
+import { btnPrimary, btnSecondary, BTN_SMALL } from './buttonStyles'
 
 export function PhaseNotesButton({ count, isOpen, onClick }) {
   return (
@@ -200,6 +201,93 @@ function MemberSaveButton({ onSave, saving = false, disabled = false, label = 'S
         </button>
       </div>
       {hint && <span style={{ fontSize: '10.5px', color: 'var(--vfo-faint)' }}>{hint}</span>}
+    </div>
+  )
+}
+// Phase notes on a tracker with no client (the onboardings, the MSM training
+// track; Issue #661 part 5). Same look as PhaseNotesPanel, without @mentions.
+// `api` does the saving: { add(text, visibility), update(id, text, visibility),
+// remove(id) }, each resolving to the saved note (remove: nothing).
+// `withVisibility` (MSM) offers the Admin / Shared save buttons; without it a note
+// is simply saved (an onboarding is only ever seen by the team). `readOnly` shows
+// the thread with no add, edit or delete (the member's own MSM view).
+export function RecordPhaseNotesPanel({ notes, onNotesChange, api, withVisibility = false, readOnly = false }) {
+  const [newNote, setNewNote] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editText, setEditText] = useState('')
+  const [error, setError] = useState('')
+
+  async function addNote(visibility) {
+    if (!newNote.trim()) return
+    setSaving(true); setError('')
+    try {
+      const note = await api.add(newNote.trim(), visibility)
+      onNotesChange([note, ...(notes || [])])
+      setNewNote('')
+    } catch (err) { console.error(err); setError(err.message || 'Your note was not saved. Try again.') }
+    finally { setSaving(false) }
+  }
+  async function updateNote(id, visibility) {
+    if (!editText.trim()) return
+    setError('')
+    try {
+      const note = await api.update(id, editText.trim(), visibility)
+      onNotesChange((notes || []).map(n => n.id === id ? note : n))
+      setEditingId(null)
+    } catch (err) { console.error(err); setError(err.message || 'Your change was not saved. Try again.') }
+  }
+  async function deleteNote(id) {
+    setError('')
+    try {
+      await api.remove(id)
+      onNotesChange((notes || []).filter(n => n.id !== id))
+    } catch (err) { console.error(err); setError(err.message || 'The note was not deleted. Try again.') }
+  }
+
+  const saveBtn = (onSave, label, disabled) => (
+    <button onClick={() => onSave()} disabled={disabled} style={{ ...btnPrimary, ...BTN_SMALL, ...(disabled ? { opacity: 0.55, cursor: 'not-allowed', boxShadow: 'none' } : {}) }}>{label}</button>
+  )
+
+  return (
+    <div onClick={e => e.stopPropagation()} style={{ borderTop: '1px solid var(--vfo-border-chip)', padding: '12px 18px', background: 'var(--vfo-tint)' }}>
+      {!readOnly && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+          <textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..." rows={2} style={ADD_BOX} />
+          <div>
+            {withVisibility
+              ? <SaveVisibilityButtons onSave={addNote} saving={saving} disabled={!newNote.trim()} size="sm" />
+              : saveBtn(() => addNote(), saving ? 'Saving...' : 'Save note', saving || !newNote.trim())}
+          </div>
+        </div>
+      )}
+      {error && <div style={{ fontSize: '12px', color: '#e74c3c', marginBottom: '8px' }}>{error}</div>}
+      {(notes || []).length === 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', padding: '4px 0' }}>No notes yet</div>}
+      {(notes || []).map(note => (
+        <div key={note.id} style={{ padding: '8px 10px', marginBottom: '4px', borderRadius: '8px', border: '1px solid var(--vfo-border-soft)', background: withVisibility ? noteTint(note.visibility) : 'var(--vfo-card)' }}>
+          {editingId === note.id ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={2} style={EDIT_BOX} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
+                {withVisibility
+                  ? <SaveVisibilityButtons onSave={(v) => updateNote(note.id, v)} disabled={!editText.trim()} size="sm" hint={false} />
+                  : saveBtn(() => updateNote(note.id), 'Save', !editText.trim())}
+                <button onClick={() => setEditingId(null)} style={{ ...btnSecondary, ...BTN_SMALL }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: '13px', color: 'var(--vfo-ink)', lineHeight: '1.5', marginBottom: '4px', whiteSpace: 'pre-wrap' }}>{note.note_text}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by} · {formatDate(note.created_at)}</span>
+                {withVisibility && !readOnly && <VisibilityBadge visibility={note.visibility} />}
+                {!readOnly && <button onClick={() => { setEditingId(note.id); setEditText(note.note_text) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>}
+                {!readOnly && <button onClick={() => deleteNote(note.id)} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Delete</button>}
+              </div>
+            </>
+          )}
+        </div>
+      ))}
     </div>
   )
 }

@@ -2,7 +2,9 @@ import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel, useOpenLinkedNote } from '../../shared/PhaseNotes'
 import { PipMeetingDetailSkeleton, PipMeetingsListSkeleton } from '../../shared/Skeleton'
-import { TrackHero, PhaseBadge, ListHeader, noMultiClickSelect } from '../../shared/TrackKit'
+import { TrackHero, ListHeader, StepRow, SubStepRow, AutoSteps, PhaseCard, StepAnswer, TrackEmpty } from '../../shared/TrackKit'
+import Tag from '../../shared/Tag'
+import { stepChoice, stepSend, btnStep, btnState } from '../../shared/buttonStyles'
 import PipPurchaseDecisionForm from './PipPurchaseDecisionForm'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
@@ -221,31 +223,21 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
         const tasks = (phase.program_client_tasks || []).slice().sort((a, b) => (a.task_order ?? 0) - (b.task_order ?? 0))
         const nonAutoTasks = countedTasks(phase)
         const doneTasks = nonAutoTasks.filter(isTaskDone).length
-        const borderColor = state === 'done' ? 'rgba(27,146,84,0.3)' : state === 'active' ? 'rgba(0,149,255,0.4)' : 'var(--vfo-border)'
-        const dotColor = state === 'done' ? '#1b9254' : state === 'active' ? '#0095ff' : 'transparent'
-        const titleColor = state === 'active' ? 'var(--vfo-primary)' : 'var(--vfo-heading)'
 
         return (
-          <div key={phase.id} style={{ background: 'var(--vfo-card)', border: `1px solid ${borderColor}`, borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden' }}>
-            <div onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} onMouseDown={noMultiClickSelect} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                <PhaseBadge number={phaseIdx + 1} state={state} />
-                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{phase.name}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {(!readOnly || memberNotes) && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'PIP Meetings').length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
-                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
-                {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{nonAutoTasks.length}</span>}
-                {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
-                <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-              </div>
-            </div>
-
-            {(!readOnly || memberNotes) && expanded[`notes_${phase.id}`] && <PhaseNotesPanel memberMode={!!memberNotes} canAdd={!memberNotes || !!memberCanAdd} clientId={clientId} phaseName={phase.name} tabName="PIP Meetings" programName="VFO Holistic Planning" notes={notes} onNotesChange={onNotesChange} />}
-
-            {isExpanded && (
-              <div style={{ borderTop: `1px solid ${borderColor}`, padding: isPhone ? '12px 14px' : '12px 18px' }}>
-                {tasks.length === 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontStyle: 'italic', padding: '4px 0' }}>No tasks defined for this phase yet.</div>}
+          <PhaseCard
+            key={phase.id}
+            number={phaseIdx + 1}
+            state={state}
+            name={phase.name}
+            done={doneTasks}
+            total={nonAutoTasks.length}
+            open={isExpanded}
+            onToggle={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))}
+            notes={(!readOnly || memberNotes) && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'PIP Meetings').length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
+            notesPanel={(!readOnly || memberNotes) && expanded[`notes_${phase.id}`] && <PhaseNotesPanel memberMode={!!memberNotes} canAdd={!memberNotes || !!memberCanAdd} clientId={clientId} phaseName={phase.name} tabName="PIP Meetings" programName="VFO Holistic Planning" notes={notes} onNotesChange={onNotesChange} />}
+          >
+                {tasks.length === 0 && <TrackEmpty inline>No tasks defined for this phase yet.</TrackEmpty>}
                 {tasks.map(task => {
                   const p = localProgress[task.id] || {}
                   const isDone = !!p.status
@@ -261,36 +253,29 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                     // 'processing'). Mirrors AutoRow in AdvisorOnboarding.jsx —
                     // orange dot + orange tag instead of nothing.
                     const autoStep = (label, stepDone, tag = null, emailTpls = null, date = null, pending = false) => (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: stepDone ? '#1b9254' : pending ? '#e06717' : 'transparent', flexShrink: 0, border: `1px solid ${stepDone ? '#1b9254' : pending ? '#e06717' : 'var(--vfo-border-mid)'}` }} />
-                        <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}{!readOnly && emailTpls && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="PIP" title={label} templates={emailTpls} context={emailCtx} /></span>}</span>
-                        <span className="vfo-stepchips" style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
-                          {stepDone && tag && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{tag}</span>}
-                          {stepDone && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Done</span>}
-                          {!stepDone && pending && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>Bank payment clearing</span>}
-                        </span>
-                        {stepDone && date && <span className="vfo-stepdate" style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(date)}</span>}
-                      </div>
+                      <SubStepRow
+                        done={stepDone || pending}
+                        dotColor={!stepDone && pending ? '#e06717' : undefined}
+                        name={label}
+                        emails={!readOnly && emailTpls && <StepEmailsChip pipeline="PIP" title={label} templates={emailTpls} context={emailCtx} />}
+                        date={<StepDate value={stepDone ? date : ''} readOnly />}
+                      >
+                        {stepDone && tag ? <StepAnswer>{tag}</StepAnswer> : !stepDone && pending ? <Tag color="#e06717">Bank payment clearing</Tag> : null}
+                      </SubStepRow>
                     )
                     const methodTag = !mirror && track.pip_payment_method_type
                       ? track.pip_payment_method_type.toUpperCase()
                       : null
                     const allDone = false
                     return (
-                      <div key={task.id} style={{ padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: allDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${allDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                          <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{'Automated steps'}</span>
-                        </div>
-                        <div style={{ marginLeft: isPhone ? 0 : '18px', padding: isPhone ? '8px 10px' : '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
+                      <AutoSteps key={task.id} done={allDone}>
                           {autoStep('Payment link sent (ACH or Card choice)', !!track.pip_payment_email_sent_at, null, [{ name: 'PIP_payment', when: 'Automatic — payment link' }], track.pip_payment_email_sent_at)}
                           {/* The ACH confirmation email no longer gets its own step — the
                               step completes on the payment alone. Preview it here. */}
                           {autoStep('Payment collected', !!track.pip_payment_completed_at, methodTag, [{ name: 'PIP_confirmation', when: 'Bank transfer (ACH) only — card gets the invoice/receipt instead' }], track.pip_payment_completed_at, track.pip_payment_status === 'processing')}
                           {autoStep('Invoice and receipt created and emailed to client', !!track.pip_invoice_receipt_email_sent_at, null, [{ name: 'PIP_invoicereceipt_email', when: 'Automatic — invoice + receipt' }], track.pip_invoice_receipt_email_sent_at)}
                           {!mirror && autoStep('Revenue shares paid · Email member to confirm revenue share details', !!track.pip_rev_share_completed_at && !!track.pip_rev_member_email_sent_at, null, [{ name: 'PIP_member_revshare', when: 'Automatic — member revenue-share notice' }], track.pip_rev_share_completed_at)}
-                        </div>
-                      </div>
+                      </AutoSteps>
                     )
                   }
 
@@ -310,17 +295,17 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                     const isFormShown = done ? !!expanded[formExpandKey] : true
                     return (
                       <div key={task.id}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', cursor: done ? 'pointer' : 'default' }}
-                          onClick={() => done && setExpanded(prev => ({ ...prev, [formExpandKey]: !prev[formExpandKey] }))}>
-                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? pillColor : 'transparent', flexShrink: 0, border: `1.5px solid ${done ? pillColor : 'var(--vfo-border-mid)'}` }} />
-                          <span className="vfo-stepname" style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
-                          {done
-                            ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${pillColor}22`, color: readable(pillColor), border: `1px solid ${pillColor}44` }}>{decisionLabel}</span>
-                            : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
-                          }
-                          {done && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
-                          {done && <span className="vfo-steparrow" style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isFormShown ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>}
-                        </div>
+                        <StepRow
+                          done={done}
+                          dotColor={pillColor}
+                          name={task.name}
+                          onClick={done ? () => setExpanded(prev => ({ ...prev, [formExpandKey]: !prev[formExpandKey] })) : undefined}
+                          open={isFormShown}
+                          onToggle={done ? () => setExpanded(prev => ({ ...prev, [formExpandKey]: !prev[formExpandKey] })) : undefined}
+                          date={<StepDate value={done ? p.completed_date : ''} readOnly />}
+                        >
+                          {done && <StepAnswer color={readable(pillColor)}>{decisionLabel}</StepAnswer>}
+                        </StepRow>
                         {!readOnly && isFormShown && (
                           <PipPurchaseDecisionForm
                             task={task}
@@ -342,29 +327,34 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                   if (task.status_options === 'pip_checklist') {
                     const done = !!p.status
                     return (
-                      <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                        <div className="vfo-stepcheck" onClick={() => !readOnly && !done && toggleCheckbox(task.id)} style={{ width: '16px', height: '16px', borderRadius: '4px', border: `1.5px solid ${done ? '#1b9254' : 'var(--vfo-border-strong)'}`, background: done ? '#1b9254' : 'transparent', cursor: done || readOnly ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#fff', flexShrink: 0 }}>{done ? '✓' : ''}</div>
-                        <span className="vfo-stepname" style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', textDecoration: done ? 'line-through' : 'none', flex: 1 }}>{task.name}</span>
-                        {done && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
-                      </div>
+                      // A checklist step (HOUSE_STYLE §6: a dot, never a square checkbox):
+                      // "Mark done" records it with today's date, which staff can correct.
+                      <StepRow key={task.id} done={done} name={task.name} date={<StepDate value={done ? p.completed_date : ''} />}>
+                        {!done && !readOnly && <button onClick={() => toggleCheckbox(task.id)} disabled={!!saving[task.id]} style={btnState(stepChoice, !!saving[task.id])}>{saving[task.id] ? 'Saving…' : 'Mark done'}</button>}
+                      </StepRow>
                     )
                   }
 
                   if (task.status_options === 'pip_reconfirm_email') {
                     const doneColor = '#1b9254'
                     return (
-                      <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? doneColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? doneColor : 'var(--vfo-border-mid)'}` }} />
-                        <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}{!readOnly && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="PIP" title={task.name} templates={[{ name: 'PIP_meeting_confirmation', when: 'Meeting confirmation to the client' }]} context={emailCtx} /></span>}</span>
+                      <StepRow
+                        key={task.id}
+                        done={isDone}
+                        dotColor={doneColor}
+                        name={task.name}
+                        emails={!readOnly && <StepEmailsChip pipeline="PIP" title={task.name} templates={[{ name: 'PIP_meeting_confirmation', when: 'Meeting confirmation to the client' }]} context={emailCtx} />}
+                        date={<StepDate value={isDone ? p.completed_date : ''} readOnly />}
+                      >
                         {isDone && !reconfirmShowDate
-                          ? <div className="vfo-stepchips" style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${doneColor}22`, color: readable(doneColor), border: `1px solid ${doneColor}44` }}>{p.status}</span>
+                          ? <div className="vfo-stepchips" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <StepAnswer color={readable(doneColor)}>{p.status}</StepAnswer>
                               {/* Reschedule reopens the same form (pre-filled from the track) and
                                   re-sends the same confirmation email with the new slot. */}
-                              {!readOnly && <button onClick={openReconfirm} style={{ padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Reschedule</button>}
+                              {!readOnly && <button onClick={openReconfirm} style={btnStep}>Reschedule</button>}
                             </div>
                           : readOnly
-                            ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
+                            ? null
                             : reconfirmShowDate
                               ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                                   <input type="date" value={reconfirmDate} onChange={e => setReconfirmDate(e.target.value)} style={{ padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '11px' }} />
@@ -377,58 +367,44 @@ function PipMeetingDetailView({ track, phases, progress, onBack, onProgressChang
                                     <option value="AKT">Alaska (AKT)</option>
                                     <option value="HT">Hawaii (HT)</option>
                                   </select>
-                                  <button onClick={() => sendReconfirm(task.id)} disabled={reconfirmSending || !reconfirmDate} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>{reconfirmSending ? '...' : 'Send'}</button>
-                                  <button onClick={() => setReconfirmShowDate(false)} style={{ padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Cancel</button>
+                                  <button onClick={() => sendReconfirm(task.id)} disabled={reconfirmSending || !reconfirmDate} style={btnState(stepSend, reconfirmSending || !reconfirmDate)}>{reconfirmSending ? '...' : 'Send'}</button>
+                                  <button onClick={() => setReconfirmShowDate(false)} style={btnStep}>Cancel</button>
                                 </div>
-                              : <button onClick={openReconfirm} style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Send confirmation email to client</button>
+                              : <button onClick={openReconfirm} style={stepChoice}>Send confirmation email to client</button>
                         }
-                        <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
-                      </div>
+                      </StepRow>
                     )
                   }
 
                   if (task.status_options === 'pip_meeting_date') {
                     const savedDate = scheduledDate || ''
                     return (
-                      <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: savedDate ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${savedDate ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                        <span className="vfo-stepname" style={{ fontSize: '13px', color: savedDate ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                      <StepRow key={task.id} done={!!savedDate} name={task.name}>
                         {readOnly ? (
-                          savedDate && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: '#1b925422', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid #1b925444' }}>{formatDate(savedDate)}</span>
+                          savedDate && <StepAnswer color="var(--vfo-success-text)">{formatDate(savedDate)}</StepAnswer>
                         ) : (
                           <input type="date" value={savedDate} onChange={e => saveScheduled(e.target.value)} style={{ ...inputStyle, fontFamily: 'Inter, sans-serif' }} />
                         )}
-                      </div>
+                      </StepRow>
                     )
                   }
 
                   if (readOnly) return (
-                    <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-                      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
-                      {isDone
-                        ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
-                        : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
-                      }
-                      {isDone && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
-                    </div>
+                    <StepRow key={task.id} done={isDone} dotColor={statusColor} name={task.name} date={<StepDate value={isDone ? p.completed_date : ''} readOnly />}>
+                      {isDone && p.status !== 'Completed' && <StepAnswer color={readable(statusColor)}>{p.status}</StepAnswer>}
+                    </StepRow>
                   )
 
                   return (
-                    <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-                      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                    <StepRow key={task.id} done={isDone} dotColor={statusColor} name={task.name} date={<StepDate value={isDone ? p.completed_date : ''} />}>
                       <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
                         <option value="">-- Select --</option>
                         {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
-                      <StepDate value={isDone ? (p.completed_date || '') : ''} onChange={d => saveTask(task.id, p.status, d)} disabled={saving[task.id]} />
-                    </div>
+                    </StepRow>
                   )
                 })}
-              </div>
-            )}
-          </div>
+          </PhaseCard>
         )
       })}
     </div>
@@ -621,7 +597,7 @@ function PipMeetingsTab({ clientId, programId, client = null, readOnly = false, 
       )}
 
       {tracks.length === 0 && !showAdd && (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No PIP meetings added yet.</div>
+        <TrackEmpty>No PIP meetings added yet.</TrackEmpty>
       )}
 
       {sortedYears.map(year => {

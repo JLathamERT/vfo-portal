@@ -8,7 +8,11 @@ import { LinkTile, MeetingHistoryList, ProgramNotesList } from '../shared/MsmKit
 import { useNavigate } from 'react-router-dom'
 import { callApi, loadCachedAction, getLastSeen, setLastSeen, getWriteCount } from '../../lib/api'
 import { ClientsListSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, MemberProgramSkeleton, MsmHomeSkeleton, Skeleton, TeamNotesSkeleton, TrainingTrackSkeleton } from '../shared/Skeleton'
-import { TrackHero, PhaseBadge } from '../shared/TrackKit'
+import { TrackHero, PhaseCard, StepRow, StepAnswer, TrackEmpty } from '../shared/TrackKit'
+import StepDate from '../shared/StepDate'
+import { PhaseNotesButton, RecordPhaseNotesPanel } from '../shared/PhaseNotes'
+import { useProgramPhaseNotes } from '../shared/ProgramPhaseNotes'
+import { stepChoice, btnStep } from '../shared/buttonStyles'
 import { countedTasks, countedDone, phaseState, isPositiveStatus, isTrackStopped, planStatusLabel, STATUS_STOPPED, STATUS_NOT_APPLICABLE } from '../shared/trainingStatus'
 import { isTrackerTask } from '../shared/trackerSteps'
 import RoleplayStep, { isRoleplayTask } from '../shared/RoleplayStep'
@@ -429,7 +433,7 @@ function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged 
           emptyText="No notes from your coaching team yet."
         />
       )}
-      {activeTab === 'training' && <MemberTrainingView enrollment={enrollment} program={program} />}
+      {activeTab === 'training' && <MemberTrainingView enrollment={enrollment} program={program} memberNumber={member.member_number} />}
       {activeTab === 'clients' && <MemberClientsView enrollment={enrollment} member={member} program={program} onEnrollmentsChanged={onEnrollmentsChanged} taxIntakeEnabled={taxIntakeEnabled} />}
       {activeTab === 'meetings' && <MemberCoachingMeetings enrollment={enrollment} eyebrow={program.name} />}
       {activeTab === 'renewal' && <MemberCoachingRenewal enrollment={enrollment} />}
@@ -437,8 +441,10 @@ function MemberEnrolledView({ enrollment, program, member, onEnrollmentsChanged 
   )
 }
 
-function MemberTrainingView({ enrollment, program }) {
+function MemberTrainingView({ enrollment, program, memberNumber }) {
   const isPhone = useIsPhone()
+  // The team's shared phase notes, read-only (the member's loader returns only shared ones).
+  const phaseNotes = useProgramPhaseNotes(memberNumber, program.name)
   const [phases, setPhases] = useState([])
   const [progress, setProgress] = useState({})
   const [loading, setLoading] = useState(true)
@@ -532,7 +538,7 @@ function MemberTrainingView({ enrollment, program }) {
     .filter(s => s && s !== STATUS_STOPPED && s !== STATUS_NOT_APPLICABLE)
 
   if (loading) return <TrainingTrackSkeleton />
-  if (phases.length === 0) return <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No training track defined yet.</div>
+  if (phases.length === 0) return <TrackEmpty>No training track defined yet.</TrackEmpty>
 
   const totalTasks = phases.reduce((s, p) => s + countedTasks(p.program_training_tasks, progress).length, 0)
   const completedTasks = phases.reduce((s, p) => s + countedDone(p.program_training_tasks, progress), 0)
@@ -551,16 +557,30 @@ function MemberTrainingView({ enrollment, program }) {
         </>}
         steps={phases.map(ph => ({ label: ph.name, state: phaseState(ph.program_training_tasks, progress) }))}
       />
-      {phases.map(phase => {
+      {phases.map((phase, phaseIdx) => {
         const isReview = phase.name.includes('Review')
         const isExpanded = expanded[phase.id]
+        const state = phaseState(phase.program_training_tasks, progress)
+        const dotColor = state === 'done' ? '#1b9254' : state === 'active' ? '#0095ff' : 'transparent'
+        const phaseNumber = phases.slice(0, phaseIdx).filter(p => !p.name.includes('Review')).length + 1
+        const notes = phaseNotes(phase.name)
+        const notesKey = `notes_${phase.id}`
         return (
-        <div key={phase.id} style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px', marginTop: isReview ? '-6px' : '0', marginLeft: isReview ? '20px' : '0', borderTopLeftRadius: isReview ? '0' : '12px' }}>
-          <div onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: isExpanded ? '16px' : '0' }}>
-            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>{phase.name}{isReview && <span style={{ fontSize: '10px', color: 'var(--vfo-muted)', marginLeft: '8px', textTransform: 'none', fontWeight: '400', letterSpacing: '0' }}>checkpoint</span>}</span>
-            <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-          </div>
-          {isExpanded && (() => {
+        <PhaseCard
+          key={phase.id}
+          number={phaseNumber}
+          badge={isReview && <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: dotColor, border: `1.5px solid ${state === 'pending' ? 'var(--vfo-border-mid)' : dotColor}`, flexShrink: 0 }} />}
+          state={state}
+          name={<>{phase.name}{isReview && <span style={{ fontSize: '10px', color: 'var(--vfo-muted)', marginLeft: '8px', textTransform: 'none', fontWeight: '400', letterSpacing: '0' }}>checkpoint</span>}</>}
+          done={countedDone(phase.program_training_tasks, progress)}
+          total={countedTasks(phase.program_training_tasks, progress).length}
+          style={isReview ? { background: 'var(--vfo-tint)', marginTop: '-6px', marginLeft: isPhone ? '10px' : '20px', borderTopLeftRadius: 0 } : undefined}
+          open={isExpanded}
+          onToggle={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))}
+          notes={notes.count > 0 && <PhaseNotesButton count={notes.count} isOpen={!!expanded[notesKey]} onClick={() => setExpanded(p => ({ ...p, [notesKey]: !p[notesKey] }))} />}
+          notesPanel={notes.count > 0 && expanded[notesKey] && <RecordPhaseNotesPanel readOnly notes={notes.notes} onNotesChange={notes.onNotesChange} api={notes.api} />}
+        >
+          {(() => {
             const renderMemberTask = (task, inGroup) => {
               const p = progress[task.id] || {}
               if (isRoleplayTask(task)) return (
@@ -576,7 +596,7 @@ function MemberTrainingView({ enrollment, program }) {
               const isTouched = !!p.status
               const statusNode = locked ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ padding: '3px 10px', borderRadius: '4px', fontSize: '12px', background: bgFor(p.status), color: colorFor(p.status) }}>{p.status}</span>
+                  <StepAnswer color={colorFor(p.status)}>{p.status}</StepAnswer>
                   <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>Set by your MSM</span>
                 </span>
               ) : (
@@ -595,18 +615,14 @@ function MemberTrainingView({ enrollment, program }) {
                 : null
               if (task.video_url) return (
                 <div key={task.id} style={{ marginBottom: '8px' }}>
-                  <VideoTask task={task} statusNode={statusNode} errorNode={errorNode} isTouched={isTouched} isPositive={isPositiveStatus(p.status)} statusColor={colorFor(p.status)} />
+                  <VideoTask task={task} statusNode={statusNode} errorNode={errorNode} isTouched={isTouched} isPositive={isPositiveStatus(p.status)} statusColor={colorFor(p.status)} completedDate={isTouched ? p.completed_date : ''} />
                 </div>
               )
               return (
-                <div key={task.id} style={{ padding: '10px 0', borderBottom: inGroup ? 'none' : '1px solid var(--vfo-tint)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: isTouched ? colorFor(p.status) : 'transparent', flexShrink: 0, border: '1px solid var(--vfo-border-mid)' }} />
-                    <div style={{ flex: 1, minWidth: '150px' }}>
-                      <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{task.name}</span>
-                    </div>
+                <div key={task.id} style={{ borderBottom: inGroup ? 'none' : '1px solid var(--vfo-border-soft)' }}>
+                  <StepRow done={isTouched} dotColor={colorFor(p.status)} name={task.name} nameColor={isPositiveStatus(p.status) ? 'var(--vfo-muted)' : 'var(--vfo-ink)'} style={{ borderBottom: 'none' }} date={<StepDate value={isTouched ? p.completed_date : ''} readOnly />}>
                     {statusNode}
-                  </div>
+                  </StepRow>
                   {errorNode}
                 </div>
               )
@@ -620,7 +636,7 @@ function MemberTrainingView({ enrollment, program }) {
               </div>
             ) : renderMemberTask(node.task, false))
           })()}
-        </div>
+        </PhaseCard>
         )
       })}
     </div>
@@ -656,11 +672,6 @@ function MemberTrackerTask({ task, meta, enrollmentId, progress, inGroup, onStat
   const fallbackCount = isPositiveStatus(progress?.status) ? meta.threshold : (progress?.status ? 1 : 0)
   const count = entries != null ? entries.length : fallbackCount
   const dotColor = count >= meta.threshold ? '#1b9254' : count >= 1 ? '#e06717' : 'transparent'
-  const pillStyle = count >= meta.threshold
-    ? { background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }
-    : count >= 1
-      ? { background: 'rgba(224,103,23,0.15)', color: '#e06717', fontWeight: 600 }
-      : { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }
 
   async function ensureLoaded() {
     if (loaded || loading) return
@@ -706,16 +717,12 @@ function MemberTrackerTask({ task, meta, enrollmentId, progress, inGroup, onStat
 
   return (
     <div style={{ padding: '10px 0', borderBottom: inGroup ? 'none' : '1px solid var(--vfo-tint)' }}>
-      <div onClick={toggle} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: dotColor, flexShrink: 0, border: '1px solid var(--vfo-border-mid)' }} />
-        <div style={{ flex: 1 }}>
-          <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{task.name}</span>
-        </div>
-        <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', ...pillStyle }}>{count}/{meta.threshold}</span>
-        <button onClick={(e) => { e.stopPropagation(); toggle() }} style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: open ? 'rgba(231,76,60,0.15)' : 'rgba(0,149,255,0.15)', color: open ? '#e74c3c' : '#0095ff', fontFamily: 'Inter, sans-serif' }}>
+      <StepRow done={count >= 1} dotColor={dotColor} name={task.name} nameColor="var(--vfo-ink)" style={{ borderBottom: 'none', padding: 0 }} onClick={toggle} date={null}>
+        <StepAnswer color={count >= meta.threshold ? 'var(--vfo-success-text)' : count >= 1 ? '#e06717' : undefined}>{count}/{meta.threshold}</StepAnswer>
+        <button onClick={(e) => { e.stopPropagation(); toggle() }} style={open ? btnStep : stepChoice}>
           {open ? 'Hide' : `+ Add ${meta.nounPlural}`}
         </button>
-      </div>
+      </StepRow>
 
       {open && (
         <div style={{ marginLeft: '18px', marginTop: '12px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', borderRadius: '8px', padding: '16px' }}>
@@ -965,174 +972,9 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
   )
 }
 
-function MemberClientTrackView({ client, program }) {
-  const [phases, setPhases] = useState([])
-  const [progress, setProgress] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [expanded, setExpanded] = useState({})
-  const [pipelineData, setPipelineData] = useState(null)
-
-  useEffect(() => { loadTrack() }, [client.id])
-
-  async function loadTrack() {
-    setLoading(true)
-    try {
-      const [trackData, progressData, pipelineRes] = await Promise.all([
-        loadCachedAction('msm_load_client_track', { program_id: program.id }),
-        callApi('msm_load_client_progress', { client_id: client.id }),
-        callApi('member_load_pipeline', { client_id: client.id }),
-      ])
-      const loadedPhases = trackData.phases || []
-      setPhases(loadedPhases)
-      const prog = {}
-      ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
-      setProgress(prog)
-      setPipelineData(pipelineRes?.row || null)
-
-      const expandState = {}
-      loadedPhases.forEach(phase => {
-        const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
-        const allDone = tasks.length === 0 || tasks.every(t => prog[t.id]?.status)
-        expandState[phase.id] = !allDone
-      })
-      setExpanded(expandState)
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
-  }
-
-  function getPhaseState(phase) {
-    const tasks = (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto')
-    if (tasks.length === 0) return 'done'
-    if (tasks.every(t => progress[t.id]?.status)) return 'done'
-    if (tasks.some(t => progress[t.id]?.status)) return 'active'
-    return 'pending'
-  }
-
-  const statusColors = { Completed: '#1b9254', Confirmed: '#1b9254', Yes: '#1b9254', 'Call arranged': '#1b9254', 'PIP 1 scheduled': '#1b9254', 'Follow-up scheduled': '#1b9254', 'PIP Follow-up confirmed': '#1b9254', 'Send confirmation email': '#1b9254', 'Regular priorities tab enabled': '#1b9254', 'Tax priorities tab enabled': '#1b9254', 'Completed + N/A': '#1b9254', 'Completed + Risk 1': '#1b9254', 'Completed + Risk 2': '#1b9254', 'Completed + Risk 3': '#1b9254', 'Completed + Risk 4': '#1b9254', 'Completed + Risk 5': '#1b9254', Lite: '#1b9254', Core: '#1b9254', Max: '#1b9254', 'In Progress': '#e06717', Undecided: '#e06717', 'No response': '#e74c3c', No: '#e74c3c', 'PIP Follow-up declined': '#e74c3c', 'Send declined email': '#e74c3c' }
-
-  if (loading) return <div style={{ color: 'var(--vfo-muted)', fontSize: '13px', padding: '16px' }}>Loading track...</div>
-  if (phases.length === 0) return <div style={{ color: 'var(--vfo-muted)', fontSize: '13px', padding: '16px' }}>No client track defined yet.</div>
-
-  const totalTasks = phases.reduce((s, p) => s + (p.program_client_tasks || []).filter(t => t.status_options !== 'auto').length, 0)
-  const completedTasks = phases.reduce((s, phase) => s + (phase.program_client_tasks || []).filter(t => t.status_options !== 'auto' && progress[t.id]?.status && progress[t.id].status !== '').length, 0)
-
-  return (
-    <div>
-      <TrackHero
-        eyebrow={program?.name || 'Client Track'}
-        title="MAP 1 — Engagement Process"
-        completed={completedTasks}
-        total={totalTasks}
-        steps={phases.map(ph => ({ label: ph.name.replace(/^MAP 1 - /, ''), state: getPhaseState(ph) }))}
-      />
-
-      {phases.map((phase, phaseIdx) => {
-        const state = getPhaseState(phase)
-        const isExpanded = expanded[phase.id]
-        const tasks = phase.program_client_tasks || []
-        const nonAutoTasks = tasks.filter(t => t.status_options !== 'auto')
-        const doneTasks = nonAutoTasks.filter(t => progress[t.id]?.status && progress[t.id].status !== '').length
-        const borderColor = state === 'done' ? 'rgba(27,146,84,0.3)' : state === 'active' ? 'rgba(0,149,255,0.4)' : 'var(--vfo-border)'
-        const dotColor = state === 'done' ? '#1b9254' : state === 'active' ? '#0095ff' : 'transparent'
-        const titleColor = state === 'active' ? 'var(--vfo-primary)' : 'var(--vfo-heading)'
-        const c10TaskId = phases.find(ph => ph.name === 'MAP 1 - PIP Follow Up')?.program_client_tasks?.find(t => t.task_code === 'C10')?.id
-        const c10Status = progress[c10TaskId]?.status || ''
-        const c14c15Active = c10Status === 'No' || c10Status === 'Undecided'
-
-        return (
-          <div key={phase.id} style={{ background: 'var(--vfo-card)', border: `1px solid ${borderColor}`, borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden' }}>
-            <div onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <PhaseBadge number={phaseIdx + 1} state={state} />
-                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{phase.name}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
-                {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{nonAutoTasks.length}</span>}
-                {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
-                <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-              </div>
-            </div>
-
-            {isExpanded && (
-              <div style={{ borderTop: `1px solid ${borderColor}`, padding: '12px 18px' }}>
-                {tasks.map(task => {
-                  const p = progress[task.id] || {}
-                  const isDone = !!p.status && p.status !== ''
-                  const statusColor = statusColors[p.status] || 'var(--vfo-muted)'
-                  const isGreyedOut = (task.task_code === 'C14' || task.task_code === 'C15') && !c14c15Active
-
-                  if (task.name === 'AI PC Admin' && pipelineData) {
-                    const pd = pipelineData
-                    const pipDecision = pd?.c13_decision
-                    const finalDec = pd?.c15_final_decision
-                    const autoStep = (label, done, tag = null) => (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                        <span style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
-                        <span style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
-                          {done && tag && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{tag}</span>}
-                          {done && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 }}>Done</span>}
-                        </span>
-                      </div>
-                    )
-                    return (
-                      <div key={task.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: pd?.c18_ceo_signed === 'Yes' ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${pd?.c18_ceo_signed === 'Yes' ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                          <span style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1 }}>{'Automated steps'}</span>
-                        </div>
-                        {pipDecision && (
-                          <div style={{ marginLeft: '18px' }}>
-                            {finalDec === 'Yes' && (
-                              <>
-                                {autoStep('Engagement agreement created and sent for signing', pd?.c16_sent === 'Yes')}
-                                {autoStep('Engagement agreement signed', pd?.c17_client_signed === 'Yes')}
-                                {autoStep('Engagement agreement signed by CEO', pd?.c18_ceo_signed === 'Yes')}
-                                {autoStep('Payment link sent (ACH or Card choice)', false)}
-                                {autoStep('Payment made', !!pd?.pay1_status, pd?.pay1_status && pd?.payment_method_type ? pd.payment_method_type.toUpperCase() : null)}
-                                {autoStep('Payment collected', pd?.pay1_status === 'succeeded')}
-                                {autoStep('Invoice and receipt created and emailed to client', !!pd?.invoice_number)}
-                                {autoStep('Revenue share paid', !!pd?.rec1_rev_share)}
-                                {autoStep('Member notified of revenue share', pd?.c24_email_sent === 'Yes')}
-                              </>
-                            )}
-                            {finalDec === 'No' && autoStep('Decline email sent to client', true)}
-                            {!finalDec && autoStep('Awaiting client decision', false)}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', opacity: isGreyedOut ? 0.3 : 1 }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: task.status_options === 'auto' || isDone ? (task.status_options === 'auto' ? '#1b9254' : statusColor) : 'transparent', flexShrink: 0, border: `1.5px solid ${task.status_options === 'auto' || isDone ? (task.status_options === 'auto' ? '#1b9254' : statusColor) : 'var(--vfo-border-mid)'}` }} />
-                      <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', fontFamily: 'monospace', width: '32px' }}>{task.task_code}</span>
-                      <span style={{ fontSize: '13px', color: isDone || task.status_options === 'auto' ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
-                      {task.status_options === 'auto'
-                        ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>
-                        : isDone
-                          ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
-                          : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
-                      }
-                      {isDone && p.completed_date && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 // Video sub-step. There is deliberately NO playback tracking: the member declares
 // Have Watched / Will Watch on the caller-supplied status select (statusNode).
-function VideoTask({ task, statusNode, errorNode, isTouched, isPositive, statusColor }) {
+function VideoTask({ task, statusNode, errorNode, isTouched, isPositive, statusColor, completedDate = '' }) {
   const [showVideo, setShowVideo] = useState(false)
   const isPhone = useIsPhone()
   const playerRef = useRef(null)
@@ -1185,7 +1027,7 @@ function VideoTask({ task, statusNode, errorNode, isTouched, isPositive, statusC
               ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
               : <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ marginLeft: '2px' }}><path d="M7 4.5v15l13-7.5z" /></svg>}
           </button>
-          <span onClick={toggle} style={{ flex: 1, minWidth: 0, cursor: 'pointer', fontSize: '14px', color: isPositive ? 'var(--vfo-muted)' : 'var(--vfo-ink)' }}>{task.name}</span>
+          <span onClick={toggle} style={{ flex: 1, minWidth: 0, cursor: 'pointer', fontSize: '13px', color: isPositive ? 'var(--vfo-muted)' : 'var(--vfo-ink)' }}>{task.name}</span>
           {statusNode}
         </div>
         {errorNode}
@@ -1205,19 +1047,13 @@ function VideoTask({ task, statusNode, errorNode, isTouched, isPositive, statusC
   }
 
   return (
-    <div style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: showVideo ? '12px' : '0', flexWrap: 'wrap' }}>
-        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: isTouched ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isTouched ? statusColor : 'var(--vfo-border-mid)'}` }} />
-        <div style={{ flex: 1, minWidth: '150px' }}>
-          <span style={{ fontSize: '14px', color: isPositive ? 'var(--vfo-muted)' : 'var(--vfo-ink)' }}>{task.name}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button onClick={() => setShowVideo(!showVideo)} style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: `1px solid rgba(0,149,255,0.4)`, background: showVideo ? 'rgba(231,76,60,0.15)' : 'rgba(0,149,255,0.15)', color: showVideo ? '#e74c3c' : '#0095ff' }}>
-            {showVideo ? 'Hide Video' : '▶ Watch Video'}
-          </button>
-          {statusNode}
-        </div>
-      </div>
+    <div style={{ borderBottom: '1px solid var(--vfo-border-soft)', paddingBottom: showVideo ? '12px' : 0 }}>
+      <StepRow done={isTouched} dotColor={statusColor} name={task.name} nameColor={isPositive ? 'var(--vfo-muted)' : 'var(--vfo-ink)'} style={{ borderBottom: 'none' }} date={<StepDate value={completedDate} readOnly />}>
+        <button onClick={() => setShowVideo(!showVideo)} style={showVideo ? btnStep : stepChoice}>
+          {showVideo ? 'Hide Video' : '▶ Watch Video'}
+        </button>
+        {statusNode}
+      </StepRow>
       {errorNode}
       {showVideo && (
         <div style={{ borderRadius: '8px', overflow: 'hidden', marginLeft: '22px' }}>

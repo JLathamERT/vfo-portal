@@ -1,5 +1,8 @@
-import { Fragment } from 'react'
+import { Children, Fragment } from 'react'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import ExpandChevron from './ExpandChevron'
+import Tag from './Tag'
+import StepDate from './StepDate'
 
 // Purely presentational track-view kit — progress hero + phase badges.
 // No API calls, no state, no business logic: callers pass display data only.
@@ -149,4 +152,159 @@ export function ListHeader({ title, count, action }) {
       {action}
     </div>
   )
+}
+
+// ---------------------------------------------------------------------------
+// The program tracker pieces (HOUSE_STYLE §6, Issue #661 part 5). Every track
+// (MAP 1, Regular, Tax, PIP, PFT, Tailored Route, the onboardings, MSM) draws its
+// phases and steps from these, so they read the same everywhere. The phone
+// layout (index.css "Phone step rows") keys on this exact shape: the dot first,
+// then `.vfo-stepname`, then the control, the date and `.vfo-steparrow`.
+
+export const STEP_GREEN = '#1b9254'
+export const STEP_RED = '#e74c3c'
+export const STEP_AMBER = '#e06717'
+
+// 8px circle (6px on an automated sub-step): filled with the status colour once
+// done, an empty ring before.
+export function StepDot({ done, color = STEP_GREEN, small = false }) {
+  const size = small ? '6px' : '8px'
+  return <div style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, background: done ? color : 'transparent', border: `${small ? 1 : 1.5}px solid ${done ? color : 'var(--vfo-border-mid)'}`, boxSizing: 'border-box' }} />
+}
+
+// The row's chevron, the house ExpandChevron, sits in the card's right margin
+// (the row is position: relative), so every row's date ends at the same right
+// edge whether or not that row opens (Jake 2026-11-28). `inset` = how far into
+// the margin: the card body's 18px (14px on a phone), the AutoSteps box's 14px.
+export function StepChevron({ open, onToggle, inset = 17 }) {
+  return (
+    <span className="vfo-steparrow" style={{ position: 'absolute', right: `-${inset}px`, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', width: `${inset}px`, justifyContent: 'center' }}>
+      <ExpandChevron open={open} onToggle={onToggle} style={{ width: `${inset}px` }} />
+    </span>
+  )
+}
+
+// A step's real answer once it is done (Meeting booked..., Submitted, Yes, the
+// people allocated): the value box, the same shape as the dropdowns on the rows
+// around it, so every answered step shows its answer the same way (Jake
+// 2026-11-28, option B). Never a tag, never a button. ONE look everywhere: the
+// neutral grey box, whatever the answer (Jake 2026-11-28: "consistency is the
+// whole goal" — no green, red or blue boxes). The step's dot carries the colour.
+// `color` is accepted from older callers and ignored.
+// eslint-disable-next-line no-unused-vars
+export function answerBox(color) {
+  return {
+    display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', lineHeight: 1.3, padding: '5px 10px', borderRadius: '8px', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box',
+    border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-tint)', color: 'var(--vfo-ink)',
+  }
+}
+
+export function StepAnswer({ color, children, style }) {
+  return <span className="vfo-stepchips" style={{ ...answerBox(color), ...style }}>{children}</span>
+}
+
+// One step, left to right: dot, name (+ owner tag + Emails), the control
+// (`children`: a select, a row of step buttons, an answer, then btnStep), the
+// date, the chevron. `date` is a <StepDate> node; leaving it out still holds the
+// empty date slot so the row lines up, `date={null}` drops it. `onToggle` adds
+// the chevron; `onClick` makes the whole row its click target. The name keeps
+// 200px: on a narrow row the controls wrap under it instead of squeezing it.
+export function StepRow({ done, dotColor, name, owner, emails, children, date, open, onToggle, onClick, strong, nameColor, title, style, rowRef }) {
+  return (
+    <div ref={rowRef} title={title} onClick={onClick} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', cursor: onClick ? 'pointer' : undefined, ...style }}>
+      <StepDot done={done} color={dotColor} />
+      <span className="vfo-stepname" style={{ fontSize: '13px', color: nameColor || (done ? 'var(--vfo-muted)' : 'var(--vfo-ink)'), flex: 1, minWidth: '200px', fontWeight: strong ? 600 : undefined }}>
+        {name}{owner}{emails && <span style={{ marginLeft: '8px' }}>{emails}</span>}
+      </span>
+      <StepRight date={date === undefined ? <StepDate value="" /> : date}>{children}</StepRight>
+      {onToggle && <StepChevron open={open} onToggle={onToggle} />}
+    </div>
+  )
+}
+
+// The right side of a step row: the control, then the date. They stay on one
+// line together; a row too full for its buttons wraps the buttons among
+// themselves, never the date onto a hidden second line (Jake 2026-11-28). On a
+// phone both wrappers are `display: contents`, so the phone grid (index.css)
+// still sees the control and the date as rows of their own.
+export function StepRight({ children, date }) {
+  const hasControl = Children.toArray(children).some(c => c !== null && c !== false && c !== '')
+  return (
+    <div className="vfo-stepright" style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: '0 1 auto' }}>
+      {hasControl && <div className="vfo-stepcontrols" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '8px', minWidth: 0 }}>{children}</div>}
+      {date}
+    </div>
+  )
+}
+
+// One automated sub-step inside AutoSteps: 6px dot, label, control, date.
+export function SubStepRow({ done, dotColor, name, emails, children, date, open, onToggle, onClick, last, style }) {
+  return (
+    <div onClick={onClick} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: last ? 'none' : '1px solid var(--vfo-border-soft)', cursor: onClick ? 'pointer' : undefined, ...style }}>
+      <StepDot small done={done} color={dotColor} />
+      <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)', flex: 1, minWidth: '180px' }}>{name}{emails && <span style={{ marginLeft: '8px' }}>{emails}</span>}</span>
+      <StepRight date={date === undefined ? <StepDate value="" /> : date}>{children}</StepRight>
+      {onToggle && <StepChevron open={open} onToggle={onToggle} inset={13} />}
+    </div>
+  )
+}
+
+// "Automated steps": its own step row, then the tinted box of sub-steps,
+// indented 18px (flush on a phone).
+export function AutoSteps({ done, label = 'Automated steps', children, emails }) {
+  const isPhone = useIsPhone()
+  return (
+    <div style={{ padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+        <StepDot done={done} />
+        <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1, fontWeight: 600 }}>{label}{emails && <span style={{ marginLeft: '8px' }}>{emails}</span>}</span>
+      </div>
+      <div style={{ marginLeft: isPhone ? 0 : '18px', padding: isPhone ? '8px 10px' : '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// One phase of a track (`badge` replaces the numbered badge, `style` adds to the
+// card, e.g. MSM's indented Review checkpoint): the card, its header row (badge, name, `nameAfter` (a
+// short note such as a lock), then on the right
+// `extra`, the Notes button, the "In progress · n/m" tag and the chevron), the
+// notes panel and, while open, the steps. Only In progress is a tag: a finished
+// phase has its green badge and a phase not started shows nothing. `dimmed` greys
+// out a phase that does not apply yet and makes it unclickable.
+export function PhaseCard({ number, badge, state, name, nameAfter, done, total, notes, notesPanel, extra, open, onToggle, children, bodyStyle, dimmed = false, cardRef, style }) {
+  const isPhone = useIsPhone()
+  const borderColor = state === 'done' ? 'rgba(27,146,84,0.3)' : state === 'active' ? 'rgba(0,149,255,0.4)' : 'var(--vfo-border)'
+  return (
+    <div ref={cardRef} style={{ background: 'var(--vfo-card)', border: `1px solid ${borderColor}`, borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden', opacity: dimmed ? 0.3 : 1, pointerEvents: dimmed ? 'none' : undefined, ...style }}>
+      <div onClick={onToggle} onMouseDown={noMultiClickSelect} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: isPhone ? '12px 14px' : '14px 18px', cursor: onToggle ? 'pointer' : 'default' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0, flexWrap: nameAfter ? 'wrap' : undefined }}>
+          {badge || <PhaseBadge number={number} state={state} />}
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: state === 'active' ? 'var(--vfo-primary)' : 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>{name}</span>
+          {nameAfter}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          {extra}
+          {notes}
+          {state === 'active' && <Tag color="#0095ff">In progress{typeof total === 'number' && total > 0 ? ` · ${done}/${total}` : ''}</Tag>}
+          {onToggle && <ExpandChevron open={open} style={{ margin: '-6px -17px -6px -4px', width: '17px' }} />}
+        </div>
+      </div>
+      {notesPanel}
+      {open && (
+        <div style={{ borderTop: `1px solid ${borderColor}`, padding: isPhone ? '12px 14px' : '12px 18px', ...bodyStyle }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// A track's "nothing here yet": centred under the list or page (`inline` = a
+// line inside a card, such as a phase with no steps).
+export function TrackEmpty({ children, inline = false }) {
+  return inline
+    ? <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', padding: '8px 0' }}>{children}</div>
+    : <div style={{ textAlign: 'center', padding: '40px 20px', fontSize: '13px', color: 'var(--vfo-muted)' }}>{children}</div>
 }

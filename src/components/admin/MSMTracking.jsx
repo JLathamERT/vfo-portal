@@ -7,8 +7,11 @@ import { MeetingHistoryList, ProgramNotesList } from '../shared/MsmKit'
 import ListTable, { ListName, ListPill, ListText, listSearchStyle } from '../shared/ListTable'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession, loadCachedAction, getLastSeen, setLastSeen, getWriteCount } from '../../lib/api'
-import { AdminMsmHomeSkeleton, AdminProgramViewSkeleton, ClientsListSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, PhaseCardsSkeleton, ProgramNotesSkeleton, SkeletonText, TrainingTrackSkeleton } from '../shared/Skeleton'
-import { TrackHero, PhaseBadge, noMultiClickSelect } from '../shared/TrackKit'
+import { AdminMsmHomeSkeleton, AdminProgramViewSkeleton, ClientsListSkeleton, CoachingMeetingsSkeleton, CoachingRenewalSkeleton, ProgramNotesSkeleton, SkeletonText, TrainingTrackSkeleton } from '../shared/Skeleton'
+import { TrackHero, PhaseCard, StepRow, StepAnswer, StepChevron, TrackEmpty } from '../shared/TrackKit'
+import { PhaseNotesButton, RecordPhaseNotesPanel } from '../shared/PhaseNotes'
+import { useProgramPhaseNotes } from '../shared/ProgramPhaseNotes'
+import { stepChoice, btnStep } from '../shared/buttonStyles'
 import { countedTasks, countedDone, phaseState, isPositiveStatus, planStatusLabel } from '../shared/trainingStatus'
 import { isTrackerTask } from '../shared/trackerSteps'
 import RoleplayStep, { isRoleplayTask } from '../shared/RoleplayStep'
@@ -492,6 +495,7 @@ function ProgramNotes({ memberNumber, programName, onCount }) {
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{note.created_by}</span>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>·</span>
                 <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(note.created_at)}</span>
+                {note.phase_name && <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>· {note.phase_name}</span>}
                 <VisibilityBadge visibility={note.visibility} />
                 <button onClick={() => { setEditingId(note.id); setEditText(note.note_text) }} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#0095ff', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Edit</button>
                 <button onClick={() => deleteNote(note.id)} style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#e74c3c', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}>Delete</button>
@@ -611,7 +615,7 @@ function EnrolledPanel({ member, enrollment, program, onDataChange }) {
 
       {activeTab === 'notes' && <ProgramNotes memberNumber={member.plugin_member_number} programName={program.name} onCount={setNoteCount} />}
 
-      {activeTab === 'training' && <TrainingTrack enrollment={enrollment} program={program} onPlanStatusChange={setLivePlanStatus} />}
+      {activeTab === 'training' && <TrainingTrack enrollment={enrollment} program={program} memberNumber={member.plugin_member_number} onPlanStatusChange={setLivePlanStatus} />}
       {activeTab === 'clients' && <ClientsPanel enrollment={enrollment} member={member} program={program} />}
       {activeTab === 'meetings' && <CoachingMeetings enrollment={enrollment} member={member} eyebrow={program.name} />}
       {activeTab === 'renewal' && <CoachingRenewal enrollment={enrollment} member={member} />}
@@ -657,18 +661,13 @@ function AdminVideoRow({ task, inGroup, isTouched, isPositive, statusColor, stat
   }
 
   return (
-    <div style={{ padding: '8px 0', borderBottom: inGroup ? 'none' : '1px solid var(--vfo-tint)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isTouched ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isTouched ? statusColor : 'var(--vfo-border-mid)'}` }} />
-        <div style={{ flex: 1, minWidth: '150px' }}>
-          <span style={{ fontSize: '14px', color: isPositive ? 'var(--vfo-muted)' : 'var(--vfo-ink)' }}>{task.name}</span>
-        </div>
-        <button onClick={() => setShowVideo(!showVideo)} style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: `1px solid rgba(0,149,255,0.4)`, background: showVideo ? 'rgba(231,76,60,0.15)' : 'rgba(0,149,255,0.15)', color: showVideo ? '#e74c3c' : '#0095ff' }}>
+    <div style={{ borderBottom: inGroup ? 'none' : '1px solid var(--vfo-border-soft)' }}>
+      <StepRow done={isTouched} dotColor={statusColor} name={task.name} nameColor={isPositive ? 'var(--vfo-muted)' : 'var(--vfo-ink)'} style={{ borderBottom: 'none' }} date={dateSpan}>
+        <button onClick={() => setShowVideo(!showVideo)} style={showVideo ? btnStep : stepChoice}>
           {showVideo ? 'Hide Video' : '▶ Watch Video'}
         </button>
         {statusSelect}
-        {dateSpan}
-      </div>
+      </StepRow>
       {showVideo && (
         <div style={{ borderRadius: '8px', overflow: 'hidden', marginLeft: '20px', marginTop: '12px' }}>
           {isEmbed ? (
@@ -684,13 +683,14 @@ function AdminVideoRow({ task, inGroup, isTouched, isPositive, statusColor, stat
   )
 }
 
-function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
+function TrainingTrack({ enrollment, program, memberNumber, onPlanStatusChange }) {
   const [phases, setPhases] = useState([])
   const [progress, setProgress] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState({})
   const [expanded, setExpanded] = useState({})
   const [phaseCompletedBy, setPhaseCompletedBy] = useState({})
+  const phaseNotes = useProgramPhaseNotes(memberNumber, program.name)
 
   // Re-opening the 90 Day Plan draws the last copy at once when nothing has been
   // saved since it was loaded (the rows carry status dropdowns), then refreshes.
@@ -790,7 +790,7 @@ function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
 
   if (loading) return <TrainingTrackSkeleton />
 
-  if (phases.length === 0) return <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No training track defined for this program yet.</div>
+  if (phases.length === 0) return <TrackEmpty>No training track defined for this program yet.</TrackEmpty>
 
   const totalTasks = phases.reduce((s, p) => s + countedTasks(p.program_training_tasks, progress).length, 0)
   const completedTasks = phases.reduce((s, p) => s + countedDone(p.program_training_tasks, progress), 0)
@@ -810,31 +810,27 @@ function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
         const tasks = phase.program_training_tasks || []
         const countable = countedTasks(tasks, progress)
         const doneTasks = countedDone(tasks, progress)
-        const borderColor = state === 'done' ? 'rgba(27,146,84,0.3)' : state === 'active' ? 'rgba(0,149,255,0.4)' : 'var(--vfo-border)'
         const dotColor = state === 'done' ? '#1b9254' : state === 'active' ? '#0095ff' : 'transparent'
-        const titleColor = state === 'active' ? 'var(--vfo-primary)' : 'var(--vfo-heading)'
         const isReview = phase.name.includes('Review')
+        const notes = phaseNotes(phase.name)
+        const notesKey = `notes_${phase.id}`
 
         const phaseNumber = phases.slice(0, phaseIdx).filter(p => !p.name.includes('Review')).length + 1
         return (
-          <div key={phase.id} style={{ background: isReview ? 'var(--vfo-tint)' : 'var(--vfo-card)', border: `1px solid ${borderColor}`, borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: isReview ? '10px' : '10px', marginTop: isReview ? '-6px' : '0', marginLeft: isReview ? '20px' : '0', overflow: 'hidden', borderTopLeftRadius: isReview ? '0' : '12px', borderTopRightRadius: isReview ? '12px' : '12px' }}>
-            <div onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} onMouseDown={noMultiClickSelect} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: isReview ? '10px' : '12px', flex: 1 }}>
-                {isReview
-                  ? <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: dotColor, border: `1.5px solid ${state === 'pending' ? 'var(--vfo-border-mid)' : dotColor}`, flexShrink: 0 }} />
-                  : <PhaseBadge number={phaseNumber} state={state} />}
-                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{phase.name}{isReview && <span style={{ fontSize: '10px', color: 'var(--vfo-muted)', marginLeft: '8px', textTransform: 'none', fontWeight: '400', letterSpacing: '0' }}>checkpoint</span>}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
-                {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{countable.length}</span>}
-                {state === 'pending' && !isReview && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
-                <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-              </div>
-            </div>
-
-            {isExpanded && (
-              <div style={{ borderTop: `1px solid ${borderColor}`, padding: '12px 18px' }}>
+          <PhaseCard
+            key={phase.id}
+            number={phaseNumber}
+            badge={isReview && <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: dotColor, border: `1.5px solid ${state === 'pending' ? 'var(--vfo-border-mid)' : dotColor}`, flexShrink: 0 }} />}
+            state={state}
+            name={<>{phase.name}{isReview && <span style={{ fontSize: '10px', color: 'var(--vfo-muted)', marginLeft: '8px', textTransform: 'none', fontWeight: '400', letterSpacing: '0' }}>checkpoint</span>}</>}
+            done={doneTasks}
+            total={countable.length}
+            style={isReview ? { background: 'var(--vfo-tint)', marginTop: '-6px', marginLeft: '20px', borderTopLeftRadius: 0 } : undefined}
+            open={isExpanded}
+            onToggle={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))}
+            notes={<PhaseNotesButton count={notes.count} isOpen={!!expanded[notesKey]} onClick={() => setExpanded(p => ({ ...p, [notesKey]: !p[notesKey] }))} />}
+            notesPanel={expanded[notesKey] && <RecordPhaseNotesPanel withVisibility notes={notes.notes} onNotesChange={notes.onNotesChange} api={notes.api} />}
+          >
                 {(() => {
                   const renderRow = (task, inGroup) => {
                     const p = progress[task.id] || {}
@@ -857,20 +853,15 @@ function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
                       </select>
                     )
                     const dateSpan = (
-                      <StepDate value={p.completed_date || ''} onChange={d => saveTask(task.id, p.status, d, phase.id)} disabled={saving[task.id]} />
+                      <StepDate value={p.completed_date || ''} />
                     )
                     if (task.video_url) {
                       return <AdminVideoRow key={task.id} task={task} inGroup={inGroup} isTouched={isTouched} isPositive={isPositive} statusColor={statusColor} statusSelect={statusSelect} dateSpan={dateSpan} />
                     }
                     return (
-                      <div key={task.id} style={{ padding: '8px 0', borderBottom: inGroup ? 'none' : '1px solid var(--vfo-tint)', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isTouched ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isTouched ? statusColor : 'var(--vfo-border-mid)'}` }} />
-                        <div style={{ flex: 1, minWidth: '150px' }}>
-                          <span style={{ fontSize: '14px', color: isPositive ? 'var(--vfo-muted)' : 'var(--vfo-ink)' }}>{task.name}</span>
-                        </div>
+                      <StepRow key={task.id} done={isTouched} dotColor={statusColor} name={task.name} nameColor={isPositive ? 'var(--vfo-muted)' : 'var(--vfo-ink)'} style={inGroup ? { borderBottom: 'none' } : undefined} date={dateSpan}>
                         {statusSelect}
-                        {dateSpan}
-                      </div>
+                      </StepRow>
                     )
                   }
                   return groupTasks(tasks).map(node => node.kind === 'group' ? (
@@ -882,9 +873,7 @@ function TrainingTrack({ enrollment, program, onPlanStatusChange }) {
                     </div>
                   ) : renderRow(node.task, false))
                 })()}
-              </div>
-            )}
-          </div>
+          </PhaseCard>
         )
       })}
     </div>
@@ -903,11 +892,6 @@ function AdminTrackerRow({ task, meta, inGroup, enrollmentId, progress, onStatus
   const fallbackCount = isPositiveStatus(progress?.status) ? meta.threshold : (progress?.status ? 1 : 0)
   const count = entries != null ? entries.length : fallbackCount
   const dotColor = count >= meta.threshold ? '#1b9254' : count >= 1 ? '#e06717' : 'transparent'
-  const pillStyle = count >= meta.threshold
-    ? { background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }
-    : count >= 1
-      ? { background: 'rgba(224,103,23,0.15)', color: '#e06717', fontWeight: 600, border: '1px solid rgba(224,103,23,0.3)' }
-      : { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }
 
   async function ensureLoaded() {
     if (loaded || loading) return
@@ -936,15 +920,10 @@ function AdminTrackerRow({ task, meta, inGroup, enrollmentId, progress, onStatus
   }
 
   return (
-    <div style={{ padding: '8px 0', borderBottom: inGroup ? 'none' : '1px solid var(--vfo-tint)' }}>
-      <div onClick={toggle} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', flexWrap: 'wrap' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0, border: `1.5px solid ${count >= 1 ? dotColor : 'var(--vfo-border-mid)'}` }} />
-        <div style={{ flex: 1, minWidth: '150px' }}>
-          <span style={{ fontSize: '14px', color: 'var(--vfo-ink)' }}>{task.name}</span>
-        </div>
-        <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', ...pillStyle }}>{count}/{meta.threshold}</span>
-        <span style={{ color: 'var(--vfo-muted)', fontSize: '9px', transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-      </div>
+    <div style={{ borderBottom: inGroup ? 'none' : '1px solid var(--vfo-border-soft)' }}>
+      <StepRow done={count >= 1} dotColor={dotColor} name={task.name} nameColor="var(--vfo-ink)" style={{ borderBottom: 'none' }} onClick={toggle} open={open} onToggle={toggle}>
+        <StepAnswer color={count >= meta.threshold ? 'var(--vfo-success-text)' : count >= 1 ? '#e06717' : undefined}>{count}/{meta.threshold}</StepAnswer>
+      </StepRow>
 
       {open && (
         <div style={{ marginLeft: '18px', marginTop: '12px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', borderRadius: '8px', padding: '16px' }}>
@@ -1269,73 +1248,6 @@ function ClientsPanel({ enrollment, member, program }) {
           { key: 'route', label: '', width: '90px', render: c => c.pf_member_number ? <DirectPill /> : null },
         ]}
       />
-    </div>
-  )
-}
-
-function ClientTrack({ client, program }) {
-  const [phases, setPhases] = useState([])
-  const [progress, setProgress] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState({})
-
-  useEffect(() => { loadTrack() }, [client.id])
-
-  async function loadTrack() {
-    setLoading(true)
-    try {
-      const [trackData, progressData] = await Promise.all([
-        loadCachedAction('msm_load_client_track', { program_id: program.id }),
-        callApi('msm_load_client_progress', { client_id: client.id }),
-      ])
-      setPhases(trackData.phases || [])
-      const prog = {}
-      ;(progressData.progress || []).forEach(p => { prog[p.task_id] = p })
-      setProgress(prog)
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
-  }
-
-  async function saveTask(taskId, status, completedDate, completedBy, notes) {
-    setSaving(p => ({ ...p, [taskId]: true }))
-    try {
-      await callApi('msm_save_client_task', { client_id: client.id, task_id: taskId, status, completed_date: completedDate || null, completed_by: completedBy || null, notes: notes || null })
-      setProgress(p => ({ ...p, [taskId]: { ...p[taskId], task_id: taskId, status, completed_date: completedDate, completed_by: completedBy, notes } }))
-    } catch (err) { console.error(err) }
-    finally { setSaving(p => ({ ...p, [taskId]: false })) }
-  }
-
-  const inputStyle = { padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif' }
-  const STATUS_OPTIONS = ['', 'Completed', 'In Progress', 'Confirmed', 'Yes', 'No', 'N/A', 'Pending', 'Scheduled']
-  const statusColors = { Completed: '#1b9254', Confirmed: '#1b9254', Yes: '#1b9254', 'In Progress': '#e06717', Scheduled: '#0095ff', No: '#e74c3c', 'N/A': 'var(--vfo-muted)', Pending: '#e06717' }
-
-  if (loading) return <PhaseCardsSkeleton phases={[3, 3, 3]} />
-  if (phases.length === 0) return <div style={{ color: 'var(--vfo-muted)', fontSize: '13px', padding: '16px' }}>No client track defined for this program yet.</div>
-
-  return (
-    <div>
-      {phases.map(phase => (
-        <div key={phase.id} style={{ marginBottom: '20px' }}>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: 'var(--vfo-heading)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>{phase.name}</div>
-          {(phase.program_client_tasks || []).map(task => {
-            const p = progress[task.id] || {}
-            return (
-              <div key={task.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--vfo-border-soft)', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[p.status] || 'transparent', flexShrink: 0, border: '1px solid var(--vfo-border-mid)' }} />
-                <div style={{ flex: 1, minWidth: '140px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginRight: '6px' }}>{task.task_code}</span>
-                  <span style={{ fontSize: '13px', color: 'var(--vfo-ink)' }}>{task.name}</span>
-                </div>
-                <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date, p.completed_by, p.notes)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '130px' }}>
-                  {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s || '-- Status --'}</option>)}
-                </select>
-                <input type="date" value={p.completed_date || ''} onChange={e => saveTask(task.id, p.status, e.target.value, p.completed_by, p.notes)} style={{ ...inputStyle, width: '140px' }} />
-                <input value={p.notes || ''} onChange={e => saveTask(task.id, p.status, p.completed_date, p.completed_by, e.target.value)} placeholder="Notes" style={{ ...inputStyle, flex: 1, minWidth: '100px' }} onBlur={e => saveTask(task.id, p.status, p.completed_date, p.completed_by, e.target.value)} />
-              </div>
-            )
-          })}
-        </div>
-      ))}
     </div>
   )
 }

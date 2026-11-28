@@ -4,7 +4,7 @@
 >
 > Change this file like code, in a worktree, through a PR. A look the person approves for a new kind of screen is added here in the same PR. Created 2026-11-27 (Jake) from a scan of every screen; the screens that do not follow it yet are listed in Issue JLathamERT/vfo-edge-functions#661.
 >
-> Every rule here was confirmed by Jake on 2026-11-27.
+> Every rule here was confirmed by Jake on 2026-11-27. Updated 2026-11-28 (Issue #661 part 5): §6 Program trackers now names the shared pieces every track is built from, the date column (every step date read-only, 60px, right-aligned; Jake 2026-11-28: no step date is hand-edited anywhere) and phase Notes on every tracker.
 
 ## How to use this file
 
@@ -101,7 +101,7 @@ Buttons and tags never look alike, and tags are rare: the full rule is TEAM_RULE
 - **Shown:** `formatDate` / `formatDateTime` from `src/lib/dates.js`: `11/15/2026`, and `11/15/2026 3:05 PM` for a stamp with its time. Never `new Date('YYYY-MM-DD')` (it shows the day before, west of Greenwich), never a bare `toLocaleDateString()`, never a new local `fmtDate`. One format everywhere (Jake, 2026-11-27), Accounting and tracker step dates included: no "Nov 15, 2026", no "11/15" without the year. The second argument is what an empty value shows (`formatDate(d, '—')` in a table cell).
 - **A date or a moment:** a calendar date (`2026-11-15`, a DATE column) prints as stored. A moment (a timestamptz such as `created_at` or `paid_at`, which carries `Z` or `+00:00`) prints the day it was where the viewer is: its first ten characters are the UTC day, which is tomorrow for anything after 7 pm Eastern (Jake, 2026-11-27).
 - **Kept as words** (Jake, 2026-11-27): a date inside a sentence or an email keeps its long form, "November 15, 2026" (a pay page's "charged on" line, the card-update page, the MAP 4 form, the New Model Sale summary, the sale and event end dates, an email placeholder such as `[Renewal Date]` and the email previews that copy it). A period keeps its month label ("Nov 2026", "November 2026").
-- **Width:** a tracker's read-only step date is 72px (`MM/DD/YYYY` at 11-12px), until Part 5 of Issue JLathamERT/vfo-edge-functions#661 moves the rows to `StepDate`.
+- **Width:** on a tracker step, `StepDate`: read-only text, 60px, right-aligned, and the same 60px slot when the step has no date yet, so every date ends at the row's right edge and the row's control sits close beside it. **No tracker step date is hand-edited anywhere** (Jake 2026-11-28): it is the day the step was recorded. The chevron sits in the card's right margin, not in the row.
 - **Typed:** `<input type="date">`, ISO underneath; on a tracker step, `StepDate`.
 
 ### Money
@@ -185,6 +185,8 @@ Model: Accounting → Specialists → VFO Specialist Revenue.
 
 Model: Regular Priorities (MAP 4), MAP 1. The same anatomy for every program: MAP 1, Regular, Tax, PIP, Partnership Fast Track, Tailored Route, the onboardings, MSM.
 
+**Built from** (2026-11-28, Issue #661 part 5): `shared/TrackKit.jsx` — `PhaseCard` (the phase card and header; `badge` replaces the number, `nameAfter` holds a short note such as a lock, `notes` / `notesPanel`, `dimmed` for a phase that does not apply yet, `style`), `StepRow` (a step), `SubStepRow` (an automated sub-step), `AutoSteps` (the "Automated steps" row + box), `StepDot`, `StepAnswer` / `answerBox()` (a done step's answer in the grey value box), `StepChevron`, `StepRight` (a hand-built row's controls + date, kept together on the right; #802), `TrackEmpty`; `shared/StepDate.jsx`; the step buttons `stepChoice` / `stepStop` / `stepSend` / `btnStep` in `buttonStyles.js`. Copy none of them by hand.
+
 ### The page
 
 `TrackHero` (eyebrow, client name, progress %, bar and phase stepper; the Live / Stopped `Switch` in its action slot), then one card per phase.
@@ -192,6 +194,7 @@ Model: Regular Priorities (MAP 4), MAP 1. The same anatomy for every program: MA
 ### A phase card
 
 - Header row: `PhaseBadge` (number, green tick when done, blue when active), the phase name in uppercase (blue while active), then on the right the Notes button (`PhaseNotesButton`), the status, and the chevron.
+- **Notes on every tracker.** A client's tracks use `client_notes` (`PhaseNotesPanel`); the onboardings, which have no client, use `onboarding_phase_notes` and MSM's 90 Day Plan uses `member_program_notes.phase_name`, both through `RecordPhaseNotesPanel` (Jake 2026-11-28).
 - Status: **only "In progress · n/m" is a tag.** A finished phase shows its green badge; a phase not started shows nothing (Issue #640 part 3).
 - `PhaseNotesPanel` opens between the header and the steps.
 
@@ -207,10 +210,10 @@ From left to right, on one line:
 | Emails | `StepEmailsChip` straight after the name, when the step sends email |
 | The control | see below |
 | Edit / Reschedule | `btnStep`, after the control, once the step is answered |
-| Date | at the right end, before the chevron: `StepDate` (editable) once the step is done, nothing before. Action rows move off their 55px read-only span to `StepDate`, so every date lines up |
-| Chevron | ▼, opens the detail under the row |
+| Date | at the right end: `StepDate` once the step is done, an empty slot before. Always read-only (60px, right-aligned) on every tracker (Jake 2026-11-28). The control and the date stay together on the right (`StepRow`'s `.vfo-stepright` / `.vfo-stepcontrols`, `display: contents` on a phone), so a row too full for its buttons wraps the buttons, never the date |
+| Chevron | ▼ (`StepChevron`) in the card's right margin, so it never pushes the date left; opens the detail under the row |
 
-Done steps carry **no** Done / Not started / Not completed tag: the filled dot and the date say it. A real answer (Proceed, Yes, Declined) is plain text.
+Done steps carry **no** Done / Not started / Not completed tag: the filled dot and the date say it. A real answer (Meeting booked..., Submitted, Yes, Declined, Reminder skipped, the people allocated to a plan) sits in the **value box**, `StepAnswer` / `answerBox()` in `TrackKit`: the same shape as the dropdowns on the rows around it (8px corners, 12.5px), and **one look everywhere, neutral grey** — never green, red or blue; the step's dot carries the colour (Jake 2026-11-28: consistency is the goal). It is never a tag and never a button. The $250 team share paid is a value box too. A rare warning (Bank payment clearing, No Stripe, Stopped, Refunded) stays a `Tag`.
 
 ### Which control
 
@@ -223,17 +226,20 @@ Done steps carry **no** Done / Not started / Not completed tag: the filled dot a
 | needs several fields | a form opens under the row: labelled `<select>`s and one Submit |
 | is a Yes / No gate | two buttons |
 | asks "Reached out?" | a native checkbox under the stall line |
+| is a checklist item (done or not) | the dot row with a **Mark done** button (`stepChoice`), **Undo** (`btnStep`) where it may be unticked — never a square checkbox |
 
 **Button looks inside a step** (Jake, 2026-11-27):
 
 | Button | Look |
 |---|---|
-| Each choice in the row ("Send email (with date)", "Send email - date not confirmed", Yes, No) | `btnOutline` + `BTN_SMALL` |
-| The stop / decline / refund choice | `btnDanger` + `BTN_SMALL` |
-| Send, inside the date form or a composer | `btnPrimary` + `BTN_SMALL` |
-| Cancel, Reschedule, Edit | `btnStep` |
+| Each choice in the row ("Send email (with date)", "Send email - date not confirmed", Yes, No, Mark done) | `stepChoice`: green outline on white |
+| The stop / decline / refund choice | `stepStop`: red outline |
+| Send, inside the date form or a composer | `stepSend`: solid green |
+| Cancel, Reschedule, Edit, Undo | `btnStep` |
 
-Every tracker still draws them tinted green / red / blue, which the button rule (TEAM_RULES §9) forbids; Issue #640 part 1 sweeps them to the table above.
+Green, not the portal's blue, so a step's actions stand out from the page (Jake 2026-11-28, after trying blue on white). Never the old tinted green: coloured text on a tint of the same colour is a tag (TEAM_RULES §9).
+
+Every tracker uses these since 2026-11-28 (Issue #661 part 5, the tracker spots of Issue #640 part 1).
 
 ### Automated steps
 
@@ -261,6 +267,6 @@ The full list, with file and line, is Issue JLathamERT/vfo-edge-functions#661 (f
 - **Sub-tab pills drawn four ways** (Part 1 of the Issue). The Accounting gradient (and copies in Growth Credits, Events, FAQ Editor, Membership Fees, Implementation), the KPI solid blue (and Portal Backlog), Tax Diagnostics' filter pills and Client Overview's program pills.
 - **Page headers drawn six ways,** and eleven page widths.
 - **Accounting:** swept to §5 on 2026-11-27 (Issue part 3). Left over: Held Payouts dates in MM/DD/YYYY beside "Nov 15, 2026" everywhere else (part 4, dates); the plan pricing cards outside Accounting (`map1/Map1PricingSplitCard.jsx`, `tax/PricingSplitCard.jsx`, `sdp-atsg/SdpAtsgPanel.jsx`) still say "awaiting payout setup" and "failed — retrying".
-- **Trackers:** no shared step row (every program copies it); tinted step buttons (Issue #640); Tax overrides `StepDate` with a read-only copy, so its dates cannot be edited; Advisor / Accountant onboarding rows pass a date-change handler that is never used; Specialist onboarding rows have no date.
+- **Trackers** (moved to the shared pieces 2026-11-28, Issue #661 part 5). Left: about 30 of Tax's bespoke rows keep their own layout (built from the shared dot, name width, date, buttons, value box and `StepRight`); Specialist onboarding stages show "In progress" with no n/m count (a stage has no fixed step list).
 - **Lists:** Member Overview, Onboarding lists, Next Tax Year and the SDP ATSG list copy `ListTable` by hand (SDP ATSG's client name is not a link); the Specialists list has its own 22px header.
 - **Two pill looks for status:** `ListPill` and `Tag` differ (size, weight, border); a local `Tag` in `PaymentsTable.jsx` has 5px corners.

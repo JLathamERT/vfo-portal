@@ -3,6 +3,7 @@ import { callApi } from '../../lib/api'
 import { readable } from './readableColor'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { formatDate } from '../../lib/dates'
+import { answerBox } from './TrackKit'
 
 // 90 Day Plan — the Proactive Facilitator Roleplay step (Holistic + Partnership
 // Fast Track, end of "MSM 5 Activity"). MSM-driven, laid out like the tax
@@ -25,19 +26,20 @@ const FACILITATOR_FIRST = { 1: 'Evan', 2: 'Ian' }
 const VARIANT_LABEL = { holistic: 'VFO Holistic Planning', pft: 'Partnership Fast Track' }
 const TIMEZONES = [['ET', 'Eastern (ET)'], ['CT', 'Central (CT)'], ['MT', 'Mountain (MT)'], ['PT', 'Pacific (PT)'], ['AKT', 'Alaska (AKT)'], ['HT', 'Hawaii (HT)']]
 
+
 const GREEN = '#1b9254'
 const BLUE = '#0095ff'
 const RED = '#e74c3c'
 
-const chip = (hex, rgb) => ({ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: `rgba(${rgb},0.15)`, color: hex, fontWeight: 600, border: `1px solid rgba(${rgb},0.3)` })
-const greenChip = chip(GREEN, '27,146,84')
-const blueChip = chip(BLUE, '0,149,255')
-const redChip = chip(RED, '231,76,60')
-const neutralChip = { fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', color: 'var(--vfo-muted)', fontWeight: 600, border: '1px solid var(--vfo-border-chip)' }
+// A roleplay step's answer is the tracker value box (HOUSE_STYLE §6), not a tag.
+const greenChip = answerBox(GREEN)
+const blueChip = answerBox(BLUE)
+const redChip = answerBox(RED)
+const neutralChip = answerBox()
 const tdInput = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '11px' }
 const tdGreen = (busy) => ({ padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: busy ? 'not-allowed' : 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: GREEN, fontWeight: 600, opacity: busy ? 0.6 : 1 })
 const tdCancel = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
-const stampStyle = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'right', flexShrink: 0 }
+const stampStyle = { fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '60px', textAlign: 'right', flexShrink: 0 }
 
 function todayET() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())

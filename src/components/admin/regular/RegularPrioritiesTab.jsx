@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { callApi, getLastSeen, setLastSeen, getWriteCount } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel, noteInScope, useOpenLinkedNote } from '../../shared/PhaseNotes'
 import { RegularPriorityTrackSkeleton, TaxPlanListSkeleton } from '../../shared/Skeleton'
-import { TrackHero, PhaseBadge, ListHeader, noMultiClickSelect } from '../../shared/TrackKit'
+import { TrackHero, ListHeader, StepRow, SubStepRow, AutoSteps, PhaseCard, StepAnswer, TrackEmpty, STEP_GREEN } from '../../shared/TrackKit'
+import { stepChoice, stepStop, stepSend, btnStep, btnState } from '../../shared/buttonStyles'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
@@ -86,9 +87,6 @@ function Map4ConfirmStep({ trackId, task, p, track, onDone, emailCtx }) {
   const isDone = !!p.status
   const statusColor = isDone ? '#1b9254' : 'var(--vfo-muted)'
   const inputStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
-  const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
-  const redBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600 }
-  const cancelBtn = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
   async function fire(decision, d, t, z) {
     setPending(decision)
     try {
@@ -132,32 +130,35 @@ function Map4ConfirmStep({ trackId, task, p, track, onDone, emailCtx }) {
         <option value="AKT">Alaska (AKT)</option>
         <option value="HT">Hawaii (HT)</option>
       </select>
-      <button onClick={() => date && fire('confirm_date', date, time, tz)} disabled={!date || !!pending} style={{ ...greenBtn, opacity: (!date || pending) ? 0.6 : 1 }}>{pending === 'confirm_date' ? 'Sending…' : 'Send'}</button>
-      <button onClick={() => !pending && onCancel()} disabled={!!pending} style={cancelBtn}>Cancel</button>
+      <button onClick={() => date && fire('confirm_date', date, time, tz)} disabled={!date || !!pending} style={btnState(stepSend, !date || !!pending)}>{pending === 'confirm_date' ? 'Sending…' : 'Send'}</button>
+      <button onClick={() => !pending && onCancel()} disabled={!!pending} style={btnStep}>Cancel</button>
     </div>
   )
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}<span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="REGULAR" title={task.name} templates={[{ name: 'REGULAR_map4confirm', when: 'If date confirmed / not confirmed' }, { name: 'REGULAR_map4declined', when: 'If the client declined' }]} context={confirmCtx} /></span></span>
+    <StepRow
+      done={isDone}
+      dotColor={statusColor}
+      name={task.name}
+      emails={<StepEmailsChip pipeline="REGULAR" title={task.name} templates={[{ name: 'REGULAR_map4confirm', when: 'If date confirmed / not confirmed' }, { name: 'REGULAR_map4declined', when: 'If the client declined' }]} context={confirmCtx} />}
+      date={<StepDate value={isDone ? p.completed_date : ''} readOnly />}
+    >
       {isDone
         ? rescheduling
           ? dateForm(() => setRescheduling(false))
-          : <div className="vfo-stepchips" style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
-              <button onClick={openReschedule} style={cancelBtn}>Reschedule</button>
+          : <div className="vfo-stepchips" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <StepAnswer color={readable(statusColor)}>{p.status}</StepAnswer>
+              <button onClick={openReschedule} style={btnStep}>Reschedule</button>
             </div>
         : showDate
           ? dateForm(() => setShowDate(false))
           : <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              <button onClick={() => setShowDate(true)} disabled={!!pending} style={greenBtn}>Send email (with date)</button>
-              <button onClick={() => fire('confirm_no_date')} disabled={!!pending} style={{ ...greenBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'confirm_no_date' ? 'Sending…' : 'Send email - date not confirmed'}</button>
-              <button onClick={() => fire('declined')} disabled={!!pending} style={{ ...redBtn, opacity: pending ? 0.6 : 1 }}>{pending === 'declined' ? 'Sending…' : 'Meeting declined - email client'}</button>
+              <button onClick={() => setShowDate(true)} disabled={!!pending} style={btnState(stepChoice, !!pending)}>Send email (with date)</button>
+              <button onClick={() => fire('confirm_no_date')} disabled={!!pending} style={btnState(stepChoice, !!pending)}>{pending === 'confirm_no_date' ? 'Sending…' : 'Send email - date not confirmed'}</button>
+              <button onClick={() => fire('declined')} disabled={!!pending} style={btnState(stepStop, !!pending)}>{pending === 'declined' ? 'Sending…' : 'Meeting declined - email client'}</button>
             </div>
       }
-      <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{isDone && p.completed_date ? formatDate(p.completed_date) : ''}</span>
-    </div>
+    </StepRow>
   )
 }
 
@@ -181,8 +182,6 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
   // mirror that here so the auto rows below stop claiming the old sends until reload.
   const [ladderCleared, setLadderCleared] = useState(false)
   const inputStyle ={ padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
-  const greenBtn = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
-  const cancelBtn = { padding: '4px 8px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }
   async function saveDate() {
     if (!date || pending) return
     setPending(true)
@@ -221,12 +220,7 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
   const movingForward = formData.q3_moving_forward || ''
 
   const autoStep = (label, done, at = null) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-      <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>{label}</span>
-      <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', marginLeft: 'auto', ...(done ? { background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600 } : { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }) }}>{done ? 'Done' : 'Awaiting'}</span>
-      {done && at && <span className="vfo-stepdate" style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(at)}</span>}
-    </div>
+    <SubStepRow done={done} name={label} date={<StepDate value={done ? at : ''} readOnly />} />
   )
 
   // 48h client reminder / 96h PF notification for the stalled follow-up form.
@@ -246,50 +240,45 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
   )
 
   return (
-    <div style={{ padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: enteredDate ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${enteredDate ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-        <span className="vfo-stepname" style={{ fontSize: '13px', color: enteredDate ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}<span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline="REGULAR" title={task.name} templates={[{ name: 'REGULAR_map4followup', when: 'Automatic — follow-up with the form link, 2 days after the meeting' }, { name: 'REGULAR_map4reminder', when: 'Automatic reminder if the form is not completed' }]} context={followupCtx} /></span></span>
+    <>
+      <StepRow
+        done={!!enteredDate}
+        name={task.name}
+        emails={<StepEmailsChip pipeline="REGULAR" title={task.name} templates={[{ name: 'REGULAR_map4followup', when: 'Automatic — follow-up with the form link, 2 days after the meeting' }, { name: 'REGULAR_map4reminder', when: 'Automatic reminder if the form is not completed' }]} context={followupCtx} />}
+        date={<StepDate value={p.completed_date} readOnly />}
+      >
         {showDate
           ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} />
-              <button onClick={saveDate} disabled={!date || pending} style={{ ...greenBtn, opacity: (!date || pending) ? 0.6 : 1 }}>{pending ? 'Saving…' : 'Save'}</button>
-              <button onClick={() => !pending && setShowDate(false)} disabled={pending} style={cancelBtn}>Cancel</button>
+              <button onClick={saveDate} disabled={!date || pending} style={btnState(stepSend, !date || pending)}>{pending ? 'Saving…' : 'Save'}</button>
+              <button onClick={() => !pending && setShowDate(false)} disabled={pending} style={btnStep}>Cancel</button>
             </div>
           : enteredDate
-            ? <div className="vfo-stepchips" style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', border: '1px solid rgba(27,146,84,0.3)' }}>MAP 4 meeting: {formatDate(enteredDate)}</span>
+            ? <div className="vfo-stepchips" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <StepAnswer color="var(--vfo-success-text)">MAP 4 meeting: {formatDate(enteredDate)}</StepAnswer>
                 {/* Saving a different date re-arms the follow-up ladder (the backend
                     clears the sent/reminder/stall stamps), so it re-drafts. */}
-                <button onClick={() => { setDate(enteredDate); setShowDate(true) }} style={cancelBtn}>Edit date</button>
+                {!readOnly && <button onClick={() => { setDate(enteredDate); setShowDate(true) }} style={btnStep}>Edit date</button>}
               </div>
-            : <button onClick={() => setShowDate(true)} style={greenBtn}>Enter date of MAP 4 meeting</button>
+            : !readOnly && <button onClick={() => setShowDate(true)} style={stepChoice}>Enter date of MAP 4 meeting</button>
         }
-        <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)', display: 'inline-block', width: '72px', textAlign: 'left', flexShrink: 0 }}>{p.completed_date ? formatDate(p.completed_date) : ''}</span>
-      </div>
+      </StepRow>
 
       {enteredDate && (
-        <div style={{ padding: '8px 0 2px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: aipcDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${aipcDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-            <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-ink)', flex: 1, fontWeight: '600' }}>Automated steps</span>
-          </div>
-          <div style={{ marginLeft: isPhone ? 0 : '18px', padding: isPhone ? '8px 10px' : '8px 14px', background: 'var(--vfo-tint)', borderRadius: '8px', border: '1px solid var(--vfo-border-chip)' }}>
+          <AutoSteps done={aipcDone}>
             {autoStep('MAP 4 follow-up email sent', emailSent, followupSentAt)}
             {reminderStep(reminderSentAt)}
             {pfNotifiedStep(stallNotifiedAt)}
             <div>
-              <div onClick={() => formDone && setFormOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', cursor: formDone ? 'pointer' : 'default' }}>
-                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: formDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1px solid ${formDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)' }}>MAP 4 form completed</span>
-                {formDone
-                  ? <>
-                      <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, marginLeft: 'auto' }}>Done</span>
-                      {track.map4_form_submitted_at && <span className="vfo-stepdate" style={{ fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0 }}>{formatDate(track.map4_form_submitted_at)}</span>}
-                      <span className="vfo-steparrow" style={{ color: 'var(--vfo-muted)', fontSize: '9px', transform: formOpen ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-                    </>
-                  : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)', marginLeft: 'auto' }}>Awaiting</span>}
-              </div>
+              <SubStepRow
+                last
+                done={formDone}
+                name="MAP 4 form completed"
+                onClick={formDone ? () => setFormOpen(o => !o) : undefined}
+                date={<StepDate value={formDone ? track.map4_form_submitted_at : ''} readOnly />}
+                open={formOpen}
+                onToggle={formDone ? () => setFormOpen(o => !o) : undefined}
+              />
               {formDone && formOpen && (
                 <div style={{ padding: '10px 12px 4px 16px' }}>
                   {answer('How was the meeting?', formData.q1_meeting)}
@@ -300,10 +289,9 @@ function Map4FollowupStep({ trackId, task, p, track, onDone, emailCtx, readOnly 
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          </AutoSteps>
       )}
-    </div>
+    </>
   )
 }
 
@@ -436,74 +424,42 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
         const tasks = phase.program_client_tasks || []
         const nonAutoTasks = countedPhaseTasks(phase)
         const doneTasks = nonAutoTasks.filter(t => localProgress[t.id]?.status).length
-        const borderColor = state === 'done' ? 'rgba(27,146,84,0.3)' : state === 'active' ? 'rgba(0,149,255,0.4)' : 'var(--vfo-border)'
-        const dotColor = state === 'done' ? '#1b9254' : state === 'active' ? '#0095ff' : 'transparent'
-        const titleColor = state === 'active' ? 'var(--vfo-primary)' : 'var(--vfo-heading)'
-        const showCompleteBtn = false
         const phaseCompleteState = completedPhases[phase.id]
+        const notesKey = `notes_${phase.id}`
 
         return (
-          <div key={phase.id} style={{ background: 'var(--vfo-card)', border: `1px solid ${borderColor}`, borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden' }}>
-            <div onClick={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))} onMouseDown={noMultiClickSelect} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                <PhaseBadge number={phaseIdx + 1} state={state} />
-                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{phase.name}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {showCompleteBtn && (
-                  <button onClick={e => { e.stopPropagation(); completePhase(phase) }} disabled={phaseCompleteState === 'saving'}
-                    style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', background: phaseCompleteState === 'done' ? 'rgba(27,146,84,0.15)' : 'rgba(0,149,255,0.15)', border: `1px solid ${phaseCompleteState === 'done' ? 'rgba(27,146,84,0.4)' : 'rgba(0,149,255,0.4)'}`, color: phaseCompleteState === 'done' ? 'var(--vfo-success-text)' : '#0095ff', whiteSpace: 'nowrap' }}>
-                    {phaseCompleteState === 'saving' ? 'Saving...' : '✓ Auto complete — all completed and confirmed'}
-                  </button>
-                )}
-                {(!readOnly || memberNotes) && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'Regular Priorities' && noteInScope(n, noteScope)).length} isOpen={expanded[`notes_${phase.id}`]} onClick={() => setExpanded(p => ({ ...p, [`notes_${phase.id}`]: !p[`notes_${phase.id}`] }))} />}
-                {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
-                {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress · {doneTasks}/{nonAutoTasks.length}</span>}
-                {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
-                <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: isExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-              </div>
-            </div>
-
-            {(!readOnly || memberNotes) && expanded[`notes_${phase.id}`] && <PhaseNotesPanel memberMode={!!memberNotes} canAdd={!memberNotes || !!memberCanAdd} clientId={clientId} phaseName={phase.name} tabName="Regular Priorities" programName="VFO Holistic Planning" notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
-
-            {isExpanded && (
-              <div style={{ borderTop: `1px solid ${borderColor}`, padding: isPhone ? '12px 14px' : '12px 18px' }}>
+          <PhaseCard
+            key={phase.id}
+            number={phaseIdx + 1}
+            state={state}
+            name={phase.name}
+            done={doneTasks}
+            total={nonAutoTasks.length}
+            open={isExpanded}
+            onToggle={() => setExpanded(p => ({ ...p, [phase.id]: !p[phase.id] }))}
+            notes={(!readOnly || memberNotes) && <PhaseNotesButton count={(notes || []).filter(n => n.phase_name === phase.name && n.tab_name === 'Regular Priorities' && noteInScope(n, noteScope)).length} isOpen={expanded[notesKey]} onClick={() => setExpanded(p => ({ ...p, [notesKey]: !p[notesKey] }))} />}
+            notesPanel={(!readOnly || memberNotes) && expanded[notesKey] && <PhaseNotesPanel memberMode={!!memberNotes} canAdd={!memberNotes || !!memberCanAdd} clientId={clientId} phaseName={phase.name} tabName="Regular Priorities" programName="VFO Holistic Planning" notes={notes} onNotesChange={onNotesChange} scope={noteScope} />}
+          >
                 {tasks.map(task => {
                   const p = localProgress[task.id] || {}
                   const isDone = !!p.status
                   const statusColor = statusColors[p.status] || 'var(--vfo-muted)'
 
                   if (task.status_options === 'auto') return (
-                    <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                      <span className="vfo-stepname" style={{ fontSize: '13px', color: 'var(--vfo-muted)', flex: 1 }}>{task.name}</span>
-                      <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: isDone ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', color: isDone ? 'var(--vfo-success-text)' : 'var(--vfo-muted)', border: `1px solid ${isDone ? 'rgba(27,146,84,0.3)' : 'var(--vfo-border)'}` }}>{isDone ? 'Completed' : 'Not completed'}</span>
-                      {isDone && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
-                    </div>
+                    <StepRow key={task.id} done={isDone} name={task.name} date={<StepDate value={isDone ? p.completed_date : ''} readOnly />} />
                   )
 
+                  // A viewer sees the answer as plain text and the date, nothing for a step not started.
                   if (readOnly) return (
-                    <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-                      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
-                      {isDone
-                        ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${statusColor}22`, color: readable(statusColor), border: `1px solid ${statusColor}44` }}>{p.status}</span>
-                        : <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>
-                      }
-                      {isDone && p.completed_date && <span className="vfo-stepdate" style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{formatDate(p.completed_date)}</span>}
-                    </div>
+                    <StepRow key={task.id} done={isDone} dotColor={statusColor} name={task.name} date={<StepDate value={isDone ? p.completed_date : ''} readOnly />}>
+                      {isDone && p.status !== 'Completed' && <StepAnswer color={readable(statusColor)}>{p.status}</StepAnswer>}
+                    </StepRow>
                   )
 
                   if (task.status_options === 'enter_details') return (
-                    <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-                      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
-                      {isDone
-                        ? <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Completed</span>
-                        : <button onClick={() => saveTask(task.id, 'Completed', p.completed_date)} style={{ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '1px solid rgba(0,149,255,0.4)', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600 }}>Enter details</button>
-                      }
-                      <StepDate value={isDone ? (p.completed_date || '') : ''} onChange={d => saveTask(task.id, p.status, d)} disabled={saving[task.id]} />
-                    </div>
+                    <StepRow key={task.id} done={isDone} name={task.name} date={<StepDate value={isDone ? p.completed_date : ''} />}>
+                      {!isDone && <button onClick={() => saveTask(task.id, 'Completed', p.completed_date)} style={stepChoice}>Enter details</button>}
+                    </StepRow>
                   )
 
                   if (task.status_options === 'map4_confirm') return (
@@ -550,30 +506,24 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
                     const greyed = !additionalInfoRequired
                     return (
                       <div key={task.id} style={{ borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', flexWrap: 'wrap' }}>
-                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-                          <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                        <StepRow done={isDone} dotColor={statusColor} name={task.name} style={{ borderBottom: 'none' }} date={<StepDate value={isDone ? p.completed_date : ''} />}>
                           <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
                             <option value="">-- Select --</option>
                             {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
-                          <StepDate value={isDone ? (p.completed_date || '') : ''} onChange={d => saveTask(task.id, p.status, d)} disabled={saving[task.id]} />
-                        </div>
+                        </StepRow>
                         <div style={{ marginLeft: '18px', borderLeft: '1px solid var(--vfo-tint-deep)', paddingLeft: '12px', paddingBottom: '4px', opacity: greyed ? 0.3 : 1, pointerEvents: greyed ? 'none' : 'auto' }}>
                           {childTasks.map(ct => {
                             const cp = localProgress[ct.id] || {}
                             const cDone = !!cp.status
                             const cColor = statusColors[cp.status] || 'var(--vfo-muted)'
                             return (
-                              <div key={ct.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: cDone ? cColor : 'transparent', flexShrink: 0, border: `1px solid ${cDone ? cColor : 'var(--vfo-border-mid)'}` }} />
-                                <span className="vfo-substepname" style={{ fontSize: '12px', color: cDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{ct.name}</span>
+                              <SubStepRow key={ct.id} done={cDone} dotColor={cColor} name={ct.name} date={<StepDate value={cDone ? cp.completed_date : ''} />}>
                                 <select value={cp.status || ''} onChange={e => saveTask(ct.id, e.target.value, cp.completed_date)} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '120px', fontSize: '11px', borderColor: cDone ? `${cColor}66` : 'var(--vfo-border-strong)', color: cDone ? readable(cColor) : 'var(--vfo-ink)' }}>
                                   <option value="">-- Select --</option>
                                   {(ct.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
-                                <StepDate value={cDone ? (cp.completed_date || '') : ''} onChange={d => saveTask(ct.id, cp.status, d)} disabled={saving[ct.id]} />
-                              </div>
+                              </SubStepRow>
                             )
                           })}
                         </div>
@@ -583,20 +533,15 @@ function PriorityTrackView({ track, phases, progress, specialists, onBack, onPro
 
                   const isGreyedOut = false
                   return (
-                    <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap', opacity: isGreyedOut ? 0.3 : 1, pointerEvents: isGreyedOut ? 'none' : 'auto' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isDone ? statusColor : 'transparent', flexShrink: 0, border: `1.5px solid ${isDone ? statusColor : 'var(--vfo-border-mid)'}` }} />
-                      <span className="vfo-stepname" style={{ fontSize: '13px', color: isDone ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{task.name}</span>
+                    <StepRow key={task.id} done={isDone} dotColor={statusColor} name={task.name} style={{ opacity: isGreyedOut ? 0.3 : 1, pointerEvents: isGreyedOut ? 'none' : 'auto' }} date={<StepDate value={isDone ? p.completed_date : ''} />}>
                       <select value={p.status || ''} onChange={e => saveTask(task.id, e.target.value, p.completed_date)} disabled={saving[task.id]} style={{ ...inputStyle, background: 'var(--vfo-card)', minWidth: '150px', borderColor: isDone ? `${statusColor}66` : 'var(--vfo-border-strong)', color: isDone ? readable(statusColor) : 'var(--vfo-ink)' }}>
                         <option value="">-- Select --</option>
                         {(task.status_options || '').split('|').map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
-                      <StepDate value={isDone ? (p.completed_date || '') : ''} onChange={d => saveTask(task.id, p.status, d)} disabled={saving[task.id]} />
-                    </div>
+                    </StepRow>
                   )
                 })}
-              </div>
-            )}
-          </div>
+          </PhaseCard>
         )
       })}
     </div>
@@ -880,7 +825,7 @@ function RegularPrioritiesTab({ clientId, programId, client, specialists, readOn
           )}
 
           {priorityTracks.length === 0 && !showAdd && (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--vfo-muted)' }}>No priorities added yet.</div>
+            <TrackEmpty>No priorities added yet.</TrackEmpty>
           )}
 
           {priorityTracks.map(track => {
