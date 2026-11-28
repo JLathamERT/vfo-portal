@@ -2,7 +2,13 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useLocation } from 'react-router-dom'
 import { callApi, getSession } from '../../lib/api'
 import { AccountantOnboardingListSkeleton, AccountantOnboardingDetailSkeleton } from '../shared/Skeleton'
-import { PhaseBadge } from '../shared/TrackKit'
+import { Children, isValidElement } from 'react'
+import { PhaseCard, StepRow, SubStepRow, StepAnswer, answerBox } from '../shared/TrackKit'
+import Tag from '../shared/Tag'
+import StepDate from '../shared/StepDate'
+import { PhaseNotesButton, RecordPhaseNotesPanel } from '../shared/PhaseNotes'
+import { useOnboardingNotes } from '../shared/OnboardingNotes'
+import { stepChoice, stepStop, stepSend, btnStep, btnState } from '../shared/buttonStyles'
 import NewModelSaleModal from './NewModelSaleModal'
 import { formatDate } from '../../lib/dates'
 
@@ -242,6 +248,7 @@ export default function AccountantOnboarding() {
 
 function OnboardingDetail({ id, onBack }) {
   const [ob, setOb] = useState(null)
+  const phaseNotes = useOnboardingNotes('ACCOUNTANT', id)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [pendingDecision, setPendingDecision] = useState(null)
@@ -344,15 +351,6 @@ function OnboardingDetail({ id, onBack }) {
     finally { setSaving(false) }
   }
 
-  // Inline edit of a manual step's completion date (matches the tracking tracks).
-  async function saveStepDate(field, date) {
-    setSaving(true)
-    try {
-      const res = await callApi('save_onboarding_step_date', { pipeline: 'ACCOUNTANT', onboarding_id: id, field, date })
-      if (res?.onboarding) setOb(res.onboarding)
-    } catch (err) { console.error(err); alert('Error: ' + err.message) }
-    finally { setSaving(false) }
-  }
 
   async function sendDepositEmail(amount) {
     setDepositBusy(true)
@@ -462,7 +460,7 @@ function OnboardingDetail({ id, onBack }) {
   const createLock = createMemberLock(ob, 'accountant')
   const prelimSelectValue = prelimStatus === LEGACY_PRELIM_STATUS ? PRELIM_NO_DEPOSIT : (prelimStatus || '')
 
-  const tdGreen = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: '1px solid rgba(27,146,84,0.4)', background: 'rgba(27,146,84,0.12)', color: 'var(--vfo-success-text)', fontWeight: 600 }
+  const tdGreen = stepSend
 
   // Who pays a connected Associate's $25 VFO Portal licence. Accountant is
   // preselected but nothing is stored until Save; fixed once the agreement is sent.
@@ -492,7 +490,7 @@ function OnboardingDetail({ id, onBack }) {
     && ob.payment_status !== 'succeeded' && ob.payment_status !== 'processing'
   const refundSending = !!refundDraft.sending
   const refundReason = refundDraft.reason || ''
-  const trRed = { padding: '4px 10px', borderRadius: '5px', fontSize: '11px', cursor: refundSending ? 'not-allowed' : 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.12)', color: '#e74c3c', fontWeight: 600 }
+  const trRed = stepStop
   const accountantFullName = `${ob.first_name || ''} ${ob.last_name || ''}`.trim()
   const accountantFirstName = (ob.first_name || '').trim() || accountantFullName.split(/\s+/)[0] || ''
 
@@ -519,7 +517,7 @@ function OnboardingDetail({ id, onBack }) {
       {depositRefundable && !refundDraft.open && <button disabled={refundSending} onClick={() => setRefundDraft({ open: true, reason: '', sending: false })} style={trRed}>Refund</button>}
     </div>
   ) : depositStatus === 'processing' ? (
-    <span style={pillStyle('#e06717')}>Deposit clearing (bank payment) - ${fmtMoney(depositAmount)}</span>
+    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Tag color="#e06717">Bank payment clearing</Tag><span style={neutralPillStyle}>Deposit ${fmtMoney(depositAmount)}</span></span>
   ) : depositStatus === 'failed' ? (
     <span style={pillStyle('#e74c3c')}>Deposit failed</span>
   ) : (
@@ -546,8 +544,8 @@ function OnboardingDetail({ id, onBack }) {
         <p style={{ margin: 0 }}>Regards,</p>
       </div>
       <div style={{ marginTop: '14px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-        <button disabled={refundSending} onClick={() => setRefundDraft({ open: false, reason: '', sending: false })} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '12px', cursor: refundSending ? 'not-allowed' : 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)' }}>Cancel</button>
-        <button disabled={refundSending || !refundReason.trim()} onClick={() => sendDepositRefund(refundReason.trim())} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '12px', cursor: (refundSending || !refundReason.trim()) ? 'not-allowed' : 'pointer', border: '1px solid rgba(231,76,60,0.4)', background: refundReason.trim() ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.06)', color: '#e74c3c', fontWeight: '600' }} title={!refundReason.trim() ? 'Enter the reason(s) first' : ''}>{refundSending ? 'Sending...' : 'Send Refund'}</button>
+        <button disabled={refundSending} onClick={() => setRefundDraft({ open: false, reason: '', sending: false })} style={btnStep}>Cancel</button>
+        <button disabled={refundSending || !refundReason.trim()} onClick={() => sendDepositRefund(refundReason.trim())} style={btnState(stepSend, refundSending || !refundReason.trim())} title={!refundReason.trim() ? 'Enter the reason(s) first' : ''}>{refundSending ? 'Sending...' : 'Send Refund'}</button>
       </div>
     </div>
   ) : null
@@ -665,15 +663,15 @@ function OnboardingDetail({ id, onBack }) {
         )}
       />
 
-      {!isAssociate && <StageBlock stage={1} title="Preliminary Meeting" state={stage1State()} expanded={expanded[1]} onToggle={() => setExpanded(p => ({ ...p, 1: !p[1] }))}>
-        <Row label="Team Member Responsible" done={!!ob.onboarding_team_member} date={ob.onboarding_team_member_at} onDateChange={d => saveStepDate('onboarding_team_member_at', d)} saving={saving}>
+      {!isAssociate && <StageBlock notes={phaseNotes('Preliminary Meeting')} stage={1} title="Preliminary Meeting" state={stage1State()} expanded={expanded[1]} onToggle={() => setExpanded(p => ({ ...p, 1: !p[1] }))}>
+        <Row label="Team Member Responsible" done={!!ob.onboarding_team_member} date={ob.onboarding_team_member_at}>
           <select value={ob.onboarding_team_member || ''} onChange={e => saveTeamMember(e.target.value)} disabled={saving} style={{ ...selectStyle, color: 'var(--vfo-ink)' }}>
             <option value="">-- Select --</option>
             {ONBOARDING_TEAM_MEMBER_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
             {ob.onboarding_team_member && !ONBOARDING_TEAM_MEMBER_NAMES.includes(ob.onboarding_team_member) && <option value={ob.onboarding_team_member}>{ob.onboarding_team_member}</option>}
           </select>
         </Row>
-        <Row label="Preliminary Meeting" done={!!prelimStatus} date={ob.prelim_meeting_status_at} onDateChange={d => saveStepDate('prelim_meeting_status_at', d)} saving={saving}
+        <Row label="Preliminary Meeting" done={!!prelimStatus} date={ob.prelim_meeting_status_at}
           locked={!prelimStatus && !!lockFor('prelim')} lockedHint={lockFor('prelim')}>
           <select value={prelimSelectValue} onChange={e => savePrelimMeeting(e.target.value)} disabled={saving || depositSent} title={depositSent ? 'A deposit link has already been sent' : undefined} style={{ ...selectStyle, color: 'var(--vfo-ink)' }}>
             <option value="">-- Select --</option>
@@ -683,7 +681,7 @@ function OnboardingDetail({ id, onBack }) {
             <option value="Request no meeting">Requested no meeting</option>
           </select>
         </Row>
-        <Row label="Direct or Advisor Partnership" done={!!ob.accountant_partnership} date={ob.accountant_partnership_at} onDateChange={d => saveStepDate('accountant_partnership_at', d)} saving={saving}
+        <Row label="Direct or Advisor Partnership" done={!!ob.accountant_partnership} date={ob.accountant_partnership_at}
           locked={!ob.accountant_partnership && !!lockFor('partnership')} lockedHint={lockFor('partnership')}>
           <select value={ob.accountant_partnership || ''} onChange={e => savePartnership(e.target.value)} disabled={saving || depositSent} title={depositSent ? 'A deposit link has already been sent' : undefined} style={{ ...selectStyle, color: 'var(--vfo-ink)' }}>
             <option value="">-- Select --</option>
@@ -692,7 +690,7 @@ function OnboardingDetail({ id, onBack }) {
           </select>
         </Row>
         {ob.accountant_partnership === 'Accountant Partnership' && (
-          <Row label="CC Connected Advisor" done={!!ob.cc_advisor_email} date={ob.cc_advisor_at} onDateChange={d => saveStepDate('cc_advisor_at', d)} saving={saving}
+          <Row label="CC Connected Advisor" done={!!ob.cc_advisor_email} date={ob.cc_advisor_at}
             locked={!ob.cc_advisor_email && !!lockFor('cc_advisor')} lockedHint={lockFor('cc_advisor')}>
             <AdvisorCombo
               advisors={advisors}
@@ -722,7 +720,7 @@ function OnboardingDetail({ id, onBack }) {
             {depositCascade}
           </>
         )}
-        <Row label="Preliminary Meeting Decision" done={!!decision} date={ob.prelim_meeting_decision_at} emails={tier1 ? ACCOUNTANT_TIER1_DECISION_EMAILS : ACCOUNTANT_DECISION_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx} onDateChange={d => saveStepDate('prelim_meeting_decision_at', d)} saving={saving}
+        <Row label="Preliminary Meeting Decision" done={!!decision} date={ob.prelim_meeting_decision_at} emails={tier1 ? ACCOUNTANT_TIER1_DECISION_EMAILS : ACCOUNTANT_DECISION_EMAILS} pipeline={ACCOUNTANT_PIPELINE} emailCtx={emailCtx}
           locked={!decision && !!lockFor('decision')} lockedHint={lockFor('decision')}>
           {decision ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
@@ -743,7 +741,7 @@ function OnboardingDetail({ id, onBack }) {
         </Row>
       </StageBlock>}
 
-      {!isAssociate && <StageBlock stage={2} title="Automated steps" state={stage2State()} expanded={expanded[2]} onToggle={() => setExpanded(p => ({ ...p, 2: !p[2] }))}>
+      {!isAssociate && <StageBlock notes={phaseNotes('Automated steps')} stage={2} title="Automated steps" state={stage2State()} expanded={expanded[2]} onToggle={() => setExpanded(p => ({ ...p, 2: !p[2] }))}>
         {!decision && <Row label="Engagement agreement created and sent for signing" done={false} locked lockedHint='Complete "Preliminary Meeting Decision" first' />}
 
         {decision === 'Yes' && yesRows(true)}
@@ -756,12 +754,10 @@ function OnboardingDetail({ id, onBack }) {
             {undecidedPending && <div style={{ marginLeft: '14px', paddingLeft: '12px', borderLeft: '1px solid var(--vfo-tint-deep)', fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '4px' }}>Awaiting client click on Yes / No button in their email…</div>}
             {finalDec && (
               <div style={{ marginLeft: '14px', paddingLeft: '12px', marginTop: '4px', marginBottom: '4px', borderLeft: '1px solid var(--vfo-tint-deep)' }}>
-                <div style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', display: 'inline-block', marginBottom: '8px',
-                  background: finalDec === 'Yes' ? 'rgba(27,146,84,0.15)' : finalDec === 'ExtraMeeting' ? 'rgba(224,103,23,0.15)' : 'rgba(231,76,60,0.15)',
-                  color: finalDec === 'Yes' ? 'var(--vfo-success-text)' : finalDec === 'ExtraMeeting' ? '#e06717' : '#e74c3c',
-                  border: `1px solid ${finalDec === 'Yes' ? 'rgba(27,146,84,0.3)' : finalDec === 'ExtraMeeting' ? 'rgba(224,103,23,0.3)' : 'rgba(231,76,60,0.3)'}`
-                }}>
-                  {finalDec === 'Yes' ? 'Yes — proceeding' : finalDec === 'ExtraMeeting' ? 'Extra meeting requested' : 'No — declined'}
+                <div style={{ marginBottom: '8px' }}>
+                  <StepAnswer color={finalDec === 'Yes' ? 'var(--vfo-success-text)' : finalDec === 'ExtraMeeting' ? '#e06717' : '#e74c3c'}>
+                    {finalDec === 'Yes' ? 'Yes — proceeding' : finalDec === 'ExtraMeeting' ? 'Extra meeting requested' : 'No — declined'}
+                  </StepAnswer>
                 </div>
                 {finalDec === 'ExtraMeeting' && emCard}
                 {finalDec === 'No' && <AutoRow label="Decline email sent" done={!!ob.decline_email_sent_at} date={ob.decline_email_sent_at} />}
@@ -781,7 +777,7 @@ function OnboardingDetail({ id, onBack }) {
         )}
       </StageBlock>}
 
-      <StageBlock stage={isAssociate ? 1 : 3} title="Add New Accountant" state={stage3State()} expanded={expanded[3]} onToggle={() => setExpanded(p => ({ ...p, 3: !p[3] }))} dimmed={stage3Locked}>
+      <StageBlock notes={phaseNotes('Add New Accountant')} stage={isAssociate ? 1 : 3} title="Add New Accountant" state={stage3State()} expanded={expanded[3]} onToggle={() => setExpanded(p => ({ ...p, 3: !p[3] }))} dimmed={stage3Locked}>
         {stage3Locked ? (
           <Row label="Create Accountant & Send Setup Link" done={false} locked lockedHint={createLock} />
         ) : ob.member_created_at ? (
@@ -818,26 +814,47 @@ function OnboardingDetail({ id, onBack }) {
   )
 }
 
-function StageBlock({ stage, title, state, expanded, onToggle, dimmed, children }) {
-  const borderColor = state === 'done' ? 'rgba(27,146,84,0.3)' : state === 'active' ? 'rgba(0,149,255,0.4)' : 'var(--vfo-border)'
-  const titleColor = state === 'active' ? 'var(--vfo-primary)' : 'var(--vfo-heading)'
+// One phase of the onboarding track: the shared PhaseCard. The count is the
+// manual and automated step rows it draws (Row / AutoRow; a locked row does not
+// count), so it always matches what is on screen. `notes` = useOnboardingNotes'
+// phase props: the Notes button and its thread (onboarding_phase_notes).
+function StageBlock({ stage, title, state, expanded, onToggle, dimmed, children, notes }) {
+  const [notesOpen, setNotesOpen] = useState(false)
+  const { done, total } = countSteps(children)
   return (
-    <div style={{ background: 'var(--vfo-card)', border: `1px solid ${borderColor}`, borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'visible', opacity: dimmed ? 0.55 : 1 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer' }} onClick={onToggle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-          <PhaseBadge number={stage} state={state} />
-          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '1px' }}>{title}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {state === 'done' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(27,146,84,0.15)', color: 'var(--vfo-success-text)', fontWeight: 600, border: '1px solid rgba(27,146,84,0.3)' }}>Done</span>}
-          {state === 'active' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>In progress</span>}
-          {state === 'pending' && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>Not started</span>}
-          <span style={{ color: 'var(--vfo-muted)', fontSize: '10px', transform: expanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s' }}>▼</span>
-        </div>
-      </div>
-      {expanded && <div style={{ borderTop: `1px solid ${borderColor}`, padding: '12px 18px' }}>{children}</div>}
-    </div>
+    <PhaseCard
+      number={stage}
+      state={state}
+      name={title}
+      done={done}
+      total={total}
+      dimmed={false}
+      open={expanded}
+      onToggle={onToggle}
+      bodyStyle={dimmed ? { opacity: 0.55 } : undefined}
+      notes={notes && <PhaseNotesButton count={notes.count} isOpen={notesOpen} onClick={() => setNotesOpen(o => !o)} />}
+      notesPanel={notes && notesOpen && <RecordPhaseNotesPanel notes={notes.notes} onNotesChange={notes.onNotesChange} api={notes.api} />}
+    >
+      {children}
+    </PhaseCard>
   )
+}
+
+// The manual steps (Row) are the count; a phase that is all automated rows (the
+// "Automated steps" phase) counts those instead. Locked rows do not count.
+function countSteps(children) {
+  const acc = { row: [0, 0], auto: [0, 0] }
+  const walk = (kids) => Children.forEach(kids, child => {
+    if (!isValidElement(child)) return
+    if (child.type === Row || child.type === AutoRow) {
+      if (child.props.locked) return
+      const k = child.type === Row ? acc.row : acc.auto
+      k[1] += 1; if (child.props.done) k[0] += 1
+    } else if (child.props && child.props.children) walk(child.props.children)
+  })
+  walk(children)
+  const [done, total] = acc.row[1] > 0 ? acc.row : acc.auto
+  return { done, total }
 }
 
 // Keep only digits and a single decimal point, capped at 2 decimals, so the
@@ -856,7 +873,7 @@ function fmtMoney(n) {
   return num.toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(num) ? 0 : 2, maximumFractionDigits: 2 })
 }
 
-const dateTextStyle = { fontSize: '12px', color: 'var(--vfo-muted)', flexShrink: 0, display: 'inline-block', width: '72px' }
+const dateTextStyle = { fontSize: '11px', color: 'var(--vfo-muted)', flexShrink: 0, display: 'inline-block', width: '60px', textAlign: 'right', boxSizing: 'border-box' }
 
 // Prerequisite lock, drawn the same way the tax priorities tab draws it so every
 // locked step in the portal reads as one thing.
@@ -871,16 +888,17 @@ function LockedIcon({ size = 13 }) {
 
 const lockedHintStyle = { fontSize: '11px', color: 'var(--vfo-muted)', fontWeight: 500 }
 
-function Row({ label, done, date, children, emails, pipeline, emailCtx, onDateChange, saving, locked, lockedHint }) {
+function Row({ label, done, date, children, emails, pipeline, emailCtx, locked, lockedHint }) {
   return (
-    <div title={locked ? lockedHint : undefined} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#1b9254' : 'transparent', flexShrink: 0, border: `1.5px solid ${done ? '#1b9254' : 'var(--vfo-border-mid)'}` }} />
-      <span style={{ fontSize: '13px', color: done ? 'var(--vfo-muted)' : 'var(--vfo-ink)', flex: 1 }}>{label}{emails && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline={pipeline} title={label} templates={emails} context={emailCtx} /></span>}</span>
-      <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-        {locked ? <><LockedIcon /><span style={lockedHintStyle}>{lockedHint}</span></> : children}
-        <span style={dateTextStyle}>{done && date ? formatDate(date) : ''}</span>
-      </span>
-    </div>
+    <StepRow
+      title={locked ? lockedHint : undefined}
+      done={done}
+      name={label}
+      emails={emails && <StepEmailsChip pipeline={pipeline} title={label} templates={emails} context={emailCtx} />}
+      date={<StepDate value={done ? date : ''} />}
+    >
+      {locked ? <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><LockedIcon /><span style={lockedHintStyle}>{lockedHint}</span></span> : children}
+    </StepRow>
   )
 }
 
@@ -943,21 +961,17 @@ function AdvisorCombo({ advisors, currentNumber, currentName, currentEmail, disa
 function AutoRow({ label, done, date, tag, emails, pipeline, emailCtx, pending = false, failed = false }) {
   const tags = tag == null ? [] : Array.isArray(tag) ? tag.filter(Boolean) : [tag]
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid var(--vfo-border-soft)', flexWrap: 'wrap' }}>
-      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: done ? '#1b9254' : pending ? '#e06717' : failed ? '#b23c30' : 'transparent', flexShrink: 0, border: `1px solid ${done ? '#1b9254' : pending ? '#e06717' : failed ? '#b23c30' : 'var(--vfo-border-mid)'}` }} />
-      <span style={{ fontSize: '12px', color: 'var(--vfo-ink)', flex: 1 }}>{label}{emails && <span style={{ marginLeft: '8px' }}><StepEmailsChip pipeline={pipeline} title={label} templates={emails} context={emailCtx} /></span>}</span>
-      <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-        {done && tags.length > 0 && tags.map((t, i) => (
-          <span key={i} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{t}</span>
-        ))}
-        {!done && pending
-          ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(224,103,23,0.15)', border: '1px solid rgba(224,103,23,0.3)', color: '#e06717' }}>Bank payment clearing</span>
-          : !done && failed
-          ? <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(178,60,48,0.12)', border: '1px solid rgba(178,60,48,0.3)', color: '#b23c30', fontWeight: 600 }}>Payment failed</span>
-          : <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: done ? 'rgba(27,146,84,0.15)' : 'var(--vfo-tint)', border: done ? '1px solid rgba(27,146,84,0.3)' : '1px solid var(--vfo-border-chip)', color: done ? 'var(--vfo-success-text)' : 'var(--vfo-muted)' }}>{done ? 'Done' : 'Not completed'}</span>}
-        <span style={dateTextStyle}>{done && date ? formatDate(date) : ''}</span>
-      </span>
-    </div>
+    <SubStepRow
+      done={done || pending || failed}
+      dotColor={done ? undefined : pending ? '#e06717' : failed ? '#b23c30' : undefined}
+      name={label}
+      emails={emails && <StepEmailsChip pipeline={pipeline} title={label} templates={emails} context={emailCtx} />}
+      date={<StepDate value={done ? date : ''} readOnly />}
+    >
+      {done && tags.length > 0 && <StepAnswer>{tags.join(' · ')}</StepAnswer>}
+      {!done && pending && <Tag color="#e06717">Bank payment clearing</Tag>}
+      {!done && !pending && failed && <Tag color="#b23c30">Payment failed</Tag>}
+    </SubStepRow>
   )
 }
 
@@ -1008,16 +1022,14 @@ function StallRows({ ob, setOb, stall }) {
 }
 
 const selectStyle = { padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12px', minWidth: '150px', fontFamily: 'Inter, sans-serif' }
-function pillStyle(color) { return { fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: `${color}22`, color: readable(color), border: `1px solid ${color}44` } }
-const neutralPillStyle = { fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', color: 'var(--vfo-muted)', border: '1px solid var(--vfo-border-chip)' }
-function branchBtn(color) { return { padding: '4px 12px', borderRadius: '5px', fontSize: '11px', cursor: 'pointer', border: `1px solid ${color}66`, background: `${color}22`, color: readable(color) } }
+// A step's recorded answer is the shared value box, never a tag (HOUSE_STYLE §6).
+function pillStyle(color) { return answerBox(color) }
+const neutralPillStyle = answerBox()
+// The decision choices: white outline, the No / decline one red outline.
+function branchBtn(color) { return color === '#e74c3c' ? stepStop : stepChoice }
 function pendingBtn(color, pendingValue, myValue) {
   const base = branchBtn(color)
   if (!pendingValue) return base
-  if (pendingValue === myValue) {
-    // The clicked button — show as "in-flight" with stronger color + wait cursor
-    return { ...base, background: `${color}44`, fontWeight: '600' }
-  }
-  // The other buttons — dim them
+  if (pendingValue === myValue) return { ...base, cursor: 'wait' }
   return { ...base, opacity: 0.3, cursor: 'not-allowed' }
 }

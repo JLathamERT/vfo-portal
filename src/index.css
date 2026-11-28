@@ -191,6 +191,19 @@
     grid-row: 1;
     margin-left: 8px !important;
   }
+  /* The shared StepRow keeps its control + date in one right-hand group on a
+     desktop; on a phone that group dissolves into the grid above. */
+  .vfo-stepright,
+  .vfo-stepcontrols {
+    display: contents !important;
+  }
+  div:has(> .vfo-stepname) .vfo-stepright > *,
+  div:has(> .vfo-stepname) .vfo-stepcontrols > *,
+  div:has(> .vfo-substepname) .vfo-stepright > *,
+  div:has(> .vfo-substepname) .vfo-stepcontrols > * {
+    grid-column: 2;
+    margin-left: 0 !important;
+  }
   .vfo-stepchips {
     min-width: 0 !important;
     flex-wrap: wrap !important;

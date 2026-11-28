@@ -37,6 +37,19 @@ export function formatDate(value, empty = '') {
   return localDay(d)
 }
 
+// The same rules, as the YYYY-MM-DD an <input type="date"> (StepDate) holds:
+// a calendar date as stored, a moment as the viewer's own day.
+export function isoDay(value) {
+  if (value === null || value === undefined || value === '') return ''
+  const s = String(value).trim()
+  if (MOMENT.test(s)) {
+    const d = new Date(s)
+    if (!Number.isNaN(d.getTime())) return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  }
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/)
+  return m ? m[1] : ''
+}
+
 // The same day with its time, in the viewer's zone. A bare date has no time to
 // show, so it falls back to the plain date.
 export function formatDateTime(value, empty = '') {

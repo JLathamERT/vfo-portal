@@ -1,3 +1,4 @@
+import { answerBox } from '../../shared/TrackKit'
 // The onboarding list's Phase on the PFT and Tailored Route client pages
 // (pft_load_engagement sends stage_label + phase_tone, worked out by the backend's
 // accountantOnboardingPhase). Same dots and colours as OnboardingListTable:
@@ -15,7 +16,7 @@ export default function OnboardingPhaseChip({ onboarding }) {
     ? `Complete · #${onboarding.member_number}`
     : onboarding.stage_label
   if (!tone) {
-    return <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(0,149,255,0.15)', color: '#0095ff', fontWeight: 600, border: '1px solid rgba(0,149,255,0.3)' }}>{label}</span>
+    return <span style={answerBox('#0095ff')}>{label}</span>
   }
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: tone.text, fontWeight: 600 }}>
