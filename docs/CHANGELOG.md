@@ -9,6 +9,18 @@
 
 ---
 
+## 2026-11-28 (d) — Background Checks laid out like License Fees, a client's plan in plain words, profile emails side by side — by Jake
+
+**What it is.** Three follow-ups Jake asked for after part 6b shipped (live-360). Website only; no backend change.
+
+- **VFO Specialist Background Checks copies VFO Specialist License Fees** (Jake): pills **Specialists** · Request Payment · Outstanding Payment Links. Specialists is License's view (search, status filter, Refresh, one card per specialist: the facts line, total collected, last payment, number paid, the status that needs looking at first; it opens to every check with a Card fee column and the totals line under the header). The monthly ledger and the **Background Check Reconciliation** pill are gone (Jake agreed): each card carries the person's payments and all-time total. `SpecialistBgReconciliationPanel.jsx` deleted; the Accounting skeleton draws 3 pills for both pages.
+- **Client Overview:** the Tax Planning tab's Plan column and the Unassigned tab's programs are plain words, not pills ("Tax Planning · Direct" with Direct in orange).
+- **Profile emails side by side:** a one-line field over 34 characters took the whole row, so a long work email left the personal email alone and Member Details read 2-1-1-2. `Field` takes `pair`, and the work / personal emails on a member's and a specialist's profile use it: 2-2-2, a too-long value ends in "…" (whole on hover).
+
+**Tested on the test site** (dev server, Jake): Client Overview's two tabs, a specialist's emails, the Background Checks pills, cards, filter and an opened card beside License Fees. The long live email that showed the problem has no test-site twin; the rule is shared, so it was checked on the specialist profile.
+
+---
+
 ## 2026-11-28 (c) — Cards, forms, pop-ups, buttons and colours in the house style (Issue #661 part 6b), Member Overview's columns, New Payment and Request Payment as sub-tabs — by Jake
 
 **What it is.** The last part of the house-style sweep (Issue JLathamERT/vfo-edge-functions#661, which this closes). Website only; no backend change, no migration. Every rule is written into `docs/HOUSE_STYLE.md` §1, §2, §5, §7 and §8.

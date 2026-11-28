@@ -16,7 +16,7 @@
 | Webhook | `utils/specialist-bg-request-webhook.ts`, called from one block in `router/webhooks.ts` ahead of the customer cascade — [../architecture/07-server-chains.md](../architecture/07-server-chains.md) |
 | Reminder ladder | `automation_SPECIALIST_sweep` (14:20 UTC Mon–Fri) tier 8 |
 | Loader | `specialist_bg_payments_load` → `{ payments, requests }` |
-| UI | `SpecialistBgPanel.jsx` (pill 1; exports `bgRowsFrom` and `BgRequestSection`, the send form, pill 3) · `SpecialistBgReconciliationPanel.jsx` (pill 2) · `SpecialistBgOutstandingPanel.jsx` (pill 4) |
+| UI | `SpecialistBgPanel.jsx` (pill 1, Specialists; exports `bgRowsFrom` and `BgRequestSection`, the send form, pill 2) · `SpecialistBgOutstandingPanel.jsx` (pill 3) |
 | Sandbox | `pipeline_sandbox_config` row `SPECIALIST_ONBOARDING` OR `isTestSandboxExpert` (the environment's answer: every specialist on the test site, none on live) |
 
 ## Lifecycle
@@ -50,11 +50,10 @@ Edited under Automation → Email Templates → **Specialist Background Check Re
 
 ## Accounting UI
 
-`AccountingCombinedPanel` (`maxWidth` 1200px) with four pills, the License Fees tab's shapes. The three money pills read the same `specialist_bg_payments_load` through `bgRowsFrom` (onboarding rows — every `specialist_onboarding` row with `bg_payment_status` set OR `bg_step3_email_sent_at` set, Core $350 / Max $950 — plus request rows), so they cannot disagree.
+`AccountingCombinedPanel` (`maxWidth` 1200px) with three pills, a copy of VFO Specialist License Fees (Jake 2026-11-28: Specialists · Set Up · Outstanding). The two money pills read the same `specialist_bg_payments_load` through `bgRowsFrom` (onboarding rows — every `specialist_onboarding` row with `bg_payment_status` set OR `bg_step3_email_sent_at` set, Core $350 / Max $950 — plus request rows), so they cannot disagree.
 
-- **VFO Specialist Background Checks** — the monthly ledger of RECEIVED payments only, with a year + month ("All months") filter on the paid date. Columns Specialist · Date · Amount · Status, Totals row on top.
-- **Background Check Reconciliation** (`SpecialistBgReconciliationPanel.jsx`) — one row per specialist who has ever paid (onboarding or request), all-time: Payments · Total Collected · Most Recent, highest total first.
-- **Request Payment** (`BgRequestSection`, 2026-11-28; it was a button over the ledger that opened the form) — the send form in a `ProfileCard`, "Send Background Check Payment Request": pick the specialist, enter the amount, send. A sent request is unpaid, so it shows on Outstanding Payment Links.
+- **Specialists** — License Fees' Specialists view: search, a status filter (Payment failed · Bank payment clearing · Payment requested · Cleared) and Refresh, then one card per specialist who has had a check: name, a line of facts (Onboarding – Core / Max, Request; the method; the last link sent), the total collected, the last payment date, the number paid and the status that needs looking at first. It opens to every check (Check · Date · Amount · Card fee · Status · Payment) with its totals line under the header. It replaced the monthly ledger and the Background Check Reconciliation pill (2026-11-28): each card carries a person's payments and their all-time total.
+- **Request Payment** (`BgRequestSection`, 2026-11-28; it was a button over the ledger that opened the form) — the send form in a `ProfileCard`, "Send Background Check Payment Request": pick the specialist, enter the amount, send. A sent request is unpaid, so it shows on Outstanding Payment Links and on the specialist's card as Payment requested.
 - **Outstanding Payment Links** (`SpecialistBgOutstandingPanel.jsx`) — two groups of License-style cards (Amount · Link sent · Status): unpaid requests (`requested` / `failed`), then unpaid onboarding links on LIVE onboardings (status `active` or NULL), which are chased by the onboarding flow's own ladder and shown for completeness.
 
 ## Not yet exercised
