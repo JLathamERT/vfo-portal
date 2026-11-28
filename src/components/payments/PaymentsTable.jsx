@@ -47,8 +47,8 @@ const STATUS = {
 // 2026-09-30): a client row already reads as one by its "Member: …" line, and the
 // tag only cost height.
 const PTYPE_TAG = {
-  Member:     { fg: '#7839ee', bg: '#f0e9fe' },
-  Specialist: { fg: '#0e7490', bg: '#cffafe' },
+  Member:     '#7839ee',
+  Specialist: '#0e7490',
 }
 
 // Preferred display order for the filter chips (categories not listed sort last).
@@ -139,13 +139,6 @@ export function parseGroupKey(gk) {
   return m ? { program: m[1], rowId: Number(m[2]) } : null
 }
 
-function Tag({ children, fg = 'var(--vfo-muted)', bg = 'var(--vfo-tint)' }) {
-  return (
-    <span style={{ display: 'inline-block', padding: '1px 7px', borderRadius: '5px', background: bg, color: fg, fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
-      {children}
-    </span>
-  )
-}
 
 // cancellableGroups  — array of program prefixes the CALLER supports, e.g.
 //                      ['map1', 'tax']. Omit (or leave null) and no cancel control
@@ -301,7 +294,7 @@ export default function PaymentsTable({
           <td style={{ ...td, whiteSpace: 'nowrap' }}>
             {!child && personName(r)}
             {!child && r.personType && PTYPE_TAG[r.personType] && (
-              <div style={{ marginTop: '3px' }}><Tag fg={PTYPE_TAG[r.personType].fg} bg={PTYPE_TAG[r.personType].bg}>{r.personType}</Tag></div>
+              <div style={{ marginTop: '3px' }}><SharedTag color={PTYPE_TAG[r.personType]}>{r.personType}</SharedTag></div>
             )}
             {!child && memberSubLine(r)}
           </td>
@@ -311,8 +304,8 @@ export default function PaymentsTable({
             <span style={{ fontWeight: child ? 500 : 600, color: child ? 'var(--vfo-ink-soft)' : 'var(--vfo-ink)' }}>{r.label}</span>
           </div>
           {r.detail && <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', marginTop: '3px' }}>{r.detail}</div>}
-          {onBehalf && <div style={{ marginTop: '5px' }}><Tag fg="#8a5200" bg="#fcefd6">Paid by {r.onBehalfByMember} — not the client’s own payment</Tag></div>}
-          {r.onBehalfForClient && <div style={{ marginTop: '5px' }}><Tag fg="var(--vfo-accent-text)" bg="var(--vfo-tint)">On behalf of {r.onBehalfForClient}</Tag></div>}
+          {onBehalf && <div style={{ marginTop: '5px' }}><SharedTag color="#b45309">Paid by {r.onBehalfByMember} — not the client’s own payment</SharedTag></div>}
+          {r.onBehalfForClient && <div style={{ marginTop: '5px' }}><SharedTag color="#125ecc">On behalf of {r.onBehalfForClient}</SharedTag></div>}
           {(r.invoiceNumber || r.receiptNumber) && (
             <div style={{ fontSize: '11px', color: 'var(--vfo-placeholder)', marginTop: '5px', fontFamily: 'ui-monospace, monospace' }}>
               {[r.invoiceNumber, r.receiptNumber].filter(Boolean).join('  ·  ')}
@@ -430,7 +423,7 @@ export default function PaymentsTable({
             <td style={{ ...td, whiteSpace: 'nowrap' }}>
               {personName(first)}
               {first.personType && PTYPE_TAG[first.personType] && (
-                <div style={{ marginTop: '3px' }}><Tag fg={PTYPE_TAG[first.personType].fg} bg={PTYPE_TAG[first.personType].bg}>{first.personType}</Tag></div>
+                <div style={{ marginTop: '3px' }}><SharedTag color={PTYPE_TAG[first.personType]}>{first.personType}</SharedTag></div>
               )}
               {memberSubLine(first)}
             </td>

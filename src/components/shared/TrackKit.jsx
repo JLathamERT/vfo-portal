@@ -174,11 +174,19 @@ export function StepDot({ done, color = STEP_GREEN, small = false }) {
 
 // The row's chevron, the house ExpandChevron, sits in the card's right margin
 // (the row is position: relative), so every row's date ends at the same right
-// edge whether or not that row opens (Jake 2026-11-28). `inset` = how far into
-// the margin: the card body's 18px (14px on a phone), the AutoSteps box's 14px.
-export function StepChevron({ open, onToggle, inset = 17 }) {
+// edge whether or not that row opens (Jake 2026-11-28). That margin is
+// STEP_CHEVRON_MARGIN wide on a desktop, so the ▼ has room between the date and
+// the card's edge (Jake 2026-11-28: 18px squeezed it against both). `sub` = a row
+// inside an automated-steps box (14px right padding): its ▼ goes past the box's
+// edge into the same card margin, in line with every other row's.
+export const STEP_CHEVRON_MARGIN = 30
+const SUB_BOX_PAD = 14
+export function StepChevron({ open, onToggle, sub = false }) {
+  const isPhone = useIsPhone()
+  const inset = isPhone ? (sub ? 10 : 14) : STEP_CHEVRON_MARGIN
+  const reach = !isPhone && sub ? SUB_BOX_PAD + inset : inset
   return (
-    <span className="vfo-steparrow" style={{ position: 'absolute', right: `-${inset}px`, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', width: `${inset}px`, justifyContent: 'center' }}>
+    <span className="vfo-steparrow" style={{ position: 'absolute', right: `-${reach}px`, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', width: `${inset}px`, justifyContent: 'center' }}>
       <ExpandChevron open={open} onToggle={onToggle} style={{ width: `${inset}px` }} />
     </span>
   )
@@ -244,7 +252,7 @@ export function SubStepRow({ done, dotColor, name, emails, children, date, open,
       <StepDot small done={done} color={dotColor} />
       <span className="vfo-substepname" style={{ fontSize: '12px', color: 'var(--vfo-ink)', flex: 1, minWidth: '180px' }}>{name}{emails && <span style={{ marginLeft: '8px' }}>{emails}</span>}</span>
       <StepRight date={date === undefined ? <StepDate value="" /> : date}>{children}</StepRight>
-      {onToggle && <StepChevron open={open} onToggle={onToggle} inset={13} />}
+      {onToggle && <StepChevron open={open} onToggle={onToggle} sub />}
     </div>
   )
 }
@@ -278,22 +286,26 @@ export function PhaseCard({ number, badge, state, name, nameAfter, done, total, 
   const borderColor = state === 'done' ? 'rgba(27,146,84,0.3)' : state === 'active' ? 'rgba(0,149,255,0.4)' : 'var(--vfo-border)'
   return (
     <div ref={cardRef} style={{ background: 'var(--vfo-card)', border: `1px solid ${borderColor}`, borderRadius: '14px', boxShadow: '0 3px 12px rgba(20,45,95,0.05)', marginBottom: '10px', overflow: 'hidden', opacity: dimmed ? 0.3 : 1, pointerEvents: dimmed ? 'none' : undefined, ...style }}>
-      <div onClick={onToggle} onMouseDown={noMultiClickSelect} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: isPhone ? '12px 14px' : '14px 18px', cursor: onToggle ? 'pointer' : 'default' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0, flexWrap: nameAfter ? 'wrap' : undefined }}>
+      {/* Phone: the name keeps its own width, so when the name and the Notes / status
+          group do not fit on one line the group drops under it instead of squeezing
+          the name onto three lines (#665). */}
+      <div onClick={onToggle} onMouseDown={noMultiClickSelect} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', rowGap: '8px', flexWrap: isPhone ? 'wrap' : undefined, padding: isPhone ? '12px 14px' : '14px 18px', cursor: onToggle ? 'pointer' : 'default' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: isPhone ? '1 1 auto' : 1, minWidth: 0, flexWrap: nameAfter ? 'wrap' : undefined }}>
           {badge || <PhaseBadge number={number} state={state} />}
           <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, color: state === 'active' ? 'var(--vfo-primary)' : 'var(--vfo-heading)', textTransform: 'uppercase', letterSpacing: '1px' }}>{name}</span>
           {nameAfter}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, marginLeft: isPhone ? 'auto' : undefined }}>
           {extra}
           {notes}
           {state === 'active' && <Tag color="#0095ff">In progress{typeof total === 'number' && total > 0 ? ` · ${done}/${total}` : ''}</Tag>}
-          {onToggle && <ExpandChevron open={open} style={{ margin: '-6px -17px -6px -4px', width: '17px' }} />}
+          {/* Into the header's right padding (18px, 14px on a phone); on a desktop in line with the steps' ▼ (StepChevron). */}
+          {onToggle && <ExpandChevron open={open} style={{ margin: isPhone ? '-6px -6px -6px -4px' : '-6px -11px -6px -4px', width: '17px' }} />}
         </div>
       </div>
       {notesPanel}
       {open && (
-        <div style={{ borderTop: `1px solid ${borderColor}`, padding: isPhone ? '12px 14px' : '12px 18px', ...bodyStyle }}>
+        <div style={{ borderTop: `1px solid ${borderColor}`, padding: isPhone ? '12px 14px' : `12px ${STEP_CHEVRON_MARGIN}px 12px 18px`, ...bodyStyle }}>
           {children}
         </div>
       )}

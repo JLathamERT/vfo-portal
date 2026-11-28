@@ -26,6 +26,7 @@ import { statusPillStyle } from '../shared/statusColors'
 import { msmTypeCounts } from '../shared/msmMeetingTypes'
 import MsmMeetingsCounter from '../shared/MsmMeetingsCounter'
 import { isAccountantProgram, TAILORED_PROGRAM } from '../shared/accountantPrograms'
+import { planTabFor } from '../shared/personLinks'
 
 // Group a phase's tasks so each section header owns the contiguous sub-steps beneath it,
 // letting the UI enclose the group and keep following standalone tasks visually separate.
@@ -902,6 +903,8 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
     </div>
   )
 
+  const openClient = (c, tab) => navigate(`/member/client/${c.id}?${program?.id ? `program=${program.id}&` : ''}tab=${tab}`, { state: { enrollment_id: enrollment?.id } })
+
   if (loading) return <ClientsListSkeleton add={intakeOn} table />
 
   const countTile = (n, label) => (
@@ -932,13 +935,14 @@ function MemberClientsView({ enrollment, member, program, onEnrollmentsChanged =
         <ListTable
           rows={clients}
           rowKey={c => c.id}
-          onRowClick={c => navigate(`/member/client/${c.id}`, { state: { enrollment_id: enrollment?.id } })}
+          onRowClick={c => openClient(c, planTabFor(program?.name))}
           minWidth="600px"
           empty={`No ${isPFT ? 'accountants' : 'clients'} added yet.`}
           columns={[
             { key: 'name', label: isPFT ? 'Accountant' : 'Client', width: '2fr', get: c => `${c.first_name} ${c.last_name}`, render: c => (
               // No email or phone on this list (Jake, 2026-11-26): name, then any "with" contacts.
-              <ListName sub={contactsMap[c.id]?.length > 0 ? <span style={{ fontStyle: 'italic' }}>with {contactsMap[c.id].map(x => `${x.first_name} ${x.last_name}`).join(', ')}</span> : null}>{`${c.first_name} ${c.last_name}`}</ListName>
+              // The NAME opens the profile, the ROW the client's track (#632).
+              <ListName onClick={e => { e.stopPropagation(); openClient(c, 'home') }} title="Open profile" sub={contactsMap[c.id]?.length > 0 ? <span style={{ fontStyle: 'italic' }}>with {contactsMap[c.id].map(x => `${x.first_name} ${x.last_name}`).join(', ')}</span> : null}>{`${c.first_name} ${c.last_name}`}</ListName>
             ) },
             { key: 'ref', label: 'Ref', width: '120px', get: c => c.client_ref, render: c => <ListText mono>{c.client_ref}</ListText> },
             { key: 'status', label: 'Status', width: '120px', get: c => (c.status ? clientStatusLabel(clientStatusKey(c)) : ''), render: c => c.status ? <ListPill color={clientStatusHex(clientStatusKey(c)) || '#8a94a6'}>{clientStatusLabel(clientStatusKey(c))}</ListPill> : <ListText /> },
@@ -1013,14 +1017,15 @@ function VideoTask({ task, statusNode, errorNode, isTouched, isPositive, statusC
 
   
 
-  // Phone: one row like every other task - a round play button where the status
-  // dot sits (the status select already carries the colour), the name (also
-  // tappable), then the status - not a second row holding a Watch Video button.
+  // Phone: read like every other task, one item per line - a round play button
+  // where the status dot sits (the status select already carries the colour) and
+  // the name (also tappable), then the status, then the date under it - not a
+  // second row holding a Watch Video button.
   if (isPhone) {
     const toggle = () => setShowVideo(!showVideo)
     return (
       <div style={{ padding: '10px 0', borderBottom: '1px solid var(--vfo-tint)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: showVideo ? '10px' : '0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button onClick={toggle} aria-label={showVideo ? `Hide video: ${task.name}` : `Play video: ${task.name}`} title={showVideo ? 'Hide video' : 'Play video'}
             style={{ width: '30px', height: '30px', borderRadius: '50%', border: 'none', flexShrink: 0, padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: showVideo ? 'rgba(231,76,60,0.12)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: showVideo ? '#e74c3c' : '#fff', boxShadow: showVideo ? 'none' : '0 2px 6px rgba(18,94,204,0.3)' }}>
             {showVideo
@@ -1028,11 +1033,14 @@ function VideoTask({ task, statusNode, errorNode, isTouched, isPositive, statusC
               : <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ marginLeft: '2px' }}><path d="M7 4.5v15l13-7.5z" /></svg>}
           </button>
           <span onClick={toggle} style={{ flex: 1, minWidth: 0, cursor: 'pointer', fontSize: '13px', color: isPositive ? 'var(--vfo-muted)' : 'var(--vfo-ink)' }}>{task.name}</span>
+        </div>
+        <div style={{ marginLeft: '40px', marginTop: '6px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
           {statusNode}
+          <StepDate value={completedDate} />
         </div>
         {errorNode}
         {showVideo && (
-          <div style={{ borderRadius: '8px', overflow: 'hidden' }}>
+          <div style={{ borderRadius: '8px', overflow: 'hidden', marginTop: '10px' }}>
             {isEmbed ? (
               <div style={{ position: 'relative', paddingTop: '56.25%' }}>
                 <iframe src={url} title={task.name} allow="autoplay; fullscreen" allowFullScreen frameBorder="0" scrolling="no" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }} />

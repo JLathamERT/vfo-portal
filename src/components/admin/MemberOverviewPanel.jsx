@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi } from '../../lib/api'
-import ListFilterButton, { matchesFilter, sortMembers, SortSelect, MEMBER_SORT_OPTIONS, useHeaderSort, sortByColumn, SortHeader } from './ListFilterButton'
+import ListFilterButton, { matchesFilter, sortMembers, SortSelect, MEMBER_SORT_OPTIONS } from './ListFilterButton'
 import { formatDate } from '../../lib/dates'
-import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import ListTable, { ListName, ListText, listSearchStyle } from '../shared/ListTable'
+import ExpandChevron from '../shared/ExpandChevron'
+import { ClientNameLink, clientPagePath, planTabFor } from '../shared/personLinks'
 import { readable } from '../shared/readableColor'
 import { STATUS_COLORS } from '../shared/statusColors'
 import { clientStatusColors, clientStatusLabel } from '../shared/clientStatus'
@@ -47,19 +49,9 @@ function catLabel(m) {
 }
 const CAT_COLORS = { Advisor: '#0a85e8', Accountant: '#7b52d6', Strategic: '#e0771a' }
 
-const GRID = '30px 84px 1.5fr 100px 1.1fr 96px 128px 110px 70px 1.3fr 176px'
-
 const CLIENT_GRID = '120px 1.4fr 96px 110px 130px 1.6fr'
 
-
 export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onPatchMember }) {
-  const navigate = useNavigate()
-  // A client row / name opens that client's Profile (first program, so ClientDetail
-  // resolves the right enrollment); the program chips keep their own targets.
-  const openClientProfile = (c) => {
-    const prog = (c.programs || [])[0]
-    navigate(`/admin/client/${c.id}?${prog ? `program=${prog.id}&` : ''}tab=home`)
-  }
   const [relations, setRelations] = useState({ programsByMember: {}, clientsByMember: {} })
   const [relLoading, setRelLoading] = useState(true)
   const [relError, setRelError] = useState('')
@@ -69,7 +61,6 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
   const [search, setSearch] = useState('')
   const [listFilter, setListFilter] = useState({ status: ['Active'] })
   const [listSort, setListSort] = useState('az')
-  const { sort: colSort, onSort, reset: resetColSort } = useHeaderSort()
 
   useEffect(() => {
     let alive = true
@@ -120,20 +111,76 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
   const q = search.trim().toLowerCase()
   const searched = q ? basePool.filter(m => m.name?.toLowerCase().includes(q) || m.plugin_member_number?.toLowerCase().includes(q)) : basePool
   const filtered = searched.filter(m => matchesFilter(m, filterGroups, listFilter))
-  // Baseline = the dropdown ordering; a clicked column header overrides it.
-  const sortColumns = {
-    number: { type: 'number', get: m => { const n = parseInt(String(m.plugin_member_number ?? ''), 10); return Number.isNaN(n) ? null : n } },
-    name: { type: 'text', get: m => m.name },
-    category: { type: 'text', get: m => catLabel(m) },
-    type: { type: 'text', get: m => m.member_type },
-    joined: { type: 'date', get: m => (m.join_date ? String(m.join_date).slice(0, 10) : null) },
-    status: { type: 'text', get: m => m.elite_status || 'Active' },
-    msm: { type: 'text', get: m => m.assigned_msm },
-    clients: { type: 'number', get: m => (clientsByMember[m.plugin_member_number] || []).length },
-    programs: { type: 'text', get: m => (programsByMember[m.plugin_member_number] || []).join(', ') },
-    engagement: { type: 'number', get: m => { const i = ENGAGEMENT.findIndex(e => e.value === engOf(m)); return i < 0 ? null : i } },
-  }
-  const rows = sortByColumn(sortMembers(filtered, listSort), colSort, sortColumns)
+  // Baseline = the dropdown ordering; a clicked column header re-sorts on top (ListTable).
+  const rows = sortMembers(filtered, listSort)
+  const statusPill = (bg, color, text) => <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 600, background: bg, color }}>{text}</span>
+  const flag = (bg, color, text) => <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: bg, color }}>{text}</span>
+  const columns = [
+    { key: 'number', label: 'Member #', width: '84px', type: 'number', get: m => { const n = parseInt(String(m.plugin_member_number ?? ''), 10); return Number.isNaN(n) ? null : n },
+      render: m => <ListText mono style={{ color: 'var(--vfo-muted)' }}>{m.plugin_member_number}</ListText> },
+    { key: 'name', label: 'Name', width: '1.6fr', get: m => m.name, render: m => <ListName>{m.name}</ListName> },
+    { key: 'category', label: 'Category', width: '100px', get: m => catLabel(m), render: m => {
+      const cat = catLabel(m)
+      return <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', color: readable(CAT_COLORS[cat]), background: `${CAT_COLORS[cat]}1f` }}>{cat}</span>
+    } },
+    { key: 'type', label: 'Type', width: '1.1fr', get: m => m.member_type, render: m => <ListText style={{ color: 'var(--vfo-muted)' }}>{m.member_type}</ListText> },
+    { key: 'joined', label: 'Joined', width: '96px', type: 'date', get: m => (m.join_date ? String(m.join_date).slice(0, 10) : null),
+      render: m => <ListText mono style={{ color: 'var(--vfo-muted)' }}>{m.join_date ? formatDate(m.join_date) : ''}</ListText> },
+    { key: 'status', label: 'Status', width: '128px', get: m => m.elite_status || 'Active', render: m => (
+      <span style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+        {m.elite_status === 'Active' || !m.elite_status ? statusPill('rgba(27,146,84,0.13)', 'var(--vfo-success-text)', m.elite_status || 'Active')
+          : m.elite_status === 'Lost' ? statusPill('rgba(231,76,60,0.13)', '#e74c3c', 'Lost')
+          : m.elite_status === 'Removed' ? statusPill('rgba(155,28,28,0.13)', STATUS_COLORS.Removed, 'Removed')
+          : statusPill('var(--vfo-tint)', 'var(--vfo-muted)', m.elite_status)}
+        {m.suspended && flag('rgba(231,76,60,0.13)', '#e74c3c', 'SUSP')}
+        {m.paused && flag('rgba(224,103,23,0.14)', '#e06717', 'PAUSE')}
+        {m.membership_arrears && flag('rgba(180,83,9,0.14)', '#b45309', 'ARREARS')}
+      </span>
+    ) },
+    { key: 'msm', label: 'MSM', width: '110px', get: m => m.assigned_msm, render: m => <ListText>{m.assigned_msm}</ListText> },
+    // The count opens the member's clients under the row (Jake 2026-11-28: the ▼ sits
+    // with the count it opens, not before the name).
+    { key: 'clients', label: 'Clients', width: '84px', type: 'number', stop: true, get: m => (clientsByMember[m.plugin_member_number] || []).length, render: m => {
+      const mn = m.plugin_member_number
+      const n = (clientsByMember[mn] || []).length
+      const isOpen = !!expanded[mn]
+      // A plain number, not a pill (Jake 2026-11-28: every row has one, so it is not a tag).
+      const pill = <span style={{ fontSize: '13px', color: n ? 'var(--vfo-ink)' : 'var(--vfo-faint)', fontVariantNumeric: 'tabular-nums' }}>{n}</span>
+      if (!n) return pill
+      return (
+        <span onClick={() => setExpanded(e => ({ ...e, [mn]: !e[mn] }))} title={isOpen ? 'Hide clients' : `Show clients (${n})`}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }}>
+          {pill}
+          <ExpandChevron open={isOpen} style={{ width: '20px', height: '20px' }} />
+        </span>
+      )
+    } },
+    { key: 'programs', label: 'Programs', width: '1.3fr', get: m => (programsByMember[m.plugin_member_number] || []).join(', '), render: m => {
+      const programs = programsByMember[m.plugin_member_number] || []
+      return (
+        <span style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+          {programs.length === 0 ? <span style={{ color: 'var(--vfo-faint)' }}>—</span> : programs.map(p => (
+            <span key={p} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: 'var(--vfo-tint)', color: 'var(--vfo-chip-text)', fontWeight: 600 }}>{p}</span>
+          ))}
+        </span>
+      )
+    } },
+    { key: 'engagement', label: 'Engagement', width: '176px', type: 'number', stop: true, get: m => { const i = ENGAGEMENT.findIndex(e => e.value === engOf(m)); return i < 0 ? null : i }, render: m => {
+      const mn = m.plugin_member_number
+      const engVal = engOf(m)
+      const eMeta = engMeta(engVal)
+      return (
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: eMeta ? eMeta.color : '#d3dbe8' }} />
+          <select value={engVal} disabled={!!saving[mn]} onChange={e => saveEngagement(m, e.target.value)}
+            style={{ flex: 1, padding: '5px 6px', borderRadius: '7px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '12px', color: eMeta ? 'var(--vfo-ink)' : 'var(--vfo-faint)', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+            <option value="">— Not set —</option>
+            {ENGAGEMENT.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
+          </select>
+        </span>
+      )
+    } },
+  ]
 
   async function saveEngagement(m, value) {
     const mn = m.plugin_member_number
@@ -157,7 +204,6 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
   }
 
   const wrap = { padding: '24px', maxWidth: '1500px', margin: '0 auto' }
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
 
   return (
     <div style={wrap}>
@@ -172,137 +218,58 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
       </>} />
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <input type="search" name="search" autoComplete="off" placeholder="Search by name or number..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...sel, flex: 1, minWidth: '240px', background: 'var(--vfo-input)' }} />
+        <input type="search" name="search" autoComplete="off" placeholder="Search by name or number..." value={search} onChange={e => setSearch(e.target.value)} style={listSearchStyle} />
         <ListFilterButton groups={filterGroups} value={listFilter} onChange={setListFilter} />
-        <SortSelect value={listSort} onChange={v => { setListSort(v); resetColSort() }} options={MEMBER_SORT_OPTIONS} />
+        <SortSelect value={listSort} onChange={setListSort} options={MEMBER_SORT_OPTIONS} />
       </div>
 
       {relError && <div style={{ padding: '10px 14px', marginBottom: '12px', background: 'rgba(231,76,60,0.1)', border: '1px solid rgba(231,76,60,0.3)', borderRadius: '8px', color: '#c0392b', fontSize: '13px' }}>Could not load programs/clients: {relError}</div>}
 
-      <div style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
-        <div style={{ minWidth: '1320px' }}>
-          {/* Header */}
-          <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: '10px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
-            <span />
-            <SortHeader label="Member #" sortKey="number" sort={colSort} onSort={onSort} />
-            <SortHeader label="Name" sortKey="name" sort={colSort} onSort={onSort} />
-            <SortHeader label="Category" sortKey="category" sort={colSort} onSort={onSort} />
-            <SortHeader label="Type" sortKey="type" sort={colSort} onSort={onSort} />
-            <SortHeader label="Joined" sortKey="joined" sort={colSort} onSort={onSort} />
-            <SortHeader label="Status" sortKey="status" sort={colSort} onSort={onSort} />
-            <SortHeader label="MSM" sortKey="msm" sort={colSort} onSort={onSort} />
-            <SortHeader label="Clients" sortKey="clients" sort={colSort} onSort={onSort} />
-            <SortHeader label="Programs" sortKey="programs" sort={colSort} onSort={onSort} />
-            <SortHeader label="Engagement" sortKey="engagement" sort={colSort} onSort={onSort} />
-          </div>
-
-          {/* Rows */}
-          {rows.length === 0 && (
-            <div style={{ padding: '28px 18px', textAlign: 'center', color: 'var(--vfo-faint)', fontSize: '13px' }}>No members match the current filters.</div>
-          )}
-          {rows.map(m => {
-            const mn = m.plugin_member_number
-            const cat = catLabel(m)
-            const isOpen = !!expanded[mn]
-            const programs = programsByMember[mn] || []
-            const clients = clientsByMember[mn] || []
-            const engVal = engOf(m)
-            const eMeta = engMeta(engVal)
-            return (
-              <div key={mn}>
-                <div onClick={() => onOpenMember && onOpenMember(m)} {...rowHoverProps}
-                  style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: GRID, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
-                  <button
-                    onClick={ev => { ev.stopPropagation(); setExpanded(e => ({ ...e, [mn]: !e[mn] })) }}
-                    title={isOpen ? 'Hide clients' : `Show clients (${clients.length})`}
-                    style={{ width: '24px', height: '24px', border: '1px solid var(--vfo-border-strong)', background: isOpen ? 'var(--vfo-tint)' : 'var(--vfo-card)', borderRadius: '6px', cursor: 'pointer', color: 'var(--vfo-muted)', fontSize: '11px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {isOpen ? '▾' : '▸'}
-                  </button>
-                  <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--vfo-muted)' }}>{mn}</span>
-                  <span onClick={ev => { ev.stopPropagation(); onOpenMember && onOpenMember(m) }} title="Open member profile" style={{ fontWeight: 600, color: 'var(--vfo-link)', cursor: 'pointer', justifySelf: 'start' }}
-                    onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
-                    onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{m.name || '—'}</span>
-                  <span>
-                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', color: readable(CAT_COLORS[cat]), background: `${CAT_COLORS[cat]}1f` }}>{cat}</span>
-                  </span>
-                  <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{m.member_type || '—'}</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--vfo-muted)' }}>{m.join_date ? formatDate(m.join_date) : '—'}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 600, background: m.elite_status === 'Active' ? 'rgba(27,146,84,0.13)' : m.elite_status === 'Lost' ? 'rgba(231,76,60,0.13)' : m.elite_status === 'Removed' ? 'rgba(155,28,28,0.13)' : 'var(--vfo-tint)', color: m.elite_status === 'Active' ? 'var(--vfo-success-text)' : m.elite_status === 'Lost' ? '#e74c3c' : m.elite_status === 'Removed' ? STATUS_COLORS.Removed : 'var(--vfo-muted)' }}>{m.elite_status || 'Active'}</span>
-                    {m.suspended && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(231,76,60,0.13)', color: '#e74c3c' }}>SUSP</span>}
-                    {m.paused && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(224,103,23,0.14)', color: '#e06717' }}>PAUSE</span>}
-                    {m.membership_arrears && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: 'rgba(180,83,9,0.14)', color: '#b45309' }}>ARREARS</span>}
-                  </span>
-                  <span style={{ fontSize: '12px', color: m.assigned_msm ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{m.assigned_msm || '—'}</span>
-                  <span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', color: clients.length ? 'var(--vfo-accent-text)' : 'var(--vfo-faint)', background: clients.length ? 'rgba(18,94,204,0.1)' : 'var(--vfo-border-soft)' }}>{clients.length}</span>
-                  </span>
-                  <span style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                    {programs.length === 0 ? <span style={{ color: 'var(--vfo-faint)' }}>—</span> : programs.map(p => (
-                      <span key={p} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: 'var(--vfo-tint)', color: 'var(--vfo-chip-text)', fontWeight: 600 }}>{p}</span>
-                    ))}
-                  </span>
-                  <span onClick={ev => ev.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'default' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: eMeta ? eMeta.color : '#d3dbe8' }} />
-                    <select value={engVal} disabled={!!saving[mn]} onChange={e => saveEngagement(m, e.target.value)}
-                      style={{ flex: 1, padding: '5px 6px', borderRadius: '7px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '12px', color: eMeta ? 'var(--vfo-ink)' : 'var(--vfo-faint)', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
-                      <option value="">— Not set —</option>
-                      {ENGAGEMENT.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
-                    </select>
-                  </span>
-                </div>
-
-                {isOpen && (
-                  <div style={{ padding: '4px 18px 14px 52px', borderBottom: '1px solid var(--vfo-border-soft)', background: 'var(--vfo-input)' }}>
-                    {relLoading ? (
-                      <TableSkeleton cols={CLIENT_GRID} rows={2} minWidth="860px" pad="9px 14px" />
-                    ) : clients.length === 0 ? (
-                      <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', padding: '8px 0' }}>No clients attached.</div>
-                    ) : (
-                      <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '10px', overflow: 'hidden', minWidth: '860px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: CLIENT_GRID, gap: '10px', padding: '8px 14px', background: 'var(--vfo-input)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--vfo-muted)' }}>
-                          <span>Client Ref</span>
-                          <span>Name</span>
-                          <span>Joined</span>
-                          <span>Status</span>
-                          <span>PF</span>
-                          <span>Programs</span>
-                        </div>
-                        {clients.map(c => (
-                          <div key={c.id} onClick={() => openClientProfile(c)} {...rowHoverProps}
-                            style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: CLIENT_GRID, gap: '10px', padding: '9px 14px', borderTop: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '12.5px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
-                            <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{c.ref || '—'}</span>
-                            <span onClick={ev => { ev.stopPropagation(); openClientProfile(c) }} title="Open client profile" style={{ fontWeight: 600, color: 'var(--vfo-link)', cursor: 'pointer', justifySelf: 'start' }}
-                              onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
-                              onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{c.name}</span>
-                            <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{c.joined ? formatDate(c.joined) : '—'}</span>
-                            <span>
-                              {c.status
-                                ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, ...(() => { const s = clientStatusColors(c.status); return { background: s.bg, color: s.color, whiteSpace: 'nowrap' } })() }}>{clientStatusLabel(c.status)}</span>
-                                : <span style={{ color: 'var(--vfo-faint)' }}>—</span>}
-                            </span>
-                            <span style={{ fontSize: '12px', color: c.pf ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{c.pf || '—'}</span>
-                            <span style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                              {(c.programs || []).length === 0 ? <span style={{ color: 'var(--vfo-faint)' }}>No programs</span> : c.programs.map(p => (
-                                <span key={p.id}
-                                  onClick={ev => { ev.stopPropagation(); navigate(`/admin/client/${c.id}?program=${p.id}`) }}
-                                  title={`Open ${c.name} — ${p.name}`}
-                                  style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: 'var(--vfo-tint)', color: 'var(--vfo-chip-text)', fontWeight: 600, cursor: 'pointer' }}
-                                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--vfo-tint)' }}
-                                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--vfo-tint)' }}>{p.name}</span>
-                              ))}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <ListTable
+        columns={columns}
+        rows={rows}
+        rowKey={m => m.plugin_member_number}
+        onRowClick={m => onOpenMember && onOpenMember(m)}
+        resetSortOn={listSort}
+        minWidth="1300px"
+        empty="No members match the current filters."
+        renderExpanded={m => (expanded[m.plugin_member_number] ? <MemberClients clients={clientsByMember[m.plugin_member_number] || []} loading={relLoading} /> : null)}
+      />
     </div>
+  )
+}
+
+// A member's clients, under their opened row. A client's NAME opens the client's
+// profile and the ROW opens the plan (#632, Client Overview's rule); a program
+// chip opens that program's plan.
+function MemberClients({ clients, loading }) {
+  const navigate = useNavigate()
+  const openPlan = (c, p) => navigate(clientPagePath(c.id, { program: p?.id, tab: p ? planTabFor(p.name) : 'home' }))
+  if (loading) return <TableSkeleton cols={CLIENT_GRID} rows={2} minWidth="860px" pad="9px 14px" />
+  if (clients.length === 0) return <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', padding: '8px 0' }}>No clients attached.</div>
+  const columns = [
+    { key: 'ref', label: 'Client Ref', width: '120px', get: c => c.ref, render: c => <ListText mono>{c.ref}</ListText> },
+    { key: 'name', label: 'Name', width: '1.4fr', get: c => c.name, render: c => (
+      <ClientNameLink clientId={c.id} program={(c.programs || [])[0]?.id} style={{ fontWeight: 600 }}>{c.name || '—'}</ClientNameLink>
+    ) },
+    { key: 'joined', label: 'Joined', width: '96px', type: 'date', get: c => c.joined || null, render: c => <ListText mono>{c.joined ? formatDate(c.joined) : ''}</ListText> },
+    { key: 'status', label: 'Status', width: '110px', get: c => clientStatusLabel(c.status), render: c => (c.status
+      ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, ...(() => { const s = clientStatusColors(c.status); return { background: s.bg, color: s.color, whiteSpace: 'nowrap' } })() }}>{clientStatusLabel(c.status)}</span>
+      : <ListText />) },
+    { key: 'pf', label: 'PF', width: '130px', get: c => c.pf, render: c => <ListText>{c.pf}</ListText> },
+    { key: 'programs', label: 'Programs', width: '1.6fr', render: c => (
+      <span style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+        {(c.programs || []).length === 0 ? <span style={{ color: 'var(--vfo-faint)' }}>No programs</span> : c.programs.map(p => (
+          <span key={p.id}
+            onClick={ev => { ev.stopPropagation(); openPlan(c, p) }}
+            title={`Open ${c.name} — ${p.name}`}
+            style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: 'var(--vfo-tint)', color: 'var(--vfo-chip-text)', fontWeight: 600, cursor: 'pointer' }}>{p.name}</span>
+        ))}
+      </span>
+    ) },
+  ]
+  return (
+    <ListTable dense columns={columns} rows={clients} rowKey={c => c.id} minWidth="860px"
+      onRowClick={c => openPlan(c, (c.programs || [])[0])} />
   )
 }

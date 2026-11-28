@@ -4,7 +4,7 @@
 >
 > Change this file like code, in a worktree, through a PR. A look the person approves for a new kind of screen is added here in the same PR. Created 2026-11-27 (Jake) from a scan of every screen; the screens that do not follow it yet are listed in Issue JLathamERT/vfo-edge-functions#661.
 >
-> Every rule here was confirmed by Jake on 2026-11-27. Updated 2026-11-28 (Issue #661 part 5): §6 Program trackers now names the shared pieces every track is built from, the date column (every step date read-only, 60px, right-aligned; Jake 2026-11-28: no step date is hand-edited anywhere) and phase Notes on every tracker.
+> Every rule here was confirmed by Jake on 2026-11-27. Updated 2026-11-28 (Issue #661 part 5): §6 Program trackers now names the shared pieces every track is built from, the date column (every step date read-only, 60px, right-aligned; Jake 2026-11-28: no step date is hand-edited anywhere) and phase Notes on every tracker. Updated 2026-11-28 (Issue #661 part 6a): §2 every list is a `ListTable` (an opened row, a smaller table inside it, a remembered sort), a client row opens the plan; §1 one pill look (`ListPill` = `Tag`); §6 the chevron margin.
 
 ## How to use this file
 
@@ -72,7 +72,7 @@ The member, client and specialist portals keep their own one width, 980px, with 
 
 ### Cards
 
-- **Open / close chevron: `ExpandChevron`** (`shared/ExpandChevron.jsx`, Jake 2026-11-27): the trackers' 10px muted ▼, turned over while open, in a 28px square. On a card it sits at the right end of the header; in a table row it stays in the name cell so the columns hold. A header whose click opens something else (a plan) gives the chevron its own `onToggle`, so the dropdown is never a tiny target. Not the 11px ▸ / ▾.
+- **Open / close chevron: `ExpandChevron`** (`shared/ExpandChevron.jsx`, Jake 2026-11-27): the trackers' 10px muted ▼, turned over while open, in a 28px square. On a card it sits at the right end of the header; in a table row it stays in a cell so the columns hold, beside what it opens: the name cell when the row opens its own detail, the count when that is what opens (Member Overview's Clients, Jake 2026-11-28). A header whose click opens something else (a plan) gives the chevron its own `onToggle`, so the dropdown is never a tiny target. Not the 11px ▸ / ▾.
 
 - White card: `var(--vfo-card)`, 1px `var(--vfo-border-soft)`, 16px corners (14px for a card holding a table), `var(--vfo-shadow-card)`, padding `var(--vfo-card-pad)`.
 - **A new card is `ProfileCard`** (`ProfileKit.jsx`: icon badge, title, optional sub-line and action). Today there are 38 local `sectionStyle`s and four card-title looks; don't add a fifth.
@@ -89,7 +89,7 @@ Buttons and tags never look alike, and tags are rare: the full rule is TEAM_RULE
 | A row's own action in a list or table (Done, Clear, Re-send) | `btnOutline` (+ `BTN_SMALL`) |
 | Remove, Stop, Refund, Cancel a booking | `btnDanger` |
 | The small Edit / Reschedule / Cancel on a tracker step | `btnStep` |
-| The one detail that matters on a row (Overdue, Stopped, Refunded, Bank payment clearing, Sandbox) | `Tag` |
+| The one detail that matters on a row (Overdue, Stopped, Refunded, Bank payment clearing, Sandbox) | `Tag` (`ListPill` in a list and `statusPillStyle` on a span draw the same look, 2026-11-28) |
 | A status every row has | plain text or a column, not a tag |
 | Pick one of a fixed list of statuses | `<select>` |
 | Pick one of two or three answers on a form | `ChoiceButtons` (ProfileKit) |
@@ -124,10 +124,10 @@ Model: Client Overview's look; Advisors for the code. Top to bottom:
 1. `PageHeading` (eyebrow + title, action on the right: "+ Add", Export via `ExportButton`) or `ListHeader` with the count chip.
 2. One toolbar row: search (`listSearchStyle`, `type="search"`), `ListFilterButton`, `SortSelect`. It wraps on a narrow screen.
 3. `ListTable`: uppercase header row, click a column to sort, rows that lift on hover, `ListName` / `ListText` cells.
-4. **A client's name opens the profile; the row opens the plan** (`ClientNameLink`, #632). A person's row opens their profile.
+4. **A client's name opens the profile; the row opens the plan** (`ClientNameLink`, #632). A person's row opens their profile. The plan is the program's own tab: `planTabFor(program name)` in `shared/personLinks.jsx` (MAP 1, Tax, PFT, Tailored Route). A list whose clients are not portal clients (SDP ATSG) opens the same record from the name and the row.
 5. `ListTable`'s empty line; the matching skeleton (`DirectoryListSkeleton`, `ClientOverviewSkeleton`) at the same width.
 
-A list of people or clients that is not a money table, a tracker or a KPI grid is a `ListTable`. If it needs something `ListTable` can't do yet (an expanding row, an in-row control), add it to `ListTable`; don't copy the look.
+A list of people or clients that is not a money table, a tracker or a KPI grid is a `ListTable`. If it needs something `ListTable` can't do yet, add it to `ListTable`; don't copy the look. It already has (2026-11-28): `renderExpanded(row)` for what an opened row shows under it (Member Overview's clients, opened from the Clients count with its `ExpandChevron` beside it: the ▼ sits with what it opens, Jake 2026-11-28), `dense` for the smaller table inside an opened row, `headerSort` for a page that remembers its header sort (the onboarding lists), a column's `align: 'right'`, and a column's `stop` for a cell holding its own control (a select, buttons) so a click there never opens the row. On a member, client or specialist page with no phone layout of its own, leave out `minWidth` so the table fits a phone.
 
 ## 3. Section pages
 
@@ -211,7 +211,7 @@ From left to right, on one line:
 | The control | see below |
 | Edit / Reschedule | `btnStep`, after the control, once the step is answered |
 | Date | at the right end: `StepDate` once the step is done, an empty slot before. Always read-only (60px, right-aligned) on every tracker (Jake 2026-11-28). The control and the date stay together on the right (`StepRow`'s `.vfo-stepright` / `.vfo-stepcontrols`, `display: contents` on a phone), so a row too full for its buttons wraps the buttons, never the date |
-| Chevron | ▼ (`StepChevron`) in the card's right margin, so it never pushes the date left; opens the detail under the row |
+| Chevron | ▼ (`StepChevron`) in the card's right margin, so it never pushes the date left; opens the detail under the row. That margin is 30px on a desktop (`STEP_CHEVRON_MARGIN`, the phase card's right padding), so the ▼ has room on both sides; the phase header's ▼ and an automated sub-step's ▼ sit in the same column (Jake 2026-11-28) |
 
 Done steps carry **no** Done / Not started / Not completed tag: the filled dot and the date say it. A real answer (Meeting booked..., Submitted, Yes, Declined, Reminder skipped, the people allocated to a plan) sits in the **value box**, `StepAnswer` / `answerBox()` in `TrackKit`: the same shape as the dropdowns on the rows around it (8px corners, 12.5px), and **one look everywhere, neutral grey** — never green, red or blue; the step's dot carries the colour (Jake 2026-11-28: consistency is the goal). It is never a tag and never a button. The $250 team share paid is a value box too. A rare warning (Bank payment clearing, No Stripe, Stopped, Refunded) stays a `Tag`.
 
@@ -268,5 +268,4 @@ The full list, with file and line, is Issue JLathamERT/vfo-edge-functions#661 (f
 - **Page headers drawn six ways,** and eleven page widths.
 - **Accounting:** swept to §5 on 2026-11-27 (Issue part 3). Left over: Held Payouts dates in MM/DD/YYYY beside "Nov 15, 2026" everywhere else (part 4, dates); the plan pricing cards outside Accounting (`map1/Map1PricingSplitCard.jsx`, `tax/PricingSplitCard.jsx`, `sdp-atsg/SdpAtsgPanel.jsx`) still say "awaiting payout setup" and "failed — retrying".
 - **Trackers** (moved to the shared pieces 2026-11-28, Issue #661 part 5). Left: about 30 of Tax's bespoke rows keep their own layout (built from the shared dot, name width, date, buttons, value box and `StepRight`); Specialist onboarding stages show "In progress" with no n/m count (a stage has no fixed step list).
-- **Lists:** Member Overview, Onboarding lists, Next Tax Year and the SDP ATSG list copy `ListTable` by hand (SDP ATSG's client name is not a link); the Specialists list has its own 22px header.
-- **Two pill looks for status:** `ListPill` and `Tag` differ (size, weight, border); a local `Tag` in `PaymentsTable.jsx` has 5px corners.
+- **Lists:** on `ListTable` since 2026-11-28 (Issue part 6a).

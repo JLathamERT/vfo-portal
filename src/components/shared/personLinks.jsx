@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom'
+import { TAILORED_PROGRAM } from './accountantPrograms'
 
 const baseStyle = { color: 'var(--vfo-link, #125ecc)', cursor: 'pointer', textDecoration: 'none' }
 const hoverProps = {
@@ -57,6 +58,16 @@ export function MemberNameLink({ memberNumber, children, style }) {
       {children}
     </span>
   )
+}
+
+// The client page tab that holds a program's plan / track (ClientDetail's
+// validTabsForProgram): PFT, Tailored Route, VFO Tax Planning, else Holistic's
+// MAP 1. A client row in a list opens it (#632).
+export function planTabFor(programName) {
+  if (programName === 'Partnership Fast Track') return 'pft'
+  if (programName === TAILORED_PROGRAM) return 'tailored'
+  if (programName === 'VFO Tax Planning') return 'tax'
+  return 'map1'
 }
 
 // A client's NAME always opens their profile (Jake, 2026-10-17 — Client Overview's

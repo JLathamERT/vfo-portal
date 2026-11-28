@@ -9,6 +9,30 @@
 
 ---
 
+## 2026-11-28 (b) — Lists in the house style (Issue #661 part 6a) + the part 5 phone check: every list on `ListTable`, a client row opens the plan, one pill look, tracker chevrons with room — by Jake
+
+**What it is.** Part 6a of the house-style sweep (Issue JLathamERT/vfo-edge-functions#661, its "lists" half; part 6b, cards / forms / modals / buttons / colours, is still to do), after the phone check part 5 owed (Issue JLathamERT/vfo-edge-functions#665). Website only; no backend change.
+
+**Phone check (#665).** The member's read-only MAP 1, Regular, Tax and MSM 90 Day Plan at 390 and 360 wide, with `phoneAudit`: steps stack one item per line as built. Two things fixed:
+- **Phase header:** at 360 the active phase's Notes + "In progress · n/m" squeezed the phase name onto three lines. On a phone `PhaseCard`'s header now wraps: the name keeps its width and the right-hand group drops under it.
+- **MSM video steps (`VideoTask`, phone):** the status select sat beside the name (a name wrapped to four lines) and a watched video showed no date. Now play button + name, then the select, then the date, like every other step.
+
+**Tracker chevrons (Jake, from the click-through).** The phase header's ▼ was pushed 17px into an 18px desktop padding (cut off on a phone, where the padding is 14px), and a step row's ▼ sat between the date and the card edge with 3-4px either side. `PhaseCard`'s body now has a 30px right padding on a desktop (`STEP_CHEVRON_MARGIN`, `TrackKit.jsx`) and every step ▼ sits centred in it; the header ▼ lines up with them; an automated sub-step's ▼ reaches past its tinted box into the same column. Phones keep 14px, with the header ▼ 9px inside the edge.
+
+**Lists (part 6a).**
+- **`ListTable` grew** (`shared/ListTable.jsx`): `renderExpanded(row)` (an opened row's detail), `dense` (the smaller table inside it), `headerSort` (a page that remembers its header sort), a column's `align: 'right'` and `stop` (a cell with its own control never opens the row).
+- **Seven hand-copied lists moved onto it:** Member Overview (its nested client table too; the ▼ that opens a member's clients sits beside the Clients count, now a plain number, Jake), the Advisor / Accountant onboarding lists (sort still remembered), Client Overview's Next tax year, SDP ATSG (its client is not a portal client, so the name and the row both open the case; the phone cards stay), a tax planner's Clients tab (no longer inside a card), the Portal Backlog Archive (a table: Request · Requested · Outcome, with its skeleton), and the specialist portal's Shared with Me (with `BackLink`).
+- **Name → profile, row → plan (#632)** where a list broke it: Member Overview's client table, both admin MSM client lists, the member portal's program client list (laptop) and the CIQ list. The plan is the program's own tab, `planTabFor(program name)` in `shared/personLinks.jsx`.
+- **Tax planner portal list:** its hand-built filter is `ListFilterButton` (new optional `buttonLabel` / `active` for a filter whose default is all ticked), and the page is 1200px wide (was 880).
+- **Toolbars wrap:** Advisors / Accountants / Strategic Members, Specialists, Tax Planners.
+- **One pill look:** `statusPillStyle` (and so `ListPill`) now draws `Tag`'s look (10px / 700, thin border); `Tag` reads the same style. The Payments ledger's own 5px-corner `Tag` became the shared one.
+
+**Tested on the test site** (dev server, Jake): the phone checks above and every list at 1280 and a narrow window, the member client list's row and name clicks (Claude, measured).
+
+**Left.** The specialist portal's Shared with Me on a phone (no specialist test login used) and a DONE PIP step on a phone (the test PIP meeting has none done yet): a follow-up Issue. Part 6b of #661.
+
+---
+
 ## 2026-11-28 (a) — Program trackers in the house style (Issue #661 part 5): one shared step row, read-only dates at the right edge, one answer look, phase Notes on every tracker — by Jake
 
 **What it is.** Part 5 of the house-style sweep (Issue JLathamERT/vfo-edge-functions#661): every program tracker (MAP 1, Regular, Tax, PIP, Partnership Fast Track, Tailored Route, the Advisor / Accountant / Specialist onboardings, MSM admin and member) now draws its phases and steps from shared pieces instead of its own copies (HOUSE_STYLE §6). Consistency was the brief: one look for each thing, everywhere.

@@ -478,7 +478,7 @@ function MemberDirectoryView({
       {activeTab === 'search' && !selectedMember && (
         <>
           <ListHeader title={listTitle} count={filteredMembers.length} action={<ExportButton title={listTitle} columns={MEMBER_EXPORT_COLUMNS} rows={sortMembers(searched, listSort)} filterGroups={filterGroups} filterValue={listFilter} />} />
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
             <input type="search" name="search" autoComplete="off" placeholder="Search by name or number..." style={listSearchStyle} onChange={e => setMemberSearch(e.target.value.toLowerCase())} value={memberSearch} />
             <ListFilterButton groups={filterGroups} value={listFilter} onChange={setListFilter} />
             <SortSelect value={listSort} onChange={setListSort} options={MEMBER_SORT_OPTIONS} />

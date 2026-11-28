@@ -23,6 +23,7 @@ import AddClientForm from '../shared/AddClientForm'
 import { MSM_MEETING_TYPES } from '../shared/msmMeetingTypes'
 import MsmMeetingsCounter from '../shared/MsmMeetingsCounter'
 import { isAccountantProgram, isAccountantRef, ACCOUNTANT_FEATURE_TAB, TAILORED_PROGRAM } from '../shared/accountantPrograms'
+import { planTabFor } from '../shared/personLinks'
 
 // In the one program order (shared/programOrder.js, 2026-11-26).
 const PROGRAMS = [
@@ -1046,7 +1047,11 @@ function MemberAllClients({ member, enrollments, allowedProgramKeys }) {
   const pickSub = k => { setSub(k); try { sessionStorage.setItem(subTabKey, k) } catch { /* private mode */ } }
   // program_id (not enrollment_id) picks the program on the client page, so Back
   // returns here instead of re-opening a program's own Clients tab.
-  const openClient = c => navigate(`/admin/client/${c.id}`, { state: { program_id: c.programs[0]?.programId, from: '/admin', memberNumber } })
+  // The ROW opens the client's track (first program), the NAME their profile (#632).
+  const openClient = (c, tab) => {
+    const p = c.programs[0]
+    navigate(`/admin/client/${c.id}?${p?.programId ? `program=${p.programId}&` : ''}tab=${tab || planTabFor(p?.name)}`, { state: { program_id: p?.programId, from: '/admin', memberNumber } })
+  }
   const tabStyle = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' })
 
   return (
@@ -1066,12 +1071,12 @@ function MemberAllClients({ member, enrollments, allowedProgramKeys }) {
       <ListTable
         rows={shown}
         rowKey={c => c.id}
-        onRowClick={openClient}
+        onRowClick={c => openClient(c)}
         minWidth="720px"
         empty={sub === 'accountants' ? 'No accountants in any program yet.' : 'No clients in any program yet.'}
         columns={[
           { key: 'name', label: noun, width: '2fr', get: c => `${c.first_name} ${c.last_name}`, render: c => (
-            <ListName sub={contactsMap[c.id]?.length > 0 ? <span style={{ fontStyle: 'italic' }}>with {contactsMap[c.id].map(x => `${x.first_name} ${x.last_name}`).join(', ')}</span> : null}>{`${c.first_name} ${c.last_name}`}</ListName>
+            <ListName onClick={e => { e.stopPropagation(); openClient(c, 'home') }} title="Open profile" sub={contactsMap[c.id]?.length > 0 ? <span style={{ fontStyle: 'italic' }}>with {contactsMap[c.id].map(x => `${x.first_name} ${x.last_name}`).join(', ')}</span> : null}>{`${c.first_name} ${c.last_name}`}</ListName>
           ) },
           { key: 'ref', label: 'Ref', width: '120px', get: c => c.client_ref, render: c => <ListText mono>{c.client_ref}</ListText> },
           { key: 'program', label: 'Program', width: '1.4fr', get: c => c.programs.map(p => p.name).join(', '), render: c => <ListText>{c.programs.map(p => p.name).join(', ')}</ListText> },
@@ -1176,7 +1181,8 @@ function ClientsPanel({ enrollment, member, program }) {
     : allMemberClients
 
   const noun = isPFT ? 'Accountant' : 'Client'
-  const openClient = client => navigate(`/admin/client/${client.id}`, { state: { enrollment_id: enrollment.id, from: '/admin', backTo: isPFT ? 'pft_accountants' : undefined, backFeature: ACCOUNTANT_FEATURE_TAB[program.name], memberNumber: member.plugin_member_number } })
+  // The ROW opens the client's track in this program, the NAME their profile (#632).
+  const openClient = (client, tab = planTabFor(program?.name)) => navigate(`/admin/client/${client.id}?${program?.id ? `program=${program.id}&` : ''}tab=${tab}`, { state: { enrollment_id: enrollment.id, from: '/admin', backTo: isPFT ? 'pft_accountants' : undefined, backFeature: ACCOUNTANT_FEATURE_TAB[program.name], memberNumber: member.plugin_member_number } })
   const stat = countTile
 
   // The program's client list (2026-11-26): count tiles, then the shared list table.
@@ -1235,13 +1241,13 @@ function ClientsPanel({ enrollment, member, program }) {
       <ListTable
         rows={clients}
         rowKey={c => c.id}
-        onRowClick={openClient}
+        onRowClick={c => openClient(c)}
         minWidth="640px"
         empty={`No ${isPFT ? 'accountants' : 'clients'} added yet.`}
         columns={[
           { key: 'name', label: noun, width: '2fr', get: c => `${c.first_name} ${c.last_name}`, render: c => (
             // No email or phone on this list (Jake, 2026-11-26): name, then any "with" contacts.
-            <ListName sub={contactsMap[c.id]?.length > 0 ? <span style={{ fontStyle: 'italic' }}>with {contactsMap[c.id].map(x => `${x.first_name} ${x.last_name}`).join(', ')}</span> : null}>{`${c.first_name} ${c.last_name}`}</ListName>
+            <ListName onClick={e => { e.stopPropagation(); openClient(c, 'home') }} title="Open profile" sub={contactsMap[c.id]?.length > 0 ? <span style={{ fontStyle: 'italic' }}>with {contactsMap[c.id].map(x => `${x.first_name} ${x.last_name}`).join(', ')}</span> : null}>{`${c.first_name} ${c.last_name}`}</ListName>
           ) },
           { key: 'ref', label: 'Ref', width: '120px', get: c => c.client_ref, render: c => <ListText mono>{c.client_ref}</ListText> },
           { key: 'status', label: 'Status', width: '120px', get: c => (c.status ? clientStatusLabel(clientStatusKey(c)) : ''), render: c => c.status ? <ListPill color={clientStatusHex(clientStatusKey(c)) || '#8a94a6'}>{clientStatusLabel(clientStatusKey(c))}</ListPill> : <ListText /> },

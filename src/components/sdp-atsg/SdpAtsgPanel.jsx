@@ -4,6 +4,7 @@ import { ListHeader, PhaseBadge, TrackHero, noMultiClickSelect } from '../shared
 import { SdpAtsgCaseSkeleton, SdpAtsgListSkeleton } from '../shared/Skeleton'
 import { money, StatusPill } from '../admin/specialistRevenueShared'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
+import ListTable, { ListName, ListText } from '../shared/ListTable'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { BackLink } from '../shared/ProfileKit'
 import { formatDate } from '../../lib/dates'
@@ -144,22 +145,26 @@ function CaseList({ mode, onOpen, onAdd }) {
       {rows && (
         <>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search clients, refs or members" style={{ ...inputStyle, maxWidth: '360px', marginBottom: '14px' }} />
-          {shown.length === 0 && (
+          {isPhone && shown.length === 0 && (
             <div style={{ ...card, padding: '28px', textAlign: 'center', color: 'var(--vfo-muted)', fontSize: '13.5px' }}>
               {rows.length === 0 ? 'No clients yet. Press + Add Client to start a new case.' : 'No clients match your search.'}
             </div>
           )}
-          {shown.length > 0 && (
+          {!isPhone && (
+            <ListTable
+              columns={caseColumns(mode)}
+              rows={shown}
+              rowKey={r => r.id}
+              onRowClick={r => onOpen(r.id)}
+              empty={rows.length === 0 ? 'No clients yet. Press + Add Client to start a new case.' : 'No clients match your search.'}
+            />
+          )}
+          {isPhone && shown.length > 0 && (
             <div style={{ ...card, overflow: 'hidden' }}>
-              {!isPhone && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1.4fr 1.1fr 90px 90px 170px', gap: '12px', padding: '10px 18px', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', borderBottom: '1px solid var(--vfo-border-soft)' }}>
-                  <div>Client</div><div>Member</div><div>Advisory retainer</div><div>Paid</div><div>Impact fees</div><div style={{ textAlign: 'right' }}>Status</div>
-                </div>
-              )}
               {shown.map(r => {
                 const meta = CASE_STATUS[r.status] || { label: r.status, color: '#6b7280' }
                 const statusNode = <StatusPill label={r.retainer_problem && r.status === 'active' ? 'Payment missed' : meta.label} color={r.retainer_problem && r.status === 'active' ? '#ef4444' : meta.color} />
-                return isPhone ? (
+                return (
                   <div key={r.id} onClick={() => onOpen(r.id)} {...rowHoverProps} style={{ ...clickableRowStyle, padding: '12px 14px', borderTop: '1px solid var(--vfo-border-soft)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
                       <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--vfo-ink)' }}>{r.client_name}</span>
@@ -170,21 +175,6 @@ function CaseList({ mode, onOpen, onAdd }) {
                       {r.retainer_amount != null ? `${money(r.retainer_amount)} / yr · ${freqLabel(r.frequency)}` : 'Retainer not set'} · {r.retainer_count ? `Year ${r.retainer_year || 1}: ${r.retainer_paid}/${r.retainer_count} paid` : '—'}
                     </div>
                   </div>
-                ) : (
-                  <div key={r.id} onClick={() => onOpen(r.id)} {...rowHoverProps} style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: '1.6fr 1.4fr 1.1fr 90px 90px 170px', gap: '12px', alignItems: 'center', padding: '12px 18px', borderTop: '1px solid var(--vfo-border-soft)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, color: 'var(--vfo-ink)' }}>{r.client_name}</div>
-                      <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{r.client_ref}{mode === 'admin' && r.group_name ? ` · ${r.group_name}` : ''}{r.sandbox ? ' · Sandbox' : ''}</div>
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div>{r.member_name || '—'}</div>
-                      <div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{r.member_number}{r.member_business ? ` · ${r.member_business}` : ''}</div>
-                    </div>
-                    <div>{r.retainer_amount != null ? <>{money(r.retainer_amount)}<div style={{ fontSize: '11.5px', color: 'var(--vfo-muted)' }}>{freqLabel(r.frequency)}</div></> : <span style={{ color: 'var(--vfo-faint)' }}>Not set</span>}</div>
-                    <div style={{ fontWeight: 600, color: r.retainer_problem ? '#ef4444' : 'var(--vfo-ink-2)' }}>{r.retainer_count ? `Year ${r.retainer_year || 1}: ${r.retainer_paid}/${r.retainer_count}` : '—'}</div>
-                    <div>{r.impact_fee_count ? `${r.impact_fee_paid}/${r.impact_fee_count}` : '—'}</div>
-                    <div style={{ textAlign: 'right' }}>{statusNode}</div>
-                  </div>
                 )
               })}
             </div>
@@ -193,6 +183,33 @@ function CaseList({ mode, onOpen, onAdd }) {
       )}
     </>
   )
+}
+
+// The case list's columns (desktop). An SDP ATSG client is not a portal client
+// (no profile, flows/sdp-atsg.md), so its name and its row both open the case.
+function caseColumns(mode) {
+  const statusOf = r => {
+    const meta = CASE_STATUS[r.status] || { label: r.status, color: '#6b7280' }
+    const missed = r.retainer_problem && r.status === 'active'
+    return { label: missed ? 'Payment missed' : meta.label, color: missed ? '#ef4444' : meta.color }
+  }
+  return [
+    { key: 'client', label: 'Client', width: '1.6fr', get: r => r.client_name, render: r => (
+      <ListName sub={`${r.client_ref}${mode === 'admin' && r.group_name ? ` · ${r.group_name}` : ''}${r.sandbox ? ' · Sandbox' : ''}`}>{r.client_name}</ListName>
+    ) },
+    { key: 'member', label: 'Member', width: '1.4fr', get: r => r.member_name, render: r => (
+      <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+        <ListText style={{ fontSize: '13px' }}>{r.member_name}</ListText>
+        <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>{r.member_number}{r.member_business ? ` · ${r.member_business}` : ''}</span>
+      </span>
+    ) },
+    { key: 'retainer', label: 'Advisory retainer', width: '1.1fr', type: 'number', get: r => r.retainer_amount, render: r => (r.retainer_amount != null
+      ? <span>{money(r.retainer_amount)}<span style={{ display: 'block', fontSize: '11px', color: 'var(--vfo-muted)' }}>{freqLabel(r.frequency)}</span></span>
+      : <span style={{ color: 'var(--vfo-faint)' }}>Not set</span>) },
+    { key: 'paid', label: 'Paid', width: '90px', render: r => <span style={{ fontWeight: 600, color: r.retainer_problem ? '#ef4444' : 'var(--vfo-ink-2)' }}>{r.retainer_count ? `Year ${r.retainer_year || 1}: ${r.retainer_paid}/${r.retainer_count}` : '—'}</span> },
+    { key: 'fees', label: 'Impact fees', width: '90px', render: r => <span>{r.impact_fee_count ? `${r.impact_fee_paid}/${r.impact_fee_count}` : '—'}</span> },
+    { key: 'status', label: 'Status', width: '170px', align: 'right', get: r => statusOf(r).label, render: r => { const s = statusOf(r); return <StatusPill label={s.label} color={s.color} /> } },
+  ]
 }
 
 // ─── + Add Client ──────────────────────────────────────────────────────────

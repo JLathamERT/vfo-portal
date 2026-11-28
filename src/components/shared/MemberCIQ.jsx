@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { CiqListSkeleton, CIQ_LIST_GRID, CIQ_ROWS_GRID, SkeletonText } from './Skeleton'
 import { HubGrid, HubCard, HubBanner, HubMenuBar } from './HubKit'
@@ -30,6 +31,7 @@ const PhoneChevron = () => <svg width="18" height="18" viewBox="0 0 24 24" fill=
 // list comes from ciq_load_client_list (ciq_load_list is the caller's own CIQs);
 // the server refuses every CIQ write to them regardless.
 export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true, ciqVfosManaged = true, isAdmin = false, client: lockedClient = null, readOnly = false }) {
+  const navigate = useNavigate()
   const [ciqs, setCiqs] = useState([])
   const isPhone = useIsPhone()
   const [loading, setLoading] = useState(true)
@@ -1708,7 +1710,7 @@ export default function MemberCIQ({ memberNumber, memberName, ciqEnabled = true,
           <ListTable rowKey={r => r.client?.id} rows={Object.values(byClient)}
             onRowClick={r => setSelectedClientId(r.client?.id)}
             columns={[
-              { key: 'name', label: 'Client', width: ciqCol[0], get: r => `${r.client?.first_name || ''} ${r.client?.last_name || ''}`.trim().toLowerCase(), render: r => <ListName>{r.client?.first_name} {r.client?.last_name}</ListName> },
+              { key: 'name', label: 'Client', width: ciqCol[0], get: r => `${r.client?.first_name || ''} ${r.client?.last_name || ''}`.trim().toLowerCase(), render: r => <ListName onClick={e => { e.stopPropagation(); navigate(`/${isAdmin ? 'admin' : 'member'}/client/${r.client?.id}?tab=home`) }} title="Open client profile">{r.client?.first_name} {r.client?.last_name}</ListName> },
               { key: 'ref', label: 'Ref', width: ciqCol[1], get: r => r.client?.client_ref || '', render: r => <ListText>{r.client?.client_ref}</ListText> },
               { key: 'email', label: 'Email', width: ciqCol[2], render: r => <ListText style={{ overflowWrap: 'anywhere' }}>{r.client?.email}</ListText> },
               { key: 'ciqs', label: 'CIQs', width: ciqCol[3], get: r => r.ciqs.length, type: 'number', render: r => { const done = r.ciqs.filter(c => c.status === 'completed').length; return <ListText>{r.ciqs.length} CIQ{r.ciqs.length !== 1 ? 's' : ''}{done ? ` · ${done} completed` : ''}</ListText> } },

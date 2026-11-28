@@ -661,7 +661,7 @@ export default function SpecialistsPanel({ allExperts, ecoMap, onDataChange, sec
           {editStatus && (
             <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: editStatusType === 'success' ? 'rgba(27,146,84,0.1)' : 'rgba(231,76,60,0.1)', color: editStatusType === 'success' ? 'var(--vfo-success-text)' : '#e74c3c', border: `1px solid ${editStatusType === 'success' ? 'rgba(27,146,84,0.3)' : 'rgba(231,76,60,0.3)'}` }}>{editStatus}</div>
           )}
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
             <input type="search" name="search" autoComplete="off" placeholder="Search by name..." style={listSearchStyle} onChange={e => setEditSearch(e.target.value.toLowerCase())} value={editSearch} />
             <ListFilterButton groups={specFilterGroups} value={specFilter} onChange={setSpecFilter} />
             <SortSelect value={specSort} onChange={setSpecSort} />
