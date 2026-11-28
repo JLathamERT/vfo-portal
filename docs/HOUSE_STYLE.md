@@ -4,7 +4,7 @@
 >
 > Change this file like code, in a worktree, through a PR. A look the person approves for a new kind of screen is added here in the same PR. Created 2026-11-27 (Jake) from a scan of every screen; the screens that do not follow it yet are listed in Issue JLathamERT/vfo-edge-functions#661.
 >
-> Every rule here was confirmed by Jake on 2026-11-27. Updated 2026-11-28 (Issue #661 part 5): §6 Program trackers now names the shared pieces every track is built from, the date column (every step date read-only, 60px, right-aligned; Jake 2026-11-28: no step date is hand-edited anywhere) and phase Notes on every tracker. Updated 2026-11-28 (Issue #661 part 6a): §2 every list is a `ListTable` (an opened row, a smaller table inside it, a remembered sort), a client row opens the plan; §1 one pill look (`ListPill` = `Tag`); §6 the chevron margin.
+> Every rule here was confirmed by Jake on 2026-11-27. Updated 2026-11-28 (Issue #661 part 5): §6 Program trackers now names the shared pieces every track is built from, the date column (every step date read-only, 60px, right-aligned; Jake 2026-11-28: no step date is hand-edited anywhere) and phase Notes on every tracker. Updated 2026-11-28 (Issue #661 part 6a): §2 every list is a `ListTable` (an opened row, a smaller table inside it, a remembered sort), a client row opens the plan; §1 one pill look (`ListPill` = `Tag`); §6 the chevron margin. Updated 2026-11-28 (Issue #661 part 6b): §1 one amber and the standing colours, the shared card styles, every card title is the `ProfileCard` header, form fields and dropdowns from one place each, every blue button is `btnPrimary` and greys whenever it is disabled; §2 Member Overview's columns and Standing; §5 a page's entry form is its own sub-tab; §7 the house pop-up is `shared/Modal.jsx`.
 
 ## How to use this file
 
@@ -26,7 +26,7 @@
 | **Program tracker** (§6) | One client's or member's steps through a program, phase by phase | Regular Priorities (MAP 4) and the MAP 1 track | `shared/TrackKit.jsx`, `StepDate`, `StepEmailsChip`, `PhaseNotes`, `buttonStyles.js` |
 | **Profile** (§7) | One person or client: hero, then cards of fields | The admin member profile (2026-11-27 refresh) | `shared/ProfileKit.jsx` |
 | **Hub** (§7) | A menu of boxes that each open a sub-view | Growth Plan hub, CIQ chooser | `shared/HubKit.jsx` |
-| **Form / modal** (§7) | Adding or editing a record | Add forms (`PageHeading` + `FormGrid`); `BacklogModal` for a pop-up | `ProfileKit` form pieces, `backlog/BacklogModal.jsx` |
+| **Form / modal** (§7) | Adding or editing a record | Add forms (`PageHeading` + `FormGrid`); `Modal` for a pop-up | `ProfileKit` form pieces, `shared/Modal.jsx` |
 | **Automation & Config** (§7) | A pipeline's automation table | Automation & Config → MAP 1 | `admin/automation/StepKit.jsx` (`PanelHero`, `TableCard`) |
 | **Emailed link / pay page** (§7) | A page someone opens from an email, no login | Any `/…-pay` page | `shared/TokenShell.jsx` |
 
@@ -61,6 +61,9 @@ The member, client and specialist portals keep their own one width, 980px, with 
 
 - The brand set is in TEAM_RULES §9. On a page or card, use the `var(--vfo-*)` tokens from `src/index.css` (`--vfo-card`, `--vfo-ink`, `--vfo-muted`, `--vfo-faint`, `--vfo-border-soft`, `--vfo-primary`, `--vfo-tint`...), so dark mode works. Fixed hex only for brand gradients and status colours.
 - **Status colours** come from one place each: people `statusColor` (`shared/statusColors.js`: Active green, Lost red, Removed dark red), clients `shared/clientStatus.js`. Never pick a new red or amber for an existing status.
+- **A member's standing** (flags on top of Active) is `STANDING_COLORS` in `shared/statusColors.js`: **Suspended amber**, Paused orange, In Arrears dark amber, the same on the KPI lens, the profile switch, the lists and Membership Fees (Jake, 2026-11-28). The profile card holding the Suspended and Paused switches is called **Standing**.
+- **One amber:** `AMBER` (`#c98a14`, `shared/statusColors.js`). The KPI tones (a pass rate, a tile's rail, a status dot) are `KPI_TONES` in `admin/KpiKit.jsx`; `RAG` and the tax `TONES` are that one set.
+- A card with its own fixed colours (Average Fees' gold card) takes theme tokens (`--vfo-gold-bg`, `--vfo-gold-border`, `--vfo-gold-strong`) so it works in dark mode.
 
 ### Sub-tabs, mini-tabs and filters
 
@@ -74,8 +77,10 @@ The member, client and specialist portals keep their own one width, 980px, with 
 
 - **Open / close chevron: `ExpandChevron`** (`shared/ExpandChevron.jsx`, Jake 2026-11-27): the trackers' 10px muted ▼, turned over while open, in a 28px square. On a card it sits at the right end of the header; in a table row it stays in a cell so the columns hold, beside what it opens: the name cell when the row opens its own detail, the count when that is what opens (Member Overview's Clients, Jake 2026-11-28). A header whose click opens something else (a plan) gives the chevron its own `onToggle`, so the dropdown is never a tiny target. Not the 11px ▸ / ▾.
 
-- White card: `var(--vfo-card)`, 1px `var(--vfo-border-soft)`, 16px corners (14px for a card holding a table), `var(--vfo-shadow-card)`, padding `var(--vfo-card-pad)`.
-- **A new card is `ProfileCard`** (`ProfileKit.jsx`: icon badge, title, optional sub-line and action). Today there are 38 local `sectionStyle`s and four card-title looks; don't add a fifth.
+- White card: `var(--vfo-card)`, 1px `var(--vfo-border-soft)`, 16px corners (14px for a card holding a table), `var(--vfo-shadow-card)`, padding `var(--vfo-card-pad)`. Import it, never type it: `cardBox` (the card, its padding and the 16px gap under it), `cardFrame` (the frame alone, for a card that sets its own padding), `tintBox` (a tinted box inside a card or a step form), all in `ProfileKit.jsx` (2026-11-28).
+- **A card with a title is `ProfileCard`** (`ProfileKit.jsx`: icon badge, title in normal case, optional sub-line and action, a hairline under the header). It is the only card-title look (Jake, 2026-11-28): the UPPERCASE underlined title, the short-underline title and the plain 17px title are gone. A card that draws its own padded body puts `ProfileCardHead` at its top with `style={pullHead}`, which pulls the header to the card's edges (the Payments tabs). `iconTone` colours the badge alone (Deduct Credits' red $); `tone="red"` turns the title red too and is the Danger Zone. A form card gets a title even when it had none (Set Up Membership, New Payment's Who is paying / Payment method / Revenue shares, Send a payment).
+- A padded `ProfileCard` lets a dropdown list hang out below it (a search picker); only a `flush` card (a table to its edges) clips to its round corners.
+- Not a card title: a status message that sits in a card ("... recorded", "Thank you", "No events right now") and a heading above a table that draws its own frame.
 - A trim changes only the named thing (TEAM_RULES §9).
 
 ### Buttons, tags and choices
@@ -95,6 +100,10 @@ Buttons and tags never look alike, and tags are rare: the full rule is TEAM_RULE
 | Pick one of two or three answers on a form | `ChoiceButtons` (ProfileKit) |
 | On / off | `Switch` (ProfileKit) |
 | Tick one thing done, or pick several | a native checkbox |
+
+- **Never type a button's look out** (2026-11-28, Issue #661 part 6b): the 70 inline blue-gradient buttons became `btnPrimary`. One size (`btnPrimary`'s own, page actions such as "+ New Onboarding" included); only a full-width or tall call to action keeps its padding and text size on top of the house look (the sign-in pages, a pay or token page's Submit, a tracker form's full-width Submit).
+- **A button that cannot be pressed looks it:** `btnState(style, X)` with the SAME condition as its `disabled={X}`, never a narrower one (Create on New Onboarding is grey until the required fields are filled, not only while saving; Sign in is grey while it signs in).
+- The **fields and dropdowns** come from one place each: a form field is `formInput` (`ProfileKit`); a dropdown in the toolbar above a list or money table is `listSelectStyle` (`shared/ListTable.jsx`; Accounting's `selectStyle` is the same object); a step's own dropdown in a tracker is `stepSelect` (`shared/TrackKit.jsx`); a field inside a pop-up is `Modal`'s `inputStyle`.
 
 ### Dates
 
@@ -126,6 +135,8 @@ Model: Client Overview's look; Advisors for the code. Top to bottom:
 3. `ListTable`: uppercase header row, click a column to sort, rows that lift on hover, `ListName` / `ListText` cells.
 4. **A client's name opens the profile; the row opens the plan** (`ClientNameLink`, #632). A person's row opens their profile. The plan is the program's own tab: `planTabFor(program name)` in `shared/personLinks.jsx` (MAP 1, Tax, PFT, Tailored Route). A list whose clients are not portal clients (SDP ATSG) opens the same record from the name and the row.
 5. `ListTable`'s empty line; the matching skeleton (`DirectoryListSkeleton`, `ClientOverviewSkeleton`) at the same width.
+
+**Columns, in order** (Jake, 2026-11-28, Member Overview): who they are (number, name, category, type), where they stand (status, standing), who looks after them (MSM, engagement), their book (clients), then the date they joined. Category is plain words; status is a `Tag` (Active / Lost / Removed); standing is its own column of `Tag`s (Suspended, Paused, In Arrears) with "—" when none. A list of programs is not a column (it made a tall, busy row). The table under an opened row follows the same order (ref, name, status, PF, joined), sized to its columns and centred, not stretched to the page.
 
 A list of people or clients that is not a money table, a tracker or a KPI grid is a `ListTable`. If it needs something `ListTable` can't do yet, add it to `ListTable`; don't copy the look. It already has (2026-11-28): `renderExpanded(row)` for what an opened row shows under it (Member Overview's clients, opened from the Clients count with its `ExpandChevron` beside it: the ▼ sits with what it opens, Jake 2026-11-28), `dense` for the smaller table inside an opened row, `headerSort` for a page that remembers its header sort (the onboarding lists), a column's `align: 'right'`, and a column's `stop` for a cell holding its own control (a select, buttons) so a click there never opens the row. On a member, client or specialist page with no phone layout of its own, leave out `minWidth` so the table fits a phone.
 
@@ -167,7 +178,8 @@ Use when the question is "where do cases drop off, how long, how much, who conve
 Model: Accounting → Specialists → VFO Specialist Revenue.
 
 - **Every Accounting page is an `AccountingCombinedPanel`:** the eyebrow "Accounting · <group>", the title, the pills. A page with one view has no pills but the same header.
-- **Pill order:** the main view (Revenue, Members, Specialists) first, then Reconciliation, Recurring, any account or setup view, **Outstanding Payment Links**, then **Held Payouts** last (with its count badge).
+- **Pill order:** the main view (Revenue, Members, Specialists) first, then Reconciliation, Recurring, any account or setup view, **Outstanding Payment Links**, then **Held Payouts** last (with its count badge). The one exception: VFO Specialist Revenue's **New Payment** is second, straight after Revenue (Jake, 2026-11-28).
+- **An entry form is its own sub-tab, never a button that opens a form above the ledger** (Jake, 2026-11-28): Set Up License, Set Up Membership, Background Checks' **Request Payment**, VFO Specialist Revenue's **New Payment**. The form sits in a `ProfileCard`; what it creates shows on the ledger or on Outstanding Payment Links. The page's skeleton draws as many pills as the page has.
 - **A repeated sub-tab is one shared component, never a copy.** Outstanding Payment Links is `OutstandingLinksPanel` (with its `kind`: `map1`, `tax`, `pip`, `sdp_atsg`, `specrev`), Held Payouts is `HeldPayoutsPanel` (with its `engine`). A new program gets these by passing its kind, not by writing its own. A page whose links come from its own data (Implementation, Membership Fees, License, Background Checks) builds its list from the same pieces, `OutstandingCard`, `SectionHeader`, `EmptyLine` and `OutstandingEmpty`, never a look of its own. Every Outstanding tab's empty line is "No outstanding payment links." **Late money lives there too** (Jake, 2026-11-27): a failed charge or a payment past its date is a section of the program's Outstanding Payment Links tab (Failed Installments - Retry Links, Past Due - Not Charged, Implementation - Charge Failed, Final Retainer - Charge Failed, Failed Payments). A section is called "Links" only when its cards carry a button that sends one; otherwise its name says what happened and the card says the link went by email, not a separate tab. Membership Fees keeps its own Overdue Payments tab because its fix is a reminder email, not a link.
 - **The money table:**
   1. Above it, left: the period `<select>`s (Year, Month) and Refresh. Right: the page's main action ("+ New Payment", `btnPrimary`). Mini-tabs under them if the table has two views. Every Accounting view has a Refresh button.
@@ -253,8 +265,8 @@ A square checkbox for a step, a step without `vfo-stepname`, a date in a differe
 
 - **Profile:** `ProfileHero` (eyebrow, name, avatar, meta, facts, alerts, action), then `ProfileCard`s holding a `FieldGrid` of `Field`s. Back is `BackLink`, never a hand-built "← Back" button.
 - **Hub:** `HubBanner` (done / not yet), `HubGrid` of `HubCard`s, `HubMenuBar` to go back.
-- **Form:** `PageHeading`, `FormGrid` of `formLabel` + `formInput` (`formReadOnly` for locked fields), `ChoiceButtons`, `Switch`, `SaveBar` at the bottom. Not the older 10px 14px `inputStyle` copies.
-- **Modal:** `BacklogModal` (overlay, 16px card, title with ×, footer bar, Escape closes) and its `fieldLabel` / `inputStyle`. It moves to `shared/` as the house modal; today twelve pop-ups draw their own overlay.
+- **Form:** `PageHeading`, `FormGrid` of `formLabel` + `formInput` (`formReadOnly` for locked fields), `ChoiceButtons`, `Switch`, `SaveBar` at the bottom. Not the older 10px 14px `inputStyle` copies (the 29 of them became `formInput`, 2026-11-28).
+- **Modal:** `shared/Modal.jsx` (moved from `backlog/BacklogModal.jsx`, 2026-11-28): overlay, 16px card, title with ×, the buttons in a footer bar, Escape or a click on the overlay closes it; a dialog that must not close mid-save passes an `onClose` that ignores the call while busy. Its `fieldLabel` / `inputStyle` / `errorText` go with it. Every centred pop-up is one; a side drawer (the backlog's), the Help document viewer and the phone nav drawer are not pop-ups.
 - **Automation & Config:** `PanelHero` (white card, gradient strip, stats) and `TableCard`.
 - **Emailed link and pay pages:** `TokenShell`; the lock emoji in the header of every `/…-pay` page (TEAM_RULES §2). Phone layout rules apply (TEAM_RULES §9).
 
@@ -269,3 +281,4 @@ The full list, with file and line, is Issue JLathamERT/vfo-edge-functions#661 (f
 - **Accounting:** swept to §5 on 2026-11-27 (Issue part 3). Left over: Held Payouts dates in MM/DD/YYYY beside "Nov 15, 2026" everywhere else (part 4, dates); the plan pricing cards outside Accounting (`map1/Map1PricingSplitCard.jsx`, `tax/PricingSplitCard.jsx`, `sdp-atsg/SdpAtsgPanel.jsx`) still say "awaiting payout setup" and "failed — retrying".
 - **Trackers** (moved to the shared pieces 2026-11-28, Issue #661 part 5). Left: about 30 of Tax's bespoke rows keep their own layout (built from the shared dot, name width, date, buttons, value box and `StepRight`); Specialist onboarding stages show "In progress" with no n/m count (a stage has no fixed step list).
 - **Lists:** on `ListTable` since 2026-11-28 (Issue part 6a).
+- **Cards, forms, pop-ups, buttons, colours:** swept 2026-11-28 (Issue part 6b). Left: the seven sign-in / set-password pages' taller field (12px 14px), about twelve mid-size inline fields (6-9px padding, 13px text: tracker meeting forms, Tax Diagnostics, Email Templates), the decision-code box, the member pages' loading skeletons (they still draw the old card shape for a moment), and the Tax Planner profile's Clients heading over its list.
