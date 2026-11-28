@@ -39,7 +39,6 @@ import SpecialistLicenseOutstandingPanel from '../components/admin/SpecialistLic
 import SpecialistBgPanel, { BgRequestSection } from '../components/admin/SpecialistBgPanel'
 import SpecialistPaymentInput from '../components/admin/SpecialistPaymentInput'
 import SpecialistBgOutstandingPanel from '../components/admin/SpecialistBgOutstandingPanel'
-import SpecialistBgReconciliationPanel from '../components/admin/SpecialistBgReconciliationPanel'
 import SpecialistReconciliationPanel from '../components/admin/SpecialistReconciliationPanel'
 import HolisticRevenuePanel from '../components/admin/HolisticRevenuePanel'
 import HolisticReconciliationPanel from '../components/admin/HolisticReconciliationPanel'
@@ -773,8 +772,7 @@ export default function AdminPortal() {
               breadcrumb="Accounting · Specialists" title="VFO Specialist Background Checks"
               maxWidth="1200px"
               tabs={[
-                { key: 'specialist_bg', label: 'Background Checks', render: () => <SpecialistBgPanel allExperts={allExperts} embedded /> },
-                { key: 'specialist_bg_reconciliation', label: 'Reconciliation', render: () => <SpecialistBgReconciliationPanel embedded /> },
+                { key: 'specialist_bg', label: 'Specialists', render: () => <SpecialistBgPanel embedded /> },
                 { key: 'specialist_bg_request', label: 'Request Payment', render: () => <BgRequestSection allExperts={allExperts} /> },
                 { key: 'specialist_bg_outstanding', label: 'Outstanding Payment Links', render: () => <SpecialistBgOutstandingPanel embedded /> },
               ]}
@@ -872,8 +870,8 @@ function loadDataSkeleton(tab, section) {
       return <AccountingPageSkeleton maxWidth="1200px" pills={5}><AccountingRowsSkeleton search={260} boxes={[210]} blocks={[110, 110, 80]} pill={150} /></AccountingPageSkeleton>
     }
     const ledger = section === 'specialist_license' || section === 'specialist_bg'
-    // As many pills as the page has (Background Checks 4, License 3, VFO Specialist Revenue 7, Holistic / Tax / PIP 4, Payments / Implementation / SDP ATSG 3).
-    const pills = section === 'specialist_bg' ? 4 : ledger ? 3
+    // As many pills as the page has (License and Background Checks 3, VFO Specialist Revenue 7, Holistic / Tax / PIP 4, Payments / Implementation / SDP ATSG 3).
+    const pills = ledger ? 3
       : /^specialist_/.test(section) ? 7
       : /^(holistic|tax|pip)_/.test(section) ? 4
       : /^sdp_atsg_/.test(section) || section === 'payments' || /_onboarding_fees$/.test(section) ? 3
