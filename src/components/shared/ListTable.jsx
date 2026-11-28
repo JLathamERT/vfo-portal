@@ -11,35 +11,54 @@ import { statusPillStyle } from './statusColors'
 //
 // columns: [{ key, label, width ('1fr', '120px'...), render(row),
 //             get(row) -> value  (optional: makes the header sortable),
-//             type ('text' | 'number' | 'date') }]
+//             type ('text' | 'number' | 'date'), align ('right'),
+//             stop (true: a click in this cell never opens the row, for a cell
+//                   holding its own control - a select, a button) }]
 // rows arrive already searched, filtered and sorted by the page's own Sort; a
 // header click re-sorts on top of that, and `resetSortOn` (the page's Sort value)
-// clears the header sort when it changes, as Client Overview does.
-export default function ListTable({ columns, rows, rowKey, onRowClick, empty = 'Nothing matches the current filters.', minWidth, resetSortOn, style }) {
-  const { sort, onSort, reset } = useHeaderSort()
+// clears the header sort when it changes, as Client Overview does. A page that
+// remembers the header sort passes its own `useHeaderSort()` as `headerSort`.
+// `renderExpanded(row)` draws what an opened row shows under it (null = closed);
+// `dense` is the smaller table used inside an opened row.
+export default function ListTable({ columns, rows, rowKey, onRowClick, empty = 'Nothing matches the current filters.', minWidth, resetSortOn, headerSort, renderExpanded, dense = false, style }) {
+  const own = useHeaderSort()
+  const { sort, onSort, reset } = headerSort || own
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { reset() }, [resetSortOn])
+  useEffect(() => { if (resetSortOn !== undefined) reset() }, [resetSortOn])
   const sortable = Object.fromEntries(columns.filter(c => c.get).map(c => [c.key, { get: c.get, type: c.type }]))
   const shown = sortByColumn(rows, sort, sortable)
   const grid = columns.map(c => c.width || '1fr').join(' ')
+  const pad = dense ? '14px' : '18px'
+  const cellAlign = c => (c.align === 'right' ? { justifySelf: 'end', textAlign: 'right' } : null)
 
   return (
-    <div style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)', ...style }}>
+    <div style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: dense ? '10px' : '14px', background: 'var(--vfo-card)', boxShadow: dense ? 'none' : 'var(--vfo-shadow-card)', ...style }}>
       <div style={{ minWidth }}>
-        <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: dense ? `8px ${pad}` : `12px ${pad}`, background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
           {columns.map(c => c.get
-            ? <SortHeader key={c.key} label={c.label} sortKey={c.key} sort={sort} onSort={onSort} />
-            : <span key={c.key}>{c.label}</span>)}
+            ? <SortHeader key={c.key} label={c.label} sortKey={c.key} sort={sort} onSort={onSort} style={cellAlign(c) || undefined} />
+            : <span key={c.key} style={cellAlign(c) || undefined}>{c.label}</span>)}
         </div>
         {shown.length === 0 && (
-          <div style={{ padding: '28px 18px', textAlign: 'center', color: 'var(--vfo-faint)', fontSize: '13px' }}>{empty}</div>
+          <div style={{ padding: dense ? `16px ${pad}` : `28px ${pad}`, textAlign: 'center', color: 'var(--vfo-faint)', fontSize: dense ? '12px' : '13px' }}>{empty}</div>
         )}
-        {shown.map(row => (
-          <div key={rowKey(row)} onClick={e => onRowClick && onRowClick(row, e)} {...(onRowClick ? rowHoverProps : {})}
-            style={{ ...(onRowClick ? clickableRowStyle : {}), display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
-            {columns.map(c => <span key={c.key} style={{ minWidth: 0 }}>{c.render(row)}</span>)}
-          </div>
-        ))}
+        {shown.map(row => {
+          const expanded = renderExpanded ? renderExpanded(row) : null
+          return (
+            <div key={rowKey(row)}>
+              <div onClick={e => onRowClick && onRowClick(row, e)} {...(onRowClick ? rowHoverProps : {})}
+                style={{ ...(onRowClick ? clickableRowStyle : {}), display: 'grid', gridTemplateColumns: grid, gap: '10px', padding: dense ? `9px ${pad}` : `11px ${pad}`, borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: dense ? '12.5px' : '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
+                {columns.map(c => (
+                  <span key={c.key} onClick={c.stop ? e => e.stopPropagation() : undefined}
+                    style={{ minWidth: 0, ...cellAlign(c), ...(c.stop ? { cursor: 'default' } : null) }}>{c.render(row)}</span>
+                ))}
+              </div>
+              {expanded && (
+                <div style={{ padding: `4px ${pad} 14px 52px`, borderBottom: '1px solid var(--vfo-border-soft)', background: 'var(--vfo-input)' }}>{expanded}</div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

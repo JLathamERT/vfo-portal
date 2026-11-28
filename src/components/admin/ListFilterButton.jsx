@@ -7,15 +7,18 @@ import { useState } from 'react'
 // sets the default (e.g. { status: ['Active'] }); "All" = untick everything in a
 // group. `align="left"` opens the menu from the button's left edge, for a
 // button that sits at the left of its row (the default opens leftwards).
-export default function ListFilterButton({ groups, value, onChange, align = 'right' }) {
+// `buttonLabel` / `active` (optional) override the button's text and its
+// highlighted look, for a list whose default selection is not a filter (the planner
+// portal's "Tax Planners", all ticked by default).
+export default function ListFilterButton({ groups, value, onChange, align = 'right', buttonLabel, active }) {
   const [open, setOpen] = useState(false)
-  const total = groups.reduce((n, g) => n + (value[g.key]?.length || 0), 0)
+  const total = active === undefined ? groups.reduce((n, g) => n + (value[g.key]?.length || 0), 0) : (active ? 1 : 0)
   // Say what's filtering rather than a cryptic count: one selection reads
   // "Status: Active"; several read "Filters (N)".
   const selected = groups.flatMap(g => (value[g.key] || []).map(v => ({ group: g.label, opt: v })))
-  const label = selected.length === 0 ? 'Filter'
+  const label = buttonLabel ?? (selected.length === 0 ? 'Filter'
     : selected.length === 1 ? `${selected[0].group}: ${selected[0].opt}`
-    : `Filters (${selected.length})`
+    : `Filters (${selected.length})`)
   function toggle(key, opt) {
     const cur = value[key] || []
     onChange({ ...value, [key]: cur.includes(opt) ? cur.filter(x => x !== opt) : [...cur, opt] })

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { callApi, getSession } from '../../lib/api'
 import { ListHeader } from '../shared/TrackKit'
-import ListTable, { ListName, ListText, listSearchStyle } from '../shared/ListTable'
+import ListTable, { ListName, ListText, listSearchStyle, LIST_PAGE_MAX_WIDTH } from '../shared/ListTable'
+import ListFilterButton from '../admin/ListFilterButton'
 import { PlannerClientsSkeleton } from '../shared/Skeleton'
 import { formatDate } from '../../lib/dates'
 
@@ -31,7 +32,6 @@ export default function PlannerClientsList() {
   const [selfRole, setSelfRole] = useState('Tax Planner')
   const [search, setSearch] = useState('')
   const [included, setIncluded] = useState(() => readIds(STORAGE_KEY))
-  const [filterOpen, setFilterOpen] = useState(false)
 
   // One fetch pulls every client the caller is authorized to see (the backend
   // intersects the requested ids with the group roster), and the checkboxes then
@@ -162,52 +162,43 @@ export default function PlannerClientsList() {
     ]
   }, [filtered])
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
-
   if (loading && rows.length === 0) {
     return (
-      <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
+      <div style={{ maxWidth: LIST_PAGE_MAX_WIDTH, margin: '0 auto', padding: '28px 24px' }}>
         <PlannerClientsSkeleton />
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px' }}>
+    <div style={{ maxWidth: LIST_PAGE_MAX_WIDTH, margin: '0 auto', padding: '28px 24px' }}>
       {loadError && (
         <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: 'rgba(231,76,60,0.1)', color: '#e74c3c', border: '1px solid rgba(231,76,60,0.3)' }}>{loadError}</div>
       )}
 
       <ListHeader title="Tax Planning" count={filtered.length} />
 
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
         <input type="search" name="search" autoComplete="off" placeholder="Search by client, ref, or name..." style={listSearchStyle} onChange={e => setSearch(e.target.value)} value={search} />
-        {others.length > 0 && (
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <button
-              onClick={() => setFilterOpen(o => !o)}
-              style={{ padding: '9px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: filterActive ? 'rgba(18,94,204,0.1)' : 'var(--vfo-input)', color: filterActive ? 'var(--vfo-accent-text)' : 'var(--vfo-muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              {isTeamMember ? 'Tax Planners' : 'Group'}{filterActive ? ` (${included.length})` : ''}
-              <span style={{ fontSize: '9px', opacity: 0.6 }}>▾</span>
-            </button>
-            {filterOpen && (
-              <>
-                <div onClick={() => setFilterOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
-                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '6px', background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '12px', minWidth: '220px', zIndex: 200, padding: '8px 0', boxShadow: '0 14px 36px rgba(20,45,95,0.16)', maxHeight: '380px', overflowY: 'auto' }}>
-                  <div style={{ padding: '6px 14px 10px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{isTeamMember ? 'Show clients by planner' : 'Include group clients'}</div>
-                    {others.map(g => (
-                      <label key={g.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 0', fontSize: '13px', color: 'var(--vfo-ink)', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={included.includes(g.id)} onChange={() => toggleInclude(g.id)} style={{ accentColor: '#125ecc', cursor: 'pointer' }} />
-                        Include {g.name}'s clients{g.planner_role === 'Team Member' ? ' — Team Member' : ''}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
+        {others.length > 0 && (() => {
+          // The house filter button (ListFilterButton) holding the planner ticks.
+          const optionOf = g => `Include ${g.name}'s clients${g.planner_role === 'Team Member' ? ' — Team Member' : ''}`
+          const idOf = Object.fromEntries(others.map(g => [optionOf(g), g.id]))
+          const group = { key: 'planner', label: isTeamMember ? 'Show clients by planner' : 'Include group clients', options: others.map(optionOf) }
+          return (
+            <ListFilterButton
+              groups={[group]}
+              value={{ planner: others.filter(g => included.includes(g.id)).map(optionOf) }}
+              onChange={v => {
+                const picked = (v.planner || []).map(o => idOf[o])
+                const changed = picked.find(id => !included.includes(id)) ?? included.find(id => !picked.includes(id))
+                if (changed != null) toggleInclude(changed)
+              }}
+              buttonLabel={`${isTeamMember ? 'Tax Planners' : 'Group'}${filterActive ? ` (${included.length})` : ''}`}
+              active={filterActive}
+            />
+          )
+        })()}
       </div>
 
       <div>

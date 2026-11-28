@@ -435,7 +435,7 @@ export default function TaxPlannersPanel({ section }) {
             <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: editStatusType === 'success' ? 'rgba(27,146,84,0.1)' : 'rgba(231,76,60,0.1)', color: editStatusType === 'success' ? 'var(--vfo-success-text)' : '#e74c3c', border: `1px solid ${editStatusType === 'success' ? 'rgba(27,146,84,0.3)' : 'rgba(231,76,60,0.3)'}` }}>{editStatus}</div>
           )}
           <ListHeader title="Tax Planners" count={filteredPlanners.length} action={<ExportButton title="Tax Planners" columns={PLANNER_EXPORT_COLUMNS} rows={searchedPlanners} filterGroups={listFilterGroups} filterValue={listFilter} />} />
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
             <input type="search" name="search" autoComplete="off" placeholder="Search by name or type..." style={listSearchStyle} onChange={e => setSearch(e.target.value.toLowerCase())} value={search} />
             <ListFilterButton groups={listFilterGroups} value={listFilter} onChange={setListFilter} />
             <SortSelect value={listSort} onChange={setListSort} />
@@ -750,16 +750,14 @@ function TaxPlannerClientsTab({ plannerId }) {
     return () => { alive = false }
   }, [plannerId])
 
-  const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px' }
-  const titleStyle = { fontSize: '17px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '0 0 16px', fontFamily: 'Inter, sans-serif' }
-  const th = { textAlign: 'left', padding: '8px 12px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#7a89a8', borderBottom: '1px solid var(--vfo-border)', whiteSpace: 'nowrap' }
-  const td = { padding: '12px', fontSize: '13px', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-border-soft)', verticalAlign: 'top' }
+  const titleStyle = { fontSize: '17px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '0 0 12px', fontFamily: 'Inter, sans-serif' }
+  const GRID = '1.4fr 120px 1.2fr 1fr 1.1fr 120px'
 
   if (loading) {
-    return <div style={cardStyle}><h3 style={titleStyle}>Clients</h3><TableSkeleton card={false} cols={6} rows={3} pad="12px" /></div>
+    return <div><h3 style={titleStyle}>Clients</h3><TableSkeleton cols={GRID} rows={3} minWidth="760px" /></div>
   }
   if (error) {
-    return <div style={cardStyle}><h3 style={titleStyle}>Clients</h3><div style={{ marginTop: '12px', padding: '14px 16px', background: '#fdecea', border: '1px solid #f7c4bd', borderRadius: '10px', color: '#b42318', fontSize: '13px' }}>{error}</div></div>
+    return <div><h3 style={titleStyle}>Clients</h3><div style={{ padding: '14px 16px', background: '#fdecea', border: '1px solid #f7c4bd', borderRadius: '10px', color: '#b42318', fontSize: '13px' }}>{error}</div></div>
   }
 
   const byClient = []
@@ -777,63 +775,49 @@ function TaxPlannerClientsTab({ plannerId }) {
     entry.planStates = [...(entry.planStates || []), { id: r.tax_plan_id, programId: r.program_id || 1, program: label, state: planState(r), summary: r.progressSummary }]
   }
 
+  // The client's NAME opens their profile; the ROW opens their (first) plan, and
+  // each status opens its own plan when the client has more than one (#632).
+  const openPlan = (c, p) => {
+    if (!p) return
+    rememberPlannerReturn(plannerId)
+    navigate(clientPagePath(c.client_id, { program: p.programId, tab: 'tax', plan: p.id }), { state: { from: PLANNER_RETURN_FROM } })
+  }
+  const columns = [
+    { key: 'client', label: 'Client', width: '1.4fr', get: c => c.client_name, render: c => (
+      <ClientNameLink clientId={c.client_id} program={c.program_id || 1} style={{ fontWeight: 600 }}
+        onOpen={() => rememberPlannerReturn(plannerId)} navState={{ from: PLANNER_RETURN_FROM }}>{c.client_name || `Client ${c.client_id}`}</ClientNameLink>
+    ) },
+    { key: 'ref', label: 'Client Ref', width: '120px', get: c => c.client_ref, render: c => <ListText mono style={{ color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{c.client_ref}</ListText> },
+    { key: 'member', label: 'Member', width: '1.2fr', get: c => c.member_name, render: c => <ListText style={{ fontSize: '13px' }}>{c.member_name}</ListText> },
+    { key: 'program', label: 'Program', width: '1fr', get: c => c.programs.join(', '), render: c => <span style={{ color: 'var(--vfo-muted)' }}>{c.programs.join(', ')}</span> },
+    { key: 'status', label: 'Status', width: '1.1fr', render: c => (
+      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+        {(c.planStates || []).map(p => (
+          <button key={p.id} type="button" title={`Open ${p.program} plan`}
+            onClick={e => { e.stopPropagation(); openPlan(c, p) }}
+            style={{ ...statusPillStyle(p.state.hex), height: '22px', boxSizing: 'border-box', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+            {p.state.label}
+          </button>
+        ))}
+      </span>
+    ) },
+    { key: 'progress', label: 'Progress', width: '120px', render: c => (
+      <span style={{ display: 'flex', flexDirection: 'column', gap: '6px', whiteSpace: 'nowrap' }}>
+        {(c.planStates || []).map(p => (
+          <span key={p.id} title={p.summary ? `${p.summary.done} / ${p.summary.total} tasks completed` : 'Progress unavailable'}
+            style={{ fontSize: '12.5px', lineHeight: '22px', fontWeight: 600, color: p.summary ? 'var(--vfo-ink)' : 'var(--vfo-muted)' }}>
+            {p.summary ? p.summary.label : '—'}
+          </span>
+        ))}
+      </span>
+    ) },
+  ]
+
   return (
-    <div style={cardStyle}>
+    <div>
       <h3 style={titleStyle}>Clients</h3>
-      {byClient.length === 0 ? (
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)' }}>No clients assigned.</div>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', minWidth: '620px', borderCollapse: 'collapse', fontFamily: 'Inter, sans-serif' }}>
-            <thead>
-              <tr>
-                <th style={th}>Client</th>
-                <th style={th}>Client Ref</th>
-                <th style={th}>Member</th>
-                <th style={th}>Program</th>
-                <th style={th}>Status</th>
-                <th style={th} title="Phases completed in a row (Tax 1-6) and the plan's task percentage, as on the plan page">Progress</th>
-              </tr>
-            </thead>
-            <tbody>
-              {byClient.map(c => (
-                <tr key={c.client_id}>
-                  <td style={td}>
-                    <ClientNameLink clientId={c.client_id} program={c.program_id || 1} style={{ fontWeight: 600 }}
-                      onOpen={() => rememberPlannerReturn(plannerId)} navState={{ from: PLANNER_RETURN_FROM }}>{c.client_name || `Client ${c.client_id}`}</ClientNameLink>
-                  </td>
-                  <td style={{ ...td, fontFamily: 'ui-monospace, monospace', color: 'var(--vfo-muted)', whiteSpace: 'nowrap' }}>{c.client_ref || '—'}</td>
-                  <td style={td}>{c.member_name || '—'}</td>
-                  <td style={{ ...td, color: 'var(--vfo-muted)' }}>{c.programs.join(', ')}</td>
-                  <td style={td}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
-                      {(c.planStates || []).map(p => {
-                        return (
-                          <button key={p.id} type="button" title={`Open ${p.program} plan`}
-                            onClick={() => { rememberPlannerReturn(plannerId); navigate(clientPagePath(c.client_id, { program: p.programId, tab: 'tax', plan: p.id }), { state: { from: PLANNER_RETURN_FROM } }) }}
-                            style={{ ...statusPillStyle(p.state.hex), height: '22px', boxSizing: 'border-box', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                            {p.state.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </td>
-                  <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {(c.planStates || []).map(p => (
-                        <span key={p.id} title={p.summary ? `${p.summary.done} / ${p.summary.total} tasks completed` : 'Progress unavailable'}
-                          style={{ fontSize: '12.5px', lineHeight: '22px', fontWeight: 600, color: p.summary ? 'var(--vfo-ink)' : 'var(--vfo-muted)' }}>
-                          {p.summary ? p.summary.label : '—'}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <ListTable columns={columns} rows={byClient} rowKey={c => c.client_id} minWidth="760px"
+        onRowClick={c => openPlan(c, (c.planStates || [])[0])} empty="No clients assigned." />
     </div>
   )
 }

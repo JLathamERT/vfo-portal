@@ -210,14 +210,19 @@ export function PortalBacklogRequestsSkeleton() {
   )
 }
 
-// Mirrors a BacklogArchive row: status pill + title, requester line, the
-// write-up, and the announced / denied column on the right.
+// Mirrors the BacklogArchive table (a ListTable): the header row, then per row the
+// status pill + title, requester line and write-up, the requested date, and the
+// announced / denied column on the right.
 export function PortalBacklogArchiveRowsSkeleton({ rows = 3 }) {
+  const grid = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 100px 260px', gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)' }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)', overflow: 'hidden' }}>
+      <div style={{ ...grid, padding: '12px 18px', background: 'var(--vfo-input)' }}>
+        <Skeleton width={60} height={10} /><Skeleton width={64} height={10} /><Skeleton width={58} height={10} />
+      </div>
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap', padding: '10px 12px', border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', background: 'var(--vfo-card)' }}>
-          <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+        <div key={i} style={{ ...grid, alignItems: 'start' }}>
+          <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Skeleton width={74} height={20} style={{ borderRadius: '999px', flexShrink: 0 }} />
               <Skeleton width={i % 2 ? '45%' : '60%'} height={14} />
@@ -226,7 +231,8 @@ export function PortalBacklogArchiveRowsSkeleton({ rows = 3 }) {
             <Skeleton width="90%" height={12} style={{ display: 'block', marginTop: '8px' }} />
             <Skeleton width="65%" height={12} style={{ display: 'block', marginTop: '5px' }} />
           </div>
-          <div style={{ flex: '0 1 240px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <Skeleton width={72} height={12} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <Skeleton width={150} height={12} />
             <Skeleton width={190} height={11} />
           </div>

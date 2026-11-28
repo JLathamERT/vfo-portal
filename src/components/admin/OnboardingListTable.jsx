@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import ListFilterButton, { matchesFilter, SortSelect, useHeaderSort, sortByColumn, SortHeader } from './ListFilterButton'
+import ListFilterButton, { matchesFilter, SortSelect, useHeaderSort } from './ListFilterButton'
+import ListTable, { ListName, ListText, ONE_LINE, listSearchStyle } from '../shared/ListTable'
 import { MemberNameLink } from '../shared/personLinks'
-import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import { formatDate } from '../../lib/dates'
 import { onboardingTypeLabel, createMemberLock } from './onboardingOrder'
@@ -16,7 +16,6 @@ import { onboardingTypeLabel, createMemberLock } from './onboardingOrder'
 // "Ready to Create Advisor / Accountant" in the portal's action blue, and the
 // Team Member Responsible has its own column (2026-11-20).
 
-const GRID = 'minmax(200px, 260px) minmax(220px, 1fr) 170px 200px 150px 110px'
 const DONE = 'Complete'
 const STOPPED = 'Stopped'
 const dot = (color) => ({ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: color, display: 'inline-block' })
@@ -65,7 +64,9 @@ export default function OnboardingListTable({ pipeline, onboardings, stageNames,
     return (f.phase || []).some(p => !phaseOptions.includes(p)) ? { ...f, phase: defaultPhases } : f
   })
   const [listSort, setListSort] = useState(initialView.sort)
-  const { sort: colSort, onSort, reset: resetColSort } = useHeaderSort(initialView.colSort)
+  const headerSort = useHeaderSort(initialView.colSort)
+  const colSort = headerSort.sort
+  const resetColSort = headerSort.reset
   useEffect(() => {
     try { sessionStorage.setItem(viewKey, JSON.stringify({ search, filter: listFilter, sort: listSort, colSort })) } catch { /* private mode */ }
   }, [viewKey, search, listFilter, listSort, colSort])
@@ -87,7 +88,7 @@ export default function OnboardingListTable({ pipeline, onboardings, stageNames,
     ? onboardings.filter(ob => nameOf(ob).toLowerCase().includes(q) || (ob.email || '').toLowerCase().includes(q) || String(ob.member_number || '').includes(q))
     : onboardings
   const filtered = searched.filter(ob => matchesFilter(ob, filterGroups, listFilter))
-  const ordered = useMemo(() => {
+  const rows = useMemo(() => {
     const list = [...filtered]
     const at = ob => ob.created_at || ''
     switch (listSort) {
@@ -98,72 +99,48 @@ export default function OnboardingListTable({ pipeline, onboardings, stageNames,
       default: return list.sort((a, b) => at(b).localeCompare(at(a)))
     }
   }, [filtered, listSort])
-  const rows = sortByColumn(ordered, colSort, {
-    name: { type: 'text', get: nameOf },
-    type: { type: 'text', get: typeOf },
-    phase: { type: 'number', get: ob => phaseOptions.indexOf(phaseOf(ob)) },
-    email: { type: 'text', get: ob => ob.email || '' },
-    team: { type: 'text', get: ob => ob.onboarding_team_member || '' },
-    started: { type: 'date', get: ob => ob.created_at || '' },
-  })
 
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
+  const phaseCell = (phase) => {
+    if (phase === DONE) return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--vfo-success-text)', fontWeight: 600 }}><span style={dot('#1b9254')} />{DONE}</span>
+    if (phase === READY) return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#125ecc', fontWeight: 600 }}><span style={dot('#125ecc')} />{READY}</span>
+    if (phase === STOPPED) return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#b23c30', fontWeight: 600 }}><span style={dot('#b23c30')} />{STOPPED}</span>
+    return <span style={{ color: 'var(--vfo-ink)' }}>{phase}</span>
+  }
+  const columns = [
+    { key: 'name', label: 'Name', width: 'minmax(200px, 260px)', get: nameOf, render: ob => (
+      <span style={{ display: 'flex', alignItems: 'baseline', gap: '8px', minWidth: 0, flexWrap: 'wrap' }}>
+        <ListName>{nameOf(ob)}</ListName>
+        {ob.member_number && <MemberNameLink memberNumber={ob.member_number} style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>#{ob.member_number}</MemberNameLink>}
+      </span>
+    ) },
+    { key: 'email', label: 'Email', width: 'minmax(220px, 1fr)', get: ob => ob.email || '', render: ob => (
+      <span style={{ ...ONE_LINE, fontSize: '12.5px', color: ob.email ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }} title={ob.email || ''}>{ob.email || 'No email'}</span>
+    ) },
+    { key: 'type', label: 'Type', width: '170px', get: typeOf, render: ob => <ListText style={{ fontSize: '12.5px' }}>{onboardingTypeLabel(ob, pipeline)}</ListText> },
+    { key: 'phase', label: 'Phase', width: '200px', type: 'number', get: ob => phaseOptions.indexOf(phaseOf(ob)), render: ob => <span style={{ fontSize: '12.5px' }}>{phaseCell(phaseOf(ob))}</span> },
+    { key: 'team', label: 'Team Member', width: '150px', get: ob => ob.onboarding_team_member || '', render: ob => (
+      <span style={{ ...ONE_LINE, fontSize: '12.5px', color: ob.onboarding_team_member ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }} title={ob.onboarding_team_member || ''}>{ob.onboarding_team_member || '—'}</span>
+    ) },
+    { key: 'started', label: 'Started', width: '110px', type: 'date', get: ob => ob.created_at || '', render: ob => <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{formatDate(ob.created_at) || '—'}</span> },
+  ]
 
   return (
     <>
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <input type="search" name="search" autoComplete="off" placeholder={isPhone ? 'Search by name or email...' : 'Search by name, email or member number...'} value={search} onChange={e => setSearch(e.target.value)} style={{ ...sel, flex: isPhone ? '1 1 100%' : 1, minWidth: isPhone ? 0 : '240px' }} />
+        <input type="search" name="search" autoComplete="off" placeholder={isPhone ? 'Search by name or email...' : 'Search by name, email or member number...'} value={search} onChange={e => setSearch(e.target.value)} style={{ ...listSearchStyle, flex: isPhone ? '1 1 100%' : 1, minWidth: isPhone ? 0 : '240px' }} />
         <ListFilterButton groups={filterGroups} value={listFilter} onChange={setListFilter} />
         <SortSelect value={listSort} onChange={v => { setListSort(v); resetColSort() }} options={SORT_OPTIONS} />
       </div>
 
-      <div style={{ overflowX: 'auto', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', background: 'var(--vfo-card)', boxShadow: 'var(--vfo-shadow-card)' }}>
-        <div style={{ minWidth: MIN_WIDTH }}>
-          <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: '10px', padding: '12px 18px', background: 'var(--vfo-input)', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--vfo-muted)' }}>
-            <SortHeader label="Name" sortKey="name" sort={colSort} onSort={onSort} />
-            <SortHeader label="Email" sortKey="email" sort={colSort} onSort={onSort} />
-            <SortHeader label="Type" sortKey="type" sort={colSort} onSort={onSort} />
-            <SortHeader label="Phase" sortKey="phase" sort={colSort} onSort={onSort} />
-            <SortHeader label="Team Member" sortKey="team" sort={colSort} onSort={onSort} />
-            <SortHeader label="Started" sortKey="started" sort={colSort} onSort={onSort} />
-          </div>
-
-          {rows.length === 0 && (
-            <div style={{ padding: '28px 18px', textAlign: 'center', color: 'var(--vfo-faint)', fontSize: '13px' }}>
-              {onboardings.length === 0 ? emptyText : 'No onboardings match the current filters.'}
-            </div>
-          )}
-
-          {rows.map(ob => {
-            const phase = phaseOf(ob)
-            const type = onboardingTypeLabel(ob, pipeline)
-            return (
-              <div key={ob.id} onClick={() => onOpen(ob)} {...rowHoverProps}
-                style={{ ...clickableRowStyle, display: 'grid', gridTemplateColumns: GRID, gap: '10px', padding: '11px 18px', borderBottom: '1px solid var(--vfo-border-soft)', alignItems: 'center', fontSize: '13px', color: 'var(--vfo-ink)', background: 'var(--vfo-card)' }}>
-                <span style={{ display: 'flex', alignItems: 'baseline', gap: '8px', minWidth: 0, flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--vfo-link)' }}>{nameOf(ob) || '—'}</span>
-                  {ob.member_number && <MemberNameLink memberNumber={ob.member_number} style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>#{ob.member_number}</MemberNameLink>}
-                </span>
-                <span style={{ fontSize: '12.5px', color: ob.email ? 'var(--vfo-ink)' : 'var(--vfo-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ob.email || ''}>{ob.email || 'No email'}</span>
-                <span style={{ fontSize: '12.5px', color: type ? 'var(--vfo-ink)' : 'var(--vfo-faint)' }}>{type || '—'}</span>
-                <span style={{ fontSize: '12.5px' }}>
-                  {phase === DONE ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--vfo-success-text)', fontWeight: 600 }}><span style={dot('#1b9254')} />{DONE}</span>
-                  ) : phase === READY ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#125ecc', fontWeight: 600 }}><span style={dot('#125ecc')} />{READY}</span>
-                  ) : phase === STOPPED ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#b23c30', fontWeight: 600 }}><span style={dot('#b23c30')} />{STOPPED}</span>
-                  ) : (
-                    <span style={{ color: 'var(--vfo-ink)' }}>{phase}</span>
-                  )}
-                </span>
-                <span style={{ fontSize: '12.5px', color: ob.onboarding_team_member ? 'var(--vfo-ink)' : 'var(--vfo-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ob.onboarding_team_member || ''}>{ob.onboarding_team_member || '—'}</span>
-                <span style={{ fontSize: '12px', color: 'var(--vfo-muted)' }}>{formatDate(ob.created_at) || '—'}</span>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <ListTable
+        columns={columns}
+        rows={rows}
+        rowKey={ob => ob.id}
+        onRowClick={ob => onOpen(ob)}
+        headerSort={headerSort}
+        minWidth={MIN_WIDTH}
+        empty={onboardings.length === 0 ? emptyText : 'No onboardings match the current filters.'}
+      />
     </>
   )
 }

@@ -10,14 +10,16 @@ export function statusColor(status, fallback = 'var(--vfo-faint)') {
   return STATUS_COLORS[status] || fallback
 }
 
-// The small tinted status pill beside a name on a phone list card (the card
-// pattern Jake picked 2026-10-28). Takes any hex; a theme var falls back to a
-// neutral tint.
+// The tag look (shared/Tag.jsx) as a style, for a status pill drawn on a plain
+// span: ListPill, a phone list card, a plan status. One look for every pill (Issue
+// #661 part 6, 2026-11-28; it was 11px / 600 with no border before). Takes any
+// hex; a theme var falls back to a neutral tint.
 export function statusPillStyle(color) {
   const hex = typeof color === 'string' && color.startsWith('#')
   return {
-    fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', whiteSpace: 'nowrap', flexShrink: 0,
-    background: hex ? `${color}1f` : 'var(--vfo-tint)',
+    display: 'inline-block', fontSize: '10px', fontWeight: 700, letterSpacing: '0.3px', lineHeight: '16px', padding: '0 8px', borderRadius: '999px', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'Inter, sans-serif',
+    background: hex ? `${color}22` : 'var(--vfo-tint)',
     color: hex ? readable(color) : 'var(--vfo-muted)',
+    border: `1px solid ${hex ? `${color}4d` : 'var(--vfo-border-chip)'}`,
   }
 }
