@@ -64,6 +64,10 @@
   --vfo-success-text: #1b9254;
   --vfo-success-text-2: #16a34a;
   --vfo-gold-text: #a86f08;
+  /* the gold KPI card (Average Fees' VFO revenue), Issue #661 part 6b */
+  --vfo-gold-bg: #fffaf2;
+  --vfo-gold-border: #f0dcb4;
+  --vfo-gold-strong: #7a5005;
 
   /* payments table rows (2026-11-13: were literal light fills, white on navy in dark) */
   --vfo-row-child: #fbfcfe;   /* a group's expanded payment rows */
@@ -123,6 +127,9 @@
   --vfo-success-text: #5fd99a;
   --vfo-success-text-2: #5fd99a;
   --vfo-gold-text: #f2bd52;
+  --vfo-gold-bg: rgba(242, 189, 82, 0.10);
+  --vfo-gold-border: rgba(242, 189, 82, 0.35);
+  --vfo-gold-strong: #f7d58c;
 
   --vfo-row-child: #03307d;
   --vfo-row-sub: #0a3179;

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { btnPrimary, btnSecondary, btnState } from '../../shared/buttonStyles'
-import BacklogModal, { errorText, fieldLabel, inputStyle } from './BacklogModal'
+import Modal, { errorText, fieldLabel, inputStyle } from '../../shared/Modal'
 import { PORTAL_DEPARTMENTS, departmentChipStyle } from './portalDepartments'
 
 const MAX_TEXT = 4000
@@ -47,7 +47,7 @@ export default function TaskModal({ initial, assignees = [], me, presetAssignee,
   }
 
   return (
-    <BacklogModal title={editing ? 'Edit task' : 'Add task'} onClose={onClose} width={560}
+    <Modal title={editing ? 'Edit task' : 'Add task'} onClose={onClose} width={560}
       footer={(
         <>
           <button style={btnSecondary} onClick={onClose}>Cancel</button>
@@ -109,6 +109,6 @@ export default function TaskModal({ initial, assignees = [], me, presetAssignee,
         {missing.length > 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Still needed: {missing.join(', ')}.</div>}
         {error && <div style={errorText}>{error}</div>}
       </div>
-    </BacklogModal>
+    </Modal>
   )
 }

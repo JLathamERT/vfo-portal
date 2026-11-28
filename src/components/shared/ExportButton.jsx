@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { downloadXlsx, exportFilename, exportHeading } from '../../lib/exportXlsx'
 import { matchesFilter } from '../admin/ListFilterButton'
+import Modal from './Modal'
+import { btnPrimary, btnSecondary, btnState } from './buttonStyles'
 
 // Export opens a window: tick the columns wanted and put them in order (↑ / ↓),
 // set the filters (pre-set to the list's own, so the default export is what is on
@@ -80,7 +82,6 @@ export default function ExportButton({ title, columns, rows, filterGroups = [], 
   const count = pool.length
   const label = { fontSize: '11px', fontWeight: 700, color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }
   const arrow = (disabled) => ({ width: '26px', height: '24px', borderRadius: '6px', border: '1px solid var(--vfo-border)', background: 'var(--vfo-input)', color: disabled ? 'var(--vfo-faint)' : 'var(--vfo-ink)', cursor: disabled ? 'default' : 'pointer', fontSize: '11px', lineHeight: 1, padding: 0 })
-  const btn = (primary, disabled) => ({ padding: '9px 18px', borderRadius: '8px', border: primary ? 'none' : '1px solid var(--vfo-border-strong)', background: primary ? (disabled ? 'var(--vfo-border-strong)' : 'var(--vfo-primary)') : 'var(--vfo-card)', color: primary ? '#fff' : 'var(--vfo-ink)', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: disabled ? 'default' : 'pointer' })
 
   return (
     <>
@@ -91,12 +92,13 @@ export default function ExportButton({ title, columns, rows, filterGroups = [], 
         Export
       </button>
       {open && (
-        <div onClick={e => { if (e.target === e.currentTarget) setOpen(false) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(8,20,45,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border)', borderRadius: '14px', width: '100%', maxWidth: '560px', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(8,20,45,0.3)', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }}>
-            <div style={{ padding: '18px 22px 12px', fontSize: '17px', fontWeight: 700 }}>Export {title}</div>
+        <Modal title={`Export ${title}`} width={560} onClose={() => setOpen(false)} footer={<>
+          <div style={{ flex: 1, fontSize: '13px', color: 'var(--vfo-muted)' }}>{matched.length} row{matched.length === 1 ? '' : 's'}{groups ? ` in ${groups.length} group${groups.length === 1 ? '' : 's'}` : ''} · {chosen.length} column{chosen.length === 1 ? '' : 's'}</div>
+          <button type="button" onClick={() => setOpen(false)} style={btnSecondary}>Cancel</button>
+          <button type="button" disabled={!matched.length || !chosen.length} onClick={download} style={btnState(btnPrimary, !matched.length || !chosen.length)}>Download</button>
+        </>}>
             {filterGroups.length > 0 && (
-              <div style={{ padding: '0 22px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ paddingBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ ...label, marginBottom: 0 }}>Group by</div>
                 <select value={groupBy} onChange={e => setGroupBy(e.target.value)}
                   style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
@@ -105,7 +107,7 @@ export default function ExportButton({ title, columns, rows, filterGroups = [], 
                 </select>
               </div>
             )}
-            <div style={{ padding: '0 22px', overflowY: 'auto', display: 'grid', gridTemplateColumns: filterGroups.length ? 'minmax(0,1fr) minmax(0,1fr)' : '1fr', gap: '22px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: filterGroups.length ? 'minmax(0,1fr) minmax(0,1fr)' : '1fr', gap: '22px' }}>
               <div>
                 <div style={label}>Columns, in order</div>
                 {cols.map((c, i) => {
@@ -139,13 +141,7 @@ export default function ExportButton({ title, columns, rows, filterGroups = [], 
                 </div>
               )}
             </div>
-            <div style={{ padding: '14px 22px 18px', display: 'flex', alignItems: 'center', gap: '10px', borderTop: '1px solid var(--vfo-border)', marginTop: '14px' }}>
-              <div style={{ flex: 1, fontSize: '13px', color: 'var(--vfo-muted)' }}>{matched.length} row{matched.length === 1 ? '' : 's'}{groups ? ` in ${groups.length} group${groups.length === 1 ? '' : 's'}` : ''} · {chosen.length} column{chosen.length === 1 ? '' : 's'}</div>
-              <button type="button" onClick={() => setOpen(false)} style={btn(false, false)}>Cancel</button>
-              <button type="button" disabled={!matched.length || !chosen.length} onClick={download} style={btn(true, !matched.length || !chosen.length)}>Download</button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </>
   )

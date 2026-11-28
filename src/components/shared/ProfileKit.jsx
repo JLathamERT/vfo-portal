@@ -10,6 +10,17 @@ import { btnPrimary, btnSecondary, btnState, BTN_SMALL } from './buttonStyles'
 
 export const PROFILE_GRADIENT = 'linear-gradient(90deg, #002973 0%, #125ecc 55%, #0a85e8 100%)'
 
+// The house white card (HOUSE_STYLE 1, Issue #661 part 6b): cardFrame is the frame
+// alone, for a card that sets its own padding; cardBox adds the padding and the gap
+// under it. 38 pages each typed it out before. A new card with a title is ProfileCard.
+export const cardFrame = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)' }
+export const cardBox = { ...cardFrame, padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
+// A ProfileCardHead at the top of a card that brings its own padding (cardBox): pulls
+// the header row out to the card's edges, so it matches a ProfileCard's header.
+export const pullHead = { margin: 'calc(-1 * var(--vfo-card-pad)) calc(-1 * var(--vfo-card-pad)) 16px' }
+// A tinted box inside a card or a step form (a group of fields, a summary).
+export const tintBox = { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', borderRadius: '8px', padding: '16px', marginBottom: '12px' }
+
 export const profileCardStyle = {
   background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px',
   boxShadow: 'var(--vfo-shadow-card)', overflow: 'hidden', marginBottom: '16px',
@@ -75,13 +86,15 @@ export function IconBadge({ icon, tone = 'blue', size = 34 }) {
 // One box: icon badge + title (+ a muted line, + an action on the right), a
 // hairline, then the body. `tone="red"` is the Danger Zone. `flush` drops the body
 // padding for a box whose content brings its own (a table, a list of rows).
-export function ProfileCard({ icon, title, sub, action, tone = 'blue', children, style, bodyStyle, flush = false, id }) {
+export function ProfileCard({ icon, title, sub, action, tone = 'blue', iconTone, children, style, bodyStyle, flush = false, id }) {
   const isPhone = useIsPhone()
   // No children = a title-bar-only box (the program header when not editing).
   const hasBody = children !== undefined && children !== null && children !== false
   return (
-    <section id={id} style={{ ...profileCardStyle, ...style }}>
-      {title && <ProfileCardHead icon={icon} title={title} sub={sub} action={action} tone={tone} rule={hasBody} />}
+    // Only a flush box (a table to its edges) clips to its round corners: a padded
+    // box lets a dropdown list (a search picker) hang out below it (Issue #661 part 6b).
+    <section id={id} style={{ ...profileCardStyle, ...(flush ? null : { overflow: 'visible' }), ...style }}>
+      {title && <ProfileCardHead icon={icon} title={title} sub={sub} action={action} tone={tone} iconTone={iconTone} rule={hasBody} />}
       {hasBody && <div style={{ padding: flush ? 0 : (isPhone ? '12px' : 'var(--vfo-card-pad)'), ...bodyStyle }}>{children}</div>}
     </section>
   )
@@ -90,11 +103,13 @@ export function ProfileCard({ icon, title, sub, action, tone = 'blue', children,
 // A box's header on its own (icon badge + title + muted line + action, the hairline
 // under it when `rule`), for a card that draws its own body. `style` reaches the row
 // (a card with its own padding pulls the header to its edges with a negative margin).
-export function ProfileCardHead({ icon, title, sub, action, tone = 'blue', rule = true, style }) {
+// `iconTone` colours the badge alone (a red $ on Deduct Credits) and leaves the title
+// in ink; `tone="red"` turns both red (the Danger Zone).
+export function ProfileCardHead({ icon, title, sub, action, tone = 'blue', iconTone, rule = true, style }) {
   const isPhone = useIsPhone()
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: isPhone ? '13px 16px' : '15px 22px', borderBottom: rule ? '1px solid var(--vfo-border-soft)' : 'none', flexWrap: 'wrap', ...style }}>
-      {icon && <IconBadge icon={icon} tone={tone} />}
+      {icon && <IconBadge icon={icon} tone={iconTone || tone} />}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '15.5px', fontWeight: 800, letterSpacing: '-0.01em', color: tone === 'red' ? '#d93025' : 'var(--vfo-heading)', lineHeight: 1.25 }}>{title}</div>
         {sub && !isPhone && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '2px', lineHeight: 1.45 }}>{sub}</div>}

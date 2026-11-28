@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import AuthShell from '../components/shared/AuthShell'
+import { btnPrimary, btnState } from '../components/shared/buttonStyles'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -71,7 +72,7 @@ export default function ForgotPasswordPage() {
             <input id="email" name="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" type="email" required style={inputStyle} />
           </div>
           {!portal && <p style={{ color: 'var(--vfo-muted)', fontWeight: 500, fontSize: '13px', margin: 0 }}>We couldn't tell which portal you're resetting. Go back to your portal's sign-in page and use the "Forgot passcode?" link there.</p>}
-          <button type="submit" disabled={loading || !portal} style={{ padding: '13px', borderRadius: '10px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 4px 14px rgba(18,94,204,0.35)', color: '#fff', fontSize: '15px', fontWeight: 600, cursor: (loading || !portal) ? 'not-allowed' : 'pointer', opacity: (loading || !portal) ? 0.6 : 1, marginTop: '4px' }}>{loading ? 'Sending...' : 'Send reset link'}</button>
+          <button type="submit" disabled={loading || !portal} style={{ ...btnState(btnPrimary, (loading || !portal)), padding: '13px', fontSize: '15px', marginTop: '4px' }}>{loading ? 'Sending...' : 'Send reset link'}</button>
         </form>
       )}
       <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginTop: '20px', textAlign: 'center', cursor: 'pointer' }} onClick={()=>navigate(portal ? portal.login : '/')}>← Back to sign in</p>

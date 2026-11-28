@@ -6,12 +6,13 @@ import { AccountingRowsSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
 import { useIsPhone } from '../../lib/useMediaQuery'
 import SubTabs from '../shared/SubTabs'
-import { PageHeading } from '../shared/ProfileKit'
+import { cardFrame, PageHeading } from '../shared/ProfileKit'
 import { OutstandingCard, OutstandingEmpty, SectionHeader, Detail as OLDetail } from './OutstandingLinksPanel'
 import { footnoteStyle, refreshBtnStyle, toolbarStyle } from './accountingTable'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 import ExpandChevron from '../shared/ExpandChevron'
 import { formatDate } from '../../lib/dates'
+import { listSelectStyle } from '../shared/ListTable'
 
 // Accounting > Members > Advisor / Accountant Implementation (2026-11-19, the
 // "Advisor / Accountant Onboarding" pages before). Every advisor or accountant
@@ -41,7 +42,7 @@ const PAY_STATUS = {
   refunded: { label: 'Refunded', color: '#6b7280' },
 }
 
-const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)' }
+const card = { ...cardFrame, borderRadius: '14px' }
 const input = { padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }
 
 function todayIso() {
@@ -356,7 +357,7 @@ function EndingSection({ rows, onRefresh }) {
     return Array.from(set).sort((a, b) => b - a)
   }, [rows, today])
   const shown = rows.filter(r => paidInFull(r) && r.renewal_date && String(r.renewal_date).slice(0, 7) === monthKey)
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+  const sel = listSelectStyle
 
   return (
     <div>

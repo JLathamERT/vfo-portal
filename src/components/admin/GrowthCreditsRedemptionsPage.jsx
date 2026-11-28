@@ -4,8 +4,10 @@ import { TableSkeleton } from '../shared/Skeleton'
 import { MemberNameLink } from '../shared/personLinks'
 import GCPurchasesTable from './GCPurchasesTable'
 import SubTabs from '../shared/SubTabs'
-import { PageHeading } from '../shared/ProfileKit'
+import { cardBox, PageHeading, ProfileCard } from '../shared/ProfileKit'
 import { formatDate } from '../../lib/dates'
+import Modal from '../shared/Modal'
+import { btnDanger, btnSecondary, btnState } from '../shared/buttonStyles'
 
 // Growth Credits page (top-level admin tab, open to every admin since 2026-11-25).
 // Sub-tabs: Redemptions (the fulfillment queue), Purchases and Menu (read-only view
@@ -90,8 +92,7 @@ export default function GrowthCreditsRedemptionsPage() {
   const pending = newestFirst((redemptions || []).filter(r => r.status === 'pending'))
   const done = newestFirst((redemptions || []).filter(r => r.status !== 'pending'))
 
-  const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '22px', marginBottom: '20px' }
-  const cardTitle = { fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '0 0 16px', paddingBottom: '8px', borderBottom: `2px solid ${NAVY}`, display: 'inline-block' }
+  const card = { ...cardBox, marginBottom: '20px' }
   const rowGrid = { display: 'grid', gridTemplateColumns: '1.5fr 1.7fr 100px 120px 210px', gap: '10px', alignItems: 'center', padding: '12px 4px', borderBottom: '1px solid var(--vfo-border-soft)', fontSize: '13px', color: 'var(--vfo-ink)' }
   // The whole menu is ONE grid: header cells, full-width category dividers and
   // every data cell are siblings in the same flow, so all four columns line up
@@ -124,8 +125,7 @@ export default function GrowthCreditsRedemptionsPage() {
       {section === 'purchases' && <GCPurchasesTable />}
 
       {section === 'redemptions' && (<>
-      <div style={card}>
-        <div style={cardTitle}>Pending ({redemptions === null ? '…' : pending.length})</div>
+      <ProfileCard icon="clipboard" title={`Pending (${redemptions === null ? '…' : pending.length})`}>
         <p style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', margin: '0 0 14px' }}>Services members have redeemed credits for that have not been delivered yet. Check one off once the work is complete; rejecting refunds the credits.</p>
         {redemptions === null && !error && <TableSkeleton card={false} header={false} cols={rowGrid.gridTemplateColumns} rows={3} pad="14px 4px" />}
         {redemptions !== null && !error && (
@@ -150,10 +150,9 @@ export default function GrowthCreditsRedemptionsPage() {
             ))}
           </div>
         )}
-      </div>
+      </ProfileCard>
 
-      <div style={card}>
-        <div style={cardTitle}>History</div>
+      <ProfileCard icon="history" title="History">
         {redemptions === null && !error && <TableSkeleton card={false} header={false} cols={rowGrid.gridTemplateColumns} rows={3} pad="14px 4px" />}
         {redemptions !== null && !error && (
           <div>
@@ -169,12 +168,11 @@ export default function GrowthCreditsRedemptionsPage() {
             ))}
           </div>
         )}
-      </div>
+      </ProfileCard>
       </>)}
 
       {section === 'menu' && (
-      <div style={card}>
-        <div style={cardTitle}>Marketplace menu</div>
+      <ProfileCard icon="layers" title="Marketplace menu">
         <p style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', margin: '0 0 14px' }}>The active services members can redeem against, and who on the team handles each one. Allocations are edited in Automation &amp; Config &rarr; Growth Credits.</p>
         {services === null && <TableSkeleton card={false} header={false} cols={menuCols} rows={6} pad="12px 0" />}
         {services !== null && services.length === 0 && (
@@ -210,28 +208,18 @@ export default function GrowthCreditsRedemptionsPage() {
             ))}
           </div>
         )}
-      </div>
+      </ProfileCard>
       )}
 
       {confirmReject && (
-        <div onClick={() => { if (!busy) setConfirmReject(null) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(9,14,26,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: '0 18px 50px rgba(9,14,26,0.35)', padding: '26px 28px', maxWidth: '440px', width: '100%' }}>
-            <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>Reject redemption</div>
-            <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 18px', lineHeight: 1.5 }}>
-              Reject <strong>{serviceOf(confirmReject)}</strong> for <strong>{memberOf(confirmReject)}</strong>? The {confirmReject.credits} {confirmReject.credits === 1 ? 'credit' : 'credits'} will be refunded to their balance.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button onClick={() => setConfirmReject(null)} disabled={busy}
-                style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: busy ? 'default' : 'pointer' }}>Cancel</button>
-              <button onClick={() => update(confirmReject.id, 'rejected')} disabled={busy}
-                style={{ padding: '8px 22px', borderRadius: '8px', border: 'none', background: '#d93025', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.7 : 1 }}>
-                {busy ? 'Rejecting…' : 'Reject & refund'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <Modal title="Reject redemption" width={440} onClose={() => { if (!busy) setConfirmReject(null) }} footer={<>
+          <button onClick={() => setConfirmReject(null)} disabled={busy} style={btnState(btnSecondary, busy)}>Cancel</button>
+          <button onClick={() => update(confirmReject.id, 'rejected')} disabled={busy} style={btnState(btnDanger, busy)}>{busy ? 'Rejecting…' : 'Reject & refund'}</button>
+        </>}>
+          <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: 0, lineHeight: 1.5 }}>
+            Reject <strong>{serviceOf(confirmReject)}</strong> for <strong>{memberOf(confirmReject)}</strong>? The {confirmReject.credits} {confirmReject.credits === 1 ? 'credit' : 'credits'} will be refunded to their balance.
+          </p>
+        </Modal>
       )}
     </div>
   )

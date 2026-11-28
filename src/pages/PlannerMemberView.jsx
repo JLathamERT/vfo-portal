@@ -4,12 +4,12 @@ import { getSession, callApi } from '../lib/api'
 import { usePortalTheme } from '../lib/theme'
 import { MemberProfileDetailsSkeleton } from '../components/shared/Skeleton'
 import { HeroAvatar } from '../components/shared/TrackKit'
-import { DotText, PersonName, ProfileCard, ProfileHero, rememberSettingsReturn } from '../components/shared/ProfileKit'
+import { cardBox, DotText, PersonName, ProfileCard, ProfileHero, rememberSettingsReturn } from '../components/shared/ProfileKit'
 import MemberProfileDetails from '../components/shared/MemberProfileDetails'
 import { VisibilityBadge, noteTint } from '../components/shared/NoteVisibility'
 import PortalHeader from '../components/shared/PortalHeader'
 import { formatDate } from '../lib/dates'
-import { statusColor } from '../components/shared/statusColors'
+import { STANDING_COLORS, statusColor } from '../components/shared/statusColors'
 import { HEADSHOTS_URL } from '../lib/environment'
 
 const HEADSHOT_SUPABASE = HEADSHOTS_URL
@@ -50,7 +50,7 @@ export default function PlannerMemberView() {
   }, [memberNumber])
 
   const profile = data?.member
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
+  const sectionStyle = cardBox
   // The shared body's people shape: { name, number, member_type, chip }.
   const asPerson = (p, chip = false) => ({ ...p, number: p.member_number, chip: chip ? (p.connection_type || null) : null })
   const people = data ? {
@@ -92,8 +92,8 @@ export default function PlannerMemberView() {
                 { label: 'Status', value: profile.elite_status ? <DotText color={statusColor(profile.elite_status)}>{profile.elite_status}</DotText> : null },
               ]}
               alerts={(profile.paused || profile.suspended || profile.membership_arrears) ? <>
-                {profile.paused && <DotText color="#e06717">Paused</DotText>}
-                {profile.suspended && <DotText color="#e74c3c">Suspended</DotText>}
+                {profile.paused && <DotText color={STANDING_COLORS.Paused}>Paused</DotText>}
+                {profile.suspended && <DotText color={STANDING_COLORS.Suspended}>Suspended</DotText>}
                 {profile.membership_arrears && <DotText color="#b45309">In Arrears</DotText>}
               </> : null}
             />

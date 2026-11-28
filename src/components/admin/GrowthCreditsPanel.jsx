@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { callApi } from '../../lib/api'
 import StripeAccountPill from './StripeAccountPill'
 import { TableSkeleton } from '../shared/Skeleton'
-import { PageHeading } from '../shared/ProfileKit'
+import { cardBox, PageHeading, ProfileCard } from '../shared/ProfileKit'
+import Modal from '../shared/Modal'
+import { btnDanger, btnSecondary, btnState } from '../shared/buttonStyles'
 
 // Automation & Config -> Growth Credits. The fixed purchase packages
 // (server-enforced), and a service management table (name / description / category / team member / scheduling
@@ -176,8 +178,7 @@ export default function GrowthCreditsPanel() {
   }
 
   const wrap = { padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
-  const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '22px', marginBottom: '20px' }
-  const cardTitle = { fontSize: '15px', fontWeight: 700, color: 'var(--vfo-heading)', margin: '0 0 16px', paddingBottom: '8px', borderBottom: `2px solid ${NAVY}`, display: 'inline-block' }
+  const card = { ...cardBox, marginBottom: '20px' }
   const input = { padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13px', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' }
   // Same tokens as `input`, but drag-to-grow vertically for long copy.
   const descBox = { ...input, fontSize: '11.5px', lineHeight: 1.45, resize: 'vertical', minHeight: '40px' }
@@ -196,8 +197,7 @@ export default function GrowthCreditsPanel() {
       {status && <div style={{ background: 'var(--vfo-accent-tint)', border: '1px solid var(--vfo-border-mid)', color: 'var(--vfo-accent-text)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', marginBottom: '14px' }}>{status}</div>}
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '12px', padding: '14px', fontSize: '13px', marginBottom: '14px' }}>{error}</div>}
 
-      <div style={card}>
-        <div style={cardTitle}>Packages</div>
+      <ProfileCard icon="dollar" title="Packages">
         <p style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', margin: '0 0 14px' }}>Purchase packages are fixed and enforced server-side (a member cannot alter the price).</p>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {PACKAGES.map(p => (
@@ -209,10 +209,9 @@ export default function GrowthCreditsPanel() {
             </div>
           ))}
         </div>
-      </div>
+      </ProfileCard>
 
-      <div style={card}>
-        <div style={cardTitle}>Services</div>
+      <ProfileCard icon="briefcase" title="Services">
         {loading && <TableSkeleton card={false} header={false} cols={cols} rows={4} pad="22px 4px" twoLine />}
         {!loading && !error && (
           <div>
@@ -250,27 +249,17 @@ export default function GrowthCreditsPanel() {
             </div>
           </div>
         )}
-      </div>
+      </ProfileCard>
 
       {confirmRemove && (
-        <div onClick={() => { if (!busy) setConfirmRemove(null) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(9,14,26,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: '0 18px 50px rgba(9,14,26,0.35)', padding: '26px 28px', maxWidth: '440px', width: '100%' }}>
-            <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>Remove service</div>
-            <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 18px', lineHeight: 1.5 }}>
-              Permanently remove <strong>{confirmRemove.name}</strong> from the marketplace? A service anyone has already redeemed cannot be removed — set it Inactive instead, which hides it from members while keeping the history intact.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button onClick={() => setConfirmRemove(null)} disabled={busy}
-                style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: busy ? 'default' : 'pointer' }}>Cancel</button>
-              <button onClick={() => removeService(confirmRemove)} disabled={busy}
-                style={{ padding: '8px 22px', borderRadius: '8px', border: 'none', background: '#d93025', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.7 : 1 }}>
-                {busy ? 'Removing…' : 'Remove'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <Modal title="Remove service" width={440} onClose={() => { if (!busy) setConfirmRemove(null) }} footer={<>
+          <button onClick={() => setConfirmRemove(null)} disabled={busy} style={btnState(btnSecondary, busy)}>Cancel</button>
+          <button onClick={() => removeService(confirmRemove)} disabled={busy} style={btnState(btnDanger, busy)}>{busy ? 'Removing…' : 'Remove'}</button>
+        </>}>
+          <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: 0, lineHeight: 1.5 }}>
+            Permanently remove <strong>{confirmRemove.name}</strong> from the marketplace? A service anyone has already redeemed cannot be removed — set it Inactive instead, which hides it from members while keeping the history intact.
+          </p>
+        </Modal>
       )}
     </div>
   )

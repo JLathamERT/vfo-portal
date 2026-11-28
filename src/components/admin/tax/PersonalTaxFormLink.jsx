@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { callApi } from '../../../lib/api'
+import { btnPrimary, btnState } from '../../shared/buttonStyles'
 
 // ONE tax plan's personal Tax Planning Form link (/tax-diagnostic?client=<token>) —
 // the existing-client route: no $500 deposit, the answers land on THIS plan (#593).
@@ -57,7 +58,7 @@ export default function PersonalTaxFormLink({ taxPlanId }) {
           )
           : <span style={{ fontSize: '11px', color: 'var(--vfo-muted)' }}>No $500 deposit, no duplicate client</span>}
         <button type="button" onClick={copy} disabled={!ready}
-          style={{ padding: '6px 16px', borderRadius: '999px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '11.5px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: ready ? 'pointer' : 'default', opacity: ready ? 1 : 0.6, whiteSpace: 'nowrap' }}>
+          style={btnState(btnPrimary, !(ready))}>
           {loading ? 'Loading link…' : copied ? 'Copied ✓' : 'Copy link'}
         </button>
       </div>

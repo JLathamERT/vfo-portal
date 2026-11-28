@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { btnPrimary, btnSecondary, btnState } from '../../shared/buttonStyles'
-import BacklogModal, { errorText, fieldLabel, inputStyle } from './BacklogModal'
+import Modal, { errorText, fieldLabel, inputStyle } from '../../shared/Modal'
 import { PORTAL_DEPARTMENTS, departmentChipStyle } from './portalDepartments'
 
 const SCORES = [1, 2, 3, 4, 5]
@@ -54,7 +54,7 @@ export default function NewRequestModal({ initial, assignees, showAssign, onSave
   }
 
   return (
-    <BacklogModal title={editing ? 'Edit request' : 'New portal request'} onClose={onClose} width={560}
+    <Modal title={editing ? 'Edit request' : 'New portal request'} onClose={onClose} width={560}
       footer={(
         <>
           <button style={btnSecondary} onClick={onClose}>Cancel</button>
@@ -116,7 +116,7 @@ export default function NewRequestModal({ initial, assignees, showAssign, onSave
         {missing.length > 0 && <div style={{ fontSize: '12px', color: 'var(--vfo-faint)' }}>Still needed: {missing.join(', ')}.</div>}
         {error && <div style={errorText}>{error}</div>}
       </div>
-    </BacklogModal>
+    </Modal>
   )
 }
 

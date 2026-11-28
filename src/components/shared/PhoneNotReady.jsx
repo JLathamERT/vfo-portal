@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { getSession } from '../../lib/api'
 import { useMediaQuery, PHONE_QUERY } from '../../lib/useMediaQuery'
+import { btnPrimary } from './buttonStyles'
 
 // The admin and tax planner portals have not been laid out for phones yet
 // (2026-10-28). On a phone their sign-in pages say so before the form, and anyone
@@ -35,7 +36,7 @@ export function PhoneNoticeGate({ portal, children }) {
       <p style={{ color: 'var(--vfo-ink)', fontSize: '14px', lineHeight: 1.55, margin: '0 0 24px' }}>
         {PORTALS[portal].name} hasn't been set up for phones yet, so some pages may be hard to read or use on a small screen. For the best experience, please sign in on a computer.
       </p>
-      <button type="button" onClick={() => { markSeen(portal); setOk(true) }} style={{ width: '100%', padding: '13px', borderRadius: '10px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 4px 14px rgba(18,94,204,0.35)', color: '#fff', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>Continue on this phone</button>
+      <button type="button" onClick={() => { markSeen(portal); setOk(true) }} style={{ ...btnPrimary, width: '100%', padding: '13px', fontSize: '15px' }}>Continue on this phone</button>
       <p style={{ color: 'var(--vfo-muted)', fontSize: '13px', marginTop: '20px', textAlign: 'center', cursor: 'pointer' }} onClick={() => navigate('/')}>← Back to portal selection</p>
     </div>
   )
@@ -57,7 +58,7 @@ export function PhoneNoticeMount() {
       <div style={{ flex: '1 1 220px', fontSize: '13px', lineHeight: 1.5 }}>
         <strong>Best on a computer.</strong> {PORTALS[portal].name} hasn't been set up for phones yet, so some pages may be hard to use on a small screen.
       </div>
-      <button type="button" onClick={() => { markSeen(portal); setDismissed(portal) }} style={{ padding: '8px 22px', borderRadius: '99px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>OK</button>
+      <button type="button" onClick={() => { markSeen(portal); setDismissed(portal) }} style={btnPrimary}>OK</button>
     </div>
   )
 }

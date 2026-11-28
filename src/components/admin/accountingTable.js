@@ -1,3 +1,5 @@
+import { listSelectStyle } from '../shared/ListTable'
+
 // The Accounting money table (HOUSE_STYLE §5): one copy of the model page's chrome
 // (Accounting > Specialists > VFO Specialist Revenue), imported by every Accounting
 // panel instead of typed out again. The card carries tabular figures, so every amount
@@ -25,7 +27,7 @@ export const innerRowStyle = { display: 'grid', gap: '10px', alignItems: 'center
 
 // Above the table: the period <select>s and Refresh.
 export const toolbarStyle = { display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap' }
-export const selectStyle = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+export const selectStyle = listSelectStyle
 export const refreshBtnStyle = { ...selectStyle, color: 'var(--vfo-accent-text)', fontWeight: 600 }
 
 // A list of cards with nothing in it, and the red banner for a failed load.

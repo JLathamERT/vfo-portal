@@ -9,6 +9,8 @@ import { SpecialistNameLink, specialistProfilePath } from '../shared/personLinks
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import { emptyRowStyle, errorStyle, refreshBtnStyle, rowStyle, selectStyle } from './accountingTable'
 import { formatDate } from '../../lib/dates'
+import { ProfileCard } from '../shared/ProfileKit'
+import { btnPrimary, btnState } from '../shared/buttonStyles'
 
 // Accounting > Specialists > VFO Specialist Background Checks > the first pill.
 // The License Fees ledger shape: background check payments RECEIVED, filtered by
@@ -87,7 +89,6 @@ export function bgRowsFrom(res) {
 }
 
 export default function SpecialistBgPanel({ allExperts = [], embedded = false }) {
-  const [showSend, setShowSend] = useState(false)
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -146,25 +147,12 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
 
   return (
     <div style={wrap}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {embedded ? <div /> : (
-          <div>
-            <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting</p>
-            <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>VFO Specialist Background Checks</h2>
-          </div>
-        )}
-        <button onClick={() => setShowSend(s => !s)}
-            style={{ padding: '10px 18px', borderRadius: '8px', border: showSend ? '1px solid var(--vfo-border-strong)' : 'none', background: showSend ? 'var(--vfo-card)' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: showSend ? 'var(--vfo-muted)' : '#fff', fontWeight: 600, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: showSend ? 'none' : '0 2px 8px rgba(18,94,204,0.28)' }}>
-          {showSend ? 'Close form' : 'Send Background Check Payment Request'}
-        </button>
-      </div>
-
-      {showSend && (
-        <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', background: 'var(--vfo-input)', marginBottom: '22px', overflow: 'hidden' }}>
-          <BgRequestForm allExperts={allExperts} onSent={load} />
+      {!embedded && (
+        <div style={{ marginBottom: '18px' }}>
+          <p style={{ fontSize: '12px', color: '#0a85e8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>Accounting</p>
+          <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--vfo-heading)', margin: 0 }}>VFO Specialist Background Checks</h2>
         </div>
       )}
-
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap' }}>
         <select style={sel} value={year} onChange={e => setYear(Number(e.target.value))}>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -217,6 +205,17 @@ export default function SpecialistBgPanel({ allExperts = [], embedded = false })
 // Inline "Send Background Check Payment Request" form (the LicenseSetupForm pattern):
 // pick a specialist with an email + an amount, and the portal drafts the payment
 // request email with a secure card / bank-transfer link.
+// The Request Payment sub-tab (Issue #661 part 6b, Jake 2026-11-28: a sub-tab like
+// License's Set Up License, not a button that opens a form on the ledger). A sent
+// request is unpaid, so it shows on Outstanding Payment Links, not on the ledger.
+export function BgRequestSection({ allExperts = [] }) {
+  return (
+    <ProfileCard icon="shield" title="Send Background Check Payment Request">
+      <BgRequestForm allExperts={allExperts} />
+    </ProfileCard>
+  )
+}
+
 function BgRequestForm({ allExperts = [], onSent }) {
   const [expertId, setExpertId] = useState('')
   const [amount, setAmount] = useState('')
@@ -254,9 +253,7 @@ function BgRequestForm({ allExperts = [], onSent }) {
   const field = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)' }
 
   return (
-    <div style={{ padding: '22px' }}>
-      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '16px' }}>Send Background Check Payment Request</div>
-
+    <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '14px', alignItems: 'start', marginBottom: '14px' }}>
         <div>
           <div style={label}>Specialist</div>
@@ -281,7 +278,7 @@ function BgRequestForm({ allExperts = [], onSent }) {
       {amountHint && <p style={{ fontSize: '12.5px', color: '#b91c1c', margin: '0 0 12px' }}>{amountHint}</p>}
 
       <button onClick={send} disabled={!ready}
-        style={{ padding: '11px 26px', borderRadius: '8px', border: 'none', background: ready ? 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)' : '#93b4e8', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: ready ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif' }}>
+        style={btnState(btnPrimary, !(ready))}>
         {sending ? 'Sending…' : 'Send'}
       </button>
 

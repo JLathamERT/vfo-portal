@@ -1,3 +1,5 @@
+import { KPI_TONES } from '../../KpiKit'
+
 // Shared bits for the Tax Planning KPI Summary sub-tabs (Tax Planner KPIs).
 // Every figure is computed by tax_plan_kpi_summary_load; these only format.
 
@@ -7,19 +9,14 @@ export const PASS_AMBER_FROM = 40
 // A Success Formula row with fewer cases than this is muted ("low n").
 export const LOW_N = 3
 
-export const RAG = {
-  green: { text: 'var(--vfo-success-text)', bg: 'rgba(27,146,84,0.12)', rail: '#1b9254' },
-  amber: { text: '#a86200', bg: 'rgba(217,138,0,0.14)', rail: '#d98a00' },
-  red: { text: '#c0392b', bg: 'rgba(231,76,60,0.12)', rail: '#e74c3c' },
-  none: { text: 'var(--vfo-muted)', bg: 'var(--vfo-tint)', rail: 'var(--vfo-border-strong)' },
-}
+export const RAG = KPI_TONES
 export const ragFor = (p) => (p === null || p === undefined ? 'none' : p >= PASS_GREEN_FROM ? 'green' : p >= PASS_AMBER_FROM ? 'amber' : 'red')
 
 export const fmtPct = (v) => (v === null || v === undefined || !Number.isFinite(Number(v)) ? '—' : `${Number(v).toFixed(1)}%`)
 export const fmtDays = (v) => (v === null || v === undefined || !Number.isFinite(Number(v)) ? '—' : `${Number(v).toFixed(1)} d`)
 
 // Status dot colours in the step table: a Yes is green, waiting amber, a stop red.
-const DOT = { green: '#1b9254', amber: '#d98a00', red: '#e74c3c', grey: '#8a9bbd' }
+const DOT = { green: KPI_TONES.green.rail, amber: KPI_TONES.amber.rail, red: KPI_TONES.red.rail, grey: '#8a9bbd' }
 export function statusTone(status) {
   if (status === 'Stop' || status === 'Completed – No') return 'red'
   if (status === 'Not Decided') return 'grey'

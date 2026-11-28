@@ -6,8 +6,8 @@ import { formatDate } from '../../lib/dates'
 import ListTable, { ListName, ListText, listSearchStyle } from '../shared/ListTable'
 import ExpandChevron from '../shared/ExpandChevron'
 import { ClientNameLink, clientPagePath, planTabFor } from '../shared/personLinks'
-import { readable } from '../shared/readableColor'
-import { STATUS_COLORS } from '../shared/statusColors'
+import Tag from '../shared/Tag'
+import { STANDING_COLORS, statusColor } from '../shared/statusColors'
 import { clientStatusColors, clientStatusLabel } from '../shared/clientStatus'
 import { TableSkeleton } from '../shared/Skeleton'
 import { PageHeading } from '../shared/ProfileKit'
@@ -47,9 +47,9 @@ function catLabel(m) {
   if (m.member_category === 'strategic_member') return 'Strategic'
   return 'Advisor'
 }
-const CAT_COLORS = { Advisor: '#0a85e8', Accountant: '#7b52d6', Strategic: '#e0771a' }
 
-const CLIENT_GRID = '120px 1.4fr 96px 110px 130px 1.6fr'
+const CLIENT_GRID = '120px 1.6fr 120px 1fr 100px'
+const CLIENT_TABLE_WIDTH = '820px'
 
 export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onPatchMember }) {
   const [relations, setRelations] = useState({ programsByMember: {}, clientsByMember: {} })
@@ -113,59 +113,26 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
   const filtered = searched.filter(m => matchesFilter(m, filterGroups, listFilter))
   // Baseline = the dropdown ordering; a clicked column header re-sorts on top (ListTable).
   const rows = sortMembers(filtered, listSort)
-  const statusPill = (bg, color, text) => <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 600, background: bg, color }}>{text}</span>
-  const flag = (bg, color, text) => <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '999px', fontWeight: 700, background: bg, color }}>{text}</span>
+  // Who they are, where they stand, who looks after them, then their book (Jake
+  // 2026-11-28). Category is plain words; status and standing are tags.
+  const standingOf = m => [m.suspended && 'Suspended', m.paused && 'Paused', m.membership_arrears && 'In Arrears'].filter(Boolean)
   const columns = [
     { key: 'number', label: 'Member #', width: '84px', type: 'number', get: m => { const n = parseInt(String(m.plugin_member_number ?? ''), 10); return Number.isNaN(n) ? null : n },
       render: m => <ListText mono style={{ color: 'var(--vfo-muted)' }}>{m.plugin_member_number}</ListText> },
     { key: 'name', label: 'Name', width: '1.6fr', get: m => m.name, render: m => <ListName>{m.name}</ListName> },
-    { key: 'category', label: 'Category', width: '100px', get: m => catLabel(m), render: m => {
-      const cat = catLabel(m)
-      return <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '999px', color: readable(CAT_COLORS[cat]), background: `${CAT_COLORS[cat]}1f` }}>{cat}</span>
+    { key: 'category', label: 'Category', width: '110px', get: m => catLabel(m), render: m => <ListText>{catLabel(m)}</ListText> },
+    { key: 'type', label: 'Type', width: '1.2fr', get: m => m.member_type, render: m => <ListText style={{ color: 'var(--vfo-muted)' }}>{m.member_type}</ListText> },
+    { key: 'status', label: 'Status', width: '110px', get: m => m.elite_status || 'Active', render: m => {
+      const s = m.elite_status || 'Active'
+      return <Tag color={statusColor(s, '#8a9bbd')}>{s}</Tag>
     } },
-    { key: 'type', label: 'Type', width: '1.1fr', get: m => m.member_type, render: m => <ListText style={{ color: 'var(--vfo-muted)' }}>{m.member_type}</ListText> },
-    { key: 'joined', label: 'Joined', width: '96px', type: 'date', get: m => (m.join_date ? String(m.join_date).slice(0, 10) : null),
-      render: m => <ListText mono style={{ color: 'var(--vfo-muted)' }}>{m.join_date ? formatDate(m.join_date) : ''}</ListText> },
-    { key: 'status', label: 'Status', width: '128px', get: m => m.elite_status || 'Active', render: m => (
-      <span style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-        {m.elite_status === 'Active' || !m.elite_status ? statusPill('rgba(27,146,84,0.13)', 'var(--vfo-success-text)', m.elite_status || 'Active')
-          : m.elite_status === 'Lost' ? statusPill('rgba(231,76,60,0.13)', '#e74c3c', 'Lost')
-          : m.elite_status === 'Removed' ? statusPill('rgba(155,28,28,0.13)', STATUS_COLORS.Removed, 'Removed')
-          : statusPill('var(--vfo-tint)', 'var(--vfo-muted)', m.elite_status)}
-        {m.suspended && flag('rgba(231,76,60,0.13)', '#e74c3c', 'SUSP')}
-        {m.paused && flag('rgba(224,103,23,0.14)', '#e06717', 'PAUSE')}
-        {m.membership_arrears && flag('rgba(180,83,9,0.14)', '#b45309', 'ARREARS')}
-      </span>
-    ) },
-    { key: 'msm', label: 'MSM', width: '110px', get: m => m.assigned_msm, render: m => <ListText>{m.assigned_msm}</ListText> },
-    // The count opens the member's clients under the row (Jake 2026-11-28: the ▼ sits
-    // with the count it opens, not before the name).
-    { key: 'clients', label: 'Clients', width: '84px', type: 'number', stop: true, get: m => (clientsByMember[m.plugin_member_number] || []).length, render: m => {
-      const mn = m.plugin_member_number
-      const n = (clientsByMember[mn] || []).length
-      const isOpen = !!expanded[mn]
-      // A plain number, not a pill (Jake 2026-11-28: every row has one, so it is not a tag).
-      const pill = <span style={{ fontSize: '13px', color: n ? 'var(--vfo-ink)' : 'var(--vfo-faint)', fontVariantNumeric: 'tabular-nums' }}>{n}</span>
-      if (!n) return pill
-      return (
-        <span onClick={() => setExpanded(e => ({ ...e, [mn]: !e[mn] }))} title={isOpen ? 'Hide clients' : `Show clients (${n})`}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }}>
-          {pill}
-          <ExpandChevron open={isOpen} style={{ width: '20px', height: '20px' }} />
-        </span>
-      )
+    { key: 'standing', label: 'Standing', width: '150px', get: m => standingOf(m).join(', ') || null, render: m => {
+      const flags = standingOf(m)
+      if (!flags.length) return <ListText />
+      return <span style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>{flags.map(f => <Tag key={f} color={STANDING_COLORS[f]}>{f}</Tag>)}</span>
     } },
-    { key: 'programs', label: 'Programs', width: '1.3fr', get: m => (programsByMember[m.plugin_member_number] || []).join(', '), render: m => {
-      const programs = programsByMember[m.plugin_member_number] || []
-      return (
-        <span style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-          {programs.length === 0 ? <span style={{ color: 'var(--vfo-faint)' }}>—</span> : programs.map(p => (
-            <span key={p} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: 'var(--vfo-tint)', color: 'var(--vfo-chip-text)', fontWeight: 600 }}>{p}</span>
-          ))}
-        </span>
-      )
-    } },
-    { key: 'engagement', label: 'Engagement', width: '176px', type: 'number', stop: true, get: m => { const i = ENGAGEMENT.findIndex(e => e.value === engOf(m)); return i < 0 ? null : i }, render: m => {
+    { key: 'msm', label: 'MSM', width: '1fr', get: m => m.assigned_msm, render: m => <ListText>{m.assigned_msm}</ListText> },
+    { key: 'engagement', label: 'Engagement', width: '180px', type: 'number', stop: true, get: m => { const i = ENGAGEMENT.findIndex(e => e.value === engOf(m)); return i < 0 ? null : i }, render: m => {
       const mn = m.plugin_member_number
       const engVal = engOf(m)
       const eMeta = engMeta(engVal)
@@ -180,6 +147,25 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
         </span>
       )
     } },
+    // The count opens the member's clients under the row (Jake 2026-11-28: the ▼ sits
+    // with the count it opens, not before the name).
+    { key: 'clients', label: 'Clients', width: '90px', type: 'number', stop: true, get: m => (clientsByMember[m.plugin_member_number] || []).length, render: m => {
+      const mn = m.plugin_member_number
+      const n = (clientsByMember[mn] || []).length
+      const isOpen = !!expanded[mn]
+      // A plain number, not a pill (Jake 2026-11-28: every row has one, so it is not a tag).
+      const pill = <span style={{ fontSize: '13px', color: n ? 'var(--vfo-ink)' : 'var(--vfo-faint)', fontVariantNumeric: 'tabular-nums' }}>{n}</span>
+      if (!n) return pill
+      return (
+        <span onClick={() => setExpanded(e => ({ ...e, [mn]: !e[mn] }))} title={isOpen ? 'Hide clients' : `Show clients (${n})`}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }}>
+          {pill}
+          <ExpandChevron open={isOpen} style={{ width: '20px', height: '20px' }} />
+        </span>
+      )
+    } },
+    { key: 'joined', label: 'Joined', width: '110px', type: 'date', get: m => (m.join_date ? String(m.join_date).slice(0, 10) : null),
+      render: m => <ListText mono style={{ color: 'var(--vfo-muted)' }}>{m.join_date ? formatDate(m.join_date) : ''}</ListText> },
   ]
 
   async function saveEngagement(m, value) {
@@ -231,7 +217,7 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
         rowKey={m => m.plugin_member_number}
         onRowClick={m => onOpenMember && onOpenMember(m)}
         resetSortOn={listSort}
-        minWidth="1300px"
+        minWidth="1320px"
         empty="No members match the current filters."
         renderExpanded={m => (expanded[m.plugin_member_number] ? <MemberClients clients={clientsByMember[m.plugin_member_number] || []} loading={relLoading} /> : null)}
       />
@@ -240,36 +226,30 @@ export default function MemberOverviewPanel({ allMembers = [], onOpenMember, onP
 }
 
 // A member's clients, under their opened row. A client's NAME opens the client's
-// profile and the ROW opens the plan (#632, Client Overview's rule); a program
-// chip opens that program's plan.
+// profile and the ROW opens the plan (#632, Client Overview's rule). No programs
+// column; the order follows the member table: ref, name, status, PF, joined
+// (Jake 2026-11-28).
 function MemberClients({ clients, loading }) {
   const navigate = useNavigate()
   const openPlan = (c, p) => navigate(clientPagePath(c.id, { program: p?.id, tab: p ? planTabFor(p.name) : 'home' }))
-  if (loading) return <TableSkeleton cols={CLIENT_GRID} rows={2} minWidth="860px" pad="9px 14px" />
+  // Narrow on purpose (Jake 2026-11-28): five short columns, so no wide gaps.
+  if (loading) return <div style={{ maxWidth: CLIENT_TABLE_WIDTH, margin: '0 auto' }}><TableSkeleton cols={CLIENT_GRID} rows={2} minWidth="640px" pad="9px 14px" /></div>
   if (clients.length === 0) return <div style={{ fontSize: '12px', color: 'var(--vfo-faint)', padding: '8px 0' }}>No clients attached.</div>
   const columns = [
     { key: 'ref', label: 'Client Ref', width: '120px', get: c => c.ref, render: c => <ListText mono>{c.ref}</ListText> },
-    { key: 'name', label: 'Name', width: '1.4fr', get: c => c.name, render: c => (
+    { key: 'name', label: 'Name', width: '1.6fr', get: c => c.name, render: c => (
       <ClientNameLink clientId={c.id} program={(c.programs || [])[0]?.id} style={{ fontWeight: 600 }}>{c.name || '—'}</ClientNameLink>
     ) },
-    { key: 'joined', label: 'Joined', width: '96px', type: 'date', get: c => c.joined || null, render: c => <ListText mono>{c.joined ? formatDate(c.joined) : ''}</ListText> },
-    { key: 'status', label: 'Status', width: '110px', get: c => clientStatusLabel(c.status), render: c => (c.status
+    { key: 'status', label: 'Status', width: '120px', get: c => clientStatusLabel(c.status), render: c => (c.status
       ? <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '999px', fontWeight: 600, ...(() => { const s = clientStatusColors(c.status); return { background: s.bg, color: s.color, whiteSpace: 'nowrap' } })() }}>{clientStatusLabel(c.status)}</span>
       : <ListText />) },
-    { key: 'pf', label: 'PF', width: '130px', get: c => c.pf, render: c => <ListText>{c.pf}</ListText> },
-    { key: 'programs', label: 'Programs', width: '1.6fr', render: c => (
-      <span style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-        {(c.programs || []).length === 0 ? <span style={{ color: 'var(--vfo-faint)' }}>No programs</span> : c.programs.map(p => (
-          <span key={p.id}
-            onClick={ev => { ev.stopPropagation(); openPlan(c, p) }}
-            title={`Open ${c.name} — ${p.name}`}
-            style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: 'var(--vfo-tint)', color: 'var(--vfo-chip-text)', fontWeight: 600, cursor: 'pointer' }}>{p.name}</span>
-        ))}
-      </span>
-    ) },
+    { key: 'pf', label: 'PF', width: '1fr', get: c => c.pf, render: c => <ListText>{c.pf}</ListText> },
+    { key: 'joined', label: 'Joined', width: '100px', type: 'date', get: c => c.joined || null, render: c => <ListText mono style={{ color: 'var(--vfo-muted)' }}>{c.joined ? formatDate(c.joined) : ''}</ListText> },
   ]
   return (
-    <ListTable dense columns={columns} rows={clients} rowKey={c => c.id} minWidth="860px"
-      onRowClick={c => openPlan(c, (c.programs || [])[0])} />
+    <div style={{ maxWidth: CLIENT_TABLE_WIDTH, margin: '0 auto' }}>
+      <ListTable dense columns={columns} rows={clients} rowKey={c => c.id} minWidth="640px"
+        onRowClick={c => openPlan(c, (c.programs || [])[0])} />
+    </div>
   )
 }

@@ -5,7 +5,7 @@ import { useIsPhone } from '../../../lib/useMediaQuery'
 import DirectPill from '../../shared/DirectPill'
 import { taxDisplayName } from '../../shared/taxDisplayNames'
 import { btnPrimary, btnSecondary, btnState } from '../../shared/buttonStyles'
-import BacklogModal, { errorText, fieldLabel, inputStyle } from '../backlog/BacklogModal'
+import Modal, { errorText, fieldLabel, inputStyle } from '../../shared/Modal'
 import { PlanStatusTag, planIsLive } from './TaxPlanStatus'
 
 // The Tax Plans screen (2026-11-23): the open plan on top, closed ones below, each
@@ -116,7 +116,7 @@ export function StartPlanModal({ clientId, programId, previousPlan, onClose, onS
     }
   }
   return (
-    <BacklogModal title="Start a tax plan" onClose={() => { if (!saving) onClose() }} width={440}
+    <Modal title="Start a tax plan" onClose={() => { if (!saving) onClose() }} width={440}
       footer={<>
         <button style={btnState(btnSecondary, saving)} disabled={saving} onClick={onClose}>Cancel</button>
         <button style={btnState(btnPrimary, saving)} disabled={saving} onClick={start}>{saving ? 'Starting…' : `Start ${year} plan`}</button>
@@ -127,7 +127,7 @@ export function StartPlanModal({ clientId, programId, previousPlan, onClose, onS
       </select>
       {previousPlan && <div style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', marginTop: '10px', lineHeight: 1.5 }}>Follows the {planTitle(previousPlan).toLowerCase()} that was moved to next tax year. Anything already paid stays on that plan.</div>}
       {error && <div style={errorText}>{error}</div>}
-    </BacklogModal>
+    </Modal>
   )
 }
 
@@ -147,7 +147,7 @@ export function PlanYearModal({ plan, onClose, onSaved }) {
     }
   }
   return (
-    <BacklogModal title="Tax year of this plan" onClose={() => { if (!saving) onClose() }} width={400}
+    <Modal title="Tax year of this plan" onClose={() => { if (!saving) onClose() }} width={400}
       footer={<>
         <button style={btnState(btnSecondary, saving)} disabled={saving} onClick={onClose}>Cancel</button>
         <button style={btnState(btnPrimary, saving)} disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
@@ -157,6 +157,6 @@ export function PlanYearModal({ plan, onClose, onSaved }) {
         {Array.from({ length: 9 }, (_, i) => thisYear + 3 - i).map(y => <option key={y} value={y}>{y}</option>)}
       </select>
       {error && <div style={errorText}>{error}</div>}
-    </BacklogModal>
+    </Modal>
   )
 }

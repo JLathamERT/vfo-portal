@@ -4,7 +4,7 @@ import { formatDate } from '../../../lib/dates'
 import { useIsPhone } from '../../../lib/useMediaQuery'
 import { statusPillStyle } from '../../shared/statusColors'
 import { btnPrimary, btnSecondary, btnDanger, btnState } from '../../shared/buttonStyles'
-import BacklogModal, { errorText, fieldLabel, inputStyle } from '../backlog/BacklogModal'
+import Modal, { errorText, fieldLabel, inputStyle } from '../../shared/Modal'
 
 // Tax plan status (2026-11-23): live | paused | stopped | completed, plus status_kind
 // 'next_tax_year' on a stopped plan. 'completed' is set by hand on a finished plan
@@ -268,7 +268,7 @@ export function ChangeStatusModal({ plan, client, act = (n) => n, initialTo = ''
   }
 
   if (askLost) return (
-    <BacklogModal title="Set the client to Lost too?" onClose={onClose} width={460}
+    <Modal title="Set the client to Lost too?" onClose={onClose} width={460}
       footer={<>
         <button style={btnSecondary} onClick={onClose}>No, leave as is</button>
         <button style={btnState(btnDanger, saving)} disabled={saving} onClick={setLost}>{saving ? 'Saving…' : 'Set to Lost'}</button>
@@ -277,7 +277,7 @@ export function ChangeStatusModal({ plan, client, act = (n) => n, initialTo = ''
         The plan is stopped and nothing else is open for {clientName || 'this client'}. Lost also stops every automatic payment for them.
       </div>
       {error && <div style={errorText}>{error}</div>}
-    </BacklogModal>
+    </Modal>
   )
 
   const choiceStyle = (on) => ({
@@ -286,7 +286,7 @@ export function ChangeStatusModal({ plan, client, act = (n) => n, initialTo = ''
   })
 
   return (
-    <BacklogModal title={`${picked ? picked.label : 'Change status'}${clientName ? ` - ${clientName}` : ''}`} onClose={() => { if (!saving) onClose() }} width={620}
+    <Modal title={`${picked ? picked.label : 'Change status'}${clientName ? ` - ${clientName}` : ''}`} onClose={() => { if (!saving) onClose() }} width={620}
       footer={<>
         <button style={btnState(btnSecondary, saving)} disabled={saving} onClick={onClose}>Cancel</button>
         <button style={btnState(to === 'stopped' ? btnDanger : btnPrimary, cannot)} disabled={cannot} title={missing || blocked || undefined} onClick={save}>{saveLabel}</button>
@@ -374,6 +374,6 @@ export function ChangeStatusModal({ plan, client, act = (n) => n, initialTo = ''
         </div>
       )}
       {!info && error && <div style={{ ...errorText, marginTop: 0 }}>{error}</div>}
-    </BacklogModal>
+    </Modal>
   )
 }

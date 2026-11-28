@@ -7,13 +7,13 @@ import Tag from '../shared/Tag'
 import StepDate from '../shared/StepDate'
 import { PhaseNotesButton, RecordPhaseNotesPanel } from '../shared/PhaseNotes'
 import { useOnboardingNotes } from '../shared/OnboardingNotes'
-import { stepChoice, stepStop, stepSend, btnStep, btnState } from '../shared/buttonStyles'
+import { btnPrimary, btnState, btnStep, stepChoice, stepSend, stepStop } from '../shared/buttonStyles'
 import StepEmailsChip from '../shared/StepEmailsChip'
 import { formatDate } from '../../lib/dates'
 import { readable } from '../shared/readableColor'
 import ListFilterButton, { matchesFilter, SortSelect } from './ListFilterButton'
 import ListTable, { ListName, ListText, listSearchStyle } from '../shared/ListTable'
-import { BackLink, DotText } from '../shared/ProfileKit'
+import { BackLink, cardBox, DotText, formInput, ProfileCard } from '../shared/ProfileKit'
  
 const STAGE_NAMES = ['', 'Preliminary Meeting', 'Detail Meetings', 'Due Diligence', 'Contract & Details', 'Going Live']
 
@@ -124,8 +124,8 @@ export default function SpecialistOnboarding() {
     if (oid) { setSelectedId(Number(oid)); setView('detail') }
   }, [searchParams])
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
+  const inputStyle = formInput
  
   useEffect(() => { loadList() }, [])
  
@@ -162,12 +162,11 @@ export default function SpecialistOnboarding() {
       <ListHeader
         title="Specialist Onboarding"
         count={onboardings.length}
-        action={<button onClick={() => setShowNew(!showNew)} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>+ New Onboarding</button>}
+        action={<button onClick={() => setShowNew(!showNew)} style={btnPrimary}>+ New Onboarding</button>}
       />
  
       {showNew && (
-        <div style={{ ...sectionStyle, marginBottom: '24px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Start New Onboarding</div>
+        <ProfileCard icon="user" title="Start New Onboarding" style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: '200px' }}>
               <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Specialist Name *</label>
@@ -180,10 +179,10 @@ export default function SpecialistOnboarding() {
           </div>
           {newEmail.trim() && !newEmailValid && <div style={{ fontSize: '12px', color: '#e06717', marginBottom: '10px' }}>Please enter a valid email address.</div>}
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={createNew} disabled={creating || !newName.trim() || !newEmailValid} style={{ padding: '8px 20px', borderRadius: '8px', background: (creating || !newName.trim() || !newEmailValid) ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '13px', cursor: (creating || !newName.trim() || !newEmailValid) ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>{creating ? 'Creating...' : 'Create'}</button>
+            <button onClick={createNew} disabled={creating || !newName.trim() || !newEmailValid} style={btnState(btnPrimary, (creating || !newName.trim() || !newEmailValid))}>{creating ? 'Creating...' : 'Create'}</button>
             <button onClick={() => { setShowNew(false); setNewName(''); setNewEmail('') }} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
           </div>
-        </div>
+        </ProfileCard>
       )}
  
       {loading ? (
@@ -587,7 +586,7 @@ function OnboardingDetail({ id, onBack }) {
           {isDone && !showDate
             ? <span className="vfo-stepchips" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <StepAnswer color={readable(statusColor)}>{statusLabel}</StepAnswer>
-                {canReschedule && <button onClick={() => { const s = parseSlotNotes(progress['1-decision']?.notes); setMeetingDate(s.date); setMeetingTime(s.time); setMeetingTz(s.tz); setResched(true); setShowDate(true) }} disabled={!!pending} style={btnStep}>Reschedule</button>}
+                {canReschedule && <button onClick={() => { const s = parseSlotNotes(progress['1-decision']?.notes); setMeetingDate(s.date); setMeetingTime(s.time); setMeetingTz(s.tz); setResched(true); setShowDate(true) }} disabled={!!pending} style={btnState(btnStep, !!pending)}>Reschedule</button>}
               </span>
             : showDate
               ? <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1783,7 +1782,7 @@ function OnboardingDetail({ id, onBack }) {
           ]} /></span></SectionLabel>
         {!getTaskStatus(5, 'added_to_showroom') ? (
           <>
-            <button onClick={createSpecialistAndShowroom} disabled={isStopped || saving['5-added_to_showroom']} style={{ padding: '10px 28px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: (isStopped || saving['5-added_to_showroom']) ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif', width: '100%' }}>{saving['5-added_to_showroom'] ? 'Creating…' : 'Add to Showroom & Send Specialist Login'}</button>
+            <button onClick={createSpecialistAndShowroom} disabled={isStopped || saving['5-added_to_showroom']} style={{ ...btnState(btnPrimary, (isStopped || saving['5-added_to_showroom'])), padding: '10px 28px', fontSize: '14px', width: '100%' }}>{saving['5-added_to_showroom'] ? 'Creating…' : 'Add to Showroom & Send Specialist Login'}</button>
             <p style={{ fontSize: '11px', color: 'var(--vfo-muted)', textAlign: 'center', marginTop: '8px', marginBottom: 0 }}>Creates their Showroom profile from the SIF, copies their Due Diligence documents into their portal vault, and emails them a login-setup link.</p>
           </>
         ) : (

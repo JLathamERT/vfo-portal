@@ -3,6 +3,8 @@ import { callApi } from '../../../lib/api'
 import { hasStrategicSplit, computeStrategicShares } from '../../../lib/strategicSplits'
 import { formatDate } from '../../../lib/dates'
 import { readable } from '../../shared/readableColor'
+import { cardBox, formInput, ProfileCard } from '../../shared/ProfileKit'
+import { btnPrimary, btnState } from '../../shared/buttonStyles'
 
 // Jake-only per-client migration tool: backfill an in-flight MAP 1 / Tax plan from the
 // old system so the native engine resumes charging the rest. Two Stripe modes:
@@ -16,12 +18,11 @@ const PLAN_OPTIONS = [
   { key: 'tax4', label: 'Tax Planning', action: 'migration_backfill_tax', program_id: 4, sbPipeline: 'TAX', pipeline: 'TAX' },
 ]
 
-const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-const sectionTitle = { fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px', fontWeight: 700 }
+const sectionStyle = { ...cardBox, marginBottom: '20px' }
 const labelStyle = { fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }
-const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+const inputStyle = formInput
 const readonlyInput = { ...inputStyle, background: 'var(--vfo-tint)', opacity: 0.85, cursor: 'not-allowed' }
-const primaryBtn = (disabled) => ({ padding: '10px 24px', borderRadius: '8px', background: disabled ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '14px', cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 600 })
+const primaryBtn = (disabled) => btnState(btnPrimary, disabled)
 const ghostBtn = { padding: '10px 22px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: 600 }
 const warnBox = { border: '1.5px solid rgba(224,103,23,0.55)', background: 'rgba(224,103,23,0.08)', borderRadius: '12px', padding: '16px', marginBottom: '14px' }
 
@@ -272,8 +273,7 @@ export default function PaymentContinuationTab({ clientId, client }) {
   return (
     <div>
       {/* Plan + mode */}
-      <div style={sectionStyle}>
-        <div style={sectionTitle}>What are we continuing?</div>
+      <ProfileCard icon="clipboard" title="What are we continuing?">
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '18px' }}>
           <Field label="Plan">
             <select value={planKey} onChange={e => { setPlanKey(e.target.value); resetOutputs() }} style={inputStyle}>
@@ -285,11 +285,10 @@ export default function PaymentContinuationTab({ clientId, client }) {
           <ModeChip active={stripeMode === 'existing'} onClick={() => { setStripeMode('existing'); resetOutputs() }} title="Client is on Stripe" sub="Enter their cus_ id — we reference the saved payment method." />
           <ModeChip active={stripeMode === 'setup_link'} onClick={() => { setStripeMode('setup_link'); resetOutputs() }} title="Not on Stripe — send setup link" sub="QBO etc. Save + email a link to add a card." />
         </div>
-      </div>
+      </ProfileCard>
 
       {/* Pricing */}
-      <div style={sectionStyle}>
-        <div style={sectionTitle}>Pricing</div>
+      <ProfileCard icon="dollar" title="Pricing">
         {isMap1 ? (
           <>
             {isStrategic && (
@@ -355,11 +354,10 @@ export default function PaymentContinuationTab({ clientId, client }) {
                 : `${isStrategic ? 'Strategic Partner + ' : ''}Member + Tax Planner + VFO share ($${sharesSum.toLocaleString()}) must equal the implementation amount ($${totalAmount.toLocaleString()}).`)}
           </div>
         )}
-      </div>
+      </ProfileCard>
 
       {/* Payment history */}
-      <div style={sectionStyle}>
-        <div style={sectionTitle}>Payments so far</div>
+      <ProfileCard icon="history" title="Payments so far">
         {isMap1 ? (
           <>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '6px' }}>
@@ -393,11 +391,10 @@ export default function PaymentContinuationTab({ clientId, client }) {
             </div>
           </>
         )}
-      </div>
+      </ProfileCard>
 
       {/* Stripe */}
-      <div style={sectionStyle}>
-        <div style={sectionTitle}>Payment method</div>
+      <ProfileCard icon="lock" title="Payment method">
         {stripeMode === 'existing' ? (
           <>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -427,7 +424,7 @@ export default function PaymentContinuationTab({ clientId, client }) {
             On save, a Stripe customer is created and a secure setup link is emailed to <strong>{client?.email || 'the client'}</strong>. Once they add a card or bank, the engine starts charging automatically. Setup-link clients pay NO card processing fee — card and bank cost the same (VFO absorbs the fee).
           </p>
         )}
-      </div>
+      </ProfileCard>
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '20px' }}>
@@ -442,15 +439,13 @@ export default function PaymentContinuationTab({ clientId, client }) {
       {err && <div style={{ ...sectionStyle, border: '1px solid rgba(231,76,60,0.4)', background: 'rgba(231,76,60,0.05)', color: '#c0392b', fontSize: '14px' }}>{err}</div>}
 
       {conflict && (
-        <div style={sectionStyle}>
-          <div style={sectionTitle}>Overwrite conflict</div>
+        <ProfileCard icon="alert" title="Overwrite conflict">
           <HazardPanel existingRow={conflict.existing_row} requiresForce={false} forceAck={forceAck} onToggle={setForceAck} note="This client’s row changed since your preview. Preview again to review the current row, then confirm the overwrite before saving." />
-        </div>
+        </ProfileCard>
       )}
 
       {preview && (
-        <div style={sectionStyle}>
-          <div style={sectionTitle}>Preview — {preview.action} ({preview.mode}{preview.stripe_mode === 'setup_link' ? ', dormant until card connected' : ''})</div>
+        <ProfileCard icon="layers" title={`Preview — ${preview.action} (${preview.mode}${preview.stripe_mode === 'setup_link' ? ', dormant until card connected' : ''})`}>
           {preview.action === 'update'
             ? <HazardPanel existingRow={preview.existing_row} requiresForce={preview.requires_force} forceAck={forceAck} onToggle={setForceAck} />
             : <p style={{ fontSize: '13px', color: 'var(--vfo-muted)', margin: '0 0 10px' }}>New row — no existing data for this client.</p>}
@@ -460,7 +455,7 @@ export default function PaymentContinuationTab({ clientId, client }) {
             <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--vfo-muted)', fontWeight: 600 }}>Exact row to be written</summary>
             <pre style={{ background: '#0f1b33', color: '#cfe0ff', padding: '14px', borderRadius: '10px', fontSize: '12px', overflowX: 'auto', marginTop: '8px' }}>{JSON.stringify(preview.would_write, null, 2)}</pre>
           </details>
-        </div>
+        </ProfileCard>
       )}
 
       {result && (

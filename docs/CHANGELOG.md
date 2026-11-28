@@ -9,6 +9,32 @@
 
 ---
 
+## 2026-11-28 (c) — Cards, forms, pop-ups, buttons and colours in the house style (Issue #661 part 6b), Member Overview's columns, New Payment and Request Payment as sub-tabs — by Jake
+
+**What it is.** The last part of the house-style sweep (Issue JLathamERT/vfo-edge-functions#661, which this closes). Website only; no backend change, no migration. Every rule is written into `docs/HOUSE_STYLE.md` §1, §2, §5, §7 and §8.
+
+**Colours.** One amber: `AMBER` (`#c98a14`) in `shared/statusColors.js`, and one set of KPI tones, `KPI_TONES` in `admin/KpiKit.jsx`; the tax KPI `RAG` and the per-plan `TONES` are that set (the per-plan panel's "amber" had been the Paused orange). **Suspended is amber everywhere** (Jake): `STANDING_COLORS` (Paused orange, In Arrears dark amber) now feeds the KPI lens, the Standing sub-tab, the profile switch and dot, Member Overview, Membership Fees and the planner's member view. The Average Fees gold card takes `--vfo-gold-bg` / `--vfo-gold-border` / `--vfo-gold-strong` (new in `index.css`), so it works in dark mode.
+
+**Member Overview (Jake, from the click-through).** Columns in the order who / standing / who looks after them / book / joined; Category in plain words; Status a `Tag`; a **Standing** column of tags (Suspended, Paused, In Arrears); no Programs column, here or in the opened client table, which now runs Ref · Name · Status · PF · Joined, 820px wide and centred. The profile card holding the Suspended and Paused switches is called **Standing** (was Settings).
+
+**Pop-ups.** `backlog/BacklogModal.jsx` moved to `shared/Modal.jsx` as the house pop-up, and twelve hand-built overlays moved onto it: Event refund, New Model Sale, the Vault storage notice, GC Remove service / Reject redemption / Redeem / Reschedule / Cancel recurring, Remove prospect, Export, the step Emails preview (its clicks kept out of the step row) and Adjust photo. Escape and a click outside now close them all; one mid-save ignores both.
+
+**Fields and dropdowns.** 29 copies of the old 10px 14px input became `formInput` (keeping a copy's own extra, such as a 340px max width); nine toolbar dropdowns became `listSelectStyle` (`ListTable.jsx`; Accounting's `selectStyle` is it); nine tracker step dropdowns became `stepSelect` (`TrackKit.jsx`).
+
+**Cards.** 59 local card styles became `cardBox` / `cardFrame` (`ProfileKit.jsx`), the four tinted step-form boxes `tintBox`. **One card-title look, the `ProfileCard` header** (Jake picked it from four): about 40 cards moved onto `ProfileCard`, those whose title was typed inline included, and the Payments tabs and the planner's Payments card put `ProfileCardHead` + `pullHead` at the top of their padded card. Untitled form cards got a header (Jake): Set Up Membership (Edit Membership while editing), Manual Connect's "Send a payment", New Payment's "Who is paying" / "Payment method" / "Revenue shares". `ProfileCard` gained `iconTone` (Deduct Credits' red $, title in ink) and no longer clips a padded card, after the change hid the New Payment specialist search's list (gotcha #806). The `cardTitle` copies handed to three cards that never drew them were removed.
+
+**Sub-tabs (Jake).** VFO Specialist Revenue's **New Payment** is now its second pill (it was a button that opened the form over the Revenue ledger; `SpecialistPaymentInput` takes `embedded`). Background Checks got a **Request Payment** pill (`BgRequestSection`) in place of its button. The Accounting skeleton draws 7 and 4 pills.
+
+**Buttons.** 70 inline blue-gradient buttons became `btnPrimary`, one size; a full-width or tall call to action (the sign-in pages, pay and token pages' Submit, a tracker form's full-width Submit) keeps its size. Deduct Credits is `btnDanger`, PaymentsHeader's send button `btnPrimary`. **A button that cannot be pressed looks it:** `btnState` with the same condition as `disabled` (Create on New Onboarding stays grey until the required fields are filled), for these and 18 older house buttons.
+
+**Broke during the work, fixed before shipping.** The toolbar-select change re-exported `selectStyle` from `accountingTable.js` while that file still used the name, and every page loading the Accounting styles (the client page included) died at load; the build had passed (gotcha #805).
+
+**Tested on the test site** (dev server, Jake): every phase's click-through at 1280, the member pages (Growth Credits, Events, Add Client, 90 Day Plan) and the sign-in pages also through the phone preview at 390 and 360.
+
+**Left.** Screens the click-through did not open (the emailed-link forms, Tax Intake, the complimentary event card, Payment Continuation's conflict / preview cards, dark mode on the gold card): Issue JLathamERT/vfo-edge-functions#668. What part 6b did not sweep (the sign-in pages' taller field, about twelve compact inline fields, the member skeletons' old card shape, the planner's Clients heading, the KPI card styles): Issue JLathamERT/vfo-edge-functions#669.
+
+---
+
 ## 2026-11-28 (b) — Lists in the house style (Issue #661 part 6a) + the part 5 phone check: every list on `ListTable`, a client row opens the plan, one pill look, tracker chevrons with room — by Jake
 
 **What it is.** Part 6a of the house-style sweep (Issue JLathamERT/vfo-edge-functions#661, its "lists" half; part 6b, cards / forms / modals / buttons / colours, is still to do), after the phone check part 5 owed (Issue JLathamERT/vfo-edge-functions#665). Website only; no backend change.

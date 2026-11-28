@@ -48,11 +48,11 @@ export default function AverageFees({ data, vfo }) {
             </div>
           </div>
         </div>
-        <div style={{ borderRadius: '16px', padding: '22px 24px', background: '#fffaf2', border: '1px solid #f0dcb4', borderTop: '4px solid var(--vfo-gold-text)', boxShadow: 'var(--vfo-shadow-card)', minWidth: 0 }}>
-          <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', color: '#a86f08' }}>VFO revenue</div>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#16264a', marginTop: '6px' }}>Average Gross VFO Revenue per completed strategy</div>
-          <div style={{ fontSize: '40px', fontWeight: 800, color: '#7a5005', letterSpacing: '-0.03em', lineHeight: 1, marginTop: '12px', fontVariantNumeric: 'tabular-nums' }}>{vfoValue}</div>
-          <div style={{ fontSize: '12px', color: '#4e6087', marginTop: '10px' }}>{vfoNote}</div>
+        <div style={{ borderRadius: '16px', padding: '22px 24px', background: 'var(--vfo-gold-bg)', border: '1px solid var(--vfo-gold-border)', borderTop: '4px solid var(--vfo-gold-text)', boxShadow: 'var(--vfo-shadow-card)', minWidth: 0 }}>
+          <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--vfo-gold-text)' }}>VFO revenue</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vfo-ink)', marginTop: '6px' }}>Average Gross VFO Revenue per completed strategy</div>
+          <div style={{ fontSize: '40px', fontWeight: 800, color: 'var(--vfo-gold-strong)', letterSpacing: '-0.03em', lineHeight: 1, marginTop: '12px', fontVariantNumeric: 'tabular-nums' }}>{vfoValue}</div>
+          <div style={{ fontSize: '12px', color: 'var(--vfo-muted)', marginTop: '10px' }}>{vfoNote}</div>
         </div>
       </div>
 

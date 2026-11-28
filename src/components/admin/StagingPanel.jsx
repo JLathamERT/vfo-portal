@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { callApi, loadCachedData } from '../../lib/api'
-import { PageHeading } from '../shared/ProfileKit'
+import { cardBox, PageHeading } from '../shared/ProfileKit'
 import { formatDateTime } from '../../lib/dates'
 
 // The Staging tab: test site only, loaded only in a staging build. Any admin can see
@@ -9,7 +9,7 @@ import { formatDateTime } from '../../lib/dates'
 
 const BUILD_SHA = import.meta.env.VITE_BUILD_SHA || ''
 
-const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+const cardStyle = { ...cardBox, marginBottom: '20px' }
 const titleStyle = { fontSize: '17px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '8px' }
 const textStyle = { fontSize: '14px', color: 'var(--vfo-ink)', lineHeight: 1.55, margin: 0 }
 const rowStyle = { display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', fontSize: '14px', padding: '8px 0', borderTop: '1px solid var(--vfo-border-soft)' }

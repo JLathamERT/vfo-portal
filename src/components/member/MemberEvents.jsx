@@ -8,6 +8,7 @@ import { useIsPhone } from '../../lib/useMediaQuery'
 import { formatDate } from '../../lib/dates'
 import { EVENT_ORDER_KEY, eventMoney2, guestsProblem, openTicketOf, readSession, ticketLastDay, writeSession } from '../../lib/events'
 import { CheckLine, ErrorLine, EVENT_KEYFRAMES, EventBand, EventFacts, evInput, evLabel, GuestList, OrderTotal, TicketCards } from '../events/EventParts'
+import { ProfileCard } from '../shared/ProfileKit'
 
 // The member portal's Events tab (2026-11-25), in the Growth Credits marketplace's
 // style. A paying member buys tickets (bank or card on /event-pay); a complimentary
@@ -89,7 +90,6 @@ export default function MemberEvents({ memberNumber, preview = null, previewEven
 }
 
 const section = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: 'var(--vfo-card-pad)', marginBottom: '16px' }
-const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
 const help = { fontSize: '13px', color: 'var(--vfo-muted)', lineHeight: 1.55, margin: '0 0 16px' }
 const sub = { fontSize: '13px', fontWeight: 800, color: 'var(--vfo-ink)', margin: '22px 0 10px' }
 const bigBtn = { ...btnPrimary, padding: '12px 24px', fontSize: '14px', borderRadius: '10px' }
@@ -106,8 +106,7 @@ function MyTickets({ data, isPhone }) {
   ] : []
   if (!orders.length && !free.length) return null
   return (
-    <div style={section}>
-      <div style={cardTitle}>My Tickets</div>
+    <ProfileCard icon="calendar" title="My Tickets">
       <div style={{ display: 'grid', gap: '12px' }}>
         {free.length > 0 && (
           <div style={{ border: '1px solid var(--vfo-border-soft)', borderRadius: '12px', padding: '14px 16px', display: 'flex', flexDirection: isPhone ? 'column' : 'row', gap: '12px', justifyContent: 'space-between' }}>
@@ -138,7 +137,7 @@ function MyTickets({ data, isPhone }) {
           )
         })}
       </div>
-    </div>
+    </ProfileCard>
   )
 }
 
@@ -174,8 +173,7 @@ function Registration({ data, memberNumber, preview, onSaved, isPhone }) {
   }
 
   return (
-    <div style={section}>
-      <div style={cardTitle}>Your Complimentary Registration</div>
+    <ProfileCard icon="award" title="Your Complimentary Registration">
       <p style={help}>Your membership includes complimentary access to the {event.name}, for you{corporate.length > 0 ? ', your corporate members' : ''} and up to {event.free_guests} guests. There is nothing to pay.</p>
 
       <CheckLine checked={form.attending} onChange={v => set({ attending: v })}>I'm attending ({me.first_name} {me.last_name})</CheckLine>
@@ -206,7 +204,7 @@ function Registration({ data, memberNumber, preview, onSaved, isPhone }) {
         {saved && <div role="status" style={{ background: 'rgba(27,146,84,0.12)', border: '1px solid rgba(27,146,84,0.35)', color: 'var(--vfo-success-text)', borderRadius: '10px', padding: '11px 14px', fontSize: '13px', fontWeight: 600 }}>{saved}</div>}
         <div><button type="button" onClick={save} disabled={busy || preview} style={btnState(bigBtn, busy || preview)}>{busy ? 'Saving...' : preview ? 'Register (preview)' : reg ? 'Save changes' : 'Register'}</button></div>
       </div>
-    </div>
+    </ProfileCard>
   )
 }
 
@@ -239,8 +237,7 @@ function BuyTickets({ data, memberNumber, preview, isPhone }) {
   }
 
   return (
-    <div style={section}>
-      <div style={cardTitle}>{complimentary ? 'More Guests' : 'Tickets'}</div>
+    <ProfileCard icon="users" title={complimentary ? 'More Guests' : 'Tickets'}>
       {complimentary && <p style={help}>{freeLeft > 0
         ? `You have ${freeLeft} complimentary guest ${freeLeft === 1 ? 'place' : 'places'} left. Anyone past those needs a ticket.`
         : `You've used all ${event.free_guests} complimentary guest places. You can buy a ticket for anyone else.`}</p>}
@@ -266,7 +263,7 @@ function BuyTickets({ data, memberNumber, preview, isPhone }) {
         </div>
       )}
       {!ticket && <p style={{ ...help, margin: '16px 0 0' }}>Tickets are not on sale right now.</p>}
-    </div>
+    </ProfileCard>
   )
 }
 

@@ -3,6 +3,8 @@ import { callApi } from '../../lib/api'
 import PasswordInput from '../shared/PasswordInput'
 import { Skeleton } from '../shared/Skeleton'
 import { GATED_ADMIN_TABS } from './adminTabs'
+import { cardBox, formInput, ProfileCard } from '../shared/ProfileKit'
+import { btnPrimary } from '../shared/buttonStyles'
 
 export default function AdminEditor({ onBack }) {
   const [admins, setAdmins] = useState([])
@@ -73,26 +75,24 @@ export default function AdminEditor({ onBack }) {
     }
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
+  const inputStyle = formInput
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 24px' }}>
-      <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Add Admin</div>
+      <ProfileCard icon="user" title="Add Admin">
         <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
           <input value={newEmail} autoComplete="off" onChange={e => setNewEmail(e.target.value)} placeholder="Email" style={inputStyle} />
           <input value={newName} autoComplete="off" onChange={e => setNewName(e.target.value)} placeholder="Name" style={inputStyle} />
           <PasswordInput value={newPasscode} autoComplete="new-password" onChange={e => setNewPasscode(e.target.value)} placeholder="Passcode" style={inputStyle} />
         </div>
-        <button onClick={createAdmin} style={{ padding: '10px 24px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>
+        <button onClick={createAdmin} style={btnPrimary}>
           Create Admin
         </button>
         {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
-      </div>
+      </ProfileCard>
 
-      <div style={sectionStyle}>
-        <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Current Admins</div>
+      <ProfileCard icon="users" title="Current Admins">
         <p style={{ fontSize: '12px', color: 'var(--vfo-faint)', margin: '0 0 16px' }}>
           Every tab is open to every admin, except the four below. Tick a box to turn one on for an admin. They see it the next time they sign in.
         </p>
@@ -130,7 +130,7 @@ export default function AdminEditor({ onBack }) {
             </div>
           )
         })}
-      </div>
+      </ProfileCard>
     </div>
   )
 }

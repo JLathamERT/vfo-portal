@@ -11,7 +11,7 @@ import ListTable, { ListName, ListPill, ListText, listSearchStyle, LIST_PAGE_MAX
 import TaxPlannerKpiPanel from './TaxPlannerKpiPanel'
 import { DirectoryListSkeleton, KpiPageSkeleton, StrategicPartnersSkeleton, TableSkeleton } from '../shared/Skeleton'
 import { HeroAvatar, ListHeader } from '../shared/TrackKit'
-import { BackLink, DotText, Field, FieldGrid, FormGrid, formInput, formLabel, PageHeading, ProfileCard, ProfileHero, SaveBar } from '../shared/ProfileKit'
+import { BackLink, cardBox, DotText, Field, FieldGrid, FormGrid, formInput, formLabel, PageHeading, ProfileCard, ProfileCardHead, ProfileHero, pullHead, SaveBar } from '../shared/ProfileKit'
 import { btnDanger, btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 import { FeatureTabDropdown } from './MembersPanel'
 import SendSetupEmailButton from './SendSetupEmailButton'
@@ -261,7 +261,7 @@ export default function TaxPlannersPanel({ section }) {
     }
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
 
   const listFilterGroups = [
     { key: 'status', label: 'Status', options: ['Active', 'Lost', 'Removed'], get: p => p.status || 'Active' },
@@ -620,22 +620,22 @@ function TaxPlannerPaymentsTab({ plannerId }) {
     return () => { alive = false }
   }, [plannerId])
 
-  const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px' }
+  const cardStyle = { ...cardBox, marginBottom: 0 }
   const titleStyle = { fontSize: '17px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '0 0 16px', fontFamily: 'Inter, sans-serif' }
   const th = { textAlign: 'left', padding: '8px 12px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#7a89a8', borderBottom: '1px solid var(--vfo-border)', whiteSpace: 'nowrap' }
   const td = { padding: '12px', fontSize: '13px', color: 'var(--vfo-ink)', borderBottom: '1px solid var(--vfo-border-soft)', verticalAlign: 'top' }
 
   if (loading) {
-    return <div style={cardStyle}><h3 style={titleStyle}>Payments</h3><TableSkeleton card={false} cols={4} rows={3} pad="12px" /></div>
+    return <div style={cardStyle}><ProfileCardHead icon="dollar" title="Payments" style={pullHead} /><TableSkeleton card={false} cols={4} rows={3} pad="12px" /></div>
   }
   if (error) {
-    return <div style={cardStyle}><h3 style={titleStyle}>Payments</h3><div style={{ marginTop: '12px', padding: '14px 16px', background: '#fdecea', border: '1px solid #f7c4bd', borderRadius: '10px', color: '#b42318', fontSize: '13px' }}>{error}</div></div>
+    return <div style={cardStyle}><ProfileCardHead icon="dollar" title="Payments" style={pullHead} /><div style={{ marginTop: '12px', padding: '14px 16px', background: '#fdecea', border: '1px solid #f7c4bd', borderRadius: '10px', color: '#b42318', fontSize: '13px' }}>{error}</div></div>
   }
 
   const list = rows || []
   return (
     <div style={cardStyle}>
-      <h3 style={titleStyle}>Payments</h3>
+      <ProfileCardHead icon="dollar" title="Payments" style={pullHead} />
       {list.length === 0 ? (
         <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--vfo-faint)', fontSize: '13.5px', background: 'var(--vfo-tint)', border: '1px dashed var(--vfo-border-chip)', borderRadius: '12px' }}>
           This tax planner is not allocated to any tax plans yet.
@@ -1029,8 +1029,8 @@ function TaxPartnerCard({ group, onSaved, experts = [] }) {
     finally { setBusy(false) }
   }
 
-  const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', maxWidth: '340px', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const cardStyle = { ...cardBox, marginBottom: '20px' }
+  const inputStyle = { ...formInput, maxWidth: '340px' }
 
   return (
     <div style={cardStyle}>
@@ -1038,7 +1038,7 @@ function TaxPartnerCard({ group, onSaved, experts = [] }) {
         {editing
           ? <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               <input value={name} onChange={e => setName(e.target.value)} style={inputStyle} onKeyDown={e => { if (e.key === 'Enter') saveName() }} />
-              <button onClick={saveName} disabled={busy} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}>Save</button>
+              <button onClick={saveName} disabled={busy} style={btnState(btnPrimary, busy)}>Save</button>
               <button onClick={() => { setEditing(false); setName(group.name || '') }} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
             </div>
           : <div style={{ fontSize: '17px', fontWeight: 700, color: 'var(--vfo-ink)' }}>{group.name}</div>}
@@ -1055,7 +1055,7 @@ function TaxPartnerCard({ group, onSaved, experts = [] }) {
       </div>
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
         <button onClick={setUp} disabled={requesting}
-          style={{ padding: '10px 24px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: requesting ? 'not-allowed' : 'pointer', opacity: requesting ? 0.6 : 1 }}>
+          style={btnState(btnPrimary, requesting)}>
           {requesting ? 'Working…' : connected ? 'Resend Setup Email' : 'Set Up Payment Details'}
         </button>
         {!editing && <button onClick={() => setEditing(true)} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Edit Name</button>}
@@ -1090,12 +1090,12 @@ function TaxPartnerCard({ group, onSaved, experts = [] }) {
         <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={pickLogo} style={{ display: 'none' }} />
         {logoPending ? (
           <>
-            <button onClick={() => saveLogo({ logo_base64: logoPending.base64 }, 'Logo saved.')} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: logoBusy ? 'wait' : 'pointer' }}>{logoBusy ? 'Saving…' : 'Save logo'}</button>
+            <button onClick={() => saveLogo({ logo_base64: logoPending.base64 }, 'Logo saved.')} disabled={logoBusy} style={btnState(btnPrimary, logoBusy)}>{logoBusy ? 'Saving…' : 'Save logo'}</button>
             <button onClick={() => setLogoPending(null)} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
           </>
         ) : (
           <>
-            <button onClick={() => logoFileRef.current?.click()} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>{group.logo_image ? 'Replace logo' : 'Upload logo'}</button>
+            <button onClick={() => logoFileRef.current?.click()} disabled={logoBusy} style={btnState(btnPrimary, logoBusy)}>{group.logo_image ? 'Replace logo' : 'Upload logo'}</button>
             {group.logo_image && <button onClick={() => { if (window.confirm(`Remove the logo for "${group.name}"?`)) saveLogo({ remove_logo: true }, 'Logo removed.') }} disabled={logoBusy} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer' }}>Remove logo</button>}
           </>
         )}

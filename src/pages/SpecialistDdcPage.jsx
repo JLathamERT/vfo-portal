@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { fileSizeError } from '../lib/fileUpload'
 import { PublicFormSkeleton } from '../components/shared/Skeleton'
+import { formInput } from '../components/shared/ProfileKit'
+import { btnPrimary, btnState } from '../components/shared/buttonStyles'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ejpsprsmhpufwogbmxjv.supabase.co/functions/v1/vfo-admin-api'
 
@@ -217,7 +219,7 @@ export default function SpecialistDdcPage() {
           <button onClick={() => persist(form)} disabled={saving} style={{ ...btnBase, flex: 1, minWidth: '160px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-strong)' }}>
             {saving ? 'Saving…' : savedTick ? 'Saved ✓' : 'Save progress'}
           </button>
-          <button onClick={submit} disabled={submitting} style={{ ...btnBase, flex: 1, minWidth: '160px', background: submitting ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none' }}>
+          <button onClick={submit} disabled={submitting} style={{ ...btnState(btnPrimary, submitting), padding: '14px', fontSize: '15px', flex: 1, minWidth: '160px' }}>
             {submitting ? 'Submitting…' : 'Submit for review'}
           </button>
         </div>
@@ -330,7 +332,7 @@ const editsBanner = { fontSize: '13px', color: '#b3500f', fontWeight: 500, backg
 const itemStyle = { background: 'var(--vfo-tint)', border: '1px solid var(--vfo-tint-deep)', borderRadius: '10px', padding: '16px 18px', marginBottom: '12px' }
 const labelStyle = { display: 'block', fontSize: '14px', fontWeight: 600, color: '#2e4166', marginBottom: '8px', lineHeight: 1.4 }
 const hintStyle = { fontSize: '11px', color: 'var(--vfo-muted)', marginTop: '5px', fontStyle: 'italic', lineHeight: 1.5 }
-const inputStyle = { width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', fontFamily: 'Inter, sans-serif' }
+const inputStyle = formInput
 const fileChip = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--vfo-muted)', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', borderRadius: '7px', padding: '8px 12px' }
 const removeBtn = { background: 'none', border: 'none', color: '#d93025', fontWeight: 500, cursor: 'pointer', fontSize: '13px', flexShrink: 0 }
 const uploadBtn = { display: 'inline-block', fontSize: '13px', color: 'var(--vfo-muted)', background: 'var(--vfo-tint)', border: '1px dashed var(--vfo-border-strong)', borderRadius: '8px', padding: '10px 16px', fontWeight: 600 }

@@ -10,6 +10,7 @@ import { miniTabStyle as miniTab } from '../shared/SubTabs'
 import { tableStyle, headerRowStyle, totalsRowStyle, totalsLabelStyle, totalsSubStyle } from '../admin/SpecialistRevenuePanel'
 import { clientPlanPath, fmtMoney, fmtMethod, StatusPill } from './PaymentsTable'
 import { formatDate } from '../../lib/dates'
+import { listSelectStyle } from '../shared/ListTable'
 
 // Admin GLOBAL Payments page — Accounting → Payments. A flat ledger, ONE row per
 // real money movement (all_payments_load, rebuilt 2026-10-22), in the house
@@ -136,7 +137,7 @@ function PaymentsLedger({ direction }) {
     return null
   }
   const sub = { display: 'block', fontSize: '11px', color: 'var(--vfo-faint)', marginTop: '3px', fontWeight: 400 }
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+  const sel = listSelectStyle
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif' }}>

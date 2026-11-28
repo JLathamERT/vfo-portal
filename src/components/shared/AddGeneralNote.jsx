@@ -3,6 +3,7 @@ import { callApi } from '../../lib/api'
 import { getSession } from '../../lib/api'
 import { SaveVisibilityButtons } from './NoteVisibility'
 import { MentionTextarea, mentionEmails } from './MentionTextarea'
+import { btnPrimary } from './buttonStyles'
 
 // `memberMode` (the member's Profile tab, Jake 2026-11-12): the same box, but the
 // note always goes to the team (member_client_note_add signs it with the
@@ -37,7 +38,7 @@ function AddGeneralNote({ clientId, notes, onNotesChange, programName, memberMod
   }
 
   if (!open) {
-    return <button onClick={() => setOpen(true)} style={{ padding: '4px 12px', borderRadius: '6px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>+ Add Note</button>
+    return <button onClick={() => setOpen(true)} style={btnPrimary}>+ Add Note</button>
   }
 
   const off = saving || !text.trim()

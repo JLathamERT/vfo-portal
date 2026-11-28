@@ -11,7 +11,7 @@ import { PORTAL_URL } from '../../lib/environment'
 import { StackedCardsSkeleton } from '../shared/Skeleton'
 import TaxFormPlanPicker, { planPickBody, planPickProblem } from '../shared/TaxFormPlanPicker'
 import SubTabs from '../shared/SubTabs'
-import { ChoiceButtons, PageHeading } from '../shared/ProfileKit'
+import { cardBox, ChoiceButtons, PageHeading } from '../shared/ProfileKit'
 import { btnOutline } from '../shared/buttonStyles'
 
 // Tax Diagnostics — the queue of public /tax-diagnostic submissions (grantable
@@ -187,7 +187,7 @@ export default function TaxDiagnosticsPanel({ initialDiagnosticId = null }) {
     return c
   }, [everything])
 
-  const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
+  const card = { ...cardBox, marginBottom: '20px' }
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>

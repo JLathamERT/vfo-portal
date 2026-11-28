@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { callApi, loadCachedAction, getLastSeen, setLastSeen } from '../../../lib/api'
 import { PhaseNotesButton, PhaseNotesPanel, useOpenLinkedNote } from '../../shared/PhaseNotes'
 import { PFTTrackSkeleton } from '../../shared/Skeleton'
-import { TrackHero, StepRow, SubStepRow, AutoSteps, PhaseCard, StepAnswer } from '../../shared/TrackKit'
-import { stepChoice, stepSend, btnStep, btnState } from '../../shared/buttonStyles'
+import { AutoSteps, PhaseCard, StepAnswer, StepRow, stepSelect, SubStepRow, TrackHero } from '../../shared/TrackKit'
+import { btnState, btnStep, stepChoice, stepSend } from '../../shared/buttonStyles'
 import StepDate from '../../shared/StepDate'
 import StepEmailsChip from '../../shared/StepEmailsChip'
 import { readable } from '../../shared/readableColor'
@@ -47,7 +47,7 @@ const FT_LABEL = { confirm: 'Confirm onboarding - no further meeting', another_m
 const AGREEMENT_NAMES = { ft: 'Accountant-Implementation-Agreement.pdf', associate: 'VFO-Associate-Agreement.pdf' }
 
 const statusColors = { Completed: '#1b9254', 'No show': '#e74c3c', [AWAITING]: '#e06717', 'VFO FT confirmed': '#1b9254', 'VFO Associate confirmed': '#1b9254', 'No confirmed': '#e74c3c' }
-const inputStyle = { padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
+const inputStyle = stepSelect
 function nameCtx(client) {
   const full = client ? `${client.first_name || ''} ${client.last_name || ''}`.trim() : ''
   const ctx = {}
@@ -204,7 +204,7 @@ function DecisionStep({ task, p, readOnly, client, onSend, onDate }) {
           </div>
           {error && <div style={{ color: '#d93025', fontSize: '12px', marginTop: '10px' }}>{error}</div>}
           <div style={{ marginTop: '14px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-            <button disabled={pending} onClick={() => { setOpen(false); setError('') }} style={btnStep}>Cancel</button>
+            <button disabled={pending} onClick={() => { setOpen(false); setError('') }} style={btnState(btnStep, pending)}>Cancel</button>
             <button disabled={!canSend} onClick={send} style={btnState(stepSend, !canSend)}>{pending ? 'Sending...' : 'Send Decision Email'}</button>
           </div>
         </div>

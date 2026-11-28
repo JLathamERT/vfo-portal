@@ -6,8 +6,9 @@ import { money, StatusPill } from '../admin/specialistRevenueShared'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import ListTable, { ListName, ListText } from '../shared/ListTable'
 import { useIsPhone } from '../../lib/useMediaQuery'
-import { BackLink } from '../shared/ProfileKit'
+import { BackLink, cardFrame, ProfileCard } from '../shared/ProfileKit'
 import { formatDate } from '../../lib/dates'
+import { btnPrimary, btnState } from '../shared/buttonStyles'
 
 // SDP - Advanced Tax Strategy Governance (Jake, 2026-11-17). One screen for both
 // the planner portal tab (SDP's planners + team members) and the admin
@@ -63,12 +64,11 @@ const LEG_STATUS = {
   none_due: { label: 'none due (0%)', color: '#6b7280' },
 }
 
-const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)' }
-const primaryBtn = (busy) => ({ padding: '8px 18px', borderRadius: '8px', background: busy ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: busy ? 'none' : '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' })
+const card = { ...cardFrame, borderRadius: '14px' }
+const primaryBtn = (busy) => btnState(btnPrimary, busy)
 const ghostBtn = (color = '#0095ff') => ({ padding: '5px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: `1px solid ${color}66`, background: `${color}1f`, color, fontWeight: 600, fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' })
 const inputStyle = { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '13.5px', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }
 const labelStyle = { display: 'block', fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '5px' }
-const sectionTitle = { fontFamily: 'Inter, sans-serif', fontSize: '12.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }
 
 const methodWord = t => (t === 'ach' ? 'bank' : t === 'card' ? 'card' : '')
 const freqLabel = f => (FREQS.find(x => x[0] === f) || [])[1] || '—'
@@ -258,8 +258,7 @@ function AddClientCard({ onCancel, onCreated }) {
   }
 
   return (
-    <div style={{ ...card, padding: '22px 24px', maxWidth: '640px' }}>
-      <div style={{ ...sectionTitle, color: 'var(--vfo-heading)', marginBottom: '4px' }}>Add Client</div>
+    <ProfileCard icon="user" title="Add Client" style={{ maxWidth: '640px' }}>
       <p style={{ fontSize: '12.5px', color: 'var(--vfo-muted)', margin: '0 0 18px' }}>Pick the member this client is connected to, then the client's details. The client reference is the member number with -SDP001, -SDP002 and so on.</p>
 
       <label style={labelStyle}>Member</label>
@@ -315,7 +314,7 @@ function AddClientCard({ onCancel, onCreated }) {
         <button type="button" onClick={save} disabled={busy} style={primaryBtn(busy)}>{busy ? 'Adding…' : 'Add Client'}</button>
         <button type="button" onClick={onCancel} disabled={busy} style={{ ...ghostBtn('#6b7280'), padding: '8px 16px' }}>Cancel</button>
       </div>
-    </div>
+    </ProfileCard>
   )
 }
 
@@ -396,7 +395,7 @@ const formSection = { background: 'var(--vfo-tint)', borderRadius: '8px', paddin
 const formSectionTitle = { fontSize: '12px', color: '#0095ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }
 const fInput = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
 const fLabel = { fontSize: '11px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }
-const submitBtn = busy => ({ padding: '8px 18px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: busy ? 'not-allowed' : 'pointer', border: 'none', background: busy ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', color: '#fff', fontFamily: 'Inter, sans-serif' })
+const submitBtn = busy => btnState(btnPrimary, busy)
 const cancelBtn = { padding: '8px 16px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '1px solid var(--vfo-border-strong)', background: 'transparent', color: 'var(--vfo-muted)', fontFamily: 'Inter, sans-serif' }
 const smallBtn = (color = '#0095ff') => ({ padding: '4px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', border: `1px solid ${color}66`, background: `${color}1f`, color, fontWeight: 600, fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' })
 

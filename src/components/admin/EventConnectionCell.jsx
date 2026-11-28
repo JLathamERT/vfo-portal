@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { callApi } from '../../lib/api'
 import { MemberNameLink } from '../shared/personLinks'
 import Tag from '../shared/Tag'
-import { btnOutline, btnPrimary, btnSecondary, btnState, BTN_SMALL } from '../shared/buttonStyles'
+import { BTN_SMALL, btnOutline, btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 import { formatDate } from '../../lib/dates'
 
 // Events > Purchases: who a buyer is to us. A portal buyer is a member. A public buyer
@@ -92,7 +92,7 @@ export default function EventConnectionCell({ row, members, onDone }) {
       ))}
       <div style={{ display: 'flex', gap: '6px' }}>
         <button type="button" disabled={busy || (needsMember && !picked)} onClick={save} style={btnState({ ...btnPrimary, ...BTN_SMALL }, busy || (needsMember && !picked))}>{busy ? 'Saving...' : 'Save'}</button>
-        {answered && <button type="button" disabled={busy} onClick={() => setEditing(false)} style={{ ...btnSecondary, ...BTN_SMALL }}>Cancel</button>}
+        {answered && <button type="button" disabled={busy} onClick={() => setEditing(false)} style={{ ...btnState(btnSecondary, busy), ...BTN_SMALL }}>Cancel</button>}
       </div>
       {err && <div style={{ fontSize: '11.5px', color: '#b91c1c' }}>{err}</div>}
     </div>

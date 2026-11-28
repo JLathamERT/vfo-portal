@@ -7,6 +7,7 @@ import { AccountingTableSkeleton } from '../shared/Skeleton'
 import { SpecialistNameLink } from '../shared/personLinks'
 import { footnoteStyle } from './accountingTable'
 import { formatDate } from '../../lib/dates'
+import { cardBox } from '../shared/ProfileKit'
 
 // Accounting > Specialists > VFO Specialist Revenue > Bank Transfer Account. The shared
 // Stripe account specialists push bank transfers to, read live (specialist_revenue_deposits_load):
@@ -58,7 +59,7 @@ export default function SpecialistDepositsPanel({ embedded = false }) {
 
   const wrap = embedded ? { fontFamily: 'Inter, sans-serif' } : { padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }
   const btn = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-accent-text)', fontWeight: 600, cursor: 'pointer' }
-  const cardStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', padding: '18px 20px', boxShadow: 'var(--vfo-shadow-card)' }
+  const cardStyle = { ...cardBox, borderRadius: '14px', padding: '18px 20px', marginBottom: 0 }
   const label = { fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)' }
   const heading = { fontSize: '14px', fontWeight: 800, color: 'var(--vfo-heading)', margin: '24px 0 10px' }
   const grid = '104px 1.5fr 150px 1.2fr 120px 130px'

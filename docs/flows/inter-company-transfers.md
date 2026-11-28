@@ -1,6 +1,6 @@
 # VFOS IAG Inter-Company Transfer
 
-**The sixth + New Payment method of VFO Specialist Revenue** (Accounting → Specialists → VFO Specialist Revenue, Jake 2026-11-25). VFO bills the IAG specialist, but nothing is paid on a pay page: the request goes into **IAG's own portal**, where a superadmin accepts it (IAG's Stripe balance pays VFO Services) or denies it. Money that arrives is split exactly like any other SpecRev payment.
+**The sixth New Payment method of VFO Specialist Revenue** (the New Payment pill) (Accounting → Specialists → VFO Specialist Revenue, Jake 2026-11-25). VFO bills the IAG specialist, but nothing is paid on a pay page: the request goes into **IAG's own portal**, where a superadmin accepts it (IAG's Stripe balance pays VFO Services) or denies it. Money that arrives is split exactly like any other SpecRev payment.
 
 **What it carries (Jake 2026-11-25): the Specialist's implementation fee split, never revenue share, and all of it for the members.** The form locks and clears the ERT and VFOS boxes and `specialist_revenue_send_request` answers 400 to either. Everything IAG or a recipient reads says *implementation fee split*; which wording and which templates apply is decided in one place, `specrevShareWording` (`constants/iag-portal.ts`).
 

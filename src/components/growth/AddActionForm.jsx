@@ -45,7 +45,7 @@ export default function AddActionForm({ onSubmit, onCancel, submitLabel = 'Add t
       </div>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button onClick={submit} disabled={busy} style={btnState(btnPrimary, busy)}>{busy ? 'Adding…' : submitLabel}</button>
-        {onCancel && <button onClick={onCancel} disabled={busy} style={btnSecondary}>Cancel</button>}
+        {onCancel && <button onClick={onCancel} disabled={busy} style={btnState(btnSecondary, busy)}>Cancel</button>}
       </div>
     </div>
   )

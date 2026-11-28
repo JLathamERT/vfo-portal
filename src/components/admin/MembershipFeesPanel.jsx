@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react'
 import { CARD_FEE_COL, CARD_FEE_LABEL, CardFeeCell, sumFees } from './cardFeeColumn'
+import { STANDING_COLORS } from '../shared/statusColors'
 import { callApi, getLastSeen, setLastSeen } from '../../lib/api'
 import { NAVY, BLUE, money, StatusPill } from './specialistRevenueShared'
 import { AccountingRowsSkeleton } from '../shared/Skeleton'
@@ -9,13 +10,14 @@ import { MemberNameLink } from '../shared/personLinks'
 import { MEMBER_TYPES, ACCOUNTANT_TYPES } from '../shared/memberTypes'
 import { clickableRowStyle, rowHoverProps } from '../shared/rowHover'
 import SubTabs from '../shared/SubTabs'
-import { PageHeading } from '../shared/ProfileKit'
+import { cardFrame, PageHeading, ProfileCard } from '../shared/ProfileKit'
 import { errorStyle, innerTotalsStyle, refreshBtnStyle, toolbarStyle } from './accountingTable'
 import { paymentStatusLabel } from '../../lib/paymentStatusLabel'
 import { OutstandingCard, OutstandingEmpty } from './OutstandingLinksPanel'
 import Tag from '../shared/Tag'
 import ExpandChevron from '../shared/ExpandChevron'
 import { formatDate } from '../../lib/dates'
+import { listSelectStyle } from '../shared/ListTable'
 
 // Accounting > Members > Advisor/Accountant Membership Fees.
 //
@@ -278,7 +280,7 @@ function SearchSelect({ options, value, onChange, placeholder }) {
 
 const label = { fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--vfo-muted)', marginBottom: '5px' }
 const input = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', color: 'var(--vfo-ink)', fontFamily: 'Inter, sans-serif', outline: 'none' }
-const card = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '14px', boxShadow: 'var(--vfo-shadow-card)' }
+const card = { ...cardFrame, borderRadius: '14px' }
 // Money Mapping (2026-10-30): the yellow of the Money Mapping statement sheet.
 const MM_COLOR = '#ca8a04'
 const MM_TINT = 'rgba(234,179,8,0.10)'
@@ -778,8 +780,8 @@ function PlanCard({ plan, allMembers = [], category, onChanged, onEdit, isSupera
             {mmOn && <StatusPill label="Money Mapping" color={MM_COLOR} />}
             {endingOn && <StatusPill label={`Ends ${formatDate(endingOn, '—')}`} color="#be123c" />}
             {openMeeting && <StatusPill label="Meeting requested" color="#e06717" />}
-            {m.suspended && <StatusPill label="Suspended" color="#ef4444" />}
-            {m.paused && <StatusPill label="Paused" color="#e06717" />}
+            {m.suspended && <StatusPill label="Suspended" color={STANDING_COLORS.Suspended} />}
+            {m.paused && <StatusPill label="Paused" color={STANDING_COLORS.Paused} />}
             {m.membership_arrears && <StatusPill label="In arrears" color="#b45309" />}
             {/* Payments pause. Suppressed when the member record's own paused
                 flag already renders an identically-worded pill. */}
@@ -1684,7 +1686,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
   const chip = (active) => ({ padding: '9px 18px', borderRadius: '8px', border: '1px solid ' + (active ? 'transparent' : 'var(--vfo-border-strong)'), background: active ? `linear-gradient(90deg, ${NAVY} 0%, ${BLUE} 100%)` : 'var(--vfo-card)', color: active ? '#fff' : 'var(--vfo-ink-2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' })
 
   return (
-    <div style={{ ...card, padding: '20px' }}>
+    <ProfileCard icon="dollar" title={editPlan ? 'Edit Membership' : 'Set Up Membership'}>
       {editPlan && (
         <div style={{ marginBottom: '14px', padding: '10px 14px', borderRadius: '10px', background: 'rgba(18,94,204,0.08)', border: '1px solid rgba(18,94,204,0.25)', fontSize: '13px', color: 'var(--vfo-ink-2)' }}>
           Editing the plan for <strong>{editPlan.member_name}</strong> — they haven't paid yet, so terms can still change.
@@ -2088,7 +2090,7 @@ function SetupSection({ category, allMembers, plans, editPlan, onSaved }) {
         </span>
       </div>
       {msg && <div style={{ marginTop: '10px', fontSize: '12.5px', padding: '8px 12px', borderRadius: '8px', color: msg.tone === 'error' ? '#b91c1c' : '#166534', border: `1px solid ${msg.tone === 'error' ? '#fecaca' : '#bbf7d0'}`, background: msg.tone === 'error' ? '#fef2f2' : '#f0fdf4' }}>{msg.text}</div>}
-    </div>
+    </ProfileCard>
   )
 }
 
@@ -2141,7 +2143,7 @@ function RenewalsSection({ plans, onOpenPlan, onRefresh }) {
     }
     return Array.from(set).sort((a, b) => b - a)
   }, [plans, today])
-  const sel = { padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: 'var(--vfo-ink)', cursor: 'pointer' }
+  const sel = listSelectStyle
   const renewedCount = rows.filter(r => r.state === 'renewed').length
 
   return (

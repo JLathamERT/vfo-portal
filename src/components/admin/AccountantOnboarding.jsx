@@ -3,12 +3,12 @@ import { useSearchParams, useLocation } from 'react-router-dom'
 import { callApi, getSession } from '../../lib/api'
 import { AccountantOnboardingListSkeleton, AccountantOnboardingDetailSkeleton } from '../shared/Skeleton'
 import { Children, isValidElement } from 'react'
-import { PhaseCard, StepRow, SubStepRow, StepAnswer, answerBox } from '../shared/TrackKit'
+import { answerBox, PhaseCard, StepAnswer, StepRow, stepSelect, SubStepRow } from '../shared/TrackKit'
 import Tag from '../shared/Tag'
 import StepDate from '../shared/StepDate'
 import { PhaseNotesButton, RecordPhaseNotesPanel } from '../shared/PhaseNotes'
 import { useOnboardingNotes } from '../shared/OnboardingNotes'
-import { stepChoice, stepStop, stepSend, btnStep, btnState } from '../shared/buttonStyles'
+import { btnPrimary, btnState, btnStep, stepChoice, stepSend, stepStop } from '../shared/buttonStyles'
 import NewModelSaleModal from './NewModelSaleModal'
 import { formatDate } from '../../lib/dates'
 
@@ -24,7 +24,7 @@ import OnboardingAgreementName from './OnboardingAgreementName'
 import { cleanText, formatPersonName, nameHasBadChars, nameHasTwoPeople, NAME_CHARS_CONTACT_MESSAGE, ONE_MEMBER_NAME_MESSAGE } from '../../lib/formatters'
 import { stage1Lock, createMemberLock, isTier1Onboarding, isConnectedAssociate, tier1MonthlyFee, tier1AdvisorPays, paymentClearing } from './onboardingOrder'
 import { readable } from '../shared/readableColor'
-import { BackLink } from '../shared/ProfileKit'
+import { BackLink, cardBox, formInput, ProfileCard } from '../shared/ProfileKit'
 
 const STAGE_NAMES = ['', 'Preliminary Meeting', 'Automated steps', 'Add New Accountant']
 
@@ -120,8 +120,8 @@ export default function AccountantOnboarding() {
   const location = useLocation()
   const session = getSession()
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
+  const inputStyle = formInput
 
   useEffect(() => { loadList() }, [])
 
@@ -190,12 +190,11 @@ export default function AccountantOnboarding() {
             {!loading && <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '999px', background: 'var(--vfo-tint)', border: '1px solid var(--vfo-border-chip)', color: 'var(--vfo-muted)' }}>{onboardings.length}</span>}
           </h2>
         </div>
-        <button onClick={() => setShowNew(!showNew)} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>+ New Onboarding</button>
+        <button onClick={() => setShowNew(!showNew)} style={btnPrimary}>+ New Onboarding</button>
       </div>
 
       {showNew && (
-        <div style={{ ...sectionStyle, marginBottom: '24px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Start New Accountant Onboarding</div>
+        <ProfileCard icon="user" title="Start New Accountant Onboarding" style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: '160px' }}>
               <label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>First Name *</label>
@@ -224,10 +223,10 @@ export default function AccountantOnboarding() {
           </div>
           {newError && <div style={{ fontSize: '12px', fontWeight: 500, color: '#e74c3c', marginBottom: '10px' }}>{newError}</div>}
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={createNew} disabled={creating || !newFirst.trim() || !newLast.trim() || !newEmail.trim() || !newType} style={{ padding: '8px 20px', borderRadius: '8px', background: creating ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '13px', cursor: creating ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>{creating ? 'Creating...' : 'Create'}</button>
+            <button onClick={createNew} disabled={creating || !newFirst.trim() || !newLast.trim() || !newEmail.trim() || !newType} style={btnState(btnPrimary, creating || !newFirst.trim() || !newLast.trim() || !newEmail.trim() || !newType)}>{creating ? 'Creating...' : 'Create'}</button>
             <button onClick={() => { setShowNew(false); setNewFirst(''); setNewLast(''); setNewCompany(''); setNewEmail(''); setNewError('') }} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
           </div>
-        </div>
+        </ProfileCard>
       )}
 
       {loading ? (
@@ -544,7 +543,7 @@ function OnboardingDetail({ id, onBack }) {
         <p style={{ margin: 0 }}>Regards,</p>
       </div>
       <div style={{ marginTop: '14px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-        <button disabled={refundSending} onClick={() => setRefundDraft({ open: false, reason: '', sending: false })} style={btnStep}>Cancel</button>
+        <button disabled={refundSending} onClick={() => setRefundDraft({ open: false, reason: '', sending: false })} style={btnState(btnStep, refundSending)}>Cancel</button>
         <button disabled={refundSending || !refundReason.trim()} onClick={() => sendDepositRefund(refundReason.trim())} style={btnState(stepSend, refundSending || !refundReason.trim())} title={!refundReason.trim() ? 'Enter the reason(s) first' : ''}>{refundSending ? 'Sending...' : 'Send Refund'}</button>
       </div>
     </div>
@@ -791,7 +790,7 @@ function OnboardingDetail({ id, onBack }) {
           </>
         ) : (
           <div style={{ padding: '4px 0' }}>
-            <button onClick={() => setShowSaleModal(true)} disabled={creatingMember} style={{ padding: '10px 24px', borderRadius: '8px', background: creatingMember ? '#93b4e8' : 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: creatingMember ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+            <button onClick={() => setShowSaleModal(true)} disabled={creatingMember} style={btnState(btnPrimary, creatingMember)}>
               {creatingMember ? 'Creating & sending...' : 'Create Accountant & Send Setup Link'}
             </button>
             {paymentClearing(ob) && (
@@ -1021,7 +1020,7 @@ function StallRows({ ob, setOb, stall }) {
   )
 }
 
-const selectStyle = { padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-card)', color: 'var(--vfo-ink)', fontSize: '12px', minWidth: '150px', fontFamily: 'Inter, sans-serif' }
+const selectStyle = { ...stepSelect, minWidth: '150px' }
 // A step's recorded answer is the shared value box, never a tag (HOUSE_STYLE §6).
 function pillStyle(color) { return answerBox(color) }
 const neutralPillStyle = answerBox()

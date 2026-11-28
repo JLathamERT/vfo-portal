@@ -18,8 +18,8 @@ import ListTable, { ListName, ListPill, ListText, listSearchStyle, ONE_LINE, LIS
 import SpecialistPicker from '../shared/SpecialistPicker'
 import { MemberEditFormSkeleton, MemberProfileDetailsSkeleton, ProgramNotesSkeleton, Skeleton, SkeletonText } from '../shared/Skeleton'
 import { HeroAvatar, ListHeader } from '../shared/TrackKit'
-import { BackLink, ChoiceButtons, DotText, Field, FormGrid, PersonName, formInput, formLabel, formReadOnly, Initials, PageHeading, ProfileCard, ProfileHero, SaveBar, SettingRow, Switch } from '../shared/ProfileKit'
-import { btnDanger, btnOutline, btnPrimary, btnSecondary, btnState, BTN_SMALL } from '../shared/buttonStyles'
+import { BackLink, cardBox, ChoiceButtons, DotText, Field, FormGrid, formInput, formLabel, formReadOnly, Initials, PageHeading, PersonName, ProfileCard, ProfileHero, SaveBar, SettingRow, Switch } from '../shared/ProfileKit'
+import { BTN_SMALL, btnDanger, btnOutline, btnPrimary, btnSecondary, btnState } from '../shared/buttonStyles'
 import ExportButton from '../shared/ExportButton'
 import { splitName, exportDate } from '../../lib/exportXlsx'
 import { IS_STAGING } from '../../lib/environment'
@@ -49,7 +49,7 @@ import PhoneInput from '../shared/PhoneInput'
 import MemberBrandingCard from '../shared/MemberBrandingCard'
 import MemberProfileDetails from '../shared/MemberProfileDetails'
 import StripeAccountField from '../shared/StripeAccountField'
-import { STATUS_COLORS, statusColor } from '../shared/statusColors'
+import { STATUS_COLORS, STANDING_COLORS, statusColor } from '../shared/statusColors'
 
 // Detail-view tab sets. Advisors/accountants get the full set; Strategic Members
 // get a trimmed view: Profile (all sub-tabs, always shown), MSM limited to
@@ -66,7 +66,6 @@ const DEFAULT_MSM_OPTIONS = [
   { key: 'msm_program_standard', label: 'Standard Coaching' },
 ]
 // The list's Standing column: the flags that sit on top of an Active member.
-const STANDING_COLORS = { Paused: '#e06717', Suspended: '#e74c3c', 'In Arrears': '#b45309' }
 function standingOf(m) {
   const f = []
   if (m.paused) f.push('Paused')
@@ -451,7 +450,7 @@ function MemberDirectoryView({
     ...(msmFilterOptions.length ? [{ key: 'msm', label: 'MSM', options: msmFilterOptions, get: m => (m.assigned_msm || '').trim() || UNASSIGNED_MSM }] : []),
   ]
 
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const inputStyle = formInput
 
   const searched = memberSearch
     ? displayMembers.filter(m => m.name?.toLowerCase().includes(memberSearch) || m.plugin_member_number?.toLowerCase().includes(memberSearch))
@@ -534,8 +533,8 @@ function MemberDirectoryView({
               { label: 'Engagement', value: engagementMeta(selectedMember.engagement_level) ? <DotText color={engagementMeta(selectedMember.engagement_level).color}>{engagementMeta(selectedMember.engagement_level).label}</DotText> : null },
             ]}
             alerts={(selectedMember.paused || selectedMember.suspended || selectedMember.membership_arrears) ? <>
-              {selectedMember.paused && <DotText color="#e06717">Paused</DotText>}
-              {selectedMember.suspended && <DotText color="#e74c3c">Suspended</DotText>}
+              {selectedMember.paused && <DotText color={STANDING_COLORS.Paused}>Paused</DotText>}
+              {selectedMember.suspended && <DotText color={STANDING_COLORS.Suspended}>Suspended</DotText>}
               {selectedMember.membership_arrears && <DotText color="#b45309">In Arrears</DotText>}
             </> : null}
           />
@@ -1089,8 +1088,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
 
   const inputStyle = formInput
   const labelStyle = formLabel
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const cardTitle = { fontSize: '16px', color: 'var(--vfo-heading)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '18px', paddingBottom: '11px', borderBottom: '2px solid var(--vfo-heading)' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
   const rowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--vfo-tint)' }
   const subTabStyle = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' })
   const CONNECTION_TYPES = ['5% - Regular Advisor', '10% - Accredited Introducer', '10% - Accredited Mentor', '20% - Accredited Introducer + Mentor']
@@ -1220,7 +1218,7 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
 
 
             <MemberAdditionalContacts memberNumber={member.plugin_member_number} contacts={contacts} onReload={reloadContacts}
-              styles={{ sectionStyle, cardTitle, inputStyle, labelStyle }} />
+              styles={{ sectionStyle, inputStyle, labelStyle }} />
 
             {profile.notes && (
               <ProfileCard icon="note" title="Notes">
@@ -1298,18 +1296,18 @@ function MemberProfile({ member, allMembers, onDataChange, activeSection, hidden
               <div style={{ flex: 1, minWidth: '140px' }}><label style={labelStyle}>Renewal Date</label><input type="text" readOnly value={profile.membership_renewal_date ? String(profile.membership_renewal_date).split('T')[0] : '—'} title="Set by the membership fee plan under Accounting" style={formReadOnly} /></div>
             </div>
           </ProfileCard>
-          <ProfileCard icon="settings" title="Settings">
+          <ProfileCard icon="settings" title="Standing">
             <div style={{ display: 'grid', gap: '10px' }}>
               <SettingRow title="Suspended" hint="Stops all active processing and holds revenue share payouts — they release automatically when unsuspended">
-                <Switch on={!!profile.suspended} color="#e74c3c" label="Suspended" onClick={() => update('suspended', !profile.suspended)} />
+                <Switch on={!!profile.suspended} color={STANDING_COLORS.Suspended} label="Suspended" onClick={() => update('suspended', !profile.suspended)} />
               </SettingRow>
               {profile.membership_arrears && (
-                <div style={{ fontSize: '12px', color: '#b45309', padding: '0 4px', lineHeight: 1.45, fontWeight: 600 }}>
+                <div style={{ fontSize: '12px', color: STANDING_COLORS['In Arrears'], padding: '0 4px', lineHeight: 1.45, fontWeight: 600 }}>
                   In arrears on membership fees — revenue shares are held; clears automatically when the arrears are paid.
                 </div>
               )}
               <SettingRow title="Paused" hint="Temporarily pauses activity and holds revenue share payouts — they release automatically when unpaused">
-                <Switch on={!!profile.paused} color="#e06717" label="Paused" onClick={() => update('paused', !profile.paused)} />
+                <Switch on={!!profile.paused} color={STANDING_COLORS.Paused} label="Paused" onClick={() => update('paused', !profile.paused)} />
               </SettingRow>
             </div>
           </ProfileCard>
@@ -1532,8 +1530,8 @@ function MemberGC({ member }) {
     } catch (err) { setDeductStatus({ ok: false, text: err.message }) }
   }
   const subTabStyle = (active) => ({ padding: '7px 16px', background: active ? '#125ecc' : 'transparent', border: 'none', borderRadius: '999px', boxShadow: active ? '0 2px 8px rgba(18,94,204,0.28)' : 'none', color: active ? '#ffffff' : 'var(--vfo-muted)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', marginRight: '4px' })
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
+  const inputStyle = formInput
 
   return (
     <div>
@@ -1563,24 +1561,22 @@ function MemberGC({ member }) {
               </div>
             </div>
           </div>
-          <div style={sectionStyle}>
-            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Add Credits</div>
+          <ProfileCard icon="dollar" title="Add Credits">
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
               <div style={{ flex: 1 }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Amount</label><input type="number" value={addAmount} onChange={e => setAddAmount(e.target.value)} placeholder="e.g. 100" min="0.25" step="0.25" style={inputStyle} /></div>
               <div style={{ flex: 1 }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Description (optional)</label><input value={addDesc} onChange={e => setAddDesc(e.target.value)} placeholder="e.g. Monthly allocation" style={inputStyle} /></div>
-              <button onClick={addCredits} style={{ padding: '12px 24px', minWidth: '150px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add Credits</button>
+              <button onClick={addCredits} style={{ ...btnPrimary, padding: '12px 24px', minWidth: '150px', fontSize: '14px' }}>Add Credits</button>
             </div>
             {status && <p style={{ color: statusType === 'success' ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{status}</p>}
-          </div>
-          <div style={sectionStyle}>
-            <div style={{ fontSize: '13px', color: 'var(--vfo-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Deduct Credits</div>
+          </ProfileCard>
+          <ProfileCard icon="dollar" iconTone="red" title="Deduct Credits">
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
               <div style={{ flex: 1 }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Amount</label><input type="number" value={deductAmount} onChange={e => setDeductAmount(e.target.value)} placeholder="e.g. 43.75" min="0.25" step="0.25" style={inputStyle} /></div>
               <div style={{ flex: 1 }}><label style={{ fontSize: '12px', color: 'var(--vfo-muted)', display: 'block', marginBottom: '6px' }}>Reason (shown in history)</label><input value={deductReason} onChange={e => setDeductReason(e.target.value)} placeholder="e.g. Prorated - downgrade to Catalyst" maxLength={300} style={inputStyle} /></div>
-              <button onClick={deductCredits} style={{ padding: '12px 24px', minWidth: '150px', borderRadius: '8px', background: 'linear-gradient(135deg, #c0392b 0%, #e74c3c 100%)', border: 'none', boxShadow: '0 2px 8px rgba(217,48,37,0.28)', color: '#fff', fontSize: '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Deduct Credits</button>
+              <button onClick={deductCredits} style={{ ...btnDanger, padding: '12px 24px', minWidth: '150px', fontSize: '14px' }}>Deduct Credits</button>
             </div>
             {deductStatus && <p style={{ color: deductStatus.ok ? 'var(--vfo-success-text)' : '#d93025', fontSize: '13px', marginTop: '12px' }}>{deductStatus.text}</p>}
-          </div>
+          </ProfileCard>
         </>
       )}
       {/* Kept mounted so the catalogue and open Details survive a tab switch.
@@ -1704,8 +1700,8 @@ function MemberSettings({ member, allMembers = [], onDataChange }) {
     finally { setStripeRequesting(false) }
   }
 
-  const sectionStyle = { background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: 'var(--vfo-shadow-card)', padding: '24px', marginBottom: '20px' }
-  const inputStyle = { padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--vfo-border-strong)', background: 'var(--vfo-input)', color: 'var(--vfo-ink)', fontSize: '14px', width: '100%', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }
+  const sectionStyle = { ...cardBox, marginBottom: '20px' }
+  const inputStyle = formInput
   const linkedLeadName = (linkedFrom && allMembers.find(m => m.plugin_member_number === linkedFrom)?.name) || linkedFrom
 
   return (
@@ -1787,7 +1783,7 @@ function MemberSettings({ member, allMembers = [], onDataChange }) {
 const MEMBER_CONTACT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) {
-  const { sectionStyle, cardTitle, inputStyle, labelStyle } = styles
+  const { sectionStyle, inputStyle, labelStyle } = styles
   const [showAdd, setShowAdd] = useState(false)
   const [addFirst, setAddFirst] = useState('')
   const [addLast, setAddLast] = useState('')
@@ -1867,7 +1863,7 @@ function MemberAdditionalContacts({ memberNumber, contacts, onReload, styles }) 
     setTimeout(() => setRowSaved(prev => ({ ...prev, [c.id]: false })), 4000)
   }
 
-  const primaryBtn = { padding: '6px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #125ecc 0%, #0a85e8 100%)', border: 'none', boxShadow: '0 2px 8px rgba(18,94,204,0.28)', color: '#fff', fontSize: '12px', cursor: 'pointer' }
+  const primaryBtn = btnPrimary
   const ghostBtn = { padding: '6px 16px', borderRadius: '8px', border: '1px solid var(--vfo-border-mid)', background: 'transparent', color: 'var(--vfo-muted)', fontSize: '12px', cursor: 'pointer' }
 
   return (

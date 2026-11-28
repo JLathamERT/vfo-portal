@@ -10,6 +10,7 @@ import { FileBadge, FileName, fileTileStyle, UploadZone, VaultEmpty, VaultSectio
 import { formInput, ProfileCard } from '../shared/ProfileKit'
 import { btnSecondary } from '../shared/buttonStyles'
 import { useIsPhone } from '../../lib/useMediaQuery'
+import Modal from '../shared/Modal'
 
 // Deliberately duplicated from TaxPrioritiesTab's LockedIcon rather than shared:
 // that file is under active end-to-end test and must not be touched, and a nine
@@ -412,20 +413,14 @@ export default function ClientVaultTab({ clientId, sectionStyle, specialists = [
         </ProfileCard>
       )}
       {storagePopup && (
-        <div onClick={() => setStoragePopup(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(9,14,26,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div role="dialog" aria-modal="true" aria-label="The Vault is for storage" onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--vfo-card)', border: '1px solid var(--vfo-border-soft)', borderRadius: '16px', boxShadow: '0 18px 50px rgba(9,14,26,0.35)', padding: '26px 28px', maxWidth: '460px', width: '100%', fontFamily: 'Inter, sans-serif' }}>
-            <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--vfo-heading)', marginBottom: '10px' }}>The Vault is for storage</div>
-            <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: '0 0 18px', lineHeight: 1.55 }}>
-              Your document is saved in {clientLabel}'s Vault. Dropping documents here does not start tax planning. If you wish to start VFO Tax Planning for {clientLabel}, fill in the Tax Diagnostic.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => setStoragePopup(false)} style={btnSecondary}>Close</button>
-              <button type="button" onClick={startDiagnostic} style={storageButton}>Start the Tax Diagnostic</button>
-            </div>
-          </div>
-        </div>
+        <Modal title="The Vault is for storage" width={460} onClose={() => setStoragePopup(false)} footer={<>
+          <button type="button" onClick={() => setStoragePopup(false)} style={btnSecondary}>Close</button>
+          <button type="button" onClick={startDiagnostic} style={storageButton}>Start the Tax Diagnostic</button>
+        </>}>
+          <p style={{ fontSize: '14px', color: 'var(--vfo-ink)', margin: 0, lineHeight: 1.55 }}>
+            Your document is saved in {clientLabel}'s Vault. Dropping documents here does not start tax planning. If you wish to start VFO Tax Planning for {clientLabel}, fill in the Tax Diagnostic.
+          </p>
+        </Modal>
       )}
       {error && <div style={{ color: '#e74c3c', fontWeight: 500, fontSize: '13px', marginBottom: '12px' }}>{error}</div>}
       {moving && <div style={{ color: '#0095ff', fontWeight: 500, fontSize: '13px', marginBottom: '12px' }}>Moving document…</div>}
